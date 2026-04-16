@@ -4,6 +4,7 @@ using CurlThin.Enums;
 using CurlThin.SafeHandles;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -37,6 +38,11 @@ namespace FlowMy.Services.Utils
         private static bool _curlThinInitialized = false;
         private static bool _curlThinAvailable = false;
         private static readonly object _initLock = new();
+
+        static CurlNativeExecutor()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        }
 
         // -------------------------------------------------------
         // PUBLIC ENTRY POINT
@@ -90,6 +96,9 @@ namespace FlowMy.Services.Utils
             var sw = Stopwatch.StartNew();
             var result = new CurlResult();
             Process? process = null;
+            string? tempCmdPath = null;
+            string? tempHeaderPath = null;
+            string? tempBodyPath = null;
 
             try
             {
@@ -112,11 +121,13 @@ namespace FlowMy.Services.Utils
                 var commandForExec = rawCurlCommand.Trim();
                 if (node.AutoAppendCurlWriteOut)
                 {
-                    commandForExec = EnsureOutputMarkers(commandForExec);
+                    tempHeaderPath = Path.Combine(Path.GetTempPath(), $"ac_rawcurl_headers_{Guid.NewGuid():N}.txt");
+                    tempBodyPath = Path.Combine(Path.GetTempPath(), $"ac_rawcurl_body_{Guid.NewGuid():N}.bin");
+                    commandForExec = EnsureOutputMarkers(commandForExec, tempHeaderPath, tempBodyPath);
                     commandForExec = EscapeCurlWriteOutForCmd(commandForExec);
                 }
 
-                var tempCmdPath = Path.Combine(Path.GetTempPath(), $"ac_rawcurl_{Guid.NewGuid():N}.cmd");
+                tempCmdPath = Path.Combine(Path.GetTempPath(), $"ac_rawcurl_{Guid.NewGuid():N}.cmd");
                 await File.WriteAllTextAsync(tempCmdPath, "@echo off\r\n" + commandForExec + "\r\n", Encoding.UTF8, ct);
 
                 try
@@ -145,10 +156,18 @@ namespace FlowMy.Services.Utils
                     await process.WaitForExitAsync(timeoutCts.Token);
                     sw.Stop();
 
-                    var output = await outputTask;
+                    var stdoutText = await outputTask;
                     var stderrText = await errorTask;
 
-                    ParseCurlOutput(output, stderrText, result);
+                    if (!string.IsNullOrWhiteSpace(tempBodyPath))
+                    {
+                        ParseCurlOutputFromFiles(stdoutText, stderrText, tempHeaderPath, tempBodyPath, result);
+                    }
+                    else
+                    {
+                        ParseCurlOutput(stdoutText, stderrText, result);
+                    }
+
                     result.ElapsedMs = sw.ElapsedMilliseconds;
                     result.Backend = "curl.exe raw command";
                 }
@@ -157,8 +176,12 @@ namespace FlowMy.Services.Utils
                     KillProcessTreeSafe(process);
                     try
                     {
-                        if (File.Exists(tempCmdPath))
+                        if (!string.IsNullOrWhiteSpace(tempCmdPath) && File.Exists(tempCmdPath))
                             File.Delete(tempCmdPath);
+                        if (!string.IsNullOrWhiteSpace(tempHeaderPath) && File.Exists(tempHeaderPath))
+                            File.Delete(tempHeaderPath);
+                        if (!string.IsNullOrWhiteSpace(tempBodyPath) && File.Exists(tempBodyPath))
+                            File.Delete(tempBodyPath);
                     }
                     catch
                     {
@@ -265,9 +288,10 @@ namespace FlowMy.Services.Utils
                         CurlNative.Easy.SetOpt(easy, CURLoption.POSTFIELDSIZE, Encoding.UTF8.GetByteCount(body));
                     }
 
-                    // Collect response body & headers
-                    var responseBodyBuilder = new StringBuilder();
-                    var responseHeaderBuilder = new StringBuilder();
+                    // Collect response body & headers as raw bytes so we can decode once
+                    // with the final charset instead of corrupting split UTF-8 characters.
+                    using var responseBodyStream = new MemoryStream();
+                    using var responseHeaderStream = new MemoryStream();
 
                     // DataHandler delegate: UIntPtr(IntPtr data, UIntPtr size, UIntPtr nmemb, IntPtr userdata)
                     DataHandler writeHandler = (data, size, nmemb, _) =>
@@ -275,7 +299,7 @@ namespace FlowMy.Services.Utils
                         var length = (int)((ulong)size * (ulong)nmemb);
                         var bytes = new byte[length];
                         Marshal.Copy(data, bytes, 0, length);
-                        responseBodyBuilder.Append(Encoding.UTF8.GetString(bytes));
+                        responseBodyStream.Write(bytes, 0, bytes.Length);
                         return (UIntPtr)((ulong)size * (ulong)nmemb);
                     };
 
@@ -284,7 +308,7 @@ namespace FlowMy.Services.Utils
                         var length = (int)((ulong)size * (ulong)nmemb);
                         var bytes = new byte[length];
                         Marshal.Copy(data, bytes, 0, length);
-                        responseHeaderBuilder.Append(Encoding.UTF8.GetString(bytes));
+                        responseHeaderStream.Write(bytes, 0, bytes.Length);
                         return (UIntPtr)((ulong)size * (ulong)nmemb);
                     };
 
@@ -301,9 +325,11 @@ namespace FlowMy.Services.Utils
                     // Get status code
                     CurlNative.Easy.GetInfo(easy, CURLINFO.RESPONSE_CODE, out int httpCode);
 
+                    var responseHeaders = ParseHeaderBlock(DecodeHeaderBytes(responseHeaderStream.ToArray()));
+
                     result.StatusCode = httpCode;
-                    result.Body = responseBodyBuilder.ToString();
-                    result.Headers = ParseHeaderBlock(responseHeaderBuilder.ToString());
+                    result.Body = DecodeResponseBody(responseBodyStream.ToArray(), responseHeaders);
+                    result.Headers = responseHeaders;
                     result.IsSuccess = httpCode is >= 200 and < 300;
                     result.ErrorMessage = result.IsSuccess ? string.Empty : $"HTTP {httpCode}";
                     result.ElapsedMs = sw.ElapsedMilliseconds;
@@ -359,7 +385,7 @@ namespace FlowMy.Services.Utils
             var sw = Stopwatch.StartNew();
             var result = new CurlResult();
             Process? process = null;
-            string? tempConfigPath = null;
+            string? tempHeaderPath = null;
             string? tempBodyPath = null;
 
             try
@@ -372,20 +398,10 @@ namespace FlowMy.Services.Utils
                     return result;
                 }
 
-                if (!string.IsNullOrEmpty(body) &&
-                    node.HttpMethod != Models.Nodes.HttpMethod.GET &&
-                    node.HttpMethod != Models.Nodes.HttpMethod.HEAD)
-                {
-                    tempBodyPath = Path.Combine(Path.GetTempPath(), $"ac_curl_body_{Guid.NewGuid():N}.txt");
-                    await File.WriteAllTextAsync(tempBodyPath, body, Encoding.UTF8, ct);
-                }
-
-                tempConfigPath = Path.Combine(Path.GetTempPath(), $"ac_curl_cfg_{Guid.NewGuid():N}.cfg");
-                var configContent = BuildCurlConfig(node, url, headers, tempBodyPath);
-                await File.WriteAllTextAsync(tempConfigPath, configContent, Encoding.UTF8, ct);
-
-                var args = $"--config \"{tempConfigPath}\"";
-                Debug.WriteLine($"[CurlExe] {curlPath} --config \"{tempConfigPath}\"");
+                tempHeaderPath = Path.Combine(Path.GetTempPath(), $"ac_curl_headers_{Guid.NewGuid():N}.txt");
+                tempBodyPath = Path.Combine(Path.GetTempPath(), $"ac_curl_body_{Guid.NewGuid():N}.bin");
+                var args = BuildCurlArgs(node, url, headers, body, tempHeaderPath, tempBodyPath);
+                Debug.WriteLine($"[CurlExe] {curlPath} {args.Substring(0, Math.Min(200, args.Length))}...");
 
                 process = new Process();
                 process.StartInfo = new ProcessStartInfo
@@ -411,10 +427,10 @@ namespace FlowMy.Services.Utils
                 await process.WaitForExitAsync(timeoutCts.Token);
                 sw.Stop();
 
-                var output = await outputTask;
+                var stdoutText = await outputTask;
                 var stderrText = await errorTask;
 
-                ParseCurlOutput(output, stderrText, result);
+                ParseCurlOutputFromFiles(stdoutText, stderrText, tempHeaderPath, tempBodyPath, result);
                 result.ElapsedMs = sw.ElapsedMilliseconds;
 
                 Debug.WriteLine($"[CurlExe] Exit={process.ExitCode}, Status={result.StatusCode}");
@@ -434,7 +450,7 @@ namespace FlowMy.Services.Utils
             finally
             {
                 KillProcessTreeSafe(process);
-                TryDeleteFile(tempConfigPath);
+                TryDeleteFile(tempHeaderPath);
                 TryDeleteFile(tempBodyPath);
             }
 
@@ -459,7 +475,13 @@ namespace FlowMy.Services.Utils
             }
         }
 
-        private static string BuildCurlArgs(HttpRequestNode node, string url, Dictionary<string, string> headers, string? body)
+        private static string BuildCurlArgs(
+            HttpRequestNode node,
+            string url,
+            Dictionary<string, string> headers,
+            string? body,
+            string headerOutputPath,
+            string bodyOutputPath)
         {
             var sb = new StringBuilder();
 
@@ -492,69 +514,15 @@ namespace FlowMy.Services.Utils
                 sb.Append($" --data \"{escapedBody}\"");
             }
 
-            // Output: body + header block + status code sentinel
-            sb.Append(" -D -");
-            sb.Append(" -w \"\\n<<<CURL_STATUS>>>%{http_code}<<<END>>>\"");
+            // Output raw body to file so non-UTF8 payloads and split multibyte chars
+            // are decoded correctly after the process exits.
+            sb.Append($" -D \"{headerOutputPath.Replace("\"", "\\\"")}\"");
+            sb.Append($" -o \"{bodyOutputPath.Replace("\"", "\\\"")}\"");
+            sb.Append(" -w \"<<<CURL_STATUS>>>%{http_code}<<<END>>>\"");
 
             sb.Append($" \"{url.Replace("\"", "\\\"")}\"");
 
             return sb.ToString();
-        }
-
-        private static string BuildCurlConfig(HttpRequestNode node, string url, Dictionary<string, string> headers, string? bodyFilePath)
-        {
-            var lines = new List<string>
-            {
-                "silent",
-                "show-error",
-                "location",
-                "insecure",
-                "compressed",
-                $"max-time = {node.TimeoutSeconds}",
-                $"request = \"{EscapeCurlConfigValue(node.HttpMethod.ToString().ToUpperInvariant())}\""
-            };
-
-            if (!string.IsNullOrWhiteSpace(node.ImpersonateBrowser) && IsCurlImpersonate(node.CurlPath))
-            {
-                lines.Add($"impersonate = \"{EscapeCurlConfigValue(node.ImpersonateBrowser)}\"");
-            }
-
-            foreach (var h in headers)
-            {
-                lines.Add($"header = \"{EscapeCurlConfigValue($"{h.Key}: {h.Value}")}\"");
-            }
-
-            if (!string.IsNullOrWhiteSpace(bodyFilePath))
-            {
-                lines.Add($"data-binary = \"@{EscapeCurlConfigValue(bodyFilePath)}\"");
-            }
-
-            // Keep parser contract: status sentinel must exist in stdout.
-            lines.Add("dump-header = \"-\"");
-            lines.Add("write-out = \"\\n<<<CURL_STATUS>>>%{http_code}<<<END>>>\"");
-            lines.Add($"url = \"{EscapeCurlConfigValue(url)}\"");
-
-            return string.Join(Environment.NewLine, lines) + Environment.NewLine;
-        }
-
-        private static string EscapeCurlConfigValue(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
-        }
-
-        private static void TryDeleteFile(string? filePath)
-        {
-            if (string.IsNullOrWhiteSpace(filePath)) return;
-            try
-            {
-                if (File.Exists(filePath))
-                    File.Delete(filePath);
-            }
-            catch
-            {
-                // Best-effort cleanup.
-            }
         }
 
         private static void ParseCurlOutput(string rawOutput, string stderr, CurlResult result)
@@ -612,6 +580,57 @@ namespace FlowMy.Services.Utils
                 else
                 {
                     result.ErrorMessage = result.IsSuccess ? string.Empty : $"HTTP {statusCode}";
+                }
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = $"Parse error: {ex.Message}";
+                result.Body = rawOutput;
+            }
+        }
+
+        private static void ParseCurlOutputFromFiles(
+            string rawOutput,
+            string stderr,
+            string? headerPath,
+            string? bodyPath,
+            CurlResult result)
+        {
+            const string separator = "<<<CURL_STATUS>>>";
+            const string endMarker = "<<<END>>>";
+
+            try
+            {
+                var statusCode = 0;
+                var statusStart = rawOutput.LastIndexOf(separator, StringComparison.Ordinal);
+                if (statusStart >= 0)
+                {
+                    var statusEnd = rawOutput.IndexOf(endMarker, statusStart, StringComparison.Ordinal);
+                    var statusStr = rawOutput.Substring(
+                        statusStart + separator.Length,
+                        statusEnd > 0 ? statusEnd - statusStart - separator.Length : 3);
+                    int.TryParse(statusStr.Trim(), out statusCode);
+                }
+
+                var headerBlock = ReadHeaderFile(headerPath);
+                var responseHeaders = ParseHeaderBlock(headerBlock);
+                var bodyBytes = ReadBodyFile(bodyPath);
+
+                result.StatusCode = statusCode == 0 ? TryGetStatusCodeFromHeaderBlock(headerBlock) : statusCode;
+                result.Body = DecodeResponseBody(bodyBytes, responseHeaders);
+                result.Headers = responseHeaders;
+                result.IsSuccess = result.StatusCode is >= 200 and < 300;
+
+                if (result.StatusCode == 0)
+                {
+                    result.ErrorMessage = !string.IsNullOrWhiteSpace(stderr)
+                        ? $"Lỗi kết nối (HTTP 0): {stderr.Trim()}"
+                        : "Lỗi kết nối (HTTP 0): Không nhận được phản hồi từ server (Vui lòng kiểm tra lại URL hoặc kết nối mạng).";
+                }
+                else
+                {
+                    result.ErrorMessage = result.IsSuccess ? string.Empty : $"HTTP {result.StatusCode}";
                 }
             }
             catch (Exception ex)
@@ -708,7 +727,7 @@ namespace FlowMy.Services.Utils
             return dict;
         }
 
-        private static string EnsureOutputMarkers(string command)
+        private static string EnsureOutputMarkers(string command, string? headerOutputPath = null, string? bodyOutputPath = null)
         {
             var normalized = command.Trim();
             if (normalized.Contains("<<<CURL_STATUS>>>", StringComparison.Ordinal))
@@ -718,6 +737,14 @@ namespace FlowMy.Services.Utils
 
             // Append status sentinel so ParseCurlOutput can extract HTTP code reliably.
             // Keep command as-is otherwise for maximum fidelity.
+            if (!string.IsNullOrWhiteSpace(headerOutputPath) && !string.IsNullOrWhiteSpace(bodyOutputPath))
+            {
+                return normalized +
+                       $" -D \"{headerOutputPath.Replace("\"", "\\\"")}\"" +
+                       $" -o \"{bodyOutputPath.Replace("\"", "\\\"")}\"" +
+                       " -w \"<<<CURL_STATUS>>>%{http_code}<<<END>>>\"";
+            }
+
             return normalized + " -D - -w \"\\n<<<CURL_STATUS>>>%{http_code}<<<END>>>\"";
         }
 
@@ -834,6 +861,215 @@ namespace FlowMy.Services.Utils
             }
 
             return false;
+        }
+
+        private static string ReadHeaderFile(string? headerPath)
+        {
+            if (string.IsNullOrWhiteSpace(headerPath) || !File.Exists(headerPath))
+            {
+                return string.Empty;
+            }
+
+            return DecodeHeaderBytes(File.ReadAllBytes(headerPath));
+        }
+
+        private static byte[] ReadBodyFile(string? bodyPath)
+        {
+            if (string.IsNullOrWhiteSpace(bodyPath) || !File.Exists(bodyPath))
+            {
+                return Array.Empty<byte>();
+            }
+
+            return File.ReadAllBytes(bodyPath);
+        }
+
+        private static string DecodeHeaderBytes(byte[] bytes)
+        {
+            if (bytes.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            return Encoding.Latin1.GetString(bytes);
+        }
+
+        private static string DecodeResponseBody(byte[] bytes, Dictionary<string, string>? headers)
+        {
+            if (bytes.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            var decompressed = DecompressIfNeeded(bytes, headers);
+            var encoding = ResolveResponseEncoding(decompressed, headers);
+            return encoding.GetString(decompressed);
+        }
+
+        private static Encoding ResolveResponseEncoding(byte[] bytes, Dictionary<string, string>? headers)
+        {
+            var bomEncoding = TryGetBomEncoding(bytes, out _);
+            if (bomEncoding != null)
+            {
+                return bomEncoding;
+            }
+
+            var headerEncoding = TryGetEncodingFromHeaders(headers);
+            if (headerEncoding != null)
+            {
+                return headerEncoding;
+            }
+
+            try
+            {
+                _ = new UTF8Encoding(false, true).GetString(bytes);
+                return Encoding.UTF8;
+            }
+            catch (DecoderFallbackException)
+            {
+                return Encoding.GetEncoding(1252);
+            }
+        }
+
+        private static Encoding? TryGetEncodingFromHeaders(Dictionary<string, string>? headers)
+        {
+            if (headers == null || !headers.TryGetValue("Content-Type", out var contentType) || string.IsNullOrWhiteSpace(contentType))
+            {
+                return null;
+            }
+
+            const string charsetToken = "charset=";
+            var charsetIndex = contentType.IndexOf(charsetToken, StringComparison.OrdinalIgnoreCase);
+            if (charsetIndex < 0)
+            {
+                return null;
+            }
+
+            var charset = contentType.Substring(charsetIndex + charsetToken.Length)
+                .Split(';', StringSplitOptions.TrimEntries)[0]
+                .Trim()
+                .Trim('"', '\'');
+
+            if (string.IsNullOrWhiteSpace(charset))
+            {
+                return null;
+            }
+
+            try
+            {
+                return Encoding.GetEncoding(charset);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Encoding? TryGetBomEncoding(byte[] bytes, out int bomLength)
+        {
+            bomLength = 0;
+
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            {
+                bomLength = 3;
+                return Encoding.UTF8;
+            }
+
+            if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            {
+                bomLength = 2;
+                return Encoding.Unicode;
+            }
+
+            if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            {
+                bomLength = 2;
+                return Encoding.BigEndianUnicode;
+            }
+
+            if (bytes.Length >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0x00 && bytes[3] == 0x00)
+            {
+                bomLength = 4;
+                return Encoding.UTF32;
+            }
+
+            return null;
+        }
+
+        private static byte[] DecompressIfNeeded(byte[] bytes, Dictionary<string, string>? headers)
+        {
+            if (bytes.Length == 0)
+            {
+                return bytes;
+            }
+
+            var encodingHeader = headers != null && headers.TryGetValue("Content-Encoding", out var ce)
+                ? ce
+                : null;
+
+            var encoding = (encodingHeader ?? string.Empty).ToLowerInvariant();
+
+            try
+            {
+                if (encoding.Contains("gzip") || LooksLikeGzip(bytes))
+                {
+                    using var input = new MemoryStream(bytes);
+                    using var gzip = new GZipStream(input, CompressionMode.Decompress);
+                    using var output = new MemoryStream();
+                    gzip.CopyTo(output);
+                    return output.ToArray();
+                }
+
+                if (encoding.Contains("deflate"))
+                {
+                    using var input = new MemoryStream(bytes);
+                    using var deflate = new DeflateStream(input, CompressionMode.Decompress);
+                    using var output = new MemoryStream();
+                    deflate.CopyTo(output);
+                    return output.ToArray();
+                }
+
+#if NET6_0_OR_GREATER
+                if (encoding.Contains("br"))
+                {
+                    using var input = new MemoryStream(bytes);
+                    using var br = new BrotliStream(input, CompressionMode.Decompress);
+                    using var output = new MemoryStream();
+                    br.CopyTo(output);
+                    return output.ToArray();
+                }
+#endif
+            }
+            catch
+            {
+                // Nếu giải nén fail thì trả lại bytes gốc.
+            }
+
+            return bytes;
+        }
+
+        private static bool LooksLikeGzip(byte[] bytes)
+        {
+            return bytes.Length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B;
+        }
+
+        private static void TryDeleteFile(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch
+            {
+                // best effort
+            }
         }
         // -------------------------------------------------------
         // P/INVOKE: curl_slist (CurlNative.Curl không tồn tại trong 0.0.7)

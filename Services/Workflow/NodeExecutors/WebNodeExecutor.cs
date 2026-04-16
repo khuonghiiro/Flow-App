@@ -126,13 +126,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 _ => System.Net.Http.HttpMethod.Get
             };
 
-            var expectedStatusText = webNode.ExtractStatusCode?.Trim();
-            var hasCustomStatusRule = TryParseExpectedStatusCodes(expectedStatusText, out var expectedStatuses, out var allowAnyStatus);
-            if (!hasCustomStatusRule)
-                expectedStatuses = new HashSet<int> { 200 };
+            if (!int.TryParse(webNode.ExtractStatusCode?.Trim(), out var expectedStatus))
+                expectedStatus = 200;
 
             Debug.WriteLine($"[WebNodeExecutor] ✓ URL valid: {url}");
-            Debug.WriteLine($"[WebNodeExecutor] ✓ Method: {methodStr}, Expected status: {(allowAnyStatus ? "any" : string.Join(",", expectedStatuses.OrderBy(s => s)))}");
+            Debug.WriteLine($"[WebNodeExecutor] ✓ Method: {methodStr}, Expected status: {expectedStatus}");
 
             try
             {
@@ -144,16 +142,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 cts.CancelAfter(TimeSpan.FromSeconds(60));
                 using var response = await _httpClient.SendAsync(request, cts.Token);
 
-                var actualStatus = (int)response.StatusCode;
-                if (!allowAnyStatus && !expectedStatuses.Contains(actualStatus))
+                if (response.StatusCode != (System.Net.HttpStatusCode)expectedStatus)
                 {
-                    var expectedDesc = string.Join(",", expectedStatuses.OrderBy(s => s));
-                    Debug.WriteLine($"[WebNodeExecutor] ❌ FAILED: Status code mismatch. Expected {expectedDesc}, got {actualStatus}");
-                    env.OnNodeFailed?.Invoke(webNode, $"Expected status {expectedDesc}, got {actualStatus}");
+                    Debug.WriteLine($"[WebNodeExecutor] ❌ FAILED: Status code mismatch. Expected {expectedStatus}, got {(int)response.StatusCode}");
+                    env.OnNodeFailed?.Invoke(webNode, $"Expected status {expectedStatus}, got {(int)response.StatusCode}");
                     return;
                 }
                 
-                Debug.WriteLine($"[WebNodeExecutor] ✓ Status code matched: {actualStatus}");
+                Debug.WriteLine($"[WebNodeExecutor] ✓ Status code matched: {(int)response.StatusCode}");
 
                 // Cookie: CHỈ ghi đè khi ExtractUrl response có Set-Cookie.
                 // Nếu không có, giữ nguyên LastCookie từ WebView2 (WebResourceResponseReceived).
@@ -244,32 +240,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             Debug.WriteLine($"[WebNodeExecutor] Calling TraverseOutputsAsync...");
             await env.TraverseOutputsAsync(webNode);
             Debug.WriteLine($"[WebNodeExecutor] ===== COMPLETED EXECUTION for node {node.Id} =====");
-        }
-
-        private static bool TryParseExpectedStatusCodes(string? statusText, out HashSet<int> statusCodes, out bool allowAnyStatus)
-        {
-            statusCodes = new HashSet<int>();
-            allowAnyStatus = false;
-
-            if (string.IsNullOrWhiteSpace(statusText))
-                return false;
-
-            var raw = statusText.Trim();
-            if (string.Equals(raw, "*", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(raw, "any", StringComparison.OrdinalIgnoreCase))
-            {
-                allowAnyStatus = true;
-                return true;
-            }
-
-            var parts = raw.Split(new[] { ',', ';', '|', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var part in parts)
-            {
-                if (int.TryParse(part, out var code) && code >= 100 && code <= 599)
-                    statusCodes.Add(code);
-            }
-
-            return statusCodes.Count > 0;
         }
 
         private static void PublishScopedWebOutputs(NodeExecutionEnvironment env, WebNode webNode)
