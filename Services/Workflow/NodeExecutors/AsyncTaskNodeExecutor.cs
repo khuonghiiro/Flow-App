@@ -250,14 +250,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     service.SetScopedNodeStringOutput(iterationExecutionId, asyncTaskNode.Id, "index", index.ToString());
                     service.SetScopedNodeStringOutput(iterationExecutionId, asyncTaskNode.Id, "item", item ?? string.Empty);
 
-                    // Legacy compatibility:
-                    // In "readResultsInBody=false" mode, nodes after loopOut may resolve via shared DynamicOutputs
-                    // (NodeDataPanelService fallback path). We update DynamicOutputs for each iteration here,
-                    // so downstream can still read a "last-known" index/item value.
-                    if (!readResultsInBody)
-                    {
-                        WorkflowExecutionService.SetAsyncTaskDispatchRuntimeOutputs(asyncTaskNode, index, item);
-                    }
+                    // Also update DynamicOutputs (legacy/fallback path).
+                    // Some downstream nodes may resolve via NodeDataPanelService fallback (e.g. if executionId changes
+                    // across UI-driven routing nodes). Keeping "last-known" index/item avoids empty outputs.
+                    WorkflowExecutionService.SetAsyncTaskDispatchRuntimeOutputs(asyncTaskNode, index, item);
 
                     if (loopToBodyConn == null) return;
 
