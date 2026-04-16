@@ -50,6 +50,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             {
                 if (n.ExecutionStatusTextUI != null) n.ExecutionStatusTextUI.Text = "";
                 if (n.ExecutionStatusContainerUI != null) n.ExecutionStatusContainerUI.Visibility = Visibility.Collapsed;
+                if (n.ExecutionBusySpinnerUI != null) n.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
                 if (n.ExecutionResultsItemsPanel != null) n.ExecutionResultsItemsPanel.Children.Clear();
                 if (n.ExecutionResultsItemsPanel != null) n.ExecutionResultsItemsPanel.Visibility = Visibility.Collapsed;
                 if (n.ExecutionResultsToggleUI != null)
@@ -114,6 +115,8 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                         n.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
                     if (n.ExecutionStatusTextUI != null)
                         n.ExecutionStatusTextUI.Text = "⏹ Cancelled";
+                    if (n.ExecutionBusySpinnerUI != null)
+                        n.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
                 }
             }
         }));
@@ -187,6 +190,12 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         if (node.ExecutionStatusContainerUI != null)
             node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
 
+        if (node.ExecutionBusySpinnerUI != null)
+        {
+            var cacheEnabled = node.ExecutionBusySpinnerUI.Tag is bool b && b;
+            node.ExecutionBusySpinnerUI.Visibility = cacheEnabled ? Visibility.Visible : Visibility.Collapsed;
+        }
+
         RefreshAggregateTimingForNode(node);
     }
 
@@ -212,6 +221,10 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
         if (node.ExecutionStatusContainerUI != null)
             node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
+
+        if (node.ExecutionBusySpinnerUI != null)
+            node.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
+
         if (node.ExecutionStatusTextUI != null)
         {
             var current = node.ExecutionStatusTextUI.Text ?? string.Empty;
@@ -245,6 +258,8 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                 node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
             if (node.ExecutionStatusTextUI != null)
                 node.ExecutionStatusTextUI.Text = "⏹ Cancelled";
+            if (node.ExecutionBusySpinnerUI != null)
+                node.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
         }
 
         if (_timingNode != null)
@@ -253,6 +268,8 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
                 _timingNode.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
             if (_timingNode.ExecutionStatusTextUI != null)
                 _timingNode.ExecutionStatusTextUI.Text = "⏹ Cancelled";
+            if (_timingNode.ExecutionBusySpinnerUI != null)
+                _timingNode.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
         }
 
         StopTimingTimer();
@@ -753,6 +770,9 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
         node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
         node.ExecutionStatusTextUI.Text = $"❌ Lỗi{BuildFlowBadge(node)}";
+
+        if (node.ExecutionBusySpinnerUI != null)
+            node.ExecutionBusySpinnerUI.Visibility = Visibility.Collapsed;
 
         var panel = node.ExecutionErrorItemsPanel;
         panel.Children.Clear();

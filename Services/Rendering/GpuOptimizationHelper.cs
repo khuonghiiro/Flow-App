@@ -76,7 +76,7 @@ namespace FlowMy.Services.Rendering
         /// Sử dụng GPU rendering options (BitmapScalingMode, EdgeMode) để enable GPU rendering
         /// Không dùng BitmapCache vì nó gây overhead khi elements thay đổi thường xuyên
         /// </summary>
-        public static void ApplyToBorder(Border border, bool isDragging = false)
+        public static void ApplyToBorder(Border border, bool isDragging = false, bool? forceCache = null)
         {
             if (border == null) return;
 
@@ -90,10 +90,14 @@ namespace FlowMy.Services.Rendering
             RenderOptions.SetBitmapScalingMode(border, GpuRenderQualityHelper.GetBitmapScalingMode(quality));
             RenderOptions.SetEdgeMode(border, GpuRenderQualityHelper.GetEdgeMode(quality));
 
-            // Chỉ áp dụng GPU-specific caching khi có GPU và được bật trong settings.
-            // LƯU Ý: Ở quality cao (High/Best), tránh BitmapCache vì sẽ raster hóa Border
-            // rồi scale bằng zoom → dễ bị mờ khi zoom lớn. Cache chỉ phù hợp cho Low/Medium.
-            if (ShouldApplyGpuOptimization() && !isDragging && quality <= GpuRenderQuality.Medium)
+            // - Nếu forceCache != null: cưỡng bức bật/tắt BitmapCache theo checkbox.
+            // - Nếu forceCache == null: dùng logic cũ (chỉ cache khi GPU bật + quality <= Medium).
+            var shouldCache = forceCache.HasValue
+                ? forceCache.Value
+                : (ShouldApplyGpuOptimization() && quality <= GpuRenderQuality.Medium);
+
+            // Lưu ý: luôn tắt cache khi đang kéo để tránh ghost/artifacts.
+            if (shouldCache && !isDragging)
             {
                 // TỐI ƯU: Dùng BitmapCache cho static nodes (không đang drag) để tăng tốc GPU rendering
                 RenderOptions.SetCachingHint(border, CachingHint.Cache);

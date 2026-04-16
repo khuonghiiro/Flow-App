@@ -102,6 +102,10 @@ namespace FlowMy.Views
         // GPU Settings
         private bool _gpuEnabled = Settings.Default.GpuEnabled;
         private GpuRenderQuality _gpuRenderQuality = (GpuRenderQuality)Settings.Default.GpuRenderQuality;
+
+        // When enabled, cache node borders (BitmapCache) and replace connection/energy animation
+        // with a small spinner on each executing node.
+        private bool _cacheNodeEnabled = false;
         
         private enum CanvasDisplayMode
         {
@@ -245,7 +249,7 @@ namespace FlowMy.Views
                         if (node.Border != null && node != _draggedNode)
                         {
                             // Chỉ apply cache cho nodes không di chuyển
-                            GpuOptimizationHelper.ApplyToBorder(node.Border, isDragging: false);
+                            GpuOptimizationHelper.ApplyToBorder(node.Border, isDragging: false, forceCache: _cacheNodeEnabled);
                             
                             // CRITICAL: Re-apply drop shadow effect based on quality
                             node.Border.Effect = GpuOptimizationHelper.CreateDropShadowEffect();
@@ -943,21 +947,20 @@ namespace FlowMy.Views
         {
             _currentGridType = type;
             UpdateGridPattern();
-            CanvasToolbarPreferencesStore.Save(new CanvasToolbarPreferences
+            var current = CanvasToolbarPreferencesStore.Load() ?? new CanvasToolbarPreferences();
+            current.GridType = _currentGridType;
+            current.CanvasDisplayMode = _canvasDisplayMode == CanvasDisplayMode.ViewportOnly ? "ViewportOnly" : "ShowAll";
+            current.CullingPerformanceProfile = _viewportCullingService?.PerformanceProfile switch
             {
-                GridType = _currentGridType,
-                CanvasDisplayMode = _canvasDisplayMode == CanvasDisplayMode.ViewportOnly ? "ViewportOnly" : "ShowAll",
-                CullingPerformanceProfile = _viewportCullingService?.PerformanceProfile switch
-                {
-                    ViewportCullingService.CullingPerformanceProfile.Low => "Low",
-                    ViewportCullingService.CullingPerformanceProfile.High => "High",
-                    _ => "Normal"
-                },
-                ConnectionLineStyle = _connectionLineStyle.ToString(),
-                ConnectionAnimationMode = _connectionAnimationDisplayMode.ToString(),
-                ConnectionColorMode = _connectionColorMode.ToString(),
-                CustomConnectionColorKey = _customConnectionColorKey
-            });
+                ViewportCullingService.CullingPerformanceProfile.Low => "Low",
+                ViewportCullingService.CullingPerformanceProfile.High => "High",
+                _ => "Normal"
+            };
+            current.ConnectionLineStyle = _connectionLineStyle.ToString();
+            current.ConnectionAnimationMode = _connectionAnimationDisplayMode.ToString();
+            current.ConnectionColorMode = _connectionColorMode.ToString();
+            current.CustomConnectionColorKey = _customConnectionColorKey;
+            CanvasToolbarPreferencesStore.Save(current);
         }
 
         /// <summary>

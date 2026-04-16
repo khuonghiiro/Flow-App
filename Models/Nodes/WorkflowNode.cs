@@ -314,6 +314,10 @@ namespace FlowMy.Models
         public FrameworkElement? ExecutionStatusContainerUI { get; set; }
         public TextBlock? ExecutionStatusTextUI { get; set; }
         /// <summary>
+        /// Runtime-only: spinner quay thay cho connection/energy animation khi Cache node mode được bật.
+        /// </summary>
+        public System.Windows.Shapes.Ellipse? ExecutionBusySpinnerUI { get; set; }
+        /// <summary>
         /// UI refs (runtime-only): hiển thị kết quả output sau khi node thực thi.
         /// </summary>
         public ToggleButton? ExecutionResultsToggleUI { get; set; }

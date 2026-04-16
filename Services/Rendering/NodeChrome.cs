@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace FlowMy.Services.Rendering
@@ -129,6 +130,36 @@ namespace FlowMy.Services.Rendering
                 Opacity = 0.95
             };
 
+            // Spinner quay tượng trưng "node đang xử lý" khi bật Cache node mode.
+            // Spinner chỉ chạy khi container (badge) đang visible và spinner được host bật Visibility.
+            var spinner = new System.Windows.Shapes.Ellipse
+            {
+                Width = 14,
+                Height = 14,
+                Margin = new Thickness(0),
+                StrokeThickness = 2,
+                StrokeDashArray = new System.Windows.Media.DoubleCollection { 2, 3 },
+                Stroke = new SolidColorBrush(Color.FromRgb(33, 150, 243)),
+                Fill = Brushes.Transparent,
+                Visibility = Visibility.Collapsed,
+                IsHitTestVisible = false,
+                RenderTransformOrigin = new Point(0.5, 0.5),
+                RenderTransform = new RotateTransform(0)
+            };
+
+            var rotate = (RotateTransform)spinner.RenderTransform;
+            var spinAnim = new DoubleAnimation
+            {
+                From = 0,
+                To = 360,
+                Duration = new Duration(TimeSpan.FromSeconds(1.1)),
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+
+            // Host sẽ gán spinner.Tag = true/false theo CacheNode mode.
+            // Spinner chỉ hiển thị khi: cache enabled AND node đang chạy.
+            spinner.Tag = false;
+
             // Màu chữ status dùng theo node, còn toggle kết quả dùng màu xám đậm dễ đọc trên nền sáng
             var resultsToggle = new ToggleButton
             {
@@ -218,12 +249,37 @@ namespace FlowMy.Services.Rendering
             };
 
             node.ExecutionStatusTextUI = statusText;
+            node.ExecutionBusySpinnerUI = spinner;
             node.ExecutionResultsToggleUI = resultsToggle;
             node.ExecutionResultsItemsPanel = resultsList;
             node.ExecutionErrorToggleUI = errorToggle;
             node.ExecutionErrorItemsPanel = errorList;
             node.ExecutionStatusContainerUI = container;
             Panel.SetZIndex(container, 998);
+
+            // Start/stop spinner animation theo trạng thái hiển thị.
+            void StartSpin()
+            {
+                // Start animation loop. Nếu đã chạy thì BeginAnimation vẫn tiếp tục.
+                rotate.BeginAnimation(RotateTransform.AngleProperty, spinAnim);
+            }
+
+            void StopSpin()
+            {
+                rotate.BeginAnimation(RotateTransform.AngleProperty, null);
+                rotate.Angle = 0;
+            }
+
+            container.IsVisibleChanged += (_, __) =>
+            {
+                // spinner được quản lý bởi Visibility của chính nó (tách khỏi badge container)
+            };
+
+            spinner.IsVisibleChanged += (_, __) =>
+            {
+                if (spinner.IsVisible) StartSpin(); else StopSpin();
+            };
+
             return container;
         }
 
@@ -246,6 +302,24 @@ namespace FlowMy.Services.Rendering
             var badge = node.ExecutionStatusContainerUI;
             badge.Tag = node;
 
+            // Attach spinner to canvas (spinner không nằm trong badge để vẫn quay khi bật BitmapCache).
+            // Spinner chỉ hiển thị khi CacheNodeEnabled = true AND node đang chạy (text status đang bắt đầu bằng "⏳").
+            if (node.ExecutionBusySpinnerUI != null)
+            {
+                node.ExecutionBusySpinnerUI.Tag = host.CacheNodeEnabled;
+
+                var isExecutingNow = node.ExecutionStatusTextUI?.Text?.StartsWith("⏳", System.StringComparison.Ordinal) == true;
+                node.ExecutionBusySpinnerUI.Visibility = (host.CacheNodeEnabled && isExecutingNow)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+                if (!host.WorkflowCanvas.Children.Contains(node.ExecutionBusySpinnerUI))
+                {
+                    host.WorkflowCanvas.Children.Add(node.ExecutionBusySpinnerUI);
+                    Panel.SetZIndex(node.ExecutionBusySpinnerUI, 19999);
+                }
+            }
+
             if (!host.WorkflowCanvas.Children.Contains(badge))
             {
                 host.WorkflowCanvas.Children.Add(badge);
@@ -267,6 +341,19 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetLeft(badge, left);
                 Canvas.SetTop(badge, top);
                 Panel.SetZIndex(badge, 20000);
+
+                // Center spinner on node border.
+                if (node.ExecutionBusySpinnerUI != null)
+                {
+                    var sp = node.ExecutionBusySpinnerUI;
+                    var cx = Canvas.GetLeft(b) + b.ActualWidth / 2.0 - sp.Width / 2.0;
+                    var cy = Canvas.GetTop(b) + b.ActualHeight / 2.0 - sp.Height / 2.0;
+                    if (!double.IsNaN(cx) && !double.IsInfinity(cx))
+                        Canvas.SetLeft(sp, cx);
+                    if (!double.IsNaN(cy) && !double.IsInfinity(cy))
+                        Canvas.SetTop(sp, cy);
+                    Panel.SetZIndex(sp, 19999);
+                }
             }
 
             // Keep in sync when node moves / resizes
@@ -308,6 +395,11 @@ namespace FlowMy.Services.Rendering
                 if (host.WorkflowCanvas.Children.Contains(badge))
                 {
                     host.WorkflowCanvas.Children.Remove(badge);
+                }
+
+                if (node.ExecutionBusySpinnerUI != null && host.WorkflowCanvas.Children.Contains(node.ExecutionBusySpinnerUI))
+                {
+                    host.WorkflowCanvas.Children.Remove(node.ExecutionBusySpinnerUI);
                 }
             };
         }

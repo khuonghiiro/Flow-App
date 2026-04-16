@@ -455,6 +455,7 @@ namespace FlowMy.Views
                 CustomConnectionColorKey = _customConnectionColorKey,
                 GpuEnabled = _gpuEnabled,
                 GpuRenderQuality = _gpuRenderQuality.ToString(),
+                CacheNodeEnabled = _cacheNodeEnabled,
                 BulkTitleColorMode = _bulkTitleColorMode.ToString(),
                 BulkTitleColorKey = _bulkTitleColorKey,
                 EnergyColorMode = _connectionEnergyColorMode.ToString(),
@@ -502,8 +503,31 @@ namespace FlowMy.Views
                 RefreshConditionalDiamondLineStyles();
             }
 
+            // Cache node mode: bật/tắt BitmapCache cho node border và thay animation energy bằng spinner.
+            _cacheNodeEnabled = preferences.CacheNodeEnabled;
+
+            // Update spinner visibility immediately (node đang chạy có thể đang visible badge).
+            if (ViewModel?.Nodes != null)
+            {
+                foreach (var node in ViewModel.Nodes)
+                {
+                    if (node.ExecutionBusySpinnerUI == null) continue;
+
+                    node.ExecutionBusySpinnerUI.Tag = _cacheNodeEnabled;
+                    var isExecutingNow = node.ExecutionStatusTextUI?.Text?.StartsWith("⏳", System.StringComparison.Ordinal) == true;
+                    node.ExecutionBusySpinnerUI.Visibility = (_cacheNodeEnabled && isExecutingNow)
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+                }
+            }
+
             if (Enum.TryParse(preferences.ConnectionAnimationMode, out ConnectionAnimationDisplayMode animationMode))
             {
+                // Cache node mode: không cho dùng Animated để tránh energy animation.
+                if (_cacheNodeEnabled && animationMode == ConnectionAnimationDisplayMode.Animated)
+                {
+                    animationMode = ConnectionAnimationDisplayMode.Off;
+                }
                 SetConnectionAnimationDisplayMode(animationMode);
             }
 
@@ -525,6 +549,9 @@ namespace FlowMy.Views
                 GpuRenderQuality = gpuQuality;
             }
             GpuEnabled = preferences.GpuEnabled;
+
+            // Cache node toggle không kích hoạt ApplyGpuSettings qua setter, nên gọi lại để áp BitmapCache.
+            ApplyGpuSettings();
 
             if (preferences.BulkTitleColorMode == nameof(TitleColorMode.CustomColor))
             {

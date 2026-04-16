@@ -824,7 +824,10 @@ namespace FlowMy.Services.Interaction
                     // Re-apply cache cho node đã drag
                     if (host.DraggedNode?.Border != null)
                     {
-                        GpuOptimizationHelper.ApplyToBorder(host.DraggedNode.Border, isDragging: false);
+                        GpuOptimizationHelper.ApplyToBorder(
+                            host.DraggedNode.Border,
+                            isDragging: false,
+                            forceCache: host.CacheNodeEnabled);
                     }
                     
                     // Re-apply cache cho connections liên quan (nếu không có animation)

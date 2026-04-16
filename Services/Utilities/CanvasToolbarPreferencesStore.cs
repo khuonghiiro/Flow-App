@@ -15,6 +15,7 @@ namespace FlowMy.Services.Utilities
         public string CustomConnectionColorKey { get; set; } = "LimeGreen";
         public bool GpuEnabled { get; set; } = true;
         public string GpuRenderQuality { get; set; } = "Medium";
+        public bool CacheNodeEnabled { get; set; } = false;
         public string BulkTitleColorMode { get; set; } = "NodeColor";
         public string? BulkTitleColorKey { get; set; }
         public string EnergyColorMode { get; set; } = "FollowLineColor";

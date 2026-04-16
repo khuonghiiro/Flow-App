@@ -127,6 +127,7 @@
                         <StackPanel>
                             <TextBlock Text="GPU Rendering (tăng tốc GPU)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
                             <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="GpuEnabledCheckBox" Content="Bật GPU rendering" Margin="0,0,0,10"/>
+                            <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="CacheNodeCheckBox" Content="Cache node" Margin="0,0,0,10"/>
                             <TextBlock Text="Chất lượng GPU (GPU quality)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
                             <ComboBox x:Name="GpuQualityComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,0" Height="32"/>
                         </StackPanel>

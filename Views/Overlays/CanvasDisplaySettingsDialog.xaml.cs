@@ -17,6 +17,8 @@ namespace FlowMy.Views.Overlays
         private bool _isApplying;
         private readonly DispatcherTimer _applyDebounceTimer;
         private CanvasToolbarPreferences? _pendingPreferences;
+        // Lưu mode animation line trước khi bật Cache node, để khi tắt cache thì khôi phục năng lượng/animation đúng.
+        private string? _animationModeBeforeCacheTag;
 
         public CanvasDisplaySettingsDialog(CanvasToolbarPreferences current)
         {
@@ -116,6 +118,7 @@ namespace FlowMy.Views.Overlays
             SelectByTag(CustomColorKeyComboBox, preferences.CustomConnectionColorKey);
             SelectByTag(GpuQualityComboBox, preferences.GpuRenderQuality);
             GpuEnabledCheckBox.IsChecked = preferences.GpuEnabled;
+            CacheNodeCheckBox.IsChecked = preferences.CacheNodeEnabled;
             SetRadioSelection(BulkTitleModeNodeRadio, BulkTitleModeCustomRadio, preferences.BulkTitleColorMode);
             SelectByTag(BulkTitleColorKeyComboBox, string.IsNullOrWhiteSpace(preferences.BulkTitleColorKey) ? "PrimaryBrush" : preferences.BulkTitleColorKey);
             SetRadioSelection(EnergyColorModeFollowLineRadio, EnergyColorModeCustomRadio, preferences.EnergyColorMode);
@@ -130,8 +133,29 @@ namespace FlowMy.Views.Overlays
             SetRadioSelection(GetDebounceFastRadio(), GetDebounceBalancedRadio(), GetDebounceSmoothRadio(), NormalizeDebounceTag(preferences.ApplyDebounceMs));
             ApplyDebounceIntervalFromSelection();
             UpdateSliderTexts();
+            UpdateCacheNodeAnimationUiState();
             _isApplying = false;
             UpdatePresetButtonStateFromProfile(preferences.CullingPerformanceProfile);
+        }
+
+        private void UpdateCacheNodeAnimationUiState()
+        {
+            var cacheEnabled = CacheNodeCheckBox.IsChecked == true;
+            if (cacheEnabled)
+            {
+                // Cache mode: không chạy "Animated" (đổi sang Off hoặc Dashed).
+                AnimationModeAnimatedRadio.IsChecked = false;
+                AnimationModeAnimatedRadio.IsEnabled = false;
+
+                if (AnimationModeOffRadio.IsChecked != true && AnimationModeDashedRadio.IsChecked != true)
+                {
+                    AnimationModeOffRadio.IsChecked = true;
+                }
+            }
+            else
+            {
+                AnimationModeAnimatedRadio.IsEnabled = true;
+            }
         }
 
         private static void SelectByTag(ComboBox comboBox, string tag)
@@ -174,6 +198,7 @@ namespace FlowMy.Views.Overlays
                 CustomConnectionColorKey = SelectedTag(CustomColorKeyComboBox),
                 GpuEnabled = GpuEnabledCheckBox.IsChecked == true,
                 GpuRenderQuality = SelectedTag(GpuQualityComboBox),
+                CacheNodeEnabled = CacheNodeCheckBox.IsChecked == true,
                 BulkTitleColorMode = SelectedRadioTag(BulkTitleModeNodeRadio, BulkTitleModeCustomRadio),
                 BulkTitleColorKey = SelectedTag(BulkTitleColorKeyComboBox),
                 EnergyColorMode = SelectedRadioTag(EnergyColorModeFollowLineRadio, EnergyColorModeCustomRadio),
@@ -215,6 +240,8 @@ namespace FlowMy.Views.Overlays
             GpuQualityComboBox.SelectionChanged += AnyControlChanged;
             BulkTitleColorKeyComboBox.SelectionChanged += AnyControlChanged;
             EnergyCustomColorKeyComboBox.SelectionChanged += AnyControlChanged;
+            CacheNodeCheckBox.Checked += CacheNodeCheckBox_Checked;
+            CacheNodeCheckBox.Unchecked += CacheNodeCheckBox_Unchecked;
             CanvasDisplayModeAllRadio.Checked += AnyControlChanged;
             CanvasDisplayModeViewportRadio.Checked += AnyControlChanged;
             CullingProfileLowRadio.Checked += AnyControlChanged;
@@ -233,6 +260,45 @@ namespace FlowMy.Views.Overlays
             GetDebounceBalancedRadio().Checked += AnyControlChanged;
             GetDebounceSmoothRadio().Checked += AnyControlChanged;
             EnergyDotTextBoxEvents();
+        }
+
+        private void CacheNodeCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isApplying) return;
+
+            // Remember current animation mode the first time user enables cache.
+            if (_animationModeBeforeCacheTag == null)
+                _animationModeBeforeCacheTag = SelectedRadioTag(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio);
+
+            _isApplying = true;
+            UpdateCacheNodeAnimationUiState();
+            _isApplying = false;
+            UpdateSliderTexts();
+            QueuePreferencesApply();
+        }
+
+        private void CacheNodeCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_isApplying) return;
+
+            if (!string.IsNullOrWhiteSpace(_animationModeBeforeCacheTag))
+            {
+                _isApplying = true;
+                // Re-enable and restore previous selection.
+                SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, _animationModeBeforeCacheTag);
+                UpdateCacheNodeAnimationUiState();
+                _isApplying = false;
+
+                _animationModeBeforeCacheTag = null;
+            }
+            else
+            {
+                _isApplying = true;
+                UpdateCacheNodeAnimationUiState();
+                _isApplying = false;
+            }
+            UpdateSliderTexts();
+            QueuePreferencesApply();
         }
 
         private void EnergyDotTextBoxEvents()
@@ -435,6 +501,7 @@ namespace FlowMy.Views.Overlays
             }
 
             UpdateSliderTexts();
+            UpdateCacheNodeAnimationUiState();
             _isApplying = false;
             QueuePreferencesApply();
         }

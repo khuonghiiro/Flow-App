@@ -36,6 +36,7 @@ namespace FlowMy.Services.Interaction
         Color CustomConnectionColor { get; set; }
         bool IsAnimationEnabled { get; set; }
         FlowMy.Services.Rendering.ConnectionAnimationDisplayMode ConnectionAnimationDisplayMode { get; set; }
+        bool CacheNodeEnabled { get; set; }
 
         // Execution "energy" effect preferences (active connection highlight)
         FlowMy.Services.Rendering.ConnectionEnergyColorMode ConnectionEnergyColorMode { get; set; }

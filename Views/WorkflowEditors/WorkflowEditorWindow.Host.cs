@@ -33,6 +33,7 @@ namespace FlowMy.Views
         Color IWorkflowEditorHost.CustomConnectionColor { get => _customConnectionColor; set => _customConnectionColor = value; }
         bool IWorkflowEditorHost.IsAnimationEnabled { get => _isAnimationEnabled; set => _isAnimationEnabled = value; }
         FlowMy.Services.Rendering.ConnectionAnimationDisplayMode IWorkflowEditorHost.ConnectionAnimationDisplayMode { get => _connectionAnimationDisplayMode; set => _connectionAnimationDisplayMode = value; }
+        bool IWorkflowEditorHost.CacheNodeEnabled { get => _cacheNodeEnabled; set => _cacheNodeEnabled = value; }
         FlowMy.Services.Rendering.ConnectionEnergyColorMode IWorkflowEditorHost.ConnectionEnergyColorMode { get => _connectionEnergyColorMode; set => _connectionEnergyColorMode = value; }
         Color IWorkflowEditorHost.CustomEnergyColor { get => _customEnergyColor; set => _customEnergyColor = value; }
         double IWorkflowEditorHost.EnergyDotGap { get => _energyDotGap; set => _energyDotGap = value; }
