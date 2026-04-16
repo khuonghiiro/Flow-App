@@ -739,7 +739,7 @@ namespace FlowMy.Views.NodeControls
             async Task EnterSleepModeAsync()
             {
                 if (!node.EnableSleepMode || isSleepModeActive) return;
-                if (node.PendingOutputsTcs != null) return;
+                if (node.PendingOutputsTcs is { Task.IsCompleted: false }) return;
                 if (!string.IsNullOrWhiteSpace(node.PendingJavaScript)) return;
 
                 isSleepModeActive = true;

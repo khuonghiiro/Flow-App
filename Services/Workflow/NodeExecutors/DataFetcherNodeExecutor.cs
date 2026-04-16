@@ -247,6 +247,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 // Debug.WriteLine("[DataFetcherNodeExecutor] Timeout chờ WebNode load trang.");
             }
+            finally
+            {
+                // Tránh giữ PendingOutputsTcs treo khiến WebNode bị coi là "đang bận" mãi
+                // và không thể vào sleep.
+                if (ReferenceEquals(webNode.PendingOutputsTcs, tcs))
+                    webNode.PendingOutputsTcs = null;
+            }
         }
     }
 }
