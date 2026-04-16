@@ -1,5 +1,6 @@
 using FlowMy.Services.Utilities;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,6 +32,18 @@ namespace FlowMy.Views.Overlays
             PopulateGpuQualities();
             HookRealtimeEvents();
             ApplyInitialSelection(Result);
+        }
+
+        private void FlushPendingPreferences()
+        {
+            // If user closes dialog quickly, debounce tick might not happen yet.
+            // Flush the latest preferences so host can persist them.
+            if (_pendingPreferences == null) return;
+
+            _applyDebounceTimer.Stop();
+            Result = _pendingPreferences;
+            _pendingPreferences = null;
+            PreferencesChanged?.Invoke(Result);
         }
 
         private void PopulateConnectionLineStyles()
@@ -178,8 +191,18 @@ namespace FlowMy.Views.Overlays
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = false;
+            // Treat "Đóng" as: apply latest settings and persist (best effort).
+            FlushPendingPreferences();
+            DialogResult = true;
             Close();
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            // Also flush when user clicks the window "X" close button
+            // or closes via other means, so settings are not lost.
+            FlushPendingPreferences();
+            base.OnClosing(e);
         }
 
         private void HookRealtimeEvents()
