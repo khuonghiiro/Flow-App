@@ -359,6 +359,8 @@ namespace FlowMy.Services.Utils
             var sw = Stopwatch.StartNew();
             var result = new CurlResult();
             Process? process = null;
+            string? tempConfigPath = null;
+            string? tempBodyPath = null;
 
             try
             {
@@ -370,8 +372,20 @@ namespace FlowMy.Services.Utils
                     return result;
                 }
 
-                var args = BuildCurlArgs(node, url, headers, body);
-                Debug.WriteLine($"[CurlExe] {curlPath} {args.Substring(0, Math.Min(200, args.Length))}...");
+                if (!string.IsNullOrEmpty(body) &&
+                    node.HttpMethod != Models.Nodes.HttpMethod.GET &&
+                    node.HttpMethod != Models.Nodes.HttpMethod.HEAD)
+                {
+                    tempBodyPath = Path.Combine(Path.GetTempPath(), $"ac_curl_body_{Guid.NewGuid():N}.txt");
+                    await File.WriteAllTextAsync(tempBodyPath, body, Encoding.UTF8, ct);
+                }
+
+                tempConfigPath = Path.Combine(Path.GetTempPath(), $"ac_curl_cfg_{Guid.NewGuid():N}.cfg");
+                var configContent = BuildCurlConfig(node, url, headers, tempBodyPath);
+                await File.WriteAllTextAsync(tempConfigPath, configContent, Encoding.UTF8, ct);
+
+                var args = $"--config \"{tempConfigPath}\"";
+                Debug.WriteLine($"[CurlExe] {curlPath} --config \"{tempConfigPath}\"");
 
                 process = new Process();
                 process.StartInfo = new ProcessStartInfo
@@ -420,6 +434,8 @@ namespace FlowMy.Services.Utils
             finally
             {
                 KillProcessTreeSafe(process);
+                TryDeleteFile(tempConfigPath);
+                TryDeleteFile(tempBodyPath);
             }
 
             return result;
@@ -483,6 +499,62 @@ namespace FlowMy.Services.Utils
             sb.Append($" \"{url.Replace("\"", "\\\"")}\"");
 
             return sb.ToString();
+        }
+
+        private static string BuildCurlConfig(HttpRequestNode node, string url, Dictionary<string, string> headers, string? bodyFilePath)
+        {
+            var lines = new List<string>
+            {
+                "silent",
+                "show-error",
+                "location",
+                "insecure",
+                "compressed",
+                $"max-time = {node.TimeoutSeconds}",
+                $"request = \"{EscapeCurlConfigValue(node.HttpMethod.ToString().ToUpperInvariant())}\""
+            };
+
+            if (!string.IsNullOrWhiteSpace(node.ImpersonateBrowser) && IsCurlImpersonate(node.CurlPath))
+            {
+                lines.Add($"impersonate = \"{EscapeCurlConfigValue(node.ImpersonateBrowser)}\"");
+            }
+
+            foreach (var h in headers)
+            {
+                lines.Add($"header = \"{EscapeCurlConfigValue($"{h.Key}: {h.Value}")}\"");
+            }
+
+            if (!string.IsNullOrWhiteSpace(bodyFilePath))
+            {
+                lines.Add($"data-binary = \"@{EscapeCurlConfigValue(bodyFilePath)}\"");
+            }
+
+            // Keep parser contract: status sentinel must exist in stdout.
+            lines.Add("dump-header = \"-\"");
+            lines.Add("write-out = \"\\n<<<CURL_STATUS>>>%{http_code}<<<END>>>\"");
+            lines.Add($"url = \"{EscapeCurlConfigValue(url)}\"");
+
+            return string.Join(Environment.NewLine, lines) + Environment.NewLine;
+        }
+
+        private static string EscapeCurlConfigValue(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        }
+
+        private static void TryDeleteFile(string? filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) return;
+            try
+            {
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+            catch
+            {
+                // Best-effort cleanup.
+            }
         }
 
         private static void ParseCurlOutput(string rawOutput, string stderr, CurlResult result)
