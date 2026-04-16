@@ -1150,6 +1150,35 @@
         return null;
     }
 
+    function findVideoCardByAnyId(ids, generatingOnly) {
+        if (!ids || !ids.length) return null;
+        var normalized = [];
+        for (var n = 0; n < ids.length; n++) {
+            var token = String(ids[n] || '').trim();
+            if (token) normalized.push(token);
+        }
+        if (!normalized.length) return null;
+
+        for (var i = 0; i < state.videos.length; i++) {
+            var it = state.videos[i];
+            if (!it) continue;
+            if (generatingOnly && it.status !== 'generating') continue;
+            var candidates = [
+                String(it.id || '').trim(),
+                String(it.requestId || '').trim(),
+                String(it.videoGuid || '').trim()
+            ];
+            for (var j = 0; j < normalized.length; j++) {
+                var needle = normalized[j];
+                if (!needle) continue;
+                for (var k = 0; k < candidates.length; k++) {
+                    if (candidates[k] && candidates[k] === needle) return it;
+                }
+            }
+        }
+        return null;
+    }
+
     function findPendingCardForResult(guildId, result) {
         var reqId = String(
             (result && (result.requestId || result.cardId || result.taskId || result.itemId || result.id)) || ''
@@ -1192,8 +1221,8 @@
             var vu = o.linkVideo || o.videoUrl || o.url || '';
             var lp = o.localPath || o.filePath || o.path || '';
             var pp = o.prompt || o.textPrompt || '';
-            var rq = o.requestId || o.videoGuid || o.cardId || o.taskId || o.itemId || o.id || '';
-            var vg = o.videoGuid || o.requestId || o.cardId || o.taskId || o.itemId || o.id || '';
+            var rq = o.requestId || o.cardId || o.videoGuid || o.videoId || o.taskId || o.itemId || o.id || '';
+            var vg = o.videoGuid || o.videoId || o.requestId || o.cardId || o.taskId || o.itemId || o.id || '';
             var gid = o.guildId || o.outputGuildId || '';
             var stCode = toStatusCode(o.status);
             var ar = normalizeAspectValue(o.aspect || o.aspectRatio || '');
@@ -1243,11 +1272,13 @@
             || extractJsonLikeField(text, 'url');
         var reqFromJsonLike = extractJsonLikeField(text, 'requestId')
             || extractJsonLikeField(text, 'cardId')
+            || extractJsonLikeField(text, 'videoId')
             || extractJsonLikeField(text, 'taskId')
             || extractJsonLikeField(text, 'itemId')
             || extractJsonLikeField(text, 'id')
             || extractJsonLikeRawToken(text, 'requestId')
             || extractJsonLikeRawToken(text, 'cardId')
+            || extractJsonLikeRawToken(text, 'videoId')
             || extractJsonLikeRawToken(text, 'taskId')
             || extractJsonLikeRawToken(text, 'itemId')
             || extractJsonLikeRawToken(text, 'id');
@@ -1413,10 +1444,19 @@
             if (!parsed) return false;
 
             var gid = String(parsed.guildId || obj.guildId || obj.outputGuildId || '').trim();
-            var req = String(parsed.videoGuid || parsed.requestId || obj.videoGuid || obj.requestId || obj.cardId || obj.id || '').trim();
+            var req = String(parsed.videoGuid || parsed.requestId || obj.videoGuid || obj.videoId || obj.requestId || obj.cardId || obj.id || '').trim();
             if (!gid && !req) return false;
 
-            var target = req ? findGeneratingCardById(req) : null;
+            var target = findVideoCardByAnyId([
+                req,
+                parsed.requestId,
+                parsed.videoGuid,
+                obj && obj.requestId,
+                obj && obj.cardId,
+                obj && obj.videoGuid,
+                obj && obj.videoId,
+                obj && obj.id
+            ], true);
             if (!target && gid) {
                 for (var i = 0; i < state.videos.length; i++) {
                     var it = state.videos[i];
@@ -1469,6 +1509,7 @@
         }
 
         function handleAsyncDatasPayload(value) {
+            if (handleAsyncVideoObject(value)) return;
             var dict = pickResultDictionary({ datas: value });
             latestDatasDict = dict;
             if (!dict || typeof dict !== 'object') return;
@@ -2416,14 +2457,6 @@
         Object.keys(dict).forEach(function (gid) {
             // Bỏ qua các guid đã xử lý
             if (handledGuildIds[gid]) return;
-            // Nếu guild này đã có card trong state thì bỏ qua ingest để tránh tạo card trùng.
-            for (var ex = 0; ex < state.videos.length; ex++) {
-                var exItem = state.videos[ex];
-                if (exItem && String(exItem.guildId || '') === String(gid)) {
-                    handledGuildIds[gid] = true;
-                    return;
-                }
-            }
 
             var raw = dict[gid];
             // Bỏ qua các key không phải guid dạng media path
@@ -2461,40 +2494,84 @@
 
             // Đánh dấu đã handled NGAY để tránh race condition khi onUpdate gọi nhiều lần
             handledGuildIds[gid] = true;
-            changed = true;
 
-            parsedEntries.forEach(function (parsed) {
-                var itemId = uid();
-                var item = {
-                    id: itemId,
-                    prompt: (parsed.prompt && String(parsed.prompt).trim()) || gid.substring(0, 36),
-                    aspect: normalizeAspectValue(parsed.aspect) || '16:9',
-                    length: normalizeLengthValue(parsed.length) || 0,
-                    res: normalizeResolutionValue(parsed.resolution) || '',
-                    status: (parsed.statusCode !== null && parsed.statusCode !== 200) ? 'error' : 'done',
-                    progress: 100,
-                    videoUrl: parsed.videoUrl || '',
-                    localPath: parsed.localPath || '',
-                    localUrl: '',
-                    thumbUrl: '',
-                    errorMsg: (parsed.statusCode !== null && parsed.statusCode !== 200)
-                        ? ('Tạo video thất bại (status=' + parsed.statusCode + ')')
-                        : '',
-                    createdAt: Date.now(),
-                    guildId: gid
-                };
-
-                state.videos.push(item);
-                if (empty && empty.parentNode === grid) grid.removeChild(empty);
-                if (grid) grid.appendChild(createCard(item));
-
-                // Chọn async: nếu có localPath → resolve ngay; không thì dùng hydrate
-                if (item.status === 'done' && item.localPath) {
-                    hydrateLocalPlayable(item);
-                } else if (item.status === 'done') {
-                    hydrateDoneCardMedia(item);
+            // Ưu tiên match theo cardId/requestId/videoId; fallback cuối cùng mới theo guildId
+            var target = null;
+            var lastParsed = parsedEntries[parsedEntries.length - 1];
+            if (lastParsed) {
+                target = findVideoCardByAnyId([
+                    lastParsed.requestId,
+                    lastParsed.videoGuid
+                ], false);
+            }
+            if (!target) {
+                for (var ex = 0; ex < state.videos.length; ex++) {
+                    var exItem2 = state.videos[ex];
+                    if (exItem2 && String(exItem2.guildId || '') === String(gid)) {
+                        target = exItem2;
+                        break;
+                    }
                 }
-            });
+            }
+
+            if (target) {
+                var isError = (lastParsed.statusCode !== null && lastParsed.statusCode !== 200);
+
+                target.status = isError ? 'error' : 'done';
+                target.progress = 100;
+                if (lastParsed.requestId && !target.requestId) target.requestId = lastParsed.requestId;
+                if (lastParsed.videoGuid) target.videoGuid = lastParsed.videoGuid;
+                if (lastParsed.videoUrl) target.videoUrl = lastParsed.videoUrl;
+                if (lastParsed.localPath) target.localPath = lastParsed.localPath;
+                target.errorMsg = isError
+                    ? ('Tạo video thất bại (status=' + lastParsed.statusCode + ')')
+                    : '';
+
+                updateCard(target);
+
+                // Nếu done và có file local thì hydrate để UI phát được
+                if (target.status === 'done' && target.localPath) {
+                    hydrateLocalPlayable(target);
+                } else if (target.status === 'done') {
+                    hydrateDoneCardMedia(target);
+                }
+
+                changed = true;
+            } else {
+                changed = true;
+                parsedEntries.forEach(function (parsed) {
+                    var itemId = uid();
+                    var item = {
+                        id: itemId,
+                        prompt: (parsed.prompt && String(parsed.prompt).trim()) || gid.substring(0, 36),
+                        aspect: normalizeAspectValue(parsed.aspect) || '16:9',
+                        length: normalizeLengthValue(parsed.length) || 0,
+                        res: normalizeResolutionValue(parsed.resolution) || '',
+                        status: (parsed.statusCode !== null && parsed.statusCode !== 200) ? 'error' : 'done',
+                        progress: 100,
+                        videoUrl: parsed.videoUrl || '',
+                        localPath: parsed.localPath || '',
+                        localUrl: '',
+                        thumbUrl: '',
+                        errorMsg: (parsed.statusCode !== null && parsed.statusCode !== 200)
+                            ? ('Tạo video thất bại (status=' + parsed.statusCode + ')')
+                            : '',
+                        createdAt: Date.now(),
+                        guildId: gid
+                    };
+
+                    state.videos.push(item);
+                    if (empty && empty.parentNode === grid) grid.removeChild(empty);
+                    if (grid) grid.appendChild(createCard(item));
+
+                    // Chọn async: nếu có localPath → resolve ngay; không thì dùng hydrate
+                    if (item.status === 'done' && item.localPath) {
+                        hydrateLocalPlayable(item);
+                    } else if (item.status === 'done') {
+                        hydrateDoneCardMedia(item);
+                    }
+                });
+            }
         });
 
         if (changed) updateStats();
@@ -2511,6 +2588,10 @@
         if (window.__ac && typeof window.__ac.onUpdate === 'function') {
             // Preferred for mapped input key "datas"
             window.__ac.onUpdate('datas', function (datas) {
+                if (handleAsyncVideoObject(datas)) {
+                    debugLog('onUpdate(datas) matched single video result', datas);
+                    return;
+                }
                 var normalized = null;
                 if (datas && typeof datas === 'object' && !Array.isArray(datas)) {
                     normalized = datas;
@@ -2530,6 +2611,10 @@
 
             // Some runtimes only fire reliably with multi-key signature.
             window.__ac.onUpdate('datas', 'outputGuildId', function (datas, outputGuildId) {
+                if (handleAsyncVideoObject(datas)) {
+                    debugLog('onUpdate(datas, outputGuildId) matched single video result gid=' + (outputGuildId == null ? '' : String(outputGuildId)), datas);
+                    return;
+                }
                 var normalized = normalizeDictMaybe(datas);
                 if (normalized) {
                     latestDatasDict = normalized;
