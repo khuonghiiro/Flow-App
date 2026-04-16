@@ -1,0 +1,27 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Base/Colors/Common.xaml"/>
+        <ResourceDictionary Source="Base/Colors/Night.xaml"/>
+        <ResourceDictionary Source="Base/Fonts.xaml"/>
+        <ResourceDictionary Source="Base/Animations.xaml"/>
+        <ResourceDictionary Source="Base/Common.xaml"/>
+        <ResourceDictionary Source="Controls/Borders.xaml"/>
+        <ResourceDictionary Source="Controls/Buttons.xaml"/>
+        <ResourceDictionary Source="Controls/Calendars.xaml"/>
+        <ResourceDictionary Source="Controls/CheckBoxes.xaml"/>
+        <ResourceDictionary Source="Controls/ComboBoxes.xaml"/>
+        <ResourceDictionary Source="Controls/DataGrids.xaml"/>
+        <ResourceDictionary Source="Controls/DatePickers.xaml"/>
+        <ResourceDictionary Source="Controls/Inputs.xaml"/>
+        <ResourceDictionary Source="Controls/ListBoxes.xaml"/>
+        <ResourceDictionary Source="Controls/Permissions.xaml"/>
+        <ResourceDictionary Source="Controls/RadioOptions.xaml"/>
+        <ResourceDictionary Source="Controls/ScrollBars.xaml"/>
+        <ResourceDictionary Source="Controls/TabControls.xaml"/>
+        <ResourceDictionary Source="Controls/Tooltips.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+</ResourceDictionary>

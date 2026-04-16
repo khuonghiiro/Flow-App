@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grok Video Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">▶</span>
+          <span class="logo-text">GROK<br><small>VIDEO STUDIO</small></span>
+        </div>
+      </div>
+
+      <div class="sidebar-body">
+        <label class="field-label">HEADER PARAMS <span class="badge">JSON</span></label>
+        <textarea id="headerParam" class="textarea-header"
+          placeholder='{"x-statsig-id":"...","x-xai-request-id":"...","baggage":"..."}' rows="2"></textarea>
+
+        <label class="field-label">
+          COOKIE <span class="badge">Cloudflare</span>
+        </label>
+
+        <textarea id="cookieInput" class="textarea-header" placeholder="cf_clearance=...; __cf_bm=...; ..."
+          rows="2"></textarea>
+
+        <label class="field-label" style="margin-top:20px">PROMPT</label>
+        <textarea id="promptInput" class="textarea-prompt" placeholder="Mô tả video của bạn..." rows="5"></textarea>
+
+        <div class="options-row">
+          <div class="option-group">
+            <label class="field-label small">TỶ LỆ</label>
+            <select id="aspectRatio" class="select-input">
+              <option value="9:16">9:16 (Dọc)</option>
+              <option value="16:9">16:9 (Ngang)</option>
+              <option value="1:1">1:1 (Vuông)</option>
+            </select>
+          </div>
+          <div class="option-group">
+            <label class="field-label small">ĐỘ DÀI</label>
+            <select id="videoLength" class="select-input">
+              <option value="5">5s</option>
+              <option value="10" selected>10s</option>
+            </select>
+          </div>
+          <div class="option-group">
+            <label class="field-label small">CHẤT LƯỢNG</label>
+            <select id="resolution" class="select-input">
+              <option value="720p" selected>720p</option>
+              <option value="1080p">1080p</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="generateBtn" class="btn-generate" onclick="generateVideo()">
+          <span class="btn-icon">◆</span>
+          <span class="btn-label">TẠO VIDEO</span>
+        </button>
+
+        <div id="errorMsg" class="error-msg" style="display:none"></div>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="footer-note">Powered by xAI · Grok Imagine</span>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+      <div class="main-header">
+        <h1 class="page-title">VIDEO <em>GALLERY</em></h1>
+        <div class="stats-bar">
+          <span id="totalCount" class="stat">0 videos</span>
+          <span id="processingCount" class="stat processing" style="display:none">● đang xử lý</span>
+        </div>
+      </div>
+
+      <div id="videoGrid" class="video-grid">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">◈</div>
+          <p>Nhập prompt và nhấn <strong>Tạo Video</strong><br>để bắt đầu</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- VIDEO MODAL -->
+  <div id="videoModal" class="modal" onclick="closeModal(event)">
+    <div class="modal-inner">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <video id="modalVideo" controls autoplay loop></video>
+      <div class="modal-meta">
+        <p id="modalPrompt" class="modal-prompt"></p>
+        <a id="modalDownload" class="modal-download" download>↓ Tải xuống</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

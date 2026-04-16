@@ -1,0 +1,152 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <!-- Circuit Animation Storyboards -->
+    <Storyboard x:Key="CircuitFlowAnimation1" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetProperty="StrokeDashOffset"
+                   From="0" To="20" Duration="0:0:1.5"/>
+    </Storyboard>
+
+    <Storyboard x:Key="CircuitFlowAnimation2" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetProperty="StrokeDashOffset"
+                   From="0" To="16" Duration="0:0:1.2"/>
+    </Storyboard>
+
+    <Storyboard x:Key="CircuitFlowAnimation3" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetProperty="StrokeDashOffset"
+                   From="0" To="24" Duration="0:0:1.8"/>
+    </Storyboard>
+
+    <Storyboard x:Key="CircuitFlowAnimation4" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetProperty="StrokeDashOffset"
+                   From="0" To="18" Duration="0:0:1.3"/>
+    </Storyboard>
+
+    <Storyboard x:Key="PulseAnimation" RepeatBehavior="Forever">
+        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                   From="0.4" To="1" Duration="0:0:1"
+                   AutoReverse="True"/>
+    </Storyboard>
+
+    <!-- Circuit Line Styles -->
+    <Style x:Key="MainCircuitLine" TargetType="Path">
+        <Setter Property="Stroke" Value="#3B82F6"/>
+        <Setter Property="StrokeThickness" Value="4"/>
+        <Setter Property="StrokeDashArray" Value="8,4"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#3B82F6" Opacity="0.6"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SecondaryCircuitLine" TargetType="Path">
+        <Setter Property="Stroke" Value="#10B981"/>
+        <Setter Property="StrokeThickness" Value="3"/>
+        <Setter Property="StrokeDashArray" Value="6,3"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.5"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="TertiaryCircuitLine" TargetType="Path">
+        <Setter Property="Stroke" Value="#F59E0B"/>
+        <Setter Property="StrokeThickness" Value="2"/>
+        <Setter Property="StrokeDashArray" Value="4,2"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#F59E0B" Opacity="0.4"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Junction Point Style -->
+    <Style x:Key="CircuitJunction" TargetType="Ellipse">
+        <Setter Property="Fill" Value="#3B82F6"/>
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Height" Value="8"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#3B82F6" Opacity="0.8"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Enhanced Button Style for Options -->
+    <Style x:Key="CircuitOptionButton" TargetType="Button">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="MainBorder"
+                        Background="#1E293B"
+                        BorderBrush="#334155"
+                        BorderThickness="2"
+                        CornerRadius="12"
+                        Padding="15"
+                        MinHeight="120">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="2" Color="#000000" Opacity="0.3"/>
+                        </Border.Effect>
+
+                        <Grid>
+                            <!-- Circuit pattern overlay -->
+                            <Border x:Name="CircuitOverlay" 
+                                Background="Transparent"
+                                BorderBrush="#3B82F6"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Opacity="0"/>
+
+                            <StackPanel>
+                                <!-- Option letter -->
+                                <Border Width="32" Height="32" 
+                                    Background="#334155" 
+                                    CornerRadius="16"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="#94A3B8"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                                </Border>
+
+                                <!-- Option content -->
+                                <TextBlock Text="{Binding Content, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       FontSize="14"
+                                       Foreground="#CBD5E1"
+                                       TextWrapping="Wrap"
+                                       LineHeight="20"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="MainBorder" Property="BorderBrush" Value="#3B82F6"/>
+                            <Setter TargetName="CircuitOverlay" Property="Opacity" Value="0.5"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                        </Trigger>
+
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="MainBorder" Property="Background" Value="#064E3B"/>
+                            <Setter TargetName="MainBorder" Property="BorderBrush" Value="#10B981"/>
+                            <Setter TargetName="CircuitOverlay" Property="BorderBrush" Value="#10B981"/>
+                            <Setter TargetName="CircuitOverlay" Property="Opacity" Value="1"/>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    
+</ResourceDictionary>

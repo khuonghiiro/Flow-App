@@ -1,0 +1,227 @@
+﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.AssignDataNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FlowMy.Views.Overlays"
+        Title="Gán dữ liệu"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Width="480"
+        MinWidth="350"
+        MaxWidth="900"
+        MinHeight="350">
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox x:Name="TitleTextBox"
+                          Grid.Column="0"
+                          Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
+                          Style="{DynamicResource BaseTextBoxV2}"
+                          FontSize="16"
+                          Padding="0,4,0,4"
+                          VerticalContentAlignment="Center"
+                          Cursor="IBeam"/>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="PlayButton" Width="24" Height="24" Content="▶" FontSize="12"
+                                Style="{DynamicResource PrimaryButton}"
+                                Cursor="Hand"
+                                Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                                Command="{Binding RunSingleNodeCommand}"/>
+
+                        <Button x:Name="CloseButton" Width="24" Height="24"
+                                Style="{DynamicResource DangerButton}"
+                                Content="×" 
+                                FontSize="12" 
+                                FontWeight="Bold" 
+                                Cursor="Hand"
+                                Margin="8,0,0,0" Click="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
+            <TabControl Grid.Row="1"
+                        Background="Transparent"
+                        BorderThickness="0">
+                <!-- Tab 1: Logic -->
+                <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                <StackPanel>
+                    <TextBlock Text="Gán giá trị từ output của node nguồn sang key của node đích. Ví dụ: node Input có key và value, khi dùng node này thì value của Input đồng bộ với dữ liệu gán."
+                               Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Opacity="0.9" Margin="0,0,0,12"/>
+
+                    <!-- Màu tiêu đề -->
+                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="TitleColorComboBox"
+                                  Grid.Column="0"
+                                  Height="36"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  ItemsSource="{Binding TitleColorOptions}"
+                                  SelectedValuePath="Key"
+                                  DisplayMemberPath="DisplayName"
+                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                        <Border Grid.Column="1"
+                                x:Name="TitleColorPreview"
+                                Width="36" Height="36"
+                                CornerRadius="6"
+                                Margin="8,0,0,0"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="1"/>
+                    </Grid>
+
+                    <!-- Gán dữ liệu -->
+                    <TextBlock Text="Gán dữ liệu" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Mỗi dòng: chọn node + key nguồn (lấy giá trị) → chọn node + key đích (sẽ nhận giá trị đó)."
+                               Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,10" x:Name="BorderAssignPanel">
+                        <StackPanel>
+                            <StackPanel x:Name="DataAssignmentsPanel"/>
+                            <Button x:Name="AddAssignmentButton" Content="+ Thêm một gán" Height="36" Width="130" FontSize="13" FontWeight="SemiBold"
+                                    Margin="0,12,0,0" Padding="12,0" HorizontalAlignment="Left"
+                                    Click="AddAssignmentButton_Click"
+                                    Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Placeholder panels for BaseNodeDialog (no inputs/outputs) -->
+                    <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
+                    <StackPanel x:Name="OutputsPanel" Visibility="Collapsed"/>
+                </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Tab 2: Tái sử dụng flow -->
+                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Port IN -->
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBlock Text="Port IN (cổng vào)"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12"
+                                               Opacity="0.8"
+                                               Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+
+                                <!-- Port OUT -->
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="Port OUT (cổng ra)"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12"
+                                               Opacity="0.8"
+                                               Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Cấu hình tái sử dụng flow -->
+                            <ItemsControl ItemsSource="{Binding ReuseRoutes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,12"
+                                                Background="{DynamicResource WindowBackground}"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="2*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Node IN"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12"
+                                                               Opacity="0.7"
+                                                               Margin="0,0,0,4"/>
+                                                    <TextBlock Text="{Binding IncomingNodeTitle}"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Node OUT"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12"
+                                                               Opacity="0.7"
+                                                               Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32"
+                                                              Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding OutgoingOptions}"
+                                                              SelectedValuePath="NodeId"
+                                                              DisplayMemberPath="Title"
+                                                              SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Kiểu line OUT"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12"
+                                                               Opacity="0.7"
+                                                               Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32"
+                                                              Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              SelectedValuePath="Key"
+                                                              DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Border>
+</local:BaseNodeDialog>

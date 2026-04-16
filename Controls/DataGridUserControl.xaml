@@ -1,0 +1,359 @@
+﻿<UserControl x:Class="FlowMy.Controls.DataGridUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
+              xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:conv="clr-namespace:FlowMy.Converters"
+             xmlns:helper="clr-namespace:FlowMy.Helpers"
+             xmlns:controls="clr-namespace:FlowMy.Controls"
+             mc:Ignorable="d"
+             d:Height="auto"
+             d:Width="auto">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:PageButtonStyleConverter x:Key="PageButtonStyleConverter"/>
+        <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <!-- Thêm row cho AdditionalContent -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0"
+              Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Search Box - nằm sát trái với TextBox auto width -->
+            <StackPanel
+                Grid.Column="0"
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="0,0,10,0">
+                <!-- Thay đổi từ text cố định thành binding với TitleText property -->
+                <TextBlock Text="Tìm kiếm dữ liệu"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource TextBrush}"
+                           HorizontalAlignment="Left"
+                           Margin="0"/>
+            </StackPanel>
+
+        </Grid>
+
+        <!-- Header -->
+        <Grid Grid.Row="1"
+              Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Search Box - nằm sát trái với TextBox auto width -->
+            <Grid Grid.Column="0"
+                  Margin="0,10,0,0"
+                  HorizontalAlignment="Left">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <!-- TextBox -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- Nút bên phải -->
+                    </Grid.ColumnDefinitions>
+                    <!-- 🔤 TextBox nhập tìm kiếm -->
+                    <TextBox Style="{StaticResource RoundedSearchTextBoxWithIcon}"
+                             x:Name="SearchDataGridKeywordBox"
+                             Grid.Column="0"
+                             Text="{Binding SearchKeyword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Height="40"
+                             FontSize="14"
+                             Width="700"
+                             Padding="15,0,22,0"
+                             KeyDown="SearchDataGridKeywordBox_KeyDown"/>
+                    <!-- 📝 Placeholder tìm kiếm -->
+                    <TextBlock Text="{Binding DisplayPlaceholder}"
+                               Foreground="Gray"
+                               Margin="30,0,0,0"
+                               FontStyle="Italic"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False"
+                               Grid.Column="0"
+                               Visibility="{Binding Text, ElementName=SearchDataGridKeywordBox, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                    <!-- 🔘 nút bên phải -->
+                    <StackPanel Orientation="Horizontal"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Margin="5,0,0,0">
+
+                        <!-- Button Toggle Additional Content -->
+                        <Button x:Name="ToggleAdditionalContentButton"
+                                Content="▼"
+                                ToolTip="Ẩn/Hiện nội dung bổ sung"
+                                Width="30"
+                                Height="30"
+                                Margin="5,0,0,0"
+                                Click="ToggleAdditionalContentButton_Click"
+                                Style="{StaticResource DynamicOutlineCircleButton}"
+                                Visibility="{Binding ShowAddContentButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                helper:ButtonHelper.ColorTheme="Info"/>
+
+                        <!-- Additional Content Area - Chỗ này sẽ chứa UI được truyền vào từ bên ngoài -->
+                        <ContentPresenter x:Name="AdditionaluttonNewPresenter"
+                                          Content="{Binding AdditionalButtonNew, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          Margin="0,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Additional Content Area - Chỗ này sẽ chứa UI được truyền vào từ bên ngoài -->
+        <ContentPresenter x:Name="AdditionalContentPresenter"
+                          Grid.Row="2"
+                          Content="{Binding AdditionalContent, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          Margin="0,0,0,10"/>
+
+        <Grid Grid.Row="3"
+              Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Search Box - nằm sát trái với TextBox auto width -->
+            <StackPanel
+                Grid.Column="0"
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="0,0,10,0">
+                <!-- Thay đổi từ text cố định thành binding với TitleText property -->
+                <TextBlock Text="{Binding TitleText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource TextBrush}"
+                           HorizontalAlignment="Left"
+                           Margin="0"/>
+            </StackPanel>
+
+            <!-- Action Buttons - nằm sát bên phải -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Margin="0,0">
+
+                <!-- Button Thêm mới -->
+                <Button Content="➕ Thêm mới"
+                        Style="{StaticResource DynamicShadowButton}"
+                        Command="{Binding AddCommand}"
+                        Width="120"
+                        Height="40"
+                        Margin="0,0,12,0"
+                        ToolTip="Thêm mới bản ghi"
+                        Visibility="{Binding ShowAddButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <!-- Button Import Excel -->
+                <Button Content="📤 Import Excel"
+                        helper:ButtonHelper.ColorTheme="Ocean"
+                        Margin="0,0,12,0"
+                        Style="{StaticResource DynamicShadowButton}"
+                        Command="{Binding ImportCommand}"
+                        Width="140"
+                        Height="40"
+                        Visibility="{Binding ShowImportButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <!-- Button Xuất báo cáo -->
+                <Button Content="📥 Xuất báo cáo"
+                        helper:ButtonHelper.ColorTheme="Success"
+                        Style="{StaticResource DynamicShadowButton}"
+                        Command="{Binding ExportCommand}"
+                        Width="140"
+                        Height="40"
+                        Visibility="{Binding ShowExportButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </StackPanel>
+
+        </Grid>
+
+        <!-- DataGrid -->
+        <DataGrid x:Name="MainDataGrid"
+          Grid.Row="4"
+          EnableRowVirtualization="True"
+          EnableColumnVirtualization="True"
+          VirtualizingPanel.IsVirtualizing="True"
+          VirtualizingPanel.VirtualizationMode="Recycling"
+          VirtualizingPanel.IsContainerVirtualizable="True"
+          ScrollViewer.CanContentScroll="True"
+          ScrollViewer.IsDeferredScrollingEnabled="True"
+          ItemsSource="{Binding PagedItems}"
+          SelectedItem="{Binding SelectedItem}"
+          AutoGenerateColumns="False"
+          CanUserAddRows="False"
+          CanUserDeleteRows="False"
+          CanUserReorderColumns="True"
+          CanUserResizeColumns="True"
+          CanUserSortColumns="True"
+          SelectionMode="Single"
+          GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="Transparent" 
+          HeadersVisibility="Column"
+          BorderThickness="1"
+          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          Style="{StaticResource AdvancedDataGridStyle}"
+          RowStyle="{StaticResource AdvancedRowStyle}"
+          CellStyle="{StaticResource AdvancedCellStyle}"
+          RowHeight="NaN"
+          AlternationCount="2"
+          >
+
+            <!-- Behaviors for sorting -->
+            <b:Interaction.Triggers>
+                <b:EventTrigger EventName="Sorting">
+                    <b:InvokeCommandAction Command="{Binding SortCommand}"
+                                   PassEventArgsToCommand="True"/>
+                </b:EventTrigger>
+            </b:Interaction.Triggers>
+        </DataGrid>
+
+        <!-- Pagination Controls -->
+        <Grid Grid.Row="5"
+              Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Page Size Selector - Nằm bên trái -->
+            <StackPanel Grid.Column="0"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                <TextBlock Text="Hiển thị:"
+                           VerticalAlignment="Center"
+                           Margin="0,0,5,0"
+                           Style="{DynamicResource TextBlockCenterBase}"/>
+                <ComboBox Width="80"
+                          Height="30"
+                          Background="Transparent"
+                          Style="{DynamicResource CustomComboBox}"
+                          ItemsSource="{Binding PageSizeOptions}"
+                          SelectedItem="{Binding PageSize}"/>
+                <TextBlock Text="dòng"
+                           VerticalAlignment="Center"
+                           Margin="5,0,0,0"
+                           Style="{DynamicResource TextBlockCenterBase}"/>
+            </StackPanel>
+
+            <!-- Page Info - Nằm giữa -->
+            <TextBlock Grid.Column="1"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"
+                       Style="{DynamicResource TextBlockCenterBase}">
+                <TextBlock.Text>
+                    <MultiBinding
+                        StringFormat="Trang {0} / {1} (Hiển thị {2}-{3} của {4:N0} bản ghi)">
+                        <Binding Path="CurrentPage"/>
+                        <Binding Path="TotalPages"/>
+                        <Binding Path="StartRecord"/>
+                        <Binding Path="EndRecord"/>
+                        <Binding Path="TotalRecords"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+
+            <!-- Pagination Buttons - Nằm bên phải -->
+            <StackPanel Grid.Column="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+
+                <Button 
+                   Style="{StaticResource PaginationButtonStyle}"
+                   Command="{Binding FirstPageCommand}"
+                   Padding="8,7"
+                   ToolTip="Trang đầu">
+
+
+                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
+                 Converter={StaticResource IconKeyToPathConverter}, 
+                 ConverterParameter='angles-left duotone'}"
+              Width="10" Height="10"/>
+
+                </Button>
+
+                <Button 
+                        Style="{StaticResource PaginationButtonStyle}"
+                        Command="{Binding PreviousPageCommand}"
+                     Padding="8,7"
+                        ToolTip="Trang trước">
+
+                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
+   Converter={StaticResource IconKeyToPathConverter}, 
+   ConverterParameter='angle-left duotone-light'}"
+Width="10" Height="10" />
+
+                </Button>
+
+                <!-- Page Numbers -->
+                <ItemsControl x:Name="PageNumbersContainer"
+                              ItemsSource="{Binding PageNumbers}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding Number}"
+                                    FontWeight="Medium"
+                                    Style="{Binding IsActive, Converter={StaticResource PageButtonStyleConverter}}"
+                                    Command="{Binding DataContext.GoToPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding Number}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button 
+                        Style="{StaticResource PaginationButtonStyle}"
+                        Command="{Binding NextPageCommand}"
+                 Padding="8,7"
+                        ToolTip="Trang sau">
+                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
+   Converter={StaticResource IconKeyToPathConverter}, 
+   ConverterParameter='angle-right duotone-light'}"
+Width="10" Height="10" />
+                    
+                </Button>
+
+                <Button 
+                        Style="{StaticResource PaginationButtonStyle}"
+                        Command="{Binding LastPageCommand}"
+                  Padding="8,7"
+                        ToolTip="Trang cuối">
+                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
+   Converter={StaticResource IconKeyToPathConverter}, 
+   ConverterParameter='angles-right duotone'}"
+Width="10" Height="10" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Loading Overlay -->
+        <Grid Grid.RowSpan="6">
+            <controls:LoadingUserControl 
+                    IsVisible="{Binding IsLoading}"
+                    x:Name="loadingControl"
+                         />
+        </Grid>
+    </Grid>
+</UserControl>

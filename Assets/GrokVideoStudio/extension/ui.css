@@ -1,0 +1,137 @@
+:root{
+  --bg:#0b0d12;
+  --panel:#111522;
+  --text:#e7ecff;
+  --muted:#a9b1d6;
+  --border:#242a3d;
+  --accent:#7aa2f7;
+  --danger:#ff5370;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --sans: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans)}
+.wrap{padding:16px 18px; width:100%; margin:0 auto}
+.top{display:flex; gap:14px; justify-content:space-between; align-items:flex-start; margin-bottom:14px}
+.h1{font-weight:900; letter-spacing:.2px; font-size:18px}
+.sub{color:var(--muted); font-size:12px; margin-top:4px}
+.actions{display:flex; gap:10px; align-items:center}
+.chk{color:var(--muted); font-size:12px; display:flex; gap:8px; align-items:center}
+.layout{display:grid; grid-template-columns:180px minmax(0,1fr) 360px; gap:12px; min-height:calc(100vh - 80px)}
+.sidebar{
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--panel);
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.side-title{font-size:12px; color:var(--muted); font-weight:800; margin-bottom:2px}
+.menu{
+  border:1px solid var(--border);
+  background:#0c1020;
+  color:var(--muted);
+  padding:10px 12px;
+  border-radius:10px;
+  font-weight:800;
+  text-align:left;
+  cursor:pointer;
+}
+.menu.active{color:var(--text); border-color: rgba(122,162,247,.5); background: rgba(122,162,247,.10)}
+.center{min-width:0}
+.card{
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--panel);
+  padding:12px;
+}
+.hidden{display:none}
+.row-title{display:flex; align-items:center; justify-content:space-between}
+.title{font-weight:900; margin-bottom:10px}
+.label{display:block; margin:10px 0 6px; font-size:12px; color:var(--muted); font-weight:800}
+.label.small{margin:0 0 6px}
+.ta,.inp,.sel{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:#0c1020;
+  color:var(--text);
+  padding:10px;
+  font-size:12px;
+}
+.ta{font-family:var(--mono); line-height:1.35; resize:vertical}
+.inp{font-family:var(--mono)}
+.sel{padding:8px 10px}
+.row{display:flex; gap:10px; margin-top:10px}
+.col{flex:1}
+.btn{
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+  padding:9px 12px;
+  border-radius:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.btn.primary{border-color: rgba(122,162,247,.5); background: rgba(122,162,247,.12)}
+.btn.small{padding:6px 10px; font-size:12px; font-weight:700}
+.btn[disabled]{opacity:.6; cursor:not-allowed}
+.status{margin-top:10px; font-size:12px; color:var(--muted)}
+.status.err{color:var(--danger)}
+.pre{
+  margin-top:10px;
+  max-height:260px;
+  overflow:auto;
+  background:#0c1020;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px;
+  font-family:var(--mono);
+  font-size:12px;
+  white-space:pre-wrap;
+}
+.pre.tall{height:calc(100vh - 170px); max-height:none}
+.ta.code{min-height:420px}
+
+.video-list{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+  gap:10px;
+}
+.video-item{
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:#0c1020;
+  padding:8px;
+}
+.video-item video{
+  width:100%;
+  border-radius:8px;
+  background:#000;
+  max-height:220px;
+}
+.video-meta{margin-top:6px; color:var(--muted); font-size:11px}
+.video-links{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
+.video-links a{
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:3px 7px;
+  color:var(--text);
+  text-decoration:none;
+  font-size:11px;
+}
+.fn-list{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.fn-btn{
+  border:1px solid var(--border);
+  background:#0c1020;
+  color:var(--muted);
+  border-radius:9px;
+  padding:8px;
+  font-weight:700;
+  cursor:pointer;
+  font-size:12px;
+}
+.fn-btn.active{color:var(--text); border-color: rgba(122,162,247,.5); background: rgba(122,162,247,.10)}
+.right .pre{max-height:220px}
+

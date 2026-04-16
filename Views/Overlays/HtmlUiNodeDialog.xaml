@@ -1,0 +1,1902 @@
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.HtmlUiNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FlowMy.Views.Overlays"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
+        Title="HTML UI"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Width="800"
+        MinWidth="500"
+        MaxWidth="1200"
+        MinHeight="560">
+    <local:BaseNodeDialog.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+    </local:BaseNodeDialog.Resources>
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TitleTextBox" Grid.Column="0"
+                             Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{DynamicResource BaseTextBoxV2}" FontSize="16" Padding="0,4,0,4"
+                             VerticalContentAlignment="Center" Cursor="IBeam"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="PlayButton" Width="24" Height="24" Content="▶" FontSize="12"
+                            Style="{DynamicResource PrimaryButton}"
+                            Cursor="Hand"
+                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                            Command="{Binding RunSingleNodeCommand}"/>
+                        <Button x:Name="CloseButton" Width="24" Height="24"
+                            Style="{DynamicResource DangerButton}"
+                            Content="×"
+                            FontSize="12"
+                            FontWeight="Bold"
+                            Cursor="Hand"
+                            Margin="8,0,0,0" Click="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Body: 2 tab Logic + Tái sử dụng flow -->
+            <TabControl x:Name="MainTabsControl"
+                        Grid.Row="1"
+                        Background="Transparent"
+                        BorderThickness="0">
+                <!-- Tab 1: Logic -->
+                <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                <StackPanel>
+                    <!-- Title display mode -->
+                    <TextBlock Text="Hiển thị tiêu đề:"
+                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <ComboBox x:Name="TitleDisplayModeComboBox" Height="36"
+                              Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
+                              ItemsSource="{Binding TitleDisplayModeOptions}"
+                              SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+
+                    <!-- Title color -->
+                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  ItemsSource="{Binding TitleColorOptions}"
+                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                        <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
+                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                    </Grid>
+
+                    <!-- ===== UseWebTab: 2-Tab Mode ===== -->
+                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <CheckBox x:Name="UseWebTabCheckBox"
+                                      IsChecked="{Binding UseWebTab, Mode=TwoWay}"
+                                      Content="Sử dụng 2 tab (Tab1: Trình duyệt Web, Tab2: HTML UI)"
+                                      Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                      Margin="0,0,0,6"
+                                      ToolTip="Khi bật: Tab1 = Web Browser đầy đủ (address bar, cookie), Tab2 = HTML UI hiện tại."/>
+                            <!-- Cookie panel: chỉ hiển thị khi UseWebTab = true -->
+                            <StackPanel x:Name="CookiePanel"
+                                        Visibility="{Binding UseWebTab, Converter={StaticResource BoolToVisibility}}"
+                                        Margin="0,4,0,0">
+
+                                <!-- Node nguồn + Key (chọn node để lấy cookie text) -->
+                                <TextBlock Text="Lấy cookie/data từ node:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,6"/>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                        <ComboBox Height="30" Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding AvailableNodeOptions}"
+                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                  SelectedValue="{Binding WebTabCookieSourceNodeId, Mode=TwoWay}"
+                                                  ToolTip="Node nguồn cho cookie (thường là HttpRequest, DataFetcher...)"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Key (output của node)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                        <ComboBox Height="30" Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding WebTabCookieSourceKeyOptions}"
+                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding WebTabCookieSourceOutputKey, Mode=TwoWay}"
+                                                  ToolTip="Key trong output của node nguồn chứa cookie text"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Auto-refresh -->
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,8">
+                                    <CheckBox IsChecked="{Binding WebTabAutoRefreshEnabled, Mode=TwoWay}"
+                                              VerticalAlignment="Center"
+                                              Foreground="{DynamicResource TextSecondary}" FontSize="11"
+                                              Content="Tự động lấy dữ liệu mỗi"
+                                              ToolTip="Bật để tự động pull cookie/dữ liệu từ source node và load vào Tab1 theo khoảng thời gian"/>
+                                    <TextBox Text="{Binding WebTabAutoRefreshInterval, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Width="52" Height="26" Margin="6,0,4,0"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             IsEnabled="{Binding WebTabAutoRefreshEnabled}"
+                                             ToolTip="Khoảng thời gian lấy dữ liệu mới"/>
+                                    <ComboBox Height="26" Width="60"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              IsEnabled="{Binding WebTabAutoRefreshEnabled}"
+                                              ItemsSource="{Binding AutoRefreshUnitOptions}"
+                                              SelectedItem="{Binding WebTabAutoRefreshUnit, Mode=TwoWay}"/>
+                                    <TextBlock Text="→ re-load cookie vào Tab1" Foreground="{DynamicResource TextMuted}" FontSize="10"
+                                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                </StackPanel>
+
+                                <!-- Manual cookie input (fallback / ghi đè) -->
+                                <TextBlock Text="Hoặc nhập thủ công (nếu để trống, dùng từ node bên trên):"
+                                           Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="CookieTextBox" Grid.Column="0"
+                                             Text="{Binding CookieText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             AcceptsReturn="True" TextWrapping="Wrap"
+                                             Height="70" VerticalScrollBarVisibility="Auto"
+                                             Margin="0,0,8,0"
+                                             FontFamily="Consolas" FontSize="11"
+                                             ToolTip="Nhập cookie: raw (name=value), JSON object {url,cookies:[{name,value,domain,path,secure,httpOnly,session,expirationTime}]}, JSON array [{...}], Netscape. URL đầu tiên → navigate Tab1."/>
+                                    <Button Grid.Column="1"
+                                            Content="▶ Áp dụng" Width="80" Height="36"
+                                            VerticalAlignment="Top"
+                                            Style="{DynamicResource SuccessButton}"
+                                            Command="{Binding ApplyCookieCommand}"
+                                            Cursor="Hand"
+                                            ToolTip="Parse cookie và set vào Tab1 WebView2 ngay lập tức. Nếu có URL thì mở luôn website đó."/>
+                                </Grid>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,0"
+                                           Text="→ Hỗ trợ: raw, JSON object {url, cookies:[{name,value,domain,path,secure,httpOnly,session,expirationTime}]}, JSON array, Netscape. URL → navigate Tab1. Sẽ xóa sau khi đóng dialog."/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Inputs -->
+                    <TextBlock Text="Inputs (node nguồn + key → biến dùng trong Html/Js):"
+                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Height="160">
+                            <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,8" Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="6">
+                                            <StackPanel>
+                                                <!-- Row 1: Node / Key / Biến / Xóa -->
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                                  ItemsSource="{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                                  SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                                  ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                  SelectedValuePath="Key"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="4">
+                                                        <TextBlock Text="Biến dùng trong Html/Js (trống = dùng key)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                        <TextBox Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="5" Content="−" Width="26" Height="26" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                                            Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"/>
+                                                </Grid>
+                                                <!-- Row 2: Auto-refresh controls -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                    <CheckBox IsChecked="{Binding AutoRefreshEnabled, Mode=TwoWay}"
+                                                              VerticalAlignment="Center"
+                                                              Foreground="{DynamicResource TextSecondary}" FontSize="11"
+                                                              Content="Auto push JS mỗi"
+                                                              ToolTip="Bật để tự động push giá trị mới nhất vào window.__ac theo khoảng thời gian"/>
+                                                    <TextBox Text="{Binding AutoRefreshInterval, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                             Width="52" Height="26" Margin="6,0,4,0"
+                                                             Style="{DynamicResource BaseTextBoxV2}"
+                                                             IsEnabled="{Binding AutoRefreshEnabled}"
+                                                             ToolTip="Khoảng thời gian lấy dữ liệu mới"/>
+                                                    <ComboBox Height="26" Width="60"
+                                                              Style="{DynamicResource BaseComboBox}"
+                                                              IsEnabled="{Binding AutoRefreshEnabled}"
+                                                              ItemsSource="{Binding DataContext.AutoRefreshUnitOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                              SelectedItem="{Binding AutoRefreshUnit, Mode=TwoWay}"/>
+                                                    <TextBlock Text="→ window.__ac.live['{biến}']"
+                                                               Foreground="{DynamicResource TextMuted}" FontSize="10"
+                                                               VerticalAlignment="Center" Margin="8,0,0,0"
+                                                               FontFamily="Consolas"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                    <Button Content="+ Thêm input" Height="32" Margin="0,0,0,12"
+                            Command="{Binding AddInputMappingCommand}"
+                            Width="140" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+
+                    <!-- Ví dụ & Gợi ý -->
+                    <Expander x:Name="ExampleHintsExpander" IsExpanded="False" Margin="0,0,0,12">
+                        <Expander.Header>
+                            <TextBlock Text="Hướng dẫn dùng {variableName} trong HTML/CSS/JS" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
+                        </Expander.Header>
+                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="Cách truyền value từ node vào HTML/CSS/JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    <Run Text="1) Cấu hình Input: Chọn Node nguồn + Key (ví dụ node HttpRequest, key responseBody)."/>
+                                    <LineBreak/>
+                                    <Run Text="2) Đặt 'Biến dùng trong Html/Js' (ví dụ: apiResponse, hoặc để trống = dùng key)."/>
+                                    <LineBreak/>
+                                    <Run Text="3) Trong HTML/CSS/JS, dùng {variableName} để thay thế bằng giá trị từ node nguồn."/>
+                                </TextBlock>
+                                <TextBlock Text="Ví dụ trong HTML:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="• Hiển thị giá trị trực tiếp:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                            <Run Text="&lt;div&gt;Kết quả: {apiResponse}&lt;/div&gt;"/>
+                                        </TextBlock>
+                                        <TextBlock Text="• Dùng trong attribute:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="&lt;input value=&quot;{userId}&quot; /&gt;"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="Ví dụ trong JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="• Parse JSON từ input:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                            <Run Text="const data = JSON.parse('{apiResponse}');"/>
+                                        </TextBlock>
+                                        <TextBlock Text="• Dùng trong string:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                            <Run Text="const url = 'https://api.example.com/data?id={userId}';"/>
+                                        </TextBlock>
+                                        <TextBlock Text="• Biến hiện tại:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="const input = '{"/>
+                                            <Run Text="{Binding FirstInputVariableName, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="}';"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="Ví dụ trong CSS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="• Dùng cho màu sắc:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                            <Run Text=".button { background-color: {primaryColor}; }"/>
+                                        </TextBlock>
+                                        <TextBlock Text="• Dùng cho kích thước:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="body { font-size: {fontSize}px; }"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="Lưu ý:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="• {variableName} sẽ được replace bằng giá trị string từ node nguồn" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• Nếu giá trị là JSON, dùng JSON.parse('{variableName}') trong JS để parse" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• Nếu giá trị chứa ký tự đặc biệt HTML, cần escape hoặc dùng textContent thay vì innerHTML" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• Nếu không tìm thấy variable, {variableName} sẽ giữ nguyên (không replace)" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Margin="0,4,0,0">
+                                            <Run Text="• Biến hiện tại: " Foreground="{DynamicResource TextSecondary}"/>
+                                            <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- === REAL-TIME window.__ac === -->
+                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="#2563EB" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <TextBlock Text="⚡ Real-time: " Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                                            <TextBlock FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center">
+                                                <Run Text="window.__ac.onUpdate(key, callback)"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
+                                            <Run Text="Khi input có checkbox "/>
+                                            <Run Text="☑ Auto push JS" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" được bật, C# sẽ tự động push giá trị mới nhất vào JS theo khoảng thời gian. Dùng API dưới để nhận và xử lý."/>
+                                        </TextBlock>
+
+                                        <!-- Ví dụ 1 -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="Cách 1 — Nhận 1 param:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="window.__ac.onUpdate('price', function(price) {&amp;#xA;    document.getElementById('price').textContent = price;&amp;#xA;});"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="ex1"
+                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ này vào editor"/>
+                                                </StackPanel>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="window.__ac.onUpdate("/>
+                                                    <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=", function(price) {"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    document.getElementById('price').textContent = price;"/>
+                                                    <LineBreak/>
+                                                    <Run Text="});"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Ví dụ 2 -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="Cách 2 — Nhận nhiều params cùng lúc:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="// Khi cả price lẫn quantity thay đổi đều gọi callback này&amp;#xA;window.__ac.onUpdate('price', 'quantity', function(price, quantity) {&amp;#xA;    var total = parseFloat(price || 0) * parseInt(quantity || 0);&amp;#xA;    document.getElementById('total').textContent = 'Tổng: ' + total;&amp;#xA;});"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="ex2"
+                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ price × quantity vào editor"/>
+                                                </StackPanel>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="window.__ac.onUpdate("/>
+                                                    <Run Text="'price', 'quantity'" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=", function(price, qty) {"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    var total = parseFloat(price||0) * parseInt(qty||0);"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    document.getElementById('total').textContent = total;"/>
+                                                    <LineBreak/>
+                                                    <Run Text="});"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Ví dụ 3: gọi nhiều func trong 1 callback -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="Cách 3 — Gọi nhiều func khi 1 param thay đổi:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="function updateChart(price) { /* vẽ chart */ }&amp;#xA;function updateBadge(price) { /* cập nhật badge */ }&amp;#xA;function updateHistory(price) { /* thêm vào lịch sử */ }&amp;#xA;&amp;#xA;// Gọi 3 func trong 1 callback khi price cập nhật&amp;#xA;window.__ac.onUpdate('price', function(price) {&amp;#xA;    updateChart(price);&amp;#xA;    updateBadge(price);&amp;#xA;    updateHistory(price);&amp;#xA;});"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="ex3"
+                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ chart + badge + history vào editor"/>
+                                                </StackPanel>
+                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
+                                                    → 1 param "price" nhưng gọi 3 func khác nhau:
+                                                </TextBlock>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="function updateChart(p) { /* vẽ chart */ }"/>
+                                                    <LineBreak/>
+                                                    <Run Text="function updateBadge(p) { /* cập nhật badge */ }"/>
+                                                    <LineBreak/>
+                                                    <Run Text="function updateHistory(p) { /* lưu lịch sử */ }"/>
+                                                    <LineBreak/><LineBreak/>
+                                                    <Run Text="window.__ac.onUpdate("/>
+                                                    <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=", function(price) {"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    updateChart(price);"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    updateBadge(price);"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    updateHistory(price);"/>
+                                                    <LineBreak/>
+                                                    <Run Text="});"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Ví dụ 4: đọc trực tiếp -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="Cách 4 — Đọc trực tiếp (polling):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="setInterval(function() {&amp;#xA;    var p = window.__ac.live['price'];  // luôn là giá trị mới nhất&amp;#xA;    document.getElementById('out').textContent = p ?? '—';&amp;#xA;}, 500);"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="ex4"
+                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ polling dashboard vào editor"/>
+                                                </StackPanel>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="setInterval(function() {"/>
+                                                    <LineBreak/>
+                                                    <Run Text="  var p = window.__ac.live["/>
+                                                    <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="];"/>
+                                                    <LineBreak/>
+                                                    <Run Text="  document.getElementById('out').textContent = p ?? '—';"/>
+                                                    <LineBreak/>
+                                                    <Run Text="}, 500);"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Ví dụ 5: download curl + local url -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,8,0,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="Cách 5 — Tải file bằng curl và lấy link local trả về:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="// 1) Gọi host tải file bằng raw curl&#xA;var rawCurl = &quot;curl --location 'https://assets.grok.com/.../generated_video.mp4?cache=1' --header 'Cookie: ...'&quot;;&#xA;var key = 'gid|https://assets.grok.com/...';&#xA;if (typeof acDownloadByCurl === 'function') {&#xA;  acDownloadByCurl(rawCurl, 'grok_video.mp4', key);&#xA;}&#xA;&#xA;// 2) Nhận kết quả tải xong từ host&#xA;window.addEventListener('__ac_curl_download_done', function (ev) {&#xA;  var d = (ev &amp;&amp; ev.detail) ? ev.detail : {};&#xA;  if (!d.ok) {&#xA;    console.log('Download fail:', d.error);&#xA;    return;&#xA;  }&#xA;  // d.localUrl: URL local dạng https://downloads.local/xxx.mp4 (phát được trong UI)&#xA;  // d.path: đường dẫn file thật trong Downloads\\Workflow_Downloads\\Videos&#xA;  document.getElementById('status').textContent = d.localUrl || d.path;&#xA;});"/>
+                                                </StackPanel>
+                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
+                                                    Hàm host hỗ trợ:
+                                                    <Run Text=" acDownloadByCurl(rawCurl, fileName, downloadKey) " Foreground="{DynamicResource WarningColor}"/>
+                                                    và event
+                                                    <Run Text=" __ac_curl_download_done " Foreground="{DynamicResource WarningColor}"/>.
+                                                </TextBlock>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="// Gọi tải file"/>
+                                                    <LineBreak/>
+                                                    <Run Text="acDownloadByCurl(rawCurl, 'grok_video.mp4', 'gid|videoUrl');"/>
+                                                    <LineBreak/><LineBreak/>
+                                                    <Run Text="// Nhận kết quả"/>
+                                                    <LineBreak/>
+                                                    <Run Text="window.addEventListener('__ac_curl_download_done', function(ev) {"/>
+                                                    <LineBreak/>
+                                                    <Run Text="  var d = ev.detail || {};"/>
+                                                    <LineBreak/>
+                                                    <Run Text="  if (d.ok) {"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    // d.localUrl: dùng gán video.src để xem ngay trong UI"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    // d.path: file thật trong C:\Users\&lt;user&gt;\Downloads\Workflow_Downloads\Videos"/>
+                                                    <LineBreak/>
+                                                    <Run Text="  }"/>
+                                                    <LineBreak/>
+                                                    <Run Text="});"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Ví dụ 6: datas {guildId: localPath} -->
+                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="#0EA5E9" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,8,0,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="Cách 6 — Nhận datas dạng {guildId: localPath} và phát video local (không bị chặn):" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="// Input mapping gợi ý: key = datas (string JSON/object)&#xA;// Ví dụ datas: {&quot;8a85...733f&quot;:&quot;C:\\_DU_AN\\App_Desktop\\download_20260409_145008.mp4&quot;}&#xA;(function() {&#xA;  var currentGuildId = ''; // set từ outputGuildId hoặc từ UI của bạn&#xA;  var v = document.getElementById('previewVideo');&#xA;  if (!v) return;&#xA;&#xA;  function pickPathFromDatas(datas, gid) {&#xA;    if (!datas) return '';&#xA;    if (typeof datas === 'string') {&#xA;      try { datas = JSON.parse(datas); } catch (_) { return ''; }&#xA;    }&#xA;    if (!datas || typeof datas !== 'object') return '';&#xA;    var p = datas[gid];&#xA;    if (typeof p !== 'string') return '';&#xA;    return p.trim();&#xA;  }&#xA;&#xA;  function playLocalPath(localPath) {&#xA;    if (!localPath || typeof acResolveLocalPath !== 'function') return;&#xA;    var reqId = 'play_' + Date.now();&#xA;    function onResolved(ev) {&#xA;      var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;      if (String(d.requestId || '') !== reqId) return;&#xA;      window.removeEventListener('__ac_local_path_resolved', onResolved);&#xA;      if (!d.ok || !d.localUrl) return;&#xA;      // QUAN TRỌNG: dùng localUrl https://localfiles-*.local..., KHÔNG dùng file:///...&#xA;      v.src = d.localUrl;&#xA;      try { v.load(); } catch (_) {}&#xA;      var pp = v.play &amp;&amp; v.play();&#xA;      if (pp &amp;&amp; typeof pp.catch === 'function') pp.catch(function(){});&#xA;    }&#xA;    window.addEventListener('__ac_local_path_resolved', onResolved);&#xA;    acResolveLocalPath(localPath, reqId);&#xA;  }&#xA;&#xA;  if (window.__ac &amp;&amp; typeof window.__ac.onUpdate === 'function') {&#xA;    window.__ac.onUpdate('datas', function(datas) {&#xA;      var path = pickPathFromDatas(datas, currentGuildId);&#xA;      if (path) playLocalPath(path);&#xA;    });&#xA;  }&#xA;})();"/>
+                                                </StackPanel>
+                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
+                                                    Quy trình đúng:
+                                                    <Run Text=" datas[guid] => localPath tuyệt đối " Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="→ gọi "/>
+                                                    <Run Text="acResolveLocalPath(localPath, reqId)" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=" → nhận event "/>
+                                                    <Run Text="__ac_local_path_resolved" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=" với "/>
+                                                    <Run Text="d.localUrl" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=" → gán vào "/>
+                                                    <Run Text="video.src" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=". Không dùng trực tiếp "/>
+                                                    <Run Text="file:///..." Foreground="{DynamicResource DangerColor}"/>
+                                                    <Run Text=" trong HTML UI."/>
+                                                </TextBlock>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="// datas ví dụ"/>
+                                                    <LineBreak/>
+                                                    <Run Text="JSON ví dụ: &quot;8a85...733f&quot; =&gt; &quot;C:\..\Downloads\\download_video.mp4&quot;"/>
+                                                    <LineBreak/><LineBreak/>
+                                                    <Run Text="// dùng localPath -> resolve -> localUrl -> video.src"/>
+                                                    <LineBreak/>
+                                                    <Run Text="acResolveLocalPath(localPath, reqId);"/>
+                                                    <LineBreak/>
+                                                    <Run Text="// event __ac_local_path_resolved => d.localUrl"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Ví dụ 7: áp dụng thực tế theo grok.* -->
+                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="#22C55E" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                    <TextBlock Text="Ví dụ áp dụng nhanh (theo grok.html / grok.js / grok.css):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="// HTML&#xA;&lt;div class=&quot;card-media card-media-inline&quot;&gt;&#xA;  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;&#xA;&lt;/div&gt;&#xA;&#xA;// JS&#xA;var currentGuildId = (window.__ac &amp;&amp; window.__ac.live) ? (window.__ac.live.outputGuildId || '') : '';&#xA;window.__ac.onUpdate('datas', function(datas) {&#xA;  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }&#xA;  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';&#xA;  if (!localPath || typeof acResolveLocalPath !== 'function') return;&#xA;  var reqId = 'play_' + Date.now();&#xA;  window.addEventListener('__ac_local_path_resolved', function onR(ev) {&#xA;    var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;    if (String(d.requestId || '') !== reqId) return;&#xA;    window.removeEventListener('__ac_local_path_resolved', onR);&#xA;    if (!d.ok || !d.localUrl) return;&#xA;    var v = document.getElementById('previewVideo'); if (!v) return;&#xA;    v.src = d.localUrl; try { v.load(); } catch (_) {}&#xA;  });&#xA;  acResolveLocalPath(localPath, reqId);&#xA;});&#xA;&#xA;// CSS&#xA;.card-media-inline { position: relative; }&#xA;.card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="ex_grok_local"
+                                                            ToolTip="Điền sẵn mẫu grok local video vào 4 tab code"/>
+                                                </StackPanel>
+                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,8">
+                                                    1) Trong HTML tạo video: id=previewVideo
+                                                    <LineBreak/>
+                                                    2) Trong JS đọc datas theo guildId hiện tại
+                                                    <LineBreak/>
+                                                    3) Gọi acResolveLocalPath rồi set video.src = d.localUrl
+                                                    <LineBreak/>
+                                                    4) CSS cho video fill card
+                                                </TextBlock>
+
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                                    <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                        <Run Text="// HTML (giống card media trong grok.html)"/>
+                                                        <LineBreak/>
+                                                        <Run Text="&lt;div class=&quot;card-media card-media-inline&quot;&gt;"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;"/>
+                                                        <LineBreak/>
+                                                        <Run Text="&lt;/div&gt;"/>
+                                                    </TextBlock>
+                                                </Border>
+
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                                    <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                        <Run Text="// JS (giống flow resolve trong grok.js)"/>
+                                                        <LineBreak/>
+                                                        <Run Text="var currentGuildId = (window.__ac &amp;&amp; window.__ac.live) ? (window.__ac.live.outputGuildId || '') : '';"/>
+                                                        <LineBreak/>
+                                                        <Run Text="window.__ac.onUpdate('datas', function(datas) {"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  if (!localPath || typeof acResolveLocalPath !== 'function') return;"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  var reqId = 'play_' + Date.now();"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  window.addEventListener('__ac_local_path_resolved', function onR(ev) {"/>
+                                                        <LineBreak/>
+                                                        <Run Text="    var d = ev &amp;&amp; ev.detail ? ev.detail : {};"/>
+                                                        <LineBreak/>
+                                                        <Run Text="    if (String(d.requestId || '') !== reqId) return;"/>
+                                                        <LineBreak/>
+                                                        <Run Text="    window.removeEventListener('__ac_local_path_resolved', onR);"/>
+                                                        <LineBreak/>
+                                                        <Run Text="    if (!d.ok || !d.localUrl) return;"/>
+                                                        <LineBreak/>
+                                                        <Run Text="    var v = document.getElementById('previewVideo'); if (!v) return;"/>
+                                                        <LineBreak/>
+                                                        <Run Text="    v.src = d.localUrl; try { v.load(); } catch (_) {}"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  });"/>
+                                                        <LineBreak/>
+                                                        <Run Text="  acResolveLocalPath(localPath, reqId);"/>
+                                                        <LineBreak/>
+                                                        <Run Text="});"/>
+                                                    </TextBlock>
+                                                </Border>
+
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8">
+                                                    <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                        <Run Text="// CSS (giống grok.css)"/>
+                                                        <LineBreak/>
+                                                        <Run Text=".card-media-inline { position: relative; }"/>
+                                                        <LineBreak/>
+                                                        <Run Text=".card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
+                                                    </TextBlock>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Expander>
+
+                    <!-- Tab1 Injection Expander: chỉ hiển thị khi UseWebTab = true -->
+                    <Expander x:Name="Tab1InjectExpander" IsExpanded="False" Margin="0,0,0,12"
+                              Visibility="{Binding UseWebTab, Converter={StaticResource BoolToVisibility}}">
+                        <Expander.Header>
+                            <TextBlock Text="🌐 Gửi JS từ Tab2 → Tab1  (__tab1_exec_seq / __tab1_exec_par)"
+                                       Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
+                        </Expander.Header>
+                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14"
+                                BorderBrush="#0EA5E9" BorderThickness="1">
+                            <StackPanel>
+
+                                <!-- Mô tả tổng quan -->
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8">
+                                    <Run Text="Khi chế độ 2-tab bật, JS trong Tab2 có thể inject và chạy code trong Tab1 (trình duyệt có session / cookie) qua 2 hàm:"/>
+                                </TextBlock>
+
+                                <!-- API Reference box -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="10" Margin="0,0,0,12"
+                                        BorderBrush="#0EA5E9" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="📌 API Reference:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="__tab1_exec_seq(jsString)" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" — Sequential: request2 đợi request1 hoàn thành rồi mới chạy."/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_par(jsString)" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text=" — Parallel: các request chạy đồng thời, không đợi nhau."/>
+                                            <LineBreak/><LineBreak/>
+                                            <Run Text="// jsString = đoạn JS sẽ chạy bên trong Tab1 (có session/cookie của trang đó)"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- SEQ Example 1: Click → Fill → Submit -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="SEQ 1 — Nhiều bước tuần tự (click → fill → submit):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                    Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Click="CopySnippet_Click"
+                                                    Tag="// SEQ: từng bước chạy xong mới sang bước tiếp theo&#xA;// Bước 1: click nút&#xA;__tab1_exec_seq(`document.querySelector('#loginBtn').click();`);&#xA;&#xA;// Bước 2: đợi bước 1 xong, rồi fill input (Tab1 đã mở modal/form)&#xA;__tab1_exec_seq(`document.querySelector('#usernameInput').value = 'myUser';`);&#xA;&#xA;// Bước 3: submit&#xA;__tab1_exec_seq(`document.querySelector('form').submit();`);"/>
+                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                    Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Click="ApplyExample_Click" Tag="tab1_seq1"
+                                                    ToolTip="Điền sẵn ví dụ sequential Tab2→Tab1 vào editor"/>
+                                        </StackPanel>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="// Bước 1: click nút ở Tab1"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_seq(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="`document.querySelector('#loginBtn').click();`"/>
+                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                            <LineBreak/>
+                                            <Run Text="// Bước 2 — chờ bước 1 XONG mới chạy: fill input"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_seq(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="`document.querySelector('#username').value = 'myUser';`"/>
+                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                            <LineBreak/>
+                                            <Run Text="// Bước 3 — submit sau khi đã fill"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_seq(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="`document.querySelector('form').submit();`"/>
+                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- PAR Example: Nhiều request chạy song song -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="PAR — 2 request chạy song song (không đợi nhau):" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                    Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Click="CopySnippet_Click"
+                                                    Tag="// PAR: cả 2 chạy ngay lập tức, không đợi nhau&#xA;__tab1_exec_par(`console.log('[Tab1] request1 started:', Date.now());`);&#xA;__tab1_exec_par(`document.title = 'Processing...';`);&#xA;&#xA;// Khác với SEQ: par2 KHÔNG đợi par1 xong"/>
+                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                    Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Click="ApplyExample_Click" Tag="tab1_par1"
+                                                    ToolTip="Điền sẵn ví dụ parallel Tab2→Tab1 vào editor"/>
+                                        </StackPanel>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="// Cả 2 request inject vào Tab1 đồng thời, không đợi nhau"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_par(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="`console.log('[Tab1] par1:', Date.now());`"/>
+                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_par(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="`document.title = 'Processing...';`"/>
+                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                            <LineBreak/><LineBreak/>
+                                            <Run Text="// par2 KHÔNG đợi par1 xong → cả 2 chạy song song"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- SEQ Example 2: Fetch trong Tab1 (Tab1 có session) -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="SEQ 2 — Fetch API trong Tab1 + navigate sau khi done:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                    Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Click="CopySnippet_Click"
+                                                    Tag="// SEQ: dùng fetch trong Tab1 (có session/cookie đầy đủ)&#xA;// Bước 1: ensure Tab1 ở đúng origin&#xA;__tab1_exec_seq(`&#xA;    if (!window.location.href.includes('grok.com')) {&#xA;        window.location.href = 'https://grok.com';&#xA;    }&#xA;`);&#xA;&#xA;// Bước 2: dùng async fetch trong Tab1 (có cookie grok.com)&#xA;__tab1_exec_seq(`&#xA;    (async () => {&#xA;        const r = await fetch('/api/data', { credentials: 'include' });&#xA;        const data = await r.json();&#xA;        window.__tab1Data = data; // lưu cho bước sau&#xA;        console.log('[Tab1 fetch]', data);&#xA;    })();&#xA;`);&#xA;&#xA;// Bước 3: navigate Tab1 đến kết quả&#xA;__tab1_exec_seq(`window.location.href = '/result/' + (window.__tab1Data?.id ?? '');`);"/>
+                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                    Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Click="ApplyExample_Click" Tag="tab1_seq2"
+                                                    ToolTip="Điền sẵn ví dụ fetch + navigate Tab1 vào editor"/>
+                                        </StackPanel>
+                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                            <Run Text="// Bước 1: navigate Tab1 đến grok.com (ensure cookie origin)"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_seq(`window.location.href = 'https://grok.com';`);" Foreground="{DynamicResource WarningColor}"/>
+                                            <LineBreak/><LineBreak/>
+                                            <Run Text="// Bước 2: async fetch bên trong Tab1 (có session đầy đủ)"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_seq(`" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="(async () => {"/>
+                                            <LineBreak/>
+                                            <Run Text="    const r = await fetch('/api/data', { credentials: 'include' });"/>
+                                            <LineBreak/>
+                                            <Run Text="    window.__tab1Data = await r.json();"/>
+                                            <LineBreak/>
+                                            <Run Text="    console.log('[Tab1 fetch]', window.__tab1Data);"/>
+                                            <LineBreak/>
+                                            <Run Text="})();"/>
+                                            <Run Text="`);" Foreground="{DynamicResource WarningColor}"/>
+                                            <LineBreak/><LineBreak/>
+                                            <Run Text="// Bước 3: navigate Tab1 đến kết quả sau khi fetch xong"/>
+                                            <LineBreak/>
+                                            <Run Text="__tab1_exec_seq(`window.location.href='/result/'+window.__tab1Data?.id;`);" Foreground="{DynamicResource WarningColor}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                            </StackPanel>
+                        </Border>
+                    </Expander>
+
+                    <!-- Code editors: 4 tabs Html / Js / Css / Params -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Cấu hình HTML UI (4 tab: Html / Js / Css / Params)"
+                                   Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="ReloadCodeButton" Visibility="Collapsed"
+                                    Style="{StaticResource SuccessButton}"
+                                    Content="↻ Load" Width="70" Height="28" Margin="0,0,6,0"
+                                    ToolTip="Chỉ xử lý highlight + sync code (F5) – không reload WebView2"
+                                    Cursor="Hand" Padding="4,0" FontSize="12"
+                                    Click="ReloadCodeButton_Click"/>
+                            <Button x:Name="ExpandHtmlUiButton"
+                                    Style="{StaticResource InfoButton}"
+                                    Content="⛶ Phóng to" Width="90" Height="28" Margin="0,0,6,0"
+                                    ToolTip="Mở cửa sổ soạn HTML UI lớn hơn (4 tab)"
+                                    Cursor="Hand" Padding="8,0" FontSize="12"
+                                    Click="ExpandHtmlUiButton_Click"/>
+                            <Button x:Name="CopyAllCodeForAiButton"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Content="📋 Copy" Width="60" Height="28" Margin="0,0,6,0"
+                                    ToolTip="Copy toàn bộ code hiện tại: #region HTML / #region CSS / #region JS / #region PARAM – để gửi cho AI đọc/sửa"
+                                    Cursor="Hand" Padding="6,0" FontSize="12"
+                                    Click="CopyAllCodeForAiButton_Click"/>
+                            <Button x:Name="ImportFourPartsButton"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Content="📥 Import" Width="78" Height="28" Margin="0,0,6,0"
+                                    ToolTip="Chọn .html/.css/.js (mỗi loại tối đa 1 file). File đuôi khác sẽ nhập vào PARAM"
+                                    Cursor="Hand" Padding="6,0" FontSize="12"
+                                    Click="ImportFourPartsButton_Click"/>
+                            <Button Content="A−" Width="28" Height="28" Margin="0,0,4,0"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding DecreaseCodeFontSizeCommand}"
+                                    Cursor="Hand" Padding="0" FontSize="14"/>
+                            <Button Content="A+" Width="28" Height="28"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding IncreaseCodeFontSizeCommand}"
+                                    Cursor="Hand" Padding="0" FontSize="14"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Tùy chọn reload WebView2 khi đóng dialog -->
+                    <CheckBox Margin="0,0,0,4"
+                              Content="Mỗi lần đóng dialog: tự reload lại HTML/CSS/JS trong WebView2 cho node này"
+                              Foreground="{DynamicResource TextBrush}"
+                              FontSize="12"
+                              IsChecked="{Binding AutoReloadOnDialogClose, Mode=TwoWay}"/>
+
+                    <!-- ✅ Lazy load tabs: chỉ load tab đang active để tối ưu performance -->
+                    <TabControl x:Name="CodeTabsControl"
+                                Margin="0,0,0,8"
+                                SelectionChanged="CodeTabsControl_SelectionChanged"
+                                Background="Transparent"
+                                BorderThickness="0">
+                        <TabItem Header="HTML" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <controls:SyntaxHighlightCodeEditor x:Name="HtmlEditor"
+                                Text="{Binding HtmlCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
+                                SyntaxLanguage="HTML"
+                                IsAutoHighlightEnabled="False"
+                                MinHeight="140" MaxHeight="320" Margin="0,4,0,4"
+                                Loaded="CodeEditor_Loaded"/>
+                        </TabItem>
+                        <TabItem Header="JS" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <controls:SyntaxHighlightCodeEditor x:Name="JsEditor"
+                                Text="{Binding JsCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
+                                SyntaxLanguage="JavaScript"
+                                IsAutoHighlightEnabled="False"
+                                MinHeight="140" MaxHeight="320" Margin="0,4,0,4"
+                                Loaded="CodeEditor_Loaded"/>
+                        </TabItem>
+                        <TabItem Header="CSS" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <controls:SyntaxHighlightCodeEditor x:Name="CssEditor"
+                                Text="{Binding CssCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
+                                SyntaxLanguage="CSS"
+                                IsAutoHighlightEnabled="False"
+                                MinHeight="140" MaxHeight="320" Margin="0,4,0,4"
+                                Loaded="CodeEditor_Loaded"/>
+                        </TabItem>
+                        <TabItem Header="Params (config)" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <controls:SyntaxHighlightCodeEditor x:Name="ParamsEditor"
+                                Text="{Binding ParamsCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
+                                SyntaxLanguage="JavaScript"
+                                IsAutoHighlightEnabled="False"
+                                MinHeight="140" MaxHeight="320" Margin="0,4,0,4"
+                                Loaded="CodeEditor_Loaded"/>
+                        </TabItem>
+                        <TabItem Header="Output keys" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                            <StackPanel Margin="0,4,0,4">
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="Output keys (dùng để đưa giá trị từ HTML UI ra các node khác):"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Content="Params" Height="32" Width="92" Margin="0,0,8,0"
+                                                Command="{Binding SyncOutputKeysFromParamsCommand}"
+                                                Style="{DynamicResource PrimaryButton}"/>
+                                        <Button Content="+ Thêm output key" Height="32"
+                                                Command="{Binding AddOutputKeyCommand}"
+                                                Width="160"
+                                                Style="{DynamicResource PrimaryButton}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" Height="220">
+                                        <ItemsControl ItemsSource="{Binding OutputKeysList}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,6">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Style="{DynamicResource BaseTextBoxV2}" Height="32" FontSize="13"/>
+                                                        <Button Grid.Column="1" Content="−" Width="26" Height="26" Margin="8,0,0,0"
+                                                                Command="{Binding DataContext.RemoveOutputKeyCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </TabItem>
+                    </TabControl>
+                </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+<!-- Tab: 📡 Async Data Receiver -->
+                <TabItem Style="{StaticResource HttpTabItemStyle}">
+                    <TabItem.Header>
+                        <TextBlock Text="📡 Async Data" FontSize="12"/>
+                    </TabItem.Header>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- Header -->
+                            <TextBlock Text="📡 Async Data Receiver (API-style push từ AsyncTask)"
+                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,12">
+                                <Run Text="Cấu hình nguồn dữ liệu async: khi workflow chạy vào node này, dữ liệu từ các node nguồn sẽ được push realtime vào HTML qua "/>
+                                <Run Text="window.__acAsync" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas" FontWeight="SemiBold"/>
+                                <Run Text=". Nhấn F5/reload sẽ load lại dữ liệu đã nhận."/>
+                            </TextBlock>
+
+                            <!-- Danh sách Async Data Sources -->
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="220">
+                                    <ItemsControl x:Name="AsyncDataSourcesItemsControl" ItemsSource="{Binding AsyncDataSourcesList}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,0,8" Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="6"
+                                                        BorderBrush="#0EA5E9" BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="Async Task" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                                      ItemsSource="{Binding DataContext.AsyncAvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                                      SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"
+                                                                      ToolTip="Chọn AsyncTask node trong workflow"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2">
+                                                            <TextBlock Text="Body output" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                                      ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                      SelectedValuePath="Key"
+                                                                      DisplayMemberPath="DisplayName"
+                                                                      SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"
+                                                                      ToolTip="Output key từ node bên trong body AsyncTask"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="4">
+                                                            <TextBlock Text="Key nhận trong JS (trống = dùng key nguồn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding ReceiverKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                                                     ToolTip="Tên key khi push vào JS: window.__acAsync.data['keyNày']"/>
+                                                        </StackPanel>
+                                                        <Button Grid.Column="5" Content="✕" Width="26" Height="26" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                                                Command="{Binding DataContext.RemoveAsyncDataSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"
+                                                                ToolTip="Xóa nguồn này"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                            <Button Content="+ Thêm nguồn async" Height="32" Margin="0,0,0,16"
+                                    Command="{Binding AddAsyncDataSourceCommand}"
+                                    Width="180" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+
+                            <!-- Hướng dẫn JS API -->
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="#0EA5E9" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📘 Hướng dẫn sử dụng window.__acAsync trong JS" Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
+                                        <Run Text="Khác với "/>
+                                        <Run Text="window.__ac" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
+                                        <Run Text=" (dùng cho Input Mappings — tab Logic), "/>
+                                        <Run Text="window.__acAsync" Foreground="#0EA5E9" FontFamily="Consolas" FontWeight="SemiBold"/>
+                                        <Run Text=" chuyên nhận dữ liệu từ các nhánh async task song song. Mỗi nhánh xong sẽ push kết quả realtime — không cần polling."/>
+                                    </TextBlock>
+
+                                    <!-- API 1: onReceive một key -->
+                                    <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Cách 1 — Nhận 1 key cụ thể:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                <Run Text="window.__acAsync.onReceive(" Foreground="#0EA5E9"/>
+                                                <Run Text="'myKey'" Foreground="{DynamicResource WarningColor}"/>
+                                                <Run Text=", function(value) {" Foreground="#0EA5E9"/>
+                                                <LineBreak/>
+                                                <Run Text="    document.getElementById('result').textContent = value;"/>
+                                                <LineBreak/>
+                                                <Run Text="});" Foreground="#0EA5E9"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- API 2: onReceive tất cả -->
+                                    <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Cách 2 — Nhận tất cả data (object):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                <Run Text="window.__acAsync.onReceive(" Foreground="#0EA5E9"/>
+                                                <Run Text="function(allData) {" Foreground="#0EA5E9"/>
+                                                <LineBreak/>
+                                                <Run Text="    // allData = { key1: val1, key2: val2, ... }"/>
+                                                <LineBreak/>
+                                                <Run Text="    Object.keys(allData).forEach(function(k) {"/>
+                                                <LineBreak/>
+                                                <Run Text="        console.log(k, '=', allData[k]);"/>
+                                                <LineBreak/>
+                                                <Run Text="    });"/>
+                                                <LineBreak/>
+                                                <Run Text="});" Foreground="#0EA5E9"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- API 3: đọc trực tiếp -->
+                                    <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Cách 3 — Đọc trực tiếp (polling):" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                <Run Text="var val = " Foreground="#0EA5E9"/>
+                                                <Run Text="window.__acAsync.data['myKey']" Foreground="{DynamicResource WarningColor}"/>
+                                                <Run Text=";" Foreground="#0EA5E9"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Lưu ý -->
+                                    <Border Background="#1E293B" CornerRadius="6" Padding="10" Margin="0,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="💡 Lưu ý:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11">
+                                                <Run Text="• Dữ liệu được cache — nhấn F5/reload page sẽ tự push lại tất cả data đã nhận."/>
+                                                <LineBreak/>
+                                                <Run Text="• window.__acAsync hoạt động ĐỘC LẬP với window.__ac (Input Mappings)."/>
+                                                <LineBreak/>
+                                                <Run Text="• Nếu 'Key nhận' để trống → dùng tên key nguồn của node."/>
+                                                <LineBreak/>
+                                                <Run Text="• Node nguồn phải được nối port vào HTML UI node."/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                
+                <!-- Tab 2: Thư viện offline JS/CSS -->
+                <TabItem Header="📦 Thư viện offline" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- Tiêu đề + hướng dẫn -->
+                            <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📦 Thư viện JS/CSS offline"
+                                               Foreground="{DynamicResource InfoBrush}"
+                                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12">
+                                        <Run Text="• Tải thư viện JS/CSS về máy một lần rồi dùng offline (không cần Internet khi chạy node)."/>
+                                        <LineBreak/>
+                                        <Run Text="• Google Fonts (preset hoặc URL css2): khi tải, file .woff2 được gộp vào file CSS (data URI) vì HtmlUi dùng data: — không cần thẻ &lt;link&gt;. Trong CSS tab dùng font-family: 'Inter', 'JetBrains Mono', sans-serif;"/>
+                                        <LineBreak/>
+                                        <Run Text="• Thêm nhanh từ danh sách preset bên dưới, hoặc nhập URL / chọn file thủ công."/>
+                                        <LineBreak/>
+                                        <Run Text="• Preset chỉ dùng để thêm nhanh vào danh sách. Tải (hoặc tải lại) chủ động bằng nút ⬇ ở từng dòng bên dưới."/>
+                                        <LineBreak/>
+                                        <Run Text="• ☑ bật = tự động inject vào HTML khi node render. ☐ tắt = bỏ qua."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ===== Preset phổ biến ===== -->
+                            <TextBlock Text="⚡ Thêm nhanh từ preset phổ biến:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Background="{DynamicResource SurfaceColor}"
+                                    BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1" CornerRadius="8"
+                                    Padding="12,10" Margin="0,0,0,12">
+                                <StackPanel>
+
+                                    <!-- ── Hàng JS ── -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <Border Background="{DynamicResource WarningBrush}"
+                                                CornerRadius="4" Padding="8,3"
+                                                VerticalAlignment="Center" Margin="0,0,8,0">
+                                            <TextBlock Text="JS" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                                        </Border>
+                                        <TextBlock Text="JavaScript libraries"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <ItemsControl x:Name="JsPresetsItemsControl" Margin="0,0,0,2">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <!-- JS Preset Card -->
+                                                <Button Margin="0,0,6,6"
+                                                        MinWidth="148" MaxWidth="200"
+                                                        Padding="0"
+                                                        Click="AddPresetButton_Click"
+                                                        Tag="{Binding}"
+                                                        ToolTip="{Binding Description}"
+                                                        Cursor="Hand">
+                                                    <!-- 2-line card layout -->
+                                                    <StackPanel Margin="10,7,10,7">
+                                                        <!-- Dòng 1: Tên (không set Foreground — inherit từ Button để hover hoạt động đúng) -->
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontSize="12" FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Margin="0,0,0,4"/>
+                                                        <!-- Dòng 2: Status badges -->
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <!-- Badge: NEW (thêm thủ công) -->
+                                                            <Border CornerRadius="3" Padding="5,2" Margin="0,0,4,0"
+                                                                    Background="{DynamicResource AccentColor}"
+                                                                    Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="NEW" FontSize="8" FontWeight="Bold"
+                                                                           Foreground="{DynamicResource TextBrush}"/>
+                                                            </Border>
+                                                            <!-- Badge: Có file local -->
+                                                            <Border CornerRadius="3" Padding="5,2" Margin="0,0,4,0"
+                                                                    Background="Transparent"
+                                                                    BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1"
+                                                                    Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="⬇ Có file" FontSize="9" FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource SuccessBrush}"/>
+                                                            </Border>
+                                                            <!-- Badge: Đã thêm — JS dùng WarningBrush (amber) -->
+                                                            <Border CornerRadius="3" Padding="5,2"
+                                                                    Background="{DynamicResource WarningBrush}"
+                                                                    Visibility="{Binding IsAdded, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="✓ Đã thêm" FontSize="9" FontWeight="Bold"
+                                                                           Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                                                            </Border>
+                                                            <!-- Badge: Chưa thêm -->
+                                                            <Border CornerRadius="3" Padding="5,2">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <MultiDataTrigger>
+                                                                                <MultiDataTrigger.Conditions>
+                                                                                    <Condition Binding="{Binding IsInstalled}" Value="False"/>
+                                                                                    <Condition Binding="{Binding IsAdded}" Value="False"/>
+                                                                                </MultiDataTrigger.Conditions>
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </MultiDataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock Text="+ Thêm" FontSize="9"
+                                                                           Foreground="{DynamicResource TextSecondary}"/>
+                                                            </Border>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource OfflineAssetPresetButton}">
+                                                            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+                                                            <Setter Property="BorderThickness" Value="1,1,1,2"/>
+                                                            <Style.Triggers>
+                                                                <!-- JS selected: nền amber -->
+                                                                <DataTrigger Binding="{Binding IsAdded}" Value="True">
+                                                                    <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+                                                                    <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+                                                                    <Setter Property="BorderThickness" Value="1,1,1,2"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- Divider -->
+                                    <Border Height="1" Background="{DynamicResource BorderColor}"
+                                            Margin="0,6,0,10" Opacity="0.6"/>
+
+                                    <!-- ── Hàng CSS ── -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <Border Background="{DynamicResource PrimaryBrush}"
+                                                CornerRadius="4" Padding="8,3"
+                                                VerticalAlignment="Center" Margin="0,0,8,0">
+                                            <TextBlock Text="CSS" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                                        </Border>
+                                        <TextBlock Text="Stylesheet libraries"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <ItemsControl x:Name="CssPresetsItemsControl">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <!-- CSS Preset Card -->
+                                                <Button Margin="0,0,6,6"
+                                                        MinWidth="148" MaxWidth="200"
+                                                        Padding="0"
+                                                        Click="AddPresetButton_Click"
+                                                        Tag="{Binding}"
+                                                        ToolTip="{Binding Description}"
+                                                        Cursor="Hand">
+                                                    <StackPanel Margin="10,7,10,7">
+                                                        <!-- Dòng 1: Tên (inherit Foreground từ Button) -->
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontSize="12" FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Margin="0,0,0,4"/>
+                                                        <!-- Dòng 2: Status badges -->
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <!-- Badge: NEW (thêm thủ công) -->
+                                                            <Border CornerRadius="3" Padding="5,2" Margin="0,0,4,0"
+                                                                    Background="{DynamicResource AccentColor}"
+                                                                    Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="NEW" FontSize="8" FontWeight="Bold"
+                                                                           Foreground="{DynamicResource TextBrush}"/>
+                                                            </Border>
+                                                            <!-- Badge: Có file local -->
+                                                            <Border CornerRadius="3" Padding="5,2" Margin="0,0,4,0"
+                                                                    Background="Transparent"
+                                                                    BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1"
+                                                                    Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="⬇ Có file" FontSize="9" FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource SuccessBrush}"/>
+                                                            </Border>
+                                                            <!-- Badge: Đã thêm — CSS dùng PrimaryBrush (xanh) -->
+                                                            <Border CornerRadius="3" Padding="5,2"
+                                                                    Background="{DynamicResource PrimaryBrush}"
+                                                                    Visibility="{Binding IsAdded, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="✓ Đã thêm" FontSize="9" FontWeight="Bold"
+                                                                           Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                                                            </Border>
+                                                            <!-- Badge: Chưa thêm -->
+                                                            <Border CornerRadius="3" Padding="5,2">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <MultiDataTrigger>
+                                                                                <MultiDataTrigger.Conditions>
+                                                                                    <Condition Binding="{Binding IsInstalled}" Value="False"/>
+                                                                                    <Condition Binding="{Binding IsAdded}" Value="False"/>
+                                                                                </MultiDataTrigger.Conditions>
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </MultiDataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock Text="+ Thêm" FontSize="9"
+                                                                           Foreground="{DynamicResource TextSecondary}"/>
+                                                            </Border>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource OfflineAssetPresetButton}">
+                                                            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                                            <Setter Property="BorderThickness" Value="1,1,1,2"/>
+                                                            <Style.Triggers>
+                                                                <!-- CSS selected: nền xanh PrimaryBrush -->
+                                                                <DataTrigger Binding="{Binding IsAdded}" Value="True">
+                                                                    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+                                                                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                                                    <Setter Property="BorderThickness" Value="1,1,1,2"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ===== Thêm thủ công ===== -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="✏ Thêm thủ công:" Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button x:Name="ToggleManualAddButton"
+                                            Height="28" Padding="10,0" Margin="0,0,8,0"
+                                            Click="ToggleManualAddSection_Click"
+                                            Cursor="Hand"
+                                            Foreground="{DynamicResource TextBrush}"
+                                            Content="Mở form"
+                                            ToolTip="Hiện khối form thêm thủ công (URL / chọn file)">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bdT" CornerRadius="6"
+                                                        Background="{DynamicResource SurfaceColor}" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bdT" Property="Opacity" Value="0.9"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <Button x:Name="ManagePresetsButton"
+                                            Height="28" Padding="10,0"
+                                            Click="ManagePresets_Click"
+                                            Cursor="Hand"
+                                            ToolTip="Mở dialog quản lý tất cả preset tùy chỉnh (thêm / sửa / xóa)">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bd" CornerRadius="6"
+                                                        Background="#1E40AF" Padding="{TemplateBinding Padding}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="📚" FontSize="12" Margin="0,0,5,0"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Text="Quản lý preset" FontSize="11"
+                                                                   FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                                                                   VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="#2563EB"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                            <Grid x:Name="ManualAddSectionGrid" Margin="0,0,0,12" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Tên hiển thị (Title)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                <TextBox x:Name="NewAssetTitleBox" Style="{DynamicResource BaseTextBoxV2}" Height="30" FontSize="12"
+                                                         ToolTip="Ví dụ: Chart.js 4.x"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Loại" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="NewAssetTypeCombo" Height="30" Style="{DynamicResource BaseComboBox}"
+                                                          SelectedIndex="0">
+                                                    <ComboBoxItem Content="JS"/>
+                                                    <ComboBoxItem Content="CSS"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Text="Mô tả (Description)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                        <TextBox x:Name="NewAssetDescBox" Style="{DynamicResource BaseTextBoxV2}" Height="30" FontSize="12" Margin="0,0,0,8"
+                                                 ToolTip="Mô tả ngắn gọn — user đọc để biết thư viện này dùng để làm gì"/>
+                                        <TextBlock Text="URL tải về (hoặc để trống nếu chọn file local)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                        <TextBox x:Name="NewAssetUrlBox" Style="{DynamicResource BaseTextBoxV2}" Height="30" FontSize="12"
+                                                 ToolTip="JS/CSS trực tiếp, hoặc Google Fonts: https://fonts.googleapis.com/css2?family=... (app sẽ gộp font vào file .css offline)."/>
+                                        <TextBlock Text="Tên file lưu local (để trống = tự đặt từ URL)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,8,0,4"/>
+                                        <TextBox x:Name="NewAssetFileNameBox" Style="{DynamicResource BaseTextBoxV2}" Height="30" FontSize="12"
+                                                 ToolTip="Ví dụ: chart.min.js — file sẽ được lưu vào thư mục HtmlUiAssets"/>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <Button x:Name="AddAssetFromUrlButton" Content="⬇ Tải về" Height="36" Width="90" Margin="0,0,0,8"
+                                            Style="{StaticResource OfflineAssetActionButton}"
+                                            Background="#0EA5E9"
+                                            Click="AddAssetFromUrl_Click"
+                                            ToolTip="Tải file từ URL. Google Fonts css2: tạo một .css chứa @font-face + font base64 để dùng offline trong HtmlUi."/>
+                                    <Button x:Name="AddAssetFromFileButton" Content="📁 Chọn file" Height="36" Width="90" Margin="0,0,0,8"
+                                            Style="{StaticResource OfflineAssetActionButton}"
+                                            Background="{DynamicResource ControlBorderBrush}"
+                                            Click="AddAssetFromFile_Click"
+                                            ToolTip="Chọn file JS/CSS local (sẽ được copy vào thư mục HtmlUiAssets)"/>
+                                    <!-- Thêm thủ công vào preset nhanh -->
+                                    <Button x:Name="AddToPresetButton" Height="36" Width="90"
+                                            Style="{StaticResource OfflineAssetActionButton}"
+                                            Background="{DynamicResource SuccessBrush}"
+                                            Click="AddToPreset_Click"
+                                            ToolTip="Thêm vào danh sách preset nhanh (hiển thị ở trên, có nhãn NEW)">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="+ Thêm" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- ===== Danh sách assets ===== -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="📋 Danh sách thư viện đã đăng ký:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center"
+                                           Text="☑ = inject vào HTML | ☐ = bỏ qua"/>
+                            </Grid>
+
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,12">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="360">
+                                    <ItemsControl x:Name="OfflineAssetsItemsControl" ItemsSource="{Binding OfflineAssetsList}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,0,6" Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="10"
+                                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- Checkbox enable/disable -->
+                                                        <CheckBox Grid.Column="0"
+                                                                  Style="{StaticResource ModernCheckBox}"
+                                                                  IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                                  VerticalAlignment="Top"
+                                                                  Margin="0,2,10,0"
+                                                                  ToolTip="☑ bật = inject vào HTML | ☐ tắt = bỏ qua (và cũng không tự tải khi đóng dialog)"/>
+
+                                                        <!-- Nội dung asset -->
+                                                        <StackPanel Grid.Column="1">
+                                                            <!-- Row 1: Badge + Title + Status -->
+                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                <Border CornerRadius="4" Padding="5,2" Margin="0,0,6,0"
+                                                                        Background="{DynamicResource WarningBrush}">
+                                                                    <TextBlock Text="{Binding TypeBadge}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding AssetType}" Value="css">
+                                                                                    <Setter Property="Background" Value="{DynamicResource InfoBrush}"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding AssetType}" Value="js">
+                                                                                    <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                </Border>
+                                                                <TextBox Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                                         FontSize="13" FontWeight="SemiBold"
+                                                                         Background="Transparent" BorderThickness="0"
+                                                                         Padding="0" MinWidth="120" MaxWidth="240"
+                                                                         VerticalContentAlignment="Center"
+                                                                         ToolTip="Tên thư viện"/>
+                                                                <Border Padding="5,2" CornerRadius="4" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                                        Background="{Binding LocalStatusBrush}">
+                                                                    <TextBlock Text="{Binding LocalStatusText}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                                </Border>
+                                                            </StackPanel>
+
+                                                            <!-- Row 2: Description -->
+                                                            <TextBox Text="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                                     FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                                                     Background="Transparent" BorderThickness="0"
+                                                                     Padding="0" Margin="0,0,0,4"
+                                                                     TextWrapping="Wrap" AcceptsReturn="False"
+                                                                     ToolTip="Mô tả ngắn — giúp bạn nhớ thư viện này dùng để làm gì"/>
+
+                                                            <!-- Row 3: URL source -->
+                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                <TextBlock Text="URL:" Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                <TextBox Text="{Binding SourceUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                                         FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"
+                                                                         Background="Transparent" BorderThickness="0"
+                                                                         Padding="0" MinWidth="200" Width="300"
+                                                                         VerticalContentAlignment="Center"
+                                                                         ToolTip="URL nguồn để tải lại nếu cần"/>
+                                                            </StackPanel>
+
+                                                            <!-- Row 4: Local file + status message -->
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="File:" Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                <TextBox Text="{Binding LocalFileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Style="{DynamicResource BaseTextBoxV2}"
+                                                                         FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource WarningColor}"
+                                                                         Background="Transparent" BorderThickness="0"
+                                                                         Padding="0" Width="180"
+                                                                         VerticalContentAlignment="Center"
+                                                                         ToolTip="Tên file lưu trong thư mục HtmlUiAssets"/>
+                                                                <TextBlock Text="|" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" Margin="8,0,8,0"/>
+                                                                <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+
+                                                                <!-- Downloading indicator -->
+                                                                <TextBlock Text=" ⏳ Đang tải..." FontSize="10" Foreground="{DynamicResource WarningColor}" VerticalAlignment="Center"
+                                                                           Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+
+                                                        <!-- Buttons cột phải -->
+                                                        <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,0,0,0">
+                                                            <Button Content="⬇" Width="28" Height="28" Margin="0,0,0,4"
+                                                                    Style="{StaticResource OfflineAssetIconButton}"
+                                                                    Background="#0EA5E9"
+                                                                    Click="DownloadAsset_Click" Tag="{Binding}"
+                                                                    FontSize="14" ToolTip="Tải về từ URL (ghi đè nếu đã có)"/>
+                                                            <Button Content="🗑" Width="28" Height="28"
+                                                                    Style="{StaticResource OfflineAssetIconButton}"
+                                                                    Background="#EF4444"
+                                                                    Command="{Binding DataContext.RemoveOfflineAssetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    FontSize="12" ToolTip="Xóa khỏi danh sách (không xóa file trên disk)"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+
+                            <!-- Status message download -->
+                            <TextBlock x:Name="AssetStatusText" Text="" Foreground="{DynamicResource WarningColor}" FontSize="12" Margin="0,0,0,8"
+                                       HorizontalAlignment="Left" TextWrapping="Wrap"/>
+
+                            <!-- Footer: thư mục + open folder -->
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="📁 Thư mục lưu assets:" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,2"/>
+                                        <TextBlock x:Name="AssetsFolderText" Foreground="{DynamicResource TextSecondary}" FontSize="10"
+                                                   FontFamily="Consolas" ToolTip="Click để copy đường dẫn" Cursor="Hand"
+                                                   MouseDown="AssetsFolderText_MouseDown"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="📂 Mở thư mục" Height="32" Width="110"
+                                     Style="{StaticResource OfflineAssetActionButton}"
+                                            Background="{DynamicResource ControlBorderBrush}"
+                                            Click="OpenAssetsFolder_Click"
+                                            ToolTip="Mở thư mục chứa file assets trong Explorer"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Tab 4: Hướng dẫn AI -->
+                <TabItem Header="🤖 Hướng dẫn AI" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Prompt chuẩn để gửi AI tạo HTML UI node"
+                                               Foreground="{DynamicResource PrimaryBrush}"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,6"/>
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12">
+                                        <Run Text="Prompt này mô tả chi tiết cách dùng biến đầu vào, realtime update, active submit/start workflow và format output chuẩn 4 phần: html/css/js/param."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button Content="📋 Copy prompt cho AI"
+                                        Width="170" Height="34"
+                                        Click="CopyAiGuidePrompt_Click"
+                                        Style="{DynamicResource PrimaryButton}"
+                                        Cursor="Hand"/>
+                                <TextBlock x:Name="AiGuideStatusText"
+                                           Margin="10,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource SuccessColor}"
+                                           FontSize="12"
+                                           Text=""/>
+                            </StackPanel>
+
+                            <TextBox x:Name="AiGuidePromptTextBox"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Disabled"
+                                     MinHeight="420"
+                                     FontFamily="Consolas"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource TextBrush}"
+                                     Background="{DynamicResource WindowBackground}"
+                                     BorderBrush="{DynamicResource ControlBorderBrush}"
+                                     BorderThickness="1"
+                                     Padding="10"
+                                     Text=""/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Tab 5: API JS ↔ C# -->
+                <TabItem Header="📚 API JS↔C#" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="Bảng công dụng các hàm giao tiếp JS ↔ Host (C#)"
+                                       Foreground="{DynamicResource PrimaryBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Dùng như checklist nhanh khi viết/sửa HTML UI."
+                                       Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="#1D4ED8" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Luồng chuẩn để phát video local (AI mới đọc là làm được):"
+                                               Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
+                                    <TextBlock Foreground="{DynamicResource PrimaryBrush}" FontSize="10" TextWrapping="Wrap">
+                                        <Run Text="B1: Nhận datas từ window.__ac.onUpdate('datas', ...)"/>
+                                        <LineBreak/>
+                                        <Run Text="B2: Lấy localPath = datas[guildId]"/>
+                                        <LineBreak/>
+                                        <Run Text="B3: Gọi acResolveLocalPath(localPath, reqId)"/>
+                                        <LineBreak/>
+                                        <Run Text="B4: Chờ event __ac_local_path_resolved với đúng requestId"/>
+                                        <LineBreak/>
+                                        <Run Text="B5: Nếu d.ok thì gán video.src = d.localUrl rồi video.load()"/>
+                                        <LineBreak/>
+                                        <Run Text="B6: Không dùng file:/// trong HTML UI (sẽ bị chặn)."/>
+                                        <LineBreak/>
+                                        <Run Text="B7: Upload ảnh lấy full path: gọi acPickImageFiles(reqId) thay cho input file thường."/>
+                                        <LineBreak/>
+                                        <Run Text="B8: Chờ event __ac_image_files_picked, mỗi item có { name, path, size, dataUrl }."/>
+                                        <LineBreak/>
+                                        <Run Text="B9: map vào outputImageUpload: { filename:name, linkPathImage:path, base64:dataUrl }."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button Content="📋 Copy all API docs"
+                                        Height="30" Padding="10,0"
+                                        Style="{DynamicResource PrimaryButton}"
+                                        Cursor="Hand"
+                                        Click="CopyApiDocAll_Click"/>
+                            </StackPanel>
+
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="260"/>
+                                            <ColumnDefinition Width="250"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Hàm/Event" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="1" Text="Dùng để làm gì" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="Cách dùng nhanh" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="3" Text="Action" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                                    </Grid>
+
+                                    <Separator Margin="0,0,0,8" Background="{DynamicResource ControlBorderBrush}"/>
+
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.__ac.onUpdate('key', cb)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận realtime value từ InputMappings"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="window.__ac.onUpdate('datas', function(v){ ... });"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.__ac.onUpdate('datas', function(v){ ... });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.__ac.onUpdate(function(live){...})"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận toàn bộ live object"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="var v = live['price'];"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.__ac.onUpdate(function(live){ var v = live['price']; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.__ac.live"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đọc state hiện tại (polling/fallback)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="setInterval(()=>{ out.textContent = window.__ac.live.price; },500);"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="setInterval(function(){ out.textContent = window.__ac.live['price']; }, 500);"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acResolveLocalPath(localPath, requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đổi local path -&gt; localUrl https://localfiles-*.local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="acResolveLocalPath('C:\path\video.mp4', 'req1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="acResolveLocalPath('C:\\path\\video.mp4', 'req1');"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="__ac_local_path_resolved (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận kết quả resolve path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('__ac_local_path_resolved', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acDownloadByCurl(rawCurl, fileName, key)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Host tải file từ curl và lưu local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="acDownloadByCurl(curl, 'a.mp4', 'k1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="acDownloadByCurl(rawCurl, 'a.mp4', 'k1');"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="__ac_curl_download_done (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận trạng thái download + localUrl/path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('__ac_curl_download_done', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acPickImageFiles(requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Mở native picker để lấy ảnh + full path tuyệt đối"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="acPickImageFiles('img_req_1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="acPickImageFiles('img_req_1');"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="__ac_image_files_picked (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận danh sách ảnh host đã chọn (có path + dataUrl)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) pending = d.files;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('__ac_image_files_picked', function(ev){ var d = ev.detail || {}; if (d.ok) { console.log(d.files); } });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acSubmit()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Yêu cầu host đọc DOM theo PARAM"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> acSubmit();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ acSubmit(); };"/></Grid>
+                                    <Grid Margin="0,0,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acStartWorkflow()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Kích hoạt chạy workflow"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> acStartWorkflow();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ acStartWorkflow(); };"/></Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,10,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Template copy nhanh (dán vào tab JS)"
+                                               Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Mỗi template là khung cơ bản để AI mới hoặc người mới bắt đầu sửa nhanh."
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="220"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold" TextWrapping="Wrap" Text="Template 1 - Realtime card"/>
+                                        <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Nhận realtime từ datas/price rồi render label/value."/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                            <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
+                                                    Tag="(function(){ var label=document.getElementById('label'); var value=document.getElementById('value'); if(window.__ac&amp;&amp;typeof window.__ac.onUpdate==='function'){ window.__ac.onUpdate('price','datas', function(price,datas){ if(label) label.textContent='Realtime'; if(value) value.textContent=(price!=null&amp;&amp;price!=='')?String(price):JSON.stringify(datas||{}); }); } })();"/>
+                                            <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_realtime"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="220"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold" TextWrapping="Wrap" Text="Template 2 - Local video"/>
+                                        <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Resolve local path sang localUrl rồi gán cho video (an toàn WebView2)."/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                            <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
+                                                    Tag="(function(){ var video=document.getElementById('vid'); var req='req_'+Date.now(); window.addEventListener('__ac_local_path_resolved', function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.requestId!==req) return; if(d.ok&amp;&amp;d.localUrl&amp;&amp;video){ video.src=d.localUrl; video.load(); } }); if(typeof acResolveLocalPath==='function'){ acResolveLocalPath('C:\\\\path\\\\video.mp4', req); } })();"/>
+                                            <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_local_video"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="220"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold" TextWrapping="Wrap" Text="Template 3 - Submit form"/>
+                                        <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Ghi dữ liệu vào DOM rồi gọi acSubmit + acStartWorkflow."/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                            <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
+                                                    Tag="(function(){ var btn=document.getElementById('btnRun'); var inp=document.getElementById('noteInput'); var out=document.getElementById('resultBox'); if(!btn) return; btn.addEventListener('click', function(){ if(out&amp;&amp;inp) out.textContent=inp.value||''; if(typeof acSubmit==='function') acSubmit(); if(typeof acStartWorkflow==='function') acStartWorkflow(); }); })();"/>
+                                            <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_submit_form"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Tab 3: Tái sử dụng flow -->
+                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Port IN -->
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBlock Text="Port IN (cổng vào)"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12"
+                                               Opacity="0.8"
+                                               Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+
+                                <!-- Port OUT -->
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="Port OUT (cổng ra)"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12"
+                                               Opacity="0.8"
+                                               Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Cấu hình tái sử dụng flow -->
+                            <ItemsControl ItemsSource="{Binding ReuseRoutes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,12"
+                                                Background="{DynamicResource WindowBackground}"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="2*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Node IN"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12"
+                                                               Opacity="0.7"
+                                                               Margin="0,0,0,4"/>
+                                                    <TextBlock Text="{Binding IncomingNodeTitle}"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Node OUT"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12"
+                                                               Opacity="0.7"
+                                                               Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32"
+                                                              Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding OutgoingOptions}"
+                                                              SelectedValuePath="NodeId"
+                                                              DisplayMemberPath="Title"
+                                                              SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Kiểu line OUT"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12"
+                                                               Opacity="0.7"
+                                                               Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32"
+                                                              Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              SelectedValuePath="Key"
+                                                              DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                
+
+            </TabControl>
+        </Grid>
+    </Border>
+</local:BaseNodeDialog>
+

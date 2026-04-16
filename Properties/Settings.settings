@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="FlowMy.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="AppTheme" Type="System.String" Scope="User">
+      <Value Profile="(Default)">LightTheme</Value>
+    </Setting>
+    <Setting Name="ThemePreference" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Light</Value>
+    </Setting>
+    <Setting Name="LastImportFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="EnergyDotGap" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">8</Value>
+    </Setting>
+    <Setting Name="EnergyDotThicknessExtra" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0.8</Value>
+    </Setting>
+    <Setting Name="EnergyDotText" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="EnergyDotTextRotate" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="EnergyRunSpeed" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="EnergyTextSpinSeconds" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0.7</Value>
+    </Setting>
+    <Setting Name="GpuEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="GpuRenderQuality" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="WorkflowEditorNodePaletteOpen" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

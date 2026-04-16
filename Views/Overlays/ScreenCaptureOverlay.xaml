@@ -1,0 +1,60 @@
+﻿<Window x:Class="FlowMy.Views.Overlays.ScreenCaptureOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Screen Capture"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        WindowState="Maximized"
+        Cursor="Cross"
+        MouseDown="Window_MouseDown"
+        MouseMove="Window_MouseMove"
+        MouseUp="Window_MouseUp"
+        KeyDown="Window_KeyDown">
+
+    <Grid>
+        <!-- Lớp phủ tối -->
+        <Rectangle x:Name="DarkOverlay" 
+                   Fill="#80000000"
+                   IsHitTestVisible="False"/>
+
+        <!-- Canvas để vẽ khung chọn -->
+        <Canvas x:Name="SelectionCanvas">
+            <!-- Khung chọn -->
+            <Rectangle x:Name="SelectionRectangle"
+                       Stroke="#0078D4"
+                       StrokeThickness="2"
+                       Fill="Transparent"
+                       Visibility="Collapsed"/>
+
+            <!-- Hiển thị kích thước -->
+            <Border x:Name="InfoPanel"
+                    Background="#E0FFFFFF"
+                    CornerRadius="4"
+                    Padding="8,4"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="InfoText"
+                           FontSize="12"
+                           FontWeight="Medium"
+                           Foreground="#333333"/>
+            </Border>
+        </Canvas>
+
+        <!-- Hướng dẫn -->
+        <Border VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                Margin="0,20,0,0"
+                Background="#E0FFFFFF"
+                CornerRadius="6"
+                Padding="16,8">
+            <TextBlock FontSize="14" 
+                       Foreground="#333333"
+                       FontWeight="Medium">
+                <Run Text="Kéo chuột để chọn vùng cần chụp"/>
+                <Run Text=" • " FontWeight="Bold"/>
+                <Run Text="ESC để hủy"/>
+            </TextBlock>
+        </Border>
+    </Grid>
+</Window>

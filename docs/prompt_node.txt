@@ -1,0 +1,1 @@
+Làm theo @docs/AI_NODE_FLOW_GUIDE.md (nhất là §4.1 nếu có Executor); checklist chi tiết thì @docs/NODE_DIALOG_GUIDE.md 

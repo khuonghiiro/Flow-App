@@ -1,0 +1,362 @@
+﻿<Window x:Class="FlowMy.Views.Overlays.CustomPresetManagerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="📚 Quản lý Preset thư viện"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Width="680" MinWidth="520"
+        Height="580" MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+
+    <Border CornerRadius="12" Style="{DynamicResource DialogOuterBorder}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- Header -->
+                <RowDefinition Height="*"/>     <!-- List -->
+                <RowDefinition Height="Auto"/>  <!-- Add form -->
+                <RowDefinition Height="Auto"/>  <!-- Footer buttons -->
+            </Grid.RowDefinitions>
+
+            <!-- ═══ HEADER ═══ -->
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="📚" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock Text="Quản lý Preset thư viện" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="Bold"/>
+                            <TextBlock Text="Thêm / sửa / xóa preset tùy chỉnh — sẽ lưu và dùng cho mọi node HTML"
+                                       Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="✕" Width="28" Height="28"
+                            Foreground="{DynamicResource TextSecondary}" Background="Transparent" BorderThickness="0"
+                            FontSize="14" Cursor="Hand"
+                            Click="Close_Click"/>
+                </Grid>
+            </Border>
+
+            <!-- ═══ DANH SÁCH PRESET ═══ -->
+            <Border Grid.Row="1" Margin="16,12,16,0"
+                    Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Column headers -->
+                    <Border Grid.Row="0" Background="{DynamicResource WindowBackground}" CornerRadius="8,8,0,0" Padding="10,7">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Type" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="Tên / Mô tả / URL" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="2" Text="File" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="3" Text="Hành động" Foreground="{DynamicResource TextMuted}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- List -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="PresetListControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0" Padding="10,8"
+                                            BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="0,0,0,1">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#0A1828"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="50"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="160"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Type badge -->
+                                            <Border Grid.Column="0" CornerRadius="4" Padding="6,3"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#FAB005"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Type}" Value="css">
+                                                                <Setter Property="Background" Value="#228BE6"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextBrush}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="JS"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Type}" Value="css">
+                                                                    <Setter Property="Text" Value="CSS"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
+
+                                            <!-- Title + Desc + URL -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0">
+                                                <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}"
+                                                           FontSize="12" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextMuted}"
+                                                           FontSize="10" TextTrimming="CharacterEllipsis"
+                                                           Visibility="{Binding Description, Converter={StaticResource NullOrEmptyToCollapsed}}"/>
+                                                <TextBlock Text="{Binding Url}" Foreground="{DynamicResource TextSecondary}"
+                                                           FontSize="10" TextTrimming="CharacterEllipsis"
+                                                           Visibility="{Binding Url, Converter={StaticResource NullOrEmptyToCollapsed}}"/>
+                                            </StackPanel>
+
+                                            <!-- FileName -->
+                                            <TextBlock Grid.Column="2" Text="{Binding FileName}"
+                                                       Foreground="{DynamicResource TextSecondary}" FontSize="10"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" Margin="4,0"/>
+
+                                            <!-- Actions -->
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Button Content="✏" Width="28" Height="28" Margin="0,0,4,0"
+                                                        Tag="{Binding}"
+                                                        Click="EditPreset_Click"
+                                                        ToolTip="Sửa preset này"
+                                                        Background="#1E40AF" Foreground="{DynamicResource TextBrush}"
+                                                        BorderThickness="0" Cursor="Hand"
+                                                        FontSize="13">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="bd" CornerRadius="6"
+                                                                    Background="{TemplateBinding Background}"
+                                                                    Padding="4">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                  VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#2563EB"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                                <Button Content="🗑" Width="28" Height="28"
+                                                        Tag="{Binding}"
+                                                        Click="DeletePreset_Click"
+                                                        ToolTip="Xóa preset này"
+                                                        Background="#7F1D1D" Foreground="{DynamicResource TextBrush}"
+                                                        BorderThickness="0" Cursor="Hand"
+                                                        FontSize="13">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="bd" CornerRadius="6"
+                                                                    Background="{TemplateBinding Background}"
+                                                                    Padding="4">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                  VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="bd" Property="Background" Value="#DC2626"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+
+                            <!-- Empty state -->
+                            <ItemsControl.Template>
+                                <ControlTemplate TargetType="ItemsControl">
+                                    <Grid>
+                                        <ItemsPresenter/>
+                                        <TextBlock x:Name="EmptyText"
+                                                   Text="Chưa có preset tùy chỉnh nào. Dùng form bên dưới để thêm!"
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Margin="0,30"
+                                                   Visibility="Collapsed"/>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="HasItems" Value="False">
+                                            <Setter TargetName="EmptyText" Property="Visibility" Value="Visible"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ItemsControl.Template>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- ═══ FORM THÊM / SỬA ═══ -->
+            <Border Grid.Row="2" Margin="16,10,16,0"
+                    Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock x:Name="FormTitle" Text="➕ Thêm preset mới"
+                                   Foreground="{DynamicResource PrimaryBrush}" FontSize="12" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <Button x:Name="CancelEditButton" Content="✕ Hủy sửa" Margin="12,0,0,0"
+                                Height="22" Padding="8,0"
+                                Background="{DynamicResource ControlBorderBrush}" Foreground="{DynamicResource TextSecondary}" BorderThickness="0"
+                                FontSize="11" Cursor="Hand"
+                                Click="CancelEdit_Click" Visibility="Collapsed">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="4" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="70"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Title -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Tên hiển thị *" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                            <TextBox x:Name="FormTitleBox" Height="28" FontSize="12"
+                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
+                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                     Padding="6,0" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- URL -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="URL (hoặc để trống)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                            <TextBox x:Name="FormUrlBox" Height="28" FontSize="11"
+                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
+                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                     Padding="6,0" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Type -->
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Loại" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                            <ComboBox x:Name="FormTypeCombo" Height="28"
+                                      Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
+                                      BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                      SelectedIndex="0">
+                                <ComboBoxItem Content="JS"/>
+                                <ComboBoxItem Content="CSS"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Row 2: Desc + FileName + Button -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="70"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Mô tả" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                            <TextBox x:Name="FormDescBox" Height="28" FontSize="11"
+                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
+                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                     Padding="6,0" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Tên file lưu local" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
+                            <TextBox x:Name="FormFileNameBox" Height="28" FontSize="11"
+                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
+                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                     Padding="6,0" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="4" x:Name="SavePresetButton"
+                                Content="💾 Lưu" Height="28"
+                                Background="#0EA5E9" Foreground="{DynamicResource TextBrush}" BorderThickness="0"
+                                FontSize="12" FontWeight="SemiBold" Cursor="Hand"
+                                Click="SavePreset_Click">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bd" CornerRadius="6"
+                                            Background="{TemplateBinding Background}" Padding="8,0">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bd" Property="Background" Value="#38BDF8"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+
+                    <!-- Status message -->
+                    <TextBlock x:Name="FormStatus" Margin="0,6,0,0"
+                               FontSize="11" Foreground="{DynamicResource SuccessColor}" Visibility="Collapsed"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══ FOOTER ═══ -->
+            <Border Grid.Row="3" Padding="16,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock x:Name="CountText" Foreground="{DynamicResource TextSecondary}" FontSize="11"
+                               VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <Button Content="✔ Đóng" Height="32" Padding="18,0"
+                            Background="#1E293B" Foreground="{DynamicResource TextBrush}" BorderThickness="0"
+                            FontSize="12" Cursor="Hand" Click="Close_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd" CornerRadius="6" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#334155"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

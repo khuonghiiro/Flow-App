@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Grok Video Studio (FlowMy)",
+  "version": "0.1.0",
+  "description": "Popup UI + content-script to generate Grok videos from grok.com/imagine using browser cookies.",
+  "action": {
+    "default_title": "Grok Video Studio"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://grok.com/*",
+    "https://assets.grok.com/*"
+  ],
+  "background": {
+    "service_worker": "sw.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://grok.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["ui.html", "ui.css", "ui.js"],
+      "matches": ["https://grok.com/*"]
+    }
+  ]
+}
+

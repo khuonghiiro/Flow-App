@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grok Studio — Video Generator</title>
+</head>
+
+<body>
+    <div class="app dark" id="app">
+
+        <!-- SIDEBAR FLOAT TOGGLE (visible when collapsed on desktop) -->
+        <button id="sidebarFloatBtn" class="sidebar-float-btn" title="Mở sidebar" style="display:none">
+            <i class="bi bi-layout-sidebar"></i>
+        </button>
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar" style="display:flex;flex-direction:column;overflow:hidden;">
+            <div class="sidebar-header">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="logo-icon">
+                        <i class="bi bi-play-fill text-white"></i>
+                    </div>
+                    <div class="logo-name">GROK STUDIO<small>VIDEO GENERATOR</small></div>
+                </div>
+                <div class="header-actions">
+                    <button id="sidebarToggleBtn" class="icon-btn" title="Ẩn/hiện sidebar">
+                        <i class="bi bi-layout-sidebar-reverse" id="sidebarToggleIcon"></i>
+                    </button>
+                    <button id="themeBtn" class="icon-btn" title="Đổi chế độ sáng/tối">
+                        <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SIDEBAR TABS -->
+            <div class="sidebar-tabs" id="sidebarTabs">
+                <button class="sidebar-tab active" id="tabVideo">
+                    <i class="bi bi-camera-video-fill"></i>&nbsp;VIDEO
+                </button>
+                <button class="sidebar-tab" id="tabImage">
+                    <i class="bi bi-images"></i>&nbsp;UPLOAD ẢNH
+                </button>
+            </div>
+
+            <div class="sidebar-body" style="flex:1 1 0;overflow-y:auto;overflow-x:hidden;min-height:0;">
+                <div id="tabPanelVideo">
+                <!-- PROMPT -->
+                <div class="field-group">
+                    <div class="field-label">PROMPT <span class="badge-xs">NỘI DUNG</span></div>
+                    <textarea id="promptInput" class="prompt-box"
+                        placeholder="Mô tả video của bạn...&#10;(Mỗi dòng = 1 prompt khi bật nhiều prompt)"
+                        rows="5"></textarea>
+                    <div class="field-help" style="margin-top:6px;font-size:11px;color:var(--clr3)">
+                        Gõ <kbd>@</kbd> để hiện danh sách ảnh đã upload và chọn nhanh <code>@fileMetadataId</code>.
+                    </div>
+                    <div id="promptMentionPreview" class="prompt-mention-preview"></div>
+                </div>
+
+                <!-- MULTI PROMPT -->
+                <div class="multi-section">
+                    <label class="multi-row" for="multiPrompt">
+                        <input type="checkbox" id="multiPrompt" class="form-check-input" style="flex-shrink:0">
+                        <span class="multi-label">
+                            <i class="bi bi-list-ul me-1"></i>Gửi nhiều prompt (mỗi dòng = 1 prompt)
+                        </span>
+                    </label>
+
+                    <!-- BATCH SIZE (chỉ hiện khi multiPrompt checked) -->
+                    <div class="batch-row" id="batchRow">
+                        <div class="field-label" style="font-size:8.5px">
+                            <i class="bi bi-stack me-1" style="color:var(--accent2)"></i>
+                            GỬI MỖI ĐỢT
+                        </div>
+                        <div class="batch-controls">
+                            <div class="select-wrapper" style="flex:1">
+                                <select id="batchSize" class="sel-custom">
+                                    <option value="1">1 prompt / đợt</option>
+                                    <option value="2" selected>2 prompt / đợt</option>
+                                    <option value="3">3 prompt / đợt</option>
+                                    <option value="4">4 prompt / đợt</option>
+                                    <option value="5">5 prompt / đợt</option>
+                                </select>
+                                <i class="bi bi-chevron-down select-arrow"></i>
+                            </div>
+                            <div class="batch-info" id="batchInfo">
+                                <i class="bi bi-info-circle"></i>
+                                <span id="batchInfoText">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OPTIONS -->
+                <div class="options-grid">
+                    <div class="option-item">
+                        <div class="field-label">TỶ LỆ KHUNG</div>
+                        <div class="select-wrapper">
+                            <select id="aspectRatio" class="sel-custom">
+                                <option value="9:16">9:16 — Dọc</option>
+                                <option value="16:9">16:9 — Ngang</option>
+                                <option value="2:3">2:3</option>
+                                <option value="3:2">3:2</option>
+                                <option value="1:1">1:1 — Vuông</option>
+                            </select>
+                            <i class="bi bi-chevron-down select-arrow"></i>
+                        </div>
+                    </div>
+                    <div class="option-item">
+                        <div class="field-label">ĐỘ DÀI</div>
+                        <div class="select-wrapper">
+                            <select id="videoLength" class="sel-custom">
+                                <option value="6">6 giây</option>
+                                <option value="10" selected>10 giây</option>
+                            </select>
+                            <i class="bi bi-chevron-down select-arrow"></i>
+                        </div>
+                    </div>
+                    <div class="option-item">
+                        <div class="field-label">CHẤT LƯỢNG</div>
+                        <div class="select-wrapper">
+                            <select id="resolution" class="sel-custom">
+                                <option value="480">480p</option>
+                                <option value="720" selected>720p</option>
+                            </select>
+                            <i class="bi bi-chevron-down select-arrow"></i>
+                        </div>
+                    </div>
+                    <div class="option-item">
+                        <div class="field-label">LẦN / PROMPT</div>
+                        <div class="select-wrapper">
+                            <select id="sendCount" class="sel-custom">
+                                <option value="1">1 lần</option>
+                                <option value="2">2 lần</option>
+                                <option value="3">3 lần</option>
+                                <option value="4">4 lần</option>
+                            </select>
+                            <i class="bi bi-chevron-down select-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GENERATE -->
+                <button id="generateBtn" class="btn-generate" onclick="generateVideo()">
+                    <span class="btn-glow"></span>
+                    <i class="bi bi-lightning-fill btn-icon" id="btnIcon"></i>
+                    <span id="btnLabel">TẠO VIDEO</span>
+                </button>
+
+                <!-- BATCH QUEUE STATUS -->
+                <div id="batchQueueStatus" class="batch-queue-status" style="display:none">
+                    <div class="bq-header">
+                        <i class="bi bi-layers-fill" style="color:var(--accent2)"></i>
+                        <span class="bq-title">HÀNG ĐỢI BATCH</span>
+                    </div>
+                    <div class="bq-body" id="bqBody"></div>
+                </div>
+
+                <div id="errorMsg" class="error-msg animate__animated animate__shakeX" style="display:none;"></div>
+                </div><!-- /tabPanelVideo -->
+
+                <!-- IMAGE TAB PANEL (sidebar info) -->
+                <div id="tabPanelImage" style="display:none">
+                    <div class="img-tab-info">
+                        <div class="img-tab-info-icon"><i class="bi bi-images"></i></div>
+                        <div class="img-tab-info-title">QUẢN LÝ ẢNH</div>
+                        <p class="img-tab-info-desc">Chọn ảnh từ cột trái và nhấn <strong>Upload Ảnh</strong> để upload.<br>Gõ <kbd>@</kbd> trong prompt để tham chiếu ảnh đã upload.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="dot-live"></div>
+                Powered by xAI · Grok Imagine
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main" id="mainContent" style="flex:1 1 0;overflow-y:auto;overflow-x:hidden;min-height:0;display:flex;flex-direction:column;">
+            <div class="main-header">
+                <div class="title-group">
+                    <h1 class="page-title">VIDEO <em>GALLERY</em></h1>
+                    <div class="header-stats">
+                        <div class="stat-pill" id="totalPill">0 videos</div>
+                        <div class="stat-pill active" id="procPill" style="display:none!important">
+                            <div class="stat-active-dot"></div>
+                            <span id="procCount">0</span> đang xử lý
+                        </div>
+                    </div>
+                </div>
+                <div class="header-controls" id="videoHeaderControls">
+                    <button type="button" class="icon-btn icon-btn--sm" id="loadCacheVideosBtn" title="Gửi statusCreate=2 + outputGuildId, host điền loadVideoDatas (giống datas) — poll tối đa 180s">
+                        <i class="bi bi-cloud-arrow-down" id="loadCacheVideosIcon"></i>
+                    </button>
+                    <button class="icon-btn icon-btn--sm" id="groupPromptBtn" title="Group prompt giống nhau">
+                        <i class="bi bi-collection" id="groupPromptIcon"></i>
+                    </button>
+                    <div class="card-size-group" id="cardSizeGroup" title="Kích thước card">
+                        <button class="icon-btn icon-btn--sm card-size-btn" id="cardSizeSmBtn" data-size="sm" title="Size nhỏ">S</button>
+                        <button class="icon-btn icon-btn--sm card-size-btn active" id="cardSizeMdBtn" data-size="md" title="Size vừa">M</button>
+                        <button class="icon-btn icon-btn--sm card-size-btn" id="cardSizeLgBtn" data-size="lg" title="Size to">L</button>
+                        <button class="icon-btn icon-btn--sm card-size-btn" id="cardSizeXlBtn" data-size="xl" title="Size rất to">XL</button>
+                        <button class="icon-btn icon-btn--sm card-size-btn" id="cardSizeXx1Btn" data-size="xx1" title="Size cực to (2XL)">2XL</button>
+                        <button class="icon-btn icon-btn--sm card-size-btn" id="cardSizeXx2Btn" data-size="xx2" title="Size tối đa (3XL)">3XL</button>
+                    </div>
+                    <label class="fit-toggle" for="fitContainCheck" title="Fit video vừa khung">
+                        <input type="checkbox" id="fitContainCheck">
+                        <span>Fit</span>
+                    </label>
+                    <button class="icon-btn icon-btn--sm danger" id="clearAllBtn" title="Xóa tất cả gallery + gửi statusCreate=3 (outputParams.action=clearCache) để host xóa cache" style="display:none">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                    <button class="mobile-sidebar-btn icon-btn" id="mobileSidebarBtn" title="Mở sidebar">
+                        <i class="bi bi-sliders2"></i>
+                    </button>
+                </div>
+                <div class="header-controls" id="imageHeaderControls" style="display:none">
+                    <button type="button" class="icon-btn icon-btn--sm" id="loadCacheImagesBtn" title="Quét lại dataImages hiện có để cập nhật ảnh">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <div class="card-size-group" id="imgCardSizeGroup" title="Kích thước card ảnh">
+                        <button class="icon-btn icon-btn--sm img-card-size-btn" id="imgCardSizeSmBtn" data-size="sm" title="Size nhỏ">S</button>
+                        <button class="icon-btn icon-btn--sm img-card-size-btn active" id="imgCardSizeMdBtn" data-size="md" title="Size vừa">M</button>
+                        <button class="icon-btn icon-btn--sm img-card-size-btn" id="imgCardSizeLgBtn" data-size="lg" title="Size to">L</button>
+                        <button class="icon-btn icon-btn--sm img-card-size-btn" id="imgCardSizeXlBtn" data-size="xl" title="Size rất to">XL</button>
+                        <button class="icon-btn icon-btn--sm img-card-size-btn" id="imgCardSizeXx1Btn" data-size="xx1" title="Size cực to (2XL)">2XL</button>
+                        <button class="icon-btn icon-btn--sm img-card-size-btn" id="imgCardSizeXx2Btn" data-size="xx2" title="Size tối đa (3XL)">3XL</button>
+                    </div>
+                    <label class="fit-toggle" for="imgFitContainCheck" title="Fit ảnh vừa khung">
+                        <input type="checkbox" id="imgFitContainCheck">
+                        <span>Fit</span>
+                    </label>
+                    <label class="fit-toggle" for="imgFitWidthCheck" title="Card ảnh rộng hơn để xem rõ">
+                        <input type="checkbox" id="imgFitWidthCheck">
+                        <span>Fit Width</span>
+                    </label>
+                    <button class="icon-btn icon-btn--sm danger" id="clearImageUploadedBtn" title="Xóa danh sách ảnh đã hiển thị ở IMAGE MANAGER">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                    <button class="mobile-sidebar-btn icon-btn" id="mobileSidebarBtnImage" title="Mở sidebar">
+                        <i class="bi bi-sliders2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="videoGrid" class="video-grid" style="flex:1 1 0;overflow-y:auto;min-height:0;">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-particles" aria-hidden="true">
+                        <span class="particle p1"></span>
+                        <span class="particle p2"></span>
+                        <span class="particle p3"></span>
+                        <span class="particle p4"></span>
+                        <span class="particle p5"></span>
+                        <span class="particle p6"></span>
+                        <span class="particle p7"></span>
+                        <span class="particle p8"></span>
+                    </div>
+                    <div class="empty-icon-wrap">
+                        <div class="empty-icon-ring"></div>
+                        <div class="empty-icon-ring r2"></div>
+                        <div class="empty-icon">
+                            <i class="bi bi-camera-video"></i>
+                        </div>
+                    </div>
+                    <div class="empty-title">Chưa có video nào</div>
+                    <p>Nhập prompt và nhấn <strong>Tạo Video</strong><br>để bắt đầu tạo nội dung</p>
+                    <div class="empty-hint">
+                        <i class="bi bi-lightbulb-fill me-1" style="color:var(--warn-clr)"></i>
+                        Tip: Nhấn <kbd>Ctrl+Enter</kbd> để tạo nhanh
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMAGE GRID PANEL (2-column) -->
+            <div id="imageGridPanel" class="image-grid-panel" style="display:none;flex:1 1 0;overflow:hidden;min-height:0;">
+                <!-- Col 1: Upload & Preview -->
+                <div class="image-col1" id="imageCol1" style="min-height:0;overflow:hidden;">
+                    <div class="image-col1-header">
+                        <span><i class="bi bi-upload me-1"></i>CHỌN ẢNH MỚI</span>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span class="badge-xs" id="pendingCount">0 ảnh</span>
+                            <button class="icon-btn icon-btn--xs img-clear-btn" id="imgClearBtn" title="Xoá tất cả ảnh đã chọn" style="display:none">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="file" id="imgFileInput" multiple accept="image/*" style="display:none">
+                    <div class="img-upload-zone" id="imgDropZone">
+                        <i class="bi bi-cloud-upload"></i>
+                        <div class="img-upload-zone-text">Kéo thả ảnh vào đây hoặc nhấn để chọn</div>
+                        <div class="img-upload-zone-sub">Hỗ trợ JPG, PNG, GIF, WebP, SVG...</div>
+                    </div>
+                    <div class="img-preview-scroll">
+                        <div class="img-preview-grid" id="imgPreviewGrid"></div>
+                    </div>
+                    <div class="img-upload-btn-wrap">
+                        <button class="btn-img-upload" id="imgUploadBtn">
+                            <i class="bi bi-cloud-upload-fill"></i> Upload Ảnh
+                        </button>
+                    </div>
+                </div>
+                <!-- Col 2: Uploaded Images (from dataImages poll) -->
+                <div class="image-col2" id="imageCol2" style="min-height:0;overflow:hidden;">
+                    <div class="image-col2-header">
+                        <span><i class="bi bi-check-circle me-1"></i>ẢNH ĐÃ UPLOAD</span>
+                        <span class="badge-xs" id="imgUploadedCount">0 ảnh</span>
+                    </div>
+                    <div class="img-uploaded-grid" id="imgUploadedGrid"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- VIDEO MODAL -->
+        <div id="videoModal" class="video-modal" onclick="closeModal(event)">
+            <div class="video-modal-inner animate__animated animate__zoomIn">
+                <button class="modal-close-btn" onclick="closeModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <video id="modalVideo" controls autoplay loop></video>
+                <div class="modal-meta">
+                    <p id="modalPrompt" class="modal-prompt"></p>
+                    <a id="modalDownload" class="modal-dl" download>
+                        <i class="bi bi-download me-1"></i>Tải xuống
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="videoPreviewModal" class="video-preview-modal" onclick="closePreviewModal(event)">
+            <div class="video-preview-inner animate__animated animate__zoomIn">
+                <button class="modal-close-btn" onclick="closePreviewModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <iframe id="previewFrame" title="Video preview" allow="autoplay; fullscreen"></iframe>
+            </div>
+        </div>
+
+        <!-- IMAGE LIGHTBOX -->
+        <div id="imageLightbox" class="image-lightbox" onclick="closeLightbox(event)">
+            <div class="lightbox-inner animate__animated animate__zoomIn">
+                <button class="modal-close-btn" onclick="closeLightbox()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <img id="lightboxImg" src="" alt="Preview">
+            </div>
+        </div>
+
+        <!-- POLL TOAST -->
+        <div class="poll-toast" id="pollToast">
+            <div class="toast-spinner" role="status"></div>
+            <span id="pollText">Đang chờ kết quả...</span>
+        </div>
+
+        <!-- NOTIFICATION TOASTS -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Hidden PARAM outputs -->
+        <input type="hidden" id="outputGuildId">
+        <input type="hidden" id="outputParams">
+        <input type="hidden" id="outputImageGuildId">
+        <input type="hidden" id="outputImageUpload">
+        <input type="hidden" id="statusCreate" value="0">
+    </div>
+
+</body>
+
+</html>

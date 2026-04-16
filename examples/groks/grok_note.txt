@@ -1,0 +1,58 @@
+File JS đã sạch và đúng cấu trúc (3238 dòng, 1 `initImageModule`, 1 `initMainTabs`). Tất cả thay đổi đã hoàn tất.
+
+---
+
+## Tổng kết những gì vừa cải thiện
+
+### 1. 🖼️ Col 1 — Scroll tự do + Upload button cố định
+- Preview grid: `flex: 1; overflow-y: auto` → cuộn tự do theo nội dung
+- Upload button: `position: absolute; bottom: 0` → luôn cố định ở dưới cùng col 1
+- Thêm `padding-bottom: 90px` trong grid để nội dung không bị che bởi button
+
+### 2. 🗑️ Nút Clear All
+- Button `#imgClearBtn` ẩn nếu không có ảnh, hiện khi có ảnh đã chọn
+- Hover: icon đỏ với scale animation
+- Click: xóa toàn bộ `pendingImages` + toast thông báo
+
+### 3. 🔑 GUID Tracking (giống video)
+```json
+// Payload gửi lên backend (outputImageUpload):
+{
+  "uploadGuid": "xxx",          // ← batch ID, dùng để nhóm theo luồng upload
+  "images": [
+    { "imageGuid": "aaa", "base64": "data:image/...", "filename": "photo.jpg" },
+    { "imageGuid": "bbb", "base64": "data:image/...", "filename": "logo.png"  }
+  ]
+}
+```
+
+### 4. 📊 Status Cards (like video cards)
+
+| State | Visual | Badge |
+|-------|--------|-------|
+| `processing` | Shimmer sweep + spinner ring | UPLOADING (pulse animation) |
+| `done` | Image thumbnail + zoom overlay | DONE (green) |
+| `failed` | Red overlay + error icon | FAILED (red) + error text |
+
+### 5. 📡 `dataImages` — Cấu trúc backend trả về
+```json
+{
+  "<imageGuid>": {
+    "imageGuid":      "aaa",
+    "uploadGuid":     "xxx",          // nhận dạng batch
+    "fileName":       "photo.jpg",
+    "status":         "done",         // "processing" | "done" | "failed"
+    "isSuccess":      true,
+    "linkImage":      "https://...",  // URL ảnh sau khi upload xong
+    "fileMetadataId": "uuid",
+    "error":          ""
+  }
+}
+```
+
+### 6. ⚡ Smart Grid Update
+- Cards được update **in-place** bằng `data-image-guid` attribute
+- Chỉ rebuild card nếu **status thay đổi** (processing → done/failed)
+- Toast tự động khi ảnh done hoặc failed
+
+### 7. `@mention` chỉ gợi ý ảnh `status === 'done'`

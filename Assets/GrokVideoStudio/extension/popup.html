@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grok Video Studio</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div class="header">
+        <div class="title">GROK <span class="muted">VIDEO STUDIO</span></div>
+        <div class="sub">Extension · chạy trong tab `grok.com`</div>
+      </div>
+
+      <div class="panel">
+        <div class="tabs">
+          <button class="tab active" data-tab="gen">Generate</button>
+          <button class="tab" data-tab="net">Network</button>
+          <button class="tab" data-tab="js">JS</button>
+        </div>
+
+        <div class="tab-body" data-tab-body="gen">
+        <label class="label">PROMPT</label>
+        <textarea id="promptInput" class="ta" rows="3"
+          placeholder="Mô tả video của bạn..."></textarea>
+
+        <div class="row">
+          <div class="col">
+            <label class="label small">TỶ LỆ</label>
+            <select id="aspectRatio" class="sel">
+              <option value="9:16" selected>9:16</option>
+              <option value="16:9">16:9</option>
+              <option value="1:1">1:1</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="label small">ĐỘ DÀI</label>
+            <select id="videoLength" class="sel">
+              <option value="5">5s</option>
+              <option value="10" selected>10s</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="label small">CHẤT LƯỢNG</label>
+            <select id="resolution" class="sel">
+              <option value="720p" selected>720p</option>
+              <option value="1080p">1080p</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="generateBtn" class="btn">TẠO VIDEO</button>
+        <button id="openUiBtn" class="btn secondary">MỞ TAB UI</button>
+        <div id="status" class="status"></div>
+        <pre id="result" class="result"></pre>
+        </div>
+
+        <div class="tab-body hidden" data-tab-body="net">
+          <div class="row">
+            <div class="col">
+              <label class="label small">Block rules (JSON)</label>
+              <textarea id="blockRules" class="ta" rows="6"
+                placeholder='[{"url":"https://grok.com/rest/*","method":"POST"}]'></textarea>
+            </div>
+          </div>
+
+          <button id="applyNetBtn" class="btn">ÁP DỤNG RULE + HOOK</button>
+          <button id="refreshNetBtn" class="btn secondary">LẤY SNAPSHOT OUTPUT</button>
+          <div class="status" id="netStatus"></div>
+          <pre id="netOut" class="result"></pre>
+        </div>
+
+        <div class="tab-body hidden" data-tab-body="js">
+          <label class="label">Inject JS (chạy trong tab, dùng biến params)</label>
+          <textarea id="injectJs" class="ta" rows="8"
+            placeholder="return document.title; // hoặc dùng fetch/XHR hooks đã cài"></textarea>
+          <div class="row">
+            <div class="col">
+              <label class="label small">Interval ms (0 = chạy 1 lần)</label>
+              <input id="jsInterval" class="inp" type="number" value="0" min="0" step="100" />
+            </div>
+            <div class="col">
+              <label class="label small">Job id</label>
+              <input id="jsJobId" class="inp" type="text" value="job1" />
+            </div>
+          </div>
+          <button id="runJsBtn" class="btn">CHẠY JS</button>
+          <button id="stopJsBtn" class="btn secondary">DỪNG JOB</button>
+          <div class="status" id="jsStatus"></div>
+          <pre id="jsOut" class="result"></pre>
+        </div>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
+

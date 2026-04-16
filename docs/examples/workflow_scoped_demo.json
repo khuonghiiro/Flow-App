@@ -1,0 +1,111 @@
+{
+  "Name": "ScopedDemo_InputAssignStorageOutput",
+  "ZoomLevel": 1,
+  "PanX": 0,
+  "PanY": 0,
+  "ConnectionLineStyle": "Bezier",
+  "Nodes": [
+    {
+      "Id": "n_start",
+      "Title": "Start",
+      "X": 80,
+      "Y": 200,
+      "Type": "Start",
+      "ColorKey": "SkyAzure",
+      "Properties": {},
+      "Ports": [
+        { "Id": "p_start_in", "IsInput": true, "Position": "Left", "Index": 0 },
+        { "Id": "p_start_out", "IsInput": false, "Position": "Right", "Index": 0 }
+      ]
+    },
+    {
+      "Id": "n_in",
+      "Title": "Input (message)",
+      "X": 220,
+      "Y": 200,
+      "Type": "Input",
+      "ColorKey": "Ocean",
+      "Properties": {
+        "InputKey": "message",
+        "InputValue": "Hello from scoped run",
+        "InputDataType": "String",
+        "TitleDisplayMode": "Always",
+        "TitleColorMode": "NodeColor"
+      },
+      "Ports": [
+        { "Id": "p_in_out", "IsInput": false, "Position": "Right", "Index": 0 }
+      ]
+    },
+    {
+      "Id": "n_assign",
+      "Title": "Gán → Storage",
+      "X": 420,
+      "Y": 200,
+      "Type": "AssignData",
+      "ColorKey": "Indigo",
+      "Properties": {
+        "Assignments": "[{\"SourceNodeId\":\"n_in\",\"SourceOutputKey\":\"message\",\"TargetNodeId\":\"n_store\",\"TargetKey\":\"bucket\",\"RefreshSourceBeforeUse\":false}]",
+        "TitleDisplayMode": "Always",
+        "TitleColorMode": "NodeColor"
+      },
+      "Ports": [
+        { "Id": "p_assign_in", "IsInput": true, "Position": "Left", "Index": 0 },
+        { "Id": "p_assign_out", "IsInput": false, "Position": "Right", "Index": 0 }
+      ]
+    },
+    {
+      "Id": "n_store",
+      "Title": "Storage (bucket)",
+      "X": 620,
+      "Y": 120,
+      "Type": "Storage",
+      "ColorKey": "VioletHaze",
+      "Properties": {
+        "IsInputMode": true,
+        "TitleDisplayMode": "Always",
+        "TitleColorMode": "NodeColor"
+      },
+      "Ports": [
+        { "Id": "p_store_in", "IsInput": true, "Position": "Left", "Index": 0 },
+        { "Id": "p_store_out", "IsInput": false, "Position": "Right", "Index": 0 }
+      ]
+    },
+    {
+      "Id": "n_out",
+      "Title": "Output (đọc Storage)",
+      "X": 640,
+      "Y": 280,
+      "Type": "Output",
+      "ColorKey": "Emerald",
+      "Properties": {
+        "OutputKey": "output",
+        "FormatString": "Scoped: {show}",
+        "InputVariables": "[{\"VariableKey\":\"show\",\"SourceNodeId\":\"n_store\",\"SourceOutputKey\":\"bucket\"}]",
+        "TitleDisplayMode": "Always",
+        "TitleColorMode": "NodeColor"
+      },
+      "Ports": [
+        { "Id": "p_out_in", "IsInput": true, "Position": "Left", "Index": 0 },
+        { "Id": "p_out_out", "IsInput": false, "Position": "Right", "Index": 0 }
+      ]
+    },
+    {
+      "Id": "n_end",
+      "Title": "End",
+      "X": 860,
+      "Y": 200,
+      "Type": "End",
+      "ColorKey": "Danger",
+      "Properties": {},
+      "Ports": [
+        { "Id": "p_end_in", "IsInput": true, "Position": "Left", "Index": 0 },
+        { "Id": "p_end_out", "IsInput": false, "Position": "Right", "Index": 0 }
+      ]
+    }
+  ],
+  "Connections": [
+    { "FromNodeId": "n_start", "ToNodeId": "n_assign", "FromPortId": "p_start_out", "ToPortId": "p_assign_in" },
+    { "FromNodeId": "n_assign", "ToNodeId": "n_out", "FromPortId": "p_assign_out", "ToPortId": "p_out_in" },
+    { "FromNodeId": "n_out", "ToNodeId": "n_end", "FromPortId": "p_out_out", "ToPortId": "p_end_in" }
+  ]
+}

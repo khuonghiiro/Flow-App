@@ -1,0 +1,10 @@
+play duotone-regular
+flag-checkered sharp-duotone-solid
+computer-mouse-button-left duotone-light
+computer-mouse-button-right duotone-light
+computer-mouse-scrollwheel duotone
+circle-video sharp-light
+image chisel-regular
+image regular
+moon-stars sharp-duotone-thin
+sun-bright duotone-regular

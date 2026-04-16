@@ -1,0 +1,359 @@
+using FlowMy.Controls;
+using FlowMy.Converters;
+using FlowMy.Models;
+using FlowMy.Services.Interaction;
+using FlowMy.Views;
+using FlowMy.Views.Overlays;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Linq;
+
+namespace FlowMy.Views.NodeControls
+{
+    /// <summary>
+    /// Control cho End node vá»›i hÃ¬nh trÃ²n vÃ  icon flag-checkered bÃªn trong
+    /// </summary>
+    public static class EndNodeControl
+    {
+        public const double NodeSize = 100; // KÃ­ch thÆ°á»›c hÃ¬nh trÃ²n
+        private const double TitleOffset = 8; // Khoáº£ng cÃ¡ch tá»« top node Ä‘áº¿n bottom title
+
+        public static Border CreateBorder(WorkflowNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
+        {
+            var grid = new Grid
+            {
+                Width = NodeSize,
+                Height = NodeSize,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            // Icon SVG sá»­ dá»¥ng SvgViewboxEx
+            var iconConverter = new IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(null, typeof(Uri), "flag-checkered sharp-duotone-solid", System.Globalization.CultureInfo.CurrentCulture) as Uri;
+
+            var iconSvg = new SvgViewboxEx
+            {
+                Source = iconUri,
+                Width = 55,
+                Height = 55,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Fill = new SolidColorBrush(Colors.White)
+            };
+            grid.Children.Add(iconSvg);
+
+            var border = new Border
+            {
+                Child = grid,
+                Width = NodeSize,
+                Height = NodeSize,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(231, 76, 60)), // Default: Danger Red
+                BorderBrush = new SolidColorBrush(Colors.White),
+                BorderThickness = new Thickness(2),
+                CornerRadius = new CornerRadius(NodeSize / 2), // HÃ¬nh trÃ²n hoÃ n háº£o
+                Cursor = Cursors.Hand,
+                Padding = new Thickness(0),
+                Margin = new Thickness(0),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Direction = 270,
+                    BlurRadius = 10,
+                    Opacity = 0.5
+                },
+                Tag = node
+            };
+
+            PopulateVisuals(node, grid, border);
+
+            // Keyboard Port Position
+            border.Focusable = true;
+            border.FocusVisualStyle = null;
+
+            bool isHovering = false;
+            border.MouseEnter += (s, e) =>
+            {
+                isHovering = true;
+
+                Application.Current.Dispatcher.BeginInvoke(
+
+                    System.Windows.Threading.DispatcherPriority.Input,
+
+                    new Action(() => { if (isHovering) border.Focus(); }));
+            };
+            border.MouseLeave += (s, e) =>
+            {
+                isHovering = false;
+            };
+            border.PreviewKeyDown += (s, e) =>
+            {
+                if (!isHovering) return;
+                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+                PortPosition? newPos = e.Key switch
+                {
+                    Key.Left  => PortPosition.Left,
+                    Key.Up    => PortPosition.Top,
+                    Key.Right => PortPosition.Right,
+                    Key.Down  => PortPosition.Bottom,
+                    _ => null
+                };
+                if (newPos == null) return;
+                e.Handled = true;
+                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
+            };
+
+            if (host != null)
+            {
+                border.MouseRightButtonUp += (s, e) =>
+                {
+                    e.Handled = true;
+                    OpenNodeDialog(node, host, ownerWindow);
+                };
+            }
+
+            return border;
+        }
+
+        public static void RefreshVisual(WorkflowNode node)
+        {
+            if (node.Border == null) return;
+            if (node.Border.Child is not Grid grid) return;
+            PopulateVisuals(node, grid, node.Border);
+        }
+
+        private static void PopulateVisuals(WorkflowNode node, Grid grid, Border border)
+        {
+            grid.Children.Clear();
+            border.Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(231, 76, 60));
+            border.BorderBrush = new SolidColorBrush(Colors.White);
+            ApplyShape(node, node.EndBehavior, border, grid);
+
+            var iconConverter = new IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(null, typeof(Uri), "flag-checkered sharp-duotone-solid", System.Globalization.CultureInfo.CurrentCulture) as Uri;
+
+            var iconSvg = new SvgViewboxEx
+            {
+                Source = iconUri,
+                Width = 55,
+                Height = 55,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Fill = new SolidColorBrush(Colors.White)
+            };
+            grid.Children.Add(iconSvg);
+
+            var modeText = node.EndBehavior switch
+            {
+                EndNodeBehavior.StopCurrentFlow => "STOP",
+                EndNodeBehavior.ReturnToParent => "RETURN",
+                EndNodeBehavior.EmitResultOnly => "EMIT",
+                _ => "STOP"
+            };
+
+            var modeBadge = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+                CornerRadius = new CornerRadius(8),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, 6),
+                Padding = new Thickness(6, 2, 6, 2),
+                Child = new TextBlock
+                {
+                    Text = modeText,
+                    Foreground = Brushes.White,
+                    FontSize = 10,
+                    FontWeight = FontWeights.Bold
+                }
+            };
+            grid.Children.Add(modeBadge);
+        }
+
+        private static void ApplyShape(WorkflowNode node, EndNodeBehavior mode, Border border, Grid grid)
+        {
+            border.RenderTransformOrigin = new Point(0.5, 0.5);
+            grid.RenderTransformOrigin = new Point(0.5, 0.5);
+
+            switch (mode)
+            {
+                case EndNodeBehavior.StopCurrentFlow:
+                    border.CornerRadius = new CornerRadius(NodeSize / 2);
+                    border.RenderTransform = null;
+                    grid.RenderTransform = null;
+                    break;
+                case EndNodeBehavior.EmitResultOnly:
+                    border.CornerRadius = new CornerRadius(10);
+                    border.RenderTransform = null;
+                    grid.RenderTransform = null;
+                    break;
+                case EndNodeBehavior.ReturnToParent:
+                    border.CornerRadius = new CornerRadius(0);
+                    {
+                        var sy = GetSharpnessScaleY(node.DiamondSharpness);
+                        var borderTf = new TransformGroup();
+                        borderTf.Children.Add(new ScaleTransform(1.0, sy));
+                        borderTf.Children.Add(new RotateTransform(45));
+                        border.RenderTransform = borderTf;
+
+                        var gridTf = new TransformGroup();
+                        gridTf.Children.Add(new RotateTransform(-45));
+                        gridTf.Children.Add(new ScaleTransform(1.0, 1.0 / sy));
+                        grid.RenderTransform = gridTf;
+                    }
+                    break;
+                default:
+                    border.CornerRadius = new CornerRadius(NodeSize / 2);
+                    border.RenderTransform = null;
+                    grid.RenderTransform = null;
+                    break;
+            }
+        }
+
+        private static double GetSharpnessScaleY(DiamondSharpness sharpness)
+        {
+            return sharpness switch
+            {
+                DiamondSharpness.Soft => 0.88,
+                DiamondSharpness.Medium => 1.0,
+                DiamondSharpness.Sharp => 1.15,
+                _ => 1.0
+            };
+        }
+
+        private static void OpenNodeDialog(WorkflowNode node, IWorkflowEditorHost host, Window? ownerWindow)
+        {
+            if (node.Border?.IsMouseCaptured == true) node.Border.ReleaseMouseCapture();
+            host.DraggedNode = null;
+            if (host.ViewModel != null) host.ViewModel.SelectedNode = null;
+
+            var dialogManager = GetOrCreateDialogManager(host);
+            if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
+            if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node) dialogManager.CloseCurrentDialog();
+
+            var dialog = new StartEndNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
+            dialogManager.OpenDialog(node, dialog, host);
+        }
+
+        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
+        {
+            if (host is WorkflowEditorWindow window)
+            {
+                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
+            }
+            return new NodeDialogManager();
+        }
+
+        /// <summary>
+        /// Táº¡o TextBlock Ä‘á»ƒ hiá»ƒn thá»‹ title trÃªn top cá»§a node
+        /// </summary>
+        public static TextBlock CreateTitleTextBlock(WorkflowNode node)
+        {
+            var titleTextBlock = new TextBlock
+            {
+                Text = node.Title ?? "End",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(231, 76, 60)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
+                Background = Brushes.Transparent,
+                Padding = new Thickness(4, 2, 4, 2),
+                Visibility = Visibility.Visible
+            };
+
+            // LÆ°u reference vÃ o node
+            node.TitleTextBlockUI = titleTextBlock;
+
+            // ÄÄƒng kÃ½ Loaded event Ä‘á»ƒ cáº­p nháº­t vá»‹ trÃ­ sau khi render
+            titleTextBlock.Loaded += (s, e) =>
+            {
+                if (node.TitleTextBlockUI != null)
+                {
+                    var parent = titleTextBlock.Parent as Canvas;
+                    UpdateTitlePosition(node, parent);
+                }
+            };
+
+            // ÄÄƒng kÃ½ SizeChanged Ä‘á»ƒ cáº­p nháº­t vá»‹ trÃ­ khi kÃ­ch thÆ°á»›c thay Ä‘á»•i
+            titleTextBlock.SizeChanged += (s, e) =>
+            {
+                if (node.TitleTextBlockUI != null)
+                {
+                    var parent = titleTextBlock.Parent as Canvas;
+                    UpdateTitlePosition(node, parent);
+                }
+            };
+
+            return titleTextBlock;
+        }
+
+        /// <summary>
+        /// Cáº­p nháº­t vá»‹ trÃ­ title khi node di chuyá»ƒn hoáº·c sau khi zoom
+        /// </summary>
+        public static void UpdateTitlePosition(WorkflowNode node, Canvas? canvas)
+        {
+            if (node.TitleTextBlockUI == null) return;
+
+            var titleTextBlock = node.TitleTextBlockUI;
+            
+            // Äáº£m báº£o title visible
+            if (titleTextBlock.Visibility != Visibility.Visible)
+            {
+                titleTextBlock.Visibility = Visibility.Visible;
+            }
+
+            // Sá»­ dá»¥ng ActualWidth/Height náº¿u cÃ³, fallback vá» DesiredSize
+            double titleWidth = titleTextBlock.ActualWidth;
+            double titleHeight = titleTextBlock.ActualHeight;
+
+            if (titleWidth <= 0 || titleHeight <= 0)
+            {
+                titleTextBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                titleWidth = titleTextBlock.DesiredSize.Width;
+                titleHeight = titleTextBlock.DesiredSize.Height;
+            }
+
+            // Fallback náº¿u váº«n khÃ´ng cÃ³ kÃ­ch thÆ°á»›c
+            if (titleWidth <= 0) titleWidth = 40;
+            if (titleHeight <= 0) titleHeight = 18;
+
+            // TÃ­nh toÃ¡n vá»‹ trÃ­ title á»Ÿ trÃªn node, cÄƒn giá»¯a theo chiá»u ngang
+            var titleX = node.X + (NodeSize / 2) - (titleWidth / 2);
+            var extraDiamondOffset = node.EndBehavior == EndNodeBehavior.ReturnToParent ? 14 : 0;
+            var titleY = node.Y - titleHeight - TitleOffset - extraDiamondOffset;
+
+            Canvas.SetLeft(titleTextBlock, titleX);
+            Canvas.SetTop(titleTextBlock, titleY);
+            Panel.SetZIndex(titleTextBlock, 20000); // Äáº£m báº£o title luÃ´n hiá»ƒn thá»‹ trÃªn cÃ¹ng
+        }
+
+        private static void ChangePortPosition(
+            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
+        {
+            if (node.Ports == null || node.Ports.Count == 0) return;
+            var port = isInputPort
+                ? node.Ports.FirstOrDefault(p => p.IsInput)
+                : node.Ports.FirstOrDefault(p => !p.IsInput);
+            if (port == null || port.Position == newPosition) return;
+            port.Position = newPosition;
+            host.UpdatePortsPositionOnSide(node, newPosition);
+            var cons = host.ViewModel?.Connections;
+            if (cons != null && cons.Count > 0)
+            {
+                try
+                {
+                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
+                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
+                }
+                catch { }
+            }
+        }
+    }
+}

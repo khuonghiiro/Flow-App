@@ -1,0 +1,997 @@
+#region HTML
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>HTML UI</title>
+</head>
+
+<body>
+    <div class="app dark" id="app">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="logo-icon">
+                        <i class="bi bi-play-fill text-white"></i>
+                    </div>
+                    <div class="logo-name">GROK STUDIO<small>VIDEO GENERATOR</small></div>
+                </div>
+                <button id="themeBtn" class="icon-btn" title="Đổi chế độ sáng/tối">
+                    <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-body">
+                <!-- PROMPT -->
+                <div>
+                    <div class="field-label">PROMPT <span class="badge-xs">NỘI DUNG</span></div>
+                    <textarea id="promptInput" class="prompt-box"
+                        placeholder="Mô tả video của bạn...&#10;(Mỗi dòng = 1 prompt khi bật nhiều prompt)"
+                        rows="5"></textarea>
+                </div>
+
+                <!-- MULTI PROMPT -->
+                <label class="multi-row" for="multiPrompt">
+                    <input type="checkbox" id="multiPrompt" class="form-check-input" style="flex-shrink:0">
+                    <span class="multi-label">
+                        <i class="bi bi-list-ul me-1"></i>Gửi nhiều prompt (mỗi dòng = 1 prompt)
+                    </span>
+                </label>
+
+                <!-- OPTIONS -->
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="field-label">TỶ LỆ KHUNG</div>
+                        <select id="aspectRatio" class="sel-custom">
+                            <option value="9:16">9:16 — Dọc</option>
+                            <option value="16:9">16:9 — Ngang</option>
+                            <option value="2:3">2:3</option>
+                            <option value="3:2">3:2</option>
+                            <option value="1:1">1:1 — Vuông</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <div class="field-label">ĐỘ DÀI</div>
+                        <select id="videoLength" class="sel-custom">
+                            <option value="6">6 giây</option>
+                            <option value="10" selected>10 giây</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <div class="field-label">CHẤT LƯỢNG</div>
+                        <select id="resolution" class="sel-custom">
+                            <option value="480">480p</option>
+                            <option value="720" selected>720p</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <div class="field-label">LẦN / PROMPT</div>
+                        <select id="sendCount" class="sel-custom">
+                            <option value="1">1 lần</option>
+                            <option value="2">2 lần</option>
+                            <option value="3">3 lần</option>
+                            <option value="4">4 lần</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- GENERATE -->
+                <button id="generateBtn" class="btn-generate animate__animated" onclick="generateVideo()">
+                    <i class="bi bi-lightning-fill" id="btnIcon"></i>
+                    <span id="btnLabel">TẠO VIDEO</span>
+                </button>
+
+                <div id="errorMsg" class="error-msg animate__animated animate__shakeX" style="display:none;"></div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="dot-live"></div>
+                Powered by xAI · Grok Imagine
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main">
+            <div class="main-header">
+                <h1 class="page-title">VIDEO <em>GALLERY</em></h1>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="stat-pill" id="totalPill">0 videos</div>
+                    <div class="stat-pill active" id="procPill" style="display:none!important">
+                        <div class="stat-active-dot"></div>
+                        <span id="procCount">0</span> đang xử lý
+                    </div>
+                </div>
+            </div>
+
+            <div id="videoGrid" class="video-grid">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon animate__animated animate__pulse animate__infinite">
+                        <i class="bi bi-camera-video"></i>
+                    </div>
+                    <p>Nhập prompt và nhấn <strong>Tạo Video</strong><br>để bắt đầu tạo nội dung</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- VIDEO MODAL -->
+    <div id="videoModal" class="video-modal" onclick="closeModal(event)">
+        <div class="video-modal-inner animate__animated animate__zoomIn">
+            <button class="modal-close-btn" onclick="closeModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <video id="modalVideo" controls autoplay loop></video>
+            <div class="modal-meta">
+                <p id="modalPrompt" class="modal-prompt"></p>
+                <a id="modalDownload" class="modal-dl" download>
+                    <i class="bi bi-download me-1"></i>Tải xuống
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- POLL TOAST -->
+    <div class="poll-toast" id="pollToast">
+        <div class="spinner-border spinner-border-sm text-accent" role="status"
+            style="width:14px;height:14px;border-width:2px;"></div>
+        <span id="pollText">Đang chờ kết quả...</span>
+    </div>
+
+    <!-- Hidden PARAM outputs -->
+    <input type="hidden" id="outputGuildId">
+    <input type="hidden" id="outputParams">
+
+
+</body>
+
+</html>
+#endregion
+
+#region CSS
+/* =============================================
+DESIGN TOKENS — scoped to #app.dark / #app.light
+Không dùng [data-bs-theme] vì HtmlUiNode
+không có <html> để gắn attribute.
+Bootstrap grid/utility vẫn hoạt động bình thường.
+============================================= */
+
+/* ---------- DARK (default) ---------- */
+#app.dark {
+--accent: #7c6ff7;
+--accent2: #a78bfa;
+--accent-glow: rgba(124,111,247,0.12);
+--bg: #0d0f14;
+--clr: #f0f0f8;
+--surface: #161820;
+--surface2: #1e2028;
+--surface3: #252730;
+--border: #2e3040;
+--shadow: rgba(0,0,0,0.45);
+--modal-bg: rgba(0,0,0,0.82);
+--prog-overlay: rgba(13,15,20,0.87);
+--error-bg: rgba(248,113,113,0.1);
+--error-border: rgba(248,113,113,0.35);
+--error-clr: #f87171;
+}
+
+/* ---------- LIGHT ---------- */
+#app.light {
+--accent: #6655e8;
+--accent2: #8b77f5;
+--accent-glow: rgba(102,85,232,0.1);
+--bg: #f4f5fa;
+--clr: #1a1b2e;
+--surface: #ffffff;
+--surface2: #f0f1f7;
+--surface3: #e4e6f0;
+--border: #d8daea;
+--shadow: rgba(0,0,0,0.12);
+--modal-bg: rgba(30,30,60,0.65);
+--prog-overlay: rgba(255,255,255,0.92);
+--error-bg: rgba(220,38,38,0.07);
+--error-border: rgba(220,38,38,0.3);
+--error-clr: #dc2626;
+}
+
+/* ---------- BASE RESET ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Override Bootstrap body defaults inside wrapper */
+#app {
+--font: 'Inter', system-ui, sans-serif;
+--mono: 'JetBrains Mono', monospace;
+font-family: var(--font);
+background: var(--bg);
+color: var(--clr);
+display: flex;
+height: 100vh;
+overflow: hidden;
+transition: background 0.3s, color 0.3s;
+}
+
+/* ---------- SIDEBAR ---------- */
+.sidebar {
+width: 290px; min-width: 290px;
+background: var(--surface);
+border-right: 1px solid var(--border);
+display: flex; flex-direction: column; overflow: hidden;
+transition: background 0.3s, border-color 0.3s;
+}
+
+.sidebar-header {
+padding: 18px 20px 14px;
+border-bottom: 1px solid var(--border);
+display: flex; align-items: center; justify-content: space-between;
+transition: border-color 0.3s;
+}
+
+.logo-icon {
+width: 36px; height: 36px;
+background: var(--accent);
+border-radius: 10px;
+display: flex; align-items: center; justify-content: center;
+transition: background 0.3s;
+}
+.logo-icon .bi { font-size: 16px; color: #fff; }
+
+.logo-name {
+font-size: 13px; font-weight: 800;
+letter-spacing: 0.04em; line-height: 1.2;
+color: var(--clr);
+}
+.logo-name small {
+font-size: 9px; font-weight: 500;
+opacity: 0.5; letter-spacing: 0.12em; display: block;
+}
+
+.icon-btn {
+width: 32px; height: 32px; padding: 0;
+border-radius: 8px;
+border: 1px solid var(--border);
+background: var(--surface2);
+color: var(--clr);
+display: flex; align-items: center; justify-content: center;
+cursor: pointer; transition: background 0.2s, border-color 0.2s;
+}
+.icon-btn:hover { background: var(--surface3); }
+.icon-btn .bi { font-size: 13px; }
+
+.sidebar-body {
+flex: 1; overflow-y: auto;
+padding: 16px 18px;
+display: flex; flex-direction: column; gap: 13px;
+scrollbar-width: thin;
+scrollbar-color: var(--border) transparent;
+}
+
+/* ---------- FIELD LABELS ---------- */
+.field-label {
+font-size: 10px; font-weight: 700;
+letter-spacing: 0.13em; text-transform: uppercase;
+opacity: 0.55; margin-bottom: 5px;
+display: flex; align-items: center; gap: 6px;
+color: var(--clr);
+}
+
+.badge-xs {
+background: var(--accent-glow);
+color: var(--accent2);
+border: 1px solid rgba(124,111,247,0.25);
+padding: 1px 6px; border-radius: 4px;
+font-size: 8px; letter-spacing: 0.08em; font-weight: 600;
+}
+
+/* ---------- PROMPT BOX ---------- */
+.prompt-box {
+width: 100%; min-height: 90px;
+background: var(--surface2);
+border: 1px solid var(--border);
+border-radius: 10px;
+color: var(--clr);
+padding: 10px 12px;
+font-size: 12px; line-height: 1.6;
+resize: vertical;
+font-family: var(--font);
+transition: border-color 0.18s, background 0.3s;
+}
+.prompt-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.prompt-box::placeholder { opacity: 0.4; }
+
+/* ---------- MULTI ROW ---------- */
+.multi-row {
+display: flex; align-items: center; gap: 10px;
+background: var(--surface2);
+border: 1px solid var(--border);
+border-radius: 9px; padding: 9px 12px;
+cursor: pointer;
+transition: border-color 0.18s, background 0.18s;
+}
+.multi-row:has(input:checked) {
+border-color: var(--accent);
+background: var(--accent-glow);
+}
+.form-check-input { accent-color: var(--accent); cursor: pointer; }
+.multi-label { font-size: 11px; opacity: 0.75; cursor: pointer; user-select: none; color: var(--clr); }
+
+/* ---------- SELECT ---------- */
+.sel-custom {
+width: 100%;
+background: var(--surface2);
+border: 1px solid var(--border);
+border-radius: 8px;
+color: var(--clr);
+padding: 8px 10px; font-size: 12px;
+cursor: pointer; font-family: var(--font);
+transition: border-color 0.18s, background 0.3s;
+-webkit-appearance: none;
+appearance: none;
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'
+fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+background-repeat: no-repeat;
+background-position: right 10px center;
+padding-right: 28px;
+}
+.sel-custom:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.sel-custom option { background: var(--surface2); color: var(--clr); }
+
+/* ---------- GENERATE BUTTON ---------- */
+.btn-generate {
+width: 100%; background: var(--accent); color: #fff;
+border: none; border-radius: 11px; padding: 13px;
+font-size: 13px; font-weight: 700; letter-spacing: 0.05em;
+cursor: pointer;
+display: flex; align-items: center; justify-content: center; gap: 8px;
+transition: background 0.18s, transform 0.12s, opacity 0.18s, box-shadow 0.18s;
+margin-top: 2px;
+}
+.btn-generate:hover {
+background: var(--accent2);
+box-shadow: 0 4px 20px rgba(124,111,247,0.4);
+}
+.btn-generate:active { transform: scale(0.98); }
+.btn-generate:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ---------- ERROR ---------- */
+.error-msg {
+background: var(--error-bg);
+border: 1px solid var(--error-border);
+color: var(--error-clr);
+font-size: 11px; border-radius: 9px;
+padding: 8px 12px; line-height: 1.5;
+}
+
+/* ---------- SIDEBAR FOOTER ---------- */
+.sidebar-footer {
+padding: 11px 18px;
+border-top: 1px solid var(--border);
+font-size: 10px; opacity: 0.4;
+display: flex; align-items: center; gap: 6px;
+color: var(--clr);
+transition: border-color 0.3s;
+}
+.dot-live {
+width: 6px; height: 6px; border-radius: 50%;
+background: #34d399;
+animation: pulse-dot 2s infinite;
+}
+
+/* ---------- MAIN ---------- */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.main-header {
+padding: 18px 26px 14px;
+border-bottom: 1px solid var(--border);
+display: flex; align-items: center; justify-content: space-between;
+background: var(--surface);
+transition: background 0.3s, border-color 0.3s;
+}
+
+.page-title {
+font-size: 20px; font-weight: 800;
+letter-spacing: -0.02em; color: var(--clr);
+}
+.page-title em { font-style: normal; color: var(--accent); }
+
+.stat-pill {
+background: var(--surface2);
+border: 1px solid var(--border);
+border-radius: 20px; padding: 4px 10px; font-size: 11px;
+display: flex; align-items: center; gap: 5px;
+opacity: 0.8; color: var(--clr);
+transition: background 0.3s, border-color 0.3s;
+}
+.stat-pill.active {
+background: var(--accent-glow);
+border-color: rgba(124,111,247,0.35);
+color: var(--accent2); opacity: 1;
+}
+.stat-active-dot {
+width: 6px; height: 6px; border-radius: 50%;
+background: var(--accent2);
+animation: pulse-dot 1.2s infinite;
+}
+
+/* ---------- GRID ---------- */
+.video-grid {
+flex: 1; overflow-y: auto;
+padding: 22px 26px;
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+gap: 16px; align-content: start;
+background: var(--bg);
+scrollbar-width: thin;
+scrollbar-color: var(--border) transparent;
+transition: background 0.3s;
+}
+
+/* ---------- EMPTY ---------- */
+.empty-state {
+grid-column: 1/-1;
+display: flex; flex-direction: column;
+align-items: center; justify-content: center;
+gap: 14px; padding: 80px 20px; text-align: center;
+}
+.empty-icon {
+width: 60px; height: 60px;
+background: var(--surface2);
+border: 1px solid var(--border);
+border-radius: 18px;
+display: flex; align-items: center; justify-content: center;
+transition: background 0.3s;
+}
+.empty-icon .bi { font-size: 26px; opacity: 0.3; color: var(--accent); }
+.empty-state p { font-size: 13px; line-height: 1.7; opacity: 0.5; color: var(--clr); }
+
+/* ---------- VIDEO CARD ---------- */
+.video-card {
+background: var(--surface);
+border: 1px solid var(--border);
+border-radius: 16px; overflow: hidden;
+display: flex; flex-direction: column;
+transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s, background 0.3s;
+}
+.video-card:hover {
+transform: translateY(-3px);
+border-color: var(--accent2);
+box-shadow: 0 10px 36px var(--shadow);
+}
+
+.card-media {
+position: relative; width: 100%; aspect-ratio: 9/16;
+background: var(--surface2); overflow: hidden; cursor: pointer;
+}
+.card-media.r169 { aspect-ratio: 16/9; }
+.card-media.r11 { aspect-ratio: 1/1; }
+.card-media.r23 { aspect-ratio: 2/3; }
+.card-media.r32 { aspect-ratio: 3/2; }
+
+.card-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+.card-video-prev {
+width:100%; height:100%; object-fit:cover;
+display:none; position:absolute; inset:0;
+}
+.video-card:hover .card-video-prev { display:block; }
+.video-card:hover .card-thumb { opacity:0; }
+
+.card-play-overlay {
+position:absolute; inset:0;
+display:flex; align-items:center; justify-content:center;
+background:rgba(0,0,0,0.22);
+transition:background 0.18s;
+}
+.card-play-overlay:hover { background:rgba(0,0,0,0.08); }
+.play-btn {
+width:46px; height:46px; border-radius:50%;
+background:rgba(124,111,247,0.88);
+display:flex; align-items:center; justify-content:center;
+backdrop-filter:blur(4px);
+transition:transform 0.15s, background 0.18s;
+}
+.play-btn:hover { transform:scale(1.1); background:var(--accent); }
+.play-btn .bi { color:#fff; font-size:16px; margin-left:2px; }
+
+.card-badge {
+position:absolute; top:8px; right:8px;
+font-size:9px; font-weight:700; letter-spacing:0.1em;
+padding:3px 8px; border-radius:20px; backdrop-filter:blur(6px);
+}
+.badge-gen { background:rgba(251,191,36,0.2); border:1px solid rgba(251,191,36,0.4); color:#fbbf24; }
+.badge-done { background:rgba(52,211,153,0.2); border:1px solid rgba(52,211,153,0.35); color:#34d399; }
+.badge-err { background:rgba(248,113,113,0.2); border:1px solid rgba(248,113,113,0.35);color:#f87171; }
+
+/* PROGRESS OVERLAY */
+.card-progress {
+position:absolute; inset:0;
+background:var(--prog-overlay);
+display:flex; flex-direction:column;
+align-items:center; justify-content:center; gap:12px;
+padding:20px; backdrop-filter:blur(8px);
+transition: background 0.3s;
+}
+.prog-label { font-size:10px; font-weight:700; letter-spacing:0.12em; color:var(--accent2); }
+.prog-pct { font-family:var(--mono); font-size:30px; font-weight:500; color:var(--clr); line-height:1; }
+.prog-track { width:100%; height:3px; background:var(--surface3); border-radius:2px; overflow:hidden; }
+.prog-fill {
+height:100%;
+background:linear-gradient(90deg, var(--accent), var(--accent2));
+border-radius:2px; transition:width 0.5s ease;
+}
+.prog-sub { font-family:var(--mono); font-size:10px; opacity:0.5; text-align:center; color:var(--clr); }
+
+/* CARD BODY */
+.card-body-custom { padding:12px 14px 14px; display:flex; flex-direction:column; gap:8px; }
+.card-prompt {
+font-size:12px; font-weight:500; line-height:1.4; color:var(--clr);
+display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.card-meta { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.card-tags { display:flex; gap:4px; flex-wrap:wrap; }
+.tag {
+font-family:var(--mono); font-size:9px;
+background:var(--surface2); border:1px solid var(--border);
+color:var(--clr); opacity:0.8; padding:2px 6px; border-radius:4px;
+}
+.card-time { font-family:var(--mono); font-size:10px; opacity:0.45; flex-shrink:0; color:var(--clr); }
+.card-actions { display:flex; gap:6px; }
+.card-act-btn {
+flex:1; background:var(--surface2); border:1px solid var(--border);
+border-radius:8px; color:var(--clr);
+font-size:11px; font-weight:600; padding:7px 8px;
+cursor:pointer; text-align:center; text-decoration:none;
+transition:background 0.18s, border-color 0.18s;
+display:flex; align-items:center; justify-content:center; gap:4px;
+}
+.card-act-btn:hover { background:var(--surface3); }
+.card-act-btn.primary {
+background:var(--accent-glow);
+border-color:rgba(124,111,247,0.3);
+color:var(--accent2);
+}
+.card-act-btn.primary:hover { background:rgba(124,111,247,0.2); }
+.card-act-btn:disabled { opacity:0.35; cursor:not-allowed; pointer-events:none; }
+
+/* ---------- MODAL ---------- */
+.video-modal {
+display:none; position:fixed; inset:0;
+background:var(--modal-bg); z-index:1050;
+align-items:center; justify-content:center;
+backdrop-filter:blur(12px); padding:20px;
+}
+.video-modal.open { display:flex; }
+.video-modal-inner {
+position:relative; max-width:min(480px,100%); width:100%;
+background:var(--surface); border:1px solid var(--border);
+border-radius:20px; overflow:hidden;
+animation-duration: 0.25s;
+}
+#modalVideo { width:100%; display:block; max-height:65vh; background:#000; }
+
+.modal-close-btn {
+position:absolute; top:10px; right:10px; z-index:10;
+width:30px; height:30px; border-radius:50%;
+background:rgba(0,0,0,0.5); border:none; color:#fff;
+display:flex; align-items:center; justify-content:center;
+cursor:pointer; font-size:13px;
+transition:background 0.15s, transform 0.15s;
+}
+.modal-close-btn:hover { background:rgba(0,0,0,0.75); transform:scale(1.1); }
+
+.modal-meta {
+padding:14px 18px;
+display:flex; align-items:center; justify-content:space-between; gap:12px;
+background:var(--surface);
+transition: background 0.3s;
+}
+.modal-prompt { font-size:12px; font-weight:500; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+color:var(--clr); }
+.modal-dl {
+font-family:var(--mono); font-size:11px; color:var(--accent2);
+text-decoration:none;
+background:var(--accent-glow); border:1px solid rgba(124,111,247,0.3);
+border-radius:8px; padding:6px 12px; white-space:nowrap; flex-shrink:0;
+transition:background 0.18s;
+}
+.modal-dl:hover { background:rgba(124,111,247,0.2); color:var(--accent2); }
+
+/* ---------- POLL TOAST ---------- */
+.poll-toast {
+position:fixed; bottom:16px; right:16px;
+background:var(--surface); border:1px solid var(--border);
+border-radius:12px; padding:9px 14px;
+font-size:11px; color:var(--clr);
+display:none; align-items:center; gap:8px; z-index:1100;
+box-shadow:0 4px 20px var(--shadow);
+transition: background 0.3s, border-color 0.3s;
+}
+.poll-toast.show { display:flex; }
+.text-accent { color: var(--accent2) !important; }
+
+/* ---------- KEYFRAMES ---------- */
+@keyframes pulse-dot {
+0%,100% { opacity:1; }
+50% { opacity:0.3; }
+}
+/* animate.css card entrance override */
+.video-card {
+animation: cardIn 0.35s ease both;
+}
+@keyframes cardIn {
+from { opacity:0; transform:translateY(16px) scale(0.97); }
+to { opacity:1; transform:none; }
+}
+
+/* ---------- SCROLLBAR ---------- */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ---------- RESPONSIVE ---------- */
+@media(max-width:640px){
+#app { flex-direction:column; height:auto; min-height:100vh; overflow:auto; }
+.sidebar { width:100%; min-width:unset; border-right:none; border-bottom:1px solid var(--border); max-height:60vh; }
+.main { overflow:visible; }
+.video-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); }
+}
+#endregion
+
+#region JS
+(function () {
+/* ═══════════════════════════════
+STATE
+═══════════════════════════════ */
+var state = { videos: [], processing: 0 };
+var pollJobs = {};
+
+/* ═══════════════════════════════
+UTILS
+═══════════════════════════════ */
+function uid() {
+return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+var r = Math.random() * 16 | 0;
+return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+});
+}
+
+function timeAgo(d) {
+var s = Math.floor((Date.now() - d) / 1000);
+if (s
+< 60) return s + 's trước' ; if (s < 3600) return Math.floor(s / 60) + 'm trước' ; return Math.floor(s / 3600)
+    + 'h trước' ; } function esc(s) { return String(s || '' ) .replace(/&/g,'&amp;').replace(/</g,'&lt;') .replace( />
+/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function aspectClass(r) {
+return { '16:9':'r169','1:1':'r11','2:3':'r23','3:2':'r32' }[r] || '';
+}
+
+function showError(msg) {
+var el = document.getElementById('errorMsg');
+if (!el) return;
+el.textContent = msg;
+el.style.display = 'block';
+// Animate.css shake
+el.classList.remove('animate__shakeX');
+void el.offsetWidth; // reflow
+el.classList.add('animate__shakeX');
+setTimeout(function () { el.style.display = 'none'; }, 7000);
+}
+
+function updateStats() {
+var t = state.videos.length;
+var tp = document.getElementById('totalPill');
+if (tp) tp.textContent = t + ' video' + (t !== 1 ? 's' : '');
+
+var pp = document.getElementById('procPill');
+if (pp) {
+if (state.processing > 0) {
+pp.style.setProperty('display','flex','important');
+var pc = document.getElementById('procCount');
+if (pc) pc.textContent = state.processing;
+} else {
+pp.style.setProperty('display','none','important');
+}
+}
+
+var em = document.getElementById('emptyState');
+if (em) em.style.display = state.videos.length === 0 ? 'flex' : 'none';
+
+var pt = document.getElementById('pollToast');
+var keys = Object.keys(pollJobs).length;
+if (pt) {
+if (keys > 0) {
+pt.classList.add('show');
+var ptxt = document.getElementById('pollText');
+if (ptxt) ptxt.textContent = 'Đang poll ' + keys + ' job(s)...';
+} else {
+pt.classList.remove('show');
+}
+}
+}
+
+/* ═══════════════════════════════
+CARD HTML
+═══════════════════════════════ */
+function cardHTML(item) {
+var ac = aspectClass(item.aspect);
+var t = timeAgo(item.createdAt);
+var tags =
+'<span class="tag">' + esc(item.aspect) + '</span>' +
+'<span class="tag">' + item.length + 's</span>' +
+'<span class="tag">' + item.res + 'p</span>';
+
+if (item.status === 'generating') {
+return (
+'<div class="card-media ' + ac + '">' +
+    (item.thumbUrl ? '<img class="card-thumb" src="' + esc(item.thumbUrl) + '" alt="">' : '') +
+    '<div class="card-progress" id="prog-' + item.id + '">' +
+        '<div class="prog-label">ĐANG TẠO VIDEO</div>' +
+        '<div class="prog-pct" id="pct-' + item.id + '">' + item.progress + '%</div>' +
+        '<div class="prog-track">
+            <div class="prog-fill" id="fill-' + item.id + '" style="width:' + item.progress + '%"></div>
+        </div>' +
+        '<div class="prog-sub" id="sub-' + item.id + '">Khởi tạo...</div>' +
+        '</div>' +
+    '<div class="card-badge badge-gen">XỬ LÝ</div>' +
+    '</div>' +
+'<div class="card-body-custom">' +
+    '<div class="card-prompt">' + esc(item.prompt) + '</div>' +
+    '<div class="card-meta">
+        <div class="card-tags">' + tags + '</div><span class="card-time">' + t + '</span>
+    </div>' +
+    '<div class="card-actions">' +
+        '<button class="card-act-btn" disabled><i class="bi bi-play-fill"></i> Xem</button>' +
+        '<button class="card-act-btn" disabled><i class="bi bi-download"></i> Tải</button>' +
+        '</div>' +
+    '</div>'
+);
+}
+
+if (item.status === 'done') {
+return (
+'<div class="card-media ' + ac + '" onclick="openModal(\'' + item.id + '\')">' +
+    (item.thumbUrl ? '<img class="card-thumb" src="' + esc(item.thumbUrl) + '" alt="">' : '') +
+    '<video class="card-video-prev" src="' + esc(item.videoUrl) + '" muted loop preload="none"></video>' +
+    '<div class="card-play-overlay">
+        <div class="play-btn"><i class="bi bi-play-fill"></i></div>
+    </div>' +
+    '<div class="card-badge badge-done">HOÀN THÀNH</div>' +
+    '</div>' +
+'<div class="card-body-custom">' +
+    '<div class="card-prompt">' + esc(item.prompt) + '</div>' +
+    '<div class="card-meta">
+        <div class="card-tags">' + tags + '</div><span class="card-time">' + t + '</span>
+    </div>' +
+    '<div class="card-actions">' +
+        '<button class="card-act-btn primary" onclick="openModal(\'' + item.id + '\')"><i class="bi bi-play-fill"></i>
+            Xem</button>' +
+        '<a class="card-act-btn" href="' + esc(item.videoUrl) + '" download="grok_' + item.id + '.mp4"><i
+                class="bi bi-download"></i> Tải</a>' +
+        '</div>' +
+    '</div>'
+);
+}
+
+if (item.status === 'error') {
+return (
+'<div class="card-media ' + ac + '">' +
+    '<div
+        style="position:absolute;inset:0;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px">
+        ' +
+        '<i class="bi bi-exclamation-triangle-fill" style="font-size:26px;color:#f87171"></i>' +
+        '<div style="font-size:10px;color:#f87171;text-align:center;line-height:1.5">' + esc(item.errorMsg || 'Lỗi không
+            xác định') + '</div>' +
+        '</div>' +
+    '<div class="card-badge badge-err">LỖI</div>' +
+    '</div>' +
+'<div class="card-body-custom">' +
+    '<div class="card-prompt">' + esc(item.prompt) + '</div>' +
+    '<div class="card-meta">
+        <div class="card-tags">' + tags + '</div><span class="card-time">' + t + '</span>
+    </div>' +
+    '</div>'
+);
+}
+return '';
+}
+
+function createCard(item) {
+var c = document.createElement('div');
+c.className = 'video-card animate__animated animate__fadeInUp';
+c.id = 'card-' + item.id;
+c.innerHTML = cardHTML(item);
+return c;
+}
+
+function updateCard(item) {
+var c = document.getElementById('card-' + item.id);
+if (c) {
+c.innerHTML = cardHTML(item);
+// pulse on done
+if (item.status === 'done') {
+c.classList.add('animate__animated','animate__pulse');
+setTimeout(function () { c.classList.remove('animate__pulse'); }, 800);
+}
+}
+}
+
+function updateProg(id, pct, sub) {
+var item = null;
+for (var i = 0; i < state.videos.length; i++) { if (state.videos[i].id===id) { item=state.videos[i]; break; } } if
+    (!item) return; item.progress=pct; var pe=document.getElementById('pct-' + id); var
+    fe=document.getElementById('fill-' + id); var se=document.getElementById('sub-' + id); if (pe) pe.textContent=pct
+    + '%' ; if (fe) fe.style.width=pct + '%' ; if (se) se.textContent=sub || '' ; } /* ═══════════════════════════════
+    POLLING ═══════════════════════════════ */ function startPolling(guildId, expectedCount, onResult) { var
+    MAX_MS=300000; var job={ guildId: guildId, expectedCount: expectedCount, renderedCount: 0, interval: null,
+    startTime: Date.now(), onResult: onResult }; job.interval=setInterval(function () { // Timeout if (Date.now() -
+    job.startTime> MAX_MS) {
+    clearInterval(job.interval); delete pollJobs[guildId];
+    state.videos.forEach(function (v) {
+    if (v.guildId === guildId && v.status === 'generating') {
+    v.status = 'error'; v.errorMsg = 'Timeout 300s: không nhận được link video';
+    state.processing = Math.max(0, state.processing - 1);
+    updateCard(v);
+    }
+    });
+    updateStats(); return;
+    }
+
+    try {
+    var live = (window.__ac && window.__ac.live) ? window.__ac.live : {};
+    var res = live[guildId];
+    if (res && Array.isArray(res)) {
+    var newItems = res.slice(job.renderedCount);
+    if (newItems.length > 0) {
+    job.renderedCount += newItems.length;
+    onResult(newItems, job.renderedCount, expectedCount);
+    }
+    if (job.renderedCount >= expectedCount) {
+    clearInterval(job.interval); delete pollJobs[guildId]; updateStats();
+    }
+    }
+    } catch (_) {}
+    }, 1000);
+
+    pollJobs[guildId] = job;
+    updateStats();
+    }
+
+    /* ═══════════════════════════════
+    GENERATE
+    ═══════════════════════════════ */
+    window.generateVideo = function () {
+    try {
+    var raw = (document.getElementById('promptInput').value || '').trim();
+    var isMulti = document.getElementById('multiPrompt').checked;
+    var aspect = document.getElementById('aspectRatio').value;
+    var length = parseInt(document.getElementById('videoLength').value, 10);
+    var res = document.getElementById('resolution').value;
+    var sendCount = parseInt(document.getElementById('sendCount').value, 10);
+
+    var prompts = isMulti
+    ? raw.split('\n').map(function (s) { return s.trim(); }).filter(Boolean)
+    : (raw ? [raw] : []);
+
+    if (!prompts.length) { showError('Vui lòng nhập ít nhất một prompt!'); return; }
+
+    var guildId = uid();
+    var totalExpected = prompts.length * sendCount;
+
+    // Disable button + spin icon
+    var btn = document.getElementById('generateBtn');
+    var btnLabel = document.getElementById('btnLabel');
+    var btnIcon = document.getElementById('btnIcon');
+    if (btn) btn.disabled = true;
+    if (btnLabel) btnLabel.textContent = 'ĐANG GỬI...';
+    if (btnIcon) { btnIcon.className = ''; btnIcon.style.cssText = 'width:14px;height:14px;border:2px solid
+    rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin-btn 0.7s linear
+    infinite;display:inline-block'; }
+
+    // Write PARAM outputs
+    var og = document.getElementById('outputGuildId');
+    var op = document.getElementById('outputParams');
+    if (og) og.value = guildId;
+    if (op) op.value = JSON.stringify({ guildId: guildId, prompts: prompts, aspect: aspect, length: length, resolution:
+    res, sendCount: sendCount, totalExpected: totalExpected, isMultiPrompt: isMulti, timestamp: Date.now() });
+
+    try { if (typeof acSubmit === 'function') acSubmit(); } catch (_) {}
+    try { if (typeof acStartWorkflow === 'function') acStartWorkflow(); } catch (_) {}
+
+    // Create cards
+    var grid = document.getElementById('videoGrid');
+    var empty = document.getElementById('emptyState');
+
+    prompts.forEach(function (prompt) {
+    for (var i = 0; i < sendCount; i++) { var item={ id: uid(), prompt: prompt, aspect: aspect, length: length, res:
+        res, status: 'generating' , progress: 0, videoUrl: '' , thumbUrl: '' , errorMsg: '' , createdAt: Date.now(),
+        guildId: guildId }; state.videos.unshift(item); state.processing++; if (empty && empty.parentNode===grid)
+        grid.removeChild(empty); grid.prepend(createCard(item)); } }); updateStats(); // Restore button
+        setTimeout(function () { if (btn) btn.disabled=false; if (btnLabel) btnLabel.textContent='TẠO VIDEO' ; if
+        (btnIcon) { btnIcon.style.cssText='' ; btnIcon.className='bi bi-lightning-fill' ; } }, 800); // Simulate
+        progress var generatingItems=state.videos.filter(function (v) { return v.guildId===guildId &&
+        v.status==='generating' ; }); var steps=['Đang khởi tạo...','Xử lý prompt...','Render frames...','Đang hoàn
+        thiện...']; generatingItems.forEach(function (item, idx) { var p=0; var iv=setInterval(function () { if
+        (item.status !=='generating' ) { clearInterval(iv); return; } p=Math.min(p + Math.random() * 2.5 + 0.3, 94);
+        updateProg(item.id, Math.floor(p), steps[Math.min(Math.floor(p / 25), 3)]); }, 1800 + idx * 200); }); // Poll
+        for results startPolling(guildId, totalExpected, function (newLinks) { newLinks.forEach(function (videoUrl) {
+        var pending=null; for (var j=0; j < state.videos.length; j++) { if (state.videos[j].guildId===guildId &&
+        state.videos[j].status==='generating' ) { pending=state.videos[j]; break; } } if (pending) {
+        pending.videoUrl=videoUrl; pending.status='done' ; pending.progress=100; state.processing=Math.max(0,
+        state.processing - 1); updateCard(pending); updateStats(); } }); }); } catch (err) { showError('Lỗi: ' + (err && err.message ? err.message : String(err)));
+      var b2 = document.getElementById(' generateBtn'); var bl=document.getElementById('btnLabel'); var
+        bi=document.getElementById('btnIcon'); if (b2) b2.disabled=false; if (bl) bl.textContent='TẠO VIDEO' ; if (bi) {
+        bi.style.cssText='' ; bi.className='bi bi-lightning-fill' ; } } }; /* ═══════════════════════════════ __ac
+        REALTIME CALLBACK ═══════════════════════════════ */ try { if (window.__ac && typeof
+        window.__ac.onUpdate==='function' ) { window.__ac.onUpdate(function (live) { if (!live) return;
+        Object.keys(pollJobs).forEach(function (gid) { var job=pollJobs[gid]; if (!job) return; var res=live[gid]; if
+        (res && Array.isArray(res)) { var ni=res.slice(job.renderedCount); if (ni.length> 0) {
+        job.renderedCount += ni.length;
+        job.onResult(ni, job.renderedCount, job.expectedCount);
+        }
+        if (job.renderedCount >= job.expectedCount) {
+        clearInterval(job.interval); delete pollJobs[gid]; updateStats();
+        }
+        }
+        });
+        });
+        }
+        } catch (_) {}
+
+        /* ═══════════════════════════════
+        MODAL
+        ═══════════════════════════════ */
+        window.openModal = function (id) {
+        var item = null;
+        for (var i = 0; i < state.videos.length; i++) { if (state.videos[i].id===id) { item=state.videos[i]; break; } }
+            if (!item || item.status !=='done' ) return; var mv=document.getElementById('modalVideo'); var
+            mp=document.getElementById('modalPrompt'); var dl=document.getElementById('modalDownload'); var
+            vm=document.getElementById('videoModal'); var mi=document.querySelector('.video-modal-inner'); if (mv)
+            mv.src=item.videoUrl; if (mp) mp.textContent=item.prompt; if (dl) { dl.href=item.videoUrl;
+            dl.download='grok_' + item.id + '.mp4' ; } if (vm) vm.style.display='flex' ; if (mi) {
+            mi.classList.remove('animate__zoomOut'); mi.classList.add('animate__zoomIn'); } };
+            window.closeModal=function (e) { var vm=document.getElementById('videoModal'); var
+            mi=document.querySelector('.video-modal-inner'); if (e && e.target !==vm && !(e.target && e.target.closest
+            && e.target.closest('.modal-close-btn'))) return; if (mi) { mi.classList.remove('animate__zoomIn');
+            mi.classList.add('animate__zoomOut'); } setTimeout(function () { if (vm) vm.style.display='none' ; var
+            v=document.getElementById('modalVideo'); if (v) { v.pause(); v.src='' ; } }, 220); }; /*
+            ═══════════════════════════════ THEME TOGGLE Dùng class .dark / .light trên #app thay vì data-bs-theme trên
+            <html>
+            ═══════════════════════════════ */
+            var isDark = true;
+            var themeBtn = document.getElementById('themeBtn');
+            if (themeBtn) {
+            themeBtn.addEventListener('click', function () {
+            isDark = !isDark;
+            var app = document.getElementById('app');
+            var icon = document.getElementById('themeIcon');
+            if (app) {
+            app.classList.toggle('dark', isDark);
+            app.classList.toggle('light', !isDark);
+            }
+            if (icon) icon.className = isDark ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+            });
+            }
+
+            /* ═══════════════════════════════
+            KEYBOARD SHORTCUTS
+            ═══════════════════════════════ */
+            document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') window.closeModal({ target: document.getElementById('videoModal') });
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) window.generateVideo();
+            });
+
+            /* Spin keyframe cho button icon */
+            var styleEl = document.createElement('style');
+            styleEl.textContent = '@keyframes spin-btn { to { transform: rotate(360deg); } }';
+            document.head.appendChild(styleEl);
+
+            updateStats();
+            })();
+            #endregion
+
+            #region PARAM
+            outputGuildId: #outputGuildId
+            outputParams: #outputParams
+            #endregion

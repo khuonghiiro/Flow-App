@@ -1,0 +1,88 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Đăng ký FontFamily với đường dẫn tới file font -->
+    <FontFamily x:Key="FontAwesome">pack://application:,,,/Assets/Fonts/fa-solid-900.ttf#Font Awesome 6 Free Solid</FontFamily>
+    
+    <!--Link truy cập tìm icon thêm vào-->
+     <!--https://fontawesome.com/icons/border-all?f=classic&s=solid-->
+
+    <!-- Solid Icons -->
+    <sys:String x:Key="fa-home">&#xf015;</sys:String>
+    <sys:String x:Key="fa-user">&#xf007;</sys:String>
+    <sys:String x:Key="fa-users">&#xf0c0;</sys:String>
+    <sys:String x:Key="fa-user-plus">&#xf234;</sys:String>
+    <sys:String x:Key="fa-user-minus">&#xf503;</sys:String>
+
+    <sys:String x:Key="fa-cog">&#xf013;</sys:String>
+    <sys:String x:Key="fa-gear">&#xf013;</sys:String>
+    <sys:String x:Key="fa-wrench">&#xf0ad;</sys:String>
+
+    <sys:String x:Key="fa-search">&#xf002;</sys:String>
+    <sys:String x:Key="fa-search-plus">&#xf00e;</sys:String>
+    <sys:String x:Key="fa-search-minus">&#xf010;</sys:String>
+
+    <sys:String x:Key="fa-heart">&#xf004;</sys:String>
+    <sys:String x:Key="fa-star">&#xf005;</sys:String>
+    <sys:String x:Key="fa-bookmark">&#xf02e;</sys:String>
+
+    <sys:String x:Key="fa-envelope">&#xf0e0;</sys:String>
+    <sys:String x:Key="fa-phone">&#xf095;</sys:String>
+    <sys:String x:Key="fa-comments">&#xf086;</sys:String>
+
+    <sys:String x:Key="fa-lock">&#xf023;</sys:String>
+    <sys:String x:Key="fa-unlock">&#xf09c;</sys:String>
+    <sys:String x:Key="fa-key">&#xf084;</sys:String>
+    <sys:String x:Key="fa-shield">&#xf132;</sys:String>
+
+    <sys:String x:Key="fa-edit">&#xf044;</sys:String>
+    <sys:String x:Key="fa-pen">&#xf304;</sys:String>
+    <sys:String x:Key="fa-pencil">&#xf303;</sys:String>
+    <sys:String x:Key="fa-trash">&#xf1f8;</sys:String>
+
+    <sys:String x:Key="fa-plus">&#xf067;</sys:String>
+    <sys:String x:Key="fa-minus">&#xf068;</sys:String>
+    <sys:String x:Key="fa-check">&#xf00c;</sys:String>
+    <sys:String x:Key="fa-times">&#xf00d;</sys:String>
+    <sys:String x:Key="fa-close">&#xf00d;</sys:String>
+
+    <sys:String x:Key="fa-arrow-left">&#xf060;</sys:String>
+    <sys:String x:Key="fa-arrow-right">&#xf061;</sys:String>
+    <sys:String x:Key="fa-arrow-up">&#xf062;</sys:String>
+    <sys:String x:Key="fa-arrow-down">&#xf063;</sys:String>
+
+    <sys:String x:Key="fa-download">&#xf019;</sys:String>
+    <sys:String x:Key="fa-upload">&#xf093;</sys:String>
+    <sys:String x:Key="fa-save">&#xf0c7;</sys:String>
+    <sys:String x:Key="fa-print">&#xf02f;</sys:String>
+
+    <sys:String x:Key="fa-file">&#xf15b;</sys:String>
+    <sys:String x:Key="fa-file-alt">&#xf15c;</sys:String>
+    <sys:String x:Key="fa-folder">&#xf07b;</sys:String>
+    <sys:String x:Key="fa-folder-open">&#xf07c;</sys:String>
+    <sys:String x:Key="fa-database">&#xf1c0;</sys:String>
+
+    <sys:String x:Key="fa-chart-bar">&#xf080;</sys:String>
+    <sys:String x:Key="fa-chart-line">&#xf201;</sys:String>
+    <sys:String x:Key="fa-chart-pie">&#xf200;</sys:String>
+
+    <sys:String x:Key="fa-sign-out">&#xf08b;</sys:String>
+    <sys:String x:Key="fa-sign-in">&#xf090;</sys:String>
+    <sys:String x:Key="fa-power-off">&#xf011;</sys:String>
+
+    <sys:String x:Key="fa-border-all">&#xf84c;</sys:String>
+</ResourceDictionary>
+
+
+<!-- Thay icon từ text như sau: Text="&#xf3c1;"  -> &#x + f3c1 = &#xf3c1; --> 
+<!-- f3c1 là mã icon trên web --> 
+<!--<TextBlock Text="&#xf3c1;" FontFamily="{StaticResource FontAwesome}"
+        VerticalAlignment="Center" />-->
+    
+    
+    <!--Đặt tên cho dễ nhìn-->
+<!--<controls:FontIconUserControl Icon="{StaticResource fa-border-all}"
+                              IconSize="14"
+                              VerticalAlignment="Center"
+                              Margin="0,0,5,0"/>-->

@@ -1,0 +1,724 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Gradient Background -->
+    <!--màu nền trong chỗ câu hỏi-->
+    <LinearGradientBrush x:Key="GradientBlueBackground" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#0057E7" Offset="0.0" />
+        <!-- Xanh đậm đầu -->
+        <GradientStop Color="#79C4FF" Offset="1.0" />
+        <!-- Xanh nhạt cuối -->
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
+    <SolidColorBrush x:Key="WhiteBrush" Color="White"/>
+
+    <!-- 1. Coral Vivid -->
+    <SolidColorBrush x:Key="CoralVividBrush" Color="#FF6B6B"/>
+    <SolidColorBrush x:Key="CoralVividHoverBrush" Color="#FF5252"/>
+    <SolidColorBrush x:Key="CoralVividPressedBrush" Color="#E63946"/>
+    <SolidColorBrush x:Key="TextOnCoralVividBrush" Color="White"/>
+
+    <!-- 2. Ocean Blue -->
+    <SolidColorBrush x:Key="OceanBlueBrush" Color="#0077B6"/>
+    <SolidColorBrush x:Key="OceanBlueHoverBrush" Color="#0096C7"/>
+    <SolidColorBrush x:Key="OceanBluePressedBrush" Color="#005F8C"/>
+    <SolidColorBrush x:Key="TextOnOceanBlueBrush" Color="White"/>
+
+    <!-- 3. Emerald Green -->
+    <SolidColorBrush x:Key="EmeraldGreenBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="EmeraldGreenHoverBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="EmeraldGreenPressedBrush" Color="#059669"/>
+    <SolidColorBrush x:Key="TextOnEmeraldGreenBrush" Color="White"/>
+
+    <!-- 4. Sunset Orange -->
+    <SolidColorBrush x:Key="SunsetOrangeBrush" Color="#F97316"/>
+    <SolidColorBrush x:Key="SunsetOrangeHoverBrush" Color="#FB923C"/>
+    <SolidColorBrush x:Key="SunsetOrangePressedBrush" Color="#EA580C"/>
+    <SolidColorBrush x:Key="TextOnSunsetOrangeBrush" Color="White"/>
+
+    <!-- 5. Royal Purple -->
+    <SolidColorBrush x:Key="RoyalPurpleBrush" Color="#7C3AED"/>
+    <SolidColorBrush x:Key="RoyalPurpleHoverBrush" Color="#8B5CF6"/>
+    <SolidColorBrush x:Key="RoyalPurplePressedBrush" Color="#6D28D9"/>
+    <SolidColorBrush x:Key="TextOnRoyalPurpleBrush" Color="White"/>
+
+    <!-- 6. Ruby Red -->
+    <SolidColorBrush x:Key="RubyRedBrush" Color="#DC2626"/>
+    <SolidColorBrush x:Key="RubyRedHoverBrush" Color="#EF4444"/>
+    <SolidColorBrush x:Key="RubyRedPressedBrush" Color="#B91C1C"/>
+    <SolidColorBrush x:Key="TextOnRubyRedBrush" Color="White"/>
+
+    <!-- 7. Golden Yellow -->
+    <SolidColorBrush x:Key="GoldenYellowBrush" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="GoldenYellowHoverBrush" Color="#FBBF24"/>
+    <SolidColorBrush x:Key="GoldenYellowPressedBrush" Color="#D97706"/>
+    <SolidColorBrush x:Key="TextOnGoldenYellowBrush" Color="#1F2937"/>
+
+    <!-- 8. Teal Cyan -->
+    <SolidColorBrush x:Key="TealCyanBrush" Color="#14B8A6"/>
+    <SolidColorBrush x:Key="TealCyanHoverBrush" Color="#2DD4BF"/>
+    <SolidColorBrush x:Key="TealCyanPressedBrush" Color="#0D9488"/>
+    <SolidColorBrush x:Key="TextOnTealCyanBrush" Color="White"/>
+
+    <!-- 9. Lavender Dream -->
+    <SolidColorBrush x:Key="LavenderDreamBrush" Color="#A78BFA"/>
+    <SolidColorBrush x:Key="LavenderDreamHoverBrush" Color="#C4B5FD"/>
+    <SolidColorBrush x:Key="LavenderDreamPressedBrush" Color="#8B5CF6"/>
+    <SolidColorBrush x:Key="TextOnLavenderDreamBrush" Color="White"/>
+
+    <!-- 10. Crimson Rose -->
+    <SolidColorBrush x:Key="CrimsonRoseBrush" Color="#E11D48"/>
+    <SolidColorBrush x:Key="CrimsonRoseHoverBrush" Color="#F43F5E"/>
+    <SolidColorBrush x:Key="CrimsonRosePressedBrush" Color="#BE123C"/>
+    <SolidColorBrush x:Key="TextOnCrimsonRoseBrush" Color="White"/>
+
+    <!-- 11. Slate Gray -->
+    <SolidColorBrush x:Key="SlateGrayBrush" Color="#475569"/>
+    <SolidColorBrush x:Key="SlateGrayHoverBrush" Color="#64748B"/>
+    <SolidColorBrush x:Key="SlateGrayPressedBrush" Color="#334155"/>
+    <SolidColorBrush x:Key="TextOnSlateGrayBrush" Color="White"/>
+
+    <!-- 12. Mint Fresh -->
+    <SolidColorBrush x:Key="MintFreshBrush" Color="#6EE7B7"/>
+    <SolidColorBrush x:Key="MintFreshHoverBrush" Color="#A7F3D0"/>
+    <SolidColorBrush x:Key="MintFreshPressedBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="TextOnMintFreshBrush" Color="#1F2937"/>
+
+    <!-- 13. Indigo Night -->
+    <SolidColorBrush x:Key="IndigoNightBrush" Color="#4F46E5"/>
+    <SolidColorBrush x:Key="IndigoNightHoverBrush" Color="#6366F1"/>
+    <SolidColorBrush x:Key="IndigoNightPressedBrush" Color="#4338CA"/>
+    <SolidColorBrush x:Key="TextOnIndigoNightBrush" Color="White"/>
+
+    <!-- 14. Peach Soft -->
+    <SolidColorBrush x:Key="PeachSoftBrush" Color="#FBBF24"/>
+    <SolidColorBrush x:Key="PeachSoftHoverBrush" Color="#FCD34D"/>
+    <SolidColorBrush x:Key="PeachSoftPressedBrush" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="TextOnPeachSoftBrush" Color="#1F2937"/>
+
+    <!-- 15. Sky Azure -->
+    <SolidColorBrush x:Key="SkyAzureBrush" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="SkyAzureHoverBrush" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="SkyAzurePressedBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="TextOnSkyAzureBrush" Color="White"/>
+
+    <!-- 16. Cherry Blossom -->
+    <SolidColorBrush x:Key="CherryBlossomBrush" Color="#F472B6"/>
+    <SolidColorBrush x:Key="CherryBlossomHoverBrush" Color="#F9A8D4"/>
+    <SolidColorBrush x:Key="CherryBlossomPressedBrush" Color="#EC4899"/>
+    <SolidColorBrush x:Key="TextOnCherryBlossomBrush" Color="White"/>
+
+    <!-- 17. Forest Pine -->
+    <SolidColorBrush x:Key="ForestPineBrush" Color="#059669"/>
+    <SolidColorBrush x:Key="ForestPineHoverBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="ForestPinePressedBrush" Color="#047857"/>
+    <SolidColorBrush x:Key="TextOnForestPineBrush" Color="White"/>
+
+    <!-- 18. Amber Warm -->
+    <SolidColorBrush x:Key="AmberWarmBrush" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="AmberWarmHoverBrush" Color="#FBBF24"/>
+    <SolidColorBrush x:Key="AmberWarmPressedBrush" Color="#D97706"/>
+    <SolidColorBrush x:Key="TextOnAmberWarmBrush" Color="#1F2937"/>
+
+    <!-- 19. Midnight Blue -->
+    <SolidColorBrush x:Key="MidnightBlueBrush" Color="#1E3A8A"/>
+    <SolidColorBrush x:Key="MidnightBlueHoverBrush" Color="#1E40AF"/>
+    <SolidColorBrush x:Key="MidnightBluePressedBrush" Color="#1E293B"/>
+    <SolidColorBrush x:Key="TextOnMidnightBlueBrush" Color="White"/>
+
+    <!-- 20. Lime Bright -->
+    <SolidColorBrush x:Key="LimeBrightBrush" Color="#84CC16"/>
+    <SolidColorBrush x:Key="LimeBrightHoverBrush" Color="#A3E635"/>
+    <SolidColorBrush x:Key="LimeBrightPressedBrush" Color="#65A30D"/>
+    <SolidColorBrush x:Key="TextOnLimeBrightBrush" Color="#1F2937"/>
+
+    <!-- 21. Magenta Bold -->
+    <SolidColorBrush x:Key="MagentaBoldBrush" Color="#D946EF"/>
+    <SolidColorBrush x:Key="MagentaBoldHoverBrush" Color="#E879F9"/>
+    <SolidColorBrush x:Key="MagentaBoldPressedBrush" Color="#C026D3"/>
+    <SolidColorBrush x:Key="TextOnMagentaBoldBrush" Color="White"/>
+
+    <!-- 22. Bronze Metal -->
+    <SolidColorBrush x:Key="BronzeMetalBrush" Color="#CD7F32"/>
+    <SolidColorBrush x:Key="BronzeMetalHoverBrush" Color="#D4924A"/>
+    <SolidColorBrush x:Key="BronzeMetalPressedBrush" Color="#B8651B"/>
+    <SolidColorBrush x:Key="TextOnBronzeMetalBrush" Color="White"/>
+
+    <!-- 23. Aqua Marine -->
+    <SolidColorBrush x:Key="AquaMarineBrush" Color="#06B6D4"/>
+    <SolidColorBrush x:Key="AquaMarineHoverBrush" Color="#22D3EE"/>
+    <SolidColorBrush x:Key="AquaMarinePressedBrush" Color="#0891B2"/>
+    <SolidColorBrush x:Key="TextOnAquaMarineBrush" Color="White"/>
+
+    <!-- 24. Terracotta -->
+    <SolidColorBrush x:Key="TerracottaBrush" Color="#C2410C"/>
+    <SolidColorBrush x:Key="TerracottaHoverBrush" Color="#EA580C"/>
+    <SolidColorBrush x:Key="TerracottaPressedBrush" Color="#9A3412"/>
+    <SolidColorBrush x:Key="TextOnTerracottaBrush" Color="White"/>
+
+    <!-- 25. Violet Deep -->
+    <SolidColorBrush x:Key="VioletDeepBrush" Color="#5B21B6"/>
+    <SolidColorBrush x:Key="VioletDeepHoverBrush" Color="#6D28D9"/>
+    <SolidColorBrush x:Key="VioletDeepPressedBrush" Color="#4C1D95"/>
+    <SolidColorBrush x:Key="TextOnVioletDeepBrush" Color="White"/>
+
+    <!-- 26. Olive Green -->
+    <SolidColorBrush x:Key="OliveGreenBrush" Color="#84CC16"/>
+    <SolidColorBrush x:Key="OliveGreenHoverBrush" Color="#A3E635"/>
+    <SolidColorBrush x:Key="OliveGreenPressedBrush" Color="#65A30D"/>
+    <SolidColorBrush x:Key="TextOnOliveGreenBrush" Color="#1F2937"/>
+
+    <!-- 27. Steel Blue -->
+    <SolidColorBrush x:Key="SteelBlueBrush" Color="#0284C7"/>
+    <SolidColorBrush x:Key="SteelBlueHoverBrush" Color="#0EA5E9"/>
+    <SolidColorBrush x:Key="SteelBluePressedBrush" Color="#0369A1"/>
+    <SolidColorBrush x:Key="TextOnSteelBlueBrush" Color="White"/>
+
+    <!-- 28. Fuchsia Bright -->
+    <SolidColorBrush x:Key="FuchsiaBrightBrush" Color="#E935C1"/>
+    <SolidColorBrush x:Key="FuchsiaBrightHoverBrush" Color="#F770D8"/>
+    <SolidColorBrush x:Key="FuchsiaBrightPressedBrush" Color="#C71F9D"/>
+    <SolidColorBrush x:Key="TextOnFuchsiaBrightBrush" Color="White"/>
+
+    <!-- 29. Chocolate Brown -->
+    <SolidColorBrush x:Key="ChocolateBrownBrush" Color="#78350F"/>
+    <SolidColorBrush x:Key="ChocolateBrownHoverBrush" Color="#92400E"/>
+    <SolidColorBrush x:Key="ChocolateBrownPressedBrush" Color="#451A03"/>
+    <SolidColorBrush x:Key="TextOnChocolateBrownBrush" Color="White"/>
+
+    <!-- 30. Turquoise -->
+    <SolidColorBrush x:Key="TurquoiseBrush" Color="#2DD4BF"/>
+    <SolidColorBrush x:Key="TurquoiseHoverBrush" Color="#5EEAD4"/>
+    <SolidColorBrush x:Key="TurquoisePressedBrush" Color="#14B8A6"/>
+    <SolidColorBrush x:Key="TextOnTurquoiseBrush" Color="#1F2937"/>
+
+    <!-- 31. Burgundy Wine -->
+    <SolidColorBrush x:Key="BurgundyWineBrush" Color="#881337"/>
+    <SolidColorBrush x:Key="BurgundyWineHoverBrush" Color="#9F1239"/>
+    <SolidColorBrush x:Key="BurgundyWinePressedBrush" Color="#6B0F2A"/>
+    <SolidColorBrush x:Key="TextOnBurgundyWineBrush" Color="White"/>
+
+    <!-- 32. Lemon Zest -->
+    <SolidColorBrush x:Key="LemonZestBrush" Color="#EAB308"/>
+    <SolidColorBrush x:Key="LemonZestHoverBrush" Color="#FACC15"/>
+    <SolidColorBrush x:Key="LemonZestPressedBrush" Color="#CA8A04"/>
+    <SolidColorBrush x:Key="TextOnLemonZestBrush" Color="#1F2937"/>
+
+    <!-- 33. Navy Deep -->
+    <SolidColorBrush x:Key="NavyDeepBrush" Color="#172554"/>
+    <SolidColorBrush x:Key="NavyDeepHoverBrush" Color="#1E3A8A"/>
+    <SolidColorBrush x:Key="NavyDeepPressedBrush" Color="#0F172A"/>
+    <SolidColorBrush x:Key="TextOnNavyDeepBrush" Color="White"/>
+
+    <!-- 34. Salmon Pink -->
+    <SolidColorBrush x:Key="SalmonPinkBrush" Color="#FB7185"/>
+    <SolidColorBrush x:Key="SalmonPinkHoverBrush" Color="#FDA4AF"/>
+    <SolidColorBrush x:Key="SalmonPinkPressedBrush" Color="#F43F5E"/>
+    <SolidColorBrush x:Key="TextOnSalmonPinkBrush" Color="White"/>
+
+    <!-- 35. Jade Green -->
+    <SolidColorBrush x:Key="JadeGreenBrush" Color="#22C55E"/>
+    <SolidColorBrush x:Key="JadeGreenHoverBrush" Color="#4ADE80"/>
+    <SolidColorBrush x:Key="JadeGreenPressedBrush" Color="#16A34A"/>
+    <SolidColorBrush x:Key="TextOnJadeGreenBrush" Color="White"/>
+
+    <!-- 36. Plum Purple -->
+    <SolidColorBrush x:Key="PlumPurpleBrush" Color="#9333EA"/>
+    <SolidColorBrush x:Key="PlumPurpleHoverBrush" Color="#A855F7"/>
+    <SolidColorBrush x:Key="PlumPurplePressedBrush" Color="#7E22CE"/>
+    <SolidColorBrush x:Key="TextOnPlumPurpleBrush" Color="White"/>
+
+    <!-- 37. Charcoal Dark -->
+    <SolidColorBrush x:Key="CharcoalDarkBrush" Color="#1F2937"/>
+    <SolidColorBrush x:Key="CharcoalDarkHoverBrush" Color="#374151"/>
+    <SolidColorBrush x:Key="CharcoalDarkPressedBrush" Color="#111827"/>
+    <SolidColorBrush x:Key="TextOnCharcoalDarkBrush" Color="White"/>
+
+    <!-- 38. Apricot Soft -->
+    <SolidColorBrush x:Key="ApricotSoftBrush" Color="#FDBA74"/>
+    <SolidColorBrush x:Key="ApricotSoftHoverBrush" Color="#FED7AA"/>
+    <SolidColorBrush x:Key="ApricotSoftPressedBrush" Color="#FB923C"/>
+    <SolidColorBrush x:Key="TextOnApricotSoftBrush" Color="#1F2937"/>
+
+    <!-- 39. Sapphire Blue -->
+    <SolidColorBrush x:Key="SapphireBlueBrush" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="SapphireBlueHoverBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="SapphireBluePressedBrush" Color="#1E40AF"/>
+    <SolidColorBrush x:Key="TextOnSapphireBlueBrush" Color="White"/>
+
+    <!-- 40. Marigold Yellow -->
+    <SolidColorBrush x:Key="MarigoldYellowBrush" Color="#FDE047"/>
+    <SolidColorBrush x:Key="MarigoldYellowHoverBrush" Color="#FEF08A"/>
+    <SolidColorBrush x:Key="MarigoldYellowPressedBrush" Color="#FACC15"/>
+    <SolidColorBrush x:Key="TextOnMarigoldYellowBrush" Color="#1F2937"/>
+
+
+    <!--Ocean Breeze – Xanh biển tươi mát-->
+    <SolidColorBrush x:Key="OceanBrush" Color="#00B4D8"/>
+    <SolidColorBrush x:Key="OceanHoverBrush" Color="#0096C7"/>
+    <SolidColorBrush x:Key="OceanPressedBrush" Color="#0077B6"/>
+    <SolidColorBrush x:Key="TextOnOceanBrush" Color="Beige"/>
+
+    <!--Emerald Forest – Xanh ngọc bích sang trọng-->
+    <SolidColorBrush x:Key="EmeraldBrush" Color="#2ECC71"/>
+    <SolidColorBrush x:Key="EmeraldHoverBrush" Color="#27AE60"/>
+    <SolidColorBrush x:Key="EmeraldPressedBrush" Color="#1E8449"/>
+    <SolidColorBrush x:Key="TextOnEmeraldBrush" Color="Black"/>
+
+
+    <!-- Amethyst -->
+    <SolidColorBrush x:Key="AmethystBrush" Color="#9B59B6"/>
+    <SolidColorBrush x:Key="AmethystHoverBrush" Color="#8B50A3"/>
+    <SolidColorBrush x:Key="AmethystPressedBrush" Color="#7B4790"/>
+    <SolidColorBrush x:Key="TextOnAmethystBrush" Color="White"/>
+
+
+
+    <!-- Success Green (Bootstrap-style) -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#28A745"/>
+    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#23923D"/>
+    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#1E7E34"/>
+    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="White"/>
+
+    <!-- Warning Yellow (Bootstrap-style) -->
+    <SolidColorBrush x:Key="WarningBrush" Color="#FFC107"/>
+    <SolidColorBrush x:Key="WarningHoverBrush" Color="#E6AD06"/>
+    <SolidColorBrush x:Key="WarningPressedBrush" Color="#CC9A05"/>
+    <SolidColorBrush x:Key="TextOnWarningBrush" Color="#333333"/>
+
+    <!-- Danger Red (Bootstrap-style) -->
+    <SolidColorBrush x:Key="DangerBrush" Color="#DC3545"/>
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="#C82333"/>
+    <SolidColorBrush x:Key="DangerPressedBrush" Color="#BD2130"/>
+    <SolidColorBrush x:Key="TextOnDangerBrush" Color="White"/>
+
+    <!-- Info Blue (Bootstrap-style) -->
+    <SolidColorBrush x:Key="InfoBrush" Color="#17A2B8"/>
+    <SolidColorBrush x:Key="InfoHoverBrush" Color="#138496"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#117A8B"/>
+    <SolidColorBrush x:Key="TextOnInfoBrush" Color="White"/>
+
+    <!-- Dark Grey -->
+    <SolidColorBrush x:Key="DarkBrush" Color="#343A40"/>
+    <SolidColorBrush x:Key="DarkHoverBrush" Color="#23272B"/>
+    <SolidColorBrush x:Key="DarkPressedBrush" Color="#1D2124"/>
+    <SolidColorBrush x:Key="TextOnDarkBrush" Color="White"/>
+
+    <!-- Light Grey -->
+    <SolidColorBrush x:Key="LightBrush" Color="#F8F9FA"/>
+    <SolidColorBrush x:Key="LightHoverBrush" Color="#E2E6EA"/>
+    <SolidColorBrush x:Key="LightPressedBrush" Color="#DAE0E5"/>
+    <SolidColorBrush x:Key="TextOnLightBrush" Color="#333333"/>
+
+
+    <!-- Material Indigo Theme -->
+    <SolidColorBrush x:Key="IndigoBrush" Color="#3F51B5"/>
+    <SolidColorBrush x:Key="IndigoHoverBrush" Color="#5C6BC0"/>
+    <SolidColorBrush x:Key="IndigoPressedBrush" Color="#303F9F"/>
+    <SolidColorBrush x:Key="TextOnIndigoBrush" Color="White"/>
+
+
+    <!--Coral Reef – Hồng cam sống động-->
+    <SolidColorBrush x:Key="CoralBrush" Color="#FF7F50"/>
+    <SolidColorBrush x:Key="CoralHoverBrush" Color="#FF6B3B"/>
+    <SolidColorBrush x:Key="CoralPressedBrush" Color="#E85C2F"/>
+    <SolidColorBrush x:Key="TextOnCoralBrush" Color="White"/>
+
+    <!-- Sky Blue (Twitter) -->
+    <SolidColorBrush x:Key="SkyBlueBrush" Color="#1DA1F2"/>
+    <SolidColorBrush x:Key="SkyBlueHoverBrush" Color="#1A91DA"/>
+    <SolidColorBrush x:Key="SkyBluePressedBrush" Color="#1781C2"/>
+    <SolidColorBrush x:Key="TextOnSkyBlueBrush" Color="White"/>
+
+    <!--Sunset Glow – Cam đỏ hoàng hôn-->
+    <SolidColorBrush x:Key="SunsetBrush" Color="#FF6F61"/>
+    <SolidColorBrush x:Key="SunsetHoverBrush" Color="#FF5A4D"/>
+    <SolidColorBrush x:Key="SunsetPressedBrush" Color="#E94E3E"/>
+    <SolidColorBrush x:Key="TextOnSunsetBrush" Color="White"/>
+
+
+    <!-- Digital Fluidity -->
+    <SolidColorBrush x:Key="FluidityBrush" Color="#A2D2FF"/>
+    <SolidColorBrush x:Key="FluidityHoverBrush" Color="#9CD3E9"/>
+    <SolidColorBrush x:Key="FluidityPressedBrush" Color="#91C4E0"/>
+    <SolidColorBrush x:Key="TextOnFluidityBrush" Color="#333333"/>
+
+
+
+    <!-- Gentle Button Theme (Pastel) -->
+    <SolidColorBrush x:Key="GentleBrush" Color="#B5B4D9"/>
+    <SolidColorBrush x:Key="GentleHoverBrush" Color="#9CD3D9"/>
+    <SolidColorBrush x:Key="GentlePressedBrush" Color="#E9F2A2"/>
+    <SolidColorBrush x:Key="TextOnGentleBrush" Color="#333333"/>
+
+    <!-- Bright Power Theme -->
+    <SolidColorBrush x:Key="BrightPowerBrush" Color="#FF1D58"/>
+    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#F75990"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#FFF685"/>
+    <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="White"/>
+
+  
+
+    <!-- Atlassian Blue Theme -->
+    <SolidColorBrush x:Key="AtlassianBrush" Color="#0052CC"/>
+    <SolidColorBrush x:Key="AtlassianHoverBrush" Color="#0747A6"/>
+    <SolidColorBrush x:Key="AtlassianPressedBrush" Color="#003A8E"/>
+    <SolidColorBrush x:Key="TextOnAtlassianBrush" Color="White"/>
+
+    <!-- Cherry Blossom Dreams -->
+    <SolidColorBrush x:Key="CherryBrush" Color="#FFC2D1"/>
+    <SolidColorBrush x:Key="CherryHoverBrush" Color="#FFB3C6"/>
+    <SolidColorBrush x:Key="CherryPressedBrush" Color="#FFA0B3"/>
+    <SolidColorBrush x:Key="TextOnCherryBrush" Color="#333333"/>
+
+
+    <!-- Space Explorer -->
+    <SolidColorBrush x:Key="SpaceBrush" Color="#CDB4DB"/>
+    <SolidColorBrush x:Key="SpaceHoverBrush" Color="#BDA0C8"/>
+    <SolidColorBrush x:Key="SpacePressedBrush" Color="#AC8AB5"/>
+    <SolidColorBrush x:Key="TextOnSpaceBrush" Color="White"/>
+
+    <!-- 70’s Retro -->
+    <SolidColorBrush x:Key="RetroBrush" Color="#101357"/>
+    <SolidColorBrush x:Key="RetroHoverBrush" Color="#3F00A0"/>
+    <SolidColorBrush x:Key="RetroPressedBrush" Color="#0061AD"/>
+    <SolidColorBrush x:Key="TextOnRetroBrush" Color="White"/>
+
+    <!-- Easter Mix -->
+    <SolidColorBrush x:Key="EggYolkBrush" Color="#FFDC6A"/>
+    <SolidColorBrush x:Key="EggYolkHoverBrush" Color="#FFEB8A"/>
+    <SolidColorBrush x:Key="EggYolkPressedBrush" Color="#FFEFAB"/>
+    <SolidColorBrush x:Key="TextOnEggYolkBrush" Color="#333333"/>
+
+
+
+    <!--Lavender Mist – Tím pastel dịu nhẹ-->
+    <SolidColorBrush x:Key="LavenderBrush" Color="#B388EB"/>
+    <SolidColorBrush x:Key="LavenderHoverBrush" Color="#9D6EE6"/>
+    <SolidColorBrush x:Key="LavenderPressedBrush" Color="#8652D9"/>
+    <SolidColorBrush x:Key="TextOnLavenderBrush" Color="White"/>
+
+
+    <!-- ============================================ -->
+    <!-- THÊM CÁC MÀU SẮC MỚI - ADDITIONAL COLORS -->
+    <!-- ============================================ -->
+
+    <!-- 1. Mint Chocolate -->
+    <SolidColorBrush x:Key="MintChocolateBrush" Color="#98D8C8"/>
+    <SolidColorBrush x:Key="MintChocolateHoverBrush" Color="#7BC9B7"/>
+    <SolidColorBrush x:Key="MintChocolatePressedBrush" Color="#6BB0A1"/>
+    <SolidColorBrush x:Key="TextOnMintChocolateBrush" Color="#1F2937"/>
+
+    <!-- 2. Raspberry Sorbet -->
+    <SolidColorBrush x:Key="RaspberrySorbetBrush" Color="#E63946"/>
+    <SolidColorBrush x:Key="RaspberrySorbetHoverBrush" Color="#F25C68"/>
+    <SolidColorBrush x:Key="RaspberrySorbetPressedBrush" Color="#D62839"/>
+    <SolidColorBrush x:Key="TextOnRaspberrySorbetBrush" Color="White"/>
+
+    <!-- 3. Honey Gold -->
+    <SolidColorBrush x:Key="HoneyGoldBrush" Color="#FFB84D"/>
+    <SolidColorBrush x:Key="HoneyGoldHoverBrush" Color="#FFC870"/>
+    <SolidColorBrush x:Key="HoneyGoldPressedBrush" Color="#F5A623"/>
+    <SolidColorBrush x:Key="TextOnHoneyGoldBrush" Color="#1F2937"/>
+
+    <!-- 4. Blueberry Ice -->
+    <SolidColorBrush x:Key="BlueberryIceBrush" Color="#5B8DEF"/>
+    <SolidColorBrush x:Key="BlueberryIceHoverBrush" Color="#7BA5F3"/>
+    <SolidColorBrush x:Key="BlueberryIcePressedBrush" Color="#4A7BE0"/>
+    <SolidColorBrush x:Key="TextOnBlueberryIceBrush" Color="White"/>
+
+    <!-- 5. Rose Quartz -->
+    <SolidColorBrush x:Key="RoseQuartzBrush" Color="#F7CAC9"/>
+    <SolidColorBrush x:Key="RoseQuartzHoverBrush" Color="#F5B7B5"/>
+    <SolidColorBrush x:Key="RoseQuartzPressedBrush" Color="#F3A4A2"/>
+    <SolidColorBrush x:Key="TextOnRoseQuartzBrush" Color="#1F2937"/>
+
+    <!-- 6. Serenity Blue -->
+    <SolidColorBrush x:Key="SerenityBlueBrush" Color="#92A8D1"/>
+    <SolidColorBrush x:Key="SerenityBlueHoverBrush" Color="#A5B8DC"/>
+    <SolidColorBrush x:Key="SerenityBluePressedBrush" Color="#7F95C6"/>
+    <SolidColorBrush x:Key="TextOnSerenityBlueBrush" Color="White"/>
+
+    <!-- 7. Tangerine Dream -->
+    <SolidColorBrush x:Key="TangerineDreamBrush" Color="#FF9F40"/>
+    <SolidColorBrush x:Key="TangerineDreamHoverBrush" Color="#FFB366"/>
+    <SolidColorBrush x:Key="TangerineDreamPressedBrush" Color="#FF8B1A"/>
+    <SolidColorBrush x:Key="TextOnTangerineDreamBrush" Color="White"/>
+
+    <!-- 8. Lilac Grace -->
+    <SolidColorBrush x:Key="LilacGraceBrush" Color="#C8A2C8"/>
+    <SolidColorBrush x:Key="LilacGraceHoverBrush" Color="#D4B3D4"/>
+    <SolidColorBrush x:Key="LilacGracePressedBrush" Color="#BC91BC"/>
+    <SolidColorBrush x:Key="TextOnLilacGraceBrush" Color="White"/>
+
+    <!-- 9. Pistachio Green -->
+    <SolidColorBrush x:Key="PistachioGreenBrush" Color="#93C572"/>
+    <SolidColorBrush x:Key="PistachioGreenHoverBrush" Color="#A5D085"/>
+    <SolidColorBrush x:Key="PistachioGreenPressedBrush" Color="#81BA5F"/>
+    <SolidColorBrush x:Key="TextOnPistachioGreenBrush" Color="#1F2937"/>
+
+    <!-- 10. Aubergine -->
+    <SolidColorBrush x:Key="AubergineBrush" Color="#614051"/>
+    <SolidColorBrush x:Key="AubergineHoverBrush" Color="#755168"/>
+    <SolidColorBrush x:Key="AuberginePressedBrush" Color="#4D323F"/>
+    <SolidColorBrush x:Key="TextOnAubergineBrush" Color="White"/>
+
+    <!-- 11. Peacock Blue -->
+    <SolidColorBrush x:Key="PeacockBlueBrush" Color="#005F73"/>
+    <SolidColorBrush x:Key="PeacockBlueHoverBrush" Color="#0A7489"/>
+    <SolidColorBrush x:Key="PeacockBluePressedBrush" Color="#004A5D"/>
+    <SolidColorBrush x:Key="TextOnPeacockBlueBrush" Color="White"/>
+
+    <!-- 12. Buttercup Yellow -->
+    <SolidColorBrush x:Key="ButtercupYellowBrush" Color="#FFEB3B"/>
+    <SolidColorBrush x:Key="ButtercupYellowHoverBrush" Color="#FFF176"/>
+    <SolidColorBrush x:Key="ButtercupYellowPressedBrush" Color="#FDD835"/>
+    <SolidColorBrush x:Key="TextOnButtercupYellowBrush" Color="#1F2937"/>
+
+    <!-- 13. Wine Red -->
+    <SolidColorBrush x:Key="WineRedBrush" Color="#722F37"/>
+    <SolidColorBrush x:Key="WineRedHoverBrush" Color="#8A3A44"/>
+    <SolidColorBrush x:Key="WineRedPressedBrush" Color="#5A242A"/>
+    <SolidColorBrush x:Key="TextOnWineRedBrush" Color="White"/>
+
+    <!-- 14. Glacier Blue -->
+    <SolidColorBrush x:Key="GlacierBlueBrush" Color="#CDDAFD"/>
+    <SolidColorBrush x:Key="GlacierBlueHoverBrush" Color="#B8C9FB"/>
+    <SolidColorBrush x:Key="GlacierBluePressedBrush" Color="#A3B8F9"/>
+    <SolidColorBrush x:Key="TextOnGlacierBlueBrush" Color="#1F2937"/>
+
+    <!-- 15. Mango Tango -->
+    <SolidColorBrush x:Key="MangoTangoBrush" Color="#FF8C42"/>
+    <SolidColorBrush x:Key="MangoTangoHoverBrush" Color="#FFA05E"/>
+    <SolidColorBrush x:Key="MangoTangoPressedBrush" Color="#FF7826"/>
+    <SolidColorBrush x:Key="TextOnMangoTangoBrush" Color="White"/>
+
+    <!-- 16. Wisteria Purple -->
+    <SolidColorBrush x:Key="WisteriaPurpleBrush" Color="#8E7CC3"/>
+    <SolidColorBrush x:Key="WisteriaPurpleHoverBrush" Color="#9F8FCD"/>
+    <SolidColorBrush x:Key="WisteriaPurplePressedBrush" Color="#7D69B9"/>
+    <SolidColorBrush x:Key="TextOnWisteriaPurpleBrush" Color="White"/>
+
+    <!-- 17. Cucumber Green -->
+    <SolidColorBrush x:Key="CucumberGreenBrush" Color="#6A994E"/>
+    <SolidColorBrush x:Key="CucumberGreenHoverBrush" Color="#7DAA64"/>
+    <SolidColorBrush x:Key="CucumberGreenPressedBrush" Color="#588838"/>
+    <SolidColorBrush x:Key="TextOnCucumberGreenBrush" Color="White"/>
+
+    <!-- 18. Dusty Rose -->
+    <SolidColorBrush x:Key="DustyRoseBrush" Color="#C08497"/>
+    <SolidColorBrush x:Key="DustyRoseHoverBrush" Color="#CC97A7"/>
+    <SolidColorBrush x:Key="DustyRosePressedBrush" Color="#B47187"/>
+    <SolidColorBrush x:Key="TextOnDustyRoseBrush" Color="White"/>
+
+    <!-- 19. Cerulean Sky -->
+    <SolidColorBrush x:Key="CeruleanSkyBrush" Color="#007FFF"/>
+    <SolidColorBrush x:Key="CeruleanSkyHoverBrush" Color="#3399FF"/>
+    <SolidColorBrush x:Key="CeruleanSkyPressedBrush" Color="#0066CC"/>
+    <SolidColorBrush x:Key="TextOnCeruleanSkyBrush" Color="White"/>
+
+    <!-- 20. Pumpkin Spice -->
+    <SolidColorBrush x:Key="PumpkinSpiceBrush" Color="#D2691E"/>
+    <SolidColorBrush x:Key="PumpkinSpiceHoverBrush" Color="#E0803E"/>
+    <SolidColorBrush x:Key="PumpkinSpicePressedBrush" Color="#C25A11"/>
+    <SolidColorBrush x:Key="TextOnPumpkinSpiceBrush" Color="White"/>
+
+    <!-- 21. Arctic Teal -->
+    <SolidColorBrush x:Key="ArcticTealBrush" Color="#4ECDC4"/>
+    <SolidColorBrush x:Key="ArcticTealHoverBrush" Color="#6DD7CF"/>
+    <SolidColorBrush x:Key="ArcticTealPressedBrush" Color="#3FB8B0"/>
+    <SolidColorBrush x:Key="TextOnArcticTealBrush" Color="White"/>
+
+    <!-- 22. Blush Pink -->
+    <SolidColorBrush x:Key="BlushPinkBrush" Color="#FFB6C1"/>
+    <SolidColorBrush x:Key="BlushPinkHoverBrush" Color="#FFC8D1"/>
+    <SolidColorBrush x:Key="BlushPinkPressedBrush" Color="#FFA4B1"/>
+    <SolidColorBrush x:Key="TextOnBlushPinkBrush" Color="#1F2937"/>
+
+    <!-- 23. Graphite Gray -->
+    <SolidColorBrush x:Key="GraphiteGrayBrush" Color="#424242"/>
+    <SolidColorBrush x:Key="GraphiteGrayHoverBrush" Color="#5A5A5A"/>
+    <SolidColorBrush x:Key="GraphiteGrayPressedBrush" Color="#2A2A2A"/>
+    <SolidColorBrush x:Key="TextOnGraphiteGrayBrush" Color="White"/>
+
+    <!-- 24. Kiwi Green -->
+    <SolidColorBrush x:Key="KiwiGreenBrush" Color="#8DB600"/>
+    <SolidColorBrush x:Key="KiwiGreenHoverBrush" Color="#A1CC1A"/>
+    <SolidColorBrush x:Key="KiwiGreenPressedBrush" Color="#79A000"/>
+    <SolidColorBrush x:Key="TextOnKiwiGreenBrush" Color="White"/>
+
+    <!-- 25. Orchid Pink -->
+    <SolidColorBrush x:Key="OrchidPinkBrush" Color="#DA70D6"/>
+    <SolidColorBrush x:Key="OrchidPinkHoverBrush" Color="#E48AE1"/>
+    <SolidColorBrush x:Key="OrchidPinkPressedBrush" Color="#D056CB"/>
+    <SolidColorBrush x:Key="TextOnOrchidPinkBrush" Color="White"/>
+
+    <!-- 26. Espresso Brown -->
+    <SolidColorBrush x:Key="EspressoBrownBrush" Color="#5D4037"/>
+    <SolidColorBrush x:Key="EspressoBrownHoverBrush" Color="#6D4C41"/>
+    <SolidColorBrush x:Key="EspressoBrownPressedBrush" Color="#4E342E"/>
+    <SolidColorBrush x:Key="TextOnEspressoBrownBrush" Color="White"/>
+
+    <!-- 27. Periwinkle Blue -->
+    <SolidColorBrush x:Key="PeriwinkleBlueBrush" Color="#CCCCFF"/>
+    <SolidColorBrush x:Key="PeriwinkleBlueHoverBrush" Color="#DBDBFF"/>
+    <SolidColorBrush x:Key="PeriwinkleBluePressedBrush" Color="#BDBDFF"/>
+    <SolidColorBrush x:Key="TextOnPeriwinkleBlueBrush" Color="#1F2937"/>
+
+    <!-- 28. Papaya Orange -->
+    <SolidColorBrush x:Key="PapayaOrangeBrush" Color="#FF9E80"/>
+    <SolidColorBrush x:Key="PapayaOrangeHoverBrush" Color="#FFB199"/>
+    <SolidColorBrush x:Key="PapayaOrangePressedBrush" Color="#FF8B67"/>
+    <SolidColorBrush x:Key="TextOnPapayaOrangeBrush" Color="#1F2937"/>
+
+    <!-- 29. Slate Purple -->
+    <SolidColorBrush x:Key="SlatePurpleBrush" Color="#6A5ACD"/>
+    <SolidColorBrush x:Key="SlatePurpleHoverBrush" Color="#7F72D7"/>
+    <SolidColorBrush x:Key="SlatePurplePressedBrush" Color="#5548C3"/>
+    <SolidColorBrush x:Key="TextOnSlatePurpleBrush" Color="White"/>
+
+    <!-- 30. Sage Green -->
+    <SolidColorBrush x:Key="SageGreenBrush" Color="#87AE73"/>
+    <SolidColorBrush x:Key="SageGreenHoverBrush" Color="#9BBE87"/>
+    <SolidColorBrush x:Key="SageGreenPressedBrush" Color="#739E5F"/>
+    <SolidColorBrush x:Key="TextOnSageGreenBrush" Color="White"/>
+
+    <!-- 31. Crimson Velvet -->
+    <SolidColorBrush x:Key="CrimsonVelvetBrush" Color="#8B0000"/>
+    <SolidColorBrush x:Key="CrimsonVelvetHoverBrush" Color="#A50000"/>
+    <SolidColorBrush x:Key="CrimsonVelvetPressedBrush" Color="#710000"/>
+    <SolidColorBrush x:Key="TextOnCrimsonVelvetBrush" Color="White"/>
+
+    <!-- 32. Lemon Lime -->
+    <SolidColorBrush x:Key="LemonLimeBrush" Color="#D4FF00"/>
+    <SolidColorBrush x:Key="LemonLimeHoverBrush" Color="#DEFF33"/>
+    <SolidColorBrush x:Key="LemonLimePressedBrush" Color="#C4EF00"/>
+    <SolidColorBrush x:Key="TextOnLemonLimeBrush" Color="#1F2937"/>
+
+    <!-- 33. Prussian Blue -->
+    <SolidColorBrush x:Key="PrussianBlueBrush" Color="#003153"/>
+    <SolidColorBrush x:Key="PrussianBlueHoverBrush" Color="#004266"/>
+    <SolidColorBrush x:Key="PrussianBluePressedBrush" Color="#002040"/>
+    <SolidColorBrush x:Key="TextOnPrussianBlueBrush" Color="White"/>
+
+    <!-- 34. Flamingo Pink -->
+    <SolidColorBrush x:Key="FlamingoPinkBrush" Color="#FC74FD"/>
+    <SolidColorBrush x:Key="FlamingoPinkHoverBrush" Color="#FD8FFE"/>
+    <SolidColorBrush x:Key="FlamingoPinkPressedBrush" Color="#FB59FC"/>
+    <SolidColorBrush x:Key="TextOnFlamingoPinkBrush" Color="White"/>
+
+    <!-- 35. Bamboo Green -->
+    <SolidColorBrush x:Key="BambooGreenBrush" Color="#556B2F"/>
+    <SolidColorBrush x:Key="BambooGreenHoverBrush" Color="#6B8E23"/>
+    <SolidColorBrush x:Key="BambooGreenPressedBrush" Color="#3F5425"/>
+    <SolidColorBrush x:Key="TextOnBambooGreenBrush" Color="White"/>
+
+    <!-- 36. Iris Purple -->
+    <SolidColorBrush x:Key="IrisPurpleBrush" Color="#5A4FCF"/>
+    <SolidColorBrush x:Key="IrisPurpleHoverBrush" Color="#7268D9"/>
+    <SolidColorBrush x:Key="IrisPurplePressedBrush" Color="#4A3FC5"/>
+    <SolidColorBrush x:Key="TextOnIrisPurpleBrush" Color="White"/>
+
+    <!-- 37. Charcoal Mist -->
+    <SolidColorBrush x:Key="CharcoalMistBrush" Color="#36454F"/>
+    <SolidColorBrush x:Key="CharcoalMistHoverBrush" Color="#465663"/>
+    <SolidColorBrush x:Key="CharcoalMistPressedBrush" Color="#26343B"/>
+    <SolidColorBrush x:Key="TextOnCharcoalMistBrush" Color="White"/>
+
+    <!-- 38. Cantaloupe Orange -->
+    <SolidColorBrush x:Key="CantaloupeOrangeBrush" Color="#FFA07A"/>
+    <SolidColorBrush x:Key="CantaloupeOrangeHoverBrush" Color="#FFB393"/>
+    <SolidColorBrush x:Key="CantaloupeOrangePressedBrush" Color="#FF8D61"/>
+    <SolidColorBrush x:Key="TextOnCantaloupeOrangeBrush" Color="#1F2937"/>
+
+    <!-- 39. Cobalt Blue -->
+    <SolidColorBrush x:Key="CobaltBlueBrush" Color="#0047AB"/>
+    <SolidColorBrush x:Key="CobaltBlueHoverBrush" Color="#1A5EC0"/>
+    <SolidColorBrush x:Key="CobaltBluePressedBrush" Color="#003896"/>
+    <SolidColorBrush x:Key="TextOnCobaltBlueBrush" Color="White"/>
+
+    <!-- 40. Sunflower Yellow -->
+    <SolidColorBrush x:Key="SunflowerYellowBrush" Color="#FFD700"/>
+    <SolidColorBrush x:Key="SunflowerYellowHoverBrush" Color="#FFDF33"/>
+    <SolidColorBrush x:Key="SunflowerYellowPressedBrush" Color="#F5CF00"/>
+    <SolidColorBrush x:Key="TextOnSunflowerYellowBrush" Color="#1F2937"/>
+
+    <!-- 41. Berry Purple -->
+    <SolidColorBrush x:Key="BerryPurpleBrush" Color="#6A0572"/>
+    <SolidColorBrush x:Key="BerryPurpleHoverBrush" Color="#801A86"/>
+    <SolidColorBrush x:Key="BerryPurplePressedBrush" Color="#54005E"/>
+    <SolidColorBrush x:Key="TextOnBerryPurpleBrush" Color="White"/>
+
+    <!-- 42. Sea Foam -->
+    <SolidColorBrush x:Key="SeaFoamBrush" Color="#93E9BE"/>
+    <SolidColorBrush x:Key="SeaFoamHoverBrush" Color="#A8EFCC"/>
+    <SolidColorBrush x:Key="SeaFoamPressedBrush" Color="#7EE3B0"/>
+    <SolidColorBrush x:Key="TextOnSeaFoamBrush" Color="#1F2937"/>
+
+    <!-- 43. Brick Red -->
+    <SolidColorBrush x:Key="BrickRedBrush" Color="#CB4154"/>
+    <SolidColorBrush x:Key="BrickRedHoverBrush" Color="#D75869"/>
+    <SolidColorBrush x:Key="BrickRedPressedBrush" Color="#BF313F"/>
+    <SolidColorBrush x:Key="TextOnBrickRedBrush" Color="White"/>
+
+    <!-- 44. Azure Blue -->
+    <SolidColorBrush x:Key="AzureBlueBrush" Color="#007FFF"/>
+    <SolidColorBrush x:Key="AzureBlueHoverBrush" Color="#3399FF"/>
+    <SolidColorBrush x:Key="AzureBluePressedBrush" Color="#0066CC"/>
+    <SolidColorBrush x:Key="TextOnAzureBlueBrush" Color="White"/>
+
+    <!-- 45. Caramel Brown -->
+    <SolidColorBrush x:Key="CaramelBrownBrush" Color="#AF6E4D"/>
+    <SolidColorBrush x:Key="CaramelBrownHoverBrush" Color="#C28563"/>
+    <SolidColorBrush x:Key="CaramelBrownPressedBrush" Color="#9C5737"/>
+    <SolidColorBrush x:Key="TextOnCaramelBrownBrush" Color="White"/>
+
+    <!-- 46. Magenta Bloom -->
+    <SolidColorBrush x:Key="MagentaBloomBrush" Color="#FF00FF"/>
+    <SolidColorBrush x:Key="MagentaBloomHoverBrush" Color="#FF33FF"/>
+    <SolidColorBrush x:Key="MagentaBloomPressedBrush" Color="#CC00CC"/>
+    <SolidColorBrush x:Key="TextOnMagentaBloomBrush" Color="White"/>
+
+    <!-- 47. Moss Green -->
+    <SolidColorBrush x:Key="MossGreenBrush" Color="#8A9A5B"/>
+    <SolidColorBrush x:Key="MossGreenHoverBrush" Color="#9FAB6E"/>
+    <SolidColorBrush x:Key="MossGreenPressedBrush" Color="#758948"/>
+    <SolidColorBrush x:Key="TextOnMossGreenBrush" Color="White"/>
+
+    <!-- 48. Coral Sunset -->
+    <SolidColorBrush x:Key="CoralSunsetBrush" Color="#FF7F7F"/>
+    <SolidColorBrush x:Key="CoralSunsetHoverBrush" Color="#FF9999"/>
+    <SolidColorBrush x:Key="CoralSunsetPressedBrush" Color="#FF6565"/>
+    <SolidColorBrush x:Key="TextOnCoralSunsetBrush" Color="White"/>
+
+    <!-- 49. Violet Haze -->
+    <SolidColorBrush x:Key="VioletHazeBrush" Color="#8F7EE7"/>
+    <SolidColorBrush x:Key="VioletHazeHoverBrush" Color="#A394ED"/>
+    <SolidColorBrush x:Key="VioletHazePressedBrush" Color="#7B68E1"/>
+    <SolidColorBrush x:Key="TextOnVioletHazeBrush" Color="White"/>
+
+    <!-- 50. Champagne Gold -->
+    <SolidColorBrush x:Key="ChampagneGoldBrush" Color="#F7E7CE"/>
+    <SolidColorBrush x:Key="ChampagneGoldHoverBrush" Color="#F9EDDB"/>
+    <SolidColorBrush x:Key="ChampagneGoldPressedBrush" Color="#F5E1C1"/>
+    <SolidColorBrush x:Key="TextOnChampagneGoldBrush" Color="#1F2937"/>
+
+    
+    <!-- Background Colors -->
+    <SolidColorBrush x:Key="WindowBackgroundMainBrush" Color="#FFF8FAFC"/>
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#FF1E293B"/>
+    <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF0F172A"/>
+    <!-- Border Colors -->
+    <SolidColorBrush x:Key="BorderDarkBrush" Color="#FF334155"/>
+
+    <!-- Fallback Color resources cho VS XAML Designer.
+         Khi designer chưa merge theme cụ thể, các key ShadowColor / PrimaryShadowColor / NodeShadowColor
+         cần phải là kiểu Color (không phải SolidColorBrush) để DropShadowEffect.Color không lỗi.
+         Các theme file (Dark.xaml, Light.xaml,...) sẽ override lại đúng giá trị màu của theme. -->
+    <Color x:Key="ShadowColor">#AA000000</Color>
+    <Color x:Key="PrimaryShadowColor">#401E293B</Color>
+    <Color x:Key="NodeShadowColor">#60000000</Color>
+
+</ResourceDictionary>

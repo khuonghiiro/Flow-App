@@ -1,0 +1,64 @@
+Get-ChildItem -Path "D:\UngDung_PC\_icon_FA_V7.1.0_pro" -Recurse -File | ForEach-Object {
+    $name = $_.BaseName
+    $path = $_.FullName -replace '\\', '/'
+    "{ `"$name`", `"$path`" }"
+}
+
+Get-ChildItem -Path "D:\UngDung_PC\_icon_FA_V7.1.0_pro\thin" -Recurse -File | ForEach-Object {
+    $name = $_.BaseName
+    $path = $_.FullName -replace '\\', '/'
+    "{ `"$name`", `"$path`" }"
+} | Set-Clipboard
+
+
+
+Get-ChildItem -Path "." -Recurse -File | ForEach-Object {
+    $name = $_.BaseName
+    $path = $_.FullName -replace '\\', '/'
+    "{ `"$name`", `"$path`" }"
+} | Set-Clipboard
+
+
+------------------------- script mới -------------------
+
+
+# Script to generate icon dictionary entries with folder name in key
+param(
+    [string]$SourceFolder = "C:\_DU_AN\App_Desktop\Auto_Click\Assets\Icons_All",
+    [string]$RelativeBasePath = "Assets\Icons_All"
+)
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "Generating icon dictionary from: $SourceFolder" -ForegroundColor Cyan
+
+$entries = Get-ChildItem -Path $SourceFolder -Recurse -File -Filter "*.svg" | ForEach-Object {
+    # Get file name without extension (e.g., "alarm-clock")
+    $fileName = $_.BaseName
+    
+    # Get parent folder name (e.g., "chisel-regular")
+    $parentFolder = $_.Directory.Name
+    
+    # Create key: "alarm-clock chisel-regular" (fileName + space + folderName)
+    $key = "$fileName $parentFolder"
+    
+    # Get relative path from Icons_All
+    $relativePath = $_.FullName.Replace($SourceFolder, $RelativeBasePath).Replace('\', '/')
+    
+    # Create dictionary entry format
+    "{ `"$key`", `"$relativePath`" }"
+}
+
+# Join all entries with comma and newline
+$result = $entries -join ",`n"
+
+# Copy to clipboard
+$result | Set-Clipboard
+
+Write-Host "`nGenerated $($entries.Count) entries" -ForegroundColor Green
+Write-Host "Results copied to clipboard!" -ForegroundColor Green
+Write-Host "`nSample output:" -ForegroundColor Yellow
+$entries | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+
+# Also return the result
+return $result

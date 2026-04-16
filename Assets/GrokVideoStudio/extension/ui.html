@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grok Video Studio — UI</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div>
+          <div class="h1">Grok Video Studio</div>
+          <div class="sub">Modal control · layout 3 cột</div>
+        </div>
+        <div class="actions">
+          <button id="openGrokBtn" class="btn">Open/Focus Grok tab</button>
+          <label class="chk">
+            <input id="focusGrok" type="checkbox" />
+            Focus tab Grok khi chạy
+          </label>
+        </div>
+      </div>
+
+      <div class="layout">
+        <aside class="sidebar left">
+          <div class="side-title">Menu</div>
+          <button class="menu active" data-view="videos">Videos</button>
+          <button class="menu" data-view="js">JS</button>
+          <button class="menu" data-view="block">Chan request</button>
+          <button class="menu" data-view="logs">Logs</button>
+        </aside>
+
+        <main class="center">
+          <section class="card" data-view-body="videos">
+            <div class="title row-title">
+              <span>Danh sach video</span>
+              <button id="clearVideosBtn" class="btn small">Clear</button>
+            </div>
+            <div id="videoList" class="video-list"></div>
+          </section>
+
+          <section class="card hidden" data-view-body="js">
+            <div class="title row-title">
+              <span>JS truyen vao</span>
+              <button id="resetJsBtn" class="btn small">Reset JS mac dinh</button>
+            </div>
+            <label class="label">Inject JS (co bien <code>params</code>)</label>
+            <textarea id="injectJs" class="ta code" rows="22"></textarea>
+          </section>
+
+          <section class="card hidden" data-view-body="block">
+            <div class="title">Chan request</div>
+            <label class="label">Blocking rules (JSON)</label>
+            <textarea id="blockRules" class="ta code" rows="22"
+              placeholder='[{"url":"https://grok.com/rest/*","method":"POST"}]'></textarea>
+          </section>
+
+          <section class="card hidden" data-view-body="logs">
+            <div class="title">Logs</div>
+            <pre id="eventLog" class="pre tall"></pre>
+          </section>
+        </main>
+
+        <aside class="sidebar right">
+          <div class="side-title">Điều khiển</div>
+          <label class="label">PROMPT</label>
+          <textarea id="promptInput" class="ta" rows="5" placeholder="Mô tả video..."></textarea>
+
+          <div class="row">
+            <div class="col">
+              <label class="label small">TỶ LỆ</label>
+              <select id="aspectRatio" class="sel">
+                <option value="9:16" selected>9:16</option>
+                <option value="16:9">16:9</option>
+                <option value="1:1">1:1</option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="label small">ĐỘ DÀI</label>
+              <select id="videoLength" class="sel">
+                <option value="5">5s</option>
+                <option value="10" selected>10s</option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="label small">CHẤT LƯỢNG</label>
+              <select id="resolution" class="sel">
+                <option value="720p" selected>720p</option>
+                <option value="1080p">1080p</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="label">Search text</label>
+          <input id="searchText" class="inp" placeholder="Imagine / Video / Generate..." />
+
+          <label class="label">Function sẽ chạy</label>
+          <div class="fn-list">
+            <button class="fn-btn active" data-fn="defaultFlow">Gui prompt (create->new->mp4)</button>
+            <button class="fn-btn" data-fn="customJs">Chay JS tuy chinh</button>
+            <button class="fn-btn" data-fn="applyNet">Apply chan request</button>
+            <button class="fn-btn" data-fn="search">Search text</button>
+            <button class="fn-btn" data-fn="snapshot">Get snapshot</button>
+          </div>
+
+          <button id="executeBtn" class="btn primary">GUI PROMPT / THUC THI</button>
+          <div id="status" class="status"></div>
+          <pre id="rightOut" class="pre"></pre>
+        </aside>
+      </div>
+    </div>
+
+    <script src="ui.js"></script>
+  </body>
+</html>
+

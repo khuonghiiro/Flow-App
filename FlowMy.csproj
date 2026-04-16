@@ -1,0 +1,177 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assets/Images/Auto_Click.ico</ApplicationIcon>
+
+		<!-- Version được đồng bộ cho cả AssemblyVersion và FileVersion -->
+		<AssemblyVersion>1.0.2</AssemblyVersion>
+		<FileVersion>1.0.2</FileVersion>
+
+		<!-- Assembly information -->
+		<AssemblyName>FlowMy</AssemblyName>
+		<AssemblyTitle>FlowMy</AssemblyTitle>
+		<Company>Info, Inc.</Company>
+		<Product>FlowMy</Product>
+		<Description>App Auto Workflow</Description>
+		<Copyright>Copyright © 2025</Copyright>
+	</PropertyGroup>
+
+	<!-- DEBUG Configuration -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<DebugType>full</DebugType>
+		<DebugSymbols>true</DebugSymbols>
+		<Optimize>false</Optimize>
+	</PropertyGroup>
+
+	<!-- RELEASE Configuration -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+		<Optimize>true</Optimize>
+
+		<!-- BỎ các dòng này đi, chỉ set qua command line -->
+		<!-- <SelfContained>true</SelfContained> -->
+		<!-- <RuntimeIdentifier>win-x64</RuntimeIdentifier> -->
+		<!-- <PublishSingleFile>false</PublishSingleFile> -->
+		<!-- <PublishTrimmed>false</PublishTrimmed> -->
+		<!-- <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract> -->
+		<!-- <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile> -->
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="Localization\**" />
+		<Compile Remove="ViewModels\Admin\**" />
+		<Compile Remove="Views\Menus\GroupRolePermissions\**" />
+		<EmbeddedResource Remove="Localization\**" />
+		<EmbeddedResource Remove="ViewModels\Admin\**" />
+		<EmbeddedResource Remove="Views\Menus\GroupRolePermissions\**" />
+		<None Remove="Localization\**" />
+		<None Remove="ViewModels\Admin\**" />
+		<None Remove="Views\Menus\GroupRolePermissions\**" />
+		<Page Remove="Localization\**" />
+		<Page Remove="ViewModels\Admin\**" />
+		<Page Remove="Views\Menus\GroupRolePermissions\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Remove="appsettings.Development.json" />
+		<None Remove="appsettings.json" />
+		<None Remove="Assets\Fonts\fa-solid-900.ttf" />
+		<None Remove="Assets\Images\Auto_Click.ico" />
+		<None Remove="Assets\Images\logo_VietABank2.png" />
+		<None Remove="Assets\Images\Logo_Viet_A_Bank.png" />
+		<None Remove="Assets\Images\user.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="AutoMapper" Version="14.0.0" />
+		<PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="CurlThin" Version="0.0.7" />
+		<PackageReference Include="ExcelDataReader" Version="3.7.0" />
+		<PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
+		<PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+		<PackageReference Include="System.Management" Version="9.0.0" />
+		<PackageReference Include="Fody" Version="6.9.2">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Jint" Version="4.2.1" />
+		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Http.Connections.Client" Version="9.0.9" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Identity.Client" Version="4.74.1" />
+		<PackageReference Include="Markdig" Version="0.37.0" />
+		<PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2651.64" />
+		<PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="OxyPlot.Core" Version="2.2.0" />
+		<PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
+		<PackageReference Include="Prism.DryIoc" Version="9.0.537" />
+		<PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
+		<PackageReference Include="Serilog" Version="4.3.0" />
+		<PackageReference Include="Serilog.Extensions.Logging" Version="9.0.2" />
+		<PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+		<PackageReference Include="SharpVectors.Reloaded" Version="1.8.5" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
+		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.7" />
+		<PackageReference Include="VirtualizingWrapPanel" Version="2.3.2" />
+	</ItemGroup>
+
+	  <ItemGroup>
+		<!-- Copy SVG ra thư mục output để IconResources.GetSvgImage đọc được (FileSvgReader cần file trên disk) -->
+		<Content Include="Assets\Icons\**\*.svg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	  </ItemGroup>
+	
+		<ItemGroup>
+		  <Compile Remove="Icons_All\**\*.svg" />
+		  <None Remove="Icons_All\**\*" />
+		  <Content Remove="Icons_All\**\*" />
+		</ItemGroup>
+
+
+	  <ItemGroup>
+	    <Reference Include="Aspose.Cells">
+	      <HintPath>..\Library\Aspose.Cells.dll</HintPath>
+	    </Reference>
+	  </ItemGroup>
+
+  
+	<ItemGroup>
+		<Resource Include="Assets\Fonts\fa-solid-900.ttf">
+			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="Assets\Images\Auto_Click.ico">
+			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</Resource>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Update="Properties\Settings.Designer.cs">
+			<DesignTimeSharedInput>True</DesignTimeSharedInput>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>Settings.settings</DependentUpon>
+		</Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="Properties\Settings.settings">
+			<Generator>SettingsSingleFileGenerator</Generator>
+			<LastGenOutput>Settings.Designer.cs</LastGenOutput>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Assets\Icons\" />
+	</ItemGroup>
+
+
+</Project>

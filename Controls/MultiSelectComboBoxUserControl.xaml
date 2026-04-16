@@ -1,0 +1,395 @@
+﻿<UserControl x:Class="FlowMy.Controls.MultiSelectComboBoxUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:conv="clr-namespace:FlowMy.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="45">
+
+    <UserControl.Resources>
+        <!-- Converters -->
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+        <!-- Subtle Shadow for Hover -->
+        <DropShadowEffect x:Key="HoverShadowEffect"
+                          Color="#3B82F6"
+                          Opacity="0.2"
+                          BlurRadius="6"
+                          ShadowDepth="0"
+                          Direction="270"/>
+
+        <!-- Modern CheckBox Style for better responsiveness -->
+        <Style x:Key="ResponsiveCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Custom Checkbox -->
+                            <Border x:Name="CheckBoxBorder"
+                                    Grid.Column="0"
+                                    Width="18"
+                                    Height="18"
+                                    BorderThickness="2"
+                                    BorderBrush="{StaticResource ControlBorderBrush}"
+                                    Background="{StaticResource HeaderBackgroundBrush}"
+                                    CornerRadius="3"
+                                    Margin="0,0,8,0">
+                                <Path x:Name="CheckMark"
+                                      Data="M 3 9 L 7 13 L 15 5"
+                                      Stroke="{StaticResource PrimaryBrush}"
+                                      StrokeThickness="2"
+                                      Visibility="Collapsed"/>
+                            </Border>
+
+                            <!-- Content -->
+                            <ContentPresenter x:Name="ContentPresenter"
+                                              Grid.Column="1"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="CheckBoxBorder" Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                                <Setter TargetName="CheckMark" Property="Stroke" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern ComboBox Style -->
+        <Style x:Key="ModernMultiSelectComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Background" Value="{StaticResource HeaderBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="MainBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="40"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Content Area -->
+                                    <Grid x:Name="ContentArea" Grid.Column="0">
+                                        <ScrollViewer x:Name="ContentScrollViewer"
+                                                      HorizontalScrollBarVisibility="Auto"
+                                                      VerticalScrollBarVisibility="Disabled"
+                                                      Margin="8,0">
+                                            <TextBlock x:Name="ContentText"
+                                                       Text="{Binding SelectedItemsDisplayText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding SelectedItemsDisplayText, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                        </ScrollViewer>
+
+                                        <!-- Placeholder Text -->
+                                        <TextBlock x:Name="PlaceholderText"
+                                                   Text="{Binding PlaceholderText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   Foreground="{DynamicResource PlaceholderBrush}"
+                                                   FontStyle="Italic"
+                                                   Margin="8,0"
+                                                   VerticalAlignment="Center"
+                                                   IsHitTestVisible="False"
+                                                   Visibility="Collapsed"/>
+                                    </Grid>
+
+                                    <!-- Dropdown Button -->
+                                    <ToggleButton x:Name="ToggleButton"
+                                                  Grid.Column="1"
+                                                  Focusable="False"
+                                                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                  ClickMode="Press"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Cursor="Hand">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border x:Name="ArrowContainer"
+                                                        Background="Transparent"
+                                                        CornerRadius="8"
+                                                        Width="32"
+                                                        Height="32">
+                                                    <Path x:Name="Arrow"
+                                                          Fill="{StaticResource SecondaryBrush}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Data="M 2 6 L 6 10 L 10 6"
+                                                          Stroke="{StaticResource SecondaryBrush}"
+                                                          StrokeThickness="1.5"
+                                                          RenderTransformOrigin="0.5,0.5">
+                                                        <Path.RenderTransform>
+                                                            <RotateTransform x:Name="ArrowRotation" Angle="0"/>
+                                                        </Path.RenderTransform>
+                                                    </Path>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ArrowContainer" Property="Background" Value="Transparent"/>
+                                                        <Setter TargetName="Arrow" Property="Fill" Value="{StaticResource LavenderBrush}"/>
+                                                        <Setter TargetName="Arrow" Property="Stroke" Value="{StaticResource LavenderBrush}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="ArrowRotation"
+                                                                                     Storyboard.TargetProperty="Angle"
+                                                                                     To="180"
+                                                                                     Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut"/>
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="ArrowRotation"
+                                                                                     Storyboard.TargetProperty="Angle"
+                                                                                     To="0"
+                                                                                     Duration="0:0:0.3">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut"/>
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+
+                            <!-- Dropdown Popup -->
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Fade"
+                                   VerticalOffset="4">
+                                <Border x:Name="DropDownBorder"
+                                        Background="{StaticResource HeaderBackgroundBrush}"
+                                        BorderThickness="2"
+                                        BorderBrush="{StaticResource ControlBorderBrush}"
+                                        CornerRadius="6"
+                                        Effect="{StaticResource DropShadowEffect}"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="320">
+
+                                    <Grid Margin="6">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Search TextBox -->
+                                        <Grid Grid.Row="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- 🔤 TextBox nhập tìm kiếm -->
+                                            <TextBox Style="{StaticResource RoundedSearchTextBoxWithIcon}"
+                                                     x:Name="SearchTextBox"
+                                                     Height="40"
+                                                         Grid.Column="0"
+                                                     Text="{Binding SearchText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontSize="14"
+                                                     Padding="15,0,22,0"
+                                                     TextChanged="SearchTextBox_TextChanged"/>
+
+                                            <!-- 📝 Placeholder tìm kiếm -->
+                                            <TextBlock Text="Tìm kiếm..."
+                                                       Foreground="Gray"
+                                                            Grid.Column="0"
+                                                        FontStyle="Italic"
+                                                       Margin="30,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       IsHitTestVisible="False"
+                                                       Visibility="{Binding Text, ElementName=SearchTextBox, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+
+                                            <!-- Clear Search Button -->
+                                            <Button x:Name="ClearSearchButton"
+                                                        Grid.Column="0"
+                                                        Content="×"
+                                                        Width="20"
+                                                        Height="20"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        FontSize="14"
+                                                        FontWeight="Bold"
+                                                        Foreground="{StaticResource SecondaryBrush}"
+                                                        Cursor="Hand"
+                                                        Margin="0,0,4,0"
+                                                    HorizontalAlignment="Right"
+                                                        Click="ClearSearchButton_Click"
+                                                        ToolTip="Xóa tìm kiếm">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}"
+                                                                                CornerRadius="10">
+                                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                                              VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="{StaticResource LavenderHoverBrush}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+
+                                            <!-- Select All / Clear All buttons -->
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" 
+                                                        VerticalAlignment="Center" 
+                                                        HorizontalAlignment="Right" Margin="10,0,0,0">
+                                                <Button x:Name="SelectAllButton"
+                                                     Content="✅"
+                                                     Style="{StaticResource PrimaryButton}"
+                                                     FontSize="12"
+                                                        Height="40"
+                                                        Width="40"
+                                                        ToolTip="Chọn tất cả"
+                                                     Padding="8,4"
+                                                     Margin="0"
+                                                     Click="SelectAllButton_Click"/>
+                                                <Button x:Name="ClearAllButton"
+                                                     Content="❎"
+                                                         Height="40"
+ Width="40"
+                                                        ToolTip="Bỏ chọn tất cả"
+                                                     Style="{StaticResource DangerButton}"
+                                                     FontSize="12"
+                                                     Padding="8,4"
+                                                     Click="ClearAllButton_Click"/>
+                                            </StackPanel>
+                                        </Grid>
+
+
+                                        <!-- Items List -->
+                                        <ScrollViewer x:Name="DropDownScrollViewer"
+                                                      Grid.Row="1"
+                                                      CanContentScroll="True"
+                                                      HorizontalScrollBarVisibility="Auto"
+                                                      VerticalScrollBarVisibility="Auto">
+
+                                            <ItemsControl x:Name="PART_ItemsList"
+                                                          ItemsSource="{Binding FilteredItems, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Background="Transparent">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border x:Name="ItemBorder"
+                                                                Background="Transparent"
+                                                                Padding="8,6"
+                                                                Margin="0,1"
+                                                                CornerRadius="6"
+                                                                Cursor="Hand"
+                                                                MouseLeftButtonDown="ItemBorder_MouseLeftButtonDown">
+                                                            <CheckBox x:Name="ItemCheckBox"
+                                                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                                      Content="{Binding DisplayText}"
+                                                                      Style="{StaticResource ResponsiveCheckBoxStyle}"
+                                                                      IsHitTestVisible="False"/>
+                                                        </Border>
+                                                        <DataTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource LavenderHoverBrush}"/>
+                                                            </Trigger>
+                                                        </DataTemplate.Triggers>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+
+                                        <!-- Selected count -->
+                                        <TextBlock Grid.Row="2"
+                                                   Text="{Binding SelectedItemsCountText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource SecondaryBrush}"
+                                                   Margin="0,8,0,0"
+                                                   HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <!-- Show placeholder when no selection -->
+                            <DataTrigger Binding="{Binding HasSelectedItems, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
+                                <Setter TargetName="PlaceholderText" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ContentText" Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+
+                            <!-- Hover effects -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                                <Setter TargetName="MainBorder" Property="Effect" Value="{StaticResource DropShadowEffect}"/>
+                            </Trigger>
+
+                            <!-- Focus effects -->
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                                <Setter TargetName="MainBorder" Property="BorderThickness" Value="1"/>
+                            </Trigger>
+
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <!-- Main ComboBox -->
+    <ComboBox x:Name="MainComboBox"
+              HorizontalAlignment="Stretch"
+              Style="{StaticResource ModernMultiSelectComboBoxStyle}"
+              IsEditable="False"/>
+</UserControl>

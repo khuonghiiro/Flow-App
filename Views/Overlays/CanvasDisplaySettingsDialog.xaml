@@ -1,0 +1,267 @@
+<Window x:Class="FlowMy.Views.Overlays.CanvasDisplaySettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Canvas Control Center"
+        Width="980"
+        Height="680"
+        MinWidth="900"
+        MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Window.Resources>
+        <Style x:Key="PresetToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="0,0,8,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="PresetBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="PresetBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter TargetName="PresetBorder" Property="Background" Value="{DynamicResource MenuItemHoverBackgroundBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="PresetBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter TargetName="PresetBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,10">
+                    <TextBlock Text="Trung tâm cấu hình Canvas"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock DockPanel.Dock="Right" Margin="30,0,0,0"
+                               Text="Chọn là áp dụng ngay"
+                               Foreground="{DynamicResource TextBrush}"
+                               Opacity="0.75"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="Độ mượt apply:" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" Margin="0,0,10,0"/>
+                    <RadioButton x:Name="DebounceFastRadio" Content="Nhanh (30ms)" Tag="30" GroupName="DebounceGroup" Margin="0,0,12,0" Foreground="{DynamicResource TextBrush}"/>
+                    <RadioButton x:Name="DebounceBalancedRadio" Content="Cân bằng (70ms)" Tag="70" GroupName="DebounceGroup" Margin="0,0,12,0" Foreground="{DynamicResource TextBrush}"/>
+                    <RadioButton x:Name="DebounceSmoothRadio" Content="Mượt (120ms)" Tag="120" GroupName="DebounceGroup" Foreground="{DynamicResource TextBrush}"/>
+                </StackPanel>
+                <TextBlock x:Name="DebounceStatusText"
+                           Text="Apply debounce: 70ms (Balanced)"
+                           Foreground="{DynamicResource TextBrush}"
+                           Opacity="0.75"
+                           Margin="0,0,0,8"/>
+                <WrapPanel>
+                    <ToggleButton x:Name="PresetLowButton" Content="Máy yếu" Tag="Low" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
+                    <ToggleButton x:Name="PresetNormalButton" Content="Máy TB" Tag="Normal" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
+                    <ToggleButton x:Name="PresetHighButton" Content="Máy mạnh" Tag="High" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
+                    <ToggleButton x:Name="PresetDebugButton" Content="Debug" Tag="Debug" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
+                    <ToggleButton x:Name="PresetUltraButton" Content="Ultra" Tag="Ultra" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <TabControl Grid.Row="1" Style="{DynamicResource ModernTabControl}" Background="Transparent">
+            <TabItem Header="Canvas" Style="{StaticResource HttpTabItemStyle}">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
+                        <StackPanel>
+                            <TextBlock Text="Hiển thị" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Kiểu lưới (Grid type)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                            <ComboBox x:Name="GridTypeComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,10" Height="32">
+                                <ComboBoxItem Content="Không có lưới" Tag="None"/>
+                                <ComboBoxItem Content="Kẻ chấm (Dots)" Tag="Dots"/>
+                                <ComboBoxItem Content="Kẻ liền (Lines)" Tag="Lines"/>
+                            </ComboBox>
+                            <TextBlock Text="Chế độ hiển thị (Display mode)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                            <WrapPanel Margin="0,6,0,10">
+                                <RadioButton x:Name="CanvasDisplayModeAllRadio" Content="Hiển thị toàn bộ" Tag="ShowAll" GroupName="CanvasDisplayModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                <RadioButton x:Name="CanvasDisplayModeViewportRadio" Content="Hiển thị theo màn" Tag="ViewportOnly" GroupName="CanvasDisplayModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                            </WrapPanel>
+                            <TextBlock Text="Hiệu năng culling" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                            <WrapPanel Margin="0,6,0,0">
+                                <RadioButton x:Name="CullingProfileLowRadio" Content="Máy yếu" Tag="Low" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                <RadioButton x:Name="CullingProfileNormalRadio" Content="Máy bình thường" Tag="Normal" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                <RadioButton x:Name="CullingProfileHighRadio" Content="Máy mạnh" Tag="High" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="GPU Rendering (tăng tốc GPU)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                            <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="GpuEnabledCheckBox" Content="Bật GPU rendering" Margin="0,0,0,10"/>
+                            <TextBlock Text="Chất lượng GPU (GPU quality)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                            <ComboBox x:Name="GpuQualityComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,0" Height="32"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Kết nối" Style="{StaticResource HttpTabItemStyle}">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
+                        <StackPanel>
+                            <TextBlock Text="Đường nối &amp; Animation" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Kiểu đường nối (Line style)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                            <ComboBox x:Name="LineStyleComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,10" Height="32"/>
+                            <TextBlock Text="Chế độ animation (Animation mode)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                            <WrapPanel Margin="0,6,0,0">
+                                <RadioButton x:Name="AnimationModeAnimatedRadio" Content="Bật Animation" Tag="Animated" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                <RadioButton x:Name="AnimationModeOffRadio" Content="Tắt Animation" Tag="Off" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                <RadioButton x:Name="AnimationModeDashedRadio" Content="Hiển thị nét đứt" Tag="Dashed" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Màu đường nối (Connection color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                            <WrapPanel Margin="0,0,0,10">
+                                <RadioButton x:Name="ConnectionColorModeNodeRadio" Content="Màu theo node" Tag="NodeColor" GroupName="ConnectionColorModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                <RadioButton x:Name="ConnectionColorModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" GroupName="ConnectionColorModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                            </WrapPanel>
+                            <ComboBox x:Name="CustomColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,0" Height="32"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Tiêu đề + Energy" Style="{StaticResource HttpTabItemStyle}">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,6,0">
+                        <StackPanel>
+                            <TextBlock Text="Màu tiêu đề hàng loạt (Bulk title color)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                            <WrapPanel Margin="0,0,0,10">
+                                <RadioButton x:Name="BulkTitleModeNodeRadio" Content="Màu theo node" Tag="NodeColor" GroupName="BulkTitleModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                                <RadioButton x:Name="BulkTitleModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" GroupName="BulkTitleModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
+                            </WrapPanel>
+                            <ComboBox x:Name="BulkTitleColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,0" Height="32"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Hiệu ứng chạy luồng (Execution energy)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+
+                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal">
+                                <StackPanel Width="220" Margin="0,0,8,0">
+                                    <RadioButton x:Name="EnergyColorModeFollowLineRadio" Content="Theo màu line" Tag="FollowLineColor" GroupName="EnergyColorModeGroup" Margin="0,0,0,4" Foreground="{DynamicResource TextBrush}"/>
+                                    <RadioButton x:Name="EnergyColorModeCustomRadio" Content="Màu tùy chọn" Tag="CustomColor" Foreground="{DynamicResource TextBrush}" GroupName="EnergyColorModeGroup"/>
+                                </StackPanel>
+                                <ComboBox x:Name="EnergyCustomColorKeyComboBox" Style="{DynamicResource BaseComboBox}" Width="220" Height="32"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Khoảng cách chấm (Gap)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" x:Name="EnergyDotGapValueText" Text="8.0" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
+                            <Slider Grid.Row="3" Grid.ColumnSpan="2" x:Name="EnergyDotGapSlider" Minimum="2" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="False"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Độ dày cộng thêm (Thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" x:Name="EnergyDotThicknessValueText" Text="0.8" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
+                            <Slider Grid.Row="5" Grid.ColumnSpan="2" x:Name="EnergyDotThicknessSlider" Minimum="0" Maximum="8" TickFrequency="0.2" IsSnapToTickEnabled="False"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Energy nâng cao" Style="{StaticResource HttpTabItemStyle}">
+                <Grid Margin="10">
+                    <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Text + Runtime (nâng cao)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Text thay cho chấm (để trống = chỉ chấm)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                            <TextBox Grid.Row="2" Grid.ColumnSpan="2" x:Name="EnergyDotTextTextBox" Style="{DynamicResource BaseTextBoxV2}" Margin="0,4,0,8"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Tốc độ chạy (Run speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,6,0,2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="EnergyRunSpeedValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,6,0,2"/>
+                            <Slider Grid.Row="4" Grid.ColumnSpan="2" x:Name="EnergyRunSpeedSlider" Minimum="0.2" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Giây/vòng xoay (Spin sec)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" x:Name="EnergySpinSpeedValueText" Text="0.7" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
+                            <Slider Grid.Row="6" Grid.ColumnSpan="2" x:Name="EnergySpinSpeedSlider" Minimum="0.2" Maximum="8" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+
+                            <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
+                                <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="EnergyDotRotateCheckBox" Content="Text xoay 360 độ" Margin="0,0,16,0"/>
+                                <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="EnergyMeteorModeCheckBox" Content="Hiệu ứng thiên thạch"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="CancelButton" Content="Đóng" MinWidth="100" Style="{DynamicResource PrimaryButton}" Click="CancelButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

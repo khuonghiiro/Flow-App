@@ -1,0 +1,11 @@
+﻿<UserControl x:Class="FlowMy.Controls.FontIconUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <TextBlock 
+        FontFamily="{DynamicResource FontAwesome}"
+        Text="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Icon}"
+        Foreground="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=IconBrush}"
+        FontSize="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=IconSize}"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"/>
+</UserControl>

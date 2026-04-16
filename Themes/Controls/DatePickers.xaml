@@ -1,0 +1,197 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+
+    <!-- DatePicker TextBox Style -->
+    <Style x:Key="DatePickerTextBoxStyle" TargetType="DatePickerTextBox">
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst"/>
+        <Setter Property="Stylus.IsFlicksEnabled" Value="False"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="2"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePickerTextBox">
+                    <ScrollViewer x:Name="PART_ContentHost" 
+                                  Background="{TemplateBinding Background}"
+                                  BorderThickness="0"
+                                  Focusable="false"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Hidden"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ModernDatePicker" TargetType="DatePicker">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource TextBoxBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderInverseColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="Margin" Value="0,0,0,5"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePicker">
+                    <Border x:Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- TextBox Area -->
+                            <DatePickerTextBox x:Name="PART_TextBox"
+                                               Grid.Column="0"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               Focusable="{TemplateBinding Focusable}"
+                                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               FontFamily="{TemplateBinding FontFamily}"
+                                               FontSize="{TemplateBinding FontSize}"
+                                               Margin="{TemplateBinding Padding}"
+                                               Style="{StaticResource DatePickerTextBoxStyle}"/>
+
+                            <!-- Calendar Button -->
+                            <Button x:Name="PART_Button"
+                                    Grid.Column="1"
+                                    Width="30"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Focusable="False"
+                                    Padding="6">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="ButtonBorder"
+                                                Background="{TemplateBinding Background}"
+                                                CornerRadius="0,5,5,0"
+                                                Padding="{TemplateBinding Padding}">
+                                            <!-- Simple Calendar Icon -->
+                                            <Canvas Width="14" Height="14" 
+                                                    HorizontalAlignment="Center" 
+                                                    VerticalAlignment="Center">
+                                                <!-- Calendar body -->
+                                                <Rectangle x:Name="CalendarBody"
+                                                           Canvas.Left="1" Canvas.Top="3"
+                                                           Width="12" Height="10"
+                                                           Fill="Transparent"
+                                                           Stroke="{DynamicResource TextBrush}"
+                                                           StrokeThickness="1"/>
+                                                <!-- Calendar header -->
+                                                <Rectangle x:Name="CalendarHeader"
+                                                           Canvas.Left="1" Canvas.Top="1"
+                                                           Width="12" Height="3"
+                                                           Fill="{DynamicResource TextBrush}"/>
+                                                <!-- Calendar rings -->
+                                                <Rectangle Canvas.Left="3" Canvas.Top="0"
+                                                           Width="1" Height="3"
+                                                           Fill="{DynamicResource TextBrush}"/>
+                                                <Rectangle Canvas.Left="10" Canvas.Top="0"
+                                                           Width="1" Height="3"
+                                                           Fill="{DynamicResource TextBrush}"/>
+                                                <!-- Calendar dots -->
+                                                <Ellipse Canvas.Left="3" Canvas.Top="6"
+                                                         Width="1.5" Height="1.5"
+                                                         Fill="{DynamicResource TextBrush}"/>
+                                                <Ellipse Canvas.Left="6" Canvas.Top="6"
+                                                         Width="1.5" Height="1.5"
+                                                         Fill="{DynamicResource TextBrush}"/>
+                                                <Ellipse Canvas.Left="9" Canvas.Top="6"
+                                                         Width="1.5" Height="1.5"
+                                                         Fill="{DynamicResource TextBrush}"/>
+                                                <Ellipse Canvas.Left="3" Canvas.Top="9"
+                                                         Width="1.5" Height="1.5"
+                                                         Fill="{DynamicResource TextBrush}"/>
+                                                <Ellipse Canvas.Left="6" Canvas.Top="9"
+                                                         Width="1.5" Height="1.5"
+                                                         Fill="{DynamicResource TextBrush}"/>
+                                            </Canvas>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource TextBoxHoverBackground}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource TextBoxFocusBackground}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="CalendarBody" Property="Stroke" Value="{DynamicResource DisabledTextBrush}"/>
+                                                <Setter TargetName="CalendarHeader" Property="Fill" Value="{DynamicResource DisabledTextBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- Popup -->
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Placement="Bottom"
+                                   PlacementTarget="{Binding ElementName=Border}"
+                                   StaysOpen="False"
+                                   PopupAnimation="Slide"/>
+                        </Grid>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource TextBoxHoverBackground}"/>
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource TextBoxFocusBackground}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter TargetName="Border" Property="BorderThickness" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource TextBoxFocusBackground}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter TargetName="Border" Property="BorderThickness" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource DisabledBackground}"/>
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                        </Trigger>
+                        <Trigger Property="Validation.HasError" Value="True">
+                            <Setter TargetName="Border" Property="BorderBrush" Value="#E53E3E"/>
+                            <Setter TargetName="Border" Property="BorderThickness" Value="1" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Compact variant -->
+    <Style x:Key="CompactDatePicker" TargetType="DatePicker" BasedOn="{StaticResource ModernDatePicker}">
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="8,0"/>
+    </Style>
+
+    <!-- Large variant -->
+    <Style x:Key="LargeDatePicker" TargetType="DatePicker" BasedOn="{StaticResource ModernDatePicker}">
+        <Setter Property="Height" Value="45"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="5,0"/>
+    </Style>
+
+</ResourceDictionary>

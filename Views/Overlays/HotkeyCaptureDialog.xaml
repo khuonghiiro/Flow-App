@@ -1,0 +1,292 @@
+﻿<Window x:Class="FlowMy.Views.Overlays.HotkeyCaptureDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="HotkeyCaptureDialog"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="Manual">
+
+    <Window.Resources>
+        <!-- Fade in animation -->
+        <Storyboard x:Key="FadeInStoryboard">
+            <DoubleAnimation Storyboard.TargetName="RootGrid"
+                             Storyboard.TargetProperty="Opacity"
+                             From="0" To="1"
+                             Duration="0:0:0.2"/>
+        </Storyboard>
+    </Window.Resources>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource FadeInStoryboard}"/>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid x:Name="RootGrid" Opacity="0">
+        <!-- Overlay backdrop - click to cancel -->
+        <Border x:Name="OverlayBackdrop"
+                Background="#CC000000"
+                MouseDown="OnOverlayClick">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Cursor" Value="Hand"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
+
+        <!-- Dialog content centered -->
+        <Border CornerRadius="12"
+                Padding="14"
+                Background="{DynamicResource WindowBackground}"
+                BorderBrush="{DynamicResource ControlBorderBrush}"
+                BorderThickness="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="20">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" 
+                                  Direction="270" 
+                                  ShadowDepth="8" 
+                                  BlurRadius="24" 
+                                  Opacity="0.6"/>
+            </Border.Effect>
+
+            <Grid MinWidth="360" MaxWidth="500">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                    <TextBlock Text="⌨️ Chọn tổ hợp phím"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"/>
+                    <TextBlock TextWrapping="Wrap"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextBrush}"
+                               Opacity="0.85"
+                               TextAlignment="Center"
+                               LineHeight="16">
+                        <Run Text="Nhấn các phím theo thứ tự để tạo tổ hợp phím"/>
+                        <LineBreak/>
+                        <Run Text="Ví dụ: Ctrl → Shift → K = Ctrl+Shift+K"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Hotkey display -->
+                <Border Grid.Row="1"
+                        CornerRadius="10"
+                        Padding="14,12"
+                        Background="#1AFFFFFF"
+                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                        BorderThickness="1"
+                        Margin="0,0,0,14">
+                    <DockPanel LastChildFill="True">
+                        <TextBlock Text="Hotkey:"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+                        <TextBlock x:Name="HotkeyText"
+                                   Text="Chưa chọn"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- Buttons -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button x:Name="RemoveLastButton"
+                            Grid.Column="0"
+                            Content="← Xóa cuối"
+                            Height="32"
+                            MinWidth="90"
+                            Padding="12,0"
+                            Margin="0,0,8,0"
+                            FontSize="12"
+                            ToolTip="Xóa phím vừa nhập (hoặc nhấn Backspace)">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#1AFFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" 
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#33FFFFFF"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter Property="Background" Value="#0DFFFFFF"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Button x:Name="ClearButton"
+                            Grid.Column="1"
+                            Content="🗑️ Xóa hết"
+                            Height="32"
+                            MinWidth="80"
+                            Padding="12,0"
+                            Margin="0,0,8,0"
+                            FontSize="12"
+                            ToolTip="Xóa toàn bộ tổ hợp phím">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#1AFF4444"/>
+                                <Setter Property="Foreground" Value="#FFCCCC"/>
+                                <Setter Property="BorderBrush" Value="#33FF4444"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" 
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#33FF4444"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter Property="Background" Value="#0DFF4444"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="CancelButton"
+                                Content="Cancel"
+                                Height="32"
+                                MinWidth="80"
+                                Padding="12,0"
+                                Margin="0,0,8,0"
+                                FontSize="12">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#1AFFFFFF"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" 
+                                                                      VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#33FFFFFF"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter Property="Background" Value="#0DFFFFFF"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button x:Name="OkButton"
+                                Content="OK"
+                                Height="32"
+                                MinWidth="80"
+                                Padding="12,0"
+                                FontSize="12"
+                                IsDefault="True">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF3B82F6"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="BorderBrush" Value="#FF60A5FA"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" 
+                                                                      VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF60A5FA"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter Property="Background" Value="#FF2563EB"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

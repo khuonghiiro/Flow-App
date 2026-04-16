@@ -1,0 +1,470 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Style cÆ¡ báº£n cho dáº¥u há»i cháº¥m TextBlock -->
+    <Style x:Key="QuestionMarkTextBlockStyle" TargetType="TextBlock">
+        <Setter Property="Text" Value="?" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="TextAlignment" Value="Left" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
+        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryHoverBrush}" />
+                <Setter Property="FontSize" Value="15" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Style cho Button lÃ m dáº¥u há»i cháº¥m hÃ¬nh trÃ²n -->
+    <Style x:Key="QuestionMarkButtonStyle" TargetType="Button">
+        <Setter Property="Content" Value="?" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
+        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10"
+                            Width="{TemplateBinding Width}"
+                            Height="{TemplateBinding Height}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        TextBlock.Foreground="{TemplateBinding Foreground}"
+                                        TextBlock.FontWeight="{TemplateBinding FontWeight}"
+                                        TextBlock.FontSize="{TemplateBinding FontSize}"
+                                        TextBlock.FontFamily="{TemplateBinding FontFamily}"/>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryHoverBrush}" />
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryPressedBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryPressedBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Style cho Border chá»©a dáº¥u há»i cháº¥m -->
+    <Style x:Key="QuestionMarkBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
+        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryPressedBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Style nÃ¢ng cao cho ToolTip -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="MaxWidth" Value="350"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+        <Setter Property="Margin" Value="20"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
+        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+        
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}"
+                            MaxWidth="{TemplateBinding MaxWidth}">
+
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" 
+                                            Direction="315" 
+                                            ShadowDepth="3" 
+                                            BlurRadius="6" 
+                                            Opacity="0.4"/>
+                        </Border.Effect>
+
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Style cho Dark Theme ToolTip -->
+    <Style x:Key="DarkTooltipStyle" TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource SurfaceColor}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="MaxWidth" Value="350"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}"
+                            MaxWidth="{TemplateBinding MaxWidth}">
+
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" 
+                                            Direction="315" 
+                                            ShadowDepth="4" 
+                                            BlurRadius="8" 
+                                            Opacity="0.6"/>
+                        </Border.Effect>
+
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Style cho Dark Theme Button -->
+    <Style x:Key="DarkQuestionMarkButtonStyle" TargetType="Button">
+        <Setter Property="Content" Value="?" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceColor}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
+        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10"
+                            Width="{TemplateBinding Width}"
+                            Height="{TemplateBinding Height}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        TextBlock.Foreground="{TemplateBinding Foreground}"
+                                        TextBlock.FontWeight="{TemplateBinding FontWeight}"
+                                        TextBlock.FontSize="{TemplateBinding FontSize}"
+                                        TextBlock.FontFamily="{TemplateBinding FontFamily}"/>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PopupHoverBrush}" />
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource TextBoxFocusBackground}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Style cho Dark Theme Border -->
+    <Style x:Key="DarkQuestionMarkBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SurfaceColor}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
+        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource PopupHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Trong ResourceDictionary cá»§a báº¡n, thÃªm style nÃ y -->
+    <Style x:Key="RunTooltipStyle" TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="MaxWidth" Value="350"/>
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="HasDropShadow" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="8"
+                        Padding="{TemplateBinding Padding}"
+                        MaxWidth="{TemplateBinding MaxWidth}">
+                        
+                        <ContentPresenter Content="{TemplateBinding Content}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- PhiÃªn báº£n hiá»‡n Ä‘áº¡i hÆ¡n vá»›i gradient -->
+    <Style x:Key="ModernRunTooltipStyle" TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="MaxWidth" Value="350"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="10"
+                        Padding="{TemplateBinding Padding}"
+                        MaxWidth="{TemplateBinding MaxWidth}">
+                        <ContentPresenter Content="{TemplateBinding Content}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- PhiÃªn báº£n Dark Theme -->
+    <Style x:Key="DarkRunTooltipStyle" TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="MaxWidth" Value="350"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceColor}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="10"
+                        Padding="{TemplateBinding Padding}"
+                        MaxWidth="{TemplateBinding MaxWidth}">
+                        <ContentPresenter Content="{TemplateBinding Content}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- PhiÃªn báº£n Glass Effect (hiá»‡n Ä‘áº¡i) -->
+    <Style x:Key="GlassRunTooltipStyle" TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="16,12"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="MaxWidth" Value="350"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="12"
+                        Padding="{TemplateBinding Padding}"
+                        MaxWidth="{TemplateBinding MaxWidth}">
+                        
+                        <ContentPresenter Content="{TemplateBinding Content}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="InfoTooltipStyle" TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10"/>
+        <Setter Property="MaxWidth" Value="400"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+    </Style>
+
+</ResourceDictionary>
+    
+    
+    
+<!--<Button Style="{StaticResource QuestionMarkButtonStyle}">
+    <Button.ToolTip>
+        <ToolTip MaxWidth="300">
+            <TextBlock TextWrapping="Wrap">
+                <Run Text="TiÃªu Ä‘á»: " FontWeight="Bold"/>
+                <Run Text="ÄÃ¢y lÃ  ná»™i dung tooltip ráº¥t dÃ i cÃ³ thá»ƒ xuá»‘ng nhiá»u dÃ²ng vÃ  sáº½ tá»± Ä‘á»™ng wrap text khi vÆ°á»£t quÃ¡ MaxWidth Ä‘Ã£ Ä‘Æ°á»£c thiáº¿t láº­p."/>
+            </TextBlock>
+        </ToolTip>
+    </Button.ToolTip>
+</Button>-->
+    
+<!--<Button Style="{StaticResource DarkQuestionMarkButtonStyle}">
+    <Button.ToolTip>
+        <ToolTip Style="{StaticResource DarkTooltipStyle}" MaxWidth="350">
+            <StackPanel>
+                <TextBlock Text="HÆ°á»›ng dáº«n sá»­ dá»¥ng" 
+                           FontWeight="Bold" 
+                           Margin="0,0,0,8"/>
+                <TextBlock TextWrapping="Wrap">
+                    Ná»™i dung hÆ°á»›ng dáº«n chi tiáº¿t cÃ³ thá»ƒ ráº¥t dÃ i vÃ  Ä‘Æ°á»£c chia thÃ nh nhiá»u Ä‘oáº¡n vÄƒn Ä‘á»ƒ dá»… Ä‘á»c hÆ¡n.
+                </TextBlock>
+                <Separator Margin="0,8"/>
+                <TextBlock Text="LÆ°u Ã½: ÄÃ¢y lÃ  thÃ´ng tin quan trá»ng" 
+                           FontStyle="Italic"/>
+            </StackPanel>
+        </ToolTip>
+    </Button.ToolTip>
+</Button>-->
+    
+    
+<!--<Border Style="{StaticResource QuestionMarkBorderStyle}"
+        ToolTip="Tooltip vá»›i border">
+    <TextBlock Text="?" 
+               Foreground="{DynamicResource TextOnPrimaryBrush}" 
+               FontWeight="Bold" 
+               FontSize="12"
+               HorizontalAlignment="Center" 
+               VerticalAlignment="Center"/>
+</Border>-->
+    
+<!--<TextBlock Style="{StaticResource QuestionMarkTextBlockStyle}"
+           ToolTip="ThÃ´ng tin hÆ°á»›ng dáº«n ngáº¯n gá»n"/>-->
+    
+    
+<!--<TextBlock Text="Hover me">
+    <TextBlock.ToolTip>
+        <ToolTip Style="{StaticResource DarkTooltipStyle}">
+            <TextBlock Text="Ná»™i dung tooltip dark theme" TextWrapping="Wrap"/>
+        </ToolTip>
+    </TextBlock.ToolTip>
+</TextBlock>-->
+    
+    
+    
+<!--<TextBlock Style="{StaticResource TextBlockLeftBase}">
+    <TextBlock.Inlines>
+        <Run Text="MÃ£ vai trÃ²" />
+        <Run Text="*" Foreground="{DynamicResource DangerBrush}" FontWeight="Bold" />
+        <Run Text="ðŸ›ˆ" 
+             FontFamily="Segoe UI Emoji"
+             Foreground="{DynamicResource TextSecondary}" 
+             FontWeight="Bold"
+             FontSize="12"
+             ToolTipService.InitialShowDelay="300"
+             ToolTipService.ShowDuration="8000"
+             ToolTipService.BetweenShowDelay="100"
+             ToolTipService.Placement="Right">
+            <Run.ToolTip>
+                <ToolTip Style="{StaticResource RunTooltipStyle}">
+                    <TextBlock Text="MÃ£ vai trÃ² nÃªn theo danh má»¥c náº¿u khÃ´ng biáº¿t mÃ£ trong há»‡ thá»‘ng!" 
+                               TextWrapping="Wrap"/>
+                </ToolTip>
+            </Run.ToolTip>
+        </Run>
+    </TextBlock.Inlines>
+</TextBlock>-->
+    

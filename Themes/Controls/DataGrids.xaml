@@ -1,0 +1,439 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:conv="clr-namespace:FlowMy.Converters"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================ -->
+    <!-- CONVERTERS -->
+    <!-- ============================================ -->
+    <conv:RowStyleBackgroundConverter x:Key="RowStyleBackgroundConverter"/>
+    <conv:RowStyleForegroundConverter x:Key="RowStyleForegroundConverter"/>
+    <conv:RowStyleHoverBackgroundConverter x:Key="RowStyleHoverBackgroundConverter"/>
+    <conv:RowStyleHoverForegroundConverter x:Key="RowStyleHoverForegroundConverter"/>
+    <conv:RowStyleSelectedBackgroundConverter x:Key="RowStyleSelectedBackgroundConverter"/>
+    <conv:RowStyleFontWeightConverter x:Key="RowStyleFontWeightConverter"/>
+    <conv:RowStyleSelectedForegroundConverter x:Key="RowStyleSelectedForegroundConverter"/>
+
+    <!-- ============================================ -->
+    <!-- HEADER STYLES -->
+    <!-- ============================================ -->
+
+    <!-- Default Header Style (Áp dụng cho tất cả nếu không chỉ định) -->
+    <Style TargetType="DataGridColumnHeader">
+        <Setter Property="Foreground" Value="{DynamicResource DataGridHeaderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource DataGridHeaderBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DataGridBorderBrush}" />
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Padding" Value="8,8"/>
+        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Height" Value="40"/>
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Height="{TemplateBinding Height}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Margin="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Base Header Style (Để kế thừa) -->
+    <Style x:Key="BaseColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+        <!-- Kế thừa từ default style -->
+    </Style>
+
+    <!-- Sortable Header Style -->
+    <Style x:Key="SortableColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource BaseColumnHeaderStyle}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Height="{TemplateBinding Height}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Content chính -->
+                            <ContentPresenter Grid.Column="0"
+                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                        Margin="{TemplateBinding Padding}"
+                                        SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+
+                            <!-- Sort Icon -->
+                            <TextBlock x:Name="SortIcon" 
+                                 Grid.Column="1"
+                                 Text="" 
+                                       FontFamily="{DynamicResource FontAwesome}"
+                                 VerticalAlignment="Center" 
+                                 HorizontalAlignment="Center"
+                                 Foreground="Gray" 
+                                 FontSize="10"
+                                 Margin="5,0,5,0"/>
+                        </Grid>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="SortDirection" Value="Ascending">
+                            <Setter TargetName="SortIcon" Property="Text" Value=""/>
+                            <Setter TargetName="SortIcon" Property="Foreground" Value="{DynamicResource DataGridHeaderBrush}"/>
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Descending">
+                            <Setter TargetName="SortIcon" Property="Text" Value=""/>
+                            <Setter TargetName="SortIcon" Property="Foreground" Value="{DynamicResource DataGridHeaderBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Header Alignment Styles -->
+    <Style x:Key="HeaderLeftStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource BaseColumnHeaderStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    </Style>
+
+    <Style x:Key="HeaderCenterStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource BaseColumnHeaderStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="HeaderRightStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource BaseColumnHeaderStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Right"/>
+    </Style>
+
+    <Style x:Key="SortHeaderLeftStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource SortableColumnHeaderStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    </Style>
+
+    <Style x:Key="SortHeaderCenterStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource SortableColumnHeaderStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="SortHeaderRightStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource SortableColumnHeaderStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Right"/>
+    </Style>
+
+    <!-- ============================================ -->
+    <!-- DATAGRID STYLES -->
+    <!-- ============================================ -->
+
+    <!-- Style 1: Simple DataGrid (Không có custom row style) -->
+    <Style x:Key="SimpleDataGridStyle" TargetType="DataGrid">
+        <Setter Property="Background" Value="{DynamicResource TransparentBrush}" />
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource CardColor}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DataGridBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="RowHeight" Value="40" />
+        <Setter Property="HeadersVisibility" Value="Column" />
+        <Setter Property="ColumnHeaderHeight" Value="45" />
+        <Setter Property="GridLinesVisibility" Value="None" />
+        <Setter Property="RowHeaderWidth" Value="0" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+    </Style>
+
+    <!-- Style 2: Advanced DataGrid (Có custom row style) -->
+    <Style x:Key="AdvancedDataGridStyle" TargetType="DataGrid" BasedOn="{StaticResource SimpleDataGridStyle}">
+        <!-- Kế thừa tất cả từ SimpleDataGridStyle -->
+    </Style>
+
+    <!-- ============================================ -->
+    <!-- ROW STYLES -->
+    <!-- ============================================ -->
+
+    <!-- Style 1: Simple Row (Không có custom style) -->
+    <Style x:Key="SimpleRowStyle" TargetType="DataGridRow">
+        <Setter Property="Background" Value="{DynamicResource TransparentBrush}" />
+        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DataGridBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="MinHeight" Value="36"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+
+        <Style.Triggers>
+            <!-- Hover -->
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource DataGridHoverRowBackground}" />
+            </Trigger>
+
+            <!-- Selected -->
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#42A5F5" />
+                <Setter Property="Foreground" Value="{DynamicResource DataGridSelectedTextBrush}" />
+            </Trigger>
+
+            <!-- Hover + Selected -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsSelected" Value="True"/>
+                    <Condition Property="IsMouseOver" Value="True"/>
+                </MultiTrigger.Conditions>
+                <Setter Property="Opacity" Value="1"/>
+            </MultiTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Style 2: Advanced Row (Có custom style với converter) -->
+    <Style x:Key="AdvancedRowStyle" TargetType="DataGridRow">
+        <Setter Property="Background" Value="{DynamicResource TransparentBrush}" />
+        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DataGridBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="MinHeight" Value="36"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+
+        <Style.Triggers>
+            <!-- CUSTOM STYLE - Khi có RowStyleData -->
+            <DataTrigger Binding="{Binding StyleType}" Value="Custom">
+                <Setter Property="Background" Value="{Binding RowStyleData, Converter={StaticResource RowStyleBackgroundConverter}}"/>
+                <Setter Property="Foreground" Value="{Binding RowStyleData, Converter={StaticResource RowStyleForegroundConverter}}"/>
+                <Setter Property="FontWeight" Value="{Binding RowStyleData, Converter={StaticResource RowStyleFontWeightConverter}}"/>
+            </DataTrigger>
+
+            <!-- DEFAULT STYLE -->
+            <DataTrigger Binding="{Binding StyleType}" Value="Default">
+                <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                <Setter Property="FontWeight" Value="Normal"/>
+            </DataTrigger>
+
+            <!-- HOVER - Custom -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True"/>
+                    <Condition Binding="{Binding StyleType}" Value="Custom"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{Binding RowStyleData, Converter={StaticResource RowStyleHoverBackgroundConverter}}"/>
+                <Setter Property="Foreground" Value="{Binding RowStyleData, Converter={StaticResource RowStyleHoverForegroundConverter}}"/>
+            </MultiDataTrigger>
+
+            <!-- HOVER - Default -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True"/>
+                    <Condition Binding="{Binding StyleType}" Value="Default"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource DataGridHoverRowBackground}"/>
+            </MultiDataTrigger>
+
+            <!-- SELECTED - Custom -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsSelected}" Value="True"/>
+                    <Condition Binding="{Binding StyleType}" Value="Custom"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{Binding RowStyleData, Converter={StaticResource RowStyleSelectedBackgroundConverter}}"/>
+                <Setter Property="Foreground" Value="{Binding RowStyleData, Converter={StaticResource RowStyleSelectedForegroundConverter}}"/>
+            </MultiDataTrigger>
+
+            <!-- SELECTED - Default -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsSelected}" Value="True"/>
+                    <Condition Binding="{Binding StyleType}" Value="Default"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource DataGridSelectedRowBackground}"/>
+                <Setter Property="Foreground" Value="{DynamicResource DataGridSelectedTextBrush}"/>
+            </MultiDataTrigger>
+
+            <!-- HOVER + SELECTED -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsSelected" Value="True"/>
+                    <Condition Property="IsMouseOver" Value="True"/>
+                </MultiTrigger.Conditions>
+                <Setter Property="Opacity" Value="0.85"/>
+            </MultiTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ============================================ -->
+    <!-- CELL STYLES -->
+    <!-- ============================================ -->
+
+    <!-- Style 1: Simple Cell (Không có custom style) -->
+    <Style x:Key="SimpleCellStyle" TargetType="DataGridCell">
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="TextBlock.TextWrapping" Value="Wrap"/>
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border x:Name="cellBorder"
+                        Background="Transparent"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="cellBorder" Property="Background" Value="{DynamicResource InfoBrush}" />
+                            <Setter TargetName="cellBorder" Property="BorderBrush" Value="{DynamicResource InfoHoverBrush}" />
+                            <Setter TargetName="cellBorder" Property="BorderThickness" Value="1" />
+                            <Setter Property="Foreground" Value="{DynamicResource DataGridSelectedTextBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+        <Style.Triggers>
+            <!-- Row Selected - Cell text màu trắng -->
+            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource DataGridSelectedTextBrush}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Style 2: Advanced Cell (Có custom style với converter) -->
+    <Style x:Key="AdvancedCellStyle" TargetType="DataGridCell">
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="TextBlock.TextWrapping" Value="Wrap"/>
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border x:Name="cellBorder"
+                        Background="Transparent"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="cellBorder" Property="Background" Value="{DynamicResource InfoBrush}" />
+                            <Setter TargetName="cellBorder" Property="BorderBrush" Value="{DynamicResource InfoHoverBrush}" />
+                            <Setter TargetName="cellBorder" Property="BorderThickness" Value="1" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextOnInfoBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+        <Style.Triggers>
+            <!-- CUSTOM STYLE -->
+            <DataTrigger Binding="{Binding StyleType}" Value="Custom">
+                <Setter Property="Foreground" Value="{Binding RowStyleData, Converter={StaticResource RowStyleForegroundConverter}}"/>
+            </DataTrigger>
+
+            <!-- DEFAULT STYLE -->
+            <DataTrigger Binding="{Binding StyleType}" Value="Default">
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            </DataTrigger>
+
+            <!-- HOVER + CUSTOM -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsMouseOver}" Value="True"/>
+                    <Condition Binding="{Binding StyleType}" Value="Custom"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Foreground" Value="{Binding RowStyleData, Converter={StaticResource RowStyleHoverForegroundConverter}}"/>
+            </MultiDataTrigger>
+
+            <!-- SELECTED + CUSTOM -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/>
+                    <Condition Binding="{Binding StyleType}" Value="Custom"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Foreground" Value="{Binding RowStyleData, Converter={StaticResource RowStyleSelectedForegroundConverter}}"/>
+            </MultiDataTrigger>
+
+            <!-- SELECTED + DEFAULT -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=DataGridRow}, Path=IsSelected}" Value="True"/>
+                    <Condition Binding="{Binding StyleType}" Value="Default"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Foreground" Value="{DynamicResource DataGridSelectedTextBrush}"/>
+            </MultiDataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Style 3: Action Cell (Cho cột hành động) -->
+    <Style x:Key="ActionCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource SimpleCellStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="4,0"/>
+    </Style>
+
+    <!-- ============================================ -->
+    <!-- TEXTBLOCK STYLES (Cho Cell Content) -->
+    <!-- ============================================ -->
+
+    <Style x:Key="CellLeftStyle" TargetType="TextBlock">
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="5,0"/>
+    </Style>
+
+    <Style x:Key="CellCenterStyle" TargetType="TextBlock">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="CellRightStyle" TargetType="TextBlock">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="0,0,5,0"/>
+    </Style>
+
+    <!-- TEXTBOX STYLES (Cho Editing) -->
+    <Style x:Key="CellCenterEditStyle" TargetType="TextBox">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="CellRightEditStyle" TargetType="TextBox">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Right"/>
+    </Style>
+
+</ResourceDictionary>
