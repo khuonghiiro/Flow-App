@@ -134,15 +134,26 @@ namespace FlowMy.Services.Rendering
             // Spinner chỉ chạy khi container (badge) đang visible và spinner được host bật Visibility.
             var spinner = new System.Windows.Shapes.Ellipse
             {
-                Width = 14,
-                Height = 14,
+                Width = 26,
+                Height = 26,
                 Margin = new Thickness(0),
-                StrokeThickness = 2,
-                StrokeDashArray = new System.Windows.Media.DoubleCollection { 2, 3 },
-                Stroke = new SolidColorBrush(Color.FromRgb(33, 150, 243)),
-                Fill = Brushes.Transparent,
+                StrokeThickness = 3.2,
+                StrokeDashArray = new System.Windows.Media.DoubleCollection { 1.35, 2.4 },
+                Stroke = Application.Current.TryFindResource("InfoBrush") as Brush
+                         ?? new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                Fill = new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)),
                 Visibility = Visibility.Collapsed,
                 IsHitTestVisible = false,
+                Opacity = 0.98,
+                // Effect = new System.Windows.Media.Effects.DropShadowEffect
+                // {
+                //     Color = Colors.Black,
+                //     BlurRadius = 10,
+                //     ShadowDepth = 0,
+                //     Opacity = 0.72
+                // },
                 RenderTransformOrigin = new Point(0.5, 0.5),
                 RenderTransform = new RotateTransform(0)
             };
@@ -303,13 +314,20 @@ namespace FlowMy.Services.Rendering
             badge.Tag = node;
 
             // Attach spinner to canvas (spinner không nằm trong badge để vẫn quay khi bật BitmapCache).
-            // Spinner chỉ hiển thị khi CacheNodeEnabled = true AND node đang chạy (text status đang bắt đầu bằng "⏳").
+            // Hiển thị indicator ở node khi:
+            // - CacheNodeEnabled = true, hoặc
+            // - ConnectionAnimationDisplayMode != Animated (Off / Dashed)
+            // Và node đang chạy (text status bắt đầu bằng "⏳").
             if (node.ExecutionBusySpinnerUI != null)
             {
-                node.ExecutionBusySpinnerUI.Tag = host.CacheNodeEnabled;
+                var useNodeExecutionIndicator =
+                    host.CacheNodeEnabled ||
+                    host.ConnectionAnimationDisplayMode != ConnectionAnimationDisplayMode.Animated;
+
+                node.ExecutionBusySpinnerUI.Tag = useNodeExecutionIndicator;
 
                 var isExecutingNow = node.ExecutionStatusTextUI?.Text?.StartsWith("⏳", System.StringComparison.Ordinal) == true;
-                node.ExecutionBusySpinnerUI.Visibility = (host.CacheNodeEnabled && isExecutingNow)
+                node.ExecutionBusySpinnerUI.Visibility = (useNodeExecutionIndicator && isExecutingNow)
                     ? Visibility.Visible
                     : Visibility.Collapsed;
 
@@ -342,16 +360,18 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetTop(badge, top);
                 Panel.SetZIndex(badge, 20000);
 
-                // Center spinner on node border.
+                // Place spinner outside the node at top-right with a small margin for visibility.
                 if (node.ExecutionBusySpinnerUI != null)
                 {
                     var sp = node.ExecutionBusySpinnerUI;
-                    var cx = Canvas.GetLeft(b) + b.ActualWidth / 2.0 - sp.Width / 2.0;
-                    var cy = Canvas.GetTop(b) + b.ActualHeight / 2.0 - sp.Height / 2.0;
-                    if (!double.IsNaN(cx) && !double.IsInfinity(cx))
-                        Canvas.SetLeft(sp, cx);
-                    if (!double.IsNaN(cy) && !double.IsInfinity(cy))
-                        Canvas.SetTop(sp, cy);
+                    const double rightMargin = 10d;
+                    const double topMargin = 8d;
+                    var sx = Canvas.GetLeft(b) + b.ActualWidth + rightMargin;
+                    var sy = Canvas.GetTop(b) + topMargin;
+                    if (!double.IsNaN(sx) && !double.IsInfinity(sx))
+                        Canvas.SetLeft(sp, sx);
+                    if (!double.IsNaN(sy) && !double.IsInfinity(sy))
+                        Canvas.SetTop(sp, sy);
                     Panel.SetZIndex(sp, 19999);
                 }
             }

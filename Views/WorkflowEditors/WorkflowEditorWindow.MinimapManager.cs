@@ -506,21 +506,6 @@ namespace FlowMy.Views
             // Cache node mode: bật/tắt BitmapCache cho node border và thay animation energy bằng spinner.
             _cacheNodeEnabled = preferences.CacheNodeEnabled;
 
-            // Update spinner visibility immediately (node đang chạy có thể đang visible badge).
-            if (ViewModel?.Nodes != null)
-            {
-                foreach (var node in ViewModel.Nodes)
-                {
-                    if (node.ExecutionBusySpinnerUI == null) continue;
-
-                    node.ExecutionBusySpinnerUI.Tag = _cacheNodeEnabled;
-                    var isExecutingNow = node.ExecutionStatusTextUI?.Text?.StartsWith("⏳", System.StringComparison.Ordinal) == true;
-                    node.ExecutionBusySpinnerUI.Visibility = (_cacheNodeEnabled && isExecutingNow)
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
-                }
-            }
-
             if (Enum.TryParse(preferences.ConnectionAnimationMode, out ConnectionAnimationDisplayMode animationMode))
             {
                 // Cache node mode: không cho dùng Animated để tránh energy animation.
@@ -529,6 +514,25 @@ namespace FlowMy.Views
                     animationMode = ConnectionAnimationDisplayMode.Off;
                 }
                 SetConnectionAnimationDisplayMode(animationMode);
+            }
+
+            // Update spinner visibility immediately (node đang chạy có thể đang visible badge).
+            if (ViewModel?.Nodes != null)
+            {
+                var useNodeExecutionIndicator =
+                    _cacheNodeEnabled ||
+                    _connectionAnimationDisplayMode != ConnectionAnimationDisplayMode.Animated;
+
+                foreach (var node in ViewModel.Nodes)
+                {
+                    if (node.ExecutionBusySpinnerUI == null) continue;
+
+                    node.ExecutionBusySpinnerUI.Tag = useNodeExecutionIndicator;
+                    var isExecutingNow = node.ExecutionStatusTextUI?.Text?.StartsWith("⏳", System.StringComparison.Ordinal) == true;
+                    node.ExecutionBusySpinnerUI.Visibility = (useNodeExecutionIndicator && isExecutingNow)
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+                }
             }
 
             if (preferences.ConnectionColorMode == nameof(ConnectionColorMode.CustomColor))
