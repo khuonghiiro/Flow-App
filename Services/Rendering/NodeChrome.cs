@@ -300,6 +300,17 @@ namespace FlowMy.Services.Rendering
             toggle.Content = $"{arrow} Có lỗi";
         }
 
+        public static void RefreshExecutionIndicators(IEnumerable<WorkflowNode> nodes, IWorkflowEditorHost host)
+        {
+            if (nodes == null || host == null) return;
+
+            foreach (var node in nodes)
+            {
+                if (node?.Border == null) continue;
+                EnsureExecutionStatusBadgeAttached(node.Border, node, host);
+            }
+        }
+
         private static void EnsureExecutionStatusBadgeAttached(Border nodeBorder, WorkflowNode node, IWorkflowEditorHost host)
         {
             // Create once

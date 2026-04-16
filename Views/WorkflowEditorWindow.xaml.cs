@@ -663,12 +663,26 @@ namespace FlowMy.Views
                             // on old nodes after resource dictionary/theme swap.
                             RebuildWebViewNodesAfterThemeSwitch();
 
+                            // Theme/resource swaps can temporarily unload node visuals and remove
+                            // execution indicators from the canvas. Re-attach them after layout settles.
+                            if (ViewModel?.Nodes != null)
+                            {
+                                NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);
+                            }
+
                             // WebView2 (HwndHost) can get stuck hidden after a global re-template.
                             // Best-effort: clear any clip region and re-show if it was left collapsed.
                             FixWebView2AfterThemeSwitch();
 
                             // Run one more pass on idle to catch controls recreated during layout cycle.
-                            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(FixWebView2AfterThemeSwitch));
+                            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+                            {
+                                FixWebView2AfterThemeSwitch();
+                                if (ViewModel?.Nodes != null)
+                                {
+                                    NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);
+                                }
+                            }));
                         }
                         catch { }
                     }));
