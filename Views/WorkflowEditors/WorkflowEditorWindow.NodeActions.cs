@@ -282,6 +282,9 @@ namespace FlowMy.Views
                 dstWeb.TitleDisplayMode = srcWeb.TitleDisplayMode;
                 dstWeb.TitleColorMode = srcWeb.TitleColorMode;
                 dstWeb.TitleColorKey = srcWeb.TitleColorKey;
+                dstWeb.EnableSleepMode = srcWeb.EnableSleepMode;
+                dstWeb.SleepIdleTimeoutValue = srcWeb.SleepIdleTimeoutValue;
+                dstWeb.SleepIdleTimeoutUnit = srcWeb.SleepIdleTimeoutUnit;
                 dstWeb.RequestInterceptRules.Clear();
                 foreach (var r in srcWeb.RequestInterceptRules)
                 {
@@ -361,6 +364,9 @@ namespace FlowMy.Views
                 dstHtmlUi.Height = srcHtmlUi.Height;
                 dstHtmlUi.CssZoom = srcHtmlUi.CssZoom;
                 dstHtmlUi.AutoReloadOnDialogClose = srcHtmlUi.AutoReloadOnDialogClose;
+                dstHtmlUi.EnableSleepMode = srcHtmlUi.EnableSleepMode;
+                dstHtmlUi.SleepIdleTimeoutValue = srcHtmlUi.SleepIdleTimeoutValue;
+                dstHtmlUi.SleepIdleTimeoutUnit = srcHtmlUi.SleepIdleTimeoutUnit;
                 dstHtmlUi.UseWebTab = srcHtmlUi.UseWebTab;
                 dstHtmlUi.WebTabUrl = srcHtmlUi.WebTabUrl;
                 dstHtmlUi.WebTabCookieSourceNodeId = srcHtmlUi.WebTabCookieSourceNodeId;

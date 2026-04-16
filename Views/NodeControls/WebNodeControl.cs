@@ -702,6 +702,130 @@ namespace FlowMy.Views.NodeControls
 
             // Khai báo jsSourceTimers sớm để border.Unloaded có thể dùng (fix CS0841)
             var jsSourceTimers = new Dictionary<int, DispatcherTimer>();
+            DispatcherTimer? sleepModeTimer = null;
+            var isSleepModeActive = false;
+            var suppressUrlSyncForSleepNav = false;
+
+            static int CalcSleepIdleMs(WebNode n)
+            {
+                var val = Math.Max(1, n.SleepIdleTimeoutValue);
+                var unit = (n.SleepIdleTimeoutUnit ?? "s").Trim();
+                return unit switch
+                {
+                    "ms" => Math.Max(50, val),
+                    "min" or "phút" => Math.Max(1, val) * 60000,
+                    _ => Math.Max(1, val) * 1000
+                };
+            }
+
+            void StopSleepModeTimer()
+            {
+                sleepModeTimer?.Stop();
+                sleepModeTimer = null;
+            }
+
+            // Track last UI/flow activity to determine "idle"
+            var lastActivityUtc = DateTime.UtcNow;
+            void MarkActivity()
+            {
+                lastActivityUtc = DateTime.UtcNow;
+                if (node.EnableSleepMode && isSleepModeActive)
+                {
+                    // Wake on first activity after sleeping
+                    _ = webView.Dispatcher.BeginInvoke(new Action(async () => await WakeRuntimeAsync()), DispatcherPriority.Background);
+                }
+            }
+
+            async Task EnterSleepModeAsync()
+            {
+                if (!node.EnableSleepMode || isSleepModeActive) return;
+                if (node.PendingOutputsTcs != null) return;
+                if (!string.IsNullOrWhiteSpace(node.PendingJavaScript)) return;
+
+                isSleepModeActive = true;
+                StopSleepModeTimer();
+
+                try
+                {
+                    autoReloadTimer?.Stop();
+                    foreach (var timer in jsSourceTimers.Values)
+                        timer.Stop();
+
+                    var core = webView.CoreWebView2;
+                    if (core != null)
+                    {
+                        suppressUrlSyncForSleepNav = true;
+                        core.Navigate("about:blank");
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    webView.Visibility = Visibility.Collapsed;
+                }
+                catch { }
+            }
+
+            async Task WakeRuntimeAsync()
+            {
+                if (!node.EnableSleepMode)
+                {
+                    isSleepModeActive = false;
+                    return;
+                }
+
+                StopSleepModeTimer();
+                isSleepModeActive = false;
+                suppressUrlSyncForSleepNav = false;
+
+                try
+                {
+                    webView.Visibility = Visibility.Visible;
+                }
+                catch { }
+
+                try
+                {
+                    var core = webView.CoreWebView2;
+                    var currentUrl = core?.Source;
+                    if (core != null && (string.IsNullOrWhiteSpace(currentUrl) || string.Equals(currentUrl, "about:blank", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var targetUrl = node.ExtractUrl?.Trim();
+                        if (!string.IsNullOrWhiteSpace(targetUrl) && targetUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                            core.Navigate(targetUrl);
+                    }
+                }
+                catch { }
+
+                UpdateAutoReloadTimer();
+                UpdateJsSourceTimers();
+                RestartSleepModeTimer();
+            }
+
+            void RestartSleepModeTimer()
+            {
+                if (!node.EnableSleepMode) return;
+
+                StopSleepModeTimer();
+                sleepModeTimer = new DispatcherTimer(DispatcherPriority.Background, webView.Dispatcher)
+                {
+                    Interval = TimeSpan.FromMilliseconds(300)
+                };
+                sleepModeTimer.Tick += async (_, _) =>
+                {
+                    try
+                    {
+                        if (!node.EnableSleepMode) { StopSleepModeTimer(); return; }
+                        var idleMs = CalcSleepIdleMs(node);
+                        var idleFor = (DateTime.UtcNow - lastActivityUtc).TotalMilliseconds;
+                        if (idleFor >= idleMs)
+                            await EnterSleepModeAsync();
+                    }
+                    catch { }
+                };
+                sleepModeTimer.Start();
+            }
 
             // Tính TimeSpan interval từ value + unit của node
             static TimeSpan CalcAutoReloadInterval(WebNode n)
@@ -756,6 +880,7 @@ namespace FlowMy.Views.NodeControls
             {
                 autoReloadTimer?.Stop();
                 autoReloadTimer = null;
+                StopSleepModeTimer();
                 // Dọn dẹp tất cả js source timers
                 foreach (var t in jsSourceTimers.Values)
                     t.Stop();
@@ -890,7 +1015,10 @@ namespace FlowMy.Views.NodeControls
                         var js = node.PendingJavaScript;
                         webView.Dispatcher.BeginInvoke(new Action(async () =>
                         {
+                            MarkActivity();
+                            await WakeRuntimeAsync();
                             await TryExecutePendingJsAsync(js);
+                            RestartSleepModeTimer();
                         }), DispatcherPriority.Normal);
                     }
                     else if (string.Equals(e.PropertyName, nameof(WebNode.CookieText), StringComparison.Ordinal))
@@ -898,6 +1026,8 @@ namespace FlowMy.Views.NodeControls
                         // User clicked "Chạy" button - apply cookie now
                         webView.Dispatcher.BeginInvoke(new Action(async () =>
                         {
+                            MarkActivity();
+                            await WakeRuntimeAsync();
                             if (webView.CoreWebView2 != null && !string.IsNullOrWhiteSpace(node.CookieText))
                             {
                                 System.Diagnostics.Debug.WriteLine("[Cookie] User clicked 'Chạy' button - applying cookies...");
@@ -921,6 +1051,7 @@ namespace FlowMy.Views.NodeControls
                                     System.Diagnostics.Debug.WriteLine("[Cookie] No URL found in cookie text - cookies applied but no navigation");
                                 }
                             }
+                            RestartSleepModeTimer();
                         }), DispatcherPriority.Normal);
                     }
                     else if (string.Equals(e.PropertyName, nameof(WebNode.AutoReloadEnabled), StringComparison.Ordinal) ||
@@ -934,6 +1065,24 @@ namespace FlowMy.Views.NodeControls
                         // JsSources thay đổi (có thể do user bật/tắt timer, đổi interval, thêm/xóa item)
                         webView.Dispatcher.BeginInvoke(new Action(() => UpdateJsSourceTimers()), DispatcherPriority.Normal);
                     }
+                    else if (string.Equals(e.PropertyName, nameof(WebNode.WakeRequestToken), StringComparison.Ordinal))
+                    {
+                        webView.Dispatcher.BeginInvoke(new Action(async () =>
+                        {
+                            MarkActivity();
+                            await WakeRuntimeAsync();
+                        }), DispatcherPriority.Normal);
+                    }
+                    else if (string.Equals(e.PropertyName, nameof(WebNode.EnableSleepMode), StringComparison.Ordinal) ||
+                             string.Equals(e.PropertyName, nameof(WebNode.SleepIdleTimeoutValue), StringComparison.Ordinal) ||
+                             string.Equals(e.PropertyName, nameof(WebNode.SleepIdleTimeoutUnit), StringComparison.Ordinal))
+                    {
+                        webView.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            MarkActivity();
+                            RestartSleepModeTimer();
+                        }), DispatcherPriority.Background);
+                    }
                 };
             }
 
@@ -942,6 +1091,14 @@ namespace FlowMy.Views.NodeControls
 
             // Khởi tạo js source timers ngay (nếu đã có cấu hình bật timer từ lần trước)
             UpdateJsSourceTimers();
+            RestartSleepModeTimer();
+
+            // Mark activity on common interactions so "idle" works as expected.
+            border.MouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+            border.MouseMove += (_, _) => { MarkActivity(); };
+            border.MouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+            webView.PreviewMouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+            webView.PreviewMouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
 
             // Tối ưu WebView2 cho GPU: disable software rendering, enable hardware acceleration
             // WebView2 mặc định đã dùng GPU nhưng có thể tối ưu thêm
@@ -2296,6 +2453,8 @@ if (window.__elementInspector) {
                         if (coreView == null) return;
                         var uri = coreView.Source;
                         if (string.IsNullOrEmpty(uri)) return;
+                        if (suppressUrlSyncForSleepNav && string.Equals(uri, "about:blank", StringComparison.OrdinalIgnoreCase))
+                            return;
                         if (webViewForInit.Dispatcher.CheckAccess())
                             node.ExtractUrl = uri;
                         else
@@ -4889,6 +5048,13 @@ if (window.__elementInspector) {
                     win.SetViewportExpandedUiHidden(false);
                 SetViewportExpandButtonState(btn, border);
                 return;
+            }
+
+            // Khi phóng to: tắt chế độ nghỉ để tránh node bị sleep khi đang focus/đang xem.
+            if (node.EnableSleepMode)
+            {
+                node.EnableSleepMode = false;
+                node.RequestWake();
             }
 
             node.IsViewportExpanded = true;

@@ -103,6 +103,17 @@ namespace FlowMy.ViewModels
         private bool _autoReloadEnabled;
 
         [ObservableProperty]
+        private bool _enableSleepMode = true;
+
+        [ObservableProperty]
+        private int _sleepIdleTimeoutValue = 5;
+
+        [ObservableProperty]
+        private string _sleepIdleTimeoutUnit = "s";
+
+        public List<string> SleepIdleTimeoutUnitOptions { get; } = new() { "ms", "s", "min", "phút" };
+
+        [ObservableProperty]
         private double _autoReloadIntervalValue = 30;
 
         [ObservableProperty]
@@ -196,6 +207,9 @@ namespace FlowMy.ViewModels
             ResponseOutputsWaitMode = _webNode.ResponseOutputsWaitMode;
             BlockAllRequestsAfterFirstMatch = _webNode.BlockAllRequestsAfterFirstMatch;
             AutoReloadEnabled = _webNode.AutoReloadEnabled;
+            EnableSleepMode = _webNode.EnableSleepMode;
+            SleepIdleTimeoutValue = _webNode.SleepIdleTimeoutValue;
+            SleepIdleTimeoutUnit = _webNode.SleepIdleTimeoutUnit ?? "s";
             AutoReloadIntervalValue = _webNode.AutoReloadIntervalValue;
             AutoReloadIntervalUnit = _webNode.AutoReloadIntervalUnit;
 
@@ -284,6 +298,9 @@ namespace FlowMy.ViewModels
             else if (propertyName == nameof(WebNode.ResponseOutputsWaitMode)) ResponseOutputsWaitMode = _webNode.ResponseOutputsWaitMode;
             else if (propertyName == nameof(WebNode.BlockAllRequestsAfterFirstMatch)) BlockAllRequestsAfterFirstMatch = _webNode.BlockAllRequestsAfterFirstMatch;
             else if (propertyName == nameof(WebNode.AutoReloadEnabled)) AutoReloadEnabled = _webNode.AutoReloadEnabled;
+            else if (propertyName == nameof(WebNode.EnableSleepMode)) EnableSleepMode = _webNode.EnableSleepMode;
+            else if (propertyName == nameof(WebNode.SleepIdleTimeoutValue)) SleepIdleTimeoutValue = _webNode.SleepIdleTimeoutValue;
+            else if (propertyName == nameof(WebNode.SleepIdleTimeoutUnit)) SleepIdleTimeoutUnit = _webNode.SleepIdleTimeoutUnit ?? "s";
             else if (propertyName == nameof(WebNode.AutoReloadIntervalValue)) AutoReloadIntervalValue = _webNode.AutoReloadIntervalValue;
             else if (propertyName == nameof(WebNode.AutoReloadIntervalUnit)) AutoReloadIntervalUnit = _webNode.AutoReloadIntervalUnit;
             else if (propertyName == nameof(WebNode.JsSources))
@@ -722,6 +739,9 @@ namespace FlowMy.ViewModels
             _webNode.ResponseOutputsWaitMode = ResponseOutputsWaitMode;
             _webNode.BlockAllRequestsAfterFirstMatch = BlockAllRequestsAfterFirstMatch;
             _webNode.AutoReloadEnabled = AutoReloadEnabled;
+            _webNode.EnableSleepMode = EnableSleepMode;
+            _webNode.SleepIdleTimeoutValue = SleepIdleTimeoutValue;
+            _webNode.SleepIdleTimeoutUnit = SleepIdleTimeoutUnit ?? "s";
             _webNode.AutoReloadIntervalValue = AutoReloadIntervalValue;
             // Map "phút" (display) → "min" (internal) nếu cần (nếu dng hướng display trong options)
             _webNode.AutoReloadIntervalUnit = AutoReloadIntervalUnit;

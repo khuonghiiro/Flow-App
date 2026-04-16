@@ -133,6 +133,17 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool _autoReloadOnDialogClose;
 
+        [ObservableProperty]
+        private bool _enableSleepMode = true;
+
+        [ObservableProperty]
+        private int _sleepIdleTimeoutValue = 5;
+
+        [ObservableProperty]
+        private string _sleepIdleTimeoutUnit = "s";
+
+        public System.Collections.Generic.List<string> SleepIdleTimeoutUnitOptions { get; } = new() { "ms", "s", "min", "phút" };
+
         /// <summary>Bật/tắt 2-tab mode (Tab1=Web, Tab2=HTML UI).</summary>
         [ObservableProperty]
         private bool _useWebTab;
@@ -174,6 +185,9 @@ namespace FlowMy.ViewModels
             _cssCode = node.CssCode ?? string.Empty;
             _paramsCode = node.ParamsCode ?? string.Empty;
             _autoReloadOnDialogClose = node.AutoReloadOnDialogClose;
+            _enableSleepMode = node.EnableSleepMode;
+            _sleepIdleTimeoutValue = node.SleepIdleTimeoutValue;
+            _sleepIdleTimeoutUnit = node.SleepIdleTimeoutUnit ?? "s";
             _useWebTab = node.UseWebTab;
             _cookieText = string.Empty;
             _webTabCookieSourceNodeId = node.WebTabCookieSourceNodeId;
@@ -300,6 +314,9 @@ namespace FlowMy.ViewModels
 
             // Lưu trạng thái auto reload
             _node.AutoReloadOnDialogClose = AutoReloadOnDialogClose;
+            _node.EnableSleepMode = EnableSleepMode;
+            _node.SleepIdleTimeoutValue = SleepIdleTimeoutValue;
+            _node.SleepIdleTimeoutUnit = SleepIdleTimeoutUnit ?? "s";
             _node.UseWebTab = UseWebTab;
             _node.WebTabCookieSourceNodeId = WebTabCookieSourceNodeId;
             _node.WebTabCookieSourceOutputKey = WebTabCookieSourceOutputKey;
@@ -380,6 +397,9 @@ namespace FlowMy.ViewModels
             if (propertyName == nameof(HtmlUiNode.JsCode)) JsCode = _node.JsCode ?? string.Empty;
             if (propertyName == nameof(HtmlUiNode.CssCode)) CssCode = _node.CssCode ?? string.Empty;
             if (propertyName == nameof(HtmlUiNode.ParamsCode)) ParamsCode = _node.ParamsCode ?? string.Empty;
+            if (propertyName == nameof(HtmlUiNode.EnableSleepMode)) EnableSleepMode = _node.EnableSleepMode;
+            if (propertyName == nameof(HtmlUiNode.SleepIdleTimeoutValue)) SleepIdleTimeoutValue = _node.SleepIdleTimeoutValue;
+            if (propertyName == nameof(HtmlUiNode.SleepIdleTimeoutUnit)) SleepIdleTimeoutUnit = _node.SleepIdleTimeoutUnit ?? "s";
             if (propertyName == nameof(HtmlUiNode.InputMappings))
             {
                 _isSyncingFromNode = true;

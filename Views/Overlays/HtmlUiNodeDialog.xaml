@@ -832,6 +832,43 @@
                               FontSize="12"
                               IsChecked="{Binding AutoReloadOnDialogClose, Mode=TwoWay}"/>
 
+                    <CheckBox Margin="0,0,0,12"
+                              Foreground="{DynamicResource TextBrush}"
+                              FontSize="12"
+                              IsChecked="{Binding EnableSleepMode, Mode=TwoWay}"
+                              ToolTip="Mặc định bật. Node HTML UI sẽ chuyển sang trạng thái nghỉ và chỉ đánh thức lại khi có flow hoặc dữ liệu từ node khác chạy vào.">
+                        <TextBlock Text="Chế độ nghỉ: chỉ đánh thức HTML UI khi có flow hoặc nguồn dữ liệu chạy vào"
+                                   TextWrapping="Wrap"/>
+                    </CheckBox>
+
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,0,12"
+                                IsEnabled="{Binding EnableSleepMode}">
+                        <TextBlock Text="Ngủ sau"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding SleepIdleTimeoutValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{DynamicResource BaseTextBoxV2}"
+                                 Width="90"
+                                 Height="30"
+                                 VerticalContentAlignment="Center"
+                                 ToolTip="Khoảng thời gian rảnh trước khi node chuyển sang trạng thái nghỉ."/>
+                        <ComboBox ItemsSource="{Binding SleepIdleTimeoutUnitOptions}"
+                                  SelectedItem="{Binding SleepIdleTimeoutUnit, Mode=TwoWay}"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  Width="80"
+                                  Height="30"
+                                  Margin="8,0,0,0"
+                                  ToolTip="Đơn vị: ms, s, phút."/>
+                        <TextBlock Text="khi rảnh"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"/>
+                    </StackPanel>
+
                     <!-- ✅ Lazy load tabs: chỉ load tab đang active để tối ưu performance -->
                     <TabControl x:Name="CodeTabsControl"
                                 Margin="0,0,0,8"

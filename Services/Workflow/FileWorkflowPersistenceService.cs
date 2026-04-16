@@ -2203,6 +2203,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 webNode.TitleColorMode = tcm;
             if (properties.TryGetValue("TitleColorKey", out var tckObj))
                 webNode.TitleColorKey = tckObj?.ToString();
+            if (properties.TryGetValue("EnableSleepMode", out var esmObj) && esmObj != null &&
+                bool.TryParse(esmObj.ToString(), out var esm))
+                webNode.EnableSleepMode = esm;
+            if (properties.TryGetValue("SleepIdleTimeoutValue", out var sitvObj) && sitvObj != null &&
+                int.TryParse(sitvObj.ToString(), out var sitv))
+                webNode.SleepIdleTimeoutValue = sitv;
+            if (properties.TryGetValue("SleepIdleTimeoutUnit", out var situObj) && situObj != null)
+                webNode.SleepIdleTimeoutUnit = situObj.ToString() ?? webNode.SleepIdleTimeoutUnit;
             if (properties.TryGetValue("SyncLiveOutputsToResults", out var sloObj) && sloObj != null &&
                 bool.TryParse(sloObj.ToString(), out var slo))
                 webNode.SyncLiveOutputsToResults = slo;
@@ -2902,6 +2910,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 htmlUiNode.TitleColorMode = tcm;
             if (properties.TryGetValue("TitleColorKey", out var tckObj))
                 htmlUiNode.TitleColorKey = tckObj?.ToString();
+            if (properties.TryGetValue("EnableSleepMode", out var hsmObj) && hsmObj != null &&
+                bool.TryParse(hsmObj.ToString(), out var hsm))
+                htmlUiNode.EnableSleepMode = hsm;
+            if (properties.TryGetValue("SleepIdleTimeoutValue", out var hsitvObj) && hsitvObj != null &&
+                int.TryParse(hsitvObj.ToString(), out var hsitv))
+                htmlUiNode.SleepIdleTimeoutValue = hsitv;
+            if (properties.TryGetValue("SleepIdleTimeoutUnit", out var hsituObj) && hsituObj != null)
+                htmlUiNode.SleepIdleTimeoutUnit = hsituObj.ToString() ?? htmlUiNode.SleepIdleTimeoutUnit;
             // Restore HtmlUi specific zoom if present
             if (properties.TryGetValue("HtmlUi_CorrectedZoom", out var zoomObj) || properties.TryGetValue("HtmlUi_CssZoom", out zoomObj))
             {
@@ -4693,6 +4709,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
                 // Auto-reload timer
                 dict["AutoReloadEnabled"] = webNodeForSerialize.AutoReloadEnabled;
+                dict["EnableSleepMode"] = webNodeForSerialize.EnableSleepMode;
+                dict["SleepIdleTimeoutValue"] = webNodeForSerialize.SleepIdleTimeoutValue;
+                dict["SleepIdleTimeoutUnit"] = webNodeForSerialize.SleepIdleTimeoutUnit;
                 dict["AutoReloadIntervalValue"] = webNodeForSerialize.AutoReloadIntervalValue;
                 dict["AutoReloadIntervalUnit"] = webNodeForSerialize.AutoReloadIntervalUnit;
 
@@ -4943,6 +4962,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["Height"] = htmlUiNode.Height;
             if (htmlUiNode.CssZoom > 0)
                 dict["HtmlUi_CssZoom"] = htmlUiNode.CssZoom;
+            dict["EnableSleepMode"] = htmlUiNode.EnableSleepMode;
+            dict["SleepIdleTimeoutValue"] = htmlUiNode.SleepIdleTimeoutValue;
+            dict["SleepIdleTimeoutUnit"] = htmlUiNode.SleepIdleTimeoutUnit;
             // ── WebTab properties ──
             dict["UseWebTab"] = htmlUiNode.UseWebTab;
             if (!string.IsNullOrEmpty(htmlUiNode.WebTabUrl))

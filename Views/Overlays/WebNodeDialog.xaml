@@ -79,6 +79,43 @@
                                 BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                     </Grid>
 
+                    <CheckBox Margin="0,0,0,16"
+                              IsChecked="{Binding EnableSleepMode, Mode=TwoWay}"
+                              Foreground="{DynamicResource TextBrush}"
+                              FontSize="12"
+                              ToolTip="Mặc định bật. Khi node đang nghỉ, WebView sẽ không giữ trạng thái hoạt động liên tục; chỉ đánh thức lại khi có flow hoặc nguồn JS chạy vào node.">
+                        <TextBlock Text="Chế độ nghỉ: chỉ đánh thức node khi có flow hoặc JS source chạy vào"
+                                   TextWrapping="Wrap"/>
+                    </CheckBox>
+
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,0,16"
+                                IsEnabled="{Binding EnableSleepMode}">
+                        <TextBlock Text="Ngủ sau"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding SleepIdleTimeoutValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{DynamicResource BaseTextBoxV2}"
+                                 Width="90"
+                                 Height="30"
+                                 VerticalContentAlignment="Center"
+                                 ToolTip="Khoảng thời gian rảnh trước khi node chuyển sang trạng thái nghỉ."/>
+                        <ComboBox ItemsSource="{Binding SleepIdleTimeoutUnitOptions}"
+                                  SelectedItem="{Binding SleepIdleTimeoutUnit, Mode=TwoWay}"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  Width="80"
+                                  Height="30"
+                                  Margin="8,0,0,0"
+                                  ToolTip="Đơn vị: ms, s, phút."/>
+                        <TextBlock Text="khi rảnh"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"/>
+                    </StackPanel>
+
                     <!-- Input: nhiều dòng Node + Key + Key tùy chỉnh -->
                     <TextBlock Text="Input (node nguồn + key) – mỗi dòng = một biến trong URL template:"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>

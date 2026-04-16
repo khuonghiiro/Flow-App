@@ -26,6 +26,10 @@ namespace FlowMy.Models.Nodes
         // khi false: user tự F5/Ctrl+R trong WebView2 để reload.
         private bool _autoReloadOnDialogClose = false;
         private bool _isViewportExpanded;
+        private bool _enableSleepMode = true;
+        private int _sleepIdleTimeoutValue = 5;
+        private string _sleepIdleTimeoutUnit = "s"; // "ms" | "s" | "min" | "phút"
+        private int _wakeRequestToken;
 
         // Dual-tab: khi true node hiển thị 2 tab (Tab1=Web, Tab2=HTML UI)
         private bool _useWebTab = false;
@@ -462,6 +466,53 @@ namespace FlowMy.Models.Nodes
         }
 
         /// <summary>
+        /// Nếu bật, HTML UI node sẽ nghỉ khi không có flow/data chạy vào để giảm tải tài nguyên.
+        /// Khi có tín hiệu mới, control sẽ tự đánh thức lại runtime.
+        /// </summary>
+        public bool EnableSleepMode
+        {
+            get => _enableSleepMode;
+            set
+            {
+                if (_enableSleepMode != value)
+                {
+                    _enableSleepMode = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>Thời gian rảnh trước khi node chuyển sang trạng thái nghỉ.</summary>
+        public int SleepIdleTimeoutValue
+        {
+            get => _sleepIdleTimeoutValue;
+            set
+            {
+                var v = Math.Max(1, value);
+                if (_sleepIdleTimeoutValue != v)
+                {
+                    _sleepIdleTimeoutValue = v;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>Đơn vị thời gian: "ms", "s", "min" hoặc "phút".</summary>
+        public string SleepIdleTimeoutUnit
+        {
+            get => _sleepIdleTimeoutUnit;
+            set
+            {
+                var u = string.IsNullOrWhiteSpace(value) ? "s" : value.Trim();
+                if (_sleepIdleTimeoutUnit != u)
+                {
+                    _sleepIdleTimeoutUnit = u;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
         /// Khi true: node hiển thị 2 tab — Tab1 (Web Browser) + Tab2 (HTML UI logic hiện tại).
         /// Khi false (mặc định): chỉ hiển thị HTML UI như cũ.
         /// </summary>
@@ -598,6 +649,26 @@ namespace FlowMy.Models.Nodes
                 OnPropertyChanged();
             }
         }
+
+        /// <summary>
+        /// Runtime-only token để yêu cầu UI đánh thức WebView2.
+        /// Mỗi lần RequestWake() được gọi, token tăng lên để luôn fire PropertyChanged.
+        /// </summary>
+        [JsonIgnore]
+        public int WakeRequestToken
+        {
+            get => _wakeRequestToken;
+            private set
+            {
+                if (_wakeRequestToken != value)
+                {
+                    _wakeRequestToken = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public void RequestWake() => WakeRequestToken++;
 
         /// <summary>Reference đến TextBlock hiển thị title trên canvas (được tạo trong HtmlUiNodeControl).</summary>
         public new TextBlock? TitleTextBlockUI { get; set; }

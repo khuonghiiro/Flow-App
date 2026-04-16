@@ -33,6 +33,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             // Chỉ ghi đè khi ExtractUrl response có Set-Cookie. Nếu reset ở đây sẽ mất cookie từ toggle.
             webNode.LastBearer = null;
             webNode.LastAccessToken = null;
+            webNode.RequestWake();
 
             // Reset chuỗi chặn request cho lần chạy node mới
             webNode.HasTriggeredBlockingChain = false;

@@ -282,6 +282,130 @@ namespace FlowMy.Views.NodeControls
 
             // ✅ Auto-refresh timers: mỗi input mapping được bật auto-refresh sẽ có 1 DispatcherTimer riêng
             var _autoRefreshTimers = new System.Collections.Generic.Dictionary<string, DispatcherTimer>();
+            DispatcherTimer? _sleepModeTimer = null;
+            var _isSleepModeActive = false;
+
+            static int CalcSleepIdleMs(HtmlUiNode n)
+            {
+                var val = Math.Max(1, n.SleepIdleTimeoutValue);
+                var unit = (n.SleepIdleTimeoutUnit ?? "s").Trim();
+                return unit switch
+                {
+                    "ms" => Math.Max(50, val),
+                    "min" or "phút" => Math.Max(1, val) * 60000,
+                    _ => Math.Max(1, val) * 1000
+                };
+            }
+
+            void StopSleepModeTimer()
+            {
+                _sleepModeTimer?.Stop();
+                _sleepModeTimer = null;
+            }
+
+            // Track last UI/flow activity to determine "idle"
+            var lastActivityUtc = DateTime.UtcNow;
+            void MarkActivity()
+            {
+                lastActivityUtc = DateTime.UtcNow;
+                if (node.EnableSleepMode && _isSleepModeActive)
+                {
+                    _ = webView.Dispatcher.BeginInvoke(new Action(async () => await WakeRuntimeAsync()), DispatcherPriority.Background);
+                }
+            }
+
+            async Task EnterSleepModeAsync()
+            {
+                if (!node.EnableSleepMode || _isSleepModeActive) return;
+                if (node.PendingReadDom || node.PendingAsyncDataPush) return;
+
+                _isSleepModeActive = true;
+                StopSleepModeTimer();
+
+                try
+                {
+                    StopAutoRefreshTimers();
+                    StopWebTabAutoRefreshTimer();
+                }
+                catch { }
+
+                try
+                {
+                    var core = TryGetCoreSafe(webView);
+                    if (core != null)
+                        core.Navigate("about:blank");
+                }
+                catch { }
+
+                try
+                {
+                    var tab1Core = TryGetCoreSafe(_webViewTab1);
+                    if (tab1Core != null)
+                        tab1Core.Navigate("about:blank");
+                }
+                catch { }
+
+                try { webView.Visibility = Visibility.Collapsed; } catch { }
+                try { if (_webViewTab1 != null) _webViewTab1.Visibility = Visibility.Collapsed; } catch { }
+            }
+
+            async Task WakeRuntimeAsync()
+            {
+                if (!node.EnableSleepMode)
+                {
+                    _isSleepModeActive = false;
+                    return;
+                }
+
+                StopSleepModeTimer();
+                _isSleepModeActive = false;
+
+                try { webView.Visibility = Visibility.Visible; } catch { }
+                try { if (_webViewTab1 != null) _webViewTab1.Visibility = Visibility.Visible; } catch { }
+
+                await ReloadHtmlAsync();
+
+                try
+                {
+                    var tab1Core = TryGetCoreSafe(_webViewTab1);
+                    if (tab1Core != null && node.UseWebTab)
+                    {
+                        var currentUrl = tab1Core.Source;
+                        if (string.IsNullOrWhiteSpace(currentUrl) || string.Equals(currentUrl, "about:blank", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var targetUrl = node.WebTabUrl;
+                            if (!string.IsNullOrWhiteSpace(targetUrl))
+                                tab1Core.Navigate(targetUrl);
+                        }
+                    }
+                }
+                catch { }
+
+                StartAutoRefreshTimers();
+                RestartWebTabAutoRefreshTimer();
+                RestartSleepModeTimer();
+            }
+
+            void RestartSleepModeTimer()
+            {
+                if (!node.EnableSleepMode) return;
+
+                StopSleepModeTimer();
+                _sleepModeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+                _sleepModeTimer.Tick += async (_, _) =>
+                {
+                    try
+                    {
+                        if (!node.EnableSleepMode) { StopSleepModeTimer(); return; }
+                        var idleMs = CalcSleepIdleMs(node);
+                        var idleFor = (DateTime.UtcNow - lastActivityUtc).TotalMilliseconds;
+                        if (idleFor >= idleMs)
+                            await EnterSleepModeAsync();
+                    }
+                    catch { }
+                };
+                _sleepModeTimer.Start();
+            }
 
             // ✅ Sequential task chain cho JS injection Tab2→Tab1 (__tab1_exec_seq)
             Task _tab1SeqTask = Task.CompletedTask;
@@ -1011,12 +1135,15 @@ namespace FlowMy.Views.NodeControls
                         {
                             try
                             {
+                                MarkActivity();
+                                await WakeRuntimeAsync();
                                 await UpdateOutputsFromDomAsync();
                             }
                             finally
                             {
                                 // Reset flag sau khi đọc xong để executor biết đã xong
                                 node.PendingReadDom = false;
+                                RestartSleepModeTimer();
                             }
                         }, DispatcherPriority.Normal);
                     }
@@ -1027,6 +1154,8 @@ namespace FlowMy.Views.NodeControls
                         {
                             try
                             {
+                                MarkActivity();
+                                await WakeRuntimeAsync();
                                 var core = TryGetCoreSafe(webView);
                                 if (core == null) return;
 
@@ -1054,6 +1183,7 @@ namespace FlowMy.Views.NodeControls
                             finally
                             {
                                 node.PendingAsyncDataPush = false;
+                                RestartSleepModeTimer();
                             }
                         }, DispatcherPriority.Normal);
                     }
@@ -1065,6 +1195,8 @@ namespace FlowMy.Views.NodeControls
                         {
                             try
                             {
+                                MarkActivity();
+                                await WakeRuntimeAsync();
                                 var tab1Core = TryGetCoreSafe(_webViewTab1);
                                 if (tab1Core != null)
                                 {
@@ -1089,6 +1221,10 @@ namespace FlowMy.Views.NodeControls
                             {
                                 System.Diagnostics.Debug.WriteLine($"[HtmlUiNode] Load cookie error: {ex.Message}");
                             }
+                            finally
+                            {
+                                RestartSleepModeTimer();
+                            }
                         }), DispatcherPriority.Normal);
                     }
                     // ✅ UseWebTab thay đổi runtime → rebuild grid row[1]
@@ -1102,6 +1238,24 @@ namespace FlowMy.Views.NodeControls
                              e.PropertyName == nameof(HtmlUiNode.WebTabAutoRefreshUnit))
                     {
                         webView.Dispatcher.BeginInvoke(new Action(() => RestartWebTabAutoRefreshTimer()), DispatcherPriority.Normal);
+                    }
+                    else if (e.PropertyName == nameof(HtmlUiNode.WakeRequestToken))
+                    {
+                        webView.Dispatcher.BeginInvoke(new Action(async () =>
+                        {
+                            MarkActivity();
+                            await WakeRuntimeAsync();
+                        }), DispatcherPriority.Normal);
+                    }
+                    else if (e.PropertyName == nameof(HtmlUiNode.EnableSleepMode) ||
+                             e.PropertyName == nameof(HtmlUiNode.SleepIdleTimeoutValue) ||
+                             e.PropertyName == nameof(HtmlUiNode.SleepIdleTimeoutUnit))
+                    {
+                        webView.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            MarkActivity();
+                            RestartSleepModeTimer();
+                        }), DispatcherPriority.Background);
                     }
                 };
             }
@@ -3467,7 +3621,11 @@ namespace FlowMy.Views.NodeControls
 
             // ✅ Dừng tất cả auto-refresh timers khi WebView2 bị remove khỏi visual tree
             // (ví dụ: node bị xóa, workflow đóng) để tránh ObjectDisposedException
-            webView.Unloaded += (_, _) => StopAutoRefreshTimers();
+            webView.Unloaded += (_, _) =>
+            {
+                StopAutoRefreshTimers();
+                StopSleepModeTimer();
+            };
 
             var bottomBar = new Border
             {
@@ -3982,6 +4140,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     // ✅ Dừng tất cả auto-refresh timers
                     StopAutoRefreshTimers();
+                    StopSleepModeTimer();
 
                     try
                     {
@@ -4084,6 +4243,15 @@ namespace FlowMy.Views.NodeControls
                     host.ViewModel.SelectedNode = null;
                 OpenNodeDialog(node, host, ownerWindow);
             };
+
+            RestartSleepModeTimer();
+
+            // Mark activity on common interactions so "idle" works as expected.
+            border.MouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+            border.MouseMove += (_, _) => { MarkActivity(); };
+            border.MouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+            webView.PreviewMouseDown += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
+            webView.PreviewMouseWheel += (_, _) => { MarkActivity(); RestartSleepModeTimer(); };
 
             return border;
         }
@@ -4279,6 +4447,13 @@ namespace FlowMy.Views.NodeControls
                     bottomBar.Visibility = Visibility.Visible;
                 SetViewportExpandButtonState(btn, border);
                 return;
+            }
+
+            // Khi phóng to: tắt chế độ nghỉ để tránh node bị sleep khi đang focus/đang xem.
+            if (node.EnableSleepMode)
+            {
+                node.EnableSleepMode = false;
+                node.RequestWake();
             }
 
             node.IsViewportExpanded = true;

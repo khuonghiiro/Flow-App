@@ -339,6 +339,10 @@ namespace FlowMy.Models.Nodes
         // Element inspector: bật/tắt chế độ hover element với border và copy XPath khi Alt+Shift
         private bool _enableElementInspector;
         private bool _enableCssSelectorInspector;
+        private bool _enableSleepMode = true;
+        private int _sleepIdleTimeoutValue = 5;
+        private string _sleepIdleTimeoutUnit = "s"; // "ms" | "s" | "min" | "phút"
+        private int _wakeRequestToken;
 
         // JS injection: danh sách (Node+Key) – khi node đó chạy đến Web thì chạy JS từ key đó trong WebView2
         private List<WebJsSourceMapping> _jsSources = new();
@@ -689,6 +693,53 @@ namespace FlowMy.Models.Nodes
             }
         }
 
+        /// <summary>
+        /// Nếu bật, Web node sẽ chuyển về trạng thái nghỉ khi không có tín hiệu chạy vào.
+        /// Khi có flow hoặc JS source kích hoạt node, control sẽ đánh thức lại runtime.
+        /// </summary>
+        public bool EnableSleepMode
+        {
+            get => _enableSleepMode;
+            set
+            {
+                if (_enableSleepMode != value)
+                {
+                    _enableSleepMode = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>Thời gian rảnh trước khi node chuyển sang trạng thái nghỉ.</summary>
+        public int SleepIdleTimeoutValue
+        {
+            get => _sleepIdleTimeoutValue;
+            set
+            {
+                var v = Math.Max(1, value);
+                if (_sleepIdleTimeoutValue != v)
+                {
+                    _sleepIdleTimeoutValue = v;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>Đơn vị thời gian: "ms", "s", "min" hoặc "phút".</summary>
+        public string SleepIdleTimeoutUnit
+        {
+            get => _sleepIdleTimeoutUnit;
+            set
+            {
+                var u = string.IsNullOrWhiteSpace(value) ? "s" : value.Trim();
+                if (_sleepIdleTimeoutUnit != u)
+                {
+                    _sleepIdleTimeoutUnit = u;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         #endregion
 
         #region Block requests
@@ -816,6 +867,26 @@ namespace FlowMy.Models.Nodes
         /// </summary>
         [JsonIgnore]
         public TaskCompletionSource<bool>? PendingOutputsTcs { get; set; }
+
+        /// <summary>
+        /// Runtime-only token để yêu cầu UI đánh thức WebView2.
+        /// Mỗi lần RequestWake() được gọi, token tăng lên để đảm bảo PropertyChanged luôn fire.
+        /// </summary>
+        [JsonIgnore]
+        public int WakeRequestToken
+        {
+            get => _wakeRequestToken;
+            private set
+            {
+                if (_wakeRequestToken != value)
+                {
+                    _wakeRequestToken = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public void RequestWake() => WakeRequestToken++;
 
         #endregion
     }

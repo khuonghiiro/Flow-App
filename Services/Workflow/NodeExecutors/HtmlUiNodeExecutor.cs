@@ -22,6 +22,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             // Clear outputs cũ
             htmlNode.ResolvedOutputs.Clear();
+            htmlNode.RequestWake();
 
             try
             {
