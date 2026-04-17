@@ -41,22 +41,9 @@ public partial class FlowOverwriteSourceItemViewModel : ObservableObject
             })
             .ToList() ?? new();
 
-        // Giữ selection cũ để tránh "nhảy" key khi graph thay đổi tạm thời.
-        // Nếu key cũ không còn trong list, thêm placeholder để vẫn hiển thị đúng giá trị đã chọn.
-        if (!string.IsNullOrWhiteSpace(SelectedSourceOutputKey) &&
-            !opts.Any(o => string.Equals(o.Key, SelectedSourceOutputKey, StringComparison.OrdinalIgnoreCase)))
-        {
-            opts.Insert(0, new WorkflowOutputKeyOption
-            {
-                Key = SelectedSourceOutputKey!,
-                DisplayName = $"{SelectedSourceOutputKey} (không còn khả dụng)"
-            });
-        }
-
         AvailableOutputKeys = new ObservableCollection<WorkflowOutputKeyOption>(opts);
-
-        // Chỉ auto chọn mặc định cho row mới (chưa có key), không ghi đè key đã chọn.
-        if (string.IsNullOrWhiteSpace(SelectedSourceOutputKey))
+        if (string.IsNullOrWhiteSpace(SelectedSourceOutputKey) ||
+            !opts.Any(o => string.Equals(o.Key, SelectedSourceOutputKey, StringComparison.OrdinalIgnoreCase)))
         {
             SelectedSourceOutputKey = opts.FirstOrDefault()?.Key;
         }
