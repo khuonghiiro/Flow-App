@@ -15,6 +15,8 @@ namespace FlowMy.Views
 {
     public partial class WorkflowEditorWindow
     {
+        private const string CompressedWorkflowExtension = ".flowz";
+
         private void ExportWorkflow_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel == null) return;
@@ -29,6 +31,27 @@ namespace FlowMy.Views
             {
                 string json = ViewModel.ExportToJson();
                 File.WriteAllText(saveFileDialog.FileName, json);
+                Activate();
+            }
+        }
+
+        private void ExportCompressedWorkflow_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel == null) return;
+
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Compressed Workflow (*.flowz)|*.flowz",
+                FileName = (ViewModel.CurrentWorkflowName ?? "workflow") + CompressedWorkflowExtension
+            };
+
+            if (saveFileDialog.ShowDialog(this) == true)
+            {
+                var json = ViewModel.ExportToJson();
+                var utf8 = System.Text.Encoding.UTF8.GetBytes(json);
+                using var output = File.Create(saveFileDialog.FileName);
+                using var brotli = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: false);
+                brotli.Write(utf8, 0, utf8.Length);
                 Activate();
             }
         }
@@ -106,7 +129,7 @@ namespace FlowMy.Views
 
             var openFileDialog = new OpenFileDialog
             {
-                Filter = "Workflow (*.json;*.webpkg.zip;*.zip)|*.json;*.webpkg.zip;*.zip|Workflow JSON (*.json)|*.json|Workflow Package (*.webpkg.zip;*.zip)|*.webpkg.zip;*.zip"
+                Filter = "Workflow (*.json;*.flowz;*.webpkg.zip;*.zip)|*.json;*.flowz;*.webpkg.zip;*.zip|Workflow JSON (*.json)|*.json|Compressed Workflow (*.flowz)|*.flowz|Workflow Package (*.webpkg.zip;*.zip)|*.webpkg.zip;*.zip"
             };
 
             if (openFileDialog.ShowDialog(this) != true) return;
@@ -120,6 +143,13 @@ namespace FlowMy.Views
                 if (ext == ".json")
                 {
                     json = File.ReadAllText(importPath);
+                }
+                else if (ext == CompressedWorkflowExtension)
+                {
+                    using var input = File.OpenRead(importPath);
+                    using var brotli = new BrotliStream(input, CompressionMode.Decompress, leaveOpen: false);
+                    using var reader = new StreamReader(brotli, System.Text.Encoding.UTF8);
+                    json = reader.ReadToEnd();
                 }
                 else
                 {
@@ -247,6 +277,7 @@ namespace FlowMy.Views
         private void SetExportImportBusy(bool busy)
         {
             if (ExportButton != null) ExportButton.IsEnabled = !busy;
+            if (ExportCompressedButton != null) ExportCompressedButton.IsEnabled = !busy;
             if (ExportWebBundleButton != null) ExportWebBundleButton.IsEnabled = !busy;
             if (ImportButton != null) ImportButton.IsEnabled = !busy;
         }
