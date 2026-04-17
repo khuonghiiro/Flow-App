@@ -28,32 +28,45 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
         typed.OutputKey = key;
         typed.RebuildDynamicOutputs();
 
-        var incoming = env.IncomingConnection?.FromNode;
-        if (incoming == null)
+        var nodesById = env.Connections
+            .SelectMany(c => new[] { c.FromNode, c.ToNode })
+            .Where(n => n != null)
+            .GroupBy(n => n!.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First()!, StringComparer.OrdinalIgnoreCase);
+
+        var resolvedValues = new List<string>();
+        foreach (var mapping in typed.Mappings)
+        {
+            if (mapping == null || string.IsNullOrWhiteSpace(mapping.SourceNodeId))
+                continue;
+
+            if (!nodesById.TryGetValue(mapping.SourceNodeId.Trim(), out var sourceNode))
+                continue;
+
+            var sourceKey = mapping.SourceOutputKey;
+            if (string.IsNullOrWhiteSpace(sourceKey))
+                sourceKey = sourceNode.DynamicOutputs?.FirstOrDefault()?.Key;
+            if (string.IsNullOrWhiteSpace(sourceKey))
+                continue;
+
+            // Chỉ lấy dữ liệu đã có trong scoped store của lượt chạy hiện tại;
+            // tránh việc source chưa chạy nhưng vẫn fallback về giá trị UI cũ.
+            if (!env.RefreshOnly &&
+                !string.IsNullOrWhiteSpace(env.ExecutionId) &&
+                !env.Service.TryGetScopedNodeStringOutput(env.ExecutionId, sourceNode.Id, sourceKey, out var _))
+            {
+                continue;
+            }
+
+            resolvedValues.Add(env.Service.ResolveDynamicValueForExecution(sourceNode, sourceKey, env));
+        }
+
+        if (resolvedValues.Count == 0)
         {
             await env.TraverseOutputsAsync(node);
             return;
         }
 
-        var mapping = typed.Mappings.FirstOrDefault(m =>
-            !string.IsNullOrWhiteSpace(m.SourceNodeId) &&
-            string.Equals(m.SourceNodeId, incoming.Id, StringComparison.OrdinalIgnoreCase));
-        if (mapping == null)
-        {
-            await env.TraverseOutputsAsync(node);
-            return;
-        }
-
-        var outputKey = mapping.SourceOutputKey;
-        if (string.IsNullOrWhiteSpace(outputKey))
-            outputKey = incoming.DynamicOutputs?.FirstOrDefault()?.Key;
-        if (string.IsNullOrWhiteSpace(outputKey))
-        {
-            await env.TraverseOutputsAsync(node);
-            return;
-        }
-
-        var resolved = env.Service.ResolveDynamicValueForExecution(incoming, outputKey, env);
         var runId = string.IsNullOrWhiteSpace(env.ExecutionId) ? "single" : env.ExecutionId;
         var stateKey = $"{runId}:{typed.Id}";
         var state = _stateByExecutionAndNode.GetOrAdd(stateKey, _ => new RuntimeState());
@@ -63,12 +76,12 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
         {
             if (typed.AppendMode)
             {
-                state.Values.Add(resolved);
+                state.Values.AddRange(resolvedValues);
                 outputValue = JsonSerializer.Serialize(state.Values);
             }
             else
             {
-                state.LastValue = resolved;
+                state.LastValue = resolvedValues[^1];
                 outputValue = state.LastValue ?? string.Empty;
             }
         }

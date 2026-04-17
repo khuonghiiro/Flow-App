@@ -17,6 +17,7 @@ public sealed class FlowOverwriteNode : WorkflowNode, INotifyPropertyChanged
 {
     private string _outputKey = "outputKey";
     private bool _appendMode;
+    private bool _includeIndirectSources;
     private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
     private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
     private string? _titleColorKey;
@@ -69,6 +70,17 @@ public sealed class FlowOverwriteNode : WorkflowNode, INotifyPropertyChanged
         {
             if (_appendMode == value) return;
             _appendMode = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IncludeIndirectSources
+    {
+        get => _includeIndirectSources;
+        set
+        {
+            if (_includeIndirectSources == value) return;
+            _includeIndirectSources = value;
             OnPropertyChanged();
         }
     }

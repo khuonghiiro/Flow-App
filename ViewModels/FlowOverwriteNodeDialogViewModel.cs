@@ -56,6 +56,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
 
     [ObservableProperty] private string _outputKey = "outputKey";
     [ObservableProperty] private bool _appendMode;
+    [ObservableProperty] private bool _includeIndirectSources;
 
     public ObservableCollection<FlowOverwriteSourceItemViewModel> Sources { get; } = new();
     [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _availableSourceOptions = new();
@@ -73,6 +74,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         _nodeTyped = node;
         _outputKey = node.OutputKey;
         _appendMode = node.AppendMode;
+        _includeIndirectSources = node.IncludeIndirectSources;
         LoadSourcesFromNode();
 
         if (node is INotifyPropertyChanged npc)
@@ -99,7 +101,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
 
     public void RefreshDirectIncomingSourceOptions()
     {
-        var options = BuildDirectIncomingSources();
+        var options = BuildSourceOptions();
         SyncAvailableSourceOptions(options);
 
         foreach (var row in Sources)
@@ -118,6 +120,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     {
         _nodeTyped.OutputKey = string.IsNullOrWhiteSpace(OutputKey) ? "outputKey" : OutputKey.Trim();
         _nodeTyped.AppendMode = AppendMode;
+        _nodeTyped.IncludeIndirectSources = IncludeIndirectSources;
         _nodeTyped.Mappings = Sources
             .Where(s => !string.IsNullOrWhiteSpace(s.SelectedSourceNodeId))
             .Select(s => new FlowOverwriteMapping
@@ -151,6 +154,18 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         {
             Outputs.Add(new OutputItemViewModel(node, output));
         }
+    }
+
+    partial void OnIncludeIndirectSourcesChanged(bool value)
+    {
+        RefreshDirectIncomingSourceOptions();
+    }
+
+    private ObservableCollection<WorkflowDataSourceOption> BuildSourceOptions()
+    {
+        return IncludeIndirectSources
+            ? BuildAllUpstreamSources()
+            : BuildDirectIncomingSources();
     }
 
     private ObservableCollection<WorkflowDataSourceOption> BuildDirectIncomingSources()
@@ -213,10 +228,96 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
         return new ObservableCollection<WorkflowDataSourceOption>(opts);
     }
 
+    private ObservableCollection<WorkflowDataSourceOption> BuildAllUpstreamSources()
+    {
+        var vm = _host.ViewModel;
+        if (vm == null) return new ObservableCollection<WorkflowDataSourceOption>();
+
+        var connections = vm.Connections;
+        if (connections == null || connections.Count == 0)
+            return BuildDirectIncomingSources();
+
+        var upstream = new HashSet<WorkflowNode>();
+        var stack = new Stack<WorkflowNode>();
+        stack.Push(_nodeTyped);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            var incoming = connections.Where(c => c.ToNode == current && c.FromNode != null).ToList();
+            foreach (var conn in incoming)
+            {
+                var src = conn.FromNode;
+                if (src == null || ReferenceEquals(src, _nodeTyped)) continue;
+                if (upstream.Add(src))
+                    stack.Push(src);
+            }
+        }
+
+        var producerNodes = upstream
+            .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0)
+            .ToList();
+
+        var byId = producerNodes
+            .GroupBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToDictionary(
+                n => n.Id,
+                n => new WorkflowDataSourceOption
+                {
+                    NodeId = n.Id,
+                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in Sources)
+        {
+            if (string.IsNullOrWhiteSpace(row.SelectedSourceNodeId)) continue;
+            EnsureSelectedSourceOption(vm, byId, row.SelectedSourceNodeId.Trim());
+        }
+
+        foreach (var m in _nodeTyped.Mappings)
+        {
+            if (string.IsNullOrWhiteSpace(m.SourceNodeId)) continue;
+            EnsureSelectedSourceOption(vm, byId, m.SourceNodeId.Trim());
+        }
+
+        var opts = byId.Values
+            .OrderBy(x => x.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return new ObservableCollection<WorkflowDataSourceOption>(opts);
+    }
+
+    private static void EnsureSelectedSourceOption(
+        WorkflowEditorViewModel vm,
+        Dictionary<string, WorkflowDataSourceOption> byId,
+        string selectedId)
+    {
+        if (byId.ContainsKey(selectedId)) return;
+
+        var node = vm.Nodes.FirstOrDefault((WorkflowNode n) =>
+            string.Equals(n.Id, selectedId, StringComparison.OrdinalIgnoreCase));
+        if (node != null)
+        {
+            byId[selectedId] = new WorkflowDataSourceOption
+            {
+                NodeId = node.Id,
+                Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : $"{node.Title} (không còn trong upstream)"
+            };
+            return;
+        }
+
+        byId[selectedId] = new WorkflowDataSourceOption
+        {
+            NodeId = selectedId,
+            Title = $"{selectedId} (không tồn tại)"
+        };
+    }
+
     private void LoadSourcesFromNode()
     {
         Sources.Clear();
-        var options = BuildDirectIncomingSources();
+        var options = BuildSourceOptions();
         SyncAvailableSourceOptions(options);
 
         foreach (var src in _nodeTyped.Mappings)

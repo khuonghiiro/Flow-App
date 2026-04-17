@@ -57,7 +57,11 @@
                                       IsChecked="{Binding AppendMode, Mode=TwoWay}"
                                       Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12"/>
 
-                            <TextBlock Text="Nguồn override trực tiếp (chỉ node nối vào cổng IN):"
+                            <CheckBox Content="Hiển thị cả node upstream gián tiếp (A, B, C, D thay vì chỉ node nối trực tiếp)"
+                                      IsChecked="{Binding IncludeIndirectSources, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+
+                            <TextBlock Text="Nguồn override:"
                                        Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ItemsControl ItemsSource="{Binding Sources}">
                                 <ItemsControl.ItemTemplate>
