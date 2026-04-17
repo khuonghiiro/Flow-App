@@ -18,7 +18,8 @@ namespace FlowMy.Views
     public partial class WorkflowEditorWindow
     {
         private const string WorkflowClipboardMarker = "FLOWMY_SUBGRAPH_V1";
-        private const string WorkflowClipboardCompression = "gzip-base64";
+        private const string WorkflowClipboardCompression = "brotli-base64";
+        private const string LegacyWorkflowClipboardCompression = "gzip-base64";
         private readonly HashSet<WorkflowNode> _boxSelectedNodes = new();
         private Border? _selectionDragBorder;
         private Border? _selectionResultBorder;
@@ -631,6 +632,8 @@ namespace FlowMy.Views
             {
                 if (string.Equals(envelope.Compression, WorkflowClipboardCompression, StringComparison.OrdinalIgnoreCase))
                     return TryDecompressFromBase64(envelope.WorkflowPayloadBase64);
+                if (string.Equals(envelope.Compression, LegacyWorkflowClipboardCompression, StringComparison.OrdinalIgnoreCase))
+                    return TryDecompressGzipFromBase64(envelope.WorkflowPayloadBase64);
 
                 // Unknown compression marker: fallback to null to avoid importing corrupted payload.
                 return null;
@@ -644,14 +647,31 @@ namespace FlowMy.Views
         {
             var bytes = Encoding.UTF8.GetBytes(text);
             using var output = new MemoryStream();
-            using (var gzip = new GZipStream(output, CompressionLevel.SmallestSize, leaveOpen: true))
+            // Brotli cho tỷ lệ nén tốt hơn gzip, decompression vẫn đủ nhanh cho paste UX.
+            using (var brotli = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true))
             {
-                gzip.Write(bytes, 0, bytes.Length);
+                brotli.Write(bytes, 0, bytes.Length);
             }
             return Convert.ToBase64String(output.ToArray());
         }
 
         private static string? TryDecompressFromBase64(string base64)
+        {
+            try
+            {
+                var compressed = Convert.FromBase64String(base64);
+                using var input = new MemoryStream(compressed);
+                using var brotli = new BrotliStream(input, CompressionMode.Decompress);
+                using var reader = new StreamReader(brotli, Encoding.UTF8);
+                return reader.ReadToEnd();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string? TryDecompressGzipFromBase64(string base64)
         {
             try
             {
