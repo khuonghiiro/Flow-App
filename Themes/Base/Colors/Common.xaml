@@ -546,7 +546,7 @@
     <SolidColorBrush x:Key="KiwiGreenBrush" Color="#8DB600"/>
     <SolidColorBrush x:Key="KiwiGreenHoverBrush" Color="#A1CC1A"/>
     <SolidColorBrush x:Key="KiwiGreenPressedBrush" Color="#79A000"/>
-    <SolidColorBrush x:Key="TextOnKiwiGreenBrush" Color="White"/>
+    <SolidColorBrush x:Key="TextOnKiwiGreenBrush" Color="#1F2A00"/>
 
     <!-- 25. Orchid Pink -->
     <SolidColorBrush x:Key="OrchidPinkBrush" Color="#DA70D6"/>

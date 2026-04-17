@@ -190,7 +190,7 @@ namespace FlowMy.Views.NodeControls
             {
                 var removeButton = new Button
                 {
-                    Content = "âˆ’",
+                    Content = "-",
                     Width = 20,
                     Height = 20,
                     FontSize = 14,

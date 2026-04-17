@@ -21,7 +21,7 @@ public static class FlowOverwriteNodeControl
     {
         var grid = new Grid { MinWidth = 60, MinHeight = 60, Width = 60, Height = 60 };
         var iconUri = new IconKeyToPathConverter().Convert(
-            null, typeof(Uri), "book-arrow-right duotone", System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            null, typeof(Uri), "merge sharp-regular", System.Globalization.CultureInfo.CurrentCulture) as Uri;
         grid.Children.Add(new SvgViewboxEx
         {
             Source = iconUri,

@@ -367,7 +367,7 @@ namespace FlowMy.Views
                 "DataFetcher" => "inbox-out duotone-light",
                 "FolderFilePaths" => "file-import duotone-light",
                 "KeyValueBridge" => "list-check solid",
-                "FlowOverwrite" => "book-arrow-right duotone",
+                "FlowOverwrite" => "merge sharp-regular",
                 _ => "circle2"
             };
         }

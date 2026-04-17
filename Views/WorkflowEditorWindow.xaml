@@ -435,6 +435,7 @@ Cursor="Hand"
                                          FontSize="11"
                                          Foreground="{DynamicResource TextBrush}"
                                          VerticalContentAlignment="Center"
+                                         CaretBrush="{DynamicResource TextBrush}"
                                          ToolTip="Tìm kiếm node...">
                                     <TextBox.Style>
                                         <Style TargetType="TextBox">
@@ -1573,7 +1574,7 @@ Cursor="Hand"
                                 </Border.ToolTip>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='book-arrow-right duotone'}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='merge sharp-regular'}"
                                                           Fill="{DynamicResource TextOnKiwiGreenBrush}"/>
                                 </Grid>
                             </Border>
