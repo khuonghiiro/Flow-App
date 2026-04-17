@@ -3,9 +3,11 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Workflow;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace FlowMy.ViewModels;
 
@@ -13,7 +15,6 @@ public partial class FlowOverwriteSourceItemViewModel : ObservableObject
 {
     [ObservableProperty] private string? _selectedSourceNodeId;
     [ObservableProperty] private string? _selectedSourceOutputKey;
-    [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _availableSources = new();
     [ObservableProperty] private ObservableCollection<WorkflowOutputKeyOption> _availableOutputKeys = new();
 
     private readonly IWorkflowEditorHost _host;
@@ -28,7 +29,8 @@ public partial class FlowOverwriteSourceItemViewModel : ObservableObject
     public void RefreshOutputKeys()
     {
         var selectedId = SelectedSourceNodeId;
-        var srcNode = _host.ViewModel?.Nodes.FirstOrDefault(n => n.Id == selectedId);
+        var srcNode = _host.ViewModel?.Nodes.FirstOrDefault(n =>
+            string.Equals(n.Id, selectedId, StringComparison.OrdinalIgnoreCase));
         var opts = srcNode?.DynamicOutputs?
             .Where(x => !string.IsNullOrWhiteSpace(x.Key))
             .Select(x => new WorkflowOutputKeyOption
@@ -39,9 +41,22 @@ public partial class FlowOverwriteSourceItemViewModel : ObservableObject
             })
             .ToList() ?? new();
 
+        // Giữ selection cũ để tránh "nhảy" key khi graph thay đổi tạm thời.
+        // Nếu key cũ không còn trong list, thêm placeholder để vẫn hiển thị đúng giá trị đã chọn.
+        if (!string.IsNullOrWhiteSpace(SelectedSourceOutputKey) &&
+            !opts.Any(o => string.Equals(o.Key, SelectedSourceOutputKey, StringComparison.OrdinalIgnoreCase)))
+        {
+            opts.Insert(0, new WorkflowOutputKeyOption
+            {
+                Key = SelectedSourceOutputKey!,
+                DisplayName = $"{SelectedSourceOutputKey} (không còn khả dụng)"
+            });
+        }
+
         AvailableOutputKeys = new ObservableCollection<WorkflowOutputKeyOption>(opts);
-        if (string.IsNullOrWhiteSpace(SelectedSourceOutputKey) ||
-            !opts.Any(o => string.Equals(o.Key, SelectedSourceOutputKey, System.StringComparison.OrdinalIgnoreCase)))
+
+        // Chỉ auto chọn mặc định cho row mới (chưa có key), không ghi đè key đã chọn.
+        if (string.IsNullOrWhiteSpace(SelectedSourceOutputKey))
         {
             SelectedSourceOutputKey = opts.FirstOrDefault()?.Key;
         }
@@ -56,6 +71,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     [ObservableProperty] private bool _appendMode;
 
     public ObservableCollection<FlowOverwriteSourceItemViewModel> Sources { get; } = new();
+    [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _availableSourceOptions = new();
 
     public ObservableCollection<TitleDisplayModeOption> TitleDisplayModeOptions { get; } = new()
     {
@@ -82,11 +98,8 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
 
     public void AddSource()
     {
-        var item = new FlowOverwriteSourceItemViewModel(_host)
-        {
-            AvailableSources = BuildDirectIncomingSources()
-        };
-        item.SelectedSourceNodeId = item.AvailableSources.FirstOrDefault()?.NodeId;
+        var item = new FlowOverwriteSourceItemViewModel(_host);
+        item.SelectedSourceNodeId = AvailableSourceOptions.FirstOrDefault()?.NodeId;
         item.RefreshOutputKeys();
         Sources.Add(item);
     }
@@ -100,13 +113,15 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     public void RefreshDirectIncomingSourceOptions()
     {
         var options = BuildDirectIncomingSources();
+        SyncAvailableSourceOptions(options);
+
         foreach (var row in Sources)
         {
-            row.AvailableSources = new ObservableCollection<WorkflowDataSourceOption>(options);
-            if (string.IsNullOrWhiteSpace(row.SelectedSourceNodeId) ||
-                !row.AvailableSources.Any(s => s.NodeId == row.SelectedSourceNodeId))
+            // Chỉ auto chọn node mặc định nếu row mới chưa có giá trị.
+            // Nếu node đã chọn không còn trực tiếp kết nối, vẫn giữ để user tự quyết định đổi.
+            if (string.IsNullOrWhiteSpace(row.SelectedSourceNodeId))
             {
-                row.SelectedSourceNodeId = row.AvailableSources.FirstOrDefault()?.NodeId;
+                row.SelectedSourceNodeId = AvailableSourceOptions.FirstOrDefault()?.NodeId;
             }
             row.RefreshOutputKeys();
         }
@@ -155,18 +170,59 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     {
         var vm = _host.ViewModel;
         if (vm == null) return new ObservableCollection<WorkflowDataSourceOption>();
-        var opts = vm.Connections
+        var directIncoming = vm.Connections
             .Where(c => c.ToNode != null && c.FromNode != null && c.ToNode.Id == _nodeTyped.Id)
             .Select(c => c.FromNode!)
             .GroupBy(n => n.Id, System.StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
-            .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0)
             .Select(n => new WorkflowDataSourceOption
             {
                 NodeId = n.Id,
                 Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
             })
             .ToList();
+
+        // Giữ các node đã được chọn trước đó trong options để không làm combobox "rơi" selection.
+        var selectedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in Sources)
+        {
+            if (!string.IsNullOrWhiteSpace(row.SelectedSourceNodeId))
+                selectedIds.Add(row.SelectedSourceNodeId.Trim());
+        }
+        foreach (var m in _nodeTyped.Mappings)
+        {
+            if (!string.IsNullOrWhiteSpace(m.SourceNodeId))
+                selectedIds.Add(m.SourceNodeId.Trim());
+        }
+
+        var byId = directIncoming.ToDictionary(x => x.NodeId, StringComparer.OrdinalIgnoreCase);
+        foreach (var selectedId in selectedIds)
+        {
+            if (byId.ContainsKey(selectedId)) continue;
+
+            var node = vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, selectedId, StringComparison.OrdinalIgnoreCase));
+            if (node != null)
+            {
+                byId[selectedId] = new WorkflowDataSourceOption
+                {
+                    NodeId = node.Id,
+                    Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : $"{node.Title} (không còn nối trực tiếp)"
+                };
+            }
+            else
+            {
+                byId[selectedId] = new WorkflowDataSourceOption
+                {
+                    NodeId = selectedId,
+                    Title = $"{selectedId} (không tồn tại)"
+                };
+            }
+        }
+
+        var opts = byId.Values
+            .OrderBy(x => x.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         return new ObservableCollection<WorkflowDataSourceOption>(opts);
     }
 
@@ -174,12 +230,13 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     {
         Sources.Clear();
         var options = BuildDirectIncomingSources();
+        SyncAvailableSourceOptions(options);
+
         foreach (var src in _nodeTyped.Mappings)
         {
             if (src == null || string.IsNullOrWhiteSpace(src.SourceNodeId)) continue;
             var item = new FlowOverwriteSourceItemViewModel(_host)
             {
-                AvailableSources = new ObservableCollection<WorkflowDataSourceOption>(options),
                 SelectedSourceNodeId = src.SourceNodeId,
                 SelectedSourceOutputKey = src.SourceOutputKey
             };
@@ -189,5 +246,12 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
 
         if (Sources.Count == 0)
             AddSource();
+    }
+
+    private void SyncAvailableSourceOptions(ObservableCollection<WorkflowDataSourceOption> options)
+    {
+        // IMPORTANT: Replace collection in one shot (don't Clear/Add while ComboBox is bound),
+        // to avoid WPF resetting SelectedValue when ItemsSource is temporarily empty.
+        AvailableSourceOptions = new ObservableCollection<WorkflowDataSourceOption>(options);
     }
 }

@@ -2,6 +2,7 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -49,7 +50,32 @@ public sealed class FlowOverwriteNodeRenderer : INodeRenderer
             Canvas.SetLeft(node.Border, x);
             Canvas.SetTop(node.Border, y);
         }
+
+        if (node is FlowOverwriteNode flowOverwriteNode &&
+            flowOverwriteNode.TitleTextBlockUI != null &&
+            Host.WorkflowCanvas != null)
+        {
+            var title = flowOverwriteNode.TitleTextBlockUI;
+            if (!Host.WorkflowCanvas.Children.Contains(title))
+            {
+                Host.WorkflowCanvas.Children.Add(title);
+                Panel.SetZIndex(title, 20000);
+            }
+
+            if (node.Border != null)
+            {
+                if (title.ActualWidth == 0 || title.ActualHeight == 0)
+                {
+                    title.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    title.Arrange(new Rect(title.DesiredSize));
+                }
+                Canvas.SetLeft(title, x + (node.Border.ActualWidth / 2) - (title.ActualWidth / 2));
+                Canvas.SetTop(title, y - title.ActualHeight - 4);
+            }
+        }
+
         RenderPorts(node);
+        Host.SyncAllPortsZIndex(node);
     }
 
     public void RemoveNode(WorkflowNode node, Canvas canvas)
@@ -69,16 +95,30 @@ public sealed class FlowOverwriteNodeRenderer : INodeRenderer
     {
         foreach (var port in node.Ports.Where(p => p.IsVisible))
         {
-            var color = port.IsInput ? (GetColor("InfoBrush") ?? Colors.Orange) : (GetColor("SunsetOrangeBrush") ?? Colors.Cyan);
+            var color = ResolvePortColor(port);
             if (port.PortUI == null)
             {
                 port.PortUI = _portRenderer.CreatePort(color);
                 port.PortUI.Tag = port;
             }
+            else if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
+            {
+                ellipse.Fill = new SolidColorBrush(color);
+            }
             _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
             _portRenderer.EnsurePortAddedToCanvas(port);
             Host.ZIndexManager.SetPortZIndex(node, port.PortUI);
         }
+    }
+
+    private static Color ResolvePortColor(NodePort port)
+    {
+        if (!string.IsNullOrWhiteSpace(port.ColorKey))
+        {
+            var fromKey = GetColor($"{port.ColorKey}Brush") ?? GetColor(port.ColorKey);
+            if (fromKey.HasValue) return fromKey.Value;
+        }
+        return port.IsInput ? (GetColor("InfoBrush") ?? Colors.Orange) : (GetColor("SunsetOrangeBrush") ?? Colors.Cyan);
     }
 
     private static Color? GetColor(string key)

@@ -16,7 +16,6 @@ public partial class FlowOverwriteNodeDialog : BaseNodeDialog
         InitializeComponent();
         _viewModel = new FlowOverwriteNodeDialogViewModel(node, host);
         InitializeBase(_viewModel, owner);
-        Loaded += (_, _) => _viewModel.RefreshDirectIncomingSourceOptions();
     }
 
     protected override Panel? GetInputsPanel() => InputsPanel;
