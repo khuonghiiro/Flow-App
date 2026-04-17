@@ -479,7 +479,9 @@ namespace FlowMy.Views
                 NodeSpinnerBlinkBackground = _nodeSpinnerBlinkBackground,
                 NodeSpinnerBlinkBackgroundColorKey = _nodeSpinnerBlinkBackgroundColorKey,
                 NodeSpinnerBlinkMode = _nodeSpinnerBlinkMode,
-                NodeSpinnerBlinkIntensity = _nodeSpinnerBlinkIntensity
+                NodeSpinnerBlinkIntensity = _nodeSpinnerBlinkIntensity,
+                NodeSpinnerBlinkBaseOpacity = _nodeSpinnerBlinkBaseOpacity,
+                NodeSpinnerBlinkPeakOpacity = _nodeSpinnerBlinkPeakOpacity
             };
         }
 
@@ -620,6 +622,14 @@ namespace FlowMy.Views
             _nodeSpinnerBlinkIntensity = preferences.NodeSpinnerBlinkIntensity > 0
                 ? System.Math.Max(0.10, System.Math.Min(1.0, preferences.NodeSpinnerBlinkIntensity))
                 : 0.65;
+            _nodeSpinnerBlinkBaseOpacity = preferences.NodeSpinnerBlinkBaseOpacity >= 0
+                ? System.Math.Max(0.0, System.Math.Min(1.0, preferences.NodeSpinnerBlinkBaseOpacity))
+                : 0.16;
+            _nodeSpinnerBlinkPeakOpacity = preferences.NodeSpinnerBlinkPeakOpacity > 0
+                ? System.Math.Max(0.0, System.Math.Min(1.0, preferences.NodeSpinnerBlinkPeakOpacity))
+                : 0.60;
+            if (_nodeSpinnerBlinkPeakOpacity <= _nodeSpinnerBlinkBaseOpacity)
+                _nodeSpinnerBlinkPeakOpacity = System.Math.Min(1.0, _nodeSpinnerBlinkBaseOpacity + 0.02);
             Settings.Default.EnergyDotGap = _energyDotGap;
             Settings.Default.EnergyDotThicknessExtra = _energyDotThicknessExtra;
             Settings.Default.EnergyDotText = _energyDotText;

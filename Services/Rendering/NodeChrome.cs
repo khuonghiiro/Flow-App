@@ -568,8 +568,11 @@ namespace FlowMy.Services.Rendering
             if (host.NodeSpinnerBlinkBackground)
             {
                 var intensity = Math.Max(0.10, Math.Min(1.0, host.NodeSpinnerBlinkIntensity));
-                var baseOpacity = 0.08 + (0.24 * intensity);
-                var peakOpacity = 0.20 + (0.55 * intensity);
+                var baseOpacityInput = Math.Max(0.0, Math.Min(1.0, host.NodeSpinnerBlinkBaseOpacity));
+                var baseOpacity = Math.Max(0.0, Math.Min(0.95, baseOpacityInput));
+                var peakOpacityInput = Math.Max(0.0, Math.Min(1.0, host.NodeSpinnerBlinkPeakOpacity));
+                var configuredPeak = Math.Max(baseOpacity + 0.02, peakOpacityInput);
+                var peakOpacity = Math.Min(1.0, baseOpacity + (configuredPeak - baseOpacity) * intensity);
                 var blinkMode = host.NodeSpinnerBlinkMode ?? "Soft";
                 var fillOpacityAnim = new DoubleAnimationUsingKeyFrames
                 {
@@ -596,7 +599,7 @@ namespace FlowMy.Services.Rendering
             else
             {
                 fillBrush.BeginAnimation(SolidColorBrush.OpacityProperty, null);
-                fillBrush.Opacity = 0.14;
+                fillBrush.Opacity = Math.Max(0.0, Math.Min(1.0, host.NodeSpinnerBlinkBaseOpacity));
             }
 
             EnsureSpinnerAnimationHook(sp, host);

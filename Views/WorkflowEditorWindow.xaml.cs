@@ -119,6 +119,8 @@ namespace FlowMy.Views
         private string _nodeSpinnerBlinkBackgroundColorKey = "WarningBrush";
         private string _nodeSpinnerBlinkMode = "Soft";
         private double _nodeSpinnerBlinkIntensity = 0.65;
+        private double _nodeSpinnerBlinkBaseOpacity = 0.16;
+        private double _nodeSpinnerBlinkPeakOpacity = 0.60;
         
         private enum CanvasDisplayMode
         {

@@ -47,6 +47,8 @@ namespace FlowMy.Views
         string IWorkflowEditorHost.NodeSpinnerBlinkBackgroundColorKey { get => _nodeSpinnerBlinkBackgroundColorKey; set => _nodeSpinnerBlinkBackgroundColorKey = value ?? "WarningBrush"; }
         string IWorkflowEditorHost.NodeSpinnerBlinkMode { get => _nodeSpinnerBlinkMode; set => _nodeSpinnerBlinkMode = string.IsNullOrWhiteSpace(value) ? "Soft" : value; }
         double IWorkflowEditorHost.NodeSpinnerBlinkIntensity { get => _nodeSpinnerBlinkIntensity; set => _nodeSpinnerBlinkIntensity = value; }
+        double IWorkflowEditorHost.NodeSpinnerBlinkBaseOpacity { get => _nodeSpinnerBlinkBaseOpacity; set => _nodeSpinnerBlinkBaseOpacity = value; }
+        double IWorkflowEditorHost.NodeSpinnerBlinkPeakOpacity { get => _nodeSpinnerBlinkPeakOpacity; set => _nodeSpinnerBlinkPeakOpacity = value; }
         FlowMy.Services.Rendering.ConnectionEnergyColorMode IWorkflowEditorHost.ConnectionEnergyColorMode { get => _connectionEnergyColorMode; set => _connectionEnergyColorMode = value; }
         Color IWorkflowEditorHost.CustomEnergyColor { get => _customEnergyColor; set => _customEnergyColor = value; }
         double IWorkflowEditorHost.EnergyDotGap { get => _energyDotGap; set => _energyDotGap = value; }

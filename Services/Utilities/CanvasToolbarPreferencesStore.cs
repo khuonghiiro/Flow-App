@@ -43,6 +43,8 @@ namespace FlowMy.Services.Utilities
         public string NodeSpinnerBlinkBackgroundColorKey { get; set; } = "WarningBrush";
         public string NodeSpinnerBlinkMode { get; set; } = "Soft"; // Soft|Hard
         public double NodeSpinnerBlinkIntensity { get; set; } = 0.65; // 0..1
+        public double NodeSpinnerBlinkBaseOpacity { get; set; } = 0.16; // 0..1
+        public double NodeSpinnerBlinkPeakOpacity { get; set; } = 0.60; // 0..1
     }
 
     public static class CanvasToolbarPreferencesStore

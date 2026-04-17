@@ -143,6 +143,8 @@ namespace FlowMy.Views.Overlays
             SelectByTag(NodeSpinnerBlinkBackgroundColorComboBox, string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkBackgroundColorKey) ? "WarningBrush" : preferences.NodeSpinnerBlinkBackgroundColorKey);
             SelectByTag(NodeSpinnerBlinkModeComboBox, string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkMode) ? "Soft" : preferences.NodeSpinnerBlinkMode);
             NodeSpinnerBlinkIntensitySlider.Value = preferences.NodeSpinnerBlinkIntensity > 0 ? preferences.NodeSpinnerBlinkIntensity : 0.65;
+            NodeSpinnerBlinkBaseOpacitySlider.Value = preferences.NodeSpinnerBlinkBaseOpacity >= 0 ? preferences.NodeSpinnerBlinkBaseOpacity : 0.16;
+            NodeSpinnerBlinkPeakOpacitySlider.Value = preferences.NodeSpinnerBlinkPeakOpacity > 0 ? preferences.NodeSpinnerBlinkPeakOpacity : 0.60;
             SetRadioSelection(GetDebounceFastRadio(), GetDebounceBalancedRadio(), GetDebounceSmoothRadio(), NormalizeDebounceTag(preferences.ApplyDebounceMs));
             ApplyDebounceIntervalFromSelection();
             UpdateSliderTexts();
@@ -199,6 +201,10 @@ namespace FlowMy.Views.Overlays
             var thickness = EnergyDotThicknessSlider.Value;
             var speed = EnergyRunSpeedSlider.Value;
             var spin = EnergySpinSpeedSlider.Value;
+            var blinkBase = NodeSpinnerBlinkBaseOpacitySlider.Value >= 0 ? NodeSpinnerBlinkBaseOpacitySlider.Value : 0.16;
+            var blinkPeak = NodeSpinnerBlinkPeakOpacitySlider.Value > 0 ? NodeSpinnerBlinkPeakOpacitySlider.Value : 0.60;
+            if (blinkPeak <= blinkBase)
+                blinkPeak = System.Math.Min(1.0, blinkBase + 0.02);
 
             return new CanvasToolbarPreferences
             {
@@ -236,6 +242,8 @@ namespace FlowMy.Views.Overlays
                 NodeSpinnerBlinkBackgroundColorKey = SelectedTag(NodeSpinnerBlinkBackgroundColorComboBox),
                 NodeSpinnerBlinkMode = SelectedTag(NodeSpinnerBlinkModeComboBox),
                 NodeSpinnerBlinkIntensity = NodeSpinnerBlinkIntensitySlider.Value > 0 ? NodeSpinnerBlinkIntensitySlider.Value : 0.65,
+                NodeSpinnerBlinkBaseOpacity = blinkBase,
+                NodeSpinnerBlinkPeakOpacity = blinkPeak,
                 ApplyDebounceMs = SelectedDebounceMs()
             };
         }
@@ -355,6 +363,8 @@ namespace FlowMy.Views.Overlays
             NodeSpinnerStrokeThicknessSlider.ValueChanged += AnyControlChanged;
             NodeSpinnerSpinSecondsSlider.ValueChanged += AnyControlChanged;
             NodeSpinnerBlinkIntensitySlider.ValueChanged += AnyControlChanged;
+            NodeSpinnerBlinkBaseOpacitySlider.ValueChanged += AnyControlChanged;
+            NodeSpinnerBlinkPeakOpacitySlider.ValueChanged += AnyControlChanged;
         }
 
         private void AnyControlChanged(object sender, TextChangedEventArgs e)
@@ -399,6 +409,47 @@ namespace FlowMy.Views.Overlays
             if (NodeSpinnerStrokeThicknessValueText != null) NodeSpinnerStrokeThicknessValueText.Text = NodeSpinnerStrokeThicknessSlider.Value.ToString("0.0");
             if (NodeSpinnerSpinSecondsValueText != null) NodeSpinnerSpinSecondsValueText.Text = NodeSpinnerSpinSecondsSlider.Value.ToString("0.0");
             if (NodeSpinnerBlinkIntensityValueText != null) NodeSpinnerBlinkIntensityValueText.Text = NodeSpinnerBlinkIntensitySlider.Value.ToString("0.00");
+            if (NodeSpinnerBlinkBaseOpacityValueText != null) NodeSpinnerBlinkBaseOpacityValueText.Text = NodeSpinnerBlinkBaseOpacitySlider.Value.ToString("0.00");
+            if (NodeSpinnerBlinkPeakOpacityValueText != null) NodeSpinnerBlinkPeakOpacityValueText.Text = NodeSpinnerBlinkPeakOpacitySlider.Value.ToString("0.00");
+        }
+
+        private void BlinkPresetButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isApplying) return;
+            if (sender is not Button btn || btn.Tag is not string presetTag) return;
+
+            _isApplying = true;
+            NodeSpinnerBlinkBackgroundCheckBox.IsChecked = true;
+            switch (presetTag)
+            {
+                case "Light":
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.35;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.10;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.38;
+                    break;
+                case "Strong":
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Hard");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.95;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.28;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.92;
+                    break;
+                case "VeryStrong":
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Hard");
+                    NodeSpinnerBlinkIntensitySlider.Value = 1.00;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.34;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 1.00;
+                    break;
+                default:
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.65;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.16;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.60;
+                    break;
+            }
+            _isApplying = false;
+            UpdateSliderTexts();
+            QueuePreferencesApply();
         }
 
         private int SelectedDebounceMs()
