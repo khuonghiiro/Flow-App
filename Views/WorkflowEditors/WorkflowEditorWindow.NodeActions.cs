@@ -1097,10 +1097,14 @@ namespace FlowMy.Views
             {
                 var cb = new ConditionalBranch
                 {
+                    Id = b.Id,
                     Label = b.Label,
                     DisplayTitle = b.DisplayTitle,
                     Condition = b.Condition,
                     CanRemove = b.CanRemove,
+                    SatelliteOffsetX = b.SatelliteOffsetX,
+                    SatelliteOffsetY = b.SatelliteOffsetY,
+                    SatelliteInputPosition = b.SatelliteInputPosition,
                     LeftSourceNodeId = b.LeftSourceNodeId,
                     SubConditions = b.SubConditions?.Select(x => new ConditionExpression
                     {
@@ -1123,6 +1127,9 @@ namespace FlowMy.Views
 
                 if (b.Port != null && portMap.TryGetValue(b.Port, out var mapped))
                 {
+                    // Preserve original branch port ID so pasted connections
+                    // can map exactly to if/else branch ports (no side-based ambiguity).
+                    mapped.Id = b.Port.Id;
                     cb.Port = mapped;
                 }
 

@@ -179,7 +179,7 @@ namespace FlowMy.Views
                     sourceNode.ConditionalVisualMode == ConditionalVisualMode.Diamond &&
                     mappedNode.IsConditionalNode)
                 {
-                    ApplyConditionalDiamondLayout(mappedNode);
+                    mappedNode.ConditionalVisualMode = ConditionalVisualMode.Diamond;
                 }
             }
 
@@ -308,7 +308,50 @@ namespace FlowMy.Views
 
             vm.SelectedNode = nodeMap.Values.LastOrDefault();
             _eventService.RefreshDynamicDataSourceSelectors();
+            RefreshConditionalDiamondGeometryAfterPaste(nodeMap.Values.ToList());
             return true;
+        }
+
+        private void RefreshConditionalDiamondGeometryAfterPaste(List<WorkflowNode> pastedNodes)
+        {
+            if (pastedNodes == null || pastedNodes.Count == 0) return;
+
+            var diamondNodes = pastedNodes
+                .Where(n => n.IsConditionalNode && n.ConditionalVisualMode == ConditionalVisualMode.Diamond)
+                .ToList();
+            if (diamondNodes.Count == 0) return;
+
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+            {
+                var vm = ViewModel;
+                if (vm == null) return;
+
+                foreach (var node in diamondNodes)
+                {
+                    ReRenderConditionalNode(node);
+                    RenderConditionalNodePorts(node);
+                    var relatedConnections = vm.Connections.Where(c => c.FromNode == node || c.ToNode == node).ToList();
+                    foreach (var conn in relatedConnections)
+                        UpdateConnectionPath(conn);
+                }
+
+                RefreshConditionalDiamondLineStyles();
+
+                // Pass 2 at Render priority to settle any late measure/arrange updates
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
+                {
+                    var vm2 = ViewModel;
+                    if (vm2 == null) return;
+                    RefreshConditionalDiamondLineStyles();
+                    foreach (var node in diamondNodes)
+                    {
+                        RenderConditionalNodePorts(node);
+                        var relatedConnections = vm2.Connections.Where(c => c.FromNode == node || c.ToNode == node).ToList();
+                        foreach (var conn in relatedConnections)
+                            UpdateConnectionPath(conn);
+                    }
+                }));
+            }));
         }
 
         private static NodePort? MapPortForPastedConnection(WorkflowNode targetNode, string? sourcePortId, ClipboardPortDto? sourcePort)
