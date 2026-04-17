@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace FlowMy.Services.Workflow.NodeExecutors;
 
@@ -23,6 +24,7 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
     public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
     {
         if (node is not FlowOverwriteNode typed) return;
+        var sw = Stopwatch.StartNew();
 
         var key = string.IsNullOrWhiteSpace(typed.OutputKey) ? "outputKey" : typed.OutputKey.Trim();
         typed.OutputKey = key;
@@ -63,6 +65,7 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
 
         if (resolvedValues.Count == 0)
         {
+            env.OnNodeCompleted?.Invoke(typed, sw.Elapsed);
             await env.TraverseOutputsAsync(node);
             return;
         }
@@ -99,6 +102,7 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
         if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
             env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, typed.Id, typed.ResolvedOutputs);
 
+        env.OnNodeCompleted?.Invoke(typed, sw.Elapsed);
         await env.TraverseOutputsAsync(node);
     }
 }

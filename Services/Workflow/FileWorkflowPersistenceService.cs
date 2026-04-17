@@ -3533,6 +3533,12 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             {
                 flowOverwriteRestore.AppendMode = appendMode;
             }
+            if (properties.TryGetValue("IncludeIndirectSources", out var includeIndirectObj) &&
+                includeIndirectObj != null &&
+                bool.TryParse(includeIndirectObj.ToString(), out var includeIndirect))
+            {
+                flowOverwriteRestore.IncludeIndirectSources = includeIndirect;
+            }
             if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) &&
                 tdmObj != null &&
                 Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
@@ -4660,6 +4666,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         {
             dict["OutputKey"] = string.IsNullOrWhiteSpace(flowOverwriteSer.OutputKey) ? "outputKey" : flowOverwriteSer.OutputKey.Trim();
             dict["AppendMode"] = flowOverwriteSer.AppendMode;
+            dict["IncludeIndirectSources"] = flowOverwriteSer.IncludeIndirectSources;
             dict["TitleDisplayMode"] = flowOverwriteSer.TitleDisplayMode.ToString();
             dict["TitleColorMode"] = flowOverwriteSer.TitleColorMode.ToString();
             if (!string.IsNullOrWhiteSpace(flowOverwriteSer.TitleColorKey))

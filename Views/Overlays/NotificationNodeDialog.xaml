@@ -382,6 +382,69 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
+
+                <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding ReuseRoutes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,12" Background="{DynamicResource WindowBackground}"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                                CornerRadius="8" Padding="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Node IN" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="{Binding IncomingNodeTitle}" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Node OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" ItemsSource="{Binding OutgoingOptions}"
+                                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                              SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Kiểu line OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
             </TabControl>
         </Grid>
     </Border>
