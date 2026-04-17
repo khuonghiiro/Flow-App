@@ -68,6 +68,7 @@ namespace FlowMy.Views
 
         bool IWorkflowEditorHost.IsPanning { get => _isPanning; set => _isPanning = value; }
         Point IWorkflowEditorHost.PanStartPoint { get => _panStartPoint; set => _panStartPoint = value; }
+        bool IWorkflowEditorHost.IsBoxSelecting => _isBoxSelecting;
 
         bool IWorkflowEditorHost.IsDraggingFromTemplate { get => _isDraggingFromTemplate; set => _isDraggingFromTemplate = value; }
         string? IWorkflowEditorHost.DraggingNodeType { get => _draggingNodeType; set => _draggingNodeType = value; }
@@ -90,6 +91,10 @@ namespace FlowMy.Views
 
         void IWorkflowEditorHost.ClampNodeDragToAutoScheduledScope(WorkflowNode? draggedNode, ref double newX, ref double newY) =>
             ClampNodeDragToAutoScheduledScope(draggedNode, ref newX, ref newY);
+        void IWorkflowEditorHost.BeginBoxSelection(Point startCanvasPoint) => BeginBoxSelection(startCanvasPoint);
+        void IWorkflowEditorHost.UpdateBoxSelection(Point currentCanvasPoint) => UpdateBoxSelection(currentCanvasPoint);
+        void IWorkflowEditorHost.CompleteBoxSelection() => CompleteBoxSelection();
+        void IWorkflowEditorHost.CancelBoxSelection() => CancelBoxSelection();
 
         void IWorkflowEditorHost.NodeMouseDown(object sender, MouseButtonEventArgs e) => Node_MouseDown(sender, e);
         void IWorkflowEditorHost.NodeMouseMove(object sender, MouseEventArgs e) => Node_MouseMove(sender, e);

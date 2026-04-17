@@ -74,6 +74,7 @@ namespace FlowMy.Services.Interaction
 
         bool IsPanning { get; set; }
         Point PanStartPoint { get; set; }
+        bool IsBoxSelecting { get; }
 
         bool IsDraggingFromTemplate { get; set; }
         string? DraggingNodeType { get; set; }
@@ -94,6 +95,10 @@ namespace FlowMy.Services.Interaction
         void RenderConditionalNodePorts(WorkflowNode node);
         void UpdatePortsPositionOnSide(WorkflowNode node, PortPosition position);
         void UpdateNodePosition(WorkflowNode node, double x, double y);
+        void BeginBoxSelection(Point startCanvasPoint);
+        void UpdateBoxSelection(Point currentCanvasPoint);
+        void CompleteBoxSelection();
+        void CancelBoxSelection();
 
         /// <summary>Giữ node trong khung nét đứt xanh của Start AutoScheduled (giống nhốt trong LoopBody).</summary>
         void ClampNodeDragToAutoScheduledScope(WorkflowNode? draggedNode, ref double newX, ref double newY);

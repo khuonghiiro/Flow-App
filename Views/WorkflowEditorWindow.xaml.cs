@@ -1012,6 +1012,9 @@ namespace FlowMy.Views
 
         private void WorkflowEditorWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (TryHandleWorkflowClipboardShortcuts(e))
+                return;
+
             _eventService.HandleKeyDown(e);
         }
 

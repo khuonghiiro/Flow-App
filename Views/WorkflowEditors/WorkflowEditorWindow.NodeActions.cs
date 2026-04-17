@@ -154,6 +154,7 @@ namespace FlowMy.Views
             node.NodeBrush = source.NodeBrush;
             node.ColorKey = source.ColorKey;
             node.Type = source.Type;
+            node.ConditionalVisualMode = source.ConditionalVisualMode;
 
             node.Condition = source.Condition;
             node.Key = source.Key;
@@ -533,6 +534,26 @@ namespace FlowMy.Views
             {
                 // Copy RunInParallel property
                 dstAsyncTask.RunInParallel = srcAsyncTask.RunInParallel;
+                dstAsyncTask.UiPresentationMode = srcAsyncTask.UiPresentationMode;
+                dstAsyncTask.DispatchLoopType = srcAsyncTask.DispatchLoopType;
+                dstAsyncTask.RepeatCount = srcAsyncTask.RepeatCount;
+                dstAsyncTask.StartIndex = srcAsyncTask.StartIndex;
+                dstAsyncTask.EndIndex = srcAsyncTask.EndIndex;
+                dstAsyncTask.ReadResultsInBody = srcAsyncTask.ReadResultsInBody;
+
+                if (srcAsyncTask.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch)
+                {
+                    // Source đang ở loop-like: đảm bảo clone cũng có loop-like ports + body trước khi copy layout.
+                    _templateFactory.ConfigureAsyncTaskLoopLikePorts(dstAsyncTask);
+
+                    if (srcAsyncTask.AsyncTaskBodyNode != null && dstAsyncTask.AsyncTaskBodyNode != null)
+                    {
+                        dstAsyncTask.AsyncTaskBodyNode.X = srcAsyncTask.AsyncTaskBodyNode.X + offsetX;
+                        dstAsyncTask.AsyncTaskBodyNode.Y = srcAsyncTask.AsyncTaskBodyNode.Y + offsetY;
+                        dstAsyncTask.AsyncTaskBodyNode.Width = srcAsyncTask.AsyncTaskBodyNode.Width;
+                        dstAsyncTask.AsyncTaskBodyNode.Height = srcAsyncTask.AsyncTaskBodyNode.Height;
+                    }
+                }
                 
                 // Copy AsyncTaskBranches
                 if (srcAsyncTask.AsyncTaskBranches != null && srcAsyncTask.AsyncTaskBranches.Count > 0)

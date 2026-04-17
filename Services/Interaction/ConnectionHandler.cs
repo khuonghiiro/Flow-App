@@ -478,6 +478,12 @@ namespace FlowMy.Services.Interaction
         {
             var viewModel = _host.ViewModel;
 
+            if (_host.IsBoxSelecting)
+            {
+                _host.UpdateBoxSelection(e.GetPosition(_host.WorkflowCanvas));
+                return;
+            }
+
             // Bỏ hiệu ứng hover cho Windy style - đã thay bằng wave animation tự động
 
             // Template ghost
@@ -676,6 +682,12 @@ namespace FlowMy.Services.Interaction
 
         public void WorkflowCanvasMouseUp(object sender, MouseButtonEventArgs e)
         {
+            if (_host.IsBoxSelecting)
+            {
+                _host.CompleteBoxSelection();
+                return;
+            }
+
             // Template drop fallback
             if (_host.IsDraggingFromTemplate && _host.DraggingNodeType != null)
             {
@@ -801,6 +813,14 @@ namespace FlowMy.Services.Interaction
             {
                 // Đóng dialog trước (không cần kiểm tra DraggedNode)
                 CloseNodeDialogIfOpen();
+
+                if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+                {
+                    _host.BeginBoxSelection(e.GetPosition(_host.WorkflowCanvas));
+                    return;
+                }
+
+                _host.CancelBoxSelection();
                 
                 // Chỉ bắt đầu pan nếu không đang drag
                 if (_host.DraggedNode == null)
