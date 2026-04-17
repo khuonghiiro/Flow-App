@@ -119,6 +119,7 @@ namespace FlowMy.Services.Interaction
                     vm.SelectedNode is FolderNode ||
                     vm.SelectedNode is FileDownloadNode ||
                     vm.SelectedNode is FolderFilePathsNode ||
+                    vm.SelectedNode is FlowOverwriteNode ||
                     vm.SelectedNode is WebNode ||
                     vm.SelectedNode is HtmlUiNode ||
                     vm.SelectedNode is InputNode || 
@@ -155,6 +156,7 @@ namespace FlowMy.Services.Interaction
                        _copiedNode is FolderNode ||
                        _copiedNode is FileDownloadNode ||
                        _copiedNode is FolderFilePathsNode ||
+                       _copiedNode is FlowOverwriteNode ||
                        _copiedNode is WebNode ||
                        _copiedNode is HtmlUiNode ||
                        _copiedNode is NotificationNode ||

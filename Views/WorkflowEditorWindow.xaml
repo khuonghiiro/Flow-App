@@ -1560,6 +1560,23 @@ Cursor="Hand"
                                                           Fill="{DynamicResource TextOnSeaFoamBrush}"/>
                                 </Grid>
                             </Border>
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource KiwiGreenBrush}"
+                                    Tag="FlowOverwrite">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock Text="Flow Overwrite" FontWeight="Bold"/>
+                                            <TextBlock Text="Ghi đè hoặc gom mảng giá trị theo node chạy vào cuối cùng. Chỉ map node nối trực tiếp vào cổng IN." TextWrapping="Wrap" Margin="0,2,0,0" Opacity="0.95"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='book-arrow-right duotone'}"
+                                                          Fill="{DynamicResource TextOnKiwiGreenBrush}"/>
+                                </Grid>
+                            </Border>
                         </WrapPanel>
 
                         <TextBlock Text="Screen" Style="{StaticResource PaletteGroupHeaderStyle}"/>

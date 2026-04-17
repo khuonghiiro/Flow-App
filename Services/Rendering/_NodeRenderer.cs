@@ -41,6 +41,7 @@ namespace FlowMy.Services.Rendering
         private readonly HtmlUiNodeRenderer _htmlUiNodeRenderer;
         private readonly StorageNodeRenderer _storageNodeRenderer;
         private readonly CallbackNodeRenderer _callbackNodeRenderer;
+        private readonly FlowOverwriteNodeRenderer _flowOverwriteNodeRenderer;
 
         private IWorkflowEditorHost _host => _hostAccessor.GetRequiredHost();
 
@@ -74,7 +75,8 @@ namespace FlowMy.Services.Rendering
             FolderFilePathsNodeRenderer folderFilePathsNodeRenderer,
             HtmlUiNodeRenderer htmlUiNodeRenderer,
             StorageNodeRenderer storageNodeRenderer,
-            CallbackNodeRenderer callbackNodeRenderer
+            CallbackNodeRenderer callbackNodeRenderer,
+            FlowOverwriteNodeRenderer flowOverwriteNodeRenderer
             )
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
@@ -107,6 +109,7 @@ namespace FlowMy.Services.Rendering
             _htmlUiNodeRenderer = htmlUiNodeRenderer ?? throw new ArgumentNullException(nameof(htmlUiNodeRenderer));
             _storageNodeRenderer = storageNodeRenderer ?? throw new ArgumentNullException(nameof(storageNodeRenderer));
             _callbackNodeRenderer = callbackNodeRenderer ?? throw new ArgumentNullException(nameof(callbackNodeRenderer));
+            _flowOverwriteNodeRenderer = flowOverwriteNodeRenderer ?? throw new ArgumentNullException(nameof(flowOverwriteNodeRenderer));
         }
 
         public void RenderNode(WorkflowNode node, Canvas canvas)
@@ -265,6 +268,12 @@ namespace FlowMy.Services.Rendering
             if (node is CallbackNode callbackNode)
             {
                 _callbackNodeRenderer.RenderNode(callbackNode, canvas);
+                return;
+            }
+
+            if (node is FlowOverwriteNode flowOverwriteNode)
+            {
+                _flowOverwriteNodeRenderer.RenderNode(flowOverwriteNode, canvas);
                 return;
             }
 
@@ -624,6 +633,12 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
+            if (node is FlowOverwriteNode flowOverwriteNode)
+            {
+                _flowOverwriteNodeRenderer.UpdateNodePosition(flowOverwriteNode, x, y);
+                return;
+            }
+
             // ✅ Delegate ConditionalNode to its own renderer (handles both Diamond and Classic port positioning)
             if (node.IsConditionalNode)
             {
@@ -965,6 +980,12 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
+            if (node is FlowOverwriteNode flowOverwriteNodeForRemove)
+            {
+                _flowOverwriteNodeRenderer.RemoveNode(flowOverwriteNodeForRemove, canvas);
+                return;
+            }
+
             if (node.IsConditionalNode)
             {
                 _conditionalNodeRenderer.RemoveNode(node, canvas);
@@ -1281,6 +1302,15 @@ namespace FlowMy.Services.Rendering
                             canvas.Children.Remove(titleTextBlock);
                         }
                         callbackNode.TitleTextBlockUI = null;
+                    }
+                    else if (node is FlowOverwriteNode flowOverwriteNode && flowOverwriteNode.TitleTextBlockUI != null)
+                    {
+                        var titleTextBlock = flowOverwriteNode.TitleTextBlockUI;
+                        if (canvas.Children.Contains(titleTextBlock))
+                        {
+                            canvas.Children.Remove(titleTextBlock);
+                        }
+                        flowOverwriteNode.TitleTextBlockUI = null;
                     }
                 }
             }

@@ -263,6 +263,10 @@ namespace FlowMy.Views
                     n.TitleColorMode = colorMode;
                     n.TitleColorKey = colorKey;
                     break;
+                case FlowOverwriteNode n:
+                    n.TitleColorMode = colorMode;
+                    n.TitleColorKey = colorKey;
+                    break;
             }
         }
 
@@ -363,6 +367,7 @@ namespace FlowMy.Views
                 "DataFetcher" => "inbox-out duotone-light",
                 "FolderFilePaths" => "file-import duotone-light",
                 "KeyValueBridge" => "list-check solid",
+                "FlowOverwrite" => "book-arrow-right duotone",
                 _ => "circle2"
             };
         }

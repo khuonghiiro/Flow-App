@@ -269,6 +269,7 @@ namespace FlowMy.Services.Workflow
                 or FileDownloadNode
                 or FolderFilePathsNode
                 or KeyValueBridgeNode
+                or FlowOverwriteNode
                 or AsyncTaskDispatchCollectNode
                 or StorageNode
                 or HtmlUiNode)
@@ -437,6 +438,7 @@ namespace FlowMy.Services.Workflow
                 new NodeExecutors.ImageProcessingNodeExecutor(),
                 new NodeExecutors.DataFetcherNodeExecutor(),
                 new NodeExecutors.KeyValueBridgeNodeExecutor(),
+                new NodeExecutors.FlowOverwriteNodeExecutor(),
                 new NodeExecutors.KeyScopedNodeExecutor(),
                 new NodeExecutors.CodeNodeExecutor(),
                 new NodeExecutors.FolderNodeExecutor(),

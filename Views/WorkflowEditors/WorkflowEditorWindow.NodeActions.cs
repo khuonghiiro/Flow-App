@@ -55,6 +55,10 @@ namespace FlowMy.Views
             {
                 htmlUiNode.NotifyTitleChanged();
             }
+            else if (node is FlowOverwriteNode flowOverwriteNode)
+            {
+                flowOverwriteNode.NotifyTitleChanged();
+            }
 
             // Update UI nếu node có chrome simple
             if (node.TitleTextBlockUI != null)
@@ -810,6 +814,24 @@ namespace FlowMy.Views
                 dstKvb.RefreshFlowPortsVisibility();
             }
 
+            if (source is FlowOverwriteNode srcOverwrite && node is FlowOverwriteNode dstOverwrite)
+            {
+                dstOverwrite.OutputKey = srcOverwrite.OutputKey;
+                dstOverwrite.AppendMode = srcOverwrite.AppendMode;
+                dstOverwrite.TitleDisplayMode = srcOverwrite.TitleDisplayMode;
+                dstOverwrite.TitleColorMode = srcOverwrite.TitleColorMode;
+                dstOverwrite.TitleColorKey = srcOverwrite.TitleColorKey;
+                dstOverwrite.Mappings = srcOverwrite.Mappings?
+                    .Where(x => x != null && !string.IsNullOrWhiteSpace(x.SourceNodeId))
+                    .Select(x => new FlowOverwriteMapping
+                    {
+                        SourceNodeId = x.SourceNodeId.Trim(),
+                        SourceOutputKey = string.IsNullOrWhiteSpace(x.SourceOutputKey) ? null : x.SourceOutputKey.Trim()
+                    })
+                    .ToList() ?? new List<FlowOverwriteMapping>();
+                dstOverwrite.RebuildDynamicOutputs();
+            }
+
             // ⚠️ CRITICAL: Trigger PropertyChanged cho các node có INotifyPropertyChanged
             if (node is OutputNode outputNode)
             {
@@ -874,6 +896,10 @@ namespace FlowMy.Views
             else if (node is KeyValueBridgeNode kvbDupNotify)
             {
                 kvbDupNotify.NotifyTitleChanged();
+            }
+            else if (node is FlowOverwriteNode flowOverwriteNode)
+            {
+                flowOverwriteNode.NotifyTitleChanged();
             }
 
             // Fallback: if we created by Activator and Id is empty, ensure unique

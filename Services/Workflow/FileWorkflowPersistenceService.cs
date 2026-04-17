@@ -3523,6 +3523,69 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             kvRestore.RebuildDataPorts();
             kvRestore.RefreshFlowPortsVisibility();
         }
+        else if (node is FlowOverwriteNode flowOverwriteRestore)
+        {
+            if (properties.TryGetValue("OutputKey", out var outputKeyObj))
+                flowOverwriteRestore.OutputKey = outputKeyObj?.ToString() ?? "outputKey";
+            if (properties.TryGetValue("AppendMode", out var appendObj) &&
+                appendObj != null &&
+                bool.TryParse(appendObj.ToString(), out var appendMode))
+            {
+                flowOverwriteRestore.AppendMode = appendMode;
+            }
+            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) &&
+                tdmObj != null &&
+                Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
+            {
+                flowOverwriteRestore.TitleDisplayMode = tdm;
+            }
+            if (properties.TryGetValue("TitleColorMode", out var tcmObj) &&
+                tcmObj != null &&
+                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
+            {
+                flowOverwriteRestore.TitleColorMode = tcm;
+            }
+            if (properties.TryGetValue("TitleColorKey", out var tckObj))
+                flowOverwriteRestore.TitleColorKey = tckObj?.ToString();
+
+            if (properties.TryGetValue("Mappings", out var mappingsObj))
+            {
+                List<FlowOverwriteMapping>? parsedMappings = null;
+                try
+                {
+                    if (mappingsObj is string mappingsJson && !string.IsNullOrWhiteSpace(mappingsJson))
+                        parsedMappings = JsonSerializer.Deserialize<List<FlowOverwriteMapping>>(mappingsJson);
+                    else if (mappingsObj is JsonElement mappingsElement)
+                    {
+                        if (mappingsElement.ValueKind == JsonValueKind.String)
+                        {
+                            var json = mappingsElement.GetString();
+                            if (!string.IsNullOrWhiteSpace(json))
+                                parsedMappings = JsonSerializer.Deserialize<List<FlowOverwriteMapping>>(json);
+                        }
+                        else if (mappingsElement.ValueKind == JsonValueKind.Array)
+                        {
+                            parsedMappings = JsonSerializer.Deserialize<List<FlowOverwriteMapping>>(mappingsElement.GetRawText());
+                        }
+                    }
+                }
+                catch { }
+
+                if (parsedMappings != null)
+                {
+                    flowOverwriteRestore.Mappings = parsedMappings
+                        .Where(x => x != null && !string.IsNullOrWhiteSpace(x.SourceNodeId))
+                        .Select(x => new FlowOverwriteMapping
+                        {
+                            SourceNodeId = x.SourceNodeId.Trim(),
+                            SourceOutputKey = string.IsNullOrWhiteSpace(x.SourceOutputKey) ? null : x.SourceOutputKey.Trim()
+                        })
+                        .ToList();
+                }
+            }
+
+            flowOverwriteRestore.RebuildDynamicOutputs();
+        }
         else if (node is OutputNode outputNode)
         {
             // Deserialize OutputKey
@@ -4591,6 +4654,26 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     })
                     .ToList());
                 dict["AdditionalAppendSources"] = appendSourcesJson;
+            }
+        }
+        else if (node is FlowOverwriteNode flowOverwriteSer)
+        {
+            dict["OutputKey"] = string.IsNullOrWhiteSpace(flowOverwriteSer.OutputKey) ? "outputKey" : flowOverwriteSer.OutputKey.Trim();
+            dict["AppendMode"] = flowOverwriteSer.AppendMode;
+            dict["TitleDisplayMode"] = flowOverwriteSer.TitleDisplayMode.ToString();
+            dict["TitleColorMode"] = flowOverwriteSer.TitleColorMode.ToString();
+            if (!string.IsNullOrWhiteSpace(flowOverwriteSer.TitleColorKey))
+                dict["TitleColorKey"] = flowOverwriteSer.TitleColorKey;
+            if (flowOverwriteSer.Mappings != null && flowOverwriteSer.Mappings.Count > 0)
+            {
+                dict["Mappings"] = JsonSerializer.Serialize(flowOverwriteSer.Mappings
+                    .Where(x => x != null && !string.IsNullOrWhiteSpace(x.SourceNodeId))
+                    .Select(x => new
+                    {
+                        SourceNodeId = x.SourceNodeId.Trim(),
+                        SourceOutputKey = string.IsNullOrWhiteSpace(x.SourceOutputKey) ? null : x.SourceOutputKey.Trim()
+                    })
+                    .ToList());
             }
         }
         else if (node is WebNode webNodeForSerialize)

@@ -50,7 +50,8 @@ namespace FlowMy.Models
         /// <summary>Tải file từ URL hoặc curl vào thư mục đích.</summary>
         FileDownload,
         /// <summary>Liệt kê (và tuỳ chọn đọc) file trong một thư mục.</summary>
-        FolderFilePaths
+        FolderFilePaths,
+        FlowOverwrite
     }
 }
 

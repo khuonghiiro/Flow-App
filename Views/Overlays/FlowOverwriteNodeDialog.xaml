@@ -1,0 +1,137 @@
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.FlowOverwriteNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FlowMy.Views.Overlays"
+        Title="Flow Overwrite"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Width="460"
+        MinWidth="350"
+        MaxWidth="900"
+        MinHeight="350">
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TitleTextBox" Grid.Column="0"
+                             Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{DynamicResource BaseTextBoxV2}"
+                             FontSize="16" Padding="0,4,0,4"
+                             VerticalContentAlignment="Center" Cursor="IBeam"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="PlayButton" Width="24" Height="24"
+                                Content="▶" FontSize="12"
+                                Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                                Command="{Binding RunSingleNodeCommand}"/>
+                        <Button x:Name="CloseButton" Width="24" Height="24"
+                                Style="{DynamicResource DangerButton}"
+                                Content="×" FontSize="12" FontWeight="Bold" Cursor="Hand"
+                                Margin="8,0,0,0" Click="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+                <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="Output key" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding OutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,6,0,12"/>
+
+                            <CheckBox Content="Append mode (gom thành mảng, mặc định tắt = ghi đè)"
+                                      IsChecked="{Binding AppendMode, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Nguồn override trực tiếp (chỉ node nối vào cổng IN):"
+                                       Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ItemsControl ItemsSource="{Binding Sources}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource WindowBackground}"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <ComboBox Grid.Column="0" Height="32" Margin="0,0,6,0"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding AvailableSources}"
+                                                          SelectedValuePath="NodeId"
+                                                          DisplayMemberPath="Title"
+                                                          SelectedValue="{Binding SelectedSourceNodeId, Mode=TwoWay}"/>
+                                                <ComboBox Grid.Column="1" Height="32" Margin="0,0,6,0"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding AvailableOutputKeys}"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"/>
+                                                <Button Grid.Column="2" Content="X" Width="28" Height="28"
+                                                        Style="{DynamicResource DangerButton}"
+                                                        Click="RemoveSource_Click"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="+ Thêm nguồn node/key" Height="32"
+                                    Style="{DynamicResource PrimaryButton}" Click="AddSource_Click"/>
+
+                            <TextBlock Text="Inputs/Outputs:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,16,0,8"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                <StackPanel x:Name="InputsPanel"/>
+                            </Border>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel x:Name="OutputsPanel"/>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" Height="32" Margin="0,0,8,0"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding PortPositionOptions}"
+                                          SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                <ComboBox Grid.Column="1" Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding PortPositionOptions}"
+                                          SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Border>
+</local:BaseNodeDialog>

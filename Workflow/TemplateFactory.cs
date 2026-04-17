@@ -56,6 +56,7 @@ namespace FlowMy.Workflow
                 "FileDownload" => CreateFileDownloadNode(x, y),
                 "FolderFilePaths" => CreateFolderFilePathsNode(x, y),
                 "KeyValueBridge" => CreateKeyValueBridgeNode(x, y),
+                "FlowOverwrite" => CreateFlowOverwriteNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1213,6 +1214,25 @@ namespace FlowMy.Workflow
                 Type = NodeType.KeyValueBridge
             };
             node.RefreshFlowPortsVisibility();
+            return node;
+        }
+
+        private WorkflowNode CreateFlowOverwriteNode(double x, double y)
+        {
+            var nodeBrush = _colorThemeService.GetBrush("KiwiGreenBrush")
+                            ?? _colorThemeService.GetBrush("SuccessBrush")
+                            ?? Brushes.ForestGreen;
+
+            var node = new FlowOverwriteNode
+            {
+                Id = $"Node_FlowOverwrite_{Guid.NewGuid()}",
+                Title = "Flow Overwrite",
+                X = x - 75,
+                Y = y - 40,
+                NodeBrush = nodeBrush,
+                ColorKey = "KiwiGreen",
+                Type = NodeType.FlowOverwrite
+            };
             return node;
         }
 

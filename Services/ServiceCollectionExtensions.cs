@@ -78,6 +78,7 @@ namespace FlowMy.Services
             services.AddScoped<ImageProcessingNodeRenderer>();
             services.AddScoped<DataFetcherNodeRenderer>();
             services.AddScoped<KeyValueBridgeNodeRenderer>();
+            services.AddScoped<FlowOverwriteNodeRenderer>();
             services.AddScoped<WebNodeRenderer>();
             services.AddScoped<CodeNodeRenderer>();
             services.AddScoped<FolderNodeRenderer>();
