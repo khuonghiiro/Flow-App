@@ -2961,6 +2961,25 @@ if (node is YourNode yourNode)
 3. **List/Array properties**: Phải clone list để tránh reference sharing
 4. **NotifyTitleChanged()**: Phải gọi sau khi set Title nếu node có INotifyPropertyChanged
 
+#### 8.3: Multi-node Clipboard - Remap Node References (BẮT BUỘC)
+
+File: `Views/WorkflowEditors/WorkflowEditorWindow.MultiNodeClipboard.cs`
+
+Khi paste từ clipboard nhiều node, mọi field tham chiếu node bằng Id phải đổi từ Id cũ sang Id mới.
+Nếu bỏ qua bước này, UI vẫn hiện được node nhưng combobox `Node/Key/Value` sẽ chọn sai nguồn.
+
+```csharp
+// Sau khi clone node xong và có map oldId -> newNode:
+RemapPastedNodeReferences(nodeMap);
+```
+
+Checklist bắt buộc:
+- Remap toàn bộ field dạng `SourceNodeId` / `TargetNodeId` trong model node.
+- Bao phủ cả cấu trúc lồng nhau: `DynamicInputs`, `ReuseRoutes`, `ConditionalBranches`, `SubConditions`.
+- Bao phủ node đặc thù có mapping list: `InputMappings`, `Assignments`, `RequestInterceptRules`, `Headers`, `QueryParams`, `FormData`, ...
+- Chỉ remap Id nằm trong tập node đã copy; Id ngoài selection giữ nguyên để không phá link ngoài phạm vi.
+- Chạy remap trước bước refresh layout/dialog để binding combobox lấy đúng node mới.
+
 ---
 
 ## Common Errors & Solutions
@@ -3033,6 +3052,89 @@ outputKeyCombo.SetBinding(ComboBox.ItemsSourceProperty,
 // ❌ WRONG
 outputKeyCombo.ItemsSource = inputVm.AvailableOutputKeyOptions;
 ```
+
+---
+
+### Error 4: Copy/Paste xong ComboBox Node bị lệch source
+
+**Cause**: Node được clone nhưng các field `SourceNodeId`/`TargetNodeId` vẫn giữ Id cũ.
+
+**Solution**:
+- Sau khi tạo `nodeMap` (oldId -> new node), gọi `RemapPastedNodeReferences(nodeMap)`.
+- Đảm bảo remap cả nested mappings (đặc biệt `ConditionalBranches` và `DynamicInputs`).
+
+Quick verify:
+1. Copy cụm node có ít nhất 2 combobox source mapping.
+2. Paste sang vùng mới.
+3. Mở dialog node đích, combobox Node phải trỏ tới node bản copy (`- copy n`), không trỏ node cũ.
+
+#### 8.4: Template remap cho node mới (copy dùng ngay)
+
+Dùng template này mỗi khi thêm node type mới có combobox chọn node/key/value:
+
+```csharp
+// 1) Thêm case trong RemapNodeReferenceIds(...)
+case YourNode yourNode:
+    // Single reference fields
+    yourNode.SourceNodeId = RemapNodeId(yourNode.SourceNodeId, sourceToNewNodeMap);
+    yourNode.TargetNodeId = RemapNodeId(yourNode.TargetNodeId, sourceToNewNodeMap);
+
+    // List mappings
+    foreach (var m in yourNode.InputMappings ?? new List<YourInputMapping>())
+        m.SourceNodeId = RemapNodeId(m.SourceNodeId, sourceToNewNodeMap);
+
+    // Nested object/list
+    if (yourNode.Routes != null)
+    {
+        foreach (var route in yourNode.Routes)
+        {
+            route.FromNodeId = RemapNodeId(route.FromNodeId, sourceToNewNodeMap);
+            route.ToNodeId = RemapNodeId(route.ToNodeId, sourceToNewNodeMap);
+        }
+    }
+    break;
+```
+
+Checklist trước khi merge:
+- Đã remap mọi field hậu tố `NodeId` có semantics tham chiếu node.
+- Đã remap nested list/object (không chỉ field top-level).
+- Đã test copy/paste trong cùng canvas và workflow mới.
+- Đã mở dialog để confirm combobox Node/Key/Value bám node bản copy.
+
+#### 8.5: Naming convention cho field tham chiếu node
+
+Để tránh quên remap khi mở rộng node mới, chuẩn hóa naming như sau:
+- Field giữ id node phải kết thúc bằng `NodeId` (`SourceNodeId`, `TargetNodeId`, `IncomingNodeId`, ...).
+- Field trong object lồng nhau/list mapping cũng tuân theo `*NodeId`.
+- Không đặt tên mơ hồ cho node-id string (`Source`, `NodeRef`, `From`) vì khó grep khi review.
+- Quy trình review nhanh: sau khi thêm model mới, grep `NodeId` trong class -> kiểm tra tất cả field đó đã được remap trong `RemapNodeReferenceIds(...)`.
+
+#### 8.6: Quick runbook (copy 1 thể trước khi merge)
+
+Làm theo thứ tự này để đỡ phải tự check lại nhiều lần:
+
+1) `Model + Save/Load`
+- Thêm field `*NodeId` đúng naming.
+- Đảm bảo serialize/deserialize đủ (không mất field khi mở lại workflow).
+
+2) `Duplicate + Clipboard paste`
+- Copy ALL properties trong `CreateDuplicateNodeInstance()`.
+- Sau khi tạo `nodeMap`, gọi `RemapPastedNodeReferences(nodeMap)`.
+- Bổ sung case remap cho node mới trong `RemapNodeReferenceIds(...)` (bao gồm nested list/object).
+
+3) `Dialog/UI validation`
+- Mở dialog node sau paste, check combobox Node/Key/Value trỏ đúng node bản copy.
+- Với node đặc thù (loop body/diamond), kiểm tra line và vị trí cổng sau paste.
+
+4) `Smoke test bắt buộc`
+- Copy/paste cùng canvas.
+- Copy/paste sang workflow mới.
+- Copy cụm node có nested mappings (để bắt lỗi khó).
+
+5) `Build`
+- Chạy `dotnet build /p:UseAppHost=false` khi exe bị lock.
+
+Pass tất cả bước trên thì mới merge.
 
 ---
 

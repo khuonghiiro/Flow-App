@@ -1398,6 +1398,87 @@ if (source is YourNode src && node is YourNode dst)
 if (node is YourNode ynn) ynn.NotifyTitleChanged();
 ```
 
+#### WorkflowEditorWindow.MultiNodeClipboard.cs (Multi-select copy/paste)
+
+```csharp
+// Sau khi clone toàn bộ node và map sourceId -> newNode:
+RemapPastedNodeReferences(nodeMap);
+
+// Quy tắc bắt buộc:
+// - Mọi field dạng SourceNodeId/TargetNodeId phải remap sang Id mới
+// - Không giữ Id gốc của workflow cũ (sẽ làm combobox chọn lệch)
+```
+
+Checklist remap cho node có combobox chọn node/key/value:
+- Remap trong cấu trúc chung: `DynamicInputs`, `ReuseRoutes`, `ConditionalBranches`, `SubConditions`.
+- Remap trong node chuyên biệt: `InputMappings`, `OutputMappings`, `Assignments`, `Headers`, `QueryParams`, `FormData`, `RequestInterceptRules`, `AsyncDataSources`, `AdditionalAppendSources`, ...
+- Chỉ remap khi `oldId` nằm trong tập node đã copy (`nodeMap`); nếu không có thì giữ nguyên để không phá reference ngoài vùng copy.
+- Thực hiện remap **trước** khi render lại UI/refresh dialog để combobox bind đúng data source mới.
+
+Template áp dụng nhanh khi thêm node mới:
+
+```csharp
+case YourNode yourNode:
+    yourNode.SourceNodeId = RemapNodeId(yourNode.SourceNodeId, sourceToNewNodeMap);
+    yourNode.TargetNodeId = RemapNodeId(yourNode.TargetNodeId, sourceToNewNodeMap);
+
+    foreach (var m in yourNode.InputMappings ?? new List<YourInputMapping>())
+        m.SourceNodeId = RemapNodeId(m.SourceNodeId, sourceToNewNodeMap);
+
+    if (yourNode.Routes != null)
+    {
+        foreach (var r in yourNode.Routes)
+        {
+            r.FromNodeId = RemapNodeId(r.FromNodeId, sourceToNewNodeMap);
+            r.ToNodeId = RemapNodeId(r.ToNodeId, sourceToNewNodeMap);
+        }
+    }
+    break;
+```
+
+Quy ước đặt tên field tham chiếu node (để không sót remap):
+- Dùng hậu tố `NodeId` cho mọi field giữ Id của node khác (ví dụ: `SourceNodeId`, `TargetNodeId`, `FolderSourceNodeId`).
+- Với list mapping, field tham chiếu trong item cũng phải theo chuẩn `*NodeId`.
+- Không dùng tên mơ hồ như `Source`, `From`, `NodeRef` cho kiểu dữ liệu string chứa node id.
+- Khi review PR: search nhanh `NodeId` trong class mới và đối chiếu xem đã có trong `RemapNodeReferenceIds(...)` chưa.
+
+### 4.9.1 One-pass implementation pack (làm 1 thể, không sót bước)
+
+Mục tiêu: thêm/sửa node mà không bị lỗi copy/paste lệch combobox source.
+
+`Phase A - Model/Persistence`
+- [ ] Toàn bộ field tham chiếu node đặt tên `*NodeId`.
+- [ ] Serialize/Deserialize đủ trong `FileWorkflowPersistenceService` (không mất field sau Save/Load).
+- [ ] List/object lồng nhau được clone đúng (tránh reference sharing).
+
+`Phase B - Duplicate/Paste`
+- [ ] `CreateDuplicateNodeInstance()` copy ALL properties (bao gồm mode, layout, options, title settings).
+- [ ] Multi-node paste gọi `RemapPastedNodeReferences(nodeMap)` ngay sau khi dựng `nodeMap`.
+- [ ] `RemapNodeReferenceIds(...)` có case cho node mới + remap nested mappings.
+- [ ] Chỉ remap id thuộc selection; id ngoài selection giữ nguyên.
+
+`Phase C - UI/Dialog consistency`
+- [ ] Sau paste, combobox Node/Key/Value bind vào node copy (`- copy n`), không còn trỏ node gốc.
+- [ ] Nếu node có geometry đặc thù (diamond/body/satellite), chạy refresh layout sau paste.
+- [ ] `NotifyTitleChanged()` hoặc cơ chế PropertyChanged tương đương được gọi đúng lúc.
+
+`Phase D - Verification bắt buộc`
+- [ ] Case 1: copy/paste trong cùng canvas -> connection và combobox đúng.
+- [ ] Case 2: copy sang workflow mới -> cấu hình và mapping vẫn đúng.
+- [ ] Case 3: copy cụm có nested mapping (conditional/routes/dynamic inputs) -> không lệch source.
+- [ ] Build pass (`dotnet build /p:UseAppHost=false` nếu apphost đang lock).
+
+`Done criteria (được coi là hoàn tất)`
+- [ ] Không còn field `*NodeId` nào trong node mới mà chưa remap ở paste.
+- [ ] Không còn hiện tượng combobox source chọn node cũ sau paste.
+- [ ] Không regression line/port connection ở node đặc thù.
+
+`PR checklist copy nhanh`
+- [ ] Copy ALL properties ở duplicate.
+- [ ] Remap ALL `*NodeId` sau paste (bao gồm nested).
+- [ ] Tested 3 case copy/paste (same canvas / new workflow / nested mapping).
+- [ ] Build pass.
+
 ---
 
 ## 5. Cơ chế Input/Output & truyền dữ liệu
@@ -1513,7 +1594,8 @@ Node A (source)                     Node B (consumer)
 | 13 | Node nhảy vị trí khi mở dialog | Node vẫn selected/captured | OpenNodeDialog: release capture + deselect |
 | 14 | Properties mất khi save/load | Không implement Persistence | Serialize + Deserialize TẤT CẢ properties |
 | 15 | Copy/Paste mất properties | Không copy all properties | Copy ALL + clone lists + NotifyTitleChanged |
-| 16 | Arrow keys không đổi port khi hover | Quên `border.Focusable = true` hoặc `border.Focus()` trong MouseEnter | Đặt `border.Focusable = true`, `FocusVisualStyle = null`, gọi `border.Focus()` trong MouseEnter, thêm `PreviewKeyDown` handler gọi `ChangePortPosition()` |
+| 16 | Copy/Paste xong combobox chọn sai node nguồn | Không remap `SourceNodeId`/`TargetNodeId` sang node mới | Gọi `RemapPastedNodeReferences(nodeMap)` trong `WorkflowEditorWindow.MultiNodeClipboard.cs` |
+| 17 | Arrow keys không đổi port khi hover | Quên `border.Focusable = true` hoặc `border.Focus()` trong MouseEnter | Đặt `border.Focusable = true`, `FocusVisualStyle = null`, gọi `border.Focus()` trong MouseEnter, thêm `PreviewKeyDown` handler gọi `ChangePortPosition()` |
 
 ---
 

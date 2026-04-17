@@ -3,7 +3,10 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Workflow;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,6 +18,7 @@ namespace FlowMy.Views
     public partial class WorkflowEditorWindow
     {
         private const string WorkflowClipboardMarker = "FLOWMY_SUBGRAPH_V1";
+        private const string WorkflowClipboardCompression = "gzip-base64";
         private readonly HashSet<WorkflowNode> _boxSelectedNodes = new();
         private Border? _selectionDragBorder;
         private Border? _selectionResultBorder;
@@ -94,7 +98,8 @@ namespace FlowMy.Views
             {
                 Marker = WorkflowClipboardMarker,
                 CreatedAtUtc = DateTime.UtcNow,
-                WorkflowJson = workflowJson
+                Compression = WorkflowClipboardCompression,
+                WorkflowPayloadBase64 = CompressToBase64(workflowJson)
             });
 
             Clipboard.SetText(envelope);
@@ -117,19 +122,21 @@ namespace FlowMy.Views
             }
 
             if (envelope == null ||
-                !string.Equals(envelope.Marker, WorkflowClipboardMarker, StringComparison.Ordinal) ||
-                string.IsNullOrWhiteSpace(envelope.WorkflowJson))
+                !string.Equals(envelope.Marker, WorkflowClipboardMarker, StringComparison.Ordinal))
             {
                 return false;
             }
 
+            var workflowJson = TryExtractWorkflowJsonFromEnvelope(envelope);
+            if (string.IsNullOrWhiteSpace(workflowJson)) return false;
+
             var persistence = new FileWorkflowPersistenceService(_templateFactory);
-            var load = persistence.ImportFromJson(envelope.WorkflowJson);
+            var load = persistence.ImportFromJson(workflowJson);
             if (load == null || load.Nodes.Count == 0) return false;
             ClipboardWorkflowDto? rawWorkflowDto = null;
             try
             {
-                rawWorkflowDto = JsonSerializer.Deserialize<ClipboardWorkflowDto>(envelope.WorkflowJson);
+                rawWorkflowDto = JsonSerializer.Deserialize<ClipboardWorkflowDto>(workflowJson);
             }
             catch
             {
@@ -613,7 +620,51 @@ namespace FlowMy.Views
         {
             public string Marker { get; set; } = string.Empty;
             public DateTime CreatedAtUtc { get; set; }
+            public string? Compression { get; set; }
+            public string? WorkflowPayloadBase64 { get; set; }
             public string WorkflowJson { get; set; } = string.Empty;
+        }
+
+        private static string? TryExtractWorkflowJsonFromEnvelope(WorkflowClipboardEnvelope envelope)
+        {
+            if (!string.IsNullOrWhiteSpace(envelope.WorkflowPayloadBase64))
+            {
+                if (string.Equals(envelope.Compression, WorkflowClipboardCompression, StringComparison.OrdinalIgnoreCase))
+                    return TryDecompressFromBase64(envelope.WorkflowPayloadBase64);
+
+                // Unknown compression marker: fallback to null to avoid importing corrupted payload.
+                return null;
+            }
+
+            // Backward compatibility with old plaintext clipboard payload.
+            return string.IsNullOrWhiteSpace(envelope.WorkflowJson) ? null : envelope.WorkflowJson;
+        }
+
+        private static string CompressToBase64(string text)
+        {
+            var bytes = Encoding.UTF8.GetBytes(text);
+            using var output = new MemoryStream();
+            using (var gzip = new GZipStream(output, CompressionLevel.SmallestSize, leaveOpen: true))
+            {
+                gzip.Write(bytes, 0, bytes.Length);
+            }
+            return Convert.ToBase64String(output.ToArray());
+        }
+
+        private static string? TryDecompressFromBase64(string base64)
+        {
+            try
+            {
+                var compressed = Convert.FromBase64String(base64);
+                using var input = new MemoryStream(compressed);
+                using var gzip = new GZipStream(input, CompressionMode.Decompress);
+                using var reader = new StreamReader(gzip, Encoding.UTF8);
+                return reader.ReadToEnd();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private sealed class ClipboardWorkflowDto
