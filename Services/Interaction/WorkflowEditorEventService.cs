@@ -101,6 +101,12 @@ namespace FlowMy.Services.Interaction
             var vm = ViewModel;
             if (vm == null) return;
 
+            if (TryHandleHoveredNodePortShortcut(e))
+            {
+                e.Handled = true;
+                return;
+            }
+
             // Xử lý Ctrl+C (Copy)
             if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
@@ -214,6 +220,128 @@ namespace FlowMy.Services.Interaction
                 vm.DeleteNodeCommand.Execute(null);
                 e.Handled = true;
             }
+        }
+
+        private bool TryHandleHoveredNodePortShortcut(KeyEventArgs e)
+        {
+            // Shortcut hỗ trợ:
+            // - Arrow = đổi Port IN
+            // - Shift+Arrow = đổi Port OUT
+            // - 4/8/6/2 (numpad hoặc hàng số) = đổi Port OUT
+            // Không can thiệp khi user đang nhập liệu hoặc giữ Ctrl/Alt/Windows.
+            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) != ModifierKeys.None)
+                return false;
+
+            if (IsEditingTextInput())
+                return false;
+
+            bool isNumericOutShortcut = e.Key is Key.NumPad4 or Key.NumPad8 or Key.NumPad6 or Key.NumPad2
+                or Key.D4 or Key.D8 or Key.D6 or Key.D2;
+
+            PortPosition? newPos = e.Key switch
+            {
+                Key.Left => PortPosition.Left,
+                Key.Up => PortPosition.Top,
+                Key.Right => PortPosition.Right,
+                Key.Down => PortPosition.Bottom,
+                Key.NumPad4 => PortPosition.Left,
+                Key.NumPad8 => PortPosition.Top,
+                Key.NumPad6 => PortPosition.Right,
+                Key.NumPad2 => PortPosition.Bottom,
+                Key.D4 => PortPosition.Left,
+                Key.D8 => PortPosition.Top,
+                Key.D6 => PortPosition.Right,
+                Key.D2 => PortPosition.Bottom,
+                _ => null
+            };
+
+            if (newPos == null)
+                return false;
+
+            var hoveredNode = TryGetHoveredNode();
+            if (hoveredNode == null)
+                return false;
+
+            // 4/8/6/2 luôn đổi Port OUT; Arrow thì giữ behavior cũ.
+            bool changeInputPort = !isNumericOutShortcut
+                && (Keyboard.Modifiers & ModifierKeys.Shift) != ModifierKeys.Shift;
+            return ChangePortPosition(hoveredNode, newPos.Value, changeInputPort);
+        }
+
+        private WorkflowNode? TryGetHoveredNode()
+        {
+            var hovered = Mouse.DirectlyOver as DependencyObject;
+            if (hovered == null)
+                return null;
+
+            // 1) Ưu tiên lấy node trực tiếp từ Border.Tag.
+            var current = hovered;
+            while (current != null)
+            {
+                if (current is FrameworkElement fe && fe.Tag is WorkflowNode nodeFromTag)
+                    return nodeFromTag;
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            // 2) Nếu đang hover port (Ellipse/Rectangle), dùng NodePort.Tag rồi map ngược về node.
+            if (hovered is FrameworkElement hoveredElement && hoveredElement.Tag is NodePort hoveredPort)
+            {
+                var vm = ViewModel;
+                if (vm == null) return null;
+                return vm.Nodes.FirstOrDefault(n => n.Ports.Contains(hoveredPort));
+            }
+
+            return null;
+        }
+
+        private bool ChangePortPosition(WorkflowNode node, PortPosition newPosition, bool isInputPort)
+        {
+            if (node.Ports == null || node.Ports.Count == 0)
+                return false;
+
+            var targetPort = isInputPort
+                ? node.Ports.FirstOrDefault(p => p.IsInput)
+                : node.Ports.FirstOrDefault(p => !p.IsInput);
+
+            if (targetPort == null || targetPort.Position == newPosition)
+                return false;
+
+            targetPort.Position = newPosition;
+            Host.UpdatePortsPositionOnSide(node, newPosition);
+
+            var connections = ViewModel?.Connections;
+            if (connections != null && connections.Count > 0)
+            {
+                try
+                {
+                    _connectionRenderer.UpdateAllConnectionPaths(connections);
+                    _connectionRenderer.UpdateAllConnectionAnimations(connections);
+                }
+                catch
+                {
+                    // best-effort refresh visuals
+                }
+            }
+
+            return true;
+        }
+
+        private static bool IsEditingTextInput()
+        {
+            var focused = Keyboard.FocusedElement as DependencyObject;
+            while (focused != null)
+            {
+                if (focused is System.Windows.Controls.Primitives.TextBoxBase ||
+                    focused is System.Windows.Controls.PasswordBox ||
+                    focused is System.Windows.Controls.ComboBox)
+                {
+                    return true;
+                }
+
+                focused = VisualTreeHelper.GetParent(focused);
+            }
+
+            return false;
         }
 
         public void HandleViewModelPropertyChanged(PropertyChangedEventArgs e)
