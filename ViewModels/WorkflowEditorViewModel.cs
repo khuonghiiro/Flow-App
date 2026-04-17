@@ -690,6 +690,21 @@ namespace FlowMy.ViewModels
             lock (_manualRunCtsLock)
                 snapshot = new List<CancellationTokenSource>(_manualRunCtsBySession.Values);
 
+            // Stop visual effects immediately even when cancellation callbacks are still draining.
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null)
+            {
+                dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                {
+                    _executionVisualizer.OnExecutionCancelled();
+                    lock (_runningNodesBookkeepingLock)
+                        _nodeRunningRefCount.Clear();
+                    RunningNodes.Clear();
+                    HasRunningNodes = false;
+                    ActiveExecutionConnection = null;
+                }));
+            }
+
             if (snapshot.Count == 0) return;
             _ = Task.Run(() =>
             {

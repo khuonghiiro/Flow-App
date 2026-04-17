@@ -275,6 +275,46 @@
                                 <CheckBox x:Name="NodeSpinnerMultiColorCheckBox"
                                           Content="Vòng quay nhiều màu"
                                           Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="220"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="NodeSpinnerBlinkBackgroundCheckBox" Grid.Column="0"
+                                              Content="Nền nhạt nháy theo thời gian (giây lẻ nháy)"
+                                              Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="NodeSpinnerBlinkBackgroundColorComboBox" Grid.Column="1"
+                                              Height="32" Style="{DynamicResource BaseComboBox}" Margin="8,0,0,0">
+                                        <ComboBoxItem Tag="WarningBrush" Content="Vàng nhạt"/>
+                                        <ComboBoxItem Tag="InfoBrush" Content="Xanh cyan nhạt"/>
+                                        <ComboBoxItem Tag="SuccessBrush" Content="Xanh lá nhạt"/>
+                                        <ComboBoxItem Tag="PrimaryBrush" Content="Xanh dương nhạt"/>
+                                        <ComboBoxItem Tag="LavenderBrush" Content="Tím nhạt"/>
+                                        <ComboBoxItem Tag="CoralBrush" Content="Cam san hô nhạt"/>
+                                    </ComboBox>
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Kiểu nháy nền" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="NodeSpinnerBlinkModeComboBox" Height="32" Style="{DynamicResource BaseComboBox}">
+                                            <ComboBoxItem Tag="Soft" Content="Mềm (fade)"/>
+                                            <ComboBoxItem Tag="Hard" Content="Gắt (on/off)"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
+                                            <TextBlock Text="Cường độ nháy nền" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                            <TextBlock x:Name="NodeSpinnerBlinkIntensityValueText" Text="0.65" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
+                                        </DockPanel>
+                                        <Slider x:Name="NodeSpinnerBlinkIntensitySlider" Minimum="0.10" Maximum="1.00" TickFrequency="0.01" Height="28"/>
+                                        <TextBlock Text="Tăng để nền nháy sáng hơn và nổi bật hơn."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Grid>
 
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>

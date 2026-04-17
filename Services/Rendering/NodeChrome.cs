@@ -559,6 +559,46 @@ namespace FlowMy.Services.Rendering
                 sp.Stroke = mono;
             }
 
+            // Optional blinking soft background, brighter on odd-second phases.
+            var blinkSource = Application.Current.TryFindResource(host.NodeSpinnerBlinkBackgroundColorKey ?? "WarningBrush") as SolidColorBrush;
+            var blinkBase = blinkSource?.Color ?? Color.FromRgb(245, 158, 11);
+            var fillBrush = sp.Fill as SolidColorBrush ?? new SolidColorBrush(blinkBase);
+            fillBrush.Color = blinkBase;
+            sp.Fill = fillBrush;
+            if (host.NodeSpinnerBlinkBackground)
+            {
+                var intensity = Math.Max(0.10, Math.Min(1.0, host.NodeSpinnerBlinkIntensity));
+                var baseOpacity = 0.08 + (0.24 * intensity);
+                var peakOpacity = 0.20 + (0.55 * intensity);
+                var blinkMode = host.NodeSpinnerBlinkMode ?? "Soft";
+                var fillOpacityAnim = new DoubleAnimationUsingKeyFrames
+                {
+                    Duration = new Duration(TimeSpan.FromSeconds(2)),
+                    RepeatBehavior = RepeatBehavior.Forever
+                };
+                // second 0-1: low; second 1-2 (odd-second phase): blink high.
+                if (string.Equals(blinkMode, "Hard", StringComparison.OrdinalIgnoreCase))
+                {
+                    fillOpacityAnim.KeyFrames.Add(new DiscreteDoubleKeyFrame(baseOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0))));
+                    fillOpacityAnim.KeyFrames.Add(new DiscreteDoubleKeyFrame(baseOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1))));
+                    fillOpacityAnim.KeyFrames.Add(new DiscreteDoubleKeyFrame(peakOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1.001))));
+                    fillOpacityAnim.KeyFrames.Add(new DiscreteDoubleKeyFrame(peakOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2))));
+                }
+                else
+                {
+                    fillOpacityAnim.KeyFrames.Add(new LinearDoubleKeyFrame(baseOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0))));
+                    fillOpacityAnim.KeyFrames.Add(new LinearDoubleKeyFrame(baseOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1))));
+                    fillOpacityAnim.KeyFrames.Add(new LinearDoubleKeyFrame(peakOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1.5))));
+                    fillOpacityAnim.KeyFrames.Add(new LinearDoubleKeyFrame(baseOpacity, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2))));
+                }
+                fillBrush.BeginAnimation(SolidColorBrush.OpacityProperty, fillOpacityAnim);
+            }
+            else
+            {
+                fillBrush.BeginAnimation(SolidColorBrush.OpacityProperty, null);
+                fillBrush.Opacity = 0.14;
+            }
+
             EnsureSpinnerAnimationHook(sp, host);
             ApplySpinnerBorderAnimationState(sp, host);
         }

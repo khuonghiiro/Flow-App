@@ -475,7 +475,11 @@ namespace FlowMy.Views
                 NodeSpinnerShape = _nodeSpinnerShape,
                 NodeSpinnerPosition = _nodeSpinnerPosition,
                 NodeSpinnerStrokeThickness = _nodeSpinnerStrokeThickness,
-                NodeSpinnerSpinSeconds = _nodeSpinnerSpinSeconds
+                NodeSpinnerSpinSeconds = _nodeSpinnerSpinSeconds,
+                NodeSpinnerBlinkBackground = _nodeSpinnerBlinkBackground,
+                NodeSpinnerBlinkBackgroundColorKey = _nodeSpinnerBlinkBackgroundColorKey,
+                NodeSpinnerBlinkMode = _nodeSpinnerBlinkMode,
+                NodeSpinnerBlinkIntensity = _nodeSpinnerBlinkIntensity
             };
         }
 
@@ -610,6 +614,12 @@ namespace FlowMy.Views
             _nodeSpinnerPosition = string.IsNullOrWhiteSpace(preferences.NodeSpinnerPosition) ? "TopRight" : preferences.NodeSpinnerPosition;
             _nodeSpinnerStrokeThickness = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 3.2;
             _nodeSpinnerSpinSeconds = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.1;
+            _nodeSpinnerBlinkBackground = preferences.NodeSpinnerBlinkBackground;
+            _nodeSpinnerBlinkBackgroundColorKey = string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkBackgroundColorKey) ? "WarningBrush" : preferences.NodeSpinnerBlinkBackgroundColorKey;
+            _nodeSpinnerBlinkMode = string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkMode) ? "Soft" : preferences.NodeSpinnerBlinkMode;
+            _nodeSpinnerBlinkIntensity = preferences.NodeSpinnerBlinkIntensity > 0
+                ? System.Math.Max(0.10, System.Math.Min(1.0, preferences.NodeSpinnerBlinkIntensity))
+                : 0.65;
             Settings.Default.EnergyDotGap = _energyDotGap;
             Settings.Default.EnergyDotThicknessExtra = _energyDotThicknessExtra;
             Settings.Default.EnergyDotText = _energyDotText;

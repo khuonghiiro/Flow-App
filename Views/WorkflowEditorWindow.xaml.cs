@@ -115,6 +115,10 @@ namespace FlowMy.Views
         private string _nodeSpinnerPosition = "TopRight";
         private double _nodeSpinnerStrokeThickness = 3.2;
         private double _nodeSpinnerSpinSeconds = 1.1;
+        private bool _nodeSpinnerBlinkBackground = false;
+        private string _nodeSpinnerBlinkBackgroundColorKey = "WarningBrush";
+        private string _nodeSpinnerBlinkMode = "Soft";
+        private double _nodeSpinnerBlinkIntensity = 0.65;
         
         private enum CanvasDisplayMode
         {

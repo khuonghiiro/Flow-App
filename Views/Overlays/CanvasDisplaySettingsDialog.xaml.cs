@@ -139,6 +139,10 @@ namespace FlowMy.Views.Overlays
             SelectByTag(NodeSpinnerPositionComboBox, preferences.NodeSpinnerPosition);
             NodeSpinnerStrokeThicknessSlider.Value = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 3.2;
             NodeSpinnerSpinSecondsSlider.Value = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.1;
+            NodeSpinnerBlinkBackgroundCheckBox.IsChecked = preferences.NodeSpinnerBlinkBackground;
+            SelectByTag(NodeSpinnerBlinkBackgroundColorComboBox, string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkBackgroundColorKey) ? "WarningBrush" : preferences.NodeSpinnerBlinkBackgroundColorKey);
+            SelectByTag(NodeSpinnerBlinkModeComboBox, string.IsNullOrWhiteSpace(preferences.NodeSpinnerBlinkMode) ? "Soft" : preferences.NodeSpinnerBlinkMode);
+            NodeSpinnerBlinkIntensitySlider.Value = preferences.NodeSpinnerBlinkIntensity > 0 ? preferences.NodeSpinnerBlinkIntensity : 0.65;
             SetRadioSelection(GetDebounceFastRadio(), GetDebounceBalancedRadio(), GetDebounceSmoothRadio(), NormalizeDebounceTag(preferences.ApplyDebounceMs));
             ApplyDebounceIntervalFromSelection();
             UpdateSliderTexts();
@@ -228,6 +232,10 @@ namespace FlowMy.Views.Overlays
                 NodeSpinnerPosition = SelectedTag(NodeSpinnerPositionComboBox),
                 NodeSpinnerStrokeThickness = NodeSpinnerStrokeThicknessSlider.Value > 0 ? NodeSpinnerStrokeThicknessSlider.Value : 3.2,
                 NodeSpinnerSpinSeconds = NodeSpinnerSpinSecondsSlider.Value > 0 ? NodeSpinnerSpinSecondsSlider.Value : 1.1,
+                NodeSpinnerBlinkBackground = NodeSpinnerBlinkBackgroundCheckBox.IsChecked == true,
+                NodeSpinnerBlinkBackgroundColorKey = SelectedTag(NodeSpinnerBlinkBackgroundColorComboBox),
+                NodeSpinnerBlinkMode = SelectedTag(NodeSpinnerBlinkModeComboBox),
+                NodeSpinnerBlinkIntensity = NodeSpinnerBlinkIntensitySlider.Value > 0 ? NodeSpinnerBlinkIntensitySlider.Value : 0.65,
                 ApplyDebounceMs = SelectedDebounceMs()
             };
         }
@@ -282,6 +290,10 @@ namespace FlowMy.Views.Overlays
             NodeSpinnerScaleWithNodeCheckBox.Unchecked += AnyControlChanged;
             NodeSpinnerShapeComboBox.SelectionChanged += AnyControlChanged;
             NodeSpinnerPositionComboBox.SelectionChanged += AnyControlChanged;
+            NodeSpinnerBlinkBackgroundCheckBox.Checked += AnyControlChanged;
+            NodeSpinnerBlinkBackgroundCheckBox.Unchecked += AnyControlChanged;
+            NodeSpinnerBlinkBackgroundColorComboBox.SelectionChanged += AnyControlChanged;
+            NodeSpinnerBlinkModeComboBox.SelectionChanged += AnyControlChanged;
             GetDebounceFastRadio().Checked += AnyControlChanged;
             GetDebounceBalancedRadio().Checked += AnyControlChanged;
             GetDebounceSmoothRadio().Checked += AnyControlChanged;
@@ -342,6 +354,7 @@ namespace FlowMy.Views.Overlays
             NodeSpinnerSizeRatioSlider.ValueChanged += AnyControlChanged;
             NodeSpinnerStrokeThicknessSlider.ValueChanged += AnyControlChanged;
             NodeSpinnerSpinSecondsSlider.ValueChanged += AnyControlChanged;
+            NodeSpinnerBlinkIntensitySlider.ValueChanged += AnyControlChanged;
         }
 
         private void AnyControlChanged(object sender, TextChangedEventArgs e)
@@ -385,6 +398,7 @@ namespace FlowMy.Views.Overlays
             if (NodeSpinnerSizeRatioValueText != null) NodeSpinnerSizeRatioValueText.Text = NodeSpinnerSizeRatioSlider.Value.ToString("0.00");
             if (NodeSpinnerStrokeThicknessValueText != null) NodeSpinnerStrokeThicknessValueText.Text = NodeSpinnerStrokeThicknessSlider.Value.ToString("0.0");
             if (NodeSpinnerSpinSecondsValueText != null) NodeSpinnerSpinSecondsValueText.Text = NodeSpinnerSpinSecondsSlider.Value.ToString("0.0");
+            if (NodeSpinnerBlinkIntensityValueText != null) NodeSpinnerBlinkIntensityValueText.Text = NodeSpinnerBlinkIntensitySlider.Value.ToString("0.00");
         }
 
         private int SelectedDebounceMs()

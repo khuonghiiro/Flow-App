@@ -43,6 +43,10 @@ namespace FlowMy.Views
         string IWorkflowEditorHost.NodeSpinnerPosition { get => _nodeSpinnerPosition; set => _nodeSpinnerPosition = value ?? "TopRight"; }
         double IWorkflowEditorHost.NodeSpinnerStrokeThickness { get => _nodeSpinnerStrokeThickness; set => _nodeSpinnerStrokeThickness = value; }
         double IWorkflowEditorHost.NodeSpinnerSpinSeconds { get => _nodeSpinnerSpinSeconds; set => _nodeSpinnerSpinSeconds = value; }
+        bool IWorkflowEditorHost.NodeSpinnerBlinkBackground { get => _nodeSpinnerBlinkBackground; set => _nodeSpinnerBlinkBackground = value; }
+        string IWorkflowEditorHost.NodeSpinnerBlinkBackgroundColorKey { get => _nodeSpinnerBlinkBackgroundColorKey; set => _nodeSpinnerBlinkBackgroundColorKey = value ?? "WarningBrush"; }
+        string IWorkflowEditorHost.NodeSpinnerBlinkMode { get => _nodeSpinnerBlinkMode; set => _nodeSpinnerBlinkMode = string.IsNullOrWhiteSpace(value) ? "Soft" : value; }
+        double IWorkflowEditorHost.NodeSpinnerBlinkIntensity { get => _nodeSpinnerBlinkIntensity; set => _nodeSpinnerBlinkIntensity = value; }
         FlowMy.Services.Rendering.ConnectionEnergyColorMode IWorkflowEditorHost.ConnectionEnergyColorMode { get => _connectionEnergyColorMode; set => _connectionEnergyColorMode = value; }
         Color IWorkflowEditorHost.CustomEnergyColor { get => _customEnergyColor; set => _customEnergyColor = value; }
         double IWorkflowEditorHost.EnergyDotGap { get => _energyDotGap; set => _energyDotGap = value; }

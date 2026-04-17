@@ -39,6 +39,10 @@ namespace FlowMy.Services.Utilities
         public string NodeSpinnerPosition { get; set; } = "TopRight"; // TopRight|TopLeft|BottomRight|BottomLeft|Center
         public double NodeSpinnerStrokeThickness { get; set; } = 3.2;
         public double NodeSpinnerSpinSeconds { get; set; } = 1.1;
+        public bool NodeSpinnerBlinkBackground { get; set; } = false;
+        public string NodeSpinnerBlinkBackgroundColorKey { get; set; } = "WarningBrush";
+        public string NodeSpinnerBlinkMode { get; set; } = "Soft"; // Soft|Hard
+        public double NodeSpinnerBlinkIntensity { get; set; } = 0.65; // 0..1
     }
 
     public static class CanvasToolbarPreferencesStore

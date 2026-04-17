@@ -46,6 +46,10 @@ namespace FlowMy.Services.Interaction
         string NodeSpinnerPosition { get; set; }
         double NodeSpinnerStrokeThickness { get; set; }
         double NodeSpinnerSpinSeconds { get; set; }
+        bool NodeSpinnerBlinkBackground { get; set; }
+        string NodeSpinnerBlinkBackgroundColorKey { get; set; }
+        string NodeSpinnerBlinkMode { get; set; }
+        double NodeSpinnerBlinkIntensity { get; set; }
 
         // Execution "energy" effect preferences (active connection highlight)
         FlowMy.Services.Rendering.ConnectionEnergyColorMode ConnectionEnergyColorMode { get; set; }
