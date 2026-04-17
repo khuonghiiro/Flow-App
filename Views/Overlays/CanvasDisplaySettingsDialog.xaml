@@ -233,6 +233,10 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -257,6 +261,103 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Style node chạy" Style="{StaticResource HttpTabItemStyle}">
+                <Grid Margin="10">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                            <StackPanel>
+                                <CheckBox x:Name="NodeSpinnerArcModeCheckBox"
+                                          Content="Vòng quay 1 góc (arc mode như hiện tại)"
+                                          Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                <CheckBox x:Name="NodeSpinnerMultiColorCheckBox"
+                                          Content="Vòng quay nhiều màu"
+                                          Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10"/>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Hình vòng quay" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="NodeSpinnerShapeComboBox" Height="32" Style="{DynamicResource BaseComboBox}">
+                                            <ComboBoxItem Tag="Circle" Content="Hình tròn"/>
+                                            <ComboBoxItem Tag="Diamond" Content="Hình thoi"/>
+                                            <ComboBoxItem Tag="Square" Content="Hình vuông"/>
+                                            <ComboBoxItem Tag="RoundedSquare" Content="Vuông bo góc"/>
+                                            <ComboBoxItem Tag="FollowNodeShape" Content="Theo viền node"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="Vị trí vòng quay" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="NodeSpinnerPositionComboBox" Height="32" Style="{DynamicResource BaseComboBox}">
+                                            <ComboBoxItem Tag="TopRight" Content="Góc phải trên"/>
+                                            <ComboBoxItem Tag="TopLeft" Content="Góc trái trên"/>
+                                            <ComboBoxItem Tag="BottomRight" Content="Góc phải dưới"/>
+                                            <ComboBoxItem Tag="BottomLeft" Content="Góc trái dưới"/>
+                                            <ComboBoxItem Tag="Center" Content="Tâm node"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
+                                            <TextBlock Text="Kích thước (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                            <TextBlock x:Name="NodeSpinnerSizeValueText" Text="26.0" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
+                                        </DockPanel>
+                                        <Slider x:Name="NodeSpinnerSizeSlider" Minimum="10" Maximum="220" TickFrequency="1" Height="28"/>
+                                        <TextBlock Text="Cho phép lớn hơn node để làm hiệu ứng nổi bật."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
+                                            <TextBlock Text="Độ dày nét" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                            <TextBlock x:Name="NodeSpinnerStrokeThicknessValueText" Text="3.2" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
+                                        </DockPanel>
+                                        <Slider x:Name="NodeSpinnerStrokeThicknessSlider" Minimum="1" Maximum="12" TickFrequency="0.2" Height="28"/>
+                                        <TextBlock Text="Nét dày hơn sẽ dễ nhìn trên nền sáng."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
+                                            <TextBlock Text="Tốc độ animation viền (giây/chu kỳ)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                            <TextBlock x:Name="NodeSpinnerSpinSecondsValueText" Text="1.1" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
+                                        </DockPanel>
+                                        <Slider x:Name="NodeSpinnerSpinSecondsSlider" Minimum="0.2" Maximum="6" TickFrequency="0.1" Height="28"/>
+                                        <TextBlock Text="Số càng nhỏ thì viền chạy càng nhanh."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <CheckBox x:Name="NodeSpinnerScaleWithNodeCheckBox"
+                                                  Content="Kích thước theo tỉ lệ node"
+                                                  Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
+                                        <DockPanel Margin="0,0,0,2" LastChildFill="False">
+                                            <TextBlock Text="Tỉ lệ" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                            <TextBlock x:Name="NodeSpinnerSizeRatioValueText" Text="0.32" Foreground="{DynamicResource TextBrush}" DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="44" TextAlignment="Right"/>
+                                        </DockPanel>
+                                        <Slider x:Name="NodeSpinnerSizeRatioSlider" Minimum="0.12" Maximum="1.8" TickFrequency="0.01" Height="28"/>
+                                        <TextBlock Text="Tỉ lệ có thể > 1 để vượt kích thước node."
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
         </TabControl>

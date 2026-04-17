@@ -132,40 +132,7 @@ namespace FlowMy.Services.Rendering
 
             // Spinner quay tượng trưng "node đang xử lý" khi bật Cache node mode.
             // Spinner chỉ chạy khi container (badge) đang visible và spinner được host bật Visibility.
-            var spinner = new System.Windows.Shapes.Ellipse
-            {
-                Width = 26,
-                Height = 26,
-                Margin = new Thickness(0),
-                StrokeThickness = 3.2,
-                StrokeDashArray = new System.Windows.Media.DoubleCollection { 1.35, 2.4 },
-                Stroke = Application.Current.TryFindResource("InfoBrush") as Brush
-                         ?? new SolidColorBrush(Color.FromRgb(56, 189, 248)),
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round,
-                Fill = new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)),
-                Visibility = Visibility.Collapsed,
-                IsHitTestVisible = false,
-                Opacity = 0.98,
-                // Effect = new System.Windows.Media.Effects.DropShadowEffect
-                // {
-                //     Color = Colors.Black,
-                //     BlurRadius = 10,
-                //     ShadowDepth = 0,
-                //     Opacity = 0.72
-                // },
-                RenderTransformOrigin = new Point(0.5, 0.5),
-                RenderTransform = new RotateTransform(0)
-            };
-
-            var rotate = (RotateTransform)spinner.RenderTransform;
-            var spinAnim = new DoubleAnimation
-            {
-                From = 0,
-                To = 360,
-                Duration = new Duration(TimeSpan.FromSeconds(1.1)),
-                RepeatBehavior = RepeatBehavior.Forever
-            };
+            var spinner = CreateSpinnerShape("Circle");
 
             // Host sẽ gán spinner.Tag = true/false theo CacheNode mode.
             // Spinner chỉ hiển thị khi: cache enabled AND node đang chạy.
@@ -268,27 +235,9 @@ namespace FlowMy.Services.Rendering
             node.ExecutionStatusContainerUI = container;
             Panel.SetZIndex(container, 998);
 
-            // Start/stop spinner animation theo trạng thái hiển thị.
-            void StartSpin()
-            {
-                // Start animation loop. Nếu đã chạy thì BeginAnimation vẫn tiếp tục.
-                rotate.BeginAnimation(RotateTransform.AngleProperty, spinAnim);
-            }
-
-            void StopSpin()
-            {
-                rotate.BeginAnimation(RotateTransform.AngleProperty, null);
-                rotate.Angle = 0;
-            }
-
             container.IsVisibleChanged += (_, __) =>
             {
                 // spinner được quản lý bởi Visibility của chính nó (tách khỏi badge container)
-            };
-
-            spinner.IsVisibleChanged += (_, __) =>
-            {
-                if (spinner.IsVisible) StartSpin(); else StopSpin();
             };
 
             return container;
@@ -331,6 +280,7 @@ namespace FlowMy.Services.Rendering
             // Và node đang chạy (text status bắt đầu bằng "⏳").
             if (node.ExecutionBusySpinnerUI != null)
             {
+                EnsureSpinnerShapeAndStyle(node, host);
                 var useNodeExecutionIndicator =
                     host.CacheNodeEnabled ||
                     host.ConnectionAnimationDisplayMode != ConnectionAnimationDisplayMode.Animated;
@@ -375,10 +325,36 @@ namespace FlowMy.Services.Rendering
                 if (node.ExecutionBusySpinnerUI != null)
                 {
                     var sp = node.ExecutionBusySpinnerUI;
-                    const double rightMargin = 10d;
-                    const double topMargin = 8d;
-                    var sx = Canvas.GetLeft(b) + b.ActualWidth + rightMargin;
-                    var sy = Canvas.GetTop(b) + topMargin;
+                    var spinnerSize = sp.Width > 0 ? sp.Width : 26d;
+                    const double outsideMargin = 14d;
+                    var baseX = Canvas.GetLeft(b);
+                    var baseY = Canvas.GetTop(b);
+                    var sx = baseX + b.ActualWidth + 10d;
+                    var sy = baseY + 8d;
+
+                    switch (host.NodeSpinnerPosition ?? "TopRight")
+                    {
+                        case "TopLeft":
+                            sx = baseX - spinnerSize - outsideMargin;
+                            sy = baseY - outsideMargin;
+                            break;
+                        case "BottomRight":
+                            sx = baseX + b.ActualWidth - (spinnerSize * 0.2) + outsideMargin * 0.5;
+                            sy = baseY + b.ActualHeight - (spinnerSize * 0.2) + outsideMargin * 0.5;
+                            break;
+                        case "BottomLeft":
+                            sx = baseX - spinnerSize + (spinnerSize * 0.2) - outsideMargin * 0.5;
+                            sy = baseY + b.ActualHeight - (spinnerSize * 0.2) + outsideMargin * 0.5;
+                            break;
+                        case "Center":
+                            sx = baseX + (b.ActualWidth - spinnerSize) / 2d;
+                            sy = baseY + (b.ActualHeight - spinnerSize) / 2d;
+                            break;
+                        default: // TopRight
+                            sx = baseX + b.ActualWidth - (spinnerSize * 0.2) + outsideMargin * 0.5;
+                            sy = baseY - outsideMargin;
+                            break;
+                    }
                     if (!double.IsNaN(sx) && !double.IsInfinity(sx))
                         Canvas.SetLeft(sp, sx);
                     if (!double.IsNaN(sy) && !double.IsInfinity(sy))
@@ -433,6 +409,215 @@ namespace FlowMy.Services.Rendering
                     host.WorkflowCanvas.Children.Remove(node.ExecutionBusySpinnerUI);
                 }
             };
+        }
+
+        private static System.Windows.Shapes.Shape CreateSpinnerShape(string shapeKey)
+        {
+            System.Windows.Shapes.Shape spinner = shapeKey switch
+            {
+                "Diamond" => new System.Windows.Shapes.Polygon
+                {
+                    Points = new PointCollection
+                    {
+                        new Point(13, 1), new Point(25, 13), new Point(13, 25), new Point(1, 13)
+                    },
+                    Stretch = Stretch.Fill
+                },
+                "Square" or "FollowNodeShape" => new System.Windows.Shapes.Rectangle(),
+                "RoundedSquare" => new System.Windows.Shapes.Rectangle { RadiusX = 6, RadiusY = 6 },
+                _ => new System.Windows.Shapes.Ellipse()
+            };
+
+            spinner.Width = 26;
+            spinner.Height = 26;
+            spinner.Margin = new Thickness(0);
+            spinner.StrokeThickness = 3.2;
+            spinner.StrokeDashArray = new DoubleCollection { 1.35, 2.4 };
+            spinner.Stroke = Application.Current.TryFindResource("InfoBrush") as Brush
+                             ?? new SolidColorBrush(Color.FromRgb(56, 189, 248));
+            spinner.StrokeStartLineCap = PenLineCap.Round;
+            spinner.StrokeEndLineCap = PenLineCap.Round;
+            spinner.Fill = new SolidColorBrush(Color.FromArgb(26, 255, 255, 255));
+            spinner.Visibility = Visibility.Collapsed;
+            spinner.IsHitTestVisible = false;
+            spinner.Opacity = 0.98;
+            spinner.RenderTransformOrigin = new Point(0.5, 0.5);
+            spinner.RenderTransform = new RotateTransform(0);
+            spinner.Uid = shapeKey;
+            return spinner;
+        }
+
+        private static void EnsureSpinnerShapeAndStyle(WorkflowNode node, IWorkflowEditorHost host)
+        {
+            if (node.ExecutionBusySpinnerUI == null) return;
+
+            var desiredShape = host.NodeSpinnerShape ?? "Circle";
+            var currentShapeKey = node.ExecutionBusySpinnerUI.Uid;
+            var needsRebuild = !string.Equals(currentShapeKey, desiredShape, StringComparison.OrdinalIgnoreCase);
+            if (needsRebuild)
+            {
+                var old = node.ExecutionBusySpinnerUI;
+                var wasVisible = old.Visibility == Visibility.Visible;
+                var spinner = CreateSpinnerShape(desiredShape);
+                spinner.Uid = desiredShape;
+                spinner.Visibility = wasVisible ? Visibility.Visible : Visibility.Collapsed;
+
+                if (host.WorkflowCanvas.Children.Contains(old))
+                    host.WorkflowCanvas.Children.Remove(old);
+                host.WorkflowCanvas.Children.Add(spinner);
+                Panel.SetZIndex(spinner, 19999);
+                node.ExecutionBusySpinnerUI = spinner;
+            }
+
+            var sp = node.ExecutionBusySpinnerUI;
+            if (sp == null) return;
+
+            var size = host.NodeSpinnerScaleWithNode && node.Border != null
+                ? Math.Max(10, node.Border.ActualWidth * host.NodeSpinnerSizeRatio)
+                : Math.Max(10, host.NodeSpinnerSize);
+            sp.Width = size;
+            sp.Height = size;
+            sp.StrokeThickness = Math.Max(1, host.NodeSpinnerStrokeThickness);
+
+            if (desiredShape == "FollowNodeShape")
+            {
+                if (node.IsStartDiamondVisual || (node.Type == NodeType.End && node.EndBehavior == EndNodeBehavior.ReturnToParent))
+                {
+                    if (sp is not System.Windows.Shapes.Polygon diamond)
+                    {
+                        var replacement = CreateSpinnerShape("Diamond");
+                        ReplaceSpinnerShape(host, node, sp, replacement);
+                        sp = replacement;
+                    }
+                }
+                else if (node.Border?.CornerRadius.TopLeft > 0)
+                {
+                    if (sp is not System.Windows.Shapes.Rectangle rounded)
+                    {
+                        var replacement = CreateSpinnerShape("RoundedSquare");
+                        ReplaceSpinnerShape(host, node, sp, replacement);
+                        sp = replacement;
+                    }
+                    if (sp is System.Windows.Shapes.Rectangle rr && node.Border != null)
+                    {
+                        var r = Math.Max(0, Math.Min(node.Border.CornerRadius.TopLeft, sp.Width / 3d));
+                        rr.RadiusX = r;
+                        rr.RadiusY = r;
+                    }
+                }
+                else if (sp is not System.Windows.Shapes.Rectangle)
+                {
+                    var replacement = CreateSpinnerShape("Square");
+                    ReplaceSpinnerShape(host, node, sp, replacement);
+                    sp = replacement;
+                }
+            }
+
+            sp.StrokeDashArray = host.NodeSpinnerArcMode
+                ? new DoubleCollection { 1.35, 2.4 }
+                : new DoubleCollection { 3.0, 1.8 };
+
+            if (host.NodeSpinnerMultiColor)
+            {
+                SolidColorBrush multiBrush;
+                if (sp.Stroke is SolidColorBrush existingSolid)
+                {
+                    var baseColor = existingSolid.Color;
+                    multiBrush = new SolidColorBrush(baseColor);
+                }
+                else
+                {
+                    multiBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248));
+                }
+                sp.Stroke = multiBrush;
+                var multiColorAnim = new ColorAnimationUsingKeyFrames
+                {
+                    // Xen kẽ màu đậm (cho nền sáng) và màu sáng (cho nền tối), mỗi 1 giây đổi màu.
+                    Duration = new Duration(TimeSpan.FromSeconds(10.0)),
+                    RepeatBehavior = RepeatBehavior.Forever
+                };
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(13, 110, 253), KeyTime.FromPercent(0.0)));  // dark blue
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(125, 211, 252), KeyTime.FromPercent(0.1))); // light cyan
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(190, 24, 93), KeyTime.FromPercent(0.2)));  // dark pink
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(253, 186, 116), KeyTime.FromPercent(0.3))); // light orange
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(22, 101, 52), KeyTime.FromPercent(0.4)));  // dark green
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(134, 239, 172), KeyTime.FromPercent(0.5))); // light green
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(109, 40, 217), KeyTime.FromPercent(0.6))); // dark purple
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(196, 181, 253), KeyTime.FromPercent(0.7))); // light violet
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(161, 98, 7), KeyTime.FromPercent(0.8)));   // dark amber
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(253, 224, 71), KeyTime.FromPercent(0.9))); // light yellow
+                multiColorAnim.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(13, 110, 253), KeyTime.FromPercent(1.0)));
+                multiBrush.BeginAnimation(SolidColorBrush.ColorProperty, multiColorAnim);
+            }
+            else
+            {
+                var monoSource = Application.Current.TryFindResource("InfoBrush") as SolidColorBrush;
+                var mono = monoSource != null
+                    ? new SolidColorBrush(monoSource.Color)
+                    : new SolidColorBrush(Color.FromRgb(56, 189, 248));
+                mono.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                sp.Stroke = mono;
+            }
+
+            EnsureSpinnerAnimationHook(sp, host);
+            ApplySpinnerBorderAnimationState(sp, host);
+        }
+
+        private static void ReplaceSpinnerShape(IWorkflowEditorHost host, WorkflowNode node, System.Windows.Shapes.Shape oldShape, System.Windows.Shapes.Shape newShape)
+        {
+            var wasVisible = oldShape.Visibility == Visibility.Visible;
+            newShape.Visibility = wasVisible ? Visibility.Visible : Visibility.Collapsed;
+            newShape.Width = oldShape.Width;
+            newShape.Height = oldShape.Height;
+            newShape.StrokeThickness = oldShape.StrokeThickness;
+            newShape.Stroke = oldShape.Stroke;
+            newShape.StrokeDashArray = oldShape.StrokeDashArray;
+
+            if (host.WorkflowCanvas.Children.Contains(oldShape))
+                host.WorkflowCanvas.Children.Remove(oldShape);
+            host.WorkflowCanvas.Children.Add(newShape);
+            Panel.SetZIndex(newShape, 19999);
+            node.ExecutionBusySpinnerUI = newShape;
+        }
+
+        private static void EnsureSpinnerAnimationHook(System.Windows.Shapes.Shape spinner, IWorkflowEditorHost host)
+        {
+            if (spinner.Resources.Contains("SpinnerHooked")) return;
+            spinner.Resources["SpinnerHooked"] = true;
+            spinner.IsVisibleChanged += (_, __) => ApplySpinnerBorderAnimationState(spinner, host);
+        }
+
+        private static void ApplySpinnerBorderAnimationState(System.Windows.Shapes.Shape spinner, IWorkflowEditorHost host)
+        {
+            if (spinner.IsVisible)
+            {
+                spinner.BeginAnimation(
+                    System.Windows.Shapes.Shape.StrokeDashOffsetProperty,
+                    new DoubleAnimation
+                    {
+                        From = 0,
+                        To = -24,
+                        Duration = new Duration(TimeSpan.FromSeconds(Math.Max(0.2, host.NodeSpinnerSpinSeconds))),
+                        RepeatBehavior = RepeatBehavior.Forever
+                    });
+                spinner.BeginAnimation(
+                    UIElement.OpacityProperty,
+                    new DoubleAnimation
+                    {
+                        From = 0.62,
+                        To = 1.0,
+                        Duration = new Duration(TimeSpan.FromSeconds(Math.Max(0.2, host.NodeSpinnerSpinSeconds) * 0.8)),
+                        AutoReverse = true,
+                        RepeatBehavior = RepeatBehavior.Forever
+                    });
+            }
+            else
+            {
+                spinner.BeginAnimation(System.Windows.Shapes.Shape.StrokeDashOffsetProperty, null);
+                spinner.BeginAnimation(UIElement.OpacityProperty, null);
+                spinner.StrokeDashOffset = 0;
+                spinner.Opacity = 0.98;
+            }
         }
 
         private static double GetStartEndDiamondBadgeYOffset(WorkflowNode node)

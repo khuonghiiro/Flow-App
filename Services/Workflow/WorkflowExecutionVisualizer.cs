@@ -23,8 +23,17 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     private Stopwatch? _nodeTimingStopwatch;
     private WorkflowNode? _timingNode;
     
-    // Mỗi (node, runKey) một timer — runKey = id phiên thủ công hoặc executionId lane để nhiều luồng trùng node không bị bỏ qua.
-    private readonly Dictionary<(WorkflowNode Node, string RunKey), (DispatcherTimer Timer, Stopwatch Stopwatch)> _activeNodeTimers = new();
+    private sealed class ActiveNodeTiming
+    {
+        public DispatcherTimer Timer { get; init; } = null!;
+        public Stopwatch Stopwatch { get; init; } = null!;
+        public int ActiveCount { get; set; } = 1;
+    }
+
+    // Mỗi (node, runKey) giữ timer + counter active tasks.
+    // Async song song có thể start/complete nhiều lần cùng (node, runKey),
+    // nên không được remove timer chỉ vì 1 nhánh hoàn tất.
+    private readonly Dictionary<(WorkflowNode Node, string RunKey), ActiveNodeTiming> _activeNodeTimers = new();
 
     public WorkflowExecutionVisualizer()
     {
@@ -160,18 +169,23 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         if (entries.Count == 0 || node.ExecutionStatusTextUI == null) return;
 
         var maxSec = entries.Max(e => e.Value.Stopwatch.Elapsed.TotalSeconds);
+        var thisNodeActiveTasks = entries.Sum(e => Math.Max(1, e.Value.ActiveCount));
         var parallelBadge = BuildParallelActivityBadgeForNode(node, entries);
         var badge = BuildFlowBadge(node);
-        node.ExecutionStatusTextUI.Text = entries.Count > 1
-            ? $"⏳ {maxSec:0.00}s · {entries.Count} luồng{parallelBadge}{badge}"
+        node.ExecutionStatusTextUI.Text = thisNodeActiveTasks > 1
+            ? $"⏳ {maxSec:0.00}s · {thisNodeActiveTasks} luồng{parallelBadge}{badge}"
             : $"⏳ {maxSec:0.00}s{parallelBadge}{badge}";
     }
 
     private void StartNodeTiming(WorkflowNode node, string runKey)
     {
         var key = (node, runKey);
-        if (_activeNodeTimers.ContainsKey(key))
+        if (_activeNodeTimers.TryGetValue(key, out var existing))
+        {
+            existing.ActiveCount++;
+            RefreshAggregateTimingForNode(node);
             return;
+        }
 
         var stopwatch = Stopwatch.StartNew();
         var timer = new DispatcherTimer(DispatcherPriority.Background)
@@ -185,7 +199,12 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         timer.Tick += (_, __) => RefreshAggregateTimingForNode(nodeRef);
 
         timer.Start();
-        _activeNodeTimers[key] = (timer, stopwatch);
+        _activeNodeTimers[key] = new ActiveNodeTiming
+        {
+            Timer = timer,
+            Stopwatch = stopwatch,
+            ActiveCount = 1
+        };
 
         if (node.ExecutionStatusContainerUI != null)
             node.ExecutionStatusContainerUI.Visibility = Visibility.Visible;
@@ -205,8 +224,12 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         var key = (node, runKey);
         if (_activeNodeTimers.TryGetValue(key, out var timerInfo))
         {
-            timerInfo.Timer.Stop();
-            _activeNodeTimers.Remove(key);
+            timerInfo.ActiveCount = Math.Max(0, timerInfo.ActiveCount - 1);
+            if (timerInfo.ActiveCount <= 0)
+            {
+                timerInfo.Timer.Stop();
+                _activeNodeTimers.Remove(key);
+            }
         }
 
         var remainingOnNode = _activeNodeTimers.Keys.Count(k => ReferenceEquals(k.Node, node));
@@ -943,7 +966,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
 
     private string BuildParallelActivityBadgeForNode(
         WorkflowNode node,
-        List<KeyValuePair<(WorkflowNode Node, string RunKey), (DispatcherTimer Timer, Stopwatch Stopwatch)>> nodeEntries)
+        List<KeyValuePair<(WorkflowNode Node, string RunKey), ActiveNodeTiming>> nodeEntries)
     {
         if (nodeEntries == null || nodeEntries.Count == 0) return string.Empty;
 
@@ -951,7 +974,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         // Chọn runKey đang có nhiều task active nhất để hiển thị ngữ cảnh song song rõ nhất.
         var selectedRunKey = nodeEntries
             .GroupBy(e => e.Key.RunKey ?? string.Empty, StringComparer.Ordinal)
-            .OrderByDescending(g => g.Count())
+            .OrderByDescending(g => g.Sum(x => Math.Max(1, x.Value.ActiveCount)))
             .Select(g => g.Key)
             .FirstOrDefault() ?? string.Empty;
 
@@ -967,10 +990,12 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             .Distinct()
             .ToList();
 
-        var activeTasksInRun = sameRunEntries.Count;
+        var activeTasksInRun = sameRunEntries.Sum(e => Math.Max(1, e.Value.ActiveCount));
         var activeNodesInRun = sameRunNodes.Count;
 
-        var thisNodeTasksInRun = sameRunEntries.Count(e => ReferenceEquals(e.Key.Node, node));
+        var thisNodeTasksInRun = sameRunEntries
+            .Where(e => ReferenceEquals(e.Key.Node, node))
+            .Sum(e => Math.Max(1, e.Value.ActiveCount));
         var otherTasks = Math.Max(0, activeTasksInRun - thisNodeTasksInRun);
         var otherNodes = Math.Max(0, activeNodesInRun - 1);
 
@@ -982,7 +1007,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
             .Select(g => new
             {
                 Node = g.Key,
-                Count = g.Count()
+                Count = g.Sum(x => Math.Max(1, x.Value.ActiveCount))
             })
             .OrderByDescending(x => x.Count)
             .ThenBy(x => x.Node?.Title ?? string.Empty, StringComparer.OrdinalIgnoreCase)

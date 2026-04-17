@@ -466,7 +466,16 @@ namespace FlowMy.Views
                 EnergyDotTextRotate = _energyDotTextRotate,
                 EnergyRunSpeed = _energyRunSpeed,
                 EnergyTextSpinSeconds = _energyTextSpinSeconds,
-                EnergyMeteorMode = _energyMeteorMode
+                EnergyMeteorMode = _energyMeteorMode,
+                NodeSpinnerArcMode = _nodeSpinnerArcMode,
+                NodeSpinnerMultiColor = _nodeSpinnerMultiColor,
+                NodeSpinnerSize = _nodeSpinnerSize,
+                NodeSpinnerScaleWithNode = _nodeSpinnerScaleWithNode,
+                NodeSpinnerSizeRatio = _nodeSpinnerSizeRatio,
+                NodeSpinnerShape = _nodeSpinnerShape,
+                NodeSpinnerPosition = _nodeSpinnerPosition,
+                NodeSpinnerStrokeThickness = _nodeSpinnerStrokeThickness,
+                NodeSpinnerSpinSeconds = _nodeSpinnerSpinSeconds
             };
         }
 
@@ -592,6 +601,15 @@ namespace FlowMy.Views
             _energyRunSpeed = preferences.EnergyRunSpeed > 0 ? preferences.EnergyRunSpeed : _energyRunSpeed;
             _energyTextSpinSeconds = preferences.EnergyTextSpinSeconds > 0 ? preferences.EnergyTextSpinSeconds : _energyTextSpinSeconds;
             _energyMeteorMode = preferences.EnergyMeteorMode;
+            _nodeSpinnerArcMode = preferences.NodeSpinnerArcMode;
+            _nodeSpinnerMultiColor = preferences.NodeSpinnerMultiColor;
+            _nodeSpinnerSize = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 26.0;
+            _nodeSpinnerScaleWithNode = preferences.NodeSpinnerScaleWithNode;
+            _nodeSpinnerSizeRatio = preferences.NodeSpinnerSizeRatio > 0 ? preferences.NodeSpinnerSizeRatio : 0.32;
+            _nodeSpinnerShape = string.IsNullOrWhiteSpace(preferences.NodeSpinnerShape) ? "Circle" : preferences.NodeSpinnerShape;
+            _nodeSpinnerPosition = string.IsNullOrWhiteSpace(preferences.NodeSpinnerPosition) ? "TopRight" : preferences.NodeSpinnerPosition;
+            _nodeSpinnerStrokeThickness = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 3.2;
+            _nodeSpinnerSpinSeconds = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.1;
             Settings.Default.EnergyDotGap = _energyDotGap;
             Settings.Default.EnergyDotThicknessExtra = _energyDotThicknessExtra;
             Settings.Default.EnergyDotText = _energyDotText;
@@ -600,6 +618,8 @@ namespace FlowMy.Views
             Settings.Default.EnergyTextSpinSeconds = _energyTextSpinSeconds;
             Settings.Default.Save();
             RefreshExecutionEnergyVisual();
+            if (ViewModel?.Nodes != null)
+                NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);
 
             if (CanvasPerformanceProfileComboBox != null)
             {

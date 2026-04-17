@@ -34,6 +34,15 @@ namespace FlowMy.Views
         bool IWorkflowEditorHost.IsAnimationEnabled { get => _isAnimationEnabled; set => _isAnimationEnabled = value; }
         FlowMy.Services.Rendering.ConnectionAnimationDisplayMode IWorkflowEditorHost.ConnectionAnimationDisplayMode { get => _connectionAnimationDisplayMode; set => _connectionAnimationDisplayMode = value; }
         bool IWorkflowEditorHost.CacheNodeEnabled { get => _cacheNodeEnabled; set => _cacheNodeEnabled = value; }
+        bool IWorkflowEditorHost.NodeSpinnerArcMode { get => _nodeSpinnerArcMode; set => _nodeSpinnerArcMode = value; }
+        bool IWorkflowEditorHost.NodeSpinnerMultiColor { get => _nodeSpinnerMultiColor; set => _nodeSpinnerMultiColor = value; }
+        double IWorkflowEditorHost.NodeSpinnerSize { get => _nodeSpinnerSize; set => _nodeSpinnerSize = value; }
+        bool IWorkflowEditorHost.NodeSpinnerScaleWithNode { get => _nodeSpinnerScaleWithNode; set => _nodeSpinnerScaleWithNode = value; }
+        double IWorkflowEditorHost.NodeSpinnerSizeRatio { get => _nodeSpinnerSizeRatio; set => _nodeSpinnerSizeRatio = value; }
+        string IWorkflowEditorHost.NodeSpinnerShape { get => _nodeSpinnerShape; set => _nodeSpinnerShape = value ?? "Circle"; }
+        string IWorkflowEditorHost.NodeSpinnerPosition { get => _nodeSpinnerPosition; set => _nodeSpinnerPosition = value ?? "TopRight"; }
+        double IWorkflowEditorHost.NodeSpinnerStrokeThickness { get => _nodeSpinnerStrokeThickness; set => _nodeSpinnerStrokeThickness = value; }
+        double IWorkflowEditorHost.NodeSpinnerSpinSeconds { get => _nodeSpinnerSpinSeconds; set => _nodeSpinnerSpinSeconds = value; }
         FlowMy.Services.Rendering.ConnectionEnergyColorMode IWorkflowEditorHost.ConnectionEnergyColorMode { get => _connectionEnergyColorMode; set => _connectionEnergyColorMode = value; }
         Color IWorkflowEditorHost.CustomEnergyColor { get => _customEnergyColor; set => _customEnergyColor = value; }
         double IWorkflowEditorHost.EnergyDotGap { get => _energyDotGap; set => _energyDotGap = value; }

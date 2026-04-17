@@ -28,6 +28,17 @@ namespace FlowMy.Services.Utilities
         public double EnergyTextSpinSeconds { get; set; } = 0.7;
         public bool EnergyMeteorMode { get; set; } = false;
         public int ApplyDebounceMs { get; set; } = 70;
+
+        // Node execution spinner style
+        public bool NodeSpinnerArcMode { get; set; } = true;
+        public bool NodeSpinnerMultiColor { get; set; } = false;
+        public double NodeSpinnerSize { get; set; } = 26.0;
+        public bool NodeSpinnerScaleWithNode { get; set; } = false;
+        public double NodeSpinnerSizeRatio { get; set; } = 0.32;
+        public string NodeSpinnerShape { get; set; } = "Circle"; // Circle|Diamond|Square|RoundedSquare|FollowNodeShape
+        public string NodeSpinnerPosition { get; set; } = "TopRight"; // TopRight|TopLeft|BottomRight|BottomLeft|Center
+        public double NodeSpinnerStrokeThickness { get; set; } = 3.2;
+        public double NodeSpinnerSpinSeconds { get; set; } = 1.1;
     }
 
     public static class CanvasToolbarPreferencesStore

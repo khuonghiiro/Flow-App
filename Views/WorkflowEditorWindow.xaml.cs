@@ -106,6 +106,15 @@ namespace FlowMy.Views
         // When enabled, cache node borders (BitmapCache) and replace connection/energy animation
         // with a small spinner on each executing node.
         private bool _cacheNodeEnabled = false;
+        private bool _nodeSpinnerArcMode = true;
+        private bool _nodeSpinnerMultiColor = false;
+        private double _nodeSpinnerSize = 26.0;
+        private bool _nodeSpinnerScaleWithNode = false;
+        private double _nodeSpinnerSizeRatio = 0.32;
+        private string _nodeSpinnerShape = "Circle";
+        private string _nodeSpinnerPosition = "TopRight";
+        private double _nodeSpinnerStrokeThickness = 3.2;
+        private double _nodeSpinnerSpinSeconds = 1.1;
         
         private enum CanvasDisplayMode
         {

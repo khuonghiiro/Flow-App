@@ -37,6 +37,15 @@ namespace FlowMy.Services.Interaction
         bool IsAnimationEnabled { get; set; }
         FlowMy.Services.Rendering.ConnectionAnimationDisplayMode ConnectionAnimationDisplayMode { get; set; }
         bool CacheNodeEnabled { get; set; }
+        bool NodeSpinnerArcMode { get; set; }
+        bool NodeSpinnerMultiColor { get; set; }
+        double NodeSpinnerSize { get; set; }
+        bool NodeSpinnerScaleWithNode { get; set; }
+        double NodeSpinnerSizeRatio { get; set; }
+        string NodeSpinnerShape { get; set; }
+        string NodeSpinnerPosition { get; set; }
+        double NodeSpinnerStrokeThickness { get; set; }
+        double NodeSpinnerSpinSeconds { get; set; }
 
         // Execution "energy" effect preferences (active connection highlight)
         FlowMy.Services.Rendering.ConnectionEnergyColorMode ConnectionEnergyColorMode { get; set; }

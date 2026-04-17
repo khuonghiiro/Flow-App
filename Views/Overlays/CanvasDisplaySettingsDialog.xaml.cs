@@ -130,6 +130,15 @@ namespace FlowMy.Views.Overlays
             EnergyRunSpeedSlider.Value = preferences.EnergyRunSpeed;
             EnergySpinSpeedSlider.Value = preferences.EnergyTextSpinSeconds;
             EnergyMeteorModeCheckBox.IsChecked = preferences.EnergyMeteorMode;
+            NodeSpinnerArcModeCheckBox.IsChecked = preferences.NodeSpinnerArcMode;
+            NodeSpinnerMultiColorCheckBox.IsChecked = preferences.NodeSpinnerMultiColor;
+            NodeSpinnerSizeSlider.Value = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 26.0;
+            NodeSpinnerScaleWithNodeCheckBox.IsChecked = preferences.NodeSpinnerScaleWithNode;
+            NodeSpinnerSizeRatioSlider.Value = preferences.NodeSpinnerSizeRatio > 0 ? preferences.NodeSpinnerSizeRatio : 0.32;
+            SelectByTag(NodeSpinnerShapeComboBox, preferences.NodeSpinnerShape);
+            SelectByTag(NodeSpinnerPositionComboBox, preferences.NodeSpinnerPosition);
+            NodeSpinnerStrokeThicknessSlider.Value = preferences.NodeSpinnerStrokeThickness > 0 ? preferences.NodeSpinnerStrokeThickness : 3.2;
+            NodeSpinnerSpinSecondsSlider.Value = preferences.NodeSpinnerSpinSeconds > 0 ? preferences.NodeSpinnerSpinSeconds : 1.1;
             SetRadioSelection(GetDebounceFastRadio(), GetDebounceBalancedRadio(), GetDebounceSmoothRadio(), NormalizeDebounceTag(preferences.ApplyDebounceMs));
             ApplyDebounceIntervalFromSelection();
             UpdateSliderTexts();
@@ -210,6 +219,15 @@ namespace FlowMy.Views.Overlays
                 EnergyRunSpeed = speed > 0 ? speed : 1.0,
                 EnergyTextSpinSeconds = spin > 0 ? spin : 0.7,
                 EnergyMeteorMode = EnergyMeteorModeCheckBox.IsChecked == true,
+                NodeSpinnerArcMode = NodeSpinnerArcModeCheckBox.IsChecked == true,
+                NodeSpinnerMultiColor = NodeSpinnerMultiColorCheckBox.IsChecked == true,
+                NodeSpinnerSize = NodeSpinnerSizeSlider.Value > 8 ? NodeSpinnerSizeSlider.Value : 26.0,
+                NodeSpinnerScaleWithNode = NodeSpinnerScaleWithNodeCheckBox.IsChecked == true,
+                NodeSpinnerSizeRatio = NodeSpinnerSizeRatioSlider.Value > 0 ? NodeSpinnerSizeRatioSlider.Value : 0.32,
+                NodeSpinnerShape = SelectedTag(NodeSpinnerShapeComboBox),
+                NodeSpinnerPosition = SelectedTag(NodeSpinnerPositionComboBox),
+                NodeSpinnerStrokeThickness = NodeSpinnerStrokeThicknessSlider.Value > 0 ? NodeSpinnerStrokeThicknessSlider.Value : 3.2,
+                NodeSpinnerSpinSeconds = NodeSpinnerSpinSecondsSlider.Value > 0 ? NodeSpinnerSpinSecondsSlider.Value : 1.1,
                 ApplyDebounceMs = SelectedDebounceMs()
             };
         }
@@ -256,6 +274,14 @@ namespace FlowMy.Views.Overlays
             BulkTitleModeCustomRadio.Checked += AnyControlChanged;
             EnergyColorModeFollowLineRadio.Checked += AnyControlChanged;
             EnergyColorModeCustomRadio.Checked += AnyControlChanged;
+            NodeSpinnerArcModeCheckBox.Checked += AnyControlChanged;
+            NodeSpinnerArcModeCheckBox.Unchecked += AnyControlChanged;
+            NodeSpinnerMultiColorCheckBox.Checked += AnyControlChanged;
+            NodeSpinnerMultiColorCheckBox.Unchecked += AnyControlChanged;
+            NodeSpinnerScaleWithNodeCheckBox.Checked += AnyControlChanged;
+            NodeSpinnerScaleWithNodeCheckBox.Unchecked += AnyControlChanged;
+            NodeSpinnerShapeComboBox.SelectionChanged += AnyControlChanged;
+            NodeSpinnerPositionComboBox.SelectionChanged += AnyControlChanged;
             GetDebounceFastRadio().Checked += AnyControlChanged;
             GetDebounceBalancedRadio().Checked += AnyControlChanged;
             GetDebounceSmoothRadio().Checked += AnyControlChanged;
@@ -312,6 +338,10 @@ namespace FlowMy.Views.Overlays
             EnergySpinSpeedSlider.ValueChanged += AnyControlChanged;
             EnergyMeteorModeCheckBox.Checked += AnyControlChanged;
             EnergyMeteorModeCheckBox.Unchecked += AnyControlChanged;
+            NodeSpinnerSizeSlider.ValueChanged += AnyControlChanged;
+            NodeSpinnerSizeRatioSlider.ValueChanged += AnyControlChanged;
+            NodeSpinnerStrokeThicknessSlider.ValueChanged += AnyControlChanged;
+            NodeSpinnerSpinSecondsSlider.ValueChanged += AnyControlChanged;
         }
 
         private void AnyControlChanged(object sender, TextChangedEventArgs e)
@@ -351,6 +381,10 @@ namespace FlowMy.Views.Overlays
             if (EnergyDotThicknessValueText != null) EnergyDotThicknessValueText.Text = EnergyDotThicknessSlider.Value.ToString("0.0");
             if (EnergyRunSpeedValueText != null) EnergyRunSpeedValueText.Text = EnergyRunSpeedSlider.Value.ToString("0.0");
             if (EnergySpinSpeedValueText != null) EnergySpinSpeedValueText.Text = EnergySpinSpeedSlider.Value.ToString("0.0");
+            if (NodeSpinnerSizeValueText != null) NodeSpinnerSizeValueText.Text = NodeSpinnerSizeSlider.Value.ToString("0.0");
+            if (NodeSpinnerSizeRatioValueText != null) NodeSpinnerSizeRatioValueText.Text = NodeSpinnerSizeRatioSlider.Value.ToString("0.00");
+            if (NodeSpinnerStrokeThicknessValueText != null) NodeSpinnerStrokeThicknessValueText.Text = NodeSpinnerStrokeThicknessSlider.Value.ToString("0.0");
+            if (NodeSpinnerSpinSecondsValueText != null) NodeSpinnerSpinSecondsValueText.Text = NodeSpinnerSpinSecondsSlider.Value.ToString("0.0");
         }
 
         private int SelectedDebounceMs()

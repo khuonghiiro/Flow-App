@@ -316,7 +316,7 @@ namespace FlowMy.Models
         /// <summary>
         /// Runtime-only: spinner quay thay cho connection/energy animation khi Cache node mode được bật.
         /// </summary>
-        public System.Windows.Shapes.Ellipse? ExecutionBusySpinnerUI { get; set; }
+        public System.Windows.Shapes.Shape? ExecutionBusySpinnerUI { get; set; }
         /// <summary>
         /// UI refs (runtime-only): hiển thị kết quả output sau khi node thực thi.
         /// </summary>
