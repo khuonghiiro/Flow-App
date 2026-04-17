@@ -200,6 +200,8 @@ namespace FlowMy.Views
                 nodeMap[sourceAsync.AsyncTaskBodyNode.Id] = mappedAsync.AsyncTaskBodyNode;
             }
 
+            RemapPastedNodeReferences(nodeMap);
+
             if (nodeMap.Count == 0) return false;
 
             var rawConnections = rawWorkflowDto?.Connections
@@ -444,6 +446,166 @@ namespace FlowMy.Views
                     Position = PortPosition.Left,
                     IsVisible = true
                 });
+            }
+        }
+
+        private static void RemapPastedNodeReferences(Dictionary<string, WorkflowNode> sourceToNewNodeMap)
+        {
+            if (sourceToNewNodeMap.Count == 0) return;
+
+            var visited = new HashSet<WorkflowNode>();
+            foreach (var node in sourceToNewNodeMap.Values)
+            {
+                if (!visited.Add(node)) continue;
+                RemapNodeReferenceIds(node, sourceToNewNodeMap);
+            }
+        }
+
+        private static void RemapNodeReferenceIds(WorkflowNode node, Dictionary<string, WorkflowNode> sourceToNewNodeMap)
+        {
+            static string RemapNodeId(string? originalId, Dictionary<string, WorkflowNode> map)
+            {
+                if (string.IsNullOrWhiteSpace(originalId)) return string.Empty;
+                return map.TryGetValue(originalId, out var mapped) ? mapped.Id : originalId;
+            }
+
+            if (node.DynamicInputs != null)
+            {
+                foreach (var input in node.DynamicInputs)
+                    input.SelectedSourceNodeId = RemapNodeId(input.SelectedSourceNodeId, sourceToNewNodeMap);
+            }
+
+            if (node.ReuseRoutes != null)
+            {
+                foreach (var route in node.ReuseRoutes)
+                {
+                    route.IncomingNodeId = RemapNodeId(route.IncomingNodeId, sourceToNewNodeMap);
+                    route.OutgoingNodeId = RemapNodeId(route.OutgoingNodeId, sourceToNewNodeMap);
+                }
+            }
+
+            if (node.ConditionalBranches != null)
+            {
+                foreach (var branch in node.ConditionalBranches)
+                {
+                    branch.LeftSourceNodeId = RemapNodeId(branch.LeftSourceNodeId, sourceToNewNodeMap);
+                    branch.RightSourceNodeId = RemapNodeId(branch.RightSourceNodeId, sourceToNewNodeMap);
+                    if (branch.SubConditions == null) continue;
+                    foreach (var sub in branch.SubConditions)
+                    {
+                        sub.LeftSourceNodeId = RemapNodeId(sub.LeftSourceNodeId, sourceToNewNodeMap);
+                        sub.RightSourceNodeId = RemapNodeId(sub.RightSourceNodeId, sourceToNewNodeMap);
+                    }
+                }
+            }
+
+            switch (node)
+            {
+                case OutputNode outputNode:
+                    foreach (var iv in outputNode.InputVariables ?? new List<InputVariable>())
+                        iv.SourceNodeId = RemapNodeId(iv.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case NotificationNode notificationNode:
+                    if (notificationNode.TitleInput != null) notificationNode.TitleInput.SourceNodeId = RemapNodeId(notificationNode.TitleInput.SourceNodeId, sourceToNewNodeMap);
+                    if (notificationNode.ContentInput != null) notificationNode.ContentInput.SourceNodeId = RemapNodeId(notificationNode.ContentInput.SourceNodeId, sourceToNewNodeMap);
+                    if (notificationNode.DurationInput != null) notificationNode.DurationInput.SourceNodeId = RemapNodeId(notificationNode.DurationInput.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case CodeNode codeNode:
+                    foreach (var m in codeNode.InputMappings ?? new List<CodeInputMapping>())
+                        m.SourceNodeId = RemapNodeId(m.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case HtmlUiNode htmlUiNode:
+                    foreach (var m in htmlUiNode.InputMappings ?? new List<CodeInputMapping>())
+                        m.SourceNodeId = RemapNodeId(m.SourceNodeId, sourceToNewNodeMap);
+                    foreach (var a in htmlUiNode.AsyncDataSources ?? new List<AsyncDataSource>())
+                        a.SourceNodeId = RemapNodeId(a.SourceNodeId, sourceToNewNodeMap);
+                    htmlUiNode.WebTabCookieSourceNodeId = RemapNodeId(htmlUiNode.WebTabCookieSourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case WebNode webNode:
+                    if (webNode.DynamicInputs != null)
+                    {
+                        foreach (var input in webNode.DynamicInputs)
+                            input.SelectedSourceNodeId = RemapNodeId(input.SelectedSourceNodeId, sourceToNewNodeMap);
+                    }
+                    foreach (var js in webNode.JsSources ?? new List<WebJsSourceMapping>())
+                        js.SourceNodeId = RemapNodeId(js.SourceNodeId, sourceToNewNodeMap);
+                    if (webNode.RequestInterceptRules != null)
+                    {
+                        foreach (var rule in webNode.RequestInterceptRules)
+                        {
+                            rule.ReplaceUrlSourceNodeId = RemapNodeId(rule.ReplaceUrlSourceNodeId, sourceToNewNodeMap);
+                            rule.ReplaceParamsSourceNodeId = RemapNodeId(rule.ReplaceParamsSourceNodeId, sourceToNewNodeMap);
+                            rule.ReplaceBodySourceNodeId = RemapNodeId(rule.ReplaceBodySourceNodeId, sourceToNewNodeMap);
+                        }
+                    }
+                    break;
+
+                case AssignDataNode assignDataNode:
+                    foreach (var a in assignDataNode.Assignments)
+                    {
+                        a.SourceNodeId = RemapNodeId(a.SourceNodeId, sourceToNewNodeMap);
+                        a.TargetNodeId = RemapNodeId(a.TargetNodeId, sourceToNewNodeMap);
+                    }
+                    break;
+
+                case FlowOverwriteNode flowOverwriteNode:
+                    foreach (var m in flowOverwriteNode.Mappings ?? new List<FlowOverwriteMapping>())
+                        m.SourceNodeId = RemapNodeId(m.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case FolderNode folderNode:
+                    foreach (var kv in folderNode.KeyValueInputs ?? new List<FolderKeyValueInput>())
+                        kv.SourceNodeId = RemapNodeId(kv.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case FolderFilePathsNode folderFilePathsNode:
+                    folderFilePathsNode.FolderSourceNodeId = RemapNodeId(folderFilePathsNode.FolderSourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case FileDownloadNode fileDownloadNode:
+                    fileDownloadNode.UrlSourceNodeId = RemapNodeId(fileDownloadNode.UrlSourceNodeId, sourceToNewNodeMap);
+                    fileDownloadNode.CurlSourceNodeId = RemapNodeId(fileDownloadNode.CurlSourceNodeId, sourceToNewNodeMap);
+                    fileDownloadNode.FolderSourceNodeId = RemapNodeId(fileDownloadNode.FolderSourceNodeId, sourceToNewNodeMap);
+                    fileDownloadNode.FileNameSourceNodeId = RemapNodeId(fileDownloadNode.FileNameSourceNodeId, sourceToNewNodeMap);
+                    foreach (var x in fileDownloadNode.AdditionalOutputSaves ?? new List<FileDownloadAdditionalOutputSaveEntry>())
+                        x.SourceNodeId = RemapNodeId(x.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case HttpRequestNode httpRequestNode:
+                    httpRequestNode.TokenSourceNodeId = RemapNodeId(httpRequestNode.TokenSourceNodeId, sourceToNewNodeMap);
+                    httpRequestNode.ApiKeyValueSourceNodeId = RemapNodeId(httpRequestNode.ApiKeyValueSourceNodeId, sourceToNewNodeMap);
+                    httpRequestNode.UrlSourceNodeId = RemapNodeId(httpRequestNode.UrlSourceNodeId, sourceToNewNodeMap);
+                    httpRequestNode.BodySourceNodeId = RemapNodeId(httpRequestNode.BodySourceNodeId, sourceToNewNodeMap);
+                    foreach (var h in httpRequestNode.Headers) h.SourceNodeId = RemapNodeId(h.SourceNodeId, sourceToNewNodeMap);
+                    foreach (var q in httpRequestNode.QueryParams) q.SourceNodeId = RemapNodeId(q.SourceNodeId, sourceToNewNodeMap);
+                    foreach (var f in httpRequestNode.FormData) f.SourceNodeId = RemapNodeId(f.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case MediaGalleryNode mediaGalleryNode:
+                    mediaGalleryNode.FolderSourceNodeId = RemapNodeId(mediaGalleryNode.FolderSourceNodeId, sourceToNewNodeMap);
+                    mediaGalleryNode.FolderSourceNodeIdVideo = RemapNodeId(mediaGalleryNode.FolderSourceNodeIdVideo, sourceToNewNodeMap);
+                    mediaGalleryNode.JsonSourceNodeId = RemapNodeId(mediaGalleryNode.JsonSourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case ImageProcessingNode imageProcessingNode:
+                    imageProcessingNode.ImageUrlSourceNodeId = RemapNodeId(imageProcessingNode.ImageUrlSourceNodeId, sourceToNewNodeMap);
+                    imageProcessingNode.ImageBase64SourceNodeId = RemapNodeId(imageProcessingNode.ImageBase64SourceNodeId, sourceToNewNodeMap);
+                    break;
+
+                case KeyValueBridgeNode keyValueBridgeNode:
+                    keyValueBridgeNode.SelectedSourceBridgeNodeId = RemapNodeId(keyValueBridgeNode.SelectedSourceBridgeNodeId, sourceToNewNodeMap);
+                    keyValueBridgeNode.CleanupTargetBridgeNodeId = RemapNodeId(keyValueBridgeNode.CleanupTargetBridgeNodeId, sourceToNewNodeMap);
+                    keyValueBridgeNode.CleanupTriggerSourceNodeId = RemapNodeId(keyValueBridgeNode.CleanupTriggerSourceNodeId, sourceToNewNodeMap);
+                    keyValueBridgeNode.CleanupKeySourceNodeId = RemapNodeId(keyValueBridgeNode.CleanupKeySourceNodeId, sourceToNewNodeMap);
+                    keyValueBridgeNode.CleanupFilterFieldSourceNodeId = RemapNodeId(keyValueBridgeNode.CleanupFilterFieldSourceNodeId, sourceToNewNodeMap);
+                    keyValueBridgeNode.CleanupFilterValueSourceNodeId = RemapNodeId(keyValueBridgeNode.CleanupFilterValueSourceNodeId, sourceToNewNodeMap);
+                    foreach (var a in keyValueBridgeNode.AdditionalAppendSources ?? new List<KeyValueBridgeAppendSource>())
+                        a.SourceNodeId = RemapNodeId(a.SourceNodeId, sourceToNewNodeMap);
+                    break;
             }
         }
 
