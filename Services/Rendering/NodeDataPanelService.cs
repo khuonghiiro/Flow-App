@@ -1,7 +1,9 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Windows.Media.Imaging;
 
@@ -25,8 +27,13 @@ namespace FlowMy.Services.Rendering
             var connections = vm.Connections;
             if (connections == null || connections.Count == 0) return "—";
 
-            // Thu thập toàn bộ upstream nodes thực sự kết nối đến toNode (D): A, E, G...
+            // Thu thập upstream giống BaseNodeDialogViewModel.RefreshAvailableSourcesForInputs:
+            // - bỏ cạnh vào LoopBodyRight (return path, không phải data flow)
+            // - ListOutNode là barrier (không đi ngược qua ListOut)
+            // - ghi nhận LoopNode cha khi đi qua LoopBodyLeft
             var upstream = new HashSet<WorkflowNode>();
+            var listOutBarriers = new HashSet<ListOutNode>();
+            var parentLoops = new HashSet<LoopNode>();
             var stack = new Stack<WorkflowNode>();
             stack.Push(toNode);
 
@@ -36,21 +43,64 @@ namespace FlowMy.Services.Rendering
 
                 var incoming = connections
                     .Where(c => c.ToNode == current && c.FromNode != null)
-                    .Select(c => c.FromNode)
-                    .Where(n => n != null)
+                    .Where(c => !(current is LoopBodyNode &&
+                                  c.ToPort != null &&
+                                  string.Equals(c.ToPort.Id, "LoopBodyRight", StringComparison.OrdinalIgnoreCase)))
                     .ToList();
 
-                foreach (var src in incoming)
+                foreach (var conn in incoming)
                 {
-                    if (upstream.Add(src))
+                    var src = conn.FromNode!;
+                    if (src is ListOutNode listOutNode)
                     {
-                        stack.Push(src);
+                        if (upstream.Add(src))
+                            listOutBarriers.Add(listOutNode);
+                        continue;
                     }
+
+                    if (src is LoopBodyNode body &&
+                        conn.FromPort != null &&
+                        string.Equals(conn.FromPort.Id, "LoopBodyLeft", StringComparison.OrdinalIgnoreCase) &&
+                        body.ParentLoopNode != null)
+                    {
+                        parentLoops.Add(body.ParentLoopNode);
+                    }
+
+                    if (upstream.Add(src))
+                        stack.Push(src);
                 }
             }
 
-            // Tìm source node đúng với SelectedSourceNodeId trong tập upstream hợp lệ
-            var srcNode = upstream.FirstOrDefault(n => n.Id == input.SelectedSourceNodeId);
+            var producerNodes = upstream
+                .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0)
+                .ToList();
+
+            if (listOutBarriers.Count > 0)
+            {
+                producerNodes = producerNodes
+                    .Where(n => n is ListOutNode)
+                    .ToList();
+            }
+
+            foreach (var loop in parentLoops)
+            {
+                if (loop.DynamicOutputs != null && loop.DynamicOutputs.Count > 0 && !producerNodes.Contains(loop))
+                {
+                    if (listOutBarriers.Count == 0)
+                        producerNodes.Add(loop);
+                }
+            }
+
+            producerNodes = producerNodes
+                .Where(n => !ReferenceEquals(n, toNode))
+                .ToList();
+
+            // InputNode có thể không có DynamicOutputs nhưng vẫn là nguồn hợp lệ (giống một số dialog refresh).
+            var srcNode = producerNodes.FirstOrDefault(n =>
+                              string.Equals(n.Id, input.SelectedSourceNodeId, StringComparison.OrdinalIgnoreCase))
+                          ?? upstream.FirstOrDefault(n =>
+                              string.Equals(n.Id, input.SelectedSourceNodeId, StringComparison.OrdinalIgnoreCase) &&
+                              n is InputNode);
             if (srcNode == null) return "—";
 
             // Ưu tiên output key đã chọn; fallback sang input.Key

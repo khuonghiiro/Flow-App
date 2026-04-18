@@ -451,10 +451,12 @@ namespace FlowMy.ViewModels
                 })
                 .ToList();
 
-            // Update AvailableSources cho tất cả inputs
+            // Mỗi input một list riêng (cùng nội dung) — tránh dùng chung reference List khiến WPF/binding đồng bộ lệch giữa các ComboBox.
             foreach (var input in _node.DynamicInputs)
             {
-                input.AvailableSources = options;
+                input.AvailableSources = options
+                    .Select(o => new WorkflowDataSourceOption { NodeId = o.NodeId, Title = o.Title })
+                    .ToList();
             }
         }
 

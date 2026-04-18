@@ -81,6 +81,29 @@ namespace FlowMy.Services.Workflow
             return false;
         }
 
+        /// <summary>
+        /// Đọc output scoped theo chuỗi <see cref="WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds"/>:
+        /// cùng lần chạy hiện tại rồi tổ tiên (bỏ <c>:at-manual-</c>, <c>:dispatch-</c>).
+        /// Dùng khi node downstream (FlowOverwrite, v.v.) chạy với id khác id lúc producer ghi snapshot.
+        /// Không đi ngang sang nhánh song song khác — chỉ đi lên cha.
+        /// </summary>
+        internal bool TryGetScopedNodeStringOutputForLookupChain(string? executionId, string nodeId, string key, out string? value)
+        {
+            value = null;
+            if (string.IsNullOrWhiteSpace(nodeId)) return false;
+            var k = (key ?? string.Empty).Trim();
+            if (k.Length == 0) return false;
+            foreach (var runId in WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(executionId))
+            {
+                if (TryGetScopedNodeStringOutput(runId, nodeId, k, out var scoped) && scoped != null)
+                {
+                    value = scoped;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void RegisterScopedRunForEviction(string executionId)
         {
             lock (_scopedRunRegistryLock)
@@ -149,7 +172,7 @@ namespace FlowMy.Services.Workflow
             if (k.Length == 0) return string.Empty;
             string resolved;
             if (!string.IsNullOrWhiteSpace(executionId) &&
-                TryGetScopedNodeStringOutput(executionId, node.Id, k, out var scoped) &&
+                TryGetScopedNodeStringOutputForLookupChain(executionId, node.Id, k, out var scoped) &&
                 scoped != null)
                 resolved = scoped;
             else

@@ -1064,7 +1064,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (source == null)
                 return staticValue ?? string.Empty;
 
-            var v = env.Service.ResolveDynamicValueForExecution(source, sourceOutputKey, env);
+            string? v = null;
+            foreach (var lookupRunId in WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(env.ExecutionId))
+            {
+                if (!env.Service.TryGetScopedNodeStringOutput(lookupRunId, source.Id, sourceOutputKey, out var scoped) || string.IsNullOrWhiteSpace(scoped))
+                    continue;
+                v = scoped;
+                break;
+            }
+
             if (v == "—" || string.IsNullOrWhiteSpace(v))
                 return staticValue ?? string.Empty;
             return v;

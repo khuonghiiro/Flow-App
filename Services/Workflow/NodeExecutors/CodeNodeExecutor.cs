@@ -329,7 +329,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     }
                                 }
                                 if (!found)
-                                    batchOutputs[k] = null;
+                                {
+                                    // Nếu key không xuất hiện ở lần chạy lại (callback/retry),
+                                    // đừng ghi đè scoped value hiện có của cùng execution thành null.
+                                    // Điều này giúp downstream node (Conditional/FlowOverwrite/Output)
+                                    // vẫn đọc đúng dữ liệu đã sinh trước đó trong cùng luồng chạy.
+                                    string? previous = null;
+                                    if (!string.IsNullOrWhiteSpace(env.ExecutionId) &&
+                                        env.Service.TryGetScopedNodeStringOutput(env.ExecutionId, codeNode.Id, k, out var prevScoped) &&
+                                        !string.IsNullOrWhiteSpace(prevScoped))
+                                    {
+                                        previous = prevScoped;
+                                    }
+
+                                    if (previous != null)
+                                        batchOutputs[k] = previous;
+                                    else
+                                        batchOutputs[k] = null;
+                                }
                             }
                         }
                     }

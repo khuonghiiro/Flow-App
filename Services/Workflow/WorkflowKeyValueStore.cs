@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Text.Json;
 
 namespace FlowMy.Services.Workflow;
@@ -33,6 +34,42 @@ public static class WorkflowKeyValueStore
             var i = id.LastIndexOf(marker, StringComparison.Ordinal);
             if (i < 0) return id;
             id = id[..i];
+        }
+    }
+
+    private const string AsyncManualBranchMarker = ":at-manual-";
+
+    /// <summary>
+    /// Duyệt <paramref name="executionId"/> từ cụ thể đến tổ tiên (bỏ hậu tố <c>:at-manual-…</c> rồi <c>:dispatch-…</c>)
+    /// để đọc scoped output của node chạy trên luồng cha (trước AsyncTask body / nhánh song song).
+    /// </summary>
+    public static IEnumerable<string> EnumerateScopedLookupExecutionIds(string? executionId)
+    {
+        if (string.IsNullOrWhiteSpace(executionId)) yield break;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var current = executionId.Trim();
+        while (!string.IsNullOrWhiteSpace(current))
+        {
+            if (!seen.Add(current)) yield break;
+
+            yield return current;
+
+            var im = current.LastIndexOf(AsyncManualBranchMarker, StringComparison.Ordinal);
+            if (im >= 0)
+            {
+                current = current[..im];
+                continue;
+            }
+
+            const string dispatchMarker = ":dispatch-";
+            var di = current.LastIndexOf(dispatchMarker, StringComparison.Ordinal);
+            if (di >= 0)
+            {
+                current = current[..di];
+                continue;
+            }
+
+            break;
         }
     }
 

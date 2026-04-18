@@ -73,7 +73,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     // Resolve value from source node
                     if (sourceNode != null)
                     {
-                        var value = env.Service.ResolveDynamicValueForExecution(sourceNode, variable.SourceOutputKey, env);
+                        string? scopedValue = null;
+                        var scopedFound = !string.IsNullOrWhiteSpace(env.ExecutionId)
+                            && env.Service.TryGetScopedNodeStringOutputForLookupChain(env.ExecutionId, sourceNode.Id, variable.SourceOutputKey, out scopedValue);
+
+                        // Runtime nodes in async/parallel branches must read scoped value of current execution only.
+                        // If scoped value is missing, falling back to shared UI state can leak stale data from other iterations.
+                        string value;
+                        if (scopedFound)
+                        {
+                            value = scopedValue ?? string.Empty;
+                        }
+                        else if (sourceNode is InputNode)
+                        {
+                            // InputNode can be static configuration and may not always have scoped snapshot.
+                            value = env.Service.ResolveDynamicValueForExecution(sourceNode, variable.SourceOutputKey, env);
+                        }
+                        else
+                        {
+                            value = string.Empty;
+                        }
                         
                         // Check if value is JSON object
                         if (IsObjectValue(value))
