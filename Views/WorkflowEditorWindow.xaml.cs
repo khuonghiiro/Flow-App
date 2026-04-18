@@ -411,6 +411,27 @@ namespace FlowMy.Views
             e.Handled = true;
         }
 
+        private void ExecutionLogNodeIcon_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement fe) return;
+            if (fe.DataContext is FlowMy.ViewModels.ExecutionTraceLogItemViewModel row && row.Node != null)
+            {
+                TryScrollToNodePreserveZoom(row.Node);
+                e.Handled = true;
+                return;
+            }
+
+            if (fe.DataContext is FlowMy.ViewModels.ExecutionTraceTreeNodeViewModel treeRow)
+            {
+                var node = ViewModel?.Nodes?.FirstOrDefault(n => n.Id == treeRow.NodeId);
+                if (node != null)
+                {
+                    TryScrollToNodePreserveZoom(node);
+                    e.Handled = true;
+                }
+            }
+        }
+
         /// <summary>
         /// Di chuyển viewport đến node được chọn mà vẫn giữ nguyên zoom hiện tại.
         /// </summary>

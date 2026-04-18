@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.VisualBasic;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -17,9 +18,11 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Microsoft.Win32;
 
 namespace FlowMy.ViewModels
 {
@@ -111,6 +114,39 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool hasManualRunSessions;
 
+        [ObservableProperty]
+        private bool enableExecutionTraceLog;
+
+        [ObservableProperty]
+        private bool isExecutionTracePanelExpanded;
+
+        [ObservableProperty]
+        private ObservableCollection<ExecutionTraceLogItemViewModel> executionTraceLogs = new();
+        [ObservableProperty]
+        private ObservableCollection<ExecutionTraceTreeNodeViewModel> executionTraceRunRoots = new();
+
+        private readonly object _executionTraceLock = new();
+        private readonly Dictionary<string, Dictionary<string, int>> _executionTraceDepthByRun = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ExecutionTraceTreeNodeViewModel> _executionTraceTreeRootByRun = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<ExecutionTraceTreeNodeViewModel>> _executionTraceTreeNodesByRunAndNode = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<ExecutionTraceTreeNodeViewModel>> _executionTraceTreeNodesByExecutionId = new(StringComparer.Ordinal);
+        private const int MaxExecutionTraceRows = 1200;
+        public ICollectionView? ExecutionTraceFilteredView { get; private set; }
+
+        [ObservableProperty]
+        private string executionTraceSearchText = string.Empty;
+
+        [ObservableProperty]
+        private string executionTraceStatusFilter = "All";
+
+        [ObservableProperty]
+        private string executionTraceNodeTypeFilter = "All";
+
+        public ObservableCollection<string> ExecutionTraceStatusOptions { get; } = new() { "All", "running", "completed", "failed" };
+        public ObservableCollection<string> ExecutionTraceNodeTypeOptions { get; } = new() { "All" };
+
+        public bool IsExecutionTracePanelVisible => EnableExecutionTraceLog && IsExecutionTracePanelExpanded;
+
         private int _nodeCounter = 1;
 
         /// <summary>
@@ -139,6 +175,626 @@ namespace FlowMy.ViewModels
             {
                 InitializeSampleNodes();
             }
+
+            enableExecutionTraceLog = false;
+            isExecutionTracePanelExpanded = true;
+            ExecutionTraceFilteredView = CollectionViewSource.GetDefaultView(ExecutionTraceLogs);
+            if (ExecutionTraceFilteredView != null)
+            {
+                ExecutionTraceFilteredView.Filter = ExecutionTraceFilterPredicate;
+                ExecutionTraceFilteredView.GroupDescriptions.Clear();
+                ExecutionTraceFilteredView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ExecutionTraceLogItemViewModel.RootExecutionId)));
+            }
+        }
+
+        partial void OnEnableExecutionTraceLogChanged(bool value)
+        {
+            OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+            if (!value)
+                ClearExecutionTraceLogs();
+        }
+
+        partial void OnIsExecutionTracePanelExpandedChanged(bool value)
+            => OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+
+        partial void OnExecutionTraceSearchTextChanged(string value) => RefreshExecutionTraceFilter();
+        partial void OnExecutionTraceStatusFilterChanged(string value) => RefreshExecutionTraceFilter();
+        partial void OnExecutionTraceNodeTypeFilterChanged(string value) => RefreshExecutionTraceFilter();
+
+        [RelayCommand]
+        private void ToggleExecutionTracePanel()
+        {
+            IsExecutionTracePanelExpanded = !IsExecutionTracePanelExpanded;
+        }
+
+        [RelayCommand]
+        private void ClearExecutionTraceLogs()
+        {
+            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                lock (_executionTraceLock)
+                {
+                    ExecutionTraceLogs.Clear();
+                    ExecutionTraceRunRoots.Clear();
+                    _executionTraceDepthByRun.Clear();
+                    _executionTraceTreeRootByRun.Clear();
+                    _executionTraceTreeNodesByRunAndNode.Clear();
+                    _executionTraceTreeNodesByExecutionId.Clear();
+                    ExecutionTraceNodeTypeOptions.Clear();
+                    ExecutionTraceNodeTypeOptions.Add("All");
+                    ExecutionTraceNodeTypeFilter = "All";
+                }
+                RefreshExecutionTraceFilter();
+            }));
+        }
+
+        [RelayCommand]
+        private void ExportExecutionTraceLogs()
+        {
+            if (ExecutionTraceLogs.Count == 0)
+            {
+                MessageBox.Show("Chưa có log để xuất.", "Execution Log", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new SaveFileDialog
+            {
+                Filter = "JSON files (*.json)|*.json",
+                FileName = $"execution-log-{DateTime.Now:yyyyMMdd-HHmmss}.json",
+                Title = "Xuất execution log"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                List<object> rows;
+                lock (_executionTraceLock)
+                {
+                    rows = ExecutionTraceLogs.Select(x => new
+                    {
+                        x.TimestampUtc,
+                        x.TimestampText,
+                        x.RootExecutionId,
+                        x.ExecutionId,
+                        x.Status,
+                        x.ElapsedText,
+                        x.NodeId,
+                        x.NodeTitle,
+                        x.NodeType,
+                        x.ParentNodeId,
+                        x.ParentNodeTitle,
+                        x.Depth,
+                        x.InputSummary,
+                        x.OutputSummary,
+                        x.ErrorMessage
+                    } as object).ToList();
+                }
+
+                var payload = new
+                {
+                    exportedAtUtc = DateTime.UtcNow,
+                    filters = new
+                    {
+                        search = ExecutionTraceSearchText,
+                        status = ExecutionTraceStatusFilter,
+                        nodeType = ExecutionTraceNodeTypeFilter
+                    },
+                    total = rows.Count,
+                    items = rows
+                };
+
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(dialog.FileName, json);
+                MessageBox.Show("Đã xuất execution log JSON thành công.", "Execution Log", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Xuất log thất bại: {ex.Message}", "Execution Log", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        [RelayCommand]
+        private void ExpandAllExecutionTraceTree()
+        {
+            lock (_executionTraceLock)
+            {
+                foreach (var root in ExecutionTraceRunRoots)
+                    SetTreeExpandedRecursive(root, true);
+            }
+        }
+
+        [RelayCommand]
+        private void CollapseAllExecutionTraceTree()
+        {
+            lock (_executionTraceLock)
+            {
+                foreach (var root in ExecutionTraceRunRoots)
+                    SetTreeExpandedRecursive(root, false);
+            }
+        }
+
+        private static void SetTreeExpandedRecursive(ExecutionTraceTreeNodeViewModel node, bool expanded)
+        {
+            node.IsExpanded = expanded;
+            foreach (var child in node.Children)
+                SetTreeExpandedRecursive(child, expanded);
+        }
+
+        private bool ExecutionTraceFilterPredicate(object obj)
+        {
+            if (obj is not ExecutionTraceLogItemViewModel row) return false;
+
+            if (!string.IsNullOrWhiteSpace(ExecutionTraceStatusFilter) &&
+                !string.Equals(ExecutionTraceStatusFilter, "All", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(row.Status, ExecutionTraceStatusFilter, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(ExecutionTraceNodeTypeFilter) &&
+                !string.Equals(ExecutionTraceNodeTypeFilter, "All", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(row.NodeType, ExecutionTraceNodeTypeFilter, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var q = (ExecutionTraceSearchText ?? string.Empty).Trim();
+            if (q.Length == 0) return true;
+            return (row.NodeTitle?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.NodeId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.InputSummary?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.OutputSummary?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.ErrorMessage?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+
+        private void RefreshExecutionTraceFilter()
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null)
+            {
+                ExecutionTraceFilteredView?.Refresh();
+                ApplyExecutionTraceFilterToTree();
+                return;
+            }
+            dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                ExecutionTraceFilteredView?.Refresh();
+                ApplyExecutionTraceFilterToTree();
+            }));
+        }
+
+        private static string BuildTreeRunNodeKey(string rootExecutionId, string nodeId)
+            => $"{rootExecutionId}|{nodeId}";
+
+        private static ExecutionTraceTreeNodeViewModel? PickBestParentTreeNode(
+            List<ExecutionTraceTreeNodeViewModel> parentCandidates,
+            string childExecutionId)
+        {
+            if (parentCandidates == null || parentCandidates.Count == 0)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(childExecutionId))
+                return parentCandidates[^1];
+
+            var preferredIds = WorkflowKeyValueStore
+                .EnumerateScopedLookupExecutionIds(childExecutionId)
+                .ToHashSet(StringComparer.Ordinal);
+
+            for (var i = parentCandidates.Count - 1; i >= 0; i--)
+            {
+                var p = parentCandidates[i];
+                if (preferredIds.Contains(p.ExecutionId))
+                    return p;
+            }
+
+            // Fallback: exact prefix relation helps async dispatch trees.
+            for (var i = parentCandidates.Count - 1; i >= 0; i--)
+            {
+                var p = parentCandidates[i];
+                if (childExecutionId.StartsWith(p.ExecutionId, StringComparison.Ordinal))
+                    return p;
+            }
+
+            return parentCandidates[^1];
+        }
+
+        private ExecutionTraceTreeNodeViewModel? PickBestParentFromExecutionChain(string childExecutionId, string rootExecutionId)
+        {
+            if (string.IsNullOrWhiteSpace(childExecutionId))
+                return null;
+
+            foreach (var execId in WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(childExecutionId))
+            {
+                if (!_executionTraceTreeNodesByExecutionId.TryGetValue(execId, out var byExec) || byExec.Count == 0)
+                    continue;
+
+                for (var i = byExec.Count - 1; i >= 0; i--)
+                {
+                    var candidate = byExec[i];
+                    if (!string.Equals(candidate.RootExecutionId, rootExecutionId, StringComparison.Ordinal))
+                        continue;
+                    if (string.Equals(candidate.ExecutionId, childExecutionId, StringComparison.Ordinal) && i == byExec.Count - 1)
+                        continue;
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool RowMatchesCurrentExecutionTraceFilter(
+            ExecutionTraceTreeNodeViewModel row,
+            string statusFilter,
+            string nodeTypeFilter,
+            string searchText)
+        {
+            if (row.IsRunRoot) return true;
+
+            if (!string.IsNullOrWhiteSpace(statusFilter) &&
+                !string.Equals(statusFilter, "All", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(row.Status, statusFilter, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(nodeTypeFilter) &&
+                !string.Equals(nodeTypeFilter, "All", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(row.NodeType, nodeTypeFilter, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var q = (searchText ?? string.Empty).Trim();
+            if (q.Length == 0) return true;
+            return (row.NodeTitle?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.NodeId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.InputSummary?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.OutputSummary?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (row.ErrorMessage?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+
+        private void ApplyExecutionTraceFilterToTree()
+        {
+            bool ApplyNode(ExecutionTraceTreeNodeViewModel node, string status, string type, string search)
+            {
+                var self = RowMatchesCurrentExecutionTraceFilter(node, status, type, search);
+                var anyChildVisible = false;
+                foreach (var child in node.Children)
+                {
+                    if (ApplyNode(child, status, type, search))
+                        anyChildVisible = true;
+                }
+
+                node.IsVisible = node.IsRunRoot ? anyChildVisible : (self || anyChildVisible);
+                return node.IsVisible;
+            }
+
+            lock (_executionTraceLock)
+            {
+                var status = ExecutionTraceStatusFilter;
+                var type = ExecutionTraceNodeTypeFilter;
+                var search = ExecutionTraceSearchText;
+                foreach (var root in ExecutionTraceRunRoots)
+                    ApplyNode(root, status, type, search);
+            }
+        }
+
+        private static string ResolveNodeIconKey(WorkflowNode node)
+        {
+            return node.Type switch
+            {
+                NodeType.Start => "play duotone-regular",
+                NodeType.End => "stop duotone-regular",
+                NodeType.IfElse => "diamond-turn-right-down duotone-light",
+                NodeType.Code => "code duotone-regular",
+                NodeType.Output => "output-circle-arrow-right duotone-regular",
+                NodeType.HttpRequest => "globe-pointer duotone-regular",
+                NodeType.FileDownload => "file-arrow-down duotone-regular",
+                NodeType.FlowOverwrite => "layer-group duotone-regular",
+                NodeType.AsyncTask => "arrows-rotate duotone-regular",
+                NodeType.ListOut => "list-check duotone-regular",
+                NodeType.Callback => "reply-all duotone-regular",
+                _ => "circle-nodes duotone-regular"
+            };
+        }
+
+        private static string ToCompactText(string? raw, int maxLen = 220)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+            var t = raw.Replace("\r", " ").Replace("\n", " ").Trim();
+            return t.Length <= maxLen ? t : t[..maxLen] + "...";
+        }
+
+        private static string BuildInputSummary(WorkflowNode node)
+        {
+            if (node.DynamicInputs == null || node.DynamicInputs.Count == 0) return string.Empty;
+            var parts = new List<string>();
+            foreach (var inp in node.DynamicInputs)
+            {
+                var key = inp?.Key?.Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                var v = ToCompactText(inp?.UserValueOverride);
+                if (string.IsNullOrWhiteSpace(v)) continue;
+                parts.Add($"{key}: {v}");
+                if (parts.Count >= 4) break;
+            }
+            return string.Join(" | ", parts);
+        }
+
+        private static string BuildOutputSummary(WorkflowNode node)
+        {
+            if (node.DynamicOutputs == null || node.DynamicOutputs.Count == 0) return string.Empty;
+            var parts = new List<string>();
+            foreach (var outp in node.DynamicOutputs)
+            {
+                var key = outp?.Key?.Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                var v = ToCompactText(outp?.UserValueOverride);
+                if (string.IsNullOrWhiteSpace(v)) continue;
+                parts.Add($"{key}: {v}");
+                if (parts.Count >= 4) break;
+            }
+            return string.Join(" | ", parts);
+        }
+
+        private string BuildInputSummaryForExecution(WorkflowNode node, WorkflowConnection? incoming, string executionId)
+        {
+            if (incoming?.FromNode == null || string.IsNullOrWhiteSpace(executionId))
+                return BuildInputSummary(node);
+
+            var source = incoming.FromNode;
+            if (source.DynamicOutputs == null || source.DynamicOutputs.Count == 0)
+                return BuildInputSummary(node);
+
+            var parts = new List<string>();
+            foreach (var outp in source.DynamicOutputs)
+            {
+                var key = outp?.Key?.Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                if (!_workflowExecutionService.TryGetScopedNodeStringOutputForLookupChain(executionId, source.Id, key, out var val))
+                    continue;
+                var compact = ToCompactText(val);
+                if (string.IsNullOrWhiteSpace(compact)) continue;
+                parts.Add($"{source.Title ?? source.Id}.{key}: {compact}");
+                if (parts.Count >= 4) break;
+            }
+
+            return parts.Count > 0 ? string.Join(" | ", parts) : BuildInputSummary(node);
+        }
+
+        private string BuildOutputSummaryForExecution(WorkflowNode node, string executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId) || node.DynamicOutputs == null || node.DynamicOutputs.Count == 0)
+                return BuildOutputSummary(node);
+
+            var parts = new List<string>();
+            foreach (var outp in node.DynamicOutputs)
+            {
+                var key = outp?.Key?.Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                if (!_workflowExecutionService.TryGetScopedNodeStringOutputForLookupChain(executionId, node.Id, key, out var val))
+                    continue;
+                var compact = ToCompactText(val);
+                if (string.IsNullOrWhiteSpace(compact)) continue;
+                parts.Add($"{key}: {compact}");
+                if (parts.Count >= 4) break;
+            }
+
+            return parts.Count > 0 ? string.Join(" | ", parts) : BuildOutputSummary(node);
+        }
+
+        private static string NormalizeRootExecutionId(string executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId)) return string.Empty;
+            var list = WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(executionId).ToList();
+            return list.Count > 0 ? list[^1] : executionId;
+        }
+
+        private void TraceNodeStarted(WorkflowNode node, WorkflowConnection? incoming, string laneId)
+        {
+            if (!EnableExecutionTraceLog || node == null) return;
+            var executionKey = string.IsNullOrWhiteSpace(node.LastExecutionId) ? laneId : node.LastExecutionId!;
+            var rootExecutionId = NormalizeRootExecutionId(executionKey);
+            var parentTitle = incoming?.FromNode?.Title;
+            var parentNodeId = incoming?.FromNode?.Id;
+            var depth = 0;
+            lock (_executionTraceLock)
+            {
+                if (!_executionTraceDepthByRun.TryGetValue(rootExecutionId, out var byNode))
+                {
+                    byNode = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                    _executionTraceDepthByRun[rootExecutionId] = byNode;
+                }
+
+                if (!string.IsNullOrWhiteSpace(parentNodeId) && byNode.TryGetValue(parentNodeId, out var parentDepth))
+                    depth = parentDepth + 1;
+                else if (incoming?.FromNode != null)
+                    depth = 1;
+
+                byNode[node.Id] = depth;
+            }
+
+            var inputSummary = BuildInputSummaryForExecution(node, incoming, executionKey);
+            var item = new ExecutionTraceLogItemViewModel(
+                node: node,
+                executionId: executionKey,
+                rootExecutionId: rootExecutionId,
+                iconKey: ResolveNodeIconKey(node),
+                nodeColorKey: string.IsNullOrWhiteSpace(node.ColorKey) ? "SecondaryBrush" : node.ColorKey!,
+                parentNodeTitle: parentTitle,
+                parentNodeId: parentNodeId,
+                depth: depth)
+            {
+                InputSummary = inputSummary,
+                Status = "running"
+            };
+
+            var treeNode = new ExecutionTraceTreeNodeViewModel(
+                rootExecutionId: rootExecutionId,
+                executionId: executionKey,
+                nodeId: node.Id,
+                nodeTitle: item.NodeTitle,
+                nodeType: node.Type.ToString(),
+                iconKey: ResolveNodeIconKey(node),
+                parentNodeId: parentNodeId ?? string.Empty,
+                isRunRoot: false,
+                nodeBrush: node.NodeBrush,
+                depth: depth)
+            {
+                InputSummary = item.InputSummary,
+                Status = "running"
+            };
+
+            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (!EnableExecutionTraceLog) return;
+                lock (_executionTraceLock)
+                {
+                    if (!_executionTraceTreeRootByRun.TryGetValue(rootExecutionId, out var rootNode))
+                    {
+                        rootNode = new ExecutionTraceTreeNodeViewModel(
+                            rootExecutionId: rootExecutionId,
+                            executionId: rootExecutionId,
+                            nodeId: rootExecutionId,
+                            nodeTitle: $"Run {rootExecutionId}",
+                            nodeType: "Run",
+                            iconKey: "timeline-arrow duotone-light",
+                            parentNodeId: string.Empty,
+                            isRunRoot: true,
+                            nodeBrush: null,
+                            depth: 0);
+                        _executionTraceTreeRootByRun[rootExecutionId] = rootNode;
+                        ExecutionTraceRunRoots.Add(rootNode);
+                    }
+
+                    ExecutionTraceTreeNodeViewModel parentTreeNode = rootNode;
+                    var parentResolved = false;
+                    if (!string.IsNullOrWhiteSpace(parentNodeId))
+                    {
+                        var parentKey = BuildTreeRunNodeKey(rootExecutionId, parentNodeId);
+                        if (_executionTraceTreeNodesByRunAndNode.TryGetValue(parentKey, out var parentCandidates) &&
+                            parentCandidates.Count > 0)
+                        {
+                            parentTreeNode = PickBestParentTreeNode(parentCandidates, executionKey) ?? parentTreeNode;
+                            parentResolved = true;
+                        }
+                    }
+                    if (!parentResolved)
+                    {
+                        parentTreeNode = PickBestParentFromExecutionChain(executionKey, rootExecutionId) ?? parentTreeNode;
+                    }
+
+                    parentTreeNode.Children.Add(treeNode);
+                    var nodeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);
+                    if (!_executionTraceTreeNodesByRunAndNode.TryGetValue(nodeKey, out var list))
+                    {
+                        list = new List<ExecutionTraceTreeNodeViewModel>();
+                        _executionTraceTreeNodesByRunAndNode[nodeKey] = list;
+                    }
+                    list.Add(treeNode);
+
+                    if (!_executionTraceTreeNodesByExecutionId.TryGetValue(executionKey, out var byExecList))
+                    {
+                        byExecList = new List<ExecutionTraceTreeNodeViewModel>();
+                        _executionTraceTreeNodesByExecutionId[executionKey] = byExecList;
+                    }
+                    byExecList.Add(treeNode);
+
+                    ExecutionTraceLogs.Add(item);
+                    if (!ExecutionTraceNodeTypeOptions.Contains(item.NodeType))
+                        ExecutionTraceNodeTypeOptions.Add(item.NodeType);
+                    while (ExecutionTraceLogs.Count > MaxExecutionTraceRows)
+                        ExecutionTraceLogs.RemoveAt(0);
+                }
+                RefreshExecutionTraceFilter();
+            }));
+        }
+
+        private void TraceNodeCompleted(WorkflowNode node, TimeSpan elapsed)
+        {
+            if (!EnableExecutionTraceLog || node == null) return;
+            var executionKey = node.LastExecutionId ?? string.Empty;
+            var elapsedText = elapsed.TotalMilliseconds >= 1
+                ? $"{elapsed.TotalMilliseconds:0} ms"
+                : "<1 ms";
+            var outputSummary = BuildOutputSummaryForExecution(node, executionKey);
+
+            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (!EnableExecutionTraceLog) return;
+                lock (_executionTraceLock)
+                {
+                    var row = ExecutionTraceLogs
+                        .LastOrDefault(x =>
+                            ReferenceEquals(x.Node, node)
+                            && (executionKey.Length == 0 || string.Equals(x.ExecutionId, executionKey, StringComparison.Ordinal))
+                            && string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
+                    if (row != null)
+                    {
+                        row.Status = "completed";
+                        row.ElapsedText = elapsedText;
+                        row.OutputSummary = outputSummary;
+                    }
+
+                    var rootExecutionId = NormalizeRootExecutionId(executionKey);
+                    var treeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);
+                    if (_executionTraceTreeNodesByRunAndNode.TryGetValue(treeKey, out var treeRows))
+                    {
+                        var trow = treeRows.LastOrDefault(x =>
+                            string.Equals(x.ExecutionId, executionKey, StringComparison.Ordinal) &&
+                            string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase))
+                                   ?? treeRows.LastOrDefault(x => string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
+                        if (trow != null)
+                        {
+                            trow.Status = "completed";
+                            trow.ElapsedText = elapsedText;
+                            trow.OutputSummary = outputSummary;
+                        }
+                    }
+                }
+            }));
+        }
+
+        private void TraceNodeFailed(WorkflowNode node, string errorMessage)
+        {
+            if (!EnableExecutionTraceLog || node == null) return;
+            var executionKey = node.LastExecutionId ?? string.Empty;
+            var effectiveExecutionId = string.IsNullOrWhiteSpace(node.LastExecutionId) ? "failed" : node.LastExecutionId!;
+            var err = ToCompactText(errorMessage, 400);
+            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (!EnableExecutionTraceLog) return;
+                lock (_executionTraceLock)
+                {
+                    var row = ExecutionTraceLogs
+                        .LastOrDefault(x =>
+                            ReferenceEquals(x.Node, node)
+                            && (executionKey.Length == 0 || string.Equals(x.ExecutionId, executionKey, StringComparison.Ordinal))
+                            && string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
+                    if (row == null)
+                    {
+                        row = new ExecutionTraceLogItemViewModel(
+                            node,
+                            effectiveExecutionId,
+                            NormalizeRootExecutionId(effectiveExecutionId),
+                            ResolveNodeIconKey(node),
+                            string.IsNullOrWhiteSpace(node.ColorKey) ? "SecondaryBrush" : node.ColorKey!,
+                            null,
+                            null,
+                            0);
+                        ExecutionTraceLogs.Add(row);
+                    }
+                    row.Status = "failed";
+                    row.ErrorMessage = err;
+
+                    var rootExecutionId = NormalizeRootExecutionId(effectiveExecutionId);
+                    var treeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);
+                    if (_executionTraceTreeNodesByRunAndNode.TryGetValue(treeKey, out var treeRows))
+                    {
+                        var trow = treeRows.LastOrDefault(x =>
+                            string.Equals(x.ExecutionId, effectiveExecutionId, StringComparison.Ordinal) &&
+                            string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase))
+                                   ?? treeRows.LastOrDefault(x => string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
+                        if (trow != null)
+                        {
+                            trow.Status = "failed";
+                            trow.ErrorMessage = err;
+                        }
+                    }
+                }
+            }));
         }
 
         /// <summary>
@@ -304,6 +960,7 @@ namespace FlowMy.ViewModels
                     lock (pendingNodesLock)
                         pendingNodesThisSession.Add(node);
                     NotifyEnteringNode(incoming);
+                    TraceNodeStarted(node, incoming, sessionId);
                     _executionVisualizer.OnNodeStarted(node, sessionId);
                     RegisterRunningNodeVisual(node);
                 }
@@ -313,6 +970,7 @@ namespace FlowMy.ViewModels
                     lock (pendingNodesLock)
                         pendingNodesThisSession.Remove(node);
                     if (sessionToken.IsCancellationRequested) return;
+                    TraceNodeCompleted(node, elapsed);
                     _executionVisualizer.OnNodeCompleted(node, elapsed, sessionId);
 
                     FlowMy.Services.Workflow.NodeExecutors.DataFetcherNodeExecutor.NotifyNodeCompleted(node);
@@ -322,6 +980,7 @@ namespace FlowMy.ViewModels
 
                 void OnNodeFailed(WorkflowNode node, string errorMessage)
                 {
+                    TraceNodeFailed(node, errorMessage);
                     _executionVisualizer.OnNodeFailed(node, errorMessage);
                 }
 
@@ -462,6 +1121,7 @@ namespace FlowMy.ViewModels
                     lock (pendingNodesLockFromNode)
                         pendingNodesFromNode.Add(node);
                     NotifyEnteringNode(incoming);
+                    TraceNodeStarted(node, incoming, sessionId);
                     _executionVisualizer.OnNodeStarted(node, sessionId);
                     RegisterRunningNodeVisual(node);
                 }
@@ -471,6 +1131,7 @@ namespace FlowMy.ViewModels
                     lock (pendingNodesLockFromNode)
                         pendingNodesFromNode.Remove(node);
                     if (sessionTokenFromNode.IsCancellationRequested) return;
+                    TraceNodeCompleted(node, elapsed);
                     _executionVisualizer.OnNodeCompleted(node, elapsed, sessionId);
 
                     FlowMy.Services.Workflow.NodeExecutors.DataFetcherNodeExecutor.NotifyNodeCompleted(node);
@@ -480,6 +1141,7 @@ namespace FlowMy.ViewModels
 
                 void OnNodeFailed(WorkflowNode node, string errorMessage)
                 {
+                    TraceNodeFailed(node, errorMessage);
                     _executionVisualizer.OnNodeFailed(node, errorMessage);
                 }
 
@@ -593,6 +1255,7 @@ namespace FlowMy.ViewModels
                     lock (pendingAutoLock)
                         pendingAutoNodes.Add(node);
                     NotifyEnteringNode(incoming);
+                    TraceNodeStarted(node, incoming, runId);
                     _executionVisualizer.OnNodeStarted(node, runId);
                     RegisterRunningNodeVisual(node);
                 }
@@ -602,6 +1265,7 @@ namespace FlowMy.ViewModels
                     lock (pendingAutoLock)
                         pendingAutoNodes.Remove(node);
                     if (laneToken.IsCancellationRequested) return;
+                    TraceNodeCompleted(node, elapsed);
                     _executionVisualizer.OnNodeCompleted(node, elapsed, runId);
 
                     FlowMy.Services.Workflow.NodeExecutors.DataFetcherNodeExecutor.NotifyNodeCompleted(node);
@@ -611,6 +1275,7 @@ namespace FlowMy.ViewModels
 
                 void OnNodeFailed(WorkflowNode node, string errorMessage)
                 {
+                    TraceNodeFailed(node, errorMessage);
                     _executionVisualizer.OnNodeFailed(node, errorMessage);
                 }
 

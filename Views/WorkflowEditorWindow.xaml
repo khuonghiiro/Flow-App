@@ -8,6 +8,7 @@
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:conv="clr-namespace:FlowMy.Converters"
         xmlns:models="clr-namespace:FlowMy.Models"
+        xmlns:viewModels="clr-namespace:FlowMy.ViewModels"
         mc:Ignorable="d"
         Title="Workflow Editor"
         Height="700"
@@ -149,6 +150,14 @@
                                 <TextBlock x:Name="StopTestText" Text="Kết thúc" FontWeight="Bold"/>
                             </StackPanel>
                         </Button>
+
+                        <CheckBox Margin="12,0,0,0"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding EnableExecutionTraceLog, Mode=TwoWay}"
+                                  ToolTip="Bật log runtime theo node (tắt để giảm tải)"
+                                  Foreground="White"
+                                  FontWeight="SemiBold"
+                                  Content="Hiện log chạy"/>
                 </StackPanel>
 
                 <!-- Right Section: Persistence -->
@@ -1726,7 +1735,13 @@ Cursor="Hand"
 
             <!-- Canvas area -->
             <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
                 <ScrollViewer x:Name="ScrollViewer"
+                        Grid.Row="0"
                         HorizontalScrollBarVisibility="Hidden"
                         VerticalScrollBarVisibility="Hidden"
                         Background="{DynamicResource CanvasBackgroundBrush}"
@@ -1762,8 +1777,234 @@ Cursor="Hand"
                     </Grid>
                 </ScrollViewer>
 
+                <Border Grid.Row="1"
+                        Visibility="{Binding IsExecutionTracePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Background="{DynamicResource CardColor}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1,1,0,0"
+                        MaxHeight="320">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource HeaderBackgroundMainBrush}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="0,0,0,1"
+                                Padding="10,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <controls:SvgViewboxEx Width="14"
+                                                           Height="14"
+                                                           Margin="0,0,6,0"
+                                                           Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='timeline-arrow duotone-light'}"/>
+                                    <TextBlock Text="Execution Log"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               FontWeight="SemiBold"
+                                               FontSize="11"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1" Text="Status" Foreground="White" Opacity="0.8" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                                <ComboBox Grid.Column="2"
+                                          Width="100"
+                                          Height="24"
+                                          ItemsSource="{Binding ExecutionTraceStatusOptions}"
+                                          SelectedItem="{Binding ExecutionTraceStatusFilter, Mode=TwoWay}"
+                                          VerticalAlignment="Center"/>
+
+                                <TextBlock Grid.Column="3" Text="Type" Foreground="White" Opacity="0.8" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                                <ComboBox Grid.Column="4"
+                                          Width="130"
+                                          Height="24"
+                                          ItemsSource="{Binding ExecutionTraceNodeTypeOptions}"
+                                          SelectedItem="{Binding ExecutionTraceNodeTypeFilter, Mode=TwoWay}"
+                                          VerticalAlignment="Center"/>
+
+                                <TextBox Grid.Column="5"
+                                         Width="240"
+                                         Height="24"
+                                         Margin="12,0,8,0"
+                                         VerticalAlignment="Center"
+                                         Text="{Binding ExecutionTraceSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Tìm theo node name/id/key/output/error"/>
+
+                                <Button Grid.Column="7"
+                                        Margin="0,0,8,0"
+                                        Padding="8,2"
+                                        Command="{Binding ExportExecutionTraceLogsCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Xuất log run ra JSON">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-export duotone-light'}"/>
+                                        <TextBlock Margin="5,0,0,0" Foreground="White" VerticalAlignment="Center" Text="Tải log"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="8"
+                                        Margin="8,0,0,0"
+                                        Padding="8,2"
+                                        Command="{Binding ExpandAllExecutionTraceTreeCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Mở tất cả nhánh">
+                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='plus regular'}"/>
+                                </Button>
+                                <Button Grid.Column="8"
+                                        Margin="38,0,0,0"
+                                        Padding="8,2"
+                                        Command="{Binding CollapseAllExecutionTraceTreeCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Đóng tất cả nhánh">
+                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='minus regular'}"/>
+                                </Button>
+                                <Button Grid.Column="8"
+                                        Margin="68,0,0,0"
+                                        Padding="8,2"
+                                        Command="{Binding ClearExecutionTraceLogsCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Xóa log hiện tại">
+                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='trash-can-list sharp-regular'}"/>
+                                </Button>
+                                <Button Grid.Column="9"
+                                        Padding="8,2"
+                                        Command="{Binding ToggleExecutionTracePanelCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Ẩn/hiện panel log">
+                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chevron-down regular'}"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="1">
+                        <TreeView ItemsSource="{Binding ExecutionTraceRunRoots}"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True">
+                                <TreeView.ItemContainerStyle>
+                                    <Style TargetType="TreeViewItem">
+                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                                    </Style>
+                                </TreeView.ItemContainerStyle>
+                                <TreeView.Resources>
+                                    <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
+                                    <HierarchicalDataTemplate DataType="{x:Type viewModels:ExecutionTraceTreeNodeViewModel}"
+                                                              ItemsSource="{Binding Children}">
+                                        <Border Margin="{Binding ItemMargin}"
+                                                Padding="6"
+                                                CornerRadius="6"
+                                                BorderThickness="1"
+                                                BorderBrush="{DynamicResource BorderColor}"
+                                                Background="{DynamicResource CardColor}"
+                                                Visibility="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}">
+                                                <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="20"
+                                                            Height="20"
+                                                            CornerRadius="10"
+                                                            Background="{Binding NodeBrush}"
+                                                            Margin="0,0,6,0"
+                                                            Cursor="Hand"
+                                                            MouseLeftButtonUp="ExecutionLogNodeIcon_MouseLeftButtonUp"
+                                                            ToolTip="Di chuyển tới node">
+                                                        <controls:SvgViewboxEx Width="11"
+                                                                               Height="11"
+                                                                               Fill="{DynamicResource TextOnPrimaryBrush}"
+                                                                               Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+                                                    </Border>
+                                                    <Grid Margin="{Binding ConnectorIndent}" VerticalAlignment="Center">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="10"/>
+                                                            <ColumnDefinition Width="12"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Rectangle Grid.Column="0"
+                                                                   Width="1"
+                                                                   Height="14"
+                                                                   Fill="{DynamicResource BorderColor}"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"
+                                                                   Visibility="{Binding ShowConnector, Converter={StaticResource LocalBoolToVis}}"/>
+                                                        <Rectangle Grid.Column="1"
+                                                                   Width="10"
+                                                                   Height="1"
+                                                                   Fill="{DynamicResource BorderColor}"
+                                                                   HorizontalAlignment="Left"
+                                                                   VerticalAlignment="Center"
+                                                                   Visibility="{Binding ShowConnector, Converter={StaticResource LocalBoolToVis}}"/>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding NodeTitle}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Status}"
+                                                               Margin="8,0,0,0"
+                                                               FontSize="10"
+                                                               Opacity="0.75"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding ElapsedText}"
+                                                               Margin="8,0,0,0"
+                                                               FontSize="10"
+                                                               Opacity="0.75"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <TextBlock Margin="26,1,0,0"
+                                                           FontSize="9"
+                                                           Opacity="0.6"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
+                                                <TextBlock Text="{Binding InputSummary}"
+                                                           Margin="26,2,0,0"
+                                                           TextWrapping="Wrap"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock Text="{Binding OutputSummary}"
+                                                           Margin="26,2,0,0"
+                                                           TextWrapping="Wrap"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource SuccessBrush}"/>
+                                                <TextBlock Text="{Binding ErrorMessage}"
+                                                           Margin="26,2,0,0"
+                                                           TextWrapping="Wrap"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource DangerBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </HierarchicalDataTemplate>
+                                </TreeView.Resources>
+                            </TreeView>
+                        </Grid>
+                    </Grid>
+                </Border>
+
                 <!-- Minimap và Fit to View button -->
                 <Grid x:Name="MinimapPanel"
+                      Grid.Row="0"
                       HorizontalAlignment="Right"
                       VerticalAlignment="Bottom"
                       Margin="20">
@@ -2299,6 +2540,7 @@ Cursor="Hand"
                 <!-- Floating panel: hiển thị các node đang chạy -->
                 <!-- Canvas overlay chỉ bắt hit-test tại vùng con (panel), không che canvas bên dưới -->
                 <Canvas x:Name="ExecutionOverlayCanvas"
+                        Grid.Row="0"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch">
                     <Border x:Name="ExecutionFloatingPanel"
