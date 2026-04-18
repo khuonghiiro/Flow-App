@@ -198,7 +198,7 @@ Cursor="Hand"
                         <controls:SvgViewboxEx Width="16" Height="16" Fill="White"
     Source="{Binding Source={x:Static sys:String.Empty},
              Converter={StaticResource IconKeyToPathConverter},
-             ConverterParameter='file-export regular'}"/>
+             ConverterParameter='file-brackets-curly duotone-light'}"/>
                     </Button>
 
                     <!-- Export Compressed Button — icon only -->
@@ -228,7 +228,7 @@ Cursor="Hand"
                         <controls:SvgViewboxEx Width="16" Height="16" Fill="White"
      Source="{Binding Source={x:Static sys:String.Empty},
               Converter={StaticResource IconKeyToPathConverter},
-              ConverterParameter='file-export solid'}"/>
+              ConverterParameter='file-code duotone-light'}"/>
                     </Button>
 
 

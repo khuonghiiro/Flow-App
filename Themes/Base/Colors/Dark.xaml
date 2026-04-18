@@ -165,6 +165,21 @@
     <SolidColorBrush x:Key="SelectionBrush" Color="#FF373A40"/>
     <SolidColorBrush x:Key="SelectedTextBrush" Color="#FFFFFFFF"/>
 
+    <!-- ComboBox: field = WindowBackground; popup = WindowBody; viền rõ trên LCD -->
+    <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldBorderBrush" Color="#FF5C636E"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBorderBrush" Color="#FF6D757F"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBorderBrush" Color="#FF4A8FD9"/>
+    <SolidColorBrush x:Key="ComboBoxPopupBackground" Color="#FF25262B"/>
+    <SolidColorBrush x:Key="ComboBoxPopupBorderBrush" Color="#FF4A5058"/>
+    <SolidColorBrush x:Key="ComboBoxGlyphBrush" Color="#FFC8CED4"/>
+    <SolidColorBrush x:Key="ComboBoxItemHoverBrush" Color="#FF383D47"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedBrush" Color="#FF323E4D"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedHoverBrush" Color="#FF3D4A5C"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedForegroundBrush" Color="#FFF8FAFC"/>
+
     <!-- ===== CARD ===== -->
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FF25262B"/>
 

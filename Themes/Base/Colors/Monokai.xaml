@@ -182,6 +182,21 @@
     <SolidColorBrush x:Key="LavenderPressedBrush" Color="#60A6E22E"/>
     <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FF272822"/>
 
+    <!-- ComboBox: field = WindowBackground; popup = WindowBody -->
+    <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldBorderBrush" Color="#FF706B5C"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBorderBrush" Color="#FF827C6A"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBorderBrush" Color="#FFA6E22E"/>
+    <SolidColorBrush x:Key="ComboBoxPopupBackground" Color="#FF3E3D32"/>
+    <SolidColorBrush x:Key="ComboBoxPopupBorderBrush" Color="#FF6A6556"/>
+    <SolidColorBrush x:Key="ComboBoxGlyphBrush" Color="#FFD8D4C4"/>
+    <SolidColorBrush x:Key="ComboBoxItemHoverBrush" Color="#FF4D4A3E"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedBrush" Color="#FF454830"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedHoverBrush" Color="#FF535636"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedForegroundBrush" Color="#FFF8F8F2"/>
+
     <!-- LISTVIEW HEADER -->
     <SolidColorBrush x:Key="ListViewHeaderBrush"  Color="#FF1E1D18"/>
     <SolidColorBrush x:Key="ListViewItemBrush"    Color="#FFF8F8F2"/>

@@ -710,6 +710,20 @@
     <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#FF1E293B"/>
     <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#FFFFFFFF"/>
     <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF0F172A"/>
+    <!-- ComboBox chrome (each theme overrides; calmer than generic TextBox on dark header) -->
+    <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldBorderBrush" Color="#FF5C697E"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBorderBrush" Color="#FF6B7B91"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBorderBrush" Color="#FF7C8FA8"/>
+    <SolidColorBrush x:Key="ComboBoxPopupBackground" Color="#FF1E293B"/>
+    <SolidColorBrush x:Key="ComboBoxPopupBorderBrush" Color="#FF4A5668"/>
+    <SolidColorBrush x:Key="ComboBoxGlyphBrush" Color="#FFCED6E0"/>
+    <SolidColorBrush x:Key="ComboBoxItemHoverBrush" Color="#FF3A4A5E"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedBrush" Color="#FF354760"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedHoverBrush" Color="#FF425572"/>
+    <SolidColorBrush x:Key="ComboBoxItemSelectedForegroundBrush" Color="#FFFFFFFF"/>
     <!-- Border Colors -->
     <SolidColorBrush x:Key="BorderDarkBrush" Color="#FF334155"/>
 
