@@ -2,732 +2,439 @@
                     xmlns:conv="clr-namespace:FlowMy.Converters"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- TextBlock -->
-    <!--<Style TargetType="TextBlock">
-        <Setter Property="FontSize" Value="12" />
-    </Style>-->
-
-    <!-- TextBox -->
-    <!--<Style TargetType="TextBox">
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="5" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>-->
-
-    <!-- PasswordBox -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  DEFAULT PasswordBox                                            -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style TargetType="PasswordBox">
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-        <Setter Property="Background" Value="{DynamicResource TextBoxBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="5" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Foreground"                Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Background"                Value="{DynamicResource TextBoxBackground}"/>
+        <Setter Property="BorderBrush"               Value="{DynamicResource ControlBorderBrush}"/>
+        <Setter Property="BorderThickness"           Value="1"/>
+        <Setter Property="Padding"                   Value="8,0"/>
+        <Setter Property="FontSize"                  Value="13"/>
+        <Setter Property="Height"                    Value="34"/>
+        <Setter Property="VerticalContentAlignment"  Value="Center"/>
     </Style>
 
-    <!--textbox cho username -->
-    <Style TargetType="TextBox" x:Key="RoundedUserNameTextBoxWithIcon">
-        <Setter Property="Background" Value="{DynamicResource TextBoxBackground}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1.5"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Height" Value="40"/>
-        <Setter Property="Padding" Value="30,0,15,0"/>
-
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  BASE TextBox — rounded border, hover + focus states           -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="BaseTextBox" TargetType="TextBox">
+        <Setter Property="Foreground"               Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Background"               Value="Transparent"/>
+        <Setter Property="BorderBrush"              Value="{DynamicResource ControlBorderBrush}"/>
+        <Setter Property="BorderThickness"          Value="1"/>
+        <Setter Property="FontSize"                 Value="13"/>
+        <Setter Property="Padding"                  Value="8,0"/>
+        <Setter Property="Height"                   Value="34"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="CaretBrush"               Value="{DynamicResource TextBrush}"/>
+        <Setter Property="SnapsToDevicePixels"       Value="True"/>
+        <Setter Property="UseLayoutRounding"         Value="True"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
         <Setter Property="Validation.ErrorTemplate">
             <Setter.Value>
-                <ControlTemplate>
-                    <AdornedElementPlaceholder/>
+                <ControlTemplate><AdornedElementPlaceholder/></ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource TextBoxHoverBorderBrush}"/>
+                            <Setter TargetName="border" Property="Background"   Value="{DynamicResource TextBoxHoverBackground}"/>
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="border" Property="Background"   Value="{DynamicResource TextBoxFocusBackground}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Background"   Value="{DynamicResource DisabledBackground}"/>
+                            <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource ControlBorderBrush}"/>
+                            <Setter Property="Foreground"                       Value="{DynamicResource DisabledTextBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsReadOnly" Value="True">
+                            <Setter TargetName="border" Property="Background"   Value="{DynamicResource ReadOnlyBackground}"/>
+                            <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource ReadOnlyBorderBrush}"/>
+                            <Setter Property="Foreground"                       Value="{DynamicResource ReadOnlyTextBrush}"/>
+                        </Trigger>
+                        <Trigger Property="Validation.HasError" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource DangerColor}"/>
+                        </Trigger>
+                        <!-- Focused without validation error — ensure focus border wins -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsKeyboardFocused"   Value="True"/>
+                                <Condition Property="Validation.HasError" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
 
+    <!-- Underline-only variant (BaseTextBoxV2) -->
+    <Style x:Key="BaseTextBoxV2" TargetType="TextBox">
+        <Setter Property="Foreground"               Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Background"               Value="Transparent"/>
+        <Setter Property="BorderBrush"              Value="{DynamicResource ControlBorderBrush}"/>
+        <Setter Property="BorderThickness"          Value="0,0,0,1"/>
+        <Setter Property="FontSize"                 Value="12"/>
+        <Setter Property="Padding"                  Value="4,4,0,4"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="CaretBrush"               Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Cursor"                   Value="IBeam"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
+        <Setter Property="Validation.ErrorTemplate">
+            <Setter.Value>
+                <ControlTemplate><AdornedElementPlaceholder/></ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="0"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush"       Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="border" Property="BorderThickness"   Value="0,0,0,2"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+                            <Setter Property="Foreground"                       Value="{DynamicResource DisabledTextBrush}"/>
+                            <Setter Property="Opacity"                          Value="0.5"/>
+                        </Trigger>
+                        <Trigger Property="IsReadOnly" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ReadOnlyBorderBrush}"/>
+                            <Setter Property="Foreground"                       Value="{DynamicResource ReadOnlyTextBrush}"/>
+                        </Trigger>
+                        <Trigger Property="Validation.HasError" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource DangerColor}"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsKeyboardFocused"   Value="True"/>
+                                <Condition Property="Validation.HasError" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="border" Property="BorderBrush"     Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="border" Property="BorderThickness" Value="0,0,0,2"/>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  MULTILINE INPUT (InputTextBoxV2)                               -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="InputTextBoxV2" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
+        <Setter Property="Background"              Value="{DynamicResource SurfaceColor}"/>
+        <Setter Property="BorderBrush"             Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness"         Value="1"/>
+        <Setter Property="Padding"                 Value="8,6"/>
+        <Setter Property="FontSize"                Value="13"/>
+        <Setter Property="FontWeight"              Value="Normal"/>
+        <Setter Property="VerticalContentAlignment" Value="Top"/>
+        <Setter Property="Height"                  Value="NaN"/>
+        <Setter Property="TextWrapping"            Value="Wrap"/>
+        <Setter Property="AcceptsReturn"           Value="True"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <!-- TextArea alias -->
+    <Style x:Key="TextAreaTextBox" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxV2}">
+        <Setter Property="Height" Value="80"/>
+    </Style>
+
+    <!-- Standard form input -->
+    <Style x:Key="InputTextBox" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
+        <Setter Property="Padding"    Value="10,0"/>
+        <Setter Property="FontSize"   Value="13"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  QA-style TextBox / Label                                       -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="QaTextBox" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding"  Value="8,0"/>
+        <Setter Property="Margin"   Value="0,0,0,4"/>
+    </Style>
+
+    <Style x:Key="QaTextBlock" TargetType="TextBlock">
+        <Setter Property="Foreground"  Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontSize"    Value="13"/>
+        <Setter Property="FontWeight"  Value="Medium"/>
+        <Setter Property="Margin"      Value="0,8,0,4"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  READ-ONLY TextBox                                              -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="ReadOnlyTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
+        <Setter Property="IsReadOnly"    Value="True"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding"       Value="10,6"/>
+        <Setter Property="FontSize"      Value="13"/>
+        <Setter Property="Height"        Value="NaN"/>
+        <Setter Property="TextWrapping"  Value="Wrap"/>
+        <Setter Property="Cursor"        Value="Arrow"/>
+        <Setter Property="VerticalContentAlignment" Value="Top"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  LOGIN TextBox with icon                                        -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style TargetType="TextBox" x:Key="RoundedUserNameTextBoxWithIcon">
+        <Setter Property="Background"      Value="{DynamicResource TextBoxBackground}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource TextBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource ControlBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="FontSize"        Value="14"/>
+        <Setter Property="Height"          Value="40"/>
+        <Setter Property="Padding"         Value="32,0,12,0"/>
+        <Setter Property="CaretBrush"      Value="{DynamicResource TextBrush}"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
+        <Setter Property="Validation.ErrorTemplate">
+            <Setter.Value>
+                <ControlTemplate><AdornedElementPlaceholder/></ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Grid>
                         <Border x:Name="Border"
-                      Background="{TemplateBinding Background}"
-                      BorderBrush="{TemplateBinding BorderBrush}"
-                      BorderThickness="{TemplateBinding BorderThickness}"
-                      CornerRadius="10">
-
-                            <Border.Effect>
-                                <DropShadowEffect 
-                                ShadowDepth="2" 
-                                BlurRadius="8" 
-                                Opacity="0.1"
-                                Color="Black"/>
-                            </Border.Effect>
-
-                        </Border>
-
-                        <TextBlock Text="ðŸ‘¤"
-                         FontSize="16"
-                         Foreground="#888"
-                         VerticalAlignment="Center"
-                         HorizontalAlignment="Left"
-                         Margin="8,0,0,0"/>
-
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"/>
+                        <TextBlock Text="👤" FontSize="15" Foreground="#888"
+                                   VerticalAlignment="Center" HorizontalAlignment="Left"
+                                   Margin="10,0,0,0" IsHitTestVisible="False"/>
                         <ScrollViewer Margin="{TemplateBinding Padding}"
-                                  VerticalAlignment="Center"
-                                  Focusable="False"
-                                  x:Name="PART_ContentHost"/>
+                                      VerticalAlignment="Center"
+                                      Focusable="False"
+                                      x:Name="PART_ContentHost"/>
                     </Grid>
-
                     <ControlTemplate.Triggers>
-
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Border" Property="Opacity" Value="0.6"/>
-                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource DisabledBackground}"/>
-                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+                            <Setter TargetName="Border" Property="Opacity"     Value="0.6"/>
+                            <Setter TargetName="Border" Property="Background"  Value="{DynamicResource DisabledBackground}"/>
                         </Trigger>
-
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="Border" Property="BorderBrush" Value="#FFEF5350"/>
                         </Trigger>
-
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
-                                <Condition Property="IsKeyboardFocused" Value="True"/>
+                                <Condition Property="IsKeyboardFocused"   Value="True"/>
                                 <Condition Property="Validation.HasError" Value="False"/>
                             </MultiTrigger.Conditions>
                             <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                            <Setter TargetName="Border" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect 
-                                    ShadowDepth="4" 
-                                    BlurRadius="12" 
-                                    Opacity="0.3"
-                                    Color="#000000"/>
-                                </Setter.Value>
-                            </Setter>
                         </MultiTrigger>
-
                     </ControlTemplate.Triggers>
-
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!--textbox cho password-->
+    <!-- LOGIN PasswordBox with icon -->
     <Style TargetType="PasswordBox" x:Key="RoundedPasswordBoxWithIconStyle">
-        <Setter Property="Background" Value="{DynamicResource TextBoxBackground}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+        <Setter Property="Background"      Value="{DynamicResource TextBoxBackground}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource TextBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Height" Value="40"/>
-        <Setter Property="Padding" Value="30,0,15,0"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
+        <Setter Property="FontSize"        Value="14"/>
+        <Setter Property="Height"          Value="40"/>
+        <Setter Property="Padding"         Value="32,0,12,0"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
         <Setter Property="Validation.ErrorTemplate">
             <Setter.Value>
-                <ControlTemplate>
-                    <AdornedElementPlaceholder/>
-                </ControlTemplate>
+                <ControlTemplate><AdornedElementPlaceholder/></ControlTemplate>
             </Setter.Value>
         </Setter>
-
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="PasswordBox">
                     <Grid>
                         <Border x:Name="Border"
-                      Background="{TemplateBinding Background}"
-                      BorderBrush="{TemplateBinding BorderBrush}"
-                      BorderThickness="{TemplateBinding BorderThickness}"
-                      CornerRadius="10">
-
-                            <Border.Effect>
-                                <DropShadowEffect 
-                                ShadowDepth="2" 
-                                BlurRadius="8" 
-                                Opacity="0.1"
-                                Color="Black"/>
-                            </Border.Effect>
-
-                        </Border>
-
-                        <TextBlock Text="ðŸ”’"
-                         FontSize="16"
-                         Foreground="#888"
-                         VerticalAlignment="Center"
-                         HorizontalAlignment="Left"
-                         Margin="8,0,0,0"/>
-
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"/>
+                        <TextBlock Text="🔒" FontSize="15" Foreground="#888"
+                                   VerticalAlignment="Center" HorizontalAlignment="Left"
+                                   Margin="10,0,0,0" IsHitTestVisible="False"/>
                         <ScrollViewer Margin="{TemplateBinding Padding}"
-                                  VerticalAlignment="Center"
-                                  Focusable="False"
-                                  x:Name="PART_ContentHost"/>
+                                      VerticalAlignment="Center"
+                                      Focusable="False"
+                                      x:Name="PART_ContentHost"/>
                     </Grid>
-
                     <ControlTemplate.Triggers>
-
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="Border" Property="BorderBrush" Value="#FFEF5350"/>
                         </Trigger>
-
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                            <Setter TargetName="Border" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect 
-                                    ShadowDepth="4" 
-                                    BlurRadius="12" 
-                                    Opacity="0.3"
-                                    Color="#000000"/>
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
-
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!--textbox cho TÃ¬m kiáº¿m -->
+    <!-- SEARCH TextBox with icon -->
     <Style TargetType="TextBox" x:Key="RoundedSearchTextBoxWithIcon">
-        <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="BorderBrush" Value="#9CA3AF"/>
+        <Setter Property="Background"      Value="{DynamicResource TransparentBrush}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource TextBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Height" Value="40"/>
-        <Setter Property="Padding" Value="30,0,15,0"/>
-        <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/>
-
-        <!--tooltip-->
-        <!--<Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />-->
-        
+        <Setter Property="FontSize"        Value="13"/>
+        <Setter Property="Height"          Value="34"/>
+        <Setter Property="Padding"         Value="32,0,10,0"/>
+        <Setter Property="CaretBrush"      Value="{DynamicResource TextBrush}"/>
         <Setter Property="Validation.ErrorTemplate">
             <Setter.Value>
-                <ControlTemplate>
-                    <AdornedElementPlaceholder/>
-                </ControlTemplate>
+                <ControlTemplate><AdornedElementPlaceholder/></ControlTemplate>
             </Setter.Value>
         </Setter>
-
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Grid>
                         <Border x:Name="Border"
-                  Background="{TemplateBinding Background}"
-                  BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="18">
-
-
-                        </Border>
-
-                        <TextBlock 
-                     Foreground="#888"
-                     VerticalAlignment="Center"
-                     HorizontalAlignment="Left"
-                     Margin="8,0,0,0">
-                                    <Path Data="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 
-16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 
-5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 
-4.99L20.49 19l-4.99-5zm-6 0C7.01 14 
-5 11.99 5 9.5S7.01 5 9.5 5 
-14 7.01 14 9.5 11.99 14 9.5 14z"
-              Fill="#9CA3AF"
-              Stretch="Uniform"
-              Width="16"
-              Height="16"
-              VerticalAlignment="Center"/>
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="17"/>
+                        <!-- Search icon -->
+                        <TextBlock Foreground="{DynamicResource TextSecondary}"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left"
+                                   Margin="9,0,0,0"
+                                   IsHitTestVisible="False">
+                            <Path Data="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                                  Fill="{DynamicResource TextSecondary}"
+                                  Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center"/>
                         </TextBlock>
-
                         <ScrollViewer Margin="{TemplateBinding Padding}"
-                              VerticalAlignment="Center"
-                              Focusable="False"
-                              x:Name="PART_ContentHost"/>
+                                      VerticalAlignment="Center"
+                                      Focusable="False"
+                                      x:Name="PART_ContentHost"/>
                     </Grid>
-
                     <ControlTemplate.Triggers>
-
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Border" Property="Opacity" Value="0.6"/>
-                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource DisabledBackground}"/>
-                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
                         </Trigger>
-
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="Border" Property="BorderBrush" Value="#FFEF5350"/>
                         </Trigger>
-
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
-                                <Condition Property="IsKeyboardFocused" Value="True"/>
+                                <Condition Property="IsKeyboardFocused"   Value="True"/>
                                 <Condition Property="Validation.HasError" Value="False"/>
                             </MultiTrigger.Conditions>
                             <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                            
                         </MultiTrigger>
-
                     </ControlTemplate.Triggers>
-
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <Style x:Key="TextBlockCenterBase" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="Margin" Value="0,0,0,5" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="TextAlignment" Value="Center" />
+    <!-- Default SearchBox (multiline-based) -->
+    <Style x:Key="DefaultSearchBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
+        <Setter Property="Background"      Value="{DynamicResource SurfaceColor}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding"         Value="10,0"/>
+        <Setter Property="FontSize"        Value="13"/>
+        <Setter Property="TextOptions.TextRenderingMode"  Value="ClearType"/>
+        <Setter Property="TextOptions.TextHintingMode"    Value="Fixed"/>
+        <Setter Property="UseLayoutRounding"              Value="True"/>
+        <Setter Property="SnapsToDevicePixels"             Value="True"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
+    </Style>
 
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  TEXTBLOCK STYLES                                               -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <Style x:Key="TextBlockCenterBase" TargetType="TextBlock">
+        <Setter Property="Foreground"         Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontSize"           Value="13"/>
+        <Setter Property="FontWeight"         Value="Medium"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
+        <Setter Property="TextAlignment"       Value="Center"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
     </Style>
 
     <Style x:Key="TextBlockLeftBase" TargetType="TextBlock" BasedOn="{StaticResource TextBlockCenterBase}">
-        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="HorizontalAlignment" Value="Left"/>
     </Style>
 
     <Style x:Key="TextBlockRightBase" TargetType="TextBlock" BasedOn="{StaticResource TextBlockCenterBase}">
-        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="HorizontalAlignment" Value="Right"/>
     </Style>
 
-    <Style x:Key="QaTextBlock" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="Margin" Value="0,10,0,5"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-    </Style>
-
-    <Style x:Key="QaTextBox" TargetType="TextBox">
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="Background" Value="{DynamicResource TextBoxBackground}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Padding" Value="10,0"/>
-        <Setter Property="Height" Value="35"/>
-        <Setter Property="Margin" Value="0,0,0,5"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
-        <Style.Triggers>
-            <Trigger Property="IsFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-            </Trigger>
-        </Style.Triggers>
-    </Style>
-
-    <Style x:Key="BaseTextBoxV2" TargetType="TextBox">
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Padding" Value="4,4,0,4"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="BorderThickness" Value="2,0,0,1"/>
-        <Setter Property="Cursor" Value="IBeam"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-
-        <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/>
-
-        <Setter Property="Validation.ErrorTemplate">
-            <Setter.Value>
-                <ControlTemplate>
-                    <AdornedElementPlaceholder/>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
-                    <Border 
-                    x:Name="border"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    SnapsToDevicePixels="True">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <!-- Hover -->
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}"/>
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource TransparentBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                        </Trigger>
-
-                        <!-- Focus -->
-                        <Trigger Property="IsFocused" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource TransparentBrush}"/>
-                            <Setter TargetName="border" Property="BorderThickness" Value="0,0,0,2"/>
-                        </Trigger>
-
-                        <!-- Disabled -->
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
-                            <Setter Property="Opacity" Value="0.5"/>
-                        </Trigger>
-
-                        <!-- ReadOnly -->
-                        <Trigger Property="IsReadOnly" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ReadOnlyBorderBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource ReadOnlyTextBrush}"/>
-                        </Trigger>
-
-                        <!-- Validation Error -->
-                        <Trigger Property="Validation.HasError" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource DangerColor}"/>
-                        </Trigger>
-
-                        <!-- MultiTrigger: Focus without validation error -->
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsKeyboardFocused" Value="True"/>
-                                <Condition Property="Validation.HasError" Value="False"/>
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
-                            <Setter TargetName="border" Property="BorderThickness" Value="0,0,0,2"/>
-                        </MultiTrigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <Style x:Key="BaseTextBox" TargetType="TextBox">
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderInverseColor}"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Padding" Value="10,5"/>
-        <Setter Property="Height" Value="40"/>
-        <Setter Property="Margin" Value="0,0,0,5"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="BorderThickness" Value="1"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
-        <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/>
-        
-        <Setter Property="Validation.ErrorTemplate">
-            <Setter.Value>
-                <ControlTemplate>
-                    <AdornedElementPlaceholder/>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
-                    <Border 
-                x:Name="border"
-                Background="{TemplateBinding Background}"
-                BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}"
-                CornerRadius="6"
-                SnapsToDevicePixels="True">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <!-- Hover -->
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}"/>
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource TextBoxHoverBackground}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                        </Trigger>
-                        <!-- Focus -->
-                        <Trigger Property="IsFocused" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource TextBoxFocusBackground}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                            <Setter TargetName="border" Property="BorderThickness" Value="1"/>
-                        </Trigger>
-                        <!-- Disabled -->
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource DisabledBackground}"/>
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
-                        </Trigger>
-                        <!-- ReadOnly -->
-                        <Trigger Property="IsReadOnly" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource ReadOnlyBackground}"/>
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ReadOnlyBorderBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource ReadOnlyTextBrush}"/>
-                        </Trigger>
-                        <!-- Validation Error -->
-                        <Trigger Property="Validation.HasError" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="#FFEF5350"/>
-                        </Trigger>
-                        <!-- MultiTrigger: Focus without validation error -->
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsKeyboardFocused" Value="True"/>
-                                <Condition Property="Validation.HasError" Value="False"/>
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                            
-                        </MultiTrigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-
-    <!-- Style cho TextBox chá»‰ Ä‘á»c -->
-    <Style x:Key="ReadOnlyTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
-        <Setter Property="IsReadOnly" Value="True"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="10"/>
-        <Setter Property="FontSize" Value="16"/>
-        <Setter Property="FontFamily" Value="Segoe MDL2 Assets, Segoe Fluent Icons"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
-        <Setter Property="Cursor" Value="No"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
-                    <Border Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="6">
-                        <ScrollViewer x:Name="PART_ContentHost" 
-                                Padding="{TemplateBinding Padding}"
-                                VerticalScrollBarVisibility="Auto"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- Modern Label Style -->
     <Style x:Key="ModernLabel" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize"   Value="13"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="Margin" Value="0,0,0,8"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
-    </Style>
-    
-    <!-- Modern Input Field Style -->
-    <Style x:Key="InputTextBox" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="12,10"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Height" Value="44"/>
-
-        <Style.Triggers>
-            <Trigger Property="IsFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-            </Trigger>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}"/>
-            </Trigger>
-        </Style.Triggers>
+        <Setter Property="Margin"     Value="0,0,0,6"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
+        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
+        <Setter Property="ToolTipService.Placement"        Value="Right"/>
     </Style>
 
-    <Style x:Key="InputTextBoxV2" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
-        <!-- Ná»n, viá»n -->
-        <Setter Property="Background" Value="{DynamicResource SurfaceColor}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-
-        <!-- Padding & kÃ­ch thÆ°á»›c -->
-        <Setter Property="Padding" Value="4"/>
-        <Setter Property="VerticalContentAlignment" Value="Top"/>
-
-        <!-- Hiá»ƒn thá»‹ text -->
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/>
-
-        <!-- Cáº¥u hÃ¬nh nháº­p multiline -->
-        <Setter Property="TextWrapping" Value="Wrap"/>
-        <Setter Property="AcceptsReturn" Value="True"/>
-        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-
-        <!-- Hiá»ƒn thá»‹ sáº¯c nÃ©t -->
-        <Setter Property="SnapsToDevicePixels" Value="True"/>
-        <Setter Property="UseLayoutRounding" Value="True"/>
-        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
-        <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
-        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
-
-        <!-- Validation -->
-        <Setter Property="Validation.ErrorTemplate">
-            <Setter.Value>
-                <ControlTemplate>
-                    <AdornedElementPlaceholder/>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-
-        <!-- Template hiá»ƒn thá»‹ -->
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="MainBorder"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="6"
-                    SnapsToDevicePixels="True"
-                    UseLayoutRounding="True">
-
-                        <!-- Hiá»‡u á»©ng bÃ³ng nháº¹ -->
-                        <Border.Effect>
-                            <DropShadowEffect 
-                        ShadowDepth="1"
-                        BlurRadius="3"
-                        Opacity="0.05"
-                        Color="Black"
-                        RenderingBias="Quality"/>
-                        </Border.Effect>
-
-                        <ScrollViewer x:Name="PART_ContentHost"
-                              Margin="{TemplateBinding Padding}"
-                              SnapsToDevicePixels="True"
-                              UseLayoutRounding="True"/>
-                    </Border>
-
-                    <!-- Triggers tráº¡ng thÃ¡i -->
-                    <ControlTemplate.Triggers>
-
-                        <!-- Hover -->
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="MainBorder" Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}" />
-                            <Setter TargetName="MainBorder" Property="Background" Value="{DynamicResource TextBoxHoverBackground}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                        </Trigger>
-
-                        <!-- Focus -->
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="MainBorder" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}" />
-                            <Setter TargetName="MainBorder" Property="BorderThickness" Value="1" />
-                            <Setter TargetName="MainBorder" Property="Background" Value="{DynamicResource TextBoxFocusBackground}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                            <Setter TargetName="MainBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect 
-                                ShadowDepth="2"
-                                BlurRadius="4"
-                                Opacity="0.15"
-                                Color="#000000"
-                                RenderingBias="Quality"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-
-                        <!-- Disabled -->
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="MainBorder" Property="Background" Value="{DynamicResource TextBoxDisabledBackground}" />
-                            <Setter TargetName="MainBorder" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}" />
-                            <Setter Property="Opacity" Value="0.6"/>
-                        </Trigger>
-
-                        <!-- Validation Error -->
-                        <Trigger Property="Validation.HasError" Value="True">
-                            <Setter TargetName="MainBorder" Property="BorderBrush" Value="#FFEF5350"/>
-                        </Trigger>
-
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-
-    <Style x:Key="TextAreaTextBox" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxV2}">
-       
-        <Setter Property="Height" Value="80"/>
-       
-    </Style>
-
-
-    <!-- SearchBox -->
-    <Style x:Key="DefaultSearchBoxStyle" TargetType="TextBox" BasedOn="{StaticResource TextAreaTextBox}">
-        <Setter Property="Background" Value="{DynamicResource SurfaceColor}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="12,10"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
-        <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
-        <Setter Property="UseLayoutRounding" Value="True"/>
-        <Setter Property="SnapsToDevicePixels" Value="True"/>
-
-        <!--tooltip-->
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-        <Setter Property="ToolTipService.ShowDuration" Value="8000" />
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100" />
-        <Setter Property="ToolTipService.Placement" Value="Right" />
-        
-    </Style>
 </ResourceDictionary>
