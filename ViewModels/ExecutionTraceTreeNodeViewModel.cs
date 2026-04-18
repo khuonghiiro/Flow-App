@@ -65,9 +65,11 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     private bool isDetailsExpanded;
 
     public bool HasChildren => Children.Count > 0;
+    public bool HasMultipleChildren => Children.Count > 1;
 
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
     public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
+    public Thickness ChildrenDashedLineMargin { get; set; } = new Thickness(30, 0, 0, 0);
 
     /// <summary>X1 in the first guide cell so the dashed horizontal meets the left spine (12px column, x=7).</summary>
     public double GuideDashedLineX1 { get; private set; }
@@ -105,6 +107,8 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         const int indentPerDepth = 38;
         var leftIndent = IsRunRoot ? 0 : (Depth * indentPerDepth);
         ItemMargin = new Thickness(leftIndent, 6, 4, 6);
+        // Dashed line continues from connector stem center through children area
+        ChildrenDashedLineMargin = new Thickness(leftIndent + 30, 0, 0, 0);
         GuideDashedLineX1 = ComputeGuideDashedLineX1(indentPerDepth);
         IsExpanded = true;
         IsVisible = true;
@@ -139,6 +143,7 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public void NotifyHasChildrenChanged()
     {
         OnPropertyChanged(nameof(HasChildren));
+        OnPropertyChanged(nameof(HasMultipleChildren));
     }
 
 

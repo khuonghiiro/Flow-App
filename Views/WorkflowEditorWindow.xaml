@@ -1954,26 +1954,7 @@ Cursor="Hand"
                                         <ScaleTransform ScaleX="{Binding ExecutionTraceZoom}"
                                                         ScaleY="{Binding ExecutionTraceZoom}"/>
                                     </Grid.LayoutTransform>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="14"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <!-- Dashed vertical spine; zoom applies to spine + tree together -->
-                                    <Line Grid.Column="0"
-                                          X1="7"
-                                          Y1="0"
-                                          X2="7"
-                                          Y2="{Binding ActualHeight, ElementName=ExecutionTraceTreeOuterGrid}"
-                                          Stroke="#C8C8C8"
-                                          StrokeThickness="1"
-                                          StrokeDashArray="4,3"
-                                          StrokeDashCap="Flat"
-                                          VerticalAlignment="Top"
-                                          HorizontalAlignment="Left"
-                                          SnapsToDevicePixels="True"
-                                          IsHitTestVisible="False"/>
                                     <ItemsControl x:Name="ExecutionTraceTreeItemsControl"
-                                                  Grid.Column="1"
                                                   ItemsSource="{Binding ExecutionTraceRunRoots}"
                                                   HorizontalAlignment="Left">
                                         <ItemsControl.ItemsPanel>
@@ -2193,19 +2174,49 @@ Cursor="Hand"
                                                     </Border>
                                                 </Grid>
 
-                                                <ItemsControl Margin="0,0,0,0"
-                                                              ItemsSource="{Binding Children}">
-                                                    <ItemsControl.Style>
-                                                        <Style TargetType="ItemsControl">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </ItemsControl.Style>
-                                                </ItemsControl>
+                                                <!-- Dashed vertical line continuing through children when expanded -->
+                                                <Grid>
+                                                    <Line X1="0" Y1="0" X2="0"
+                                                          Y2="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Grid}}"
+                                                          Stroke="#C8C8C8"
+                                                          StrokeThickness="1"
+                                                          StrokeDashArray="4,3"
+                                                          StrokeDashCap="Flat"
+                                                          HorizontalAlignment="Left"
+                                                          VerticalAlignment="Top"
+                                                          SnapsToDevicePixels="True"
+                                                          IsHitTestVisible="False"
+                                                          Margin="{Binding ChildrenDashedLineMargin}">
+                                                        <Line.Style>
+                                                            <Style TargetType="Line">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <MultiDataTrigger>
+                                                                        <MultiDataTrigger.Conditions>
+                                                                            <Condition Binding="{Binding IsExpanded}" Value="True"/>
+                                                                            <Condition Binding="{Binding HasChildren}" Value="True"/>
+                                                                            <Condition Binding="{Binding IsLastSibling}" Value="False"/>
+                                                                        </MultiDataTrigger.Conditions>
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </MultiDataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Line.Style>
+                                                    </Line>
+                                                    <ItemsControl Margin="0,0,0,0"
+                                                                  ItemsSource="{Binding Children}">
+                                                        <ItemsControl.Style>
+                                                            <Style TargetType="ItemsControl">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </ItemsControl.Style>
+                                                    </ItemsControl>
+                                                </Grid>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.Resources>
