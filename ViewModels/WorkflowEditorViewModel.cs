@@ -474,6 +474,9 @@ namespace FlowMy.ViewModels
             return flags;
         }
 
+        /// <summary>Pixels trimmed from the bottom of the children dashed trunk so it stops before the last child row.</summary>
+        private const double ExecutionTraceTrunkTrimLastChildPx = 56d;
+
         private static void RefreshTreeConnectorMetadata(ExecutionTraceTreeNodeViewModel parent)
         {
             for (var i = 0; i < parent.Children.Count; i++)
@@ -484,7 +487,20 @@ namespace FlowMy.ViewModels
                 child.IsLastSibling = i == parent.Children.Count - 1;
                 child.SetConnectorGuides(BuildAncestorGuideFlags(child));
                 RefreshTreeConnectorMetadata(child);
+                child.ApplyChildrenDashedLineMargin();
             }
+
+            var trim = 0d;
+            if (parent.Children.Count > 0 &&
+                string.Equals(parent.Children[^1].NodeType, nameof(NodeType.End), StringComparison.OrdinalIgnoreCase))
+            {
+                trim = ExecutionTraceTrunkTrimLastChildPx;
+            }
+
+            if (Math.Abs(parent.ChildrenDashedLineHeightTrim - trim) > 0.01d)
+                parent.ChildrenDashedLineHeightTrim = trim;
+
+            parent.ApplyChildrenDashedLineMargin();
         }
 
         private static void AttachTreeChild(ExecutionTraceTreeNodeViewModel parent, ExecutionTraceTreeNodeViewModel child)

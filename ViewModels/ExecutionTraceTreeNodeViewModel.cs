@@ -71,6 +71,10 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
     public Thickness ChildrenDashedLineMargin { get; set; } = new Thickness(30, 0, 0, 0);
 
+    /// <summary>Bottom trim (px) for the dashed children trunk so it does not run into the last child row.</summary>
+    [ObservableProperty]
+    private double childrenDashedLineHeightTrim;
+
     /// <summary>X1 in the first guide cell so the dashed horizontal meets the left spine (12px column, x=7).</summary>
     public double GuideDashedLineX1 { get; private set; }
 
@@ -107,8 +111,7 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         const int indentPerDepth = 38;
         var leftIndent = IsRunRoot ? 0 : (Depth * indentPerDepth);
         ItemMargin = new Thickness(leftIndent, 6, 4, 6);
-        // Dashed line continues from connector stem center through children area
-        ChildrenDashedLineMargin = new Thickness(leftIndent + 30, 0, 0, 0);
+        ChildrenDashedLineMargin = new Thickness(leftIndent + 28, 0, 0, 0);
         GuideDashedLineX1 = ComputeGuideDashedLineX1(indentPerDepth);
         IsExpanded = true;
         IsVisible = true;
@@ -146,6 +149,14 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         OnPropertyChanged(nameof(HasMultipleChildren));
     }
 
+    /// <summary>Align dashed trunk X with connector after guide columns (38px each) are applied.</summary>
+    public void ApplyChildrenDashedLineMargin()
+    {
+        const int col = 38;
+        var x = Depth * col + ConnectorGuides.Count * col + 28;
+        ChildrenDashedLineMargin = new Thickness(x, 0, 0, 0);
+        OnPropertyChanged(nameof(ChildrenDashedLineMargin));
+    }
 
     public void SetConnectorGuides(IEnumerable<bool> ancestorHasNextSibling)
     {
