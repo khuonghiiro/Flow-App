@@ -30,9 +30,10 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Toolbar -->
+        <!-- Toolbar (ẩn tạm khi maximize panel execution log) -->
         <Border Grid.Row="0"
                 x:Name="TopToolbarBorder"
+                Visibility="{Binding IsExecutionTracePanelMaximized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                 Background="{DynamicResource HeaderBackgroundMainBrush}"
                 Padding="16,8"
                 BorderBrush="{DynamicResource BorderColor}"
@@ -1742,6 +1743,7 @@ Cursor="Hand"
 
                 <ScrollViewer x:Name="ScrollViewer"
                         Grid.Row="0"
+                        Visibility="{Binding IsExecutionLogMaximizedOverCanvas, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                         HorizontalScrollBarVisibility="Hidden"
                         VerticalScrollBarVisibility="Hidden"
                         Background="{DynamicResource CanvasBackgroundBrush}"
@@ -1782,7 +1784,7 @@ Cursor="Hand"
                         Background="{DynamicResource CardColor}"
                         BorderBrush="{DynamicResource BorderColor}"
                         BorderThickness="1,1,0,0"
-                        MaxHeight="320">
+                        Height="{Binding ExecutionTracePanelHeight}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1803,6 +1805,8 @@ Cursor="Hand"
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -1864,7 +1868,7 @@ Cursor="Hand"
                                         Style="{DynamicResource TransparentButtonStyle}"
                                         ToolTip="Mở tất cả nhánh">
                                     <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-plus duotone-lightr'}"/>
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-plus solid'}"/>
                                 </Button>
                                 <Button Grid.Column="8"
                                         Margin="38,0,0,0"
@@ -1885,6 +1889,33 @@ Cursor="Hand"
                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='trash-can duotone-regular'}"/>
                                 </Button>
                                 <Button Grid.Column="9"
+                                        Margin="0,0,6,0"
+                                        Padding="6,2"
+                                        Command="{Binding ZoomOutExecutionTraceCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Thu nhỏ log tree">
+                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass-minus duotone-regular'}"/>
+                                </Button>
+                                <Button Grid.Column="9"
+                                        Margin="30,0,0,0"
+                                        Padding="6,2"
+                                        Command="{Binding ZoomInExecutionTraceCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Phóng to log tree">
+                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass-plus duotone-regular'}"/>
+                                </Button>
+                                <Button Grid.Column="10"
+                                        Margin="0,0,6,0"
+                                        Padding="8,2"
+                                        Command="{Binding ToggleExecutionTracePanelMaximizeCommand}"
+                                        Style="{DynamicResource TransparentButtonStyle}"
+                                        ToolTip="Phóng to/thu nhỏ panel log">
+                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='window-maximize duotone-regular'}"/>
+                                </Button>
+                                <Button Grid.Column="11"
                                         Padding="8,2"
                                         Command="{Binding ToggleExecutionTracePanelCommand}"
                                         Style="{DynamicResource TransparentButtonStyle}"
@@ -1896,328 +1927,273 @@ Cursor="Hand"
                         </Border>
 
                         <Grid Grid.Row="1">
-                        <TreeView ItemsSource="{Binding ExecutionTraceRunRoots}"
-                                  Background="Transparent"
-                                  BorderThickness="0"
-                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                  VirtualizingPanel.IsVirtualizing="True"
-                                  VirtualizingPanel.VirtualizationMode="Recycling"
-                                  ScrollViewer.CanContentScroll="True">
-                                <TreeView.ItemContainerStyle>
-                                    <Style TargetType="TreeViewItem">
-                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                                        <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Margin" Value="0,0,0,2"/>
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRunRoot}" Value="False">
-                                                <Setter Property="Padding" Value="4,0,0,0"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsVisible}" Value="False">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TreeView.ItemContainerStyle>
-                                <TreeView.Resources>
-                                    <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
-                                    <Style x:Key="TraceDetailsToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource QaToggleButton}">
-                                        <Setter Property="Height" Value="20"/>
-                                        <Setter Property="FontSize" Value="10"/>
-                                        <Setter Property="Padding" Value="8,0"/>
-                                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                                        <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
-                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                                    </Style>
-                                    <Style x:Key="TraceStatusBadgeStyle" TargetType="Border">
-                                        <Setter Property="Background" Value="{DynamicResource CardColor}"/>
-                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-                                        <Setter Property="BorderThickness" Value="1"/>
-                                        <Setter Property="CornerRadius" Value="10"/>
-                                        <Setter Property="Padding" Value="7,1"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Status}" Value="completed">
-                                                <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
-                                                <Setter Property="Opacity" Value="0.85"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Status}" Value="running">
-                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                                                <Setter Property="Opacity" Value="0.85"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Status}" Value="failed">
-                                                <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
-                                                <Setter Property="Opacity" Value="0.9"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                    <DataTemplate DataType="{x:Type viewModels:ExecutionTraceConnectorGuideViewModel}">
-                                        <Grid Width="10" Height="16">
-                                            <Rectangle Width="1"
-                                                       Height="16"
-                                                       Fill="{DynamicResource BorderColor}"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Visibility="{Binding ShowVertical, Converter={StaticResource LocalBoolToVis}}"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                    <HierarchicalDataTemplate DataType="{x:Type viewModels:ExecutionTraceTreeNodeViewModel}"
-                                                              ItemsSource="{Binding Children}">
-                                        <Border Margin="{Binding ItemMargin}"
-                                                Padding="5"
-                                                CornerRadius="6"
-                                                BorderThickness="1"
-                                                BorderBrush="{DynamicResource BorderColor}"
-                                                Background="{DynamicResource CardColor}"
-                                                Visibility="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-                                                        <Setter Property="Background" Value="{DynamicResource CardColor}"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
-                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                                                                <Setter Property="Background" Value="{DynamicResource PrimaryGlowBrush}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Border.Style>
-                                                <StackPanel>
-                                                <Grid>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          Padding="0">
+                                <ItemsControl ItemsSource="{Binding ExecutionTraceRunRoots}"
+                                              HorizontalAlignment="Left">
+                                    <ItemsControl.LayoutTransform>
+                                        <ScaleTransform ScaleX="{Binding ExecutionTraceZoom}"
+                                                        ScaleY="{Binding ExecutionTraceZoom}"/>
+                                    </ItemsControl.LayoutTransform>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.Resources>
+                                        <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
+                                        <Style x:Key="TraceDetailsToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource QaToggleButton}">
+                                            <Setter Property="Height" Value="20"/>
+                                            <Setter Property="FontSize" Value="10"/>
+                                            <Setter Property="Padding" Value="8,0"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                        </Style>
+                                        <Style x:Key="TraceStatusBadgeStyle" TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Setter Property="CornerRadius" Value="10"/>
+                                            <Setter Property="Padding" Value="7,1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="completed">
+                                                    <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                                                    <Setter Property="Opacity" Value="0.85"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="running">
+                                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                    <Setter Property="Opacity" Value="0.85"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="failed">
+                                                    <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                                    <Setter Property="Opacity" Value="0.9"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                        <DataTemplate DataType="{x:Type viewModels:ExecutionTraceConnectorGuideViewModel}">
+                                            <!-- Nét đứt ngang dài theo level (ảnh mẫu: đoạn chấm chạy ngang đủ dài) -->
+                                            <Grid Width="72"
+                                                  MinHeight="8"
+                                                  VerticalAlignment="Center">
+                                                <Line X1="0"
+                                                      Y1="4"
+                                                      X2="72"
+                                                      Y2="4"
+                                                      Stroke="#C8C8C8"
+                                                      StrokeThickness="1"
+                                                      StrokeDashArray="4,3"
+                                                      Visibility="{Binding ShowVertical, Converter={StaticResource LocalBoolToVis}}"/>
+                                            </Grid>
+                                        </DataTemplate>
+
+                                        <DataTemplate DataType="{x:Type viewModels:ExecutionTraceTreeNodeViewModel}">
+                                            <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}"
+                                                        HorizontalAlignment="Left">
+                                                <Grid Margin="{Binding ItemMargin}"
+                                                      MaxWidth="920"
+                                                      HorizontalAlignment="Left">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                    <Border Width="20"
-                                                            Height="20"
-                                                            CornerRadius="10"
-                                                            Margin="0,0,4,0"
-                                                            Cursor="Hand"
-                                                            MouseLeftButtonUp="ExecutionLogNodeIcon_MouseLeftButtonUp"
-                                                            ToolTip="Di chuyển tới node">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
-                                                                <Setter Property="Background" Value="{Binding NodeBrush}"/>
-                                                                <Setter Property="BorderBrush" Value="Transparent"/>
-                                                                <Setter Property="BorderThickness" Value="1"/>
-                                                                <Setter Property="Opacity" Value="1"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding NodeBrush}" Value="{x:Null}">
-                                                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
-                                                                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                                                                        <Setter Property="BorderThickness" Value="2"/>
-                                                                    </DataTrigger>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter Property="Opacity" Value="0.88"/>
-                                                                        <Setter Property="BorderThickness" Value="1"/>
-                                                                        <Setter Property="BorderBrush" Value="{DynamicResource TextOnPrimaryBrush}"/>
-                                                                    </Trigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Border.Style>
-                                                        <controls:SvgViewboxEx Width="11"
-                                                                               Height="11"
-                                                                               Fill="{DynamicResource TextOnPrimaryBrush}"
-                                                                               Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+
+                                                    <ItemsControl Grid.Column="0"
+                                                                  ItemsSource="{Binding ConnectorGuides}"
+                                                                  VerticalAlignment="Center">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                    </ItemsControl>
+
+                                                    <!-- Trục dọc liền + nhánh ngang vào đúng giữa cạnh trái card -->
+                                                    <Grid Grid.Column="1"
+                                                          x:Name="TraceConnectorHost"
+                                                          Width="36"
+                                                          Height="{Binding ElementName=TraceNodeCard, Path=ActualHeight, FallbackValue=36}"
+                                                          VerticalAlignment="Top"
+                                                          Margin="0,0,4,0"
+                                                          Visibility="{Binding ShowConnector, Converter={StaticResource LocalBoolToVis}}">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="*"/>
+                                                            <RowDefinition Height="*"/>
+                                                        </Grid.RowDefinitions>
+                                                        <Rectangle Grid.Row="0"
+                                                                   Width="1"
+                                                                   Fill="#B8B8B8"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Stretch"
+                                                                   Visibility="{Binding ShowTopStem, Converter={StaticResource LocalBoolToVis}}"/>
+                                                        <Rectangle Grid.Row="1"
+                                                                   Width="1"
+                                                                   Fill="#B8B8B8"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Stretch"
+                                                                   Visibility="{Binding ShowBottomStem, Converter={StaticResource LocalBoolToVis}}"/>
+                                                        <Rectangle Grid.RowSpan="2"
+                                                                   Height="1"
+                                                                   Fill="#B8B8B8"
+                                                                   VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Stretch"
+                                                                   Margin="18,0,0,0"
+                                                                   Visibility="{Binding ShowHorizontalConnector, Converter={StaticResource LocalBoolToVis}}"/>
+                                                    </Grid>
+
+                                                    <Border Grid.Column="2"
+                                                            x:Name="TraceNodeCard"
+                                                            Padding="6,5"
+                                                            CornerRadius="4"
+                                                            BorderThickness="1"
+                                                            BorderBrush="{Binding TraceCardBorderBrush}"
+                                                            Background="{Binding TraceCardBackgroundBrush}"
+                                                            HorizontalAlignment="Left"
+                                                            MinWidth="220">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="18"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <!-- Tam giác ngay sát tiêu đề (trong card), ảnh mẫu -->
+                                                            <Grid Grid.Column="0" Width="18" VerticalAlignment="Top" Margin="0,4,0,0">
+                                                                <ToggleButton Width="16"
+                                                                              Height="16"
+                                                                              HorizontalAlignment="Left"
+                                                                              VerticalAlignment="Top"
+                                                                              Background="Transparent"
+                                                                              BorderThickness="0"
+                                                                              Padding="0"
+                                                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                                                              Visibility="{Binding HasChildren, Converter={StaticResource LocalBoolToVis}}">
+                                                                    <Path Data="M 4 3 L 9 8 L 4 13"
+                                                                          Stroke="#5A5A5A"
+                                                                          StrokeThickness="1.15"
+                                                                          Fill="Transparent"
+                                                                          RenderTransformOrigin="0.5,0.5">
+                                                                        <Path.Style>
+                                                                            <Style TargetType="Path">
+                                                                                <Setter Property="RenderTransform">
+                                                                                    <Setter.Value><RotateTransform Angle="0"/></Setter.Value>
+                                                                                </Setter>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                        <Setter Property="RenderTransform">
+                                                                                            <Setter.Value><RotateTransform Angle="90"/></Setter.Value>
+                                                                                        </Setter>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Path.Style>
+                                                                    </Path>
+                                                                </ToggleButton>
+                                                            </Grid>
+                                                            <StackPanel Grid.Column="1">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                                        <Border Width="20"
+                                                                                Height="20"
+                                                                                CornerRadius="10"
+                                                                                Margin="0,0,6,0"
+                                                                                Cursor="Hand"
+                                                                                MouseLeftButtonUp="ExecutionLogNodeIcon_MouseLeftButtonUp"
+                                                                                ToolTip="Di chuyển tới node"
+                                                                                Background="{Binding NodeBrush}">
+                                                                            <controls:SvgViewboxEx Width="11"
+                                                                                                   Height="11"
+                                                                                                   Fill="{DynamicResource TextOnPrimaryBrush}"
+                                                                                                   Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+                                                                        </Border>
+                                                                        <TextBlock Text="{Binding NodeTitle}"
+                                                                                   FontWeight="SemiBold"
+                                                                                   FontSize="11"
+                                                                                   Foreground="{DynamicResource TextBrush}"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Text="{Binding ElapsedText}"
+                                                                               Margin="8,0,8,0"
+                                                                               FontSize="10"
+                                                                               Opacity="0.65"
+                                                                               Foreground="{DynamicResource TextBrush}"
+                                                                               VerticalAlignment="Center"/>
+                                                                    <Border Grid.Column="2" Style="{StaticResource TraceStatusBadgeStyle}">
+                                                                        <TextBlock Text="{Binding Status}"
+                                                                                   FontSize="10"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                </Grid>
+
+                                                                <TextBlock Margin="0,4,0,0"
+                                                                           FontSize="9"
+                                                                           Opacity="0.55"
+                                                                           Foreground="{DynamicResource TextBrush}"
+                                                                           Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
+
+                                                                <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
+                                                                           Margin="0,3,0,0"
+                                                                           Foreground="#2E7D32"
+                                                                           FontSize="9"
+                                                                           MaxWidth="560"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           TextWrapping="NoWrap"
+                                                                           Visibility="{Binding InputSummary, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                                                <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
+                                                                           Margin="0,2,0,0"
+                                                                           Foreground="#2E7D32"
+                                                                           FontSize="9"
+                                                                           MaxWidth="560"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           TextWrapping="NoWrap"
+                                                                           Visibility="{Binding OutputSummary, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                                                <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
+                                                                           Margin="0,2,0,0"
+                                                                           Foreground="#C62828"
+                                                                           FontSize="9"
+                                                                           MaxWidth="560"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           TextWrapping="NoWrap"
+                                                                           Visibility="{Binding ErrorMessage, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </Border>
-                                                    <TextBlock Text="{Binding NodeTitle}"
-                                                               FontWeight="SemiBold"
-                                                               FontSize="11"
-                                                               Foreground="{DynamicResource TextBrush}"
-                                                               VerticalAlignment="Center">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1"
-                                                           Text="{Binding ElapsedText}"
-                                                           Margin="8,0,8,0"
-                                                               FontSize="10"
-                                                           Opacity="0.8"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                               VerticalAlignment="Center"/>
-                                                <Border Grid.Column="2" Style="{StaticResource TraceStatusBadgeStyle}">
-                                                    <TextBlock Text="{Binding Status}"
-                                                               FontSize="10"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource TextOnPrimaryBrush}"
-                                                               VerticalAlignment="Center"/>
-                                                </Border>
                                                 </Grid>
-                                                <TextBlock Margin="32,3,0,0"
-                                                           FontSize="9"
-                                                           Opacity="0.6"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
-                                                <Grid Margin="32,2,0,0">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Grid.Column="0" Orientation="Vertical">
-                                                        <StackPanel.Style>
-                                                            <Style TargetType="StackPanel">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </StackPanel.Style>
-                                                        <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
-                                                                   Foreground="{DynamicResource TextBrush}"
-                                                                   FontSize="9"
-                                                                   MaxWidth="560"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   TextWrapping="NoWrap">
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding InputSummary}" Value="">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-                                                        <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
-                                                                   Margin="0,1,0,0"
-                                                                   Foreground="{DynamicResource SuccessBrush}"
-                                                                   FontSize="9"
-                                                                   MaxWidth="560"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   TextWrapping="NoWrap">
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding OutputSummary}" Value="">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-                                                        <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
-                                                                   Margin="0,1,0,0"
-                                                                   Foreground="{DynamicResource DangerBrush}"
-                                                                   FontSize="9"
-                                                                   MaxWidth="560"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   TextWrapping="NoWrap">
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding ErrorMessage}" Value="">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-                                                    </StackPanel>
-                                                    <ToggleButton x:Name="TraceDetailsToggle"
-                                                                  Grid.Column="1"
-                                                                  Margin="8,0,0,0"
-                                                                  Padding="6,1"
-                                                                  VerticalAlignment="Top"
-                                                                  Style="{StaticResource TraceDetailsToggleStyle}"
-                                                                  IsChecked="{Binding IsDetailsExpanded, Mode=TwoWay}"
-                                                                  Visibility="{Binding ShowDetailsToggle, Converter={StaticResource LocalBoolToVis}}"
-                                                                  Content="chi tiết"/>
-                                                </Grid>
-                                                <StackPanel Margin="32,2,0,0">
-                                                    <StackPanel.Style>
-                                                        <Style TargetType="StackPanel">
+
+                                                <ItemsControl Margin="0,0,0,0"
+                                                              ItemsSource="{Binding Children}">
+                                                    <ItemsControl.Style>
+                                                        <Style TargetType="ItemsControl">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ShowDetailsToggle}" Value="False">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                                                                     <Setter Property="Visibility" Value="Visible"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
-                                                    </StackPanel.Style>
-                                                    <TextBlock Text="{Binding InputSummary, StringFormat=IN full: {0}}"
-                                                               Foreground="{DynamicResource TextBrush}"
-                                                               FontSize="9"
-                                                               MaxWidth="560"
-                                                               TextWrapping="Wrap">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding InputSummary}" Value="">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                    <TextBlock Text="{Binding OutputSummary, StringFormat=OUT full: {0}}"
-                                                               Margin="0,1,0,0"
-                                                               Foreground="{DynamicResource SuccessBrush}"
-                                                               FontSize="9"
-                                                               MaxWidth="560"
-                                                               TextWrapping="Wrap">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding OutputSummary}" Value="">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                    <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR full: {0}}"
-                                                               Margin="0,1,0,0"
-                                                               Foreground="{DynamicResource DangerBrush}"
-                                                               FontSize="9"
-                                                               MaxWidth="560"
-                                                               TextWrapping="Wrap">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding ErrorMessage}" Value="">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                </StackPanel>
+                                                    </ItemsControl.Style>
+                                                </ItemsControl>
                                             </StackPanel>
-                                        </Border>
-                                    </HierarchicalDataTemplate>
-                                </TreeView.Resources>
-                            </TreeView>
+                                        </DataTemplate>
+                                    </ItemsControl.Resources>
+                                </ItemsControl>
+                            </ScrollViewer>
                         </Grid>
                     </Grid>
                 </Border>
 
-                <!-- Minimap và Fit to View button -->
+                <!-- Minimap và Fit to View button (ẩn khi maximize panel log) -->
                 <Grid x:Name="MinimapPanel"
                       Grid.Row="0"
+                      Visibility="{Binding IsExecutionTracePanelMaximized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                       HorizontalAlignment="Right"
                       VerticalAlignment="Bottom"
                       Margin="20">

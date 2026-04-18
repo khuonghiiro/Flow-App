@@ -58,10 +58,19 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     private bool isLastSibling = true;
 
     [ObservableProperty]
+    private bool isFirstSibling = true;
+
+    [ObservableProperty]
     private bool isDetailsExpanded;
 
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
     public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
+
+    /// <summary>Viền card (ảnh mẫu: xám nhạt).</summary>
+    public Brush TraceCardBorderBrush => CreateTraceBorderBrush();
+
+    /// <summary>Nền card trắng như ảnh mẫu.</summary>
+    public Brush TraceCardBackgroundBrush => CreateTraceBackgroundBrush();
 
     public ExecutionTraceTreeNodeViewModel(
         string rootExecutionId,
@@ -87,11 +96,13 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         NodeBrush = nodeBrush;
         Depth = depth < 0 ? 0 : depth;
         ConnectorIndent = IsRunRoot ? new Thickness(0) : new Thickness(0, 0, 2, 0);
-        var leftIndent = IsRunRoot ? 0 : (Depth * 50);
-        ItemMargin = new Thickness(leftIndent, 5, 4, 5);
+        const int indentPerDepth = 38;
+        var leftIndent = IsRunRoot ? 0 : (Depth * indentPerDepth);
+        ItemMargin = new Thickness(leftIndent, 6, 4, 6);
         IsExpanded = true;
         IsVisible = true;
         IsLastSibling = true;
+        IsFirstSibling = true;
     }
 
     partial void OnIsLastSiblingChanged(bool value)
@@ -115,6 +126,21 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         ConnectorGuides.Clear();
         foreach (var show in ancestorHasNextSibling)
             ConnectorGuides.Add(new ExecutionTraceConnectorGuideViewModel(show));
+    }
+
+    private Brush CreateTraceBorderBrush()
+    {
+        // Ảnh mẫu: viền xám rất nhạt, không tô màu theo level.
+        var b = new SolidColorBrush(Color.FromRgb(0xDD, 0xDD, 0xDD));
+        b.Freeze();
+        return b;
+    }
+
+    private Brush CreateTraceBackgroundBrush()
+    {
+        var b = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+        b.Freeze();
+        return b;
     }
 }
 

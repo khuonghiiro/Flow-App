@@ -121,6 +121,9 @@ namespace FlowMy.ViewModels
         private bool isExecutionTracePanelExpanded;
 
         [ObservableProperty]
+        private bool isExecutionTracePanelMaximized;
+
+        [ObservableProperty]
         private ObservableCollection<ExecutionTraceLogItemViewModel> executionTraceLogs = new();
         [ObservableProperty]
         private ObservableCollection<ExecutionTraceTreeNodeViewModel> executionTraceRunRoots = new();
@@ -144,10 +147,18 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private string executionTraceNodeTypeFilter = "All";
 
+        [ObservableProperty]
+        private double executionTraceZoom = 1.0;
+
         public ObservableCollection<string> ExecutionTraceStatusOptions { get; } = new() { "All", "running", "completed", "failed" };
         public ObservableCollection<string> ExecutionTraceNodeTypeOptions { get; } = new() { "All" };
 
         public bool IsExecutionTracePanelVisible => EnableExecutionTraceLog && IsExecutionTracePanelExpanded;
+        public double ExecutionTracePanelHeight => IsExecutionTracePanelMaximized ? 10000d : 320d;
+
+        /// <summary>True khi panel log đang mở và maximize — ẩn canvas để chỉ xem log.</summary>
+        public bool IsExecutionLogMaximizedOverCanvas =>
+            IsExecutionTracePanelMaximized && EnableExecutionTraceLog && IsExecutionTracePanelExpanded;
 
         private int _nodeCounter = 1;
 
@@ -192,12 +203,22 @@ namespace FlowMy.ViewModels
         partial void OnEnableExecutionTraceLogChanged(bool value)
         {
             OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+            OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
             if (!value)
                 ClearExecutionTraceLogs();
         }
 
         partial void OnIsExecutionTracePanelExpandedChanged(bool value)
-            => OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+        {
+            OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+            OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
+        }
+
+        partial void OnIsExecutionTracePanelMaximizedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ExecutionTracePanelHeight));
+            OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
+        }
 
         partial void OnExecutionTraceSearchTextChanged(string value) => RefreshExecutionTraceFilter();
         partial void OnExecutionTraceStatusFilterChanged(string value) => RefreshExecutionTraceFilter();
@@ -207,6 +228,12 @@ namespace FlowMy.ViewModels
         private void ToggleExecutionTracePanel()
         {
             IsExecutionTracePanelExpanded = !IsExecutionTracePanelExpanded;
+        }
+
+        [RelayCommand]
+        private void ToggleExecutionTracePanelMaximize()
+        {
+            IsExecutionTracePanelMaximized = !IsExecutionTracePanelMaximized;
         }
 
         [RelayCommand]
@@ -315,6 +342,18 @@ namespace FlowMy.ViewModels
                 foreach (var root in ExecutionTraceRunRoots)
                     SetTreeExpandedRecursive(root, false);
             }
+        }
+
+        [RelayCommand]
+        private void ZoomInExecutionTrace()
+        {
+            ExecutionTraceZoom = Math.Min(2.0, ExecutionTraceZoom + 0.1);
+        }
+
+        [RelayCommand]
+        private void ZoomOutExecutionTrace()
+        {
+            ExecutionTraceZoom = Math.Max(0.6, ExecutionTraceZoom - 0.1);
         }
 
         private static void SetTreeExpandedRecursive(ExecutionTraceTreeNodeViewModel node, bool expanded)
@@ -441,6 +480,7 @@ namespace FlowMy.ViewModels
             {
                 var child = parent.Children[i];
                 child.Parent = parent;
+                child.IsFirstSibling = i == 0;
                 child.IsLastSibling = i == parent.Children.Count - 1;
                 child.SetConnectorGuides(BuildAncestorGuideFlags(child));
                 RefreshTreeConnectorMetadata(child);
@@ -453,18 +493,36 @@ namespace FlowMy.ViewModels
             RefreshTreeConnectorMetadata(parent);
         }
 
-        private static bool IsAsyncStructuralParent(string? parentNodeId, string? parentTitle)
+        /// <summary>Node vùng body của AsyncTask (scope LoopBodyTop), không phải chính node AsyncTask.</summary>
+        private static bool IsAsyncTaskBodyHostNode(WorkflowNode? n)
         {
-            if (!string.IsNullOrWhiteSpace(parentNodeId))
+            if (n == null) return false;
+            if (n.Id.StartsWith("AsyncTaskBody_", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return n.Ports.Any(p => string.Equals(p.Id, "LoopBodyTop", StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>Tìm AsyncTask nối LoopNodeBottom → LoopBodyTop vào body này (đúng theo graph workflow).</summary>
+        private bool TryGetAsyncTaskOwningBodyNode(WorkflowNode? bodyNode, out WorkflowNode? asyncTaskNode)
+        {
+            asyncTaskNode = null;
+            if (bodyNode == null || !IsAsyncTaskBodyHostNode(bodyNode))
+                return false;
+
+            foreach (var conn in Connections)
             {
-                if (parentNodeId.StartsWith("AsyncTaskBody_", StringComparison.OrdinalIgnoreCase))
+                if (conn.ToNode != bodyNode || conn.ToPort == null)
+                    continue;
+                if (!string.Equals(conn.ToPort.Id, "LoopBodyTop", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (conn.FromNode?.Type == NodeType.AsyncTask)
+                {
+                    asyncTaskNode = conn.FromNode;
                     return true;
-                if (parentNodeId.Contains("_AsyncTask_", StringComparison.OrdinalIgnoreCase))
-                    return true;
+                }
             }
 
-            return !string.IsNullOrWhiteSpace(parentTitle)
-                   && parentTitle.Contains("Async Task", StringComparison.OrdinalIgnoreCase);
+            return false;
         }
 
         private ExecutionTraceTreeNodeViewModel? PickLatestNodeInExactExecution(string executionId, string rootExecutionId, string currentNodeId)
@@ -483,6 +541,30 @@ namespace FlowMy.ViewModels
                     continue;
                 return candidate;
             }
+            return null;
+        }
+
+        private ExecutionTraceTreeNodeViewModel? PickNearestAsyncTaskInExecutionChain(string childExecutionId, string rootExecutionId)
+        {
+            if (string.IsNullOrWhiteSpace(childExecutionId))
+                return null;
+
+            foreach (var execId in WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds(childExecutionId))
+            {
+                if (!_executionTraceTreeNodesByExecutionId.TryGetValue(execId, out var rows) || rows.Count == 0)
+                    continue;
+
+                for (var i = rows.Count - 1; i >= 0; i--)
+                {
+                    var candidate = rows[i];
+                    if (!string.Equals(candidate.RootExecutionId, rootExecutionId, StringComparison.Ordinal))
+                        continue;
+                    if (!string.Equals(candidate.NodeType, NodeType.AsyncTask.ToString(), StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    return candidate;
+                }
+            }
+
             return null;
         }
 
@@ -745,7 +827,17 @@ namespace FlowMy.ViewModels
                     _executionTraceDepthByRun[rootExecutionId] = byNode;
                 }
 
-                if (!string.IsNullOrWhiteSpace(parentNodeId) && byNode.TryGetValue(parentNodeId, out var parentDepth))
+                // Node chạy trong body AsyncTask: depth = depth(AsyncTask) + 1 (không cùng cấp với AsyncTask).
+                if (TryGetAsyncTaskOwningBodyNode(incoming?.FromNode, out var ownerAsyncForDepth))
+                {
+                    if (byNode.TryGetValue(ownerAsyncForDepth!.Id, out var asyncDepth))
+                        depth = asyncDepth + 1;
+                    else if (!string.IsNullOrWhiteSpace(parentNodeId) && byNode.TryGetValue(parentNodeId, out var parentDepth))
+                        depth = parentDepth + 1;
+                    else if (incoming?.FromNode != null)
+                        depth = 1;
+                }
+                else if (!string.IsNullOrWhiteSpace(parentNodeId) && byNode.TryGetValue(parentNodeId, out var parentDepth))
                     depth = parentDepth + 1;
                 else if (incoming?.FromNode != null)
                     depth = 1;
@@ -815,22 +907,39 @@ namespace FlowMy.ViewModels
                     }
 
                     ExecutionTraceTreeNodeViewModel parentTreeNode = rootNode;
-                    var parentResolved = false;
-                    if (!string.IsNullOrWhiteSpace(parentNodeId))
+                    if (TryGetAsyncTaskOwningBodyNode(incoming?.FromNode, out var ownerAsync))
                     {
-                        var parentKey = BuildTreeRunNodeKey(rootExecutionId, parentNodeId);
-                        if (_executionTraceTreeNodesByRunAndNode.TryGetValue(parentKey, out var parentCandidates) &&
-                            parentCandidates.Count > 0)
+                        var asyncKey = BuildTreeRunNodeKey(rootExecutionId, ownerAsync!.Id);
+                        if (_executionTraceTreeNodesByRunAndNode.TryGetValue(asyncKey, out var asyncCandidates) &&
+                            asyncCandidates.Count > 0)
+                            parentTreeNode = PickBestParentTreeNode(asyncCandidates, executionKey) ?? parentTreeNode;
+                        else
+                            parentTreeNode = PickNearestAsyncTaskInExecutionChain(executionKey, rootExecutionId) ?? parentTreeNode;
+                    }
+                    else
+                    {
+                        var parentResolved = false;
+                        if (!string.IsNullOrWhiteSpace(parentNodeId))
                         {
-                            parentTreeNode = PickBestParentTreeNode(parentCandidates, executionKey) ?? parentTreeNode;
-                            parentResolved = true;
+                            var parentKey = BuildTreeRunNodeKey(rootExecutionId, parentNodeId);
+                            if (_executionTraceTreeNodesByRunAndNode.TryGetValue(parentKey, out var parentCandidates) &&
+                                parentCandidates.Count > 0)
+                            {
+                                parentTreeNode = PickBestParentTreeNode(parentCandidates, executionKey) ?? parentTreeNode;
+                                parentResolved = true;
+                            }
+                        }
+                        if (!parentResolved)
+                        {
+                            parentTreeNode = PickBestParentFromExecutionChain(executionKey, rootExecutionId) ?? parentTreeNode;
+                        }
+                        if (IsAsyncTaskBodyHostNode(incoming?.FromNode))
+                        {
+                            parentTreeNode = PickNearestAsyncTaskInExecutionChain(executionKey, rootExecutionId) ?? parentTreeNode;
                         }
                     }
-                    if (!parentResolved)
-                    {
-                        parentTreeNode = PickBestParentFromExecutionChain(executionKey, rootExecutionId) ?? parentTreeNode;
-                    }
-                    if (node.Type == NodeType.End || IsAsyncStructuralParent(parentNodeId, parentTitle))
+
+                    if (node.Type == NodeType.End)
                     {
                         parentTreeNode = PickLatestNodeInExactExecution(executionKey, rootExecutionId, node.Id) ?? parentTreeNode;
                     }
