@@ -186,6 +186,16 @@
     <SolidColorBrush x:Key="PopupHoverBrush" Color="#EBF4FE"/>
     <SolidColorBrush x:Key="PopupSelectedBackground" Color="Transparent"/>
 
+    <!-- ===== LAVENDER (ComboBox selection highlight) ===== -->
+    <SolidColorBrush x:Key="LavenderHoverBrush"   Color="#200078D4"/>
+    <SolidColorBrush x:Key="LavenderPressedBrush" Color="#500078D4"/>
+    <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FF0078D4"/>
+
+    <!-- ===== LISTVIEW HEADER ===== -->
+    <SolidColorBrush x:Key="ListViewHeaderBrush"  Color="#FF0078D4"/>
+    <SolidColorBrush x:Key="ListViewItemBrush"    Color="#FF1A1A1A"/>
+    <SolidColorBrush x:Key="HoverBackground"      Color="#F0F0F0"/>
+
     <!-- ===== CANVAS ===== -->
     <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FFF7F9FC"/>
     <SolidColorBrush x:Key="CanvasGridBrush" Color="#C699AEC4"/>

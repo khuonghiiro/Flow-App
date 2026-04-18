@@ -1,7 +1,7 @@
 # NODE_CREATION_SPEC — Đặc tả chuẩn tạo Node cho AI Agent
 
 > **Mục đích**: Tài liệu duy nhất, đầy đủ để AI agent đọc và tạo ra một node mới **hoàn chỉnh, không thiếu bất kỳ xử lý nào** trong hệ thống workflow Auto_Click_V2 (WPF/MVVM + C#).
-> **Cập nhật**: 2026-04-13
+> **Cập nhật**: 2026-04-18
 
 ---
 
@@ -129,6 +129,7 @@ Bước 3: Dialog XAML
         - Tab "Logic": TitleDisplayMode + TitleColorMode + Custom props + InputsPanel + OutputsPanel
         - Tab "Cấu hình": PortPosition IN/OUT + ReuseRoutes ItemsControl
   - [ ] ⚠️ Dùng DynamicResource thay hardcode color (xem §7)
+  - [ ] Nếu có **nhiều dòng** ComboBox Node + Key trong `ItemsControl`: đọc **[NODE_DIALOG_GUIDE.md](./NODE_DIALOG_GUIDE.md)** (Error 16 + mục **Multi-row `ItemsControl`** ngay sau đó) và bảng §9 hàng **#18** ở tài liệu này
 
 Bước 4: Dialog Code-behind
   - [ ] Views/Overlays/YourNodeDialog.xaml.cs
@@ -402,13 +403,13 @@ private static WorkflowNode CreateYourNode(double x, double y)
                              VerticalContentAlignment="Center" Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Width="24" Height="24"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24"
                                 Content="▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}" Cursor="Hand"
                                 Margin="8,0,0,0" ToolTip="Chạy logic node này"
                                 Command="{Binding RunSingleNodeCommand}"/>
 
-                        <Button x:Name="CloseButton" Width="24" Height="24"
+                        <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
                                 Content="×" FontSize="12" FontWeight="Bold" Cursor="Hand"
                                 Margin="8,0,0,0" Click="CloseButton_Click"/>
@@ -1596,6 +1597,7 @@ Node A (source)                     Node B (consumer)
 | 15 | Copy/Paste mất properties | Không copy all properties | Copy ALL + clone lists + NotifyTitleChanged |
 | 16 | Copy/Paste xong combobox chọn sai node nguồn | Không remap `SourceNodeId`/`TargetNodeId` sang node mới | Gọi `RemapPastedNodeReferences(nodeMap)` trong `WorkflowEditorWindow.MultiNodeClipboard.cs` |
 | 17 | Arrow keys không đổi port khi hover | Quên `border.Focusable = true` hoặc `border.Focus()` trong MouseEnter | Đặt `border.Focusable = true`, `FocusVisualStyle = null`, gọi `border.Focus()` trong MouseEnter, thêm `PreviewKeyDown` handler gọi `ChangePortPosition()` |
+| 18 | Nhiều dòng ComboBox Node + Key trong dialog bị đồng bộ sai / mất selection khi mở lại hoặc đổi connection | `Loaded` gọi lại refresh full sau ctor; `Clear()` + `Add()` `ItemsSource` khi đã bind `SelectedValue` TwoWay; nhiều row dùng chung `ItemsSource` + CurrentItem; so `NodeId` sai case | Đọc **[NODE_DIALOG_GUIDE.md](./NODE_DIALOG_GUIDE.md)** mục **Error 16** và ngay bên dưới mục **Multi-row `ItemsControl`: nhiều ComboBox Node + Key**; pattern: `CodeNodeDialog` / `FlowOverwriteNodeDialog`; một list node ở parent VM, bind qua `RelativeSource AncestorType=ItemsControl`, thay collection một lần, `IsSynchronizedWithCurrentItem=False`, so khớp `OrdinalIgnoreCase`, Key chỉ từ `DynamicOutputs` của node đã chọn |
 
 ---
 
@@ -1614,4 +1616,4 @@ Node A (source)                     Node B (consumer)
 
 ---
 
-*Tài liệu tổng hợp từ AI_NODE_FLOW_GUIDE.md, NODE_DIALOG_GUIDE.md, Node_Dialog_V2.md và source code thực tế — 2026-04-13*
+*Tài liệu tổng hợp từ AI_NODE_FLOW_GUIDE.md, NODE_DIALOG_GUIDE.md, Node_Dialog_V2.md và source code thực tế — 2026-04-18*

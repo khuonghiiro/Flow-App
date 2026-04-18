@@ -47,7 +47,7 @@
                     <StackPanel Grid.Column="1"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
-                        <Button x:Name="PlayButton"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
                                 Content="▶"
                                 FontSize="12"
@@ -57,7 +57,7 @@
                                 ToolTip="Chạy node thông báo này"
                                 Command="{Binding RunSingleNodeCommand}"/>
 
-                        <Button x:Name="CloseButton"
+                        <Button x:Name="CloseButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
                                 Content="×"

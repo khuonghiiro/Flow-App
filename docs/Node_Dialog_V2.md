@@ -518,7 +518,7 @@ Như vậy, trình tự chuẩn:
                     <!-- Action Buttons -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <!-- Play Button -->
-                        <Button x:Name="PlayButton" 
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  
                                 Width="24" Height="24" 
                                 Content="▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
@@ -528,7 +528,7 @@ Như vậy, trình tự chuẩn:
                                 Command="{Binding RunSingleNodeCommand}"/>
 
                         <!-- Close Button -->
-                        <Button x:Name="CloseButton" 
+                        <Button x:Name="CloseButton" Padding="0,0,0,0"  
                                 Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
                                 Content="×"
@@ -695,7 +695,7 @@ Như vậy, trình tự chuẩn:
 ```xml
 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
     <!-- Nút Play chuẩn: chỉ chạy logic riêng node (RunSingleNodeCommand) -->
-    <Button x:Name="PlayButton" Width="24" Height="24" Content="▶" FontSize="12"
+    <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
             Style="{DynamicResource PrimaryButton}"
             Cursor="Hand"
             Margin="8,0,0,0" ToolTip="Chạy logic node này"
@@ -708,7 +708,7 @@ Như vậy, trình tự chuẩn:
             Margin="8,0,0,0" ToolTip="Chạy workflow từ node này"
             Command="{Binding RunWorkflowFromNodeCommand}"/>
 
-    <Button x:Name="CloseButton" Width="24" Height="24"
+    <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
             Style="{DynamicResource DangerButton}"
             Content="×"
             FontSize="12"

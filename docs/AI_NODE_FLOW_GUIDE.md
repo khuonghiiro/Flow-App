@@ -420,7 +420,7 @@ Cấu trúc chuẩn (PHẢI kế thừa `BaseNodeDialog`):
                                 ToolTip="Chạy logic node này"
                                 Command="{Binding RunSingleNodeCommand}"/>
                         <!-- Close -->
-                        <Button x:Name="CloseButton" Width="24" Height="24"
+                        <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}" Content="×" FontSize="12"
                                 FontWeight="Bold" Margin="8,0,0,0" Click="CloseButton_Click"/>
                     </StackPanel>

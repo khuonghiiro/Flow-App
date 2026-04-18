@@ -40,7 +40,7 @@
                              VerticalContentAlignment="Center" Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Width="24" Height="24" Content="▶" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
                                 Margin="8,0,0,0" ToolTip="Chạy logic node này"
@@ -52,7 +52,7 @@
                                 Margin="8,0,0,0" ToolTip="Chạy workflow từ node này"
                                 Command="{Binding RunWorkflowFromNodeCommand}"/>
 
-                        <Button x:Name="CloseButton" Width="24" Height="24"
+                        <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
                                 Content="×"
                                 FontSize="12"

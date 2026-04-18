@@ -199,6 +199,8 @@ namespace FlowMy.Views.NodeControls
                     VerticalAlignment = VerticalAlignment.Center,
                     Cursor = Cursors.Hand,
                     Tag = branch,
+                    Margin = new Thickness(0, 0, 5, 0),
+                    Padding = new Thickness(0),
                     Style = Application.Current.FindResource("WarningButton") as Style
                 };
 
@@ -229,6 +231,7 @@ namespace FlowMy.Views.NodeControls
                 var addButton = new Button
                 {
                     Content = "+",
+                    Padding = new Thickness(0),
                     Width = 20,
                     Height = 20,
                     FontSize = 14,

@@ -57,7 +57,7 @@
                                 ToolTip="Lấy giá trị ngay (preview)"
                                 Command="{Binding FetchNowCommand}"/>
                         <!-- Play -->
-                        <Button x:Name="PlayButton"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
                                 Content="▶"
                                 FontSize="12"
@@ -67,7 +67,7 @@
                                 ToolTip="Chạy logic node này"
                                 Command="{Binding RunSingleNodeCommand}"/>
                         <!-- Close -->
-                        <Button x:Name="CloseButton"
+                        <Button x:Name="CloseButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
                                 Content="×"

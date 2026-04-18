@@ -52,7 +52,7 @@
                                 Margin="8,0,0,0"
                                 ToolTip="Chạy tải (node này)"
                                 Command="{Binding RunSingleNodeCommand}"/>
-                        <Button x:Name="CloseButton"
+                        <Button x:Name="CloseButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
                                 Content="×"

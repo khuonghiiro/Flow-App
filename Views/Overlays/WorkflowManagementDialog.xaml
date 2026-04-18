@@ -70,7 +70,7 @@
                                     <Button x:Name="EditButton"
                                             Click="EditButton_Click"
                                             Tag="{Binding}"
-                                            Style="{DynamicResource TransparentButtonStyle}"
+                                            Style="{DynamicResource PrimaryButton}"
                                             Padding="8,4"
                                             Margin="0,0,8,0"
                                             ToolTip="Sửa tên workflow"
@@ -78,25 +78,26 @@
                                         <StackPanel Orientation="Horizontal">
                                             <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
                                                          Converter={StaticResource IconKeyToPathConverter}, 
-                                                         ConverterParameter='edit'}"
-                                                      Width="14" Height="14" Fill="{DynamicResource PrimaryBrush}" Margin="0,0,4,0"/>
-                                            <TextBlock Text="Sửa" Foreground="{DynamicResource PrimaryBrush}" FontSize="12"/>
+                                                         ConverterParameter='pen-to-square duotone'}"
+                                                      Width="14" Height="14" Fill="White" Margin="0,0,4,0"/>
+                                            <TextBlock Text="Sửa" Foreground="White" FontSize="12"/>
                                         </StackPanel>
                                     </Button>
+                                    
 
                                     <Button x:Name="DeleteButton"
                                             Click="DeleteButton_Click"
                                             Tag="{Binding}"
-                                            Style="{DynamicResource TransparentButtonStyle}"
+                                            Style="{DynamicResource DangerButton}"
                                             Padding="8,4"
                                             ToolTip="Xóa workflow"
                                             Cursor="Hand">
                                         <StackPanel Orientation="Horizontal">
                                             <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
                                                          Converter={StaticResource IconKeyToPathConverter}, 
-                                                         ConverterParameter='trash-alt'}"
-                                                      Width="14" Height="14" Fill="{DynamicResource DangerBrush}" Margin="0,0,4,0"/>
-                                            <TextBlock Text="Xóa" Foreground="{DynamicResource DangerBrush}" FontSize="12"/>
+                                                         ConverterParameter='trash-can duotone-light'}"
+                                                      Width="14" Height="14" Fill="White" Margin="0,0,4,0"/>
+                                            <TextBlock Text="Xóa" Foreground="White" FontSize="12"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -112,9 +113,9 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,15,0,0">
-            <Button x:Name="CloseButton"
+            <Button x:Name="CloseButton"  
                     Click="CloseButton_Click"
-                    Style="{StaticResource PrimaryButton}"
+                    Style="{DynamicResource PrimaryButton}"
                     Padding="20,8"
                     Content="Đóng"/>
         </StackPanel>
