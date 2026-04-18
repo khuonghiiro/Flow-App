@@ -66,9 +66,12 @@ public sealed partial class ExecutionTraceLogItemViewModel : ObservableObject
             ? "-"
             : (executionId.Length > 12 ? executionId[..12] + "..." : executionId);
         IndentMargin = new Thickness(6 + (Depth * 16), 4, 6, 4);
-        TreePrefix = Depth <= 0
-            ? string.Empty
-            : string.Concat(Enumerable.Repeat("│  ", Math.Max(0, Depth - 1))) + "├─► ";
+        // TreePrefix = Depth <= 0
+        //     ? string.Empty
+        //     : string.Concat(Enumerable.Repeat("│  ", Math.Max(0, Depth - 1))) + "├─► ";
+
+        TreePrefix = string.Empty;
+
         TimestampUtc = DateTime.UtcNow;
     }
 }

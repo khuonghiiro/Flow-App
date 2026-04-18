@@ -130,6 +130,8 @@ namespace FlowMy.ViewModels
         private readonly Dictionary<string, ExecutionTraceTreeNodeViewModel> _executionTraceTreeRootByRun = new(StringComparer.Ordinal);
         private readonly Dictionary<string, List<ExecutionTraceTreeNodeViewModel>> _executionTraceTreeNodesByRunAndNode = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<ExecutionTraceTreeNodeViewModel>> _executionTraceTreeNodesByExecutionId = new(StringComparer.Ordinal);
+        private readonly Dictionary<WorkflowNode, List<ExecutionTraceLogItemViewModel>> _pendingTraceRowsByNode = new();
+        private readonly Dictionary<WorkflowNode, List<ExecutionTraceTreeNodeViewModel>> _pendingTraceTreeRowsByNode = new();
         private const int MaxExecutionTraceRows = 1200;
         public ICollectionView? ExecutionTraceFilteredView { get; private set; }
 
@@ -220,6 +222,8 @@ namespace FlowMy.ViewModels
                     _executionTraceTreeRootByRun.Clear();
                     _executionTraceTreeNodesByRunAndNode.Clear();
                     _executionTraceTreeNodesByExecutionId.Clear();
+                    _pendingTraceRowsByNode.Clear();
+                    _pendingTraceTreeRowsByNode.Clear();
                     ExecutionTraceNodeTypeOptions.Clear();
                     ExecutionTraceNodeTypeOptions.Add("All");
                     ExecutionTraceNodeTypeFilter = "All";
@@ -418,6 +422,102 @@ namespace FlowMy.ViewModels
             return null;
         }
 
+        private static List<bool> BuildAncestorGuideFlags(ExecutionTraceTreeNodeViewModel node)
+        {
+            var flags = new List<bool>();
+            var current = node.Parent;
+            while (current != null && !current.IsRunRoot)
+            {
+                flags.Add(!current.IsLastSibling);
+                current = current.Parent;
+            }
+            flags.Reverse();
+            return flags;
+        }
+
+        private static void RefreshTreeConnectorMetadata(ExecutionTraceTreeNodeViewModel parent)
+        {
+            for (var i = 0; i < parent.Children.Count; i++)
+            {
+                var child = parent.Children[i];
+                child.Parent = parent;
+                child.IsLastSibling = i == parent.Children.Count - 1;
+                child.SetConnectorGuides(BuildAncestorGuideFlags(child));
+                RefreshTreeConnectorMetadata(child);
+            }
+        }
+
+        private static void AttachTreeChild(ExecutionTraceTreeNodeViewModel parent, ExecutionTraceTreeNodeViewModel child)
+        {
+            parent.Children.Add(child);
+            RefreshTreeConnectorMetadata(parent);
+        }
+
+        private static bool IsAsyncStructuralParent(string? parentNodeId, string? parentTitle)
+        {
+            if (!string.IsNullOrWhiteSpace(parentNodeId))
+            {
+                if (parentNodeId.StartsWith("AsyncTaskBody_", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (parentNodeId.Contains("_AsyncTask_", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return !string.IsNullOrWhiteSpace(parentTitle)
+                   && parentTitle.Contains("Async Task", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private ExecutionTraceTreeNodeViewModel? PickLatestNodeInExactExecution(string executionId, string rootExecutionId, string currentNodeId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId))
+                return null;
+            if (!_executionTraceTreeNodesByExecutionId.TryGetValue(executionId, out var rows) || rows.Count == 0)
+                return null;
+
+            for (var i = rows.Count - 1; i >= 0; i--)
+            {
+                var candidate = rows[i];
+                if (!string.Equals(candidate.RootExecutionId, rootExecutionId, StringComparison.Ordinal))
+                    continue;
+                if (string.Equals(candidate.NodeId, currentNodeId, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                return candidate;
+            }
+            return null;
+        }
+
+        private static TRow? TakePendingRow<TRow>(
+            Dictionary<WorkflowNode, List<TRow>> pendingByNode,
+            WorkflowNode node,
+            string? preferredExecutionId,
+            Func<TRow, string> executionIdSelector,
+            Func<TRow, string> statusSelector)
+            where TRow : class
+        {
+            if (!pendingByNode.TryGetValue(node, out var rows) || rows.Count == 0)
+                return null;
+
+            var idx = -1;
+            if (!string.IsNullOrWhiteSpace(preferredExecutionId))
+            {
+                idx = rows.FindIndex(r =>
+                    string.Equals(executionIdSelector(r), preferredExecutionId, StringComparison.Ordinal) &&
+                    string.Equals(statusSelector(r), "running", StringComparison.OrdinalIgnoreCase));
+            }
+            if (idx < 0)
+            {
+                idx = rows.FindIndex(r => string.Equals(statusSelector(r), "running", StringComparison.OrdinalIgnoreCase));
+            }
+            if (idx < 0) idx = rows.Count - 1;
+            if (idx < 0) return null;
+
+            var row = rows[idx];
+            rows.RemoveAt(idx);
+            if (rows.Count == 0)
+                pendingByNode.Remove(node);
+            return row;
+        }
+
         private static bool RowMatchesCurrentExecutionTraceFilter(
             ExecutionTraceTreeNodeViewModel row,
             string statusFilter,
@@ -476,18 +576,48 @@ namespace FlowMy.ViewModels
             return node.Type switch
             {
                 NodeType.Start => "play duotone-regular",
-                NodeType.End => "stop duotone-regular",
-                NodeType.IfElse => "diamond-turn-right-down duotone-light",
+                NodeType.End => "flag-checkered sharp-duotone-solid",
+                NodeType.Input => "left-to-dotted-line duotone-regular",
+                NodeType.Output => "right-to-dotted-line duotone-regular",
+                NodeType.Process => "cog",
+                NodeType.IfElse => "list-tree sharp-light",
+                NodeType.Loop => "arrows-spin duotone",
+                NodeType.Break => "circle-stop duotone",
+                NodeType.Continue => "diagram-predecessor duotone-light",
+                NodeType.Delay => "timer regular",
+                NodeType.Keyboard => "keyboard duotone",
+                NodeType.KeyPressEvent => "key duotone-regular",
+                NodeType.HotkeyPressEvent => "keyboard duotone",
+                NodeType.MouseEvent => "computer-mouse duotone",
+                NodeType.Variable => "square-root-variable",
+                NodeType.Function => "calculator",
+                NodeType.ScreenPosition => "crosshairs sharp-duotone-solid",
+                NodeType.ScreenCapture => "camera-viewfinder duotone-light",
+                NodeType.StringSplit => "scissors light",
+                NodeType.ListOut => "list-radio regular",
+                NodeType.AssignData => "arrows-left-right duotone",
+                NodeType.MediaGallery => "image-stack duotone",
+                NodeType.ImageProcessing => "image notdog-duo-solid",
                 NodeType.Code => "code duotone-regular",
-                NodeType.Output => "output-circle-arrow-right duotone-regular",
-                NodeType.HttpRequest => "globe-pointer duotone-regular",
-                NodeType.FileDownload => "file-arrow-down duotone-regular",
-                NodeType.FlowOverwrite => "layer-group duotone-regular",
-                NodeType.AsyncTask => "arrows-rotate duotone-regular",
-                NodeType.ListOut => "list-check duotone-regular",
-                NodeType.Callback => "reply-all duotone-regular",
+                NodeType.HtmlUi => "html5 brands",
+                NodeType.Folder => "folder-open duotone-thin",
+                NodeType.HttpRequest => "globe-pointer sharp-duotone-light",
+                NodeType.Web => "internet-explorer brands",
+                NodeType.AsyncTask => "diagram-project duotone-light",
+                NodeType.DataFetcher => "inbox-out duotone-light",
+                NodeType.FolderFilePaths => "file-import duotone-light",
+                NodeType.KeyValueBridge => "list-check solid",
+                NodeType.FlowOverwrite => "merge sharp-regular",
                 _ => "circle-nodes duotone-regular"
             };
+        }
+
+        private static string FormatElapsed(TimeSpan elapsed)
+        {
+            var ms = elapsed.TotalMilliseconds;
+            if (ms < 1) return "<1 ms";
+            if (ms >= 1000) return $"{elapsed.TotalSeconds:0.#} s";
+            return $"{ms:0} ms";
         }
 
         private static string ToCompactText(string? raw, int maxLen = 220)
@@ -642,6 +772,14 @@ namespace FlowMy.ViewModels
                 if (!EnableExecutionTraceLog) return;
                 lock (_executionTraceLock)
                 {
+                    if (_pendingTraceRowsByNode.TryGetValue(node, out var pendingExisting) &&
+                        pendingExisting.Any(x =>
+                            string.Equals(x.ExecutionId, executionKey, StringComparison.Ordinal) &&
+                            string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return;
+                    }
+
                     if (!_executionTraceTreeRootByRun.TryGetValue(rootExecutionId, out var rootNode))
                     {
                         rootNode = new ExecutionTraceTreeNodeViewModel(
@@ -675,8 +813,12 @@ namespace FlowMy.ViewModels
                     {
                         parentTreeNode = PickBestParentFromExecutionChain(executionKey, rootExecutionId) ?? parentTreeNode;
                     }
+                    if (node.Type == NodeType.End || IsAsyncStructuralParent(parentNodeId, parentTitle))
+                    {
+                        parentTreeNode = PickLatestNodeInExactExecution(executionKey, rootExecutionId, node.Id) ?? parentTreeNode;
+                    }
 
-                    parentTreeNode.Children.Add(treeNode);
+                    AttachTreeChild(parentTreeNode, treeNode);
                     var nodeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);
                     if (!_executionTraceTreeNodesByRunAndNode.TryGetValue(nodeKey, out var list))
                     {
@@ -692,6 +834,20 @@ namespace FlowMy.ViewModels
                     }
                     byExecList.Add(treeNode);
 
+                    if (!_pendingTraceRowsByNode.TryGetValue(node, out var pendingRows))
+                    {
+                        pendingRows = new List<ExecutionTraceLogItemViewModel>();
+                        _pendingTraceRowsByNode[node] = pendingRows;
+                    }
+                    pendingRows.Add(item);
+
+                    if (!_pendingTraceTreeRowsByNode.TryGetValue(node, out var pendingTreeRows))
+                    {
+                        pendingTreeRows = new List<ExecutionTraceTreeNodeViewModel>();
+                        _pendingTraceTreeRowsByNode[node] = pendingTreeRows;
+                    }
+                    pendingTreeRows.Add(treeNode);
+
                     ExecutionTraceLogs.Add(item);
                     if (!ExecutionTraceNodeTypeOptions.Contains(item.NodeType))
                         ExecutionTraceNodeTypeOptions.Add(item.NodeType);
@@ -706,21 +862,21 @@ namespace FlowMy.ViewModels
         {
             if (!EnableExecutionTraceLog || node == null) return;
             var executionKey = node.LastExecutionId ?? string.Empty;
-            var elapsedText = elapsed.TotalMilliseconds >= 1
-                ? $"{elapsed.TotalMilliseconds:0} ms"
-                : "<1 ms";
-            var outputSummary = BuildOutputSummaryForExecution(node, executionKey);
+            var elapsedText = FormatElapsed(elapsed);
 
             Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
                 if (!EnableExecutionTraceLog) return;
                 lock (_executionTraceLock)
                 {
-                    var row = ExecutionTraceLogs
-                        .LastOrDefault(x =>
-                            ReferenceEquals(x.Node, node)
-                            && (executionKey.Length == 0 || string.Equals(x.ExecutionId, executionKey, StringComparison.Ordinal))
-                            && string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
+                    var row = TakePendingRow(
+                        _pendingTraceRowsByNode,
+                        node,
+                        executionKey,
+                        x => x.ExecutionId,
+                        x => x.Status);
+                    var effectiveExecutionId = row?.ExecutionId ?? executionKey;
+                    var outputSummary = BuildOutputSummaryForExecution(node, effectiveExecutionId);
                     if (row != null)
                     {
                         row.Status = "completed";
@@ -728,20 +884,17 @@ namespace FlowMy.ViewModels
                         row.OutputSummary = outputSummary;
                     }
 
-                    var rootExecutionId = NormalizeRootExecutionId(executionKey);
-                    var treeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);
-                    if (_executionTraceTreeNodesByRunAndNode.TryGetValue(treeKey, out var treeRows))
+                    var trow = TakePendingRow(
+                        _pendingTraceTreeRowsByNode,
+                        node,
+                        effectiveExecutionId,
+                        x => x.ExecutionId,
+                        x => x.Status);
+                    if (trow != null)
                     {
-                        var trow = treeRows.LastOrDefault(x =>
-                            string.Equals(x.ExecutionId, executionKey, StringComparison.Ordinal) &&
-                            string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase))
-                                   ?? treeRows.LastOrDefault(x => string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
-                        if (trow != null)
-                        {
-                            trow.Status = "completed";
-                            trow.ElapsedText = elapsedText;
-                            trow.OutputSummary = outputSummary;
-                        }
+                        trow.Status = "completed";
+                        trow.ElapsedText = elapsedText;
+                        trow.OutputSummary = outputSummary;
                     }
                 }
             }));
@@ -758,11 +911,12 @@ namespace FlowMy.ViewModels
                 if (!EnableExecutionTraceLog) return;
                 lock (_executionTraceLock)
                 {
-                    var row = ExecutionTraceLogs
-                        .LastOrDefault(x =>
-                            ReferenceEquals(x.Node, node)
-                            && (executionKey.Length == 0 || string.Equals(x.ExecutionId, executionKey, StringComparison.Ordinal))
-                            && string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
+                    var row = TakePendingRow(
+                        _pendingTraceRowsByNode,
+                        node,
+                        executionKey,
+                        x => x.ExecutionId,
+                        x => x.Status);
                     if (row == null)
                     {
                         row = new ExecutionTraceLogItemViewModel(
@@ -779,19 +933,16 @@ namespace FlowMy.ViewModels
                     row.Status = "failed";
                     row.ErrorMessage = err;
 
-                    var rootExecutionId = NormalizeRootExecutionId(effectiveExecutionId);
-                    var treeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);
-                    if (_executionTraceTreeNodesByRunAndNode.TryGetValue(treeKey, out var treeRows))
+                    var trow = TakePendingRow(
+                        _pendingTraceTreeRowsByNode,
+                        node,
+                        effectiveExecutionId,
+                        x => x.ExecutionId,
+                        x => x.Status);
+                    if (trow != null)
                     {
-                        var trow = treeRows.LastOrDefault(x =>
-                            string.Equals(x.ExecutionId, effectiveExecutionId, StringComparison.Ordinal) &&
-                            string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase))
-                                   ?? treeRows.LastOrDefault(x => string.Equals(x.Status, "running", StringComparison.OrdinalIgnoreCase));
-                        if (trow != null)
-                        {
-                            trow.Status = "failed";
-                            trow.ErrorMessage = err;
-                        }
+                        trow.Status = "failed";
+                        trow.ErrorMessage = err;
                     }
                 }
             }));

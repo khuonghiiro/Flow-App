@@ -1864,7 +1864,7 @@ Cursor="Hand"
                                         Style="{DynamicResource TransparentButtonStyle}"
                                         ToolTip="Mở tất cả nhánh">
                                     <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='plus regular'}"/>
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-plus duotone-lightr'}"/>
                                 </Button>
                                 <Button Grid.Column="8"
                                         Margin="38,0,0,0"
@@ -1873,7 +1873,7 @@ Cursor="Hand"
                                         Style="{DynamicResource TransparentButtonStyle}"
                                         ToolTip="Đóng tất cả nhánh">
                                     <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='minus regular'}"/>
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-minus duotone-light'}"/>
                                 </Button>
                                 <Button Grid.Column="8"
                                         Margin="68,0,0,0"
@@ -1882,7 +1882,7 @@ Cursor="Hand"
                                         Style="{DynamicResource TransparentButtonStyle}"
                                         ToolTip="Xóa log hiện tại">
                                     <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='trash-can-list sharp-regular'}"/>
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='trash-can duotone-regular'}"/>
                                 </Button>
                                 <Button Grid.Column="9"
                                         Padding="8,2"
@@ -1890,7 +1890,7 @@ Cursor="Hand"
                                         Style="{DynamicResource TransparentButtonStyle}"
                                         ToolTip="Ẩn/hiện panel log">
                                     <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chevron-down regular'}"/>
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chevron-down duotone-regular'}"/>
                                 </Button>
                             </Grid>
                         </Border>
@@ -1911,88 +1911,152 @@ Cursor="Hand"
                                 </TreeView.ItemContainerStyle>
                                 <TreeView.Resources>
                                     <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
+                                    <Style x:Key="TraceStatusBadgeStyle" TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource CardColor}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="CornerRadius" Value="10"/>
+                                        <Setter Property="Padding" Value="7,1"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status}" Value="completed">
+                                                <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                                                <Setter Property="Opacity" Value="0.85"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="running">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="Opacity" Value="0.85"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="failed">
+                                                <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                                <Setter Property="Opacity" Value="0.9"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                    <DataTemplate DataType="{x:Type viewModels:ExecutionTraceConnectorGuideViewModel}">
+                                        <Grid Width="10" Height="16">
+                                            <Rectangle Width="1"
+                                                       Height="16"
+                                                       Fill="{DynamicResource BorderColor}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="{Binding ShowVertical, Converter={StaticResource LocalBoolToVis}}"/>
+                                        </Grid>
+                                    </DataTemplate>
                                     <HierarchicalDataTemplate DataType="{x:Type viewModels:ExecutionTraceTreeNodeViewModel}"
                                                               ItemsSource="{Binding Children}">
                                         <Border Margin="{Binding ItemMargin}"
-                                                Padding="6"
+                                                Padding="5"
                                                 CornerRadius="6"
                                                 BorderThickness="1"
                                                 BorderBrush="{DynamicResource BorderColor}"
                                                 Background="{DynamicResource CardColor}"
                                                 Visibility="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}">
                                                 <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
                                                     <Border Width="20"
                                                             Height="20"
                                                             CornerRadius="10"
-                                                            Background="{Binding NodeBrush}"
-                                                            Margin="0,0,6,0"
+                                                            Margin="0,0,4,0"
                                                             Cursor="Hand"
                                                             MouseLeftButtonUp="ExecutionLogNodeIcon_MouseLeftButtonUp"
                                                             ToolTip="Di chuyển tới node">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="{DynamicResource SubtleBrush}"/>
+                                                                <Setter Property="BorderBrush" Value="{Binding NodeBrush}"/>
+                                                                <Setter Property="BorderThickness" Value="1"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding NodeBrush}" Value="{x:Null}">
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
                                                         <controls:SvgViewboxEx Width="11"
                                                                                Height="11"
-                                                                               Fill="{DynamicResource TextOnPrimaryBrush}"
+                                                                               Fill="{DynamicResource TextBrush}"
                                                                                Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
                                                     </Border>
-                                                    <Grid Margin="{Binding ConnectorIndent}" VerticalAlignment="Center">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="10"/>
-                                                            <ColumnDefinition Width="12"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <Rectangle Grid.Column="0"
-                                                                   Width="1"
-                                                                   Height="14"
-                                                                   Fill="{DynamicResource BorderColor}"
-                                                                   HorizontalAlignment="Center"
-                                                                   VerticalAlignment="Center"
-                                                                   Visibility="{Binding ShowConnector, Converter={StaticResource LocalBoolToVis}}"/>
-                                                        <Rectangle Grid.Column="1"
-                                                                   Width="10"
-                                                                   Height="1"
-                                                                   Fill="{DynamicResource BorderColor}"
-                                                                   HorizontalAlignment="Left"
-                                                                   VerticalAlignment="Center"
-                                                                   Visibility="{Binding ShowConnector, Converter={StaticResource LocalBoolToVis}}"/>
-                                                    </Grid>
                                                     <TextBlock Text="{Binding NodeTitle}"
                                                                FontWeight="SemiBold"
                                                                FontSize="11"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding Status}"
-                                                               Margin="8,0,0,0"
-                                                               FontSize="10"
-                                                               Opacity="0.75"
-                                                               Foreground="{DynamicResource TextBrush}"
-                                                               VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding ElapsedText}"
-                                                               Margin="8,0,0,0"
-                                                               FontSize="10"
-                                                               Opacity="0.75"
-                                                               Foreground="{DynamicResource TextBrush}"
-                                                               VerticalAlignment="Center"/>
                                                 </StackPanel>
-                                                <TextBlock Margin="26,1,0,0"
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding ElapsedText}"
+                                                           Margin="8,0,8,0"
+                                                               FontSize="10"
+                                                           Opacity="0.8"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                <Border Grid.Column="2" Style="{StaticResource TraceStatusBadgeStyle}">
+                                                    <TextBlock Text="{Binding Status}"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+                                                </Grid>
+                                                <TextBlock Margin="32,3,0,0"
                                                            FontSize="9"
                                                            Opacity="0.6"
                                                            Foreground="{DynamicResource TextBrush}"
                                                            Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
-                                                <TextBlock Text="{Binding InputSummary}"
-                                                           Margin="26,2,0,0"
-                                                           TextWrapping="Wrap"
-                                                           FontSize="10"
-                                                           Foreground="{DynamicResource TextBrush}"/>
-                                                <TextBlock Text="{Binding OutputSummary}"
-                                                           Margin="26,2,0,0"
-                                                           TextWrapping="Wrap"
-                                                           FontSize="10"
-                                                           Foreground="{DynamicResource SuccessBrush}"/>
-                                                <TextBlock Text="{Binding ErrorMessage}"
-                                                           Margin="26,2,0,0"
-                                                           TextWrapping="Wrap"
-                                                           FontSize="10"
-                                                           Foreground="{DynamicResource DangerBrush}"/>
+                                                <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
+                                                           Margin="32,2,0,0"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           FontSize="9"
+                                                           TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding InputSummary}" Value="">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
+                                                           Margin="32,1,0,0"
+                                                           Foreground="{DynamicResource SuccessBrush}"
+                                                           FontSize="9"
+                                                           TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding OutputSummary}" Value="">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
+                                                           Margin="32,1,0,0"
+                                                           Foreground="{DynamicResource DangerBrush}"
+                                                           FontSize="9"
+                                                           TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ErrorMessage}" Value="">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                             </StackPanel>
                                         </Border>
                                     </HierarchicalDataTemplate>

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 
@@ -18,8 +19,12 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public bool ShowConnector { get; }
     public Brush? NodeBrush { get; }
     public int Depth { get; }
-    public string ConnectorPrefix { get; }
     public Thickness ConnectorIndent { get; }
+    public ExecutionTraceTreeNodeViewModel? Parent { get; internal set; }
+    public ObservableCollection<ExecutionTraceConnectorGuideViewModel> ConnectorGuides { get; } = new();
+    public bool ShowTopStem => ShowConnector;
+    public bool ShowBottomStem => ShowConnector && !IsLastSibling;
+    public bool ShowHorizontalConnector => ShowConnector;
 
     [ObservableProperty]
     private string status = "running";
@@ -42,8 +47,11 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private bool isExpanded = true;
 
+    [ObservableProperty]
+    private bool isLastSibling = true;
+
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
-    public Thickness ItemMargin { get; set; } = new Thickness(2, 1, 2, 1);
+    public Thickness ItemMargin { get; set; } = new Thickness(0, 2, 4, 2);
 
     public ExecutionTraceTreeNodeViewModel(
         string rootExecutionId,
@@ -68,13 +76,28 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         ShowConnector = !isRunRoot;
         NodeBrush = nodeBrush;
         Depth = depth < 0 ? 0 : depth;
-        ConnectorPrefix = IsRunRoot
-            ? "► "
-            : (Depth <= 0
-                ? "└─► "
-                : string.Concat(System.Linq.Enumerable.Repeat("│   ", System.Math.Max(0, Depth - 1))) + "├─► ");
         ConnectorIndent = IsRunRoot ? new Thickness(0) : new Thickness(0, 0, 2, 0);
+        ItemMargin = IsRunRoot ? new Thickness(0, 2, 4, 2) : new Thickness(20, 2, 4, 2);
         IsExpanded = true;
         IsVisible = true;
+        IsLastSibling = true;
     }
+
+    partial void OnIsLastSiblingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowBottomStem));
+    }
+
+    public void SetConnectorGuides(IEnumerable<bool> ancestorHasNextSibling)
+    {
+        ConnectorGuides.Clear();
+        foreach (var show in ancestorHasNextSibling)
+            ConnectorGuides.Add(new ExecutionTraceConnectorGuideViewModel(show));
+    }
+}
+
+public sealed class ExecutionTraceConnectorGuideViewModel
+{
+    public bool ShowVertical { get; }
+    public ExecutionTraceConnectorGuideViewModel(bool showVertical) => ShowVertical = showVertical;
 }
