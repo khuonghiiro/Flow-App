@@ -1912,7 +1912,7 @@ Cursor="Hand"
                                         <Setter Property="Visibility" Value="Visible"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsRunRoot}" Value="False">
-                                                <Setter Property="Padding" Value="6,0,0,0"/>
+                                                <Setter Property="Padding" Value="4,0,0,0"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsVisible}" Value="False">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -1922,6 +1922,14 @@ Cursor="Hand"
                                 </TreeView.ItemContainerStyle>
                                 <TreeView.Resources>
                                     <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
+                                    <Style x:Key="TraceDetailsToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource QaToggleButton}">
+                                        <Setter Property="Height" Value="20"/>
+                                        <Setter Property="FontSize" Value="10"/>
+                                        <Setter Property="Padding" Value="8,0"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                        <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                    </Style>
                                     <Style x:Key="TraceStatusBadgeStyle" TargetType="Border">
                                         <Setter Property="Background" Value="{DynamicResource CardColor}"/>
                                         <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
@@ -2027,54 +2035,141 @@ Cursor="Hand"
                                                            Opacity="0.6"
                                                            Foreground="{DynamicResource TextBrush}"
                                                            Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
-                                                <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
-                                                           Margin="32,2,0,0"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           FontSize="9"
-                                                           TextWrapping="Wrap">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                <Grid Margin="32,2,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Orientation="Vertical">
+                                                        <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
+                                                                   Foreground="{DynamicResource TextBrush}"
+                                                                   FontSize="9"
+                                                                   MaxWidth="560"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding InputSummary}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
+                                                                   Margin="0,1,0,0"
+                                                                   Foreground="{DynamicResource SuccessBrush}"
+                                                                   FontSize="9"
+                                                                   MaxWidth="560"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding OutputSummary}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
+                                                                   Margin="0,1,0,0"
+                                                                   Foreground="{DynamicResource DangerBrush}"
+                                                                   FontSize="9"
+                                                                   MaxWidth="560"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ErrorMessage}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    <ToggleButton x:Name="TraceDetailsToggle"
+                                                                  Grid.Column="1"
+                                                                  Margin="8,0,0,0"
+                                                                  Padding="6,1"
+                                                                  VerticalAlignment="Top"
+                                                                  Style="{StaticResource TraceDetailsToggleStyle}"
+                                                                  Visibility="{Binding ShowDetailsToggle, Converter={StaticResource LocalBoolToVis}}"
+                                                                  Content="chi tiết"/>
+                                                </Grid>
+                                                <StackPanel Margin="32,2,0,0"
+                                                            Visibility="Collapsed">
+                                                    <StackPanel.Style>
+                                                        <Style TargetType="StackPanel">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding InputSummary}" Value="">
+                                                                <DataTrigger Binding="{Binding ShowDetailsToggle}" Value="False">
                                                                     <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsChecked, ElementName=TraceDetailsToggle}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
-                                                           Margin="32,1,0,0"
-                                                           Foreground="{DynamicResource SuccessBrush}"
-                                                           FontSize="9"
-                                                           TextWrapping="Wrap">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding OutputSummary}" Value="">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
-                                                           Margin="32,1,0,0"
-                                                           Foreground="{DynamicResource DangerBrush}"
-                                                           FontSize="9"
-                                                           TextWrapping="Wrap">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ErrorMessage}" Value="">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                    </StackPanel.Style>
+                                                    <TextBlock Text="{Binding InputSummary, StringFormat=IN full: {0}}"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="9"
+                                                               MaxWidth="560"
+                                                               TextWrapping="Wrap">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding InputSummary}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding OutputSummary, StringFormat=OUT full: {0}}"
+                                                               Margin="0,1,0,0"
+                                                               Foreground="{DynamicResource SuccessBrush}"
+                                                               FontSize="9"
+                                                               MaxWidth="560"
+                                                               TextWrapping="Wrap">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding OutputSummary}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR full: {0}}"
+                                                               Margin="0,1,0,0"
+                                                               Foreground="{DynamicResource DangerBrush}"
+                                                               FontSize="9"
+                                                               MaxWidth="560"
+                                                               TextWrapping="Wrap">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ErrorMessage}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </HierarchicalDataTemplate>

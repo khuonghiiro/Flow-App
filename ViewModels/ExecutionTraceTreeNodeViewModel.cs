@@ -41,6 +41,13 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private string errorMessage = string.Empty;
 
+    public bool HasAnyDetails =>
+        !string.IsNullOrWhiteSpace(InputSummary) ||
+        !string.IsNullOrWhiteSpace(OutputSummary) ||
+        !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    public bool ShowDetailsToggle => HasAnyDetails;
+
     [ObservableProperty]
     private bool isVisible = true;
 
@@ -51,7 +58,7 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     private bool isLastSibling = true;
 
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
-    public Thickness ItemMargin { get; set; } = new Thickness(0, 4, 4, 4);
+    public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
 
     public ExecutionTraceTreeNodeViewModel(
         string rootExecutionId,
@@ -77,7 +84,8 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         NodeBrush = nodeBrush;
         Depth = depth < 0 ? 0 : depth;
         ConnectorIndent = IsRunRoot ? new Thickness(0) : new Thickness(0, 0, 2, 0);
-        ItemMargin = IsRunRoot ? new Thickness(0, 4, 4, 4) : new Thickness(8, 4, 4, 4);
+        var leftIndent = IsRunRoot ? 0 : (Depth * 50);
+        ItemMargin = new Thickness(leftIndent, 5, 4, 5);
         IsExpanded = true;
         IsVisible = true;
         IsLastSibling = true;
@@ -87,6 +95,17 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ShowBottomStem));
     }
+
+    partial void OnInputSummaryChanged(string value) => NotifyDetailsFlagsChanged();
+    partial void OnOutputSummaryChanged(string value) => NotifyDetailsFlagsChanged();
+    partial void OnErrorMessageChanged(string value) => NotifyDetailsFlagsChanged();
+
+    private void NotifyDetailsFlagsChanged()
+    {
+        OnPropertyChanged(nameof(HasAnyDetails));
+        OnPropertyChanged(nameof(ShowDetailsToggle));
+    }
+
 
     public void SetConnectorGuides(IEnumerable<bool> ancestorHasNextSibling)
     {
