@@ -1970,6 +1970,18 @@ Cursor="Hand"
                                                 BorderBrush="{DynamicResource BorderColor}"
                                                 Background="{DynamicResource CardColor}"
                                                 Visibility="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                                        <Setter Property="Background" Value="{DynamicResource CardColor}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                                                <Setter Property="Background" Value="{DynamicResource PrimaryGlowBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
                                                 <StackPanel>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -1988,13 +2000,16 @@ Cursor="Hand"
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Background" Value="{Binding NodeBrush}"/>
-                                                                <Setter Property="BorderBrush" Value="{Binding NodeBrush}"/>
-                                                                <Setter Property="BorderThickness" Value="0"/>
+                                                                <Setter Property="BorderBrush" Value="Transparent"/>
+                                                                <Setter Property="BorderThickness" Value="1"/>
                                                                 <Setter Property="Opacity" Value="1"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding NodeBrush}" Value="{x:Null}">
                                                                         <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                                                        <Setter Property="BorderThickness" Value="2"/>
                                                                     </DataTrigger>
                                                                     <Trigger Property="IsMouseOver" Value="True">
                                                                         <Setter Property="Opacity" Value="0.88"/>
@@ -2013,7 +2028,18 @@ Cursor="Hand"
                                                                FontWeight="SemiBold"
                                                                FontSize="11"
                                                                Foreground="{DynamicResource TextBrush}"
-                                                               VerticalAlignment="Center"/>
+                                                               VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="1"
                                                            Text="{Binding ElapsedText}"
@@ -2041,6 +2067,16 @@ Cursor="Hand"
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0" Orientation="Vertical">
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
                                                         <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
                                                                    Foreground="{DynamicResource TextBrush}"
                                                                    FontSize="9"
@@ -2101,11 +2137,11 @@ Cursor="Hand"
                                                                   Padding="6,1"
                                                                   VerticalAlignment="Top"
                                                                   Style="{StaticResource TraceDetailsToggleStyle}"
+                                                                  IsChecked="{Binding IsDetailsExpanded, Mode=TwoWay}"
                                                                   Visibility="{Binding ShowDetailsToggle, Converter={StaticResource LocalBoolToVis}}"
                                                                   Content="chi tiết"/>
                                                 </Grid>
-                                                <StackPanel Margin="32,2,0,0"
-                                                            Visibility="Collapsed">
+                                                <StackPanel Margin="32,2,0,0">
                                                     <StackPanel.Style>
                                                         <Style TargetType="StackPanel">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -2113,7 +2149,7 @@ Cursor="Hand"
                                                                 <DataTrigger Binding="{Binding ShowDetailsToggle}" Value="False">
                                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsChecked, ElementName=TraceDetailsToggle}" Value="True">
+                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
                                                                     <Setter Property="Visibility" Value="Visible"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>

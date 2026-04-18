@@ -57,6 +57,9 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private bool isLastSibling = true;
 
+    [ObservableProperty]
+    private bool isDetailsExpanded;
+
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
     public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
 
