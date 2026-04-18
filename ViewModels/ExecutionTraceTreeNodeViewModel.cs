@@ -51,7 +51,7 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     private bool isLastSibling = true;
 
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
-    public Thickness ItemMargin { get; set; } = new Thickness(0, 2, 4, 2);
+    public Thickness ItemMargin { get; set; } = new Thickness(0, 4, 4, 4);
 
     public ExecutionTraceTreeNodeViewModel(
         string rootExecutionId,
@@ -77,7 +77,7 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         NodeBrush = nodeBrush;
         Depth = depth < 0 ? 0 : depth;
         ConnectorIndent = IsRunRoot ? new Thickness(0) : new Thickness(0, 0, 2, 0);
-        ItemMargin = IsRunRoot ? new Thickness(0, 2, 4, 2) : new Thickness(20, 2, 4, 2);
+        ItemMargin = IsRunRoot ? new Thickness(0, 4, 4, 4) : new Thickness(8, 4, 4, 4);
         IsExpanded = true;
         IsVisible = true;
         IsLastSibling = true;

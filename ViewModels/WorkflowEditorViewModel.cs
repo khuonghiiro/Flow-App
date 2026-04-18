@@ -705,6 +705,23 @@ namespace FlowMy.ViewModels
             return parts.Count > 0 ? string.Join(" | ", parts) : BuildOutputSummary(node);
         }
 
+        private Brush? ResolveTraceNodeBrush(WorkflowNode node)
+        {
+            if (node.NodeBrush != null)
+                return node.NodeBrush;
+
+            var colorKey = (node.ColorKey ?? string.Empty).Trim();
+            if (colorKey.Length > 0)
+            {
+                var themed = GetBrushFromTheme($"{colorKey}Brush");
+                if (themed != null) return themed;
+                themed = GetBrushFromTheme(colorKey);
+                if (themed != null) return themed;
+            }
+
+            return GetBrushFromTheme("AccentBrush");
+        }
+
         private static string NormalizeRootExecutionId(string executionId)
         {
             if (string.IsNullOrWhiteSpace(executionId)) return string.Empty;
@@ -760,7 +777,7 @@ namespace FlowMy.ViewModels
                 iconKey: ResolveNodeIconKey(node),
                 parentNodeId: parentNodeId ?? string.Empty,
                 isRunRoot: false,
-                nodeBrush: node.NodeBrush,
+                nodeBrush: ResolveTraceNodeBrush(node),
                 depth: depth)
             {
                 InputSummary = item.InputSummary,
