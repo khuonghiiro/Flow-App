@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 
@@ -66,6 +67,9 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
     public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
 
+    /// <summary>X1 in the first guide cell so the dashed horizontal meets the left spine (12px column, x=7).</summary>
+    public double GuideDashedLineX1 { get; private set; }
+
     /// <summary>Viền card (ảnh mẫu: xám nhạt).</summary>
     public Brush TraceCardBorderBrush => CreateTraceBorderBrush();
 
@@ -99,10 +103,20 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         const int indentPerDepth = 38;
         var leftIndent = IsRunRoot ? 0 : (Depth * indentPerDepth);
         ItemMargin = new Thickness(leftIndent, 6, 4, 6);
+        GuideDashedLineX1 = ComputeGuideDashedLineX1(indentPerDepth);
         IsExpanded = true;
         IsVisible = true;
         IsLastSibling = true;
         IsFirstSibling = true;
+    }
+
+    private double ComputeGuideDashedLineX1(int indentPerDepth)
+    {
+        if (IsRunRoot) return 0;
+        const int spineLocalX = 7;
+        const int outerSpineColumnWidth = 14;
+        var leftIndent = Depth * indentPerDepth;
+        return spineLocalX - (outerSpineColumnWidth + leftIndent);
     }
 
     partial void OnIsLastSiblingChanged(bool value)
@@ -124,8 +138,9 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public void SetConnectorGuides(IEnumerable<bool> ancestorHasNextSibling)
     {
         ConnectorGuides.Clear();
-        foreach (var show in ancestorHasNextSibling)
-            ConnectorGuides.Add(new ExecutionTraceConnectorGuideViewModel(show));
+        var list = ancestorHasNextSibling as IList<bool> ?? ancestorHasNextSibling.ToList();
+        for (var i = 0; i < list.Count; i++)
+            ConnectorGuides.Add(new ExecutionTraceConnectorGuideViewModel(list[i], i == 0));
     }
 
     private Brush CreateTraceBorderBrush()
@@ -147,5 +162,11 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
 public sealed class ExecutionTraceConnectorGuideViewModel
 {
     public bool ShowVertical { get; }
-    public ExecutionTraceConnectorGuideViewModel(bool showVertical) => ShowVertical = showVertical;
+    public bool IsFirstGuideColumn { get; }
+
+    public ExecutionTraceConnectorGuideViewModel(bool showVertical, bool isFirstGuideColumn)
+    {
+        ShowVertical = showVertical;
+        IsFirstGuideColumn = isFirstGuideColumn;
+    }
 }

@@ -989,6 +989,11 @@ namespace FlowMy.ViewModels
             if (!EnableExecutionTraceLog || node == null) return;
             var executionKey = node.LastExecutionId ?? string.Empty;
             var elapsedText = FormatElapsed(elapsed);
+            // Snapshot on executor thread: UI callback may run after ClearScopedOutputsForRun (finally),
+            // lúc đó TryGetScopedNodeStringOutputForLookupChain không còn dữ liệu → OUT trống.
+            var outputSummarySnapshot = BuildOutputSummaryForExecution(node, executionKey);
+            if (string.IsNullOrWhiteSpace(outputSummarySnapshot))
+                outputSummarySnapshot = BuildOutputSummary(node);
 
             Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
@@ -1001,26 +1006,28 @@ namespace FlowMy.ViewModels
                         executionKey,
                         x => x.ExecutionId,
                         x => x.Status);
-                    var effectiveExecutionId = row?.ExecutionId ?? executionKey;
-                    var outputSummary = BuildOutputSummaryForExecution(node, effectiveExecutionId);
                     if (row != null)
                     {
                         row.Status = "completed";
                         row.ElapsedText = elapsedText;
-                        row.OutputSummary = outputSummary;
+                        row.OutputSummary = string.IsNullOrWhiteSpace(outputSummarySnapshot)
+                            ? BuildOutputSummaryForExecution(node, row.ExecutionId)
+                            : outputSummarySnapshot;
                     }
 
                     var trow = TakePendingRow(
                         _pendingTraceTreeRowsByNode,
                         node,
-                        effectiveExecutionId,
+                        row?.ExecutionId ?? executionKey,
                         x => x.ExecutionId,
                         x => x.Status);
                     if (trow != null)
                     {
                         trow.Status = "completed";
                         trow.ElapsedText = elapsedText;
-                        trow.OutputSummary = outputSummary;
+                        trow.OutputSummary = string.IsNullOrWhiteSpace(outputSummarySnapshot)
+                            ? BuildOutputSummaryForExecution(node, trow.ExecutionId)
+                            : outputSummarySnapshot;
                     }
                 }
             }));

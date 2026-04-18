@@ -1779,12 +1779,27 @@ Cursor="Hand"
                     </Grid>
                 </ScrollViewer>
 
-                <Border Grid.Row="1"
-                        Visibility="{Binding IsExecutionTracePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                <Border Visibility="{Binding IsExecutionTracePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                         Background="{DynamicResource CardColor}"
                         BorderBrush="{DynamicResource BorderColor}"
-                        BorderThickness="1,1,0,0"
-                        Height="{Binding ExecutionTracePanelHeight}">
+                        BorderThickness="1,1,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Grid.Row" Value="1"/>
+                            <Setter Property="Grid.RowSpan" Value="1"/>
+                            <Setter Property="Panel.ZIndex" Value="0"/>
+                            <Setter Property="Height" Value="{Binding ExecutionTracePanelHeight}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsExecutionLogMaximizedOverCanvas}" Value="True">
+                                    <Setter Property="Grid.Row" Value="0"/>
+                                    <Setter Property="Grid.RowSpan" Value="2"/>
+                                    <Setter Property="Panel.ZIndex" Value="100"/>
+                                    <Setter Property="Height" Value="{x:Static sys:Double.NaN}"/>
+                                    <Setter Property="VerticalAlignment" Value="Stretch"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1929,20 +1944,45 @@ Cursor="Hand"
                         <Grid Grid.Row="1">
                             <ScrollViewer VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Auto"
-                                          Padding="0">
-                                <ItemsControl ItemsSource="{Binding ExecutionTraceRunRoots}"
-                                              HorizontalAlignment="Left">
-                                    <ItemsControl.LayoutTransform>
+                                          Padding="10,6,14,10"
+                                          ClipToBounds="False">
+                                <Grid x:Name="ExecutionTraceTreeOuterGrid"
+                                      Margin="0"
+                                      HorizontalAlignment="Left"
+                                      ClipToBounds="False">
+                                    <Grid.LayoutTransform>
                                         <ScaleTransform ScaleX="{Binding ExecutionTraceZoom}"
                                                         ScaleY="{Binding ExecutionTraceZoom}"/>
-                                    </ItemsControl.LayoutTransform>
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Vertical"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.Resources>
-                                        <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
+                                    </Grid.LayoutTransform>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="14"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Dashed vertical spine; zoom applies to spine + tree together -->
+                                    <Line Grid.Column="0"
+                                          X1="7"
+                                          Y1="0"
+                                          X2="7"
+                                          Y2="{Binding ActualHeight, ElementName=ExecutionTraceTreeOuterGrid}"
+                                          Stroke="#C8C8C8"
+                                          StrokeThickness="1"
+                                          StrokeDashArray="4,3"
+                                          StrokeDashCap="Flat"
+                                          VerticalAlignment="Top"
+                                          HorizontalAlignment="Left"
+                                          SnapsToDevicePixels="True"
+                                          IsHitTestVisible="False"/>
+                                    <ItemsControl x:Name="ExecutionTraceTreeItemsControl"
+                                                  Grid.Column="1"
+                                                  ItemsSource="{Binding ExecutionTraceRunRoots}"
+                                                  HorizontalAlignment="Left">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Vertical"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.Resources>
+                                            <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
                                         <Style x:Key="TraceDetailsToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource QaToggleButton}">
                                             <Setter Property="Height" Value="20"/>
                                             <Setter Property="FontSize" Value="10"/>
@@ -1974,26 +2014,53 @@ Cursor="Hand"
                                         </Style>
                                         <DataTemplate DataType="{x:Type viewModels:ExecutionTraceConnectorGuideViewModel}">
                                             <!-- Nét đứt ngang dài theo level (ảnh mẫu: đoạn chấm chạy ngang đủ dài) -->
-                                            <Grid Width="72"
-                                                  MinHeight="8"
-                                                  VerticalAlignment="Center">
-                                                <Line X1="0"
-                                                      Y1="4"
-                                                      X2="72"
-                                                      Y2="4"
+                                            <Grid Width="120"
+                                                  MinHeight="10"
+                                                  VerticalAlignment="Center"
+                                                  ClipToBounds="False">
+                                                <Line Y1="5"
+                                                      Y2="5"
                                                       Stroke="#C8C8C8"
                                                       StrokeThickness="1"
                                                       StrokeDashArray="4,3"
+                                                      StrokeDashCap="Flat"
+                                                      SnapsToDevicePixels="True"
+                                                      Visibility="{Binding ShowVertical, Converter={StaticResource LocalBoolToVis}}">
+                                                    <Line.Style>
+                                                        <Style TargetType="Line">
+                                                            <Setter Property="X1" Value="0"/>
+                                                            <Setter Property="X2" Value="120"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFirstGuideColumn}" Value="True">
+                                                                    <Setter Property="X1"
+                                                                            Value="{Binding GuideDashedLineX1, RelativeSource={RelativeSource AncestorType={x:Type viewModels:ExecutionTraceTreeNodeViewModel}}}"/>
+                                                                    <Setter Property="X2" Value="132"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Line.Style>
+                                                </Line>
+                                                <Line X1="0"
+                                                      Y1="0"
+                                                      X2="0"
+                                                      Y2="10"
+                                                      Stroke="#C8C8C8"
+                                                      StrokeThickness="1"
+                                                      StrokeDashArray="4,3"
+                                                      StrokeDashCap="Flat"
+                                                      HorizontalAlignment="Left"
+                                                      SnapsToDevicePixels="True"
                                                       Visibility="{Binding ShowVertical, Converter={StaticResource LocalBoolToVis}}"/>
                                             </Grid>
                                         </DataTemplate>
 
                                         <DataTemplate DataType="{x:Type viewModels:ExecutionTraceTreeNodeViewModel}">
                                             <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}"
-                                                        HorizontalAlignment="Left">
+                                                        HorizontalAlignment="Left"
+                                                        ClipToBounds="False">
                                                 <Grid Margin="{Binding ItemMargin}"
-                                                      MaxWidth="920"
-                                                      HorizontalAlignment="Left">
+                                                      HorizontalAlignment="Left"
+                                                      ClipToBounds="False">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="Auto"/>
@@ -2002,7 +2069,9 @@ Cursor="Hand"
 
                                                     <ItemsControl Grid.Column="0"
                                                                   ItemsSource="{Binding ConnectorGuides}"
-                                                                  VerticalAlignment="Center">
+                                                                  VerticalAlignment="Center"
+                                                                  ClipToBounds="False"
+                                                                  Visibility="Collapsed">
                                                         <ItemsControl.ItemsPanel>
                                                             <ItemsPanelTemplate>
                                                                 <StackPanel Orientation="Horizontal"/>
@@ -2013,7 +2082,7 @@ Cursor="Hand"
                                                     <!-- Trục dọc liền + nhánh ngang vào đúng giữa cạnh trái card -->
                                                     <Grid Grid.Column="1"
                                                           x:Name="TraceConnectorHost"
-                                                          Width="36"
+                                                          Width="60"
                                                           Height="{Binding ElementName=TraceNodeCard, Path=ActualHeight, FallbackValue=36}"
                                                           VerticalAlignment="Top"
                                                           Margin="0,0,4,0"
@@ -2039,7 +2108,7 @@ Cursor="Hand"
                                                                    Fill="#B8B8B8"
                                                                    VerticalAlignment="Center"
                                                                    HorizontalAlignment="Stretch"
-                                                                   Margin="18,0,0,0"
+                                                                   Margin="30,0,0,0"
                                                                    Visibility="{Binding ShowHorizontalConnector, Converter={StaticResource LocalBoolToVis}}"/>
                                                     </Grid>
 
@@ -2143,25 +2212,22 @@ Cursor="Hand"
                                                                            Margin="0,3,0,0"
                                                                            Foreground="#2E7D32"
                                                                            FontSize="9"
-                                                                           MaxWidth="560"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           TextWrapping="NoWrap"
+                                                                           MaxWidth="880"
+                                                                           TextWrapping="Wrap"
                                                                            Visibility="{Binding InputSummary, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
                                                                 <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
                                                                            Margin="0,2,0,0"
                                                                            Foreground="#2E7D32"
                                                                            FontSize="9"
-                                                                           MaxWidth="560"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           TextWrapping="NoWrap"
+                                                                           MaxWidth="880"
+                                                                           TextWrapping="Wrap"
                                                                            Visibility="{Binding OutputSummary, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
                                                                 <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
                                                                            Margin="0,2,0,0"
                                                                            Foreground="#C62828"
                                                                            FontSize="9"
-                                                                           MaxWidth="560"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           TextWrapping="NoWrap"
+                                                                           MaxWidth="880"
+                                                                           TextWrapping="Wrap"
                                                                            Visibility="{Binding ErrorMessage, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
                                                             </StackPanel>
                                                         </Grid>
@@ -2184,7 +2250,8 @@ Cursor="Hand"
                                             </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.Resources>
-                                </ItemsControl>
+                                    </ItemsControl>
+                                </Grid>
                             </ScrollViewer>
                         </Grid>
                     </Grid>
