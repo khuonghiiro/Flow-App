@@ -20,12 +20,14 @@ namespace FlowMy.Services.Utilities
         /// </summary>
         public static readonly IReadOnlyDictionary<string, string> AvailableThemes = new Dictionary<string, string>
         {
-            { "Light",   "LightTheme"   },
-            { "Dark",    "DarkTheme"    },
-            { "Dracula", "DraculaTheme" },
-            { "Monokai", "MonokaiTheme" },
-            { "Night",   "NightTheme"   },
-            { "Modern",  "ModernTheme"  },
+            { "Light",     "LightTheme"     },
+            { "Dark",      "DarkTheme"      },
+            { "SoftLight", "SoftLightTheme" },
+            { "SoftDark",  "SoftDarkTheme"  },
+            { "Dracula",   "DraculaTheme"   },
+            { "Monokai",   "MonokaiTheme"   },
+            { "Night",     "NightTheme"     },
+            { "Modern",    "ModernTheme"    },
         };
 
         /// <summary>
@@ -116,7 +118,7 @@ namespace FlowMy.Services.Utilities
         /// </summary>
         public void ToggleTheme()
         {
-            var newTheme = _currentTheme is "Dark" or "Dracula" or "Monokai" or "Night"
+            var newTheme = _currentTheme is "Dark" or "SoftDark" or "Dracula" or "Monokai" or "Night"
                 ? "Light"
                 : "Dark";
             LoadTheme(newTheme);

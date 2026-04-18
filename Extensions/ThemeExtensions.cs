@@ -311,6 +311,8 @@ namespace FlowMy.Extensions
             {
                 "LightTheme",
                 "DarkTheme",
+                "SoftLightTheme",
+                "SoftDarkTheme",
                 "DraculaTheme",
                 "MonokaiTheme",
                 "NightTheme",

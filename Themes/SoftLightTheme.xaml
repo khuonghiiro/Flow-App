@@ -1,0 +1,33 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <!-- 1. Colors - Load colors first (Common then theme-specific) -->
+        <ResourceDictionary Source="Base/Colors/Common.xaml"/>
+        <ResourceDictionary Source="Base/Colors/SoftLight.xaml"/>
+
+        <!-- 2. Base Resources - Fonts, animations, common styles -->
+        <ResourceDictionary Source="Base/Fonts.xaml"/>
+        <ResourceDictionary Source="Base/Animations.xaml"/>
+        <ResourceDictionary Source="Base/Common.xaml"/>
+
+        <!-- 3. Control Styles - Alphabetically ordered for easy maintenance -->
+        <ResourceDictionary Source="Controls/Borders.xaml"/>
+        <ResourceDictionary Source="Controls/Buttons.xaml"/>
+        <ResourceDictionary Source="Controls/Calendars.xaml"/>
+        <ResourceDictionary Source="Controls/CheckBoxes.xaml"/>
+        <ResourceDictionary Source="Controls/ComboBoxes.xaml"/>
+        <ResourceDictionary Source="Controls/DataGrids.xaml"/>
+        <ResourceDictionary Source="Controls/DatePickers.xaml"/>
+        <ResourceDictionary Source="Controls/Inputs.xaml"/>
+        <ResourceDictionary Source="Controls/ListBoxes.xaml"/>
+        <ResourceDictionary Source="Controls/Permissions.xaml"/>
+        <ResourceDictionary Source="Controls/RadioOptions.xaml"/>
+        <ResourceDictionary Source="Controls/ScrollBars.xaml"/>
+        <ResourceDictionary Source="Controls/TabControls.xaml"/>
+        <ResourceDictionary Source="Controls/Tooltips.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+</ResourceDictionary>
+
