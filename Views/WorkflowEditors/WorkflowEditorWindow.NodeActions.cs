@@ -753,6 +753,12 @@ namespace FlowMy.Views
                 dstHttp.UrlSourceOutputKey = srcHttp.UrlSourceOutputKey;
                 dstHttp.BodySourceNodeId = srcHttp.BodySourceNodeId;
                 dstHttp.BodySourceOutputKey = srcHttp.BodySourceOutputKey;
+                dstHttp.CurlSourceNodeId = srcHttp.CurlSourceNodeId;
+                dstHttp.CurlSourceOutputKey = srcHttp.CurlSourceOutputKey;
+                dstHttp.UseCurl = srcHttp.UseCurl;
+                dstHttp.CurlPath = srcHttp.CurlPath ?? string.Empty;
+                dstHttp.ImpersonateBrowser = srcHttp.ImpersonateBrowser ?? string.Empty;
+                dstHttp.AutoAppendCurlWriteOut = srcHttp.AutoAppendCurlWriteOut;
 
                 // Deep copy Headers
                 dstHttp.Headers.Clear();

@@ -461,11 +461,104 @@ namespace FlowMy.Views
         {
             if (sourceToNewNodeMap.Count == 0) return;
 
+            var pastedNodeIds = new HashSet<string>(
+                sourceToNewNodeMap.Values.Select(n => n.Id),
+                StringComparer.OrdinalIgnoreCase);
+
             var visited = new HashSet<WorkflowNode>();
             foreach (var node in sourceToNewNodeMap.Values)
             {
                 if (!visited.Add(node)) continue;
                 RemapNodeReferenceIds(node, sourceToNewNodeMap);
+            }
+
+            // HTTP Request: sau remap, mọi binding nguồn phải trỏ vào node trong cụm vừa dán;
+            // tham chiếu tới node không nằm trong selection paste → bỏ binding (theo NODE_CREATION_SPEC §4.9).
+            foreach (var node in sourceToNewNodeMap.Values)
+            {
+                if (node is HttpRequestNode http)
+                    ClearHttpRequestBindingsToNodesOutsidePasteSelection(http, pastedNodeIds);
+            }
+        }
+
+        /// <summary>
+        /// Khi paste nhiều node, chỉ giữ binding dynamic tới các bản sao trong cùng clipboard;
+        /// id trỏ ra ngoài cụm paste (node gốc không được copy) → xóa để ComboBox không còn trỏ nhầm.
+        /// </summary>
+        private static void ClearHttpRequestBindingsToNodesOutsidePasteSelection(
+            HttpRequestNode http,
+            HashSet<string> pastedNodeIds)
+        {
+            static bool InsidePaste(string? nodeId, HashSet<string> pastedNodeIds)
+                => string.IsNullOrWhiteSpace(nodeId) || pastedNodeIds.Contains(nodeId);
+
+            if (!InsidePaste(http.UrlSourceNodeId, pastedNodeIds))
+            {
+                http.UrlSourceNodeId = null;
+                http.UrlSourceOutputKey = null;
+            }
+
+            if (!InsidePaste(http.CurlSourceNodeId, pastedNodeIds))
+            {
+                http.CurlSourceNodeId = null;
+                http.CurlSourceOutputKey = null;
+            }
+
+            if (!InsidePaste(http.BodySourceNodeId, pastedNodeIds))
+            {
+                http.BodySourceNodeId = null;
+                http.BodySourceOutputKey = null;
+            }
+
+            if (!InsidePaste(http.TokenSourceNodeId, pastedNodeIds))
+            {
+                http.TokenSourceNodeId = null;
+                http.TokenSourceOutputKey = null;
+            }
+
+            if (!InsidePaste(http.ApiKeyValueSourceNodeId, pastedNodeIds))
+            {
+                http.ApiKeyValueSourceNodeId = null;
+                http.ApiKeyValueSourceOutputKey = null;
+            }
+
+            foreach (var h in http.Headers)
+            {
+                if (!InsidePaste(h.SourceNodeId, pastedNodeIds))
+                {
+                    h.SourceNodeId = null;
+                    h.SourceOutputKey = null;
+                }
+            }
+
+            foreach (var q in http.QueryParams)
+            {
+                if (!InsidePaste(q.SourceNodeId, pastedNodeIds))
+                {
+                    q.SourceNodeId = null;
+                    q.SourceOutputKey = null;
+                }
+            }
+
+            foreach (var f in http.FormData)
+            {
+                if (!InsidePaste(f.SourceNodeId, pastedNodeIds))
+                {
+                    f.SourceNodeId = null;
+                    f.SourceOutputKey = null;
+                }
+            }
+
+            if (http.DynamicInputs != null)
+            {
+                foreach (var di in http.DynamicInputs)
+                {
+                    if (!InsidePaste(di.SelectedSourceNodeId, pastedNodeIds))
+                    {
+                        di.SelectedSourceNodeId = null;
+                        di.SelectedSourceOutputKey = null;
+                    }
+                }
             }
         }
 
@@ -588,6 +681,7 @@ namespace FlowMy.Views
                     httpRequestNode.ApiKeyValueSourceNodeId = RemapNodeId(httpRequestNode.ApiKeyValueSourceNodeId, sourceToNewNodeMap);
                     httpRequestNode.UrlSourceNodeId = RemapNodeId(httpRequestNode.UrlSourceNodeId, sourceToNewNodeMap);
                     httpRequestNode.BodySourceNodeId = RemapNodeId(httpRequestNode.BodySourceNodeId, sourceToNewNodeMap);
+                    httpRequestNode.CurlSourceNodeId = RemapNodeId(httpRequestNode.CurlSourceNodeId, sourceToNewNodeMap);
                     foreach (var h in httpRequestNode.Headers) h.SourceNodeId = RemapNodeId(h.SourceNodeId, sourceToNewNodeMap);
                     foreach (var q in httpRequestNode.QueryParams) q.SourceNodeId = RemapNodeId(q.SourceNodeId, sourceToNewNodeMap);
                     foreach (var f in httpRequestNode.FormData) f.SourceNodeId = RemapNodeId(f.SourceNodeId, sourceToNewNodeMap);
