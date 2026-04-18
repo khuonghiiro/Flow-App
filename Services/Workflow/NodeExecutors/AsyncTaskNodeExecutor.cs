@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -62,6 +63,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     env.OnEnteringNode?.Invoke(allOutgoingConnections[0]);
 
                 var tasks = new List<Task>();
+                // Mỗi nhánh song song cần ExecutionId riêng: ResolveDynamicValueForExecution chỉ khóa theo ExecutionId,
+                // dùng chung env.ExecutionId sẽ ghi đè scoped store (HTTP/Code/Output/File…) giữa các thread.
+                var parallelBranchRunIds = new ConcurrentBag<string>();
 
                 foreach (var branch in asyncTaskNode.AsyncTaskBranches)
                 {
@@ -81,6 +85,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                         tasks.Add(Task.Run(async () =>
                         {
+                            var branchExecutionId = $"{env.ExecutionId}:at-manual-{Guid.NewGuid():N}";
+                            parallelBranchRunIds.Add(branchExecutionId);
                             try
                             {
                                 await service.ExecuteNodeAsync(
@@ -95,7 +101,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     env.ReachableToEnd,
                                     false,
                                     new List<string>(env.ExecutionPath),
-                                    env.ExecutionId,
+                                    branchExecutionId,
                                     env.FlowScopeId,
                                     $"{env.BranchId}:{branch.Id}",
                                     env.ParentFlowScopeId);
@@ -120,6 +126,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 finally
                 {
+                    foreach (var rid in parallelBranchRunIds)
+                    {
+                        try { service.ClearScopedOutputsForRun(rid); }
+                        catch { /* best-effort */ }
+                    }
+
                     foreach (var conn in allOutgoingConnections)
                     {
                         conn.IsExecutionPinned = false;
