@@ -183,11 +183,11 @@
     <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FF272822"/>
 
     <!-- ComboBox: field = WindowBackground; popup = WindowBody -->
-    <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="#FF272822"/>
     <SolidColorBrush x:Key="ComboBoxFieldBorderBrush" Color="#FF706B5C"/>
-    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground" Color="#FF313026"/>
     <SolidColorBrush x:Key="ComboBoxFieldHoverBorderBrush" Color="#FF827C6A"/>
-    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground" Color="#FF313026"/>
     <SolidColorBrush x:Key="ComboBoxFieldFocusBorderBrush" Color="#FFA6E22E"/>
     <SolidColorBrush x:Key="ComboBoxPopupBackground" Color="#FF3E3D32"/>
     <SolidColorBrush x:Key="ComboBoxPopupBorderBrush" Color="#FF6A6556"/>

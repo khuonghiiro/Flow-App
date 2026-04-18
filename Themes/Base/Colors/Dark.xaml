@@ -166,11 +166,11 @@
     <SolidColorBrush x:Key="SelectedTextBrush" Color="#FFFFFFFF"/>
 
     <!-- ComboBox: field = WindowBackground; popup = WindowBody; viền rõ trên LCD -->
-    <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="#FF1A1B1E"/>
     <SolidColorBrush x:Key="ComboBoxFieldBorderBrush" Color="#FF5C636E"/>
-    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldHoverBackground" Color="#FF222327"/>
     <SolidColorBrush x:Key="ComboBoxFieldHoverBorderBrush" Color="#FF6D757F"/>
-    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ComboBoxFieldFocusBackground" Color="#FF222327"/>
     <SolidColorBrush x:Key="ComboBoxFieldFocusBorderBrush" Color="#FF4A8FD9"/>
     <SolidColorBrush x:Key="ComboBoxPopupBackground" Color="#FF25262B"/>
     <SolidColorBrush x:Key="ComboBoxPopupBorderBrush" Color="#FF4A5058"/>

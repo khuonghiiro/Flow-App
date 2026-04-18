@@ -394,6 +394,7 @@
 
     <!-- CUSTOM ComboBox (same transparent field as Base; card fill removed so nền màn hiện qua) -->
     <Style x:Key="CustomComboBox" TargetType="ComboBox" BasedOn="{StaticResource BaseComboBox}">
+        <Setter Property="Background"  Value="{DynamicResource CardColor}"/>
         <Setter Property="Height"      Value="34"/>
     </Style>
 
