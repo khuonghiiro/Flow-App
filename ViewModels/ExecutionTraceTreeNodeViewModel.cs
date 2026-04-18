@@ -64,6 +64,8 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private bool isDetailsExpanded;
 
+    public bool HasChildren => Children.Count > 0;
+
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
     public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
 
@@ -132,6 +134,11 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasAnyDetails));
         OnPropertyChanged(nameof(ShowDetailsToggle));
+    }
+
+    public void NotifyHasChildrenChanged()
+    {
+        OnPropertyChanged(nameof(HasChildren));
     }
 
 

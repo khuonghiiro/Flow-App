@@ -491,6 +491,7 @@ namespace FlowMy.ViewModels
         {
             parent.Children.Add(child);
             RefreshTreeConnectorMetadata(parent);
+            parent.NotifyHasChildrenChanged();
         }
 
         /// <summary>Node vùng body của AsyncTask (scope LoopBodyTop), không phải chính node AsyncTask.</summary>
