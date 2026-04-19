@@ -12,7 +12,7 @@ namespace FlowMy.Services.Utilities
     {
         public bool EnableExecutionTraceLog { get; set; } = false;
         public bool IsExecutionTracePanelExpanded { get; set; } = true;
-        public double ExecutionTraceCardMaxWidth { get; set; } = 720;
+        public double ExecutionTraceCardMaxWidth { get; set; } = 380;
 
         // Export defaults
         public bool ExportIncludeInput { get; set; } = true;

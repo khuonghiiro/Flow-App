@@ -393,8 +393,16 @@ internal sealed class KeyValueBridgeNodeExecutor : INodeExecutor
         if (outPort != null)
             outPort.UserValueOverride = message;
 
+        // Publish bằng snapshot cục bộ (không dùng node.ResolvedOutputs shared) để tránh race
+        // giữa nhiều dispatch song song cùng một KV node.
         if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
-            env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, node.ResolvedOutputs);
+        {
+            var localOutputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["value"] = message,
+            };
+            env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, localOutputs);
+        }
     }
 
     private static async Task ExecutePassAsync(KeyValueBridgeNode node, NodeExecutionEnvironment env)
@@ -473,8 +481,15 @@ internal sealed class KeyValueBridgeNodeExecutor : INodeExecutor
             if (keyPort != null)
                 keyPort.UserValueOverride = dictJson;
 
+            // Publish từ snapshot cục bộ, tránh race với dispatch song song đang ghi node.ResolvedOutputs.
             if (!env.RefreshOnly)
-                env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, node.ResolvedOutputs);
+            {
+                var localOutputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["key"] = dictJson,
+                };
+                env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, localOutputs);
+            }
 
             // Refresh related Get-mode KeyValueBridge nodes when we're running Pass in standalone mode.
             if (env.RefreshOnly)
@@ -564,7 +579,13 @@ internal sealed class KeyValueBridgeNodeExecutor : INodeExecutor
                     allValuePort.UserValueOverride = displayAll;
 
                 if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
-                    env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, node.ResolvedOutputs);
+                {
+                    var localOutputsAll = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["value"] = displayAll,
+                    };
+                    env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, localOutputsAll);
+                }
 
                 return;
             }
@@ -593,7 +614,13 @@ internal sealed class KeyValueBridgeNodeExecutor : INodeExecutor
                 valuePort.UserValueOverride = display;
 
             if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
-                env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, node.ResolvedOutputs);
+            {
+                var localOutputsOne = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["value"] = display,
+                };
+                env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, localOutputsOne);
+            }
 
             return;
         }
@@ -704,7 +731,13 @@ internal sealed class KeyValueBridgeNodeExecutor : INodeExecutor
                     valuePort.UserValueOverride = nextDisplay;
 
                 if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
-                    env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, node.ResolvedOutputs);
+                {
+                    var localOutputsPoll = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["value"] = nextDisplay,
+                    };
+                    env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, node.Id, localOutputsPoll);
+                }
 
                 // Important: create a fresh execution environment so repeated traversals don't
                 // artificially grow ExecutionPath and trip the infinite-loop guard.

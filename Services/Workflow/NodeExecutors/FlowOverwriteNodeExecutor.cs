@@ -96,39 +96,48 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
         var stateKey = $"{stateKeyBase}:{typed.Id}";
         var state = _stateByExecutionAndNode.GetOrAdd(stateKey, _ => new RuntimeState());
 
-        if (resolvedValues.Count == 0)
-        {
-            // Không có giá trị mới ở iteration này:
-            // nếu AppendMode đã có state trước đó thì vẫn publish snapshot hiện tại vào scoped của execution hiện tại
-            // để downstream (Output/...) không bị empty do thiếu bản ghi scoped.
-            if (typed.AppendMode)
+            if (resolvedValues.Count == 0)
             {
-                string? existingJson = null;
-                lock (state.SyncRoot)
+                // Không có giá trị mới ở iteration này:
+                // nếu AppendMode đã có state trước đó thì vẫn publish snapshot hiện tại vào scoped của execution hiện tại
+                // để downstream (Output/...) không bị empty do thiếu bản ghi scoped.
+                if (typed.AppendMode)
                 {
-                    if (state.Values.Count > 0)
-                        existingJson = JsonSerializer.Serialize(state.Values);
-                }
-
-                if (!string.IsNullOrWhiteSpace(existingJson))
-                {
-                    lock (typed.ResolvedOutputsSyncRoot)
+                    string? existingJson = null;
+                    lock (state.SyncRoot)
                     {
-                        typed.ResolvedOutputs.Clear();
-                        typed.ResolvedOutputs[key] = existingJson;
+                        if (state.Values.Count > 0)
+                            existingJson = JsonSerializer.Serialize(state.Values);
                     }
-                    var outPortNoNew = typed.DynamicOutputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
-                    if (outPortNoNew != null)
-                        outPortNoNew.UserValueOverride = existingJson;
-                    if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
-                        env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, typed.Id, typed.ResolvedOutputs);
-                }
-            }
 
-            env.OnNodeCompleted?.Invoke(typed, sw.Elapsed);
-            await env.TraverseOutputsAsync(node);
-            return;
-        }
+                    if (!string.IsNullOrWhiteSpace(existingJson))
+                    {
+                        lock (typed.ResolvedOutputsSyncRoot)
+                        {
+                            typed.ResolvedOutputs.Clear();
+                            typed.ResolvedOutputs[key] = existingJson;
+                        }
+                        var outPortNoNew = typed.DynamicOutputs.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+                        if (outPortNoNew != null)
+                            outPortNoNew.UserValueOverride = existingJson;
+                        // Publish từ snapshot cục bộ, KHÔNG dùng typed.ResolvedOutputs (shared):
+                        // nhiều dispatch song song cùng FlowOverwrite instance sẽ race → scoped(dispatch-X)
+                        // bị ghi nhầm bằng giá trị của dispatch-Y nào ghi sau cùng vào shared dict.
+                        if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
+                        {
+                            var localOutputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                            {
+                                [key] = existingJson,
+                            };
+                            env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, typed.Id, localOutputs);
+                        }
+                    }
+                }
+
+                env.OnNodeCompleted?.Invoke(typed, sw.Elapsed);
+                await env.TraverseOutputsAsync(node);
+                return;
+            }
 
         string outputValue;
         lock (state.SyncRoot)
@@ -155,8 +164,20 @@ internal sealed class FlowOverwriteNodeExecutor : INodeExecutor
         if (outPort != null)
             outPort.UserValueOverride = outputValue;
 
+        // Publish từ snapshot cục bộ thay vì typed.ResolvedOutputs (shared giữa các dispatch song song).
+        // Nếu publish từ shared, PublishDictionaryOutputsToScopedStore duyệt dict sau khi mở khóa,
+        // nên dispatch khác có thể đã ghi đè [key] → scoped(dispatch-X) nhận nhầm giá trị dispatch-Y.
+        // Đã quan sát trong thực tế: 4/5 dispatch của FlowOverwrite đọc trùng một giá trị (xem
+        // examples/log3.json); Output 2/Output 3 tính đúng trong scoped riêng, chỉ riêng bước publish
+        // bị race nên scoped của FlowOverwrite bị trộn.
         if (!env.RefreshOnly && !string.IsNullOrWhiteSpace(env.ExecutionId))
-            env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, typed.Id, typed.ResolvedOutputs);
+        {
+            var localOutputs = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [key] = outputValue,
+            };
+            env.Service.PublishDictionaryOutputsToScopedStore(env.ExecutionId, typed.Id, localOutputs);
+        }
 
         env.OnNodeCompleted?.Invoke(typed, sw.Elapsed);
         await env.TraverseOutputsAsync(node);
