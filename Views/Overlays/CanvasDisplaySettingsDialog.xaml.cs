@@ -610,6 +610,16 @@ namespace FlowMy.Views.Overlays
 
         private void ApplyPreset(string presetTag)
         {
+            // "Custom" là trạng thái hiển thị "user đang tự chỉnh", không áp preset value nào cả —
+            // chỉ check button và giữ nguyên cấu hình hiện tại của user.
+            if (presetTag == "Custom")
+            {
+                _isApplying = true;
+                UncheckAllPresetButtonsExcept("Custom");
+                _isApplying = false;
+                return;
+            }
+
             _isApplying = true;
             UncheckAllPresetButtonsExcept(presetTag);
 
@@ -738,7 +748,7 @@ namespace FlowMy.Views.Overlays
 
         private void UncheckAllPresetButtonsExcept(string selectedTag)
         {
-            var presets = new[] { PresetLowButton, PresetNormalButton, PresetHighButton, PresetDebugButton, PresetUltraButton };
+            var presets = new[] { PresetLowButton, PresetNormalButton, PresetHighButton, PresetDebugButton, PresetUltraButton, PresetCustomButton };
             foreach (var button in presets.Where(b => b != null))
             {
                 var tag = button.Tag?.ToString() ?? string.Empty;
@@ -770,8 +780,11 @@ namespace FlowMy.Views.Overlays
 
             var matchedTag = PresetSignatures.FirstOrDefault(kv => kv.Value.Equals(snapshot)).Key;
 
+            // Không khớp preset nào ⇒ user đang ở trạng thái tự cấu hình ⇒ check "Custom".
+            var tagToSelect = matchedTag ?? "Custom";
+
             _isApplying = true;
-            UncheckAllPresetButtonsExcept(matchedTag ?? string.Empty);
+            UncheckAllPresetButtonsExcept(tagToSelect);
             _isApplying = false;
         }
 

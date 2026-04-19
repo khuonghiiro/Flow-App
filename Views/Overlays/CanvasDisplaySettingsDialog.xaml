@@ -47,6 +47,8 @@
                     <ToggleButton x:Name="PresetHighButton" Content="Máy mạnh" Tag="High" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
                     <ToggleButton x:Name="PresetDebugButton" Content="Debug" Tag="Debug" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
                     <ToggleButton x:Name="PresetUltraButton" Content="Ultra" Tag="Ultra" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"/>
+                    <ToggleButton x:Name="PresetCustomButton" Content="Custom" Tag="Custom" Style="{DynamicResource PresetToggleButtonStyle}" Checked="PresetButton_Checked"
+                                  ToolTip="Tự động bật khi bạn chỉnh sửa khác với các preset sẵn có"/>
                 </WrapPanel>
             </StackPanel>
         </Border>
