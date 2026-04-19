@@ -36,9 +36,36 @@ namespace FlowMy.Services.Rendering
         }
         
         /// <summary>
-        /// Lấy GpuRenderQuality từ user settings
+        /// Lấy GpuRenderQuality từ user settings.
+        /// Khi GPU bị tắt trong settings, coerce về Low để đảm bảo các hiệu ứng
+        /// nặng (drop shadow, edge smoothing cao) không được bật khi user đã
+        /// chủ động tắt GPU — tránh mâu thuẫn logic giữa GPU=OFF và Quality=High/Best.
         /// </summary>
         public static GpuRenderQuality GetGpuRenderQuality()
+        {
+            try
+            {
+                var raw = (GpuRenderQuality)Settings.Default.GpuRenderQuality;
+
+                if (!Settings.Default.GpuEnabled && raw > GpuRenderQuality.Low)
+                {
+                    return GpuRenderQuality.Low;
+                }
+
+                return raw;
+            }
+            catch
+            {
+                // Mặc định dùng Medium
+                return GpuRenderQuality.Medium;
+            }
+        }
+
+        /// <summary>
+        /// Lấy GpuRenderQuality "thô" đúng như user đã chọn, không coerce.
+        /// Dùng cho các trường hợp dialog cấu hình muốn hiển thị giá trị gốc.
+        /// </summary>
+        public static GpuRenderQuality GetRawGpuRenderQuality()
         {
             try
             {
@@ -46,7 +73,6 @@ namespace FlowMy.Services.Rendering
             }
             catch
             {
-                // Mặc định dùng Medium
                 return GpuRenderQuality.Medium;
             }
         }

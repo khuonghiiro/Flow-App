@@ -65,6 +65,7 @@ namespace FlowMy.Services.Interaction
             {
                 TrackNodeNotifier(node);
                 _nodeRenderer.RenderNode(node, Host.WorkflowCanvas);
+                ApplyNodeGpuVisualPreferences(node);
             }
 
             // Khi GPU bật: defer connections sang frame sau → nodes hiện trước, load cảm giác nhanh hơn
@@ -392,6 +393,7 @@ namespace FlowMy.Services.Interaction
                     }
 
                     _nodeRenderer.RenderNode(node, Host.WorkflowCanvas);
+                    ApplyNodeGpuVisualPreferences(node);
                     
                     // ✅ Resolve collision sau khi node được render
                     // Sử dụng Dispatcher.BeginInvoke với priority Loaded để đảm bảo node đã được measure (có ActualWidth/ActualHeight)
@@ -427,6 +429,19 @@ namespace FlowMy.Services.Interaction
             }
 
             _minimapService.Update();
+        }
+
+        private void ApplyNodeGpuVisualPreferences(WorkflowNode node)
+        {
+            if (node?.Border == null) return;
+
+            GpuOptimizationHelper.ApplyToBorder(
+                node.Border,
+                isDragging: false,
+                forceCache: Host.CacheNodeEnabled);
+
+            // Respect quality preset: Low/Medium => null shadow, High/Best => shadow.
+            node.Border.Effect = GpuOptimizationHelper.CreateDropShadowEffect();
         }
 
         private void TrackNodeNotifier(WorkflowNode node)

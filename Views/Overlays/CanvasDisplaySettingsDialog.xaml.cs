@@ -150,8 +150,9 @@ namespace FlowMy.Views.Overlays
             ApplyDebounceIntervalFromSelection();
             UpdateSliderTexts();
             UpdateCacheNodeAnimationUiState();
+            UpdateConstraintDependentUiState();
             _isApplying = false;
-            UpdatePresetButtonStateFromProfile(preferences.CullingPerformanceProfile);
+            RecomputePresetSelectionFromFields();
         }
 
         private void UpdateCacheNodeAnimationUiState()
@@ -180,6 +181,57 @@ namespace FlowMy.Views.Overlays
                     ? Visibility.Visible
                     : Visibility.Collapsed;
             }
+        }
+
+        /// <summary>
+        /// Đồng bộ enable/disable các field phụ thuộc lẫn nhau để tránh cấu hình mâu thuẫn:
+        /// - GPU=OFF  => disable GpuQualityComboBox (effective quality sẽ = Low khi apply).
+        /// - Cache=ON => disable các hiệu ứng động phá cache (meteor/text-rotate/multi-color).
+        /// - Quality=Low/Medium => disable các hiệu ứng nặng (blink background, multi-color, meteor).
+        /// - Culling=Low => coerce CanvasDisplayMode về ViewportOnly (tránh render toàn bộ trên máy yếu).
+        /// </summary>
+        private void UpdateConstraintDependentUiState()
+        {
+            var gpuEnabled = GpuEnabledCheckBox.IsChecked == true;
+            var cacheEnabled = CacheNodeCheckBox.IsChecked == true;
+            var qualityTag = SelectedTag(GpuQualityComboBox);
+            var isHeavyQuality = qualityTag is "High" or "Best";
+            var cullingLow = CullingProfileLowRadio.IsChecked == true;
+
+            GpuQualityComboBox.IsEnabled = gpuEnabled;
+
+            // Các effect phá cache khi Cache=ON, hoặc không phù hợp với quality thấp.
+            var allowHeavyEffects = gpuEnabled && isHeavyQuality && !cacheEnabled;
+
+            EnergyMeteorModeCheckBox.IsEnabled = allowHeavyEffects;
+            NodeSpinnerMultiColorCheckBox.IsEnabled = allowHeavyEffects;
+            NodeSpinnerBlinkBackgroundCheckBox.IsEnabled = gpuEnabled && !cacheEnabled;
+
+            // TextRotate không bị cache làm hỏng nặng nhưng là animation phụ,
+            // ép tắt khi cache ON để đồng nhất trải nghiệm với Animated đã bị disable.
+            EnergyDotRotateCheckBox.IsEnabled = !cacheEnabled;
+
+            if (!allowHeavyEffects)
+            {
+                if (EnergyMeteorModeCheckBox.IsChecked == true) EnergyMeteorModeCheckBox.IsChecked = false;
+                if (NodeSpinnerMultiColorCheckBox.IsChecked == true) NodeSpinnerMultiColorCheckBox.IsChecked = false;
+            }
+            if (cacheEnabled && EnergyDotRotateCheckBox.IsChecked == true)
+            {
+                EnergyDotRotateCheckBox.IsChecked = false;
+            }
+            if (!(gpuEnabled && !cacheEnabled) && NodeSpinnerBlinkBackgroundCheckBox.IsChecked == true)
+            {
+                NodeSpinnerBlinkBackgroundCheckBox.IsChecked = false;
+            }
+
+            // Culling=Low ⇒ ViewportOnly (tránh ShowAll gây render toàn cục trên máy yếu).
+            if (cullingLow && CanvasDisplayModeAllRadio.IsChecked == true)
+            {
+                SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, "ViewportOnly");
+            }
+            // Chỉ disable "ShowAll" khi culling=Low để nhấn mạnh ràng buộc, bật lại ở các mức cao hơn.
+            CanvasDisplayModeAllRadio.IsEnabled = !cullingLow;
         }
 
         private static void SelectByTag(ComboBox comboBox, string tag)
@@ -330,8 +382,10 @@ namespace FlowMy.Views.Overlays
 
             _isApplying = true;
             UpdateCacheNodeAnimationUiState();
+            UpdateConstraintDependentUiState();
             _isApplying = false;
             UpdateSliderTexts();
+            RecomputePresetSelectionFromFields();
             QueuePreferencesApply();
         }
 
@@ -345,6 +399,7 @@ namespace FlowMy.Views.Overlays
                 // Re-enable and restore previous selection.
                 SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, _animationModeBeforeCacheTag);
                 UpdateCacheNodeAnimationUiState();
+                UpdateConstraintDependentUiState();
                 _isApplying = false;
 
                 _animationModeBeforeCacheTag = null;
@@ -353,9 +408,11 @@ namespace FlowMy.Views.Overlays
             {
                 _isApplying = true;
                 UpdateCacheNodeAnimationUiState();
+                UpdateConstraintDependentUiState();
                 _isApplying = false;
             }
             UpdateSliderTexts();
+            RecomputePresetSelectionFromFields();
             QueuePreferencesApply();
         }
 
@@ -383,6 +440,8 @@ namespace FlowMy.Views.Overlays
         {
             if (_isApplying) return;
             UpdateSliderTexts();
+            UpdateConstraintDependentUiState();
+            RecomputePresetSelectionFromFields();
             QueuePreferencesApply();
         }
 
@@ -390,6 +449,8 @@ namespace FlowMy.Views.Overlays
         {
             if (_isApplying) return;
             UpdateSliderTexts();
+            UpdateConstraintDependentUiState();
+            RecomputePresetSelectionFromFields();
             QueuePreferencesApply();
         }
 
@@ -555,64 +616,122 @@ namespace FlowMy.Views.Overlays
             switch (presetTag)
             {
                 case "Low":
+                    // Máy yếu: ưu tiên FPS, tắt mọi hiệu ứng nặng.
                     SetRadioSelection(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio, "Low");
                     SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, "ViewportOnly");
                     SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, "Off");
                     SelectByTag(GpuQualityComboBox, "Low");
                     GpuEnabledCheckBox.IsChecked = true;
+                    CacheNodeCheckBox.IsChecked = true;
+                    UiAnimationsEnabledCheckBox.IsChecked = false;
                     EnergyDotGapSlider.Value = 12;
                     EnergyDotThicknessSlider.Value = 1.2;
                     EnergyRunSpeedSlider.Value = 1.0;
                     EnergySpinSpeedSlider.Value = 1.0;
+                    EnergyMeteorModeCheckBox.IsChecked = false;
+                    EnergyDotRotateCheckBox.IsChecked = false;
+                    NodeSpinnerArcModeCheckBox.IsChecked = true;
+                    NodeSpinnerMultiColorCheckBox.IsChecked = false;
+                    NodeSpinnerBlinkBackgroundCheckBox.IsChecked = false;
+                    NodeSpinnerSpinSecondsSlider.Value = 1.6;
                     break;
                 case "Normal":
+                    // Máy trung bình: animation cơ bản, cân bằng.
                     SetRadioSelection(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio, "Normal");
                     SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, "ViewportOnly");
                     SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, "Animated");
                     SelectByTag(GpuQualityComboBox, "Medium");
                     GpuEnabledCheckBox.IsChecked = true;
+                    CacheNodeCheckBox.IsChecked = false;
+                    UiAnimationsEnabledCheckBox.IsChecked = true;
                     EnergyDotGapSlider.Value = 8;
                     EnergyDotThicknessSlider.Value = 0.8;
                     EnergyRunSpeedSlider.Value = 1.4;
                     EnergySpinSpeedSlider.Value = 0.8;
+                    EnergyMeteorModeCheckBox.IsChecked = false;
+                    EnergyDotRotateCheckBox.IsChecked = false;
+                    NodeSpinnerArcModeCheckBox.IsChecked = true;
+                    NodeSpinnerMultiColorCheckBox.IsChecked = false;
+                    NodeSpinnerBlinkBackgroundCheckBox.IsChecked = true;
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.45;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.12;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.45;
+                    NodeSpinnerSpinSecondsSlider.Value = 1.1;
                     break;
                 case "High":
+                    // Máy mạnh: bật đầy đủ hiệu ứng chất lượng cao.
                     SetRadioSelection(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio, "High");
                     SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, "ViewportOnly");
                     SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, "Animated");
                     SelectByTag(GpuQualityComboBox, "High");
                     GpuEnabledCheckBox.IsChecked = true;
+                    CacheNodeCheckBox.IsChecked = false;
+                    UiAnimationsEnabledCheckBox.IsChecked = true;
                     EnergyDotGapSlider.Value = 6;
                     EnergyDotThicknessSlider.Value = 1.6;
                     EnergyRunSpeedSlider.Value = 2.0;
                     EnergySpinSpeedSlider.Value = 0.6;
+                    EnergyMeteorModeCheckBox.IsChecked = true;
+                    EnergyDotRotateCheckBox.IsChecked = false;
+                    NodeSpinnerArcModeCheckBox.IsChecked = true;
+                    NodeSpinnerMultiColorCheckBox.IsChecked = false;
+                    NodeSpinnerBlinkBackgroundCheckBox.IsChecked = true;
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Soft");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.65;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.16;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.60;
+                    NodeSpinnerSpinSecondsSlider.Value = 1.0;
                     break;
                 case "Debug":
+                    // Debug: GPU off, không cache, hiển thị mọi node.
                     SetRadioSelection(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio, "Low");
                     SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, "ShowAll");
                     SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, "Off");
                     SelectByTag(GpuQualityComboBox, "Low");
                     GpuEnabledCheckBox.IsChecked = false;
+                    CacheNodeCheckBox.IsChecked = false;
+                    UiAnimationsEnabledCheckBox.IsChecked = false;
                     EnergyDotGapSlider.Value = 14;
                     EnergyDotThicknessSlider.Value = 0.4;
                     EnergyRunSpeedSlider.Value = 0.8;
                     EnergySpinSpeedSlider.Value = 1.2;
+                    EnergyMeteorModeCheckBox.IsChecked = false;
+                    EnergyDotRotateCheckBox.IsChecked = false;
+                    NodeSpinnerArcModeCheckBox.IsChecked = true;
+                    NodeSpinnerMultiColorCheckBox.IsChecked = false;
+                    NodeSpinnerBlinkBackgroundCheckBox.IsChecked = false;
+                    NodeSpinnerSpinSecondsSlider.Value = 2.0;
                     break;
                 case "Ultra":
+                    // Ultra: full effect, full culling range.
                     SetRadioSelection(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio, "High");
                     SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, "ShowAll");
                     SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, "Animated");
                     SelectByTag(GpuQualityComboBox, "Best");
                     GpuEnabledCheckBox.IsChecked = true;
+                    CacheNodeCheckBox.IsChecked = false;
+                    UiAnimationsEnabledCheckBox.IsChecked = true;
                     EnergyDotGapSlider.Value = 5;
                     EnergyDotThicknessSlider.Value = 2.2;
                     EnergyRunSpeedSlider.Value = 2.6;
                     EnergySpinSpeedSlider.Value = 0.4;
+                    EnergyMeteorModeCheckBox.IsChecked = true;
+                    EnergyDotRotateCheckBox.IsChecked = true;
+                    NodeSpinnerArcModeCheckBox.IsChecked = false;
+                    NodeSpinnerMultiColorCheckBox.IsChecked = true;
+                    NodeSpinnerBlinkBackgroundCheckBox.IsChecked = true;
+                    SelectByTag(NodeSpinnerBlinkModeComboBox, "Hard");
+                    NodeSpinnerBlinkIntensitySlider.Value = 0.95;
+                    NodeSpinnerBlinkBaseOpacitySlider.Value = 0.28;
+                    NodeSpinnerBlinkPeakOpacitySlider.Value = 0.92;
+                    NodeSpinnerSpinSecondsSlider.Value = 0.8;
                     break;
             }
 
             UpdateSliderTexts();
             UpdateCacheNodeAnimationUiState();
+            UpdateConstraintDependentUiState();
             _isApplying = false;
             QueuePreferencesApply();
         }
@@ -627,18 +746,68 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void UpdatePresetButtonStateFromProfile(string cullingProfileTag)
+        /// <summary>
+        /// So sánh cấu hình hiện tại với định nghĩa từng preset để chọn preset đúng,
+        /// nếu không khớp preset nào (tức user đang ở trạng thái "Tuỳ chỉnh") thì bỏ check tất cả.
+        /// Chỉ so sánh các field định tính (radio/combobox/checkbox) — bỏ qua slider chính xác.
+        /// </summary>
+        private void RecomputePresetSelectionFromFields()
         {
             if (_isApplying) return;
+
+            var snapshot = new PresetSignature(
+                Culling: SelectedRadioTag(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio),
+                Display: SelectedRadioTag(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio),
+                Animation: SelectedRadioTag(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio),
+                Quality: SelectedTag(GpuQualityComboBox),
+                GpuEnabled: GpuEnabledCheckBox.IsChecked == true,
+                CacheEnabled: CacheNodeCheckBox.IsChecked == true,
+                UiAnimations: UiAnimationsEnabledCheckBox.IsChecked == true,
+                MeteorMode: EnergyMeteorModeCheckBox.IsChecked == true,
+                MultiColor: NodeSpinnerMultiColorCheckBox.IsChecked == true,
+                BlinkBackground: NodeSpinnerBlinkBackgroundCheckBox.IsChecked == true
+            );
+
+            var matchedTag = PresetSignatures.FirstOrDefault(kv => kv.Value.Equals(snapshot)).Key;
+
             _isApplying = true;
-            var selected = cullingProfileTag switch
-            {
-                "Low" => "Low",
-                "High" => "High",
-                _ => "Normal"
-            };
-            UncheckAllPresetButtonsExcept(selected);
+            UncheckAllPresetButtonsExcept(matchedTag ?? string.Empty);
             _isApplying = false;
         }
+
+        private readonly record struct PresetSignature(
+            string Culling,
+            string Display,
+            string Animation,
+            string Quality,
+            bool GpuEnabled,
+            bool CacheEnabled,
+            bool UiAnimations,
+            bool MeteorMode,
+            bool MultiColor,
+            bool BlinkBackground);
+
+        private static readonly Dictionary<string, PresetSignature> PresetSignatures = new()
+        {
+            ["Low"] = new PresetSignature("Low", "ViewportOnly", "Off", "Low",
+                GpuEnabled: true, CacheEnabled: true, UiAnimations: false,
+                MeteorMode: false, MultiColor: false, BlinkBackground: false),
+
+            ["Normal"] = new PresetSignature("Normal", "ViewportOnly", "Animated", "Medium",
+                GpuEnabled: true, CacheEnabled: false, UiAnimations: true,
+                MeteorMode: false, MultiColor: false, BlinkBackground: true),
+
+            ["High"] = new PresetSignature("High", "ViewportOnly", "Animated", "High",
+                GpuEnabled: true, CacheEnabled: false, UiAnimations: true,
+                MeteorMode: true, MultiColor: false, BlinkBackground: true),
+
+            ["Debug"] = new PresetSignature("Low", "ShowAll", "Off", "Low",
+                GpuEnabled: false, CacheEnabled: false, UiAnimations: false,
+                MeteorMode: false, MultiColor: false, BlinkBackground: false),
+
+            ["Ultra"] = new PresetSignature("High", "ShowAll", "Animated", "Best",
+                GpuEnabled: true, CacheEnabled: false, UiAnimations: true,
+                MeteorMode: true, MultiColor: true, BlinkBackground: true),
+        };
     }
 }

@@ -437,6 +437,7 @@ namespace FlowMy.Views
 
         private CanvasToolbarPreferences BuildCurrentCanvasToolbarPreferences()
         {
+            var persisted = CanvasToolbarPreferencesStore.Load() ?? new CanvasToolbarPreferences();
             var profile = _viewportCullingService?.PerformanceProfile switch
             {
                 ViewportCullingService.CullingPerformanceProfile.Low => "Low",
@@ -481,7 +482,8 @@ namespace FlowMy.Views
                 NodeSpinnerBlinkMode = _nodeSpinnerBlinkMode,
                 NodeSpinnerBlinkIntensity = _nodeSpinnerBlinkIntensity,
                 NodeSpinnerBlinkBaseOpacity = _nodeSpinnerBlinkBaseOpacity,
-                NodeSpinnerBlinkPeakOpacity = _nodeSpinnerBlinkPeakOpacity
+                NodeSpinnerBlinkPeakOpacity = _nodeSpinnerBlinkPeakOpacity,
+                UiAnimationsEnabled = persisted.UiAnimationsEnabled
             };
         }
 
