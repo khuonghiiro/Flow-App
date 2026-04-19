@@ -25,6 +25,9 @@ namespace FlowMy.Services.Utilities
         public double ExecutionTracePanelDetachedWidth { get; set; } = 820;
         public double ExecutionTracePanelDetachedHeight { get; set; } = 520;
 
+        // Kiểu hiển thị UI log item: "Full" (đầy đủ) | "Relative" (tương đối) | "Compact" (thu gọn).
+        public string ExecutionTraceDisplayStyle { get; set; } = "Full";
+
         // Export defaults
         public bool ExportIncludeInput { get; set; } = true;
         public bool ExportIncludeOutput { get; set; } = true;

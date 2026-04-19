@@ -123,6 +123,14 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool isExecutionTracePanelMaximized;
 
+        /// <summary>
+        /// Lưu lại ExecutionTraceDisplayStyle mà user đang dùng trước khi detach → dùng để restore
+        /// khi cửa sổ detached đóng lại. Null = chưa detach lần nào / đã restore xong.
+        /// Lý do: khi detach ra cửa sổ lớn, force về "Full" để không bị cắt UI; khi dock lại dưới
+        /// bottom nhỏ → restore về style user ưa dùng (thường là Compact/Relative).
+        /// </summary>
+        private string? _executionTraceDisplayStyleBeforeDetach;
+
         [ObservableProperty]
         private ObservableCollection<ExecutionTraceLogItemViewModel> executionTraceLogs = new();
         [ObservableProperty]
@@ -216,6 +224,23 @@ namespace FlowMy.ViewModels
         public bool IsTraceDockRight => string.Equals(ExecutionTracePanelDockMode, "Right", StringComparison.OrdinalIgnoreCase);
         public bool IsTraceDockDetached => string.Equals(ExecutionTracePanelDockMode, "Detached", StringComparison.OrdinalIgnoreCase);
 
+        // ---- Display style cho log items: "Full" (đầy đủ - default) | "Relative" (tương đối) | "Compact" (thu gọn).
+        // XAML dùng DataTrigger trên IsTraceDisplayFull/Relative/Compact để ẩn/hiện các phần chi tiết.
+
+        [ObservableProperty]
+        private string executionTraceDisplayStyle = "Full";
+
+        public ObservableCollection<ExecutionTraceDisplayStyleOption> ExecutionTraceDisplayStyleOptions { get; } = new()
+        {
+            new ExecutionTraceDisplayStyleOption("Full",     "Đầy đủ"),
+            new ExecutionTraceDisplayStyleOption("Relative", "Tương đối"),
+            new ExecutionTraceDisplayStyleOption("Compact",  "Thu gọn"),
+        };
+
+        public bool IsTraceDisplayFull => string.Equals(ExecutionTraceDisplayStyle, "Full", StringComparison.OrdinalIgnoreCase);
+        public bool IsTraceDisplayRelative => string.Equals(ExecutionTraceDisplayStyle, "Relative", StringComparison.OrdinalIgnoreCase);
+        public bool IsTraceDisplayCompact => string.Equals(ExecutionTraceDisplayStyle, "Compact", StringComparison.OrdinalIgnoreCase);
+
         /// <summary>True khi panel log đang được hosted trong cửa sổ tách — ẩn hẳn khỏi main grid.</summary>
         public bool IsExecutionTracePanelInMainGrid =>
             IsExecutionTracePanelVisible && !IsTraceDockDetached;
@@ -282,6 +307,8 @@ namespace FlowMy.ViewModels
                 executionTracePanelDetachedTop = prefs.ExecutionTracePanelDetachedTop;
                 if (prefs.ExecutionTracePanelDetachedWidth >= 300) executionTracePanelDetachedWidth = prefs.ExecutionTracePanelDetachedWidth;
                 if (prefs.ExecutionTracePanelDetachedHeight >= 200) executionTracePanelDetachedHeight = prefs.ExecutionTracePanelDetachedHeight;
+                if (!string.IsNullOrWhiteSpace(prefs.ExecutionTraceDisplayStyle))
+                    executionTraceDisplayStyle = prefs.ExecutionTraceDisplayStyle!;
                 exportIncludeInput = prefs.ExportIncludeInput;
                 exportIncludeOutput = prefs.ExportIncludeOutput;
                 exportIncludeError = prefs.ExportIncludeError;
@@ -344,6 +371,14 @@ namespace FlowMy.ViewModels
             SaveExecutionTracePreferencesSafe();
         }
 
+        partial void OnExecutionTraceDisplayStyleChanged(string value)
+        {
+            OnPropertyChanged(nameof(IsTraceDisplayFull));
+            OnPropertyChanged(nameof(IsTraceDisplayRelative));
+            OnPropertyChanged(nameof(IsTraceDisplayCompact));
+            SaveExecutionTracePreferencesSafe();
+        }
+
         partial void OnExecutionTracePanelDockHeightChanged(double value)
         {
             OnPropertyChanged(nameof(ExecutionTracePanelHeight));
@@ -381,6 +416,7 @@ namespace FlowMy.ViewModels
                     ExecutionTracePanelDetachedTop = ExecutionTracePanelDetachedTop,
                     ExecutionTracePanelDetachedWidth = ExecutionTracePanelDetachedWidth,
                     ExecutionTracePanelDetachedHeight = ExecutionTracePanelDetachedHeight,
+                    ExecutionTraceDisplayStyle = ExecutionTraceDisplayStyle,
                     ExportIncludeInput = ExportIncludeInput,
                     ExportIncludeOutput = ExportIncludeOutput,
                     ExportIncludeError = ExportIncludeError,
@@ -409,6 +445,18 @@ namespace FlowMy.ViewModels
             IsExecutionTracePanelMaximized = !IsExecutionTracePanelMaximized;
         }
 
+        /// <summary>
+        /// View gọi sau khi <c>ExecutionTraceDetachedWindow</c> đóng — restore display style user từng dùng
+        /// (Full/Relative/Compact) trước khi detach. Nếu chưa từng cache (null) thì giữ nguyên.
+        /// </summary>
+        public void RestoreExecutionTraceDisplayStyleAfterAttach()
+        {
+            if (string.IsNullOrWhiteSpace(_executionTraceDisplayStyleBeforeDetach))
+                return;
+            ExecutionTraceDisplayStyle = _executionTraceDisplayStyleBeforeDetach!;
+            _executionTraceDisplayStyleBeforeDetach = null;
+        }
+
         /// <summary>Đặt vị trí dock panel log: Bottom/Left/Right/Detached (nhận từ XAML CommandParameter).</summary>
         [RelayCommand]
         private void SetExecutionTracePanelDockMode(object? parameter)
@@ -424,10 +472,36 @@ namespace FlowMy.ViewModels
                 case "detached":
                 case "detach":
                 case "float":
-                    ExecutionTracePanelDockMode = "Detached";
-                    // Đảm bảo panel đang expanded khi detach — view sẽ tự mở window khi thấy mode=Detached.
-                    if (!IsExecutionTracePanelExpanded) IsExecutionTracePanelExpanded = true;
-                    break;
+                    {
+                        // User click nút Detach. Có 2 nhánh:
+                        // (a) Chưa ở mode Detached → set để view tạo/hiển thị window.
+                        // (b) Đã ở mode Detached nhưng window đang bị minimize hoặc bị khuất →
+                        //     giá trị property không đổi nên PropertyChanged không fire, view sẽ không biết
+                        //     để restore. Vì vậy force raise PropertyChanged để Sync logic chạy lại và
+                        //     gọi RestoreAndActivate() trên window đã tồn tại.
+                        bool wasAlreadyDetached = string.Equals(
+                            ExecutionTracePanelDockMode, "Detached", StringComparison.OrdinalIgnoreCase);
+
+                        // Lưu display style user đang dùng để restore khi đóng window. CHỈ lưu khi lần đầu
+                        // detach (wasAlreadyDetached=false) để tránh ghi đè bằng "Full" đã auto-set.
+                        if (!wasAlreadyDetached)
+                        {
+                            _executionTraceDisplayStyleBeforeDetach = ExecutionTraceDisplayStyle;
+                            // Force display style về "Full" → window lớn hiển thị card đầy đủ, đẹp như user yêu cầu
+                            // (tránh cảnh dock compact chuyển vào cửa sổ lớn bị trông trống/nhỏ).
+                            if (!string.Equals(ExecutionTraceDisplayStyle, "Full", StringComparison.OrdinalIgnoreCase))
+                                ExecutionTraceDisplayStyle = "Full";
+                        }
+
+                        if (wasAlreadyDetached)
+                            OnPropertyChanged(nameof(ExecutionTracePanelDockMode));
+                        else
+                            ExecutionTracePanelDockMode = "Detached";
+
+                        // Đảm bảo panel đang expanded khi detach — view sẽ tự mở window khi thấy mode=Detached.
+                        if (!IsExecutionTracePanelExpanded) IsExecutionTracePanelExpanded = true;
+                        break;
+                    }
             }
         }
 

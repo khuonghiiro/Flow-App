@@ -10,6 +10,25 @@ namespace FlowMy.ViewModels;
 /// Một dòng key/value đã parse từ InputSummary/OutputSummary. Dùng để hiển thị ở card trace
 /// theo dạng chip (nhãn khóa đậm + giá trị), thay vì blob text dài khó đọc.
 /// </summary>
+/// <summary>
+/// Một lựa chọn cho ComboBox "Hiển thị log" trên toolbar Execution Log.
+/// <see cref="Id"/> là giá trị nội bộ ("Full"/"Relative"/"Compact") dùng để so sánh;
+/// <see cref="Label"/> là text hiển thị cho user (tiếng Việt).
+/// </summary>
+public sealed class ExecutionTraceDisplayStyleOption
+{
+    public string Id { get; }
+    public string Label { get; }
+
+    public ExecutionTraceDisplayStyleOption(string id, string label)
+    {
+        Id = id;
+        Label = label;
+    }
+
+    public override string ToString() => Label;
+}
+
 public sealed class TraceKeyValueItem
 {
     public string Key { get; }
@@ -135,6 +154,22 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
 
     public bool HasChildren => Children.Count > 0;
     public bool HasMultipleChildren => Children.Count > 1;
+
+    /// <summary>
+    /// True khi có ít nhất 1 child đang IsVisible=true (tức là không bị filter ẩn).
+    /// Dùng để ẩn cả vùng chứa children (TraceChildrenBranchGrid + dashed line) khi toàn bộ children
+    /// bị filter giấu, tránh để lại dải trống phía dưới card cha.
+    /// Gọi <see cref="NotifyHasVisibleChildrenChanged"/> sau khi cập nhật IsVisible của children.
+    /// </summary>
+    public bool HasVisibleChildren
+    {
+        get
+        {
+            foreach (var c in Children)
+                if (c.IsVisible) return true;
+            return false;
+        }
+    }
 
     public ObservableCollection<ExecutionTraceTreeNodeViewModel> Children { get; } = new();
     public Thickness ItemMargin { get; set; } = new Thickness(0, 5, 4, 5);
@@ -362,6 +397,25 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasChildren));
         OnPropertyChanged(nameof(HasMultipleChildren));
+        OnPropertyChanged(nameof(HasVisibleChildren));
+    }
+
+    /// <summary>
+    /// Raise PropertyChanged cho <see cref="HasVisibleChildren"/>. Gọi trên node CHA sau khi
+    /// cập nhật <c>IsVisible</c> của bất kỳ child nào (filter tree) để XAML cập nhật visibility
+    /// của dải dashed line + vùng chứa children.
+    /// </summary>
+    public void NotifyHasVisibleChildrenChanged()
+    {
+        OnPropertyChanged(nameof(HasVisibleChildren));
+    }
+
+    partial void OnIsVisibleChanged(bool value)
+    {
+        // Mỗi khi bản thân đổi IsVisible, parent cần raise HasVisibleChildren để dashed line +
+        // ItemsControl vùng child ẩn/hiện theo. Parent được set bởi WorkflowEditorViewModel khi
+        // build tree (xem PickBestParentTreeNode/append logic).
+        Parent?.NotifyHasVisibleChildrenChanged();
     }
 
     private Brush CreateTraceBorderBrush()

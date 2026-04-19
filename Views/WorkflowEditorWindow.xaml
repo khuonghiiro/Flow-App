@@ -2098,12 +2098,64 @@ Cursor="Hand"
                                               VerticalAlignment="Center"/>
                                 </StackPanel>
 
-                                <TextBox Width="240"
-                                         Height="24"
-                                         Margin="0,0,12,0"
-                                         VerticalAlignment="Center"
-                                         Text="{Binding ExecutionTraceSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Tìm theo node name/id/key/output/error"/>
+                                <!-- Search box với placeholder overlay; TextBlock ẩn khi TextBox có text/focus. -->
+                                <Grid Width="240"
+                                      Height="24"
+                                      Margin="0,0,12,0"
+                                      VerticalAlignment="Center">
+                                    <TextBox x:Name="ExecutionTraceSearchTextBox"
+                                             Height="24"
+                                             VerticalAlignment="Center"
+                                             Style="{StaticResource BaseTextBox}"
+                                             Padding="10,0,8,0"
+                                             Text="{Binding ExecutionTraceSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Tìm theo node name/id/key/output/error"/>
+                                    <!-- Kính lúp gợi ý đây là search input. -->
+                                    <controls:SvgViewboxEx Width="12" Height="12"
+                                                           HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center"
+                                                           Margin="8,0,0,0"
+                                                           IsHitTestVisible="False"
+                                                           Fill="{DynamicResource PlaceholderBrush}"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass duotone-regular'}"/>
+                                    <TextBlock Text="Tìm node / key / output / error..."
+                                               Foreground="{DynamicResource PlaceholderBrush}"
+                                               FontStyle="Italic"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               Margin="28,0,0,0"
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding Text, ElementName=ExecutionTraceSearchTextBox}" Value=""/>
+                                                            <Condition Binding="{Binding IsKeyboardFocused, ElementName=ExecutionTraceSearchTextBox}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+
+                                <!-- Display style selector: Full / Relative / Compact.
+                                     Mặc định = Full → UI log hiện tại. Các mode khác dùng DataTrigger
+                                     để ẩn/compact các phần detail của từng card. -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Hiển thị" Foreground="White" Opacity="0.8" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <ComboBox Width="110"
+                                              Height="24"
+                                              ItemsSource="{Binding ExecutionTraceDisplayStyleOptions}"
+                                              SelectedValuePath="Id"
+                                              DisplayMemberPath="Label"
+                                              SelectedValue="{Binding ExecutionTraceDisplayStyle, Mode=TwoWay}"
+                                              VerticalAlignment="Center"
+                                              ToolTip="Kiểu hiển thị log: Đầy đủ / Tương đối / Thu gọn"/>
+                                </StackPanel>
 
                                 <StackPanel Orientation="Horizontal"
                                             VerticalAlignment="Center">
@@ -2199,7 +2251,7 @@ Cursor="Hand"
                                             CommandParameter="Detached"
                                             ToolTip="Mở panel log ra cửa sổ riêng">
                                         <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrow-up-right-from-square duotone-regular'}"/>
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrow-up-right-from-square sharp-solid'}"/>
                                     </Button>
 
                                     <Rectangle Style="{StaticResource TraceToolbarSeparator}"/>
@@ -2241,8 +2293,59 @@ Cursor="Hand"
                                                 <StackPanel Orientation="Vertical"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
+                                        <!-- Collapse ngay ở ContentPresenter khi run-root bị filter ẩn toàn bộ children. -->
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
                                         <ItemsControl.Resources>
                                             <BooleanToVisibilityConverter x:Key="LocalBoolToVis"/>
+                                            <!-- Alpha-blended brushes cho IN/OUT/ERR.
+                                                 Alpha thấp (0x33 = 20%) → nổi trên cả nền sáng (Light) lẫn nền tối (Dark)
+                                                 mà không bị chói; text dùng DynamicResource TextBrush để luôn tương phản đủ.
+                                                 Chip labels (IN/OUT/ERR) giữ alpha cao hơn để đọc được rõ. -->
+                                            <SolidColorBrush x:Key="TraceInBackgroundBrush" Color="#332DBE6C"/>
+                                            <SolidColorBrush x:Key="TraceInBorderBrush"     Color="#802DBE6C"/>
+                                            <SolidColorBrush x:Key="TraceInAccentBrush"     Color="#FF2DBE6C"/>
+
+                                            <SolidColorBrush x:Key="TraceOutBackgroundBrush" Color="#33228BE6"/>
+                                            <SolidColorBrush x:Key="TraceOutBorderBrush"     Color="#80228BE6"/>
+                                            <SolidColorBrush x:Key="TraceOutAccentBrush"     Color="#FF228BE6"/>
+
+                                            <SolidColorBrush x:Key="TraceErrBackgroundBrush" Color="#33FA5252"/>
+                                            <SolidColorBrush x:Key="TraceErrBorderBrush"     Color="#80FA5252"/>
+                                            <SolidColorBrush x:Key="TraceErrAccentBrush"     Color="#FFFA5252"/>
+
+                                            <!-- ==== Display-style helper styles ====
+                                                 Các style dưới bind DataContext.IsTraceDisplay* trên Window (chứa VM)
+                                                 để ẩn/hiện element theo chế độ Full/Relative/Compact mà không phải
+                                                 viết lặp DataTrigger ở từng element. -->
+                                            <Style x:Key="TraceCompactHiddenTextBlock" TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                            <Style x:Key="TraceCompactHiddenToggle" TargetType="ToggleButton">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                            <!-- Hide element khi ở chế độ Compact HOẶC Relative (dùng cho "from node:" line). -->
+                                            <Style x:Key="TraceRelativeOrCompactHiddenTextBlock" TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding DataContext.IsTraceDisplayRelative, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
                                         <Style x:Key="TraceDetailsToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource QaToggleButton}">
                                             <Setter Property="Height" Value="20"/>
                                             <Setter Property="FontSize" Value="10"/>
@@ -2269,6 +2372,13 @@ Cursor="Hand"
                                                 <DataTrigger Binding="{Binding Status}" Value="failed">
                                                     <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
                                                     <Setter Property="Opacity" Value="0.9"/>
+                                                </DataTrigger>
+                                                <!-- Compact mode: badge → chấm tròn nhỏ (10x10), không padding, chỉ thể hiện màu status. -->
+                                                <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                    <Setter Property="Width" Value="10"/>
+                                                    <Setter Property="Height" Value="10"/>
+                                                    <Setter Property="Padding" Value="0"/>
+                                                    <Setter Property="VerticalAlignment" Value="Center"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -2299,19 +2409,19 @@ Cursor="Hand"
                                                         </Grid.RowDefinitions>
                                                         <Rectangle Grid.Row="0"
                                                                    Width="1"
-                                                                   Fill="#B8B8B8"
+                                                                   Fill="{DynamicResource BorderColor}"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Stretch"
                                                                    Visibility="{Binding ShowTopStem, Converter={StaticResource LocalBoolToVis}}"/>
                                                         <Rectangle Grid.Row="1"
                                                                    Width="1"
-                                                                   Fill="#B8B8B8"
+                                                                   Fill="{DynamicResource BorderColor}"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Stretch"
                                                                    Visibility="{Binding ShowBottomStem, Converter={StaticResource LocalBoolToVis}}"/>
                                                         <Rectangle Grid.RowSpan="2"
                                                                    Height="1"
-                                                                   Fill="#B8B8B8"
+                                                                   Fill="{DynamicResource BorderColor}"
                                                                    VerticalAlignment="Center"
                                                                    HorizontalAlignment="Stretch"
                                                                    Margin="30,0,0,0"
@@ -2349,7 +2459,7 @@ Cursor="Hand"
                                                                               IsChecked="{Binding IsExpanded, Mode=TwoWay}"
                                                                               Visibility="{Binding HasChildren, Converter={StaticResource LocalBoolToVis}}">
                                                                     <Path Data="M 4 3 L 9 8 L 4 13"
-                                                                          Stroke="#5A5A5A"
+                                                                          Stroke="{DynamicResource TextBrush}"
                                                                           StrokeThickness="1.15"
                                                                           Fill="Transparent"
                                                                           RenderTransformOrigin="0.5,0.5">
@@ -2406,15 +2516,22 @@ Cursor="Hand"
                                                                                FontSize="10"
                                                                                Opacity="0.65"
                                                                                Foreground="{DynamicResource TextBrush}"
-                                                                               VerticalAlignment="Center"/>
+                                                                               VerticalAlignment="Center"
+                                                                               Style="{StaticResource TraceCompactHiddenTextBlock}"/>
                                                                     <Border Grid.Column="2" Style="{StaticResource TraceStatusBadgeStyle}">
+                                                                        <!-- Full/Relative: hiển thị text status (running/completed/failed);
+                                                                             Compact: ẩn text, giữ Border làm dot màu thể hiện status. -->
                                                                         <TextBlock Text="{Binding Status}"
                                                                                    FontSize="10"
                                                                                    FontWeight="SemiBold"
                                                                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
-                                                                                   VerticalAlignment="Center"/>
+                                                                                   VerticalAlignment="Center"
+                                                                                   Style="{StaticResource TraceCompactHiddenTextBlock}"/>
                                                                     </Border>
-                                                                    <!-- Per-card toggle: collapsed = trim ellipsis, expanded = wrap full -->
+                                                                    <!-- Per-card toggle: collapsed = trim ellipsis, expanded = wrap full.
+                                                                         Compact mode: ẩn nút để dòng card gọn nhất (user xem chi tiết ở mode Đầy đủ).
+                                                                         Lưu ý: Visibility được đặt trong Style (setter + trigger) thay vì inline
+                                                                         để Compact-mode trigger có hiệu lực cao hơn (inline value sẽ beat trigger). -->
                                                                     <ToggleButton Grid.Column="3"
                                                                                   Width="22" Height="20"
                                                                                   Margin="6,0,0,0"
@@ -2423,8 +2540,17 @@ Cursor="Hand"
                                                                                   Background="Transparent"
                                                                                   BorderThickness="1"
                                                                                   BorderBrush="{DynamicResource BorderColor}"
-                                                                                  IsChecked="{Binding IsDetailsExpanded, Mode=TwoWay}"
-                                                                                  Visibility="{Binding ShowDetailsToggle, Converter={StaticResource LocalBoolToVis}}">
+                                                                                  IsChecked="{Binding IsDetailsExpanded, Mode=TwoWay}">
+                                                                        <ToggleButton.Style>
+                                                                            <Style TargetType="ToggleButton">
+                                                                                <Setter Property="Visibility" Value="{Binding ShowDetailsToggle, Converter={StaticResource LocalBoolToVis}}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </ToggleButton.Style>
                                                                         <ToggleButton.ToolTip>
                                                                             <TextBlock>
                                                                                 <Run Text="Mở rộng / thu gọn IN/OUT/ERR"/>
@@ -2468,12 +2594,14 @@ Cursor="Hand"
                                                                     </ToggleButton>
                                                                 </Grid>
 
+                                                                <!-- "from node: xyz" chỉ hiện ở mode Đầy đủ; Tương đối/Thu gọn ẩn để dòng card gọn hơn. -->
                                                                 <TextBlock Margin="0,4,0,0"
                                                                            FontSize="9"
                                                                            Opacity="0.55"
                                                                            Foreground="{DynamicResource TextBrush}"
                                                                            TextTrimming="CharacterEllipsis"
-                                                                           Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
+                                                                           Text="{Binding ParentNodeId, StringFormat=from node: {0}}"
+                                                                           Style="{StaticResource TraceRelativeOrCompactHiddenTextBlock}"/>
 
                                                                 <!--
                                                                     Khối IN/OUT/ERR:
@@ -2493,8 +2621,8 @@ Cursor="Hand"
                                                                             <ColumnDefinition Width="Auto"/>
                                                                         </Grid.ColumnDefinitions>
                                                                         <Border Grid.Column="0"
-                                                                                Background="#E8F5E9"
-                                                                                BorderBrush="#A5D6A7"
+                                                                                Background="{DynamicResource TraceInBackgroundBrush}"
+                                                                                BorderBrush="{DynamicResource TraceInBorderBrush}"
                                                                                 BorderThickness="1"
                                                                                 CornerRadius="3"
                                                                                 Padding="4,0"
@@ -2503,13 +2631,13 @@ Cursor="Hand"
                                                                             <TextBlock Text="IN"
                                                                                        FontSize="9"
                                                                                        FontWeight="Bold"
-                                                                                       Foreground="#1B5E20"/>
+                                                                                       Foreground="{DynamicResource TraceInAccentBrush}"/>
                                                                         </Border>
-                                                                        <!-- Collapsed: single-line summary ellipsis -->
+                                                                        <!-- Collapsed: single-line summary ellipsis. Compact mode: ẩn để card gọn. -->
                                                                         <TextBlock Grid.Column="1"
                                                                                    Text="{Binding InputSummary}"
                                                                                    FontSize="9"
-                                                                                   Foreground="#1B5E20"
+                                                                                   Foreground="{DynamicResource TextBrush}"
                                                                                    TextTrimming="CharacterEllipsis"
                                                                                    TextWrapping="NoWrap"
                                                                                    VerticalAlignment="Center"
@@ -2521,6 +2649,9 @@ Cursor="Hand"
                                                                                         <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
                                                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                                                         </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
                                                                                     </Style.Triggers>
                                                                                 </Style>
                                                                             </TextBlock.Style>
@@ -2530,12 +2661,21 @@ Cursor="Hand"
                                                                                 Padding="0"
                                                                                 Cursor="Hand"
                                                                                 Background="Transparent"
-                                                                                BorderBrush="#A5D6A7"
+                                                                                BorderBrush="{DynamicResource TraceInBorderBrush}"
                                                                                 BorderThickness="1"
                                                                                 ToolTip="Copy toàn bộ IN (bản đầy đủ)"
                                                                                 Command="{Binding DataContext.CopyTraceTextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                                                                                 CommandParameter="{Binding InputSummaryExpanded}">
-                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#1B5E20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                            <Button.Style>
+                                                                                <Style TargetType="Button">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Button.Style>
+                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="{DynamicResource TraceInAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                         </Button>
                                                                     </Grid>
                                                                     <!-- Expanded: list of parsed key/value chips (FULL - không bị cắt ngắn ...) -->
@@ -2557,8 +2697,8 @@ Cursor="Hand"
                                                                         </ItemsControl.Style>
                                                                         <ItemsControl.ItemTemplate>
                                                                             <DataTemplate DataType="{x:Type viewModels:TraceKeyValueItem}">
-                                                                                <Border Background="#F1F8F4"
-                                                                                        BorderBrush="#C8E6C9"
+                                                                                <Border Background="{DynamicResource TraceInBackgroundBrush}"
+                                                                                        BorderBrush="{DynamicResource TraceInBorderBrush}"
                                                                                         BorderThickness="1"
                                                                                         CornerRadius="3"
                                                                                         Padding="5,3"
@@ -2572,12 +2712,12 @@ Cursor="Hand"
                                                                                             <TextBlock Text="{Binding Key}"
                                                                                                        FontSize="9"
                                                                                                        FontWeight="SemiBold"
-                                                                                                       Foreground="#2E7D32"
+                                                                                                       Foreground="{DynamicResource TraceInAccentBrush}"
                                                                                                        TextWrapping="Wrap"
                                                                                                        Visibility="{Binding HasKey, Converter={StaticResource LocalBoolToVis}}"/>
                                                                                             <TextBlock Text="{Binding Value}"
                                                                                                        FontSize="9"
-                                                                                                       Foreground="#1B5E20"
+                                                                                                       Foreground="{DynamicResource TextBrush}"
                                                                                                        TextWrapping="Wrap"
                                                                                                        Margin="0,1,0,0"/>
                                                                                         </StackPanel>
@@ -2592,7 +2732,7 @@ Cursor="Hand"
                                                                                                 VerticalAlignment="Top"
                                                                                                 Command="{Binding DataContext.CopyTraceTextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                                                                                                 CommandParameter="{Binding CopyText}">
-                                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#2E7D32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="{DynamicResource TraceInAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                                         </Button>
                                                                                     </Grid>
                                                                                 </Border>
@@ -2603,7 +2743,7 @@ Cursor="Hand"
                                                                     <TextBlock Text="{Binding InputSummaryExpanded}"
                                                                                Margin="0,3,0,0"
                                                                                FontSize="9"
-                                                                               Foreground="#1B5E20"
+                                                                               Foreground="{DynamicResource TextBrush}"
                                                                                TextWrapping="Wrap">
                                                                         <TextBlock.Style>
                                                                             <Style TargetType="TextBlock">
@@ -2632,8 +2772,8 @@ Cursor="Hand"
                                                                             <ColumnDefinition Width="Auto"/>
                                                                         </Grid.ColumnDefinitions>
                                                                         <Border Grid.Column="0"
-                                                                                Background="#E3F2FD"
-                                                                                BorderBrush="#90CAF9"
+                                                                                Background="{DynamicResource TraceOutBackgroundBrush}"
+                                                                                BorderBrush="{DynamicResource TraceOutBorderBrush}"
                                                                                 BorderThickness="1"
                                                                                 CornerRadius="3"
                                                                                 Padding="4,0"
@@ -2642,12 +2782,12 @@ Cursor="Hand"
                                                                             <TextBlock Text="OUT"
                                                                                        FontSize="9"
                                                                                        FontWeight="Bold"
-                                                                                       Foreground="#0D47A1"/>
+                                                                                       Foreground="{DynamicResource TraceOutAccentBrush}"/>
                                                                         </Border>
                                                                         <TextBlock Grid.Column="1"
                                                                                    Text="{Binding OutputSummary}"
                                                                                    FontSize="9"
-                                                                                   Foreground="#0D47A1"
+                                                                                   Foreground="{DynamicResource TextBrush}"
                                                                                    TextTrimming="CharacterEllipsis"
                                                                                    TextWrapping="NoWrap"
                                                                                    VerticalAlignment="Center"
@@ -2659,6 +2799,9 @@ Cursor="Hand"
                                                                                         <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
                                                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                                                         </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
                                                                                     </Style.Triggers>
                                                                                 </Style>
                                                                             </TextBlock.Style>
@@ -2668,12 +2811,21 @@ Cursor="Hand"
                                                                                 Padding="0"
                                                                                 Cursor="Hand"
                                                                                 Background="Transparent"
-                                                                                BorderBrush="#90CAF9"
+                                                                                BorderBrush="{DynamicResource TraceOutBorderBrush}"
                                                                                 BorderThickness="1"
                                                                                 ToolTip="Copy toàn bộ OUT (bản đầy đủ)"
                                                                                 Command="{Binding DataContext.CopyTraceTextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                                                                                 CommandParameter="{Binding OutputSummaryExpanded}">
-                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#0D47A1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                            <Button.Style>
+                                                                                <Style TargetType="Button">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Button.Style>
+                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="{DynamicResource TraceOutAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                         </Button>
                                                                     </Grid>
                                                                     <ItemsControl Margin="0,3,0,0"
@@ -2694,8 +2846,8 @@ Cursor="Hand"
                                                                         </ItemsControl.Style>
                                                                         <ItemsControl.ItemTemplate>
                                                                             <DataTemplate DataType="{x:Type viewModels:TraceKeyValueItem}">
-                                                                                <Border Background="#EFF5FB"
-                                                                                        BorderBrush="#BBDEFB"
+                                                                                <Border Background="{DynamicResource TraceOutBackgroundBrush}"
+                                                                                        BorderBrush="{DynamicResource TraceOutBorderBrush}"
                                                                                         BorderThickness="1"
                                                                                         CornerRadius="3"
                                                                                         Padding="5,3"
@@ -2709,12 +2861,12 @@ Cursor="Hand"
                                                                                             <TextBlock Text="{Binding Key}"
                                                                                                        FontSize="9"
                                                                                                        FontWeight="SemiBold"
-                                                                                                       Foreground="#1565C0"
+                                                                                                       Foreground="{DynamicResource TraceOutAccentBrush}"
                                                                                                        TextWrapping="Wrap"
                                                                                                        Visibility="{Binding HasKey, Converter={StaticResource LocalBoolToVis}}"/>
                                                                                             <TextBlock Text="{Binding Value}"
                                                                                                        FontSize="9"
-                                                                                                       Foreground="#0D47A1"
+                                                                                                       Foreground="{DynamicResource TextBrush}"
                                                                                                        TextWrapping="Wrap"
                                                                                                        Margin="0,1,0,0"/>
                                                                                         </StackPanel>
@@ -2729,7 +2881,7 @@ Cursor="Hand"
                                                                                                 VerticalAlignment="Top"
                                                                                                 Command="{Binding DataContext.CopyTraceTextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                                                                                                 CommandParameter="{Binding CopyText}">
-                                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#1565C0" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="{DynamicResource TraceOutAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                                         </Button>
                                                                                     </Grid>
                                                                                 </Border>
@@ -2739,7 +2891,7 @@ Cursor="Hand"
                                                                     <TextBlock Text="{Binding OutputSummaryExpanded}"
                                                                                Margin="0,3,0,0"
                                                                                FontSize="9"
-                                                                               Foreground="#0D47A1"
+                                                                               Foreground="{DynamicResource TextBrush}"
                                                                                TextWrapping="Wrap">
                                                                         <TextBlock.Style>
                                                                             <Style TargetType="TextBlock">
@@ -2768,8 +2920,8 @@ Cursor="Hand"
                                                                             <ColumnDefinition Width="Auto"/>
                                                                         </Grid.ColumnDefinitions>
                                                                         <Border Grid.Column="0"
-                                                                                Background="#FFEBEE"
-                                                                                BorderBrush="#EF9A9A"
+                                                                                Background="{DynamicResource TraceErrBackgroundBrush}"
+                                                                                BorderBrush="{DynamicResource TraceErrBorderBrush}"
                                                                                 BorderThickness="1"
                                                                                 CornerRadius="3"
                                                                                 Padding="4,0"
@@ -2778,13 +2930,13 @@ Cursor="Hand"
                                                                             <TextBlock Text="ERR"
                                                                                        FontSize="9"
                                                                                        FontWeight="Bold"
-                                                                                       Foreground="#B71C1C"/>
+                                                                                       Foreground="{DynamicResource TraceErrAccentBrush}"/>
                                                                         </Border>
                                                                         <TextBlock Grid.Column="1"
                                                                                    Text="{Binding ErrorMessage}"
                                                                                    FontSize="9"
                                                                                    FontWeight="SemiBold"
-                                                                                   Foreground="#B71C1C"
+                                                                                   Foreground="{DynamicResource TraceErrAccentBrush}"
                                                                                    TextTrimming="CharacterEllipsis"
                                                                                    TextWrapping="NoWrap"
                                                                                    VerticalAlignment="Center"
@@ -2796,6 +2948,9 @@ Cursor="Hand"
                                                                                         <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
                                                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                                                         </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
                                                                                     </Style.Triggers>
                                                                                 </Style>
                                                                             </TextBlock.Style>
@@ -2805,19 +2960,28 @@ Cursor="Hand"
                                                                                 Padding="0"
                                                                                 Cursor="Hand"
                                                                                 Background="Transparent"
-                                                                                BorderBrush="#EF9A9A"
+                                                                                BorderBrush="{DynamicResource TraceErrBorderBrush}"
                                                                                 BorderThickness="1"
                                                                                 ToolTip="Copy toàn bộ ERR (bản đầy đủ)"
                                                                                 Command="{Binding DataContext.CopyTraceTextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                                                                                 CommandParameter="{Binding ErrorMessageExpanded}">
-                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#B71C1C" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                            <Button.Style>
+                                                                                <Style TargetType="Button">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding DataContext.IsTraceDisplayCompact, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Button.Style>
+                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="{DynamicResource TraceErrAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                         </Button>
                                                                     </Grid>
                                                                     <TextBlock Text="{Binding ErrorMessageExpanded}"
                                                                                Margin="0,3,0,0"
                                                                                FontSize="9"
                                                                                FontWeight="SemiBold"
-                                                                               Foreground="#B71C1C"
+                                                                               Foreground="{DynamicResource TraceErrAccentBrush}"
                                                                                TextWrapping="Wrap">
                                                                         <TextBlock.Style>
                                                                             <Style TargetType="TextBlock">
@@ -2836,10 +3000,22 @@ Cursor="Hand"
                                                     </Border>
                                                 </Grid>
 
-                                                <!-- Dashed vertical line continuing through children when expanded -->
+                                                <!-- Dashed vertical line continuing through children when expanded.
+                                                     Toàn bộ Grid chỉ visible khi có ít nhất 1 child chưa bị filter ẩn,
+                                                     tránh để lại dải trống phía dưới card cha khi user filter. -->
                                                 <Grid x:Name="TraceChildrenBranchGrid">
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasVisibleChildren}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
                                                     <Line X1="0" Y1="0" X2="0"
-                                                          Stroke="#C8C8C8"
+                                                          Stroke="{DynamicResource BorderColor}"
                                                           StrokeThickness="1"
                                                           StrokeDashArray="4,3"
                                                           StrokeDashCap="Flat"
@@ -2882,6 +3058,15 @@ Cursor="Hand"
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </ItemsControl.Style>
+                                                        <!-- Ẩn item container (ContentPresenter) theo IsVisible của child. Mục đích:
+                                                             tránh trường hợp WPF vẫn reserve khoảng trống khi chỉ có DataTemplate.root
+                                                             bên trong bị Collapsed mà CP vẫn tham gia measure. Bỏ qua luôn ở mức
+                                                             ItemContainer → không còn khoảng trống thừa khi filter. -->
+                                                        <ItemsControl.ItemContainerStyle>
+                                                            <Style TargetType="ContentPresenter">
+                                                                <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}"/>
+                                                            </Style>
+                                                        </ItemsControl.ItemContainerStyle>
                                                     </ItemsControl>
                                                 </Grid>
                                             </StackPanel>

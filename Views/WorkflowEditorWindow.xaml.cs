@@ -1097,7 +1097,13 @@ namespace FlowMy.Views
 
             if (wantDetached)
             {
-                if (_executionTraceDetachedWindow != null && _executionTraceDetachedWindow.IsVisible) return;
+                // Nếu window đã tồn tại (kể cả đang Minimized hoặc bị che) thì chỉ cần restore + activate
+                // giống DevTools: click biểu tượng trên taskbar là window bung lên lại, không tạo instance mới.
+                if (_executionTraceDetachedWindow != null)
+                {
+                    _executionTraceDetachedWindow.RestoreAndActivate();
+                    return;
+                }
                 AttachExecutionTracePanelToWindow();
             }
             else
@@ -1125,12 +1131,15 @@ namespace FlowMy.Views
             ExecutionTracePanelHostBorder.Visibility = Visibility.Visible;
 
             var win = new FlowMy.Views.Overlays.ExecutionTraceDetachedWindow();
-            win.Owner = this;
+            // Cố ý KHÔNG set Owner = this: nếu set Owner thì Windows sẽ group window con vào icon
+            // taskbar của main window và nó luôn bị đè lên trên main. User muốn trải nghiệm giống
+            // DevTools (icon taskbar riêng, không chặn thao tác canvas) → để window hoàn toàn độc lập.
             win.BindToViewModel(ViewModel);
             win.AttachContent(ExecutionTracePanelHostBorder);
             win.Closed += ExecutionTraceDetachedWindow_Closed;
             _executionTraceDetachedWindow = win;
             win.Show();
+            win.Activate();
         }
 
         private void ExecutionTraceDetachedWindow_Closed(object? sender, EventArgs e)
@@ -1143,6 +1152,10 @@ namespace FlowMy.Views
 
             if (ViewModel != null && ViewModel.IsTraceDockDetached)
                 ViewModel.ExecutionTracePanelDockMode = "Bottom";
+
+            // Restore display style mà user đã dùng trước khi detach (thường là Compact/Relative
+            // cho panel nhỏ dock dưới). Gọi SAU khi đổi DockMode để tránh save preferences với style "Full".
+            ViewModel?.RestoreExecutionTraceDisplayStyleAfterAttach();
         }
 
         private void ReturnExecutionTracePanelToMainGrid()

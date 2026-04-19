@@ -5,6 +5,7 @@
         Width="820" Height="520"
         MinWidth="420" MinHeight="260"
         WindowStartupLocation="Manual"
+        WindowState="Maximized"
         Background="{DynamicResource BackgroundColor}"
         ShowInTaskbar="True"
         Topmost="False">
