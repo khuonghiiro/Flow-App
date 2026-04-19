@@ -45,6 +45,13 @@ namespace FlowMy.Services.Utilities
         public double NodeSpinnerBlinkIntensity { get; set; } = 0.65; // 0..1
         public double NodeSpinnerBlinkBaseOpacity { get; set; } = 0.16; // 0..1
         public double NodeSpinnerBlinkPeakOpacity { get; set; } = 0.60; // 0..1
+
+        // UI Theme animations
+        /// <summary>
+        /// Bật/tắt hiệu ứng animation trên các control giao diện (hover, checked transitions, etc.)
+        /// Tắt để tăng hiệu năng trên máy yếu.
+        /// </summary>
+        public bool UiAnimationsEnabled { get; set; } = true;
     }
 
     public static class CanvasToolbarPreferencesStore

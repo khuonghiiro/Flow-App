@@ -248,7 +248,7 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="8"/>
-                        <TextBlock Text="👤" FontSize="15" Foreground="#888"
+                        <TextBlock Text="👤" FontSize="15" Foreground="{DynamicResource TextMuted}"
                                    VerticalAlignment="Center" HorizontalAlignment="Left"
                                    Margin="10,0,0,0" IsHitTestVisible="False"/>
                         <ScrollViewer Margin="{TemplateBinding Padding}"
@@ -262,7 +262,7 @@
                             <Setter TargetName="Border" Property="Background"  Value="{DynamicResource DisabledBackground}"/>
                         </Trigger>
                         <Trigger Property="Validation.HasError" Value="True">
-                            <Setter TargetName="Border" Property="BorderBrush" Value="#FFEF5350"/>
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
                         </Trigger>
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
@@ -304,7 +304,7 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="8"/>
-                        <TextBlock Text="🔒" FontSize="15" Foreground="#888"
+                        <TextBlock Text="🔒" FontSize="15" Foreground="{DynamicResource TextMuted}"
                                    VerticalAlignment="Center" HorizontalAlignment="Left"
                                    Margin="10,0,0,0" IsHitTestVisible="False"/>
                         <ScrollViewer Margin="{TemplateBinding Padding}"
@@ -314,7 +314,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Validation.HasError" Value="True">
-                            <Setter TargetName="Border" Property="BorderBrush" Value="#FFEF5350"/>
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
@@ -369,7 +369,7 @@
                             <Setter TargetName="Border" Property="Opacity" Value="0.6"/>
                         </Trigger>
                         <Trigger Property="Validation.HasError" Value="True">
-                            <Setter TargetName="Border" Property="BorderBrush" Value="#FFEF5350"/>
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
                         </Trigger>
                         <MultiTrigger>
                             <MultiTrigger.Conditions>

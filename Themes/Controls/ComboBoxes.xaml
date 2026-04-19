@@ -80,7 +80,7 @@
                                         Background="{DynamicResource ComboBoxPopupBackground}"
                                         BorderBrush="{DynamicResource ComboBoxPopupBorderBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="6"
+                                        CornerRadius="8"
                                         Padding="4"
                                         SnapsToDevicePixels="True"
                                         UseLayoutRounding="True">
@@ -252,7 +252,7 @@
                             Background="{DynamicResource ComboBoxPopupBackground}"
                             BorderBrush="{DynamicResource ComboBoxPopupBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="6"
+                            CornerRadius="8"
                             Padding="4"
                             SnapsToDevicePixels="True"
                             UseLayoutRounding="True">

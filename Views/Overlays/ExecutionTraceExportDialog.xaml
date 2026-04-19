@@ -15,27 +15,7 @@
         Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
-        <Style x:Key="SectionCardBorder" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="12"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
-        <Style x:Key="SectionTitle" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-            <Setter Property="Margin" Value="0,0,0,8"/>
-        </Style>
-        <Style x:Key="HintText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-            <Setter Property="Opacity" Value="0.65"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
-        </Style>
+        <!-- SectionCardBorder, SectionTitle, HintText are now in Themes/Controls/DialogStyles.xaml -->
     </Window.Resources>
 
     <Grid Margin="16">
@@ -51,16 +31,16 @@
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextBrush}"/>
             <TextBlock Text="Chọn dữ liệu cần đi kèm và giới hạn kích thước để tránh file log nặng."
-                       Style="{StaticResource HintText}"
+                       Style="{DynamicResource HintText}"
                        Margin="0,4,0,0"/>
         </StackPanel>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
 
-                <Border Style="{StaticResource SectionCardBorder}">
+                <Border Style="{DynamicResource SectionCardBorder}">
                     <StackPanel>
-                        <TextBlock Text="Trường dữ liệu" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="Trường dữ liệu" Style="{DynamicResource SectionTitle}"/>
                         <CheckBox IsChecked="{Binding ExportIncludeInput, Mode=TwoWay}"
                                   Foreground="{DynamicResource TextBrush}"
                                   Content="Kèm IN (input data)"
@@ -72,14 +52,14 @@
                         <CheckBox IsChecked="{Binding ExportIncludeError, Mode=TwoWay}"
                                   Foreground="{DynamicResource TextBrush}"
                                   Content="Kèm ERR (error message)"/>
-                        <TextBlock Style="{StaticResource HintText}"
+                        <TextBlock Style="{DynamicResource HintText}"
                                    Text="Bỏ chọn để không xuất trường đó (giảm nhiều kích thước file nếu data nặng)."/>
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource SectionCardBorder}">
+                <Border Style="{DynamicResource SectionCardBorder}">
                     <StackPanel>
-                        <TextBlock Text="Cắt độ dài IN/OUT/ERR" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="Cắt độ dài IN/OUT/ERR" Style="{DynamicResource SectionTitle}"/>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Tối đa"
                                        VerticalAlignment="Center"
@@ -97,14 +77,14 @@
                                        Opacity="0.75"
                                        Margin="8,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Style="{StaticResource HintText}"
+                        <TextBlock Style="{DynamicResource HintText}"
                                    Text="Ví dụ: 100 → giữ 100 ký tự đầu và thêm '...' cuối."/>
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource SectionCardBorder}">
+                <Border Style="{DynamicResource SectionCardBorder}">
                     <StackPanel>
-                        <TextBlock Text="Cấu trúc &amp; phạm vi" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="Cấu trúc &amp; phạm vi" Style="{DynamicResource SectionTitle}"/>
                         <CheckBox IsChecked="{Binding ExportIncludeTree, Mode=TwoWay}"
                                   Foreground="{DynamicResource TextBrush}"
                                   Content="Kèm cấu trúc cây Run (tree) ngoài danh sách rows"

@@ -25,11 +25,11 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
+                            CornerRadius="8"
                             Padding="{TemplateBinding Padding}"
                             MaxWidth="{TemplateBinding MaxWidth}">
                         <Border.Effect>
-                            <DropShadowEffect Color="#000000" Direction="315"
+                            <DropShadowEffect Color="{DynamicResource ShadowColor}" Direction="315"
                                              ShadowDepth="3" BlurRadius="6"
                                              Opacity="0.35"/>
                         </Border.Effect>

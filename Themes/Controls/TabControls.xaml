@@ -15,7 +15,7 @@
                 <ControlTemplate TargetType="TabItem">
                     <Border x:Name="Border"
                             Background="{TemplateBinding Background}"
-                            BorderThickness="0,0,0,2"
+                            BorderThickness="0,0,0,3"
                             BorderBrush="Transparent"
                             Padding="{TemplateBinding Padding}"
                             CornerRadius="4,4,0,0">
@@ -121,7 +121,7 @@
                     <Border x:Name="Border"
                             Background="{TemplateBinding Background}"
                             BorderThickness="0"
-                            CornerRadius="5,5,0,0"
+                            CornerRadius="6,6,0,0"
                             Margin="{TemplateBinding Margin}">
                         <ContentPresenter x:Name="ContentSite"
                                           VerticalAlignment="Center"

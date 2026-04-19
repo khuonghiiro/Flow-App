@@ -341,7 +341,7 @@
                                         Width="8" Height="8"
                                         VerticalAlignment="Center"
                                         HorizontalAlignment="Center"
-                                        Fill="#FF0078D4"
+                                        Fill="{DynamicResource PrimaryBrush}"
                                         Visibility="Collapsed"/>
 
                             <!-- Content -->
@@ -355,18 +355,18 @@
                         <!-- Khi được chọn -->
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="InnerDot" Property="Visibility" Value="Visible"/>
-                            <Setter TargetName="Border" Property="Background" Value="#FFF3F9FF"/>
-                            <Setter TargetName="Border" Property="BorderBrush" Value="#FF0078D4"/>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryGlowBrush}"/>
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
                         </Trigger>
 
                         <!-- Khi hover -->
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="#FFEFEFF7"/>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource HoverBackground}"/>
                         </Trigger>
 
                         <!-- Khi disabled -->
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Foreground" Value="#FF9B9B9B"/>
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -377,9 +377,9 @@
     <!-- Style cho ListBox -->
     <Style x:Key="RadioButtonListBox" TargetType="ListBox">
         <Setter Property="SelectionMode" Value="Single"/>
-        <Setter Property="BorderBrush" Value="#FFCCCCCC"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{DynamicResource CardColor}"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
         <Setter Property="ItemContainerStyle" Value="{StaticResource RadioButtonListBoxItem}"/>
@@ -432,19 +432,12 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="InnerCircle" Property="Visibility" Value="Visible"/>
-                            <Setter TargetName="Border" Property="Background">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                        <GradientStop Color="#FFF3F9FF" Offset="0"/>
-                                        <GradientStop Color="#FFE8F4FD" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
-                            <Setter TargetName="Border" Property="BorderBrush" Value="#FF0078D4"/>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryGlowBrush}"/>
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
                         </Trigger>
 
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="#FFF5F5F5"/>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource HoverBackground}"/>
                         </Trigger>
 
                         <MultiTrigger>
@@ -452,14 +445,7 @@
                                 <Condition Property="IsSelected" Value="True"/>
                                 <Condition Property="IsMouseOver" Value="True"/>
                             </MultiTrigger.Conditions>
-                            <Setter TargetName="Border" Property="Background">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                        <GradientStop Color="#FFE8F4FD" Offset="0"/>
-                                        <GradientStop Color="#FFD6ECFA" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource HoverGlowBrush}"/>
                         </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

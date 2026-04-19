@@ -9,13 +9,12 @@
     <SolidColorBrush x:Key="ScrollBarTrackBackground" Color="Transparent"/>
 
     <!-- MÃ u thumb (thanh kÃ©o) - cÃ¡c tráº¡ng thÃ¡i -->
-    <SolidColorBrush x:Key="ScrollBarThumbNormal" Color="#A00078D4"/>
-    <SolidColorBrush x:Key="ScrollBarThumbHover" Color="#C00078D4"/>
-    <SolidColorBrush x:Key="ScrollBarThumbPressed" Color="#E00078D4"/>
+    <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#60888888"/>
+    <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#80888888"/>
+    <SolidColorBrush x:Key="ScrollBarThumbPressedBrush" Color="#A0888888"/>
 
-    <!-- MÃ u cho UltraCompact style -->
-    <SolidColorBrush x:Key="ScrollBarThumbGradientStart" Color="#FF0078D4"/>
-    <SolidColorBrush x:Key="ScrollBarThumbGradientEnd" Color="#FF7A20C8"/>
+    <Color x:Key="ScrollBarThumbColor">#60888888</Color>
+    <Color x:Key="ScrollBarThumbHoverColor">#80888888</Color>
 
     <!-- ============================================ -->
     <!-- INVISIBLE BUTTON STYLE - Must be defined before use -->
@@ -62,7 +61,7 @@
                                 <Storyboard>
                                     <ColorAnimation Storyboard.TargetName="ThumbBorder"
                                                   Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                  To="#555555" Duration="0:0:0.1"/>
+                                                  To="{StaticResource ScrollBarThumbHoverColor}" Duration="0:0:0.1"/>
                                     <ThicknessAnimation Storyboard.TargetName="ThumbBorder"
                                                       Storyboard.TargetProperty="Margin"
                                                       To="1.5" Duration="0:0:0.1"/>
@@ -76,7 +75,7 @@
                                 <Storyboard>
                                     <ColorAnimation Storyboard.TargetName="ThumbBorder"
                                                   Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                  To="#888888" Duration="0:0:0.15"/>
+                                                  To="{StaticResource ScrollBarThumbColor}" Duration="0:0:0.15"/>
                                     <ThicknessAnimation Storyboard.TargetName="ThumbBorder"
                                                       Storyboard.TargetProperty="Margin"
                                                       To="2" Duration="0:0:0.15"/>
@@ -102,8 +101,8 @@
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="OverridesDefaultStyle" Value="True"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Width" Value="12"/>
-        <Setter Property="MinWidth" Value="12"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="MinWidth" Value="10"/>
         <Setter Property="Margin" Value="0"/>
         <Setter Property="Opacity" Value="0.8"/>
         <Setter Property="Template">
@@ -112,8 +111,8 @@
                     <Grid x:Name="ScrollBarRoot" Background="Transparent">
                         <!-- Track background vá»›i mÃ u nháº¹ -->
                         <Border x:Name="TrackBackground"
-                                Background="#10000000"
-                                CornerRadius="6"
+                                Background="{DynamicResource ScrollBarTrackBackground}"
+                                CornerRadius="5"
                                 Margin="1"
                                 Opacity="0.5"/>
 
@@ -171,15 +170,15 @@
             <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Width" Value="Auto"/>
                 <Setter Property="MinWidth" Value="0"/>
-                <Setter Property="Height" Value="12"/>
-                <Setter Property="MinHeight" Value="12"/>
+                <Setter Property="Height" Value="10"/>
+                <Setter Property="MinHeight" Value="10"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ScrollBar">
                             <Grid x:Name="ScrollBarRoot" Background="Transparent">
                                 <Border x:Name="TrackBackground"
-                                        Background="#10000000"
-                                        CornerRadius="6"
+                                        Background="{DynamicResource ScrollBarTrackBackground}"
+                                        CornerRadius="5"
                                         Margin="1"
                                         Opacity="0.5"/>
 
@@ -388,8 +387,8 @@
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="OverridesDefaultStyle" Value="True"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Width" Value="8"/>
-        <Setter Property="MinWidth" Value="8"/>
+        <Setter Property="Width" Value="6"/>
+        <Setter Property="MinWidth" Value="6"/>
         <Setter Property="Margin" Value="2,0,0,0"/>
         <Setter Property="Opacity" Value="0.7"/>
         <Setter Property="Template">
@@ -398,8 +397,8 @@
                     <Grid x:Name="ScrollBarRoot" Background="Transparent">
                         <!-- Track background -->
                         <Border x:Name="TrackBackground"
-                                Background="#15000000"
-                                CornerRadius="4"
+                                Background="{DynamicResource ScrollBarTrackBackground}"
+                                CornerRadius="3"
                                 Margin="0"
                                 Opacity="0.6"/>
 
@@ -469,16 +468,16 @@
             <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Width" Value="Auto"/>
                 <Setter Property="MinWidth" Value="0"/>
-                <Setter Property="Height" Value="8"/>
-                <Setter Property="MinHeight" Value="8"/>
+                <Setter Property="Height" Value="6"/>
+                <Setter Property="MinHeight" Value="6"/>
                 <Setter Property="Margin" Value="0,2,0,0"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ScrollBar">
                             <Grid x:Name="ScrollBarRoot" Background="Transparent">
                                 <Border x:Name="TrackBackground"
-                                        Background="#15000000"
-                                        CornerRadius="4"
+                                        Background="{DynamicResource ScrollBarTrackBackground}"
+                                        CornerRadius="3"
                                         Margin="0"
                                         Opacity="0.6"/>
 

@@ -216,4 +216,12 @@
     <SolidColorBrush x:Key="CanvasGridBrush" Color="#C699AEC4"/>
     <Color x:Key="NodeShadowColor">#35000000</Color>
 
+    <!-- ===== FOCUS & INTERACTION ===== -->
+    <SolidColorBrush x:Key="FocusRingBrush" Color="#440078D4"/>
+    <SolidColorBrush x:Key="CardHoverBackground" Color="#FFF0F4F8"/>
+    <Color x:Key="ButtonShadowColor">#300078D4</Color>
+    <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FF0078D4"/>
+    <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FFF0F4F8"/>
+    <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FFF0F4F8"/>
+
 </ResourceDictionary>

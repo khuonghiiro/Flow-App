@@ -8,50 +8,7 @@
         MinHeight="620"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource WindowBackgroundBrush}">
-    <Window.Resources>
-        <Style x:Key="PresetToggleButtonStyle" TargetType="ToggleButton">
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Margin" Value="0,0,8,6"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Border x:Name="PresetBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="PresetBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                                <Setter TargetName="PresetBorder" Property="Background" Value="{DynamicResource MenuItemHoverBackgroundBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="PresetBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-                                <Setter TargetName="PresetBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-    </Window.Resources>
+    <!-- PresetToggleButtonStyle is now loaded from Themes/Controls/DialogStyles.xaml -->
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -130,6 +87,17 @@
                             <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="CacheNodeCheckBox" Content="Cache node" Margin="0,0,0,10"/>
                             <TextBlock Text="Chất lượng GPU (GPU quality)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
                             <ComboBox x:Name="GpuQualityComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,0" Height="32"/>
+
+                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,10" Padding="0,10,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Hiệu ứng giao diện (UI Animations)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
+                                    <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="UiAnimationsEnabledCheckBox" Content="Bật animation controls" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Bật hiệu ứng chuyển động trên các nút, checkbox, radio button, v.v. Tắt để giảm tải GPU/CPU trên máy cấu hình thấp."
+                                               Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                    <TextBlock Text="💡 Khi tắt: các hiệu ứng như pop-in, fade, scale sẽ bị bỏ qua — giao diện vẫn đẹp nhưng phản hồi nhanh hơn."
+                                               Foreground="{DynamicResource TextBrush}" Opacity="0.5" FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </Grid>
