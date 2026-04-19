@@ -35,10 +35,19 @@ public partial class FloatingWidgetWindow : Window
     private bool _isExpanded;
     private bool _isSlideHidden;    // Widget đã trượt vào cạnh (ẩn 1 phần)
     private bool _isDragging;
+    /// <summary>True khi chuột trái đã xuống nhưng chưa xác định click hay drag.</summary>
+    private bool _pendingInteraction;
     private Point _dragStartPoint;
     private double _dragStartLeft;
     private double _dragStartTop;
     private DateTime _lastActivityUtc = DateTime.UtcNow;
+    private UIElement? _dragSource;
+
+    /// <summary>
+    /// Khoảng cách tối thiểu (px) phải kéo chuột trước khi chuyển click → drag.
+    /// Dưới threshold này: mouse up = click (mở/thu widget).
+    /// </summary>
+    private const double DragThreshold = 6.0;
 
     // ── Timers ──
     private DispatcherTimer? _idleTimer;
@@ -319,45 +328,69 @@ public partial class FloatingWidgetWindow : Window
     //  DRAG & MOVE
     // ═══════════════════════════════════════════
 
-    private void StartDrag(MouseButtonEventArgs e)
+    /// <summary>
+    /// Ghi nhận mouse-down — CHƯA bật drag. Drag chỉ bật khi chuột di chuyển vượt DragThreshold.
+    /// Nếu mouse-up mà chưa qua threshold → coi là click (mở/thu widget).
+    /// </summary>
+    private void BeginInteraction(MouseButtonEventArgs e)
     {
-        if (Config.LockPosition || !Config.AllowDrag) return;
-
-        _isDragging = true;
+        _pendingInteraction = true;
+        _isDragging = false;
         _dragStartPoint = PointToScreen(e.GetPosition(this));
         _dragStartLeft = Left;
         _dragStartTop = Top;
-        ((UIElement)e.Source).CaptureMouse();
-
-        // If slide hidden, restore during drag
-        if (_isSlideHidden)
-            RestoreFromSlide(animate: false);
+        _dragSource = e.Source as UIElement;
+        _dragSource?.CaptureMouse();
     }
 
     private void ContinueDrag(MouseEventArgs e)
     {
-        if (!_isDragging) return;
+        if (!_pendingInteraction) return;
 
         var currentPoint = PointToScreen(e.GetPosition(this));
-        Left = _dragStartLeft + (currentPoint.X - _dragStartPoint.X);
-        Top = _dragStartTop + (currentPoint.Y - _dragStartPoint.Y);
+        var dx = currentPoint.X - _dragStartPoint.X;
+        var dy = currentPoint.Y - _dragStartPoint.Y;
+
+        // Chỉ chuyển sang drag khi vượt threshold → tránh drag không mong muốn khi user chỉ click.
+        if (!_isDragging)
+        {
+            if (Math.Abs(dx) < DragThreshold && Math.Abs(dy) < DragThreshold) return;
+
+            if (Config.LockPosition || !Config.AllowDrag)
+            {
+                // Không cho phép drag → hủy pending để mouse-up xử lý như click.
+                return;
+            }
+
+            _isDragging = true;
+            if (_isSlideHidden) RestoreFromSlide(animate: false);
+        }
+
+        Left = _dragStartLeft + dx;
+        Top = _dragStartTop + dy;
     }
 
-    private void EndDrag(MouseButtonEventArgs e)
+    /// <summary>
+    /// Mouse-up: nếu đã drag thật sự → kết thúc drag. Nếu chưa drag → trả về "đây là click".
+    /// </summary>
+    /// <returns>True nếu đây là click thật (chưa drag).</returns>
+    private bool EndInteraction(MouseButtonEventArgs e)
     {
-        if (!_isDragging) return;
-        _isDragging = false;
-        ((UIElement)e.Source).ReleaseMouseCapture();
+        bool wasClick = _pendingInteraction && !_isDragging;
 
-        ClampToWorkArea();
+        _pendingInteraction = false;
+        _dragSource?.ReleaseMouseCapture();
+        _dragSource = null;
 
-        // Snap to edge
-        if (Config.SnapToEdge && !_isExpanded)
-            SnapToNearestEdge();
-
-        // Save position
-        SavePosition();
+        if (_isDragging)
+        {
+            _isDragging = false;
+            ClampToWorkArea();
+            if (Config.SnapToEdge && !_isExpanded) SnapToNearestEdge();
+            SavePosition();
+        }
         MarkActivity();
+        return wasClick;
     }
 
     // Idle shape drag handlers
@@ -365,23 +398,24 @@ public partial class FloatingWidgetWindow : Window
     {
         if (e.ClickCount == 2)
         {
-            // Double click → expand
+            _pendingInteraction = false;
             ExpandWidget();
             e.Handled = true;
             return;
         }
-        StartDrag(e);
+        BeginInteraction(e);
     }
 
     private void Idle_MouseMove(object sender, MouseEventArgs e) => ContinueDrag(e);
+
     private void Idle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (!_isDragging)
+        var wasClick = EndInteraction(e);
+        if (wasClick)
         {
-            // Single click (no drag) → expand
+            // Single click (không drag) → mở widget.
             ExpandWidget();
         }
-        EndDrag(e);
     }
 
     private void Idle_MouseEnter(object sender, MouseEventArgs e)
@@ -396,15 +430,21 @@ public partial class FloatingWidgetWindow : Window
     {
         if (e.ClickCount == 2)
         {
+            _pendingInteraction = false;
             CollapseWidget();
             e.Handled = true;
             return;
         }
-        StartDrag(e);
+        BeginInteraction(e);
     }
 
     private void TitleBar_MouseMove(object sender, MouseEventArgs e) => ContinueDrag(e);
-    private void TitleBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => EndDrag(e);
+
+    private void TitleBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        // Với title bar: chỉ drag, không toggle khi click đơn (title bar đã có nút ▾ và ✕).
+        EndInteraction(e);
+    }
 
     private void TitleBar_MouseEnter(object sender, MouseEventArgs e)
     {
@@ -920,6 +960,65 @@ window.__ac.startWorkflow = acStartWorkflow;
     private void CloseBtn_Click(object sender, RoutedEventArgs e)
     {
         // Save position
+        SavePosition();
+        Close();
+    }
+
+    // ═══════════════════════════════════════════
+    //  CONTEXT MENU (chuột phải)
+    // ═══════════════════════════════════════════
+
+    private void ContextMenu_Opening(object sender, ContextMenuEventArgs e)
+    {
+        // Hủy pending click/drag để không mở widget khi mở context menu
+        if (_pendingInteraction)
+        {
+            _pendingInteraction = false;
+            _dragSource?.ReleaseMouseCapture();
+            _dragSource = null;
+        }
+
+        if (sender is not FrameworkElement fe || fe.ContextMenu == null) return;
+        var menu = fe.ContextMenu;
+
+        foreach (var obj in menu.Items)
+        {
+            if (obj is not MenuItem mi || mi.Tag is not string tag) continue;
+            switch (tag)
+            {
+                case "expand":
+                    mi.IsEnabled = !_isExpanded;
+                    mi.Visibility = _isExpanded ? Visibility.Collapsed : Visibility.Visible;
+                    break;
+                case "collapse":
+                    mi.IsEnabled = _isExpanded;
+                    mi.Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed;
+                    break;
+                case "topmost":
+                    mi.IsChecked = Topmost;
+                    break;
+            }
+        }
+    }
+
+    private void ContextExpand_Click(object sender, RoutedEventArgs e) => ExpandWidget();
+    private void ContextCollapse_Click(object sender, RoutedEventArgs e) => CollapseWidget();
+
+    private void ContextReload_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isExpanded) ExpandWidget();
+        RefreshContent();
+    }
+
+    private void ContextTopmost_Click(object sender, RoutedEventArgs e)
+    {
+        Topmost = !Topmost;
+        if (_node.FloatingWidget != null)
+            _node.FloatingWidget.AlwaysOnTop = Topmost;
+    }
+
+    private void ContextClose_Click(object sender, RoutedEventArgs e)
+    {
         SavePosition();
         Close();
     }

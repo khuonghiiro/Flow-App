@@ -19,7 +19,13 @@ public sealed class FloatingWidgetManager
     private readonly object _lock = new();
 
     /// <summary>Số widget tối đa đồng thời.</summary>
-    public int MaxWidgets { get; set; } = 10;
+    public int MaxWidgets { get; set; } = 32;
+
+    /// <summary>Fire khi một widget được mở.</summary>
+    public event EventHandler<string>? WidgetOpened;
+
+    /// <summary>Fire khi một widget bị đóng (đã remove khỏi activeWidgets).</summary>
+    public event EventHandler<string>? WidgetClosed;
 
     private FloatingWidgetManager() { }
 
@@ -62,9 +68,11 @@ public sealed class FloatingWidgetManager
             widget.Closed += (s, e) =>
             {
                 lock (_lock) { _activeWidgets.Remove(node.Id); }
+                try { WidgetClosed?.Invoke(this, node.Id); } catch { }
             };
             _activeWidgets[node.Id] = widget;
             widget.Show();
+            try { WidgetOpened?.Invoke(this, node.Id); } catch { }
         }
     }
 

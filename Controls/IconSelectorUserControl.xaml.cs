@@ -105,10 +105,7 @@ namespace FlowMy.Controls
                 {
                     Source = new Uri(iconPair.Value, UriKind.RelativeOrAbsolute),
                     Width = 18,
-                    Height = 18,
-                    Fill = (TryFindResource("TextOnPrimaryBrush") as System.Windows.Media.Brush)
-                           ?? (TryFindResource("TextBrush") as System.Windows.Media.Brush)
-                           ?? System.Windows.Media.Brushes.Black
+                    Height = 18
                 };
 
                 iconButton.Content = svgViewbox;

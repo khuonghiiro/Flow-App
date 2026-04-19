@@ -10,8 +10,10 @@
         xmlns:conv="clr-namespace:FlowMy.Converters"
         mc:Ignorable="d"
         Title="FlowMy"
-        Height="640"
-        Width="900"
+        Height="720"
+        Width="1080"
+        MinHeight="520"
+        MinWidth="860"
         Background="{DynamicResource WindowBackgroundBrush}"
         WindowStartupLocation="CenterScreen">
 
@@ -21,193 +23,480 @@
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <conv:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
         <conv:InverseStringNullOrEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter"/>
+
+        <!-- Subtle drop shadow for cards -->
+        <DropShadowEffect x:Key="CardShadow" Color="#000000" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.18"/>
+        <DropShadowEffect x:Key="HeroShadow" Color="#000000" BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.22"/>
+
+        <!-- Pill / chip button style for workflow-level actions -->
+        <Style x:Key="PillPrimary" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                CornerRadius="16"
+                                Background="{DynamicResource PrimaryBrush}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.75"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PillOutline" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                CornerRadius="16"
+                                Background="Transparent"
+                                BorderBrush="{DynamicResource PrimaryBrush}"
+                                BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Icon button (32x32 circle) -->
+        <Style x:Key="IconCircleButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                CornerRadius="16"
+                                Background="Transparent"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="IconCircleButtonPrimary" TargetType="Button" BasedOn="{StaticResource IconCircleButton}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                CornerRadius="16"
+                                Background="{DynamicResource PrimaryBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Window.DataContext>
         <vm:MainViewModel/>
     </Window.DataContext>
 
-    <Grid Margin="20">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>    <!-- Hero header -->
+            <RowDefinition Height="Auto"/>    <!-- Section title -->
+            <RowDefinition Height="*"/>       <!-- Widget grid -->
         </Grid.RowDefinitions>
 
-        <!-- Header: Mở Workflow Editor -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal">
-            <Button Command="{Binding OpenWorkflowEditorCommand}"
-                    Style="{StaticResource PrimaryButton}"
-                    MinWidth="220"
-                    VerticalAlignment="Top">
-                <StackPanel Orientation="Horizontal">
-                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty},
-                                            Converter={StaticResource IconKeyToPathConverter},
-                                            ConverterParameter='chart-diagram duotone-light'}"
-                                           Width="20"
-                                           Height="20"
-                                           Margin="0,0,10,0"
-                                           Fill="{DynamicResource TextOnPrimaryBrush}"/>
-                    <TextBlock Text="Mở Workflow Editor"
-                               Foreground="{DynamicResource TextOnPrimaryBrush}"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
+        <!-- ═══ HERO HEADER ═══ -->
+        <Border Grid.Row="0"
+                Padding="32,24,32,28"
+                Effect="{StaticResource HeroShadow}">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#6366F1" Offset="0"/>
+                    <GradientStop Color="#8B5CF6" Offset="0.5"/>
+                    <GradientStop Color="#EC4899" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
 
-            <Button Command="{Binding RefreshWidgetShortcutsCommand}"
-                    Style="{DynamicResource PrimaryButton}"
-                    Margin="10,0,0,0"
-                    ToolTip="Quét lại danh sách widget trong các workflow">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="↻"
-                               Foreground="{DynamicResource TextOnPrimaryBrush}"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center"
-                               Margin="0,0,6,0"/>
-                    <TextBlock Text="Làm mới"
-                               Foreground="{DynamicResource TextOnPrimaryBrush}"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-        </StackPanel>
-
-        <!-- Widget section header -->
-        <Border Grid.Row="1"
-                Margin="0,20,0,10"
-                Padding="14,10"
-                CornerRadius="10"
-                Background="{DynamicResource CardColor}"
-                BorderBrush="{DynamicResource BorderColor}"
-                BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="📌 Floating Widgets đã cấu hình"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextBrush}"
-                           VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource TextBrush}"
-                           Opacity="0.75">
-                    <Run Text="Tổng: "/>
-                    <Run Text="{Binding WidgetEnabledCount, Mode=OneWay}" FontWeight="SemiBold"/>
-                    <Run Text=" widget"/>
-                </TextBlock>
+
+                <!-- Left: title + stats -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="44" Height="44" CornerRadius="12"
+                                Background="#33FFFFFF"
+                                VerticalAlignment="Center"
+                                Margin="0,0,14,0">
+                            <controls:SvgViewboxEx Width="24" Height="24"
+                                                   Fill="White"
+                                                   Source="{Binding Source={x:Static sys:String.Empty},
+                                                            Converter={StaticResource IconKeyToPathConverter},
+                                                            ConverterParameter='chart-diagram duotone-light'}"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="FlowMy Launcher"
+                                       FontSize="26"
+                                       FontWeight="Bold"
+                                       Foreground="White"/>
+                            <TextBlock Text="Mở workflow editor hoặc kích hoạt floating widget đã cấu hình."
+                                       Foreground="White"
+                                       Opacity="0.82"
+                                       FontSize="13"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Stat pills -->
+                    <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                        <Border Background="#33FFFFFF" CornerRadius="20" Padding="14,6" Margin="0,0,10,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📌" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Foreground="White" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center">
+                                    <Run Text="{Binding WidgetEnabledCount, Mode=OneWay}"/>
+                                    <Run Text=" widget"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#33FFFFFF" CornerRadius="20" Padding="14,6">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📂" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Foreground="White" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center">
+                                    <Run Text="{Binding WorkflowCount, Mode=OneWay}"/>
+                                    <Run Text=" workflow"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right: primary actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding RefreshWidgetShortcutsCommand}"
+                            Width="40" Height="40"
+                            Cursor="Hand"
+                            Margin="0,0,10,0"
+                            ToolTip="Quét lại danh sách widget">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd"
+                                        CornerRadius="20"
+                                        Background="#33FFFFFF">
+                                    <TextBlock Text="↻"
+                                               FontSize="18"
+                                               FontWeight="Bold"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#55FFFFFF"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <Button Command="{Binding OpenWorkflowEditorCommand}"
+                            Cursor="Hand"
+                            Padding="18,9"
+                            MinWidth="200">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd"
+                                        CornerRadius="20"
+                                        Background="White"
+                                        Padding="{TemplateBinding Padding}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="🛠"
+                                                   FontSize="14"
+                                                   Margin="0,0,8,0"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="Mở Workflow Editor"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="13"
+                                                   Foreground="#7C3AED"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Opacity" Value="0.92"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Widget list -->
-        <Grid Grid.Row="2">
-            <!-- Empty state -->
-            <TextBlock Text="Chưa có widget nào được cấu hình. Mở Workflow Editor, vào cấu hình Floating Widget và bật &quot;Bật chế độ Floating Widget&quot; để widget xuất hiện ở đây."
+        <!-- ═══ SECTION TITLE ═══ -->
+        <Grid Grid.Row="1" Margin="32,24,32,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="📌"
+                           FontSize="18"
+                           Margin="0,0,10,0"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="Floating Widgets đã cấu hình"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Grid.Column="1"
+                       Text="Click 🛠 để mở editor, 📌 để chỉ bật widget (chạy ngầm)"
                        Foreground="{DynamicResource TextBrush}"
-                       Opacity="0.6"
-                       TextWrapping="Wrap"
-                       VerticalAlignment="Top"
-                       HorizontalAlignment="Center"
-                       TextAlignment="Center"
-                       Margin="30,40,30,0"
-                       MaxWidth="560"
-                       Visibility="{Binding HasWidgetShortcuts, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                       Opacity="0.55"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"/>
+        </Grid>
+
+        <!-- ═══ WIDGET LIST ═══ -->
+        <Grid Grid.Row="2" Margin="20,0,20,20">
+            <!-- Empty state -->
+            <Border Visibility="{Binding HasWidgetShortcuts, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Center"
+                    MaxWidth="560"
+                    Margin="0,30,0,0"
+                    Padding="28,24"
+                    CornerRadius="14"
+                    Background="{DynamicResource CardColor}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="🪄"
+                               FontSize="40"
+                               TextAlignment="Center"
+                               Margin="0,0,0,10"/>
+                    <TextBlock Text="Chưa có widget nào được cấu hình"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               TextAlignment="Center"
+                               Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Text="Mở Workflow Editor, vào Cấu hình Floating Widget và bật &quot;Bật chế độ Floating Widget&quot; để widget xuất hiện ở đây."
+                               Foreground="{DynamicResource TextBrush}"
+                               Opacity="0.6"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
+                          Padding="12,0"
                           Visibility="{Binding HasWidgetShortcuts, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <ItemsControl ItemsSource="{Binding WidgetShortcuts}">
+                <ItemsControl ItemsSource="{Binding WidgetGroups}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Margin="0,0,10,10"
-                                    Padding="0"
-                                    MinWidth="220"
-                                    MaxWidth="260"
-                                    Height="96"
-                                    Cursor="Hand"
-                                    BorderThickness="0"
-                                    Background="Transparent"
-                                    HorizontalContentAlignment="Stretch"
-                                    VerticalContentAlignment="Stretch"
-                                    Command="{Binding DataContext.LaunchWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{Binding}">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd"
+                        <DataTemplate DataType="{x:Type vm:WorkflowWidgetGroupItem}">
+                            <!-- Card = 1 workflow -->
+                            <Border Margin="0,0,16,16"
+                                    Padding="18,16"
+                                    CornerRadius="14"
+                                    MinWidth="340"
+                                    MaxWidth="400"
+                                    Background="{DynamicResource CardColor}"
+                                    BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1"
+                                    Effect="{StaticResource CardShadow}">
+                                <StackPanel>
+                                    <!-- Workflow header -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0"
+                                                Width="40" Height="40"
                                                 CornerRadius="10"
-                                                Padding="12,10"
-                                                Background="{DynamicResource CardColor}"
-                                                BorderBrush="{DynamicResource BorderColor}"
-                                                BorderThickness="1">
-                                            <ContentPresenter/>
+                                                VerticalAlignment="Center"
+                                                Margin="0,0,12,0">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                    <GradientStop Color="#8B5CF6" Offset="0"/>
+                                                    <GradientStop Color="#6366F1" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                            <TextBlock Text="📂"
+                                                       FontSize="20"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
                                         </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ButtonPressedBrush}"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding WorkflowName}"
+                                                       Foreground="{DynamicResource TextBrush}"
+                                                       FontSize="15"
+                                                       FontWeight="Bold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Foreground="{DynamicResource TextBrush}"
+                                                       Opacity="0.55"
+                                                       FontSize="11"
+                                                       Margin="0,1,0,0">
+                                                <Run Text="Workflow · "/>
+                                                <Run Text="{Binding WidgetCount, Mode=OneWay}"/>
+                                                <Run Text=" widget"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
 
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
+                                    <!-- Divider -->
+                                    <Border Height="1"
+                                            Margin="0,14,0,14"
+                                            Background="{DynamicResource BorderColor}"
+                                            Opacity="0.4"/>
 
-                                    <!-- Icon -->
-                                    <Border Grid.Column="0"
-                                            Width="48" Height="48"
-                                            CornerRadius="24"
-                                            Background="{DynamicResource PrimaryBrush}"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,12,0">
-                                        <Grid>
-                                            <controls:SvgViewboxEx Width="24"
-                                                                   Height="24"
-                                                                   Fill="{DynamicResource TextOnPrimaryBrush}"
-                                                                   Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
-                                        </Grid>
-                                    </Border>
+                                    <!-- Actions trên workflow -->
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Command="{Binding DataContext.OpenWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource PillPrimary}"
+                                                Margin="0,0,8,0"
+                                                ToolTip="Mở Workflow Editor (hiển thị canvas + tự bật các widget)">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🛠" Margin="0,0,6,0" FontSize="13"/>
+                                                <TextBlock Text="Mở Editor"/>
+                                            </StackPanel>
+                                        </Button>
 
-                                    <!-- Texts -->
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding WidgetName, FallbackValue=Widget}"
-                                                   Foreground="{DynamicResource TextBrush}"
-                                                   FontWeight="SemiBold"
-                                                   FontSize="14"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Foreground="{DynamicResource TextBrush}"
-                                                   Opacity="0.7"
-                                                   FontSize="12"
-                                                   Margin="0,2,0,0"
-                                                   TextTrimming="CharacterEllipsis">
-                                            <Run Text="WF: "/>
-                                            <Run Text="{Binding WorkflowName, Mode=OneWay}"/>
-                                        </TextBlock>
-                                        <TextBlock Text="{Binding NodeTitle}"
-                                                   Foreground="{DynamicResource TextBrush}"
-                                                   Opacity="0.55"
-                                                   FontSize="11"
-                                                   Margin="0,1,0,0"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   Visibility="{Binding NodeTitle, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"/>
+                                        <Button Command="{Binding DataContext.LaunchAllWidgetsHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource PillOutline}"
+                                                ToolTip="Chỉ mở tất cả widget của workflow này (chạy ngầm)">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📌" Margin="0,0,6,0" FontSize="13"/>
+                                                <TextBlock Text="Mở tất cả widget"/>
+                                            </StackPanel>
+                                        </Button>
                                     </StackPanel>
-                                </Grid>
-                            </Button>
+
+                                    <!-- Widget list trong workflow -->
+                                    <ItemsControl ItemsSource="{Binding Widgets}" Margin="0,14,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:WidgetShortcutItem}">
+                                                <Border Margin="0,0,0,8"
+                                                        Padding="12,10"
+                                                        CornerRadius="10"
+                                                        Background="{DynamicResource WindowBackgroundBrush}"
+                                                        BorderBrush="{DynamicResource BorderColor}"
+                                                        BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- Icon -->
+                                                        <Border Grid.Column="0"
+                                                                Width="38" Height="38"
+                                                                CornerRadius="12"
+                                                                VerticalAlignment="Center"
+                                                                Margin="0,0,12,0">
+                                                            <Border.Background>
+                                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                                    <GradientStop Color="#7C3AED" Offset="0"/>
+                                                                    <GradientStop Color="#EC4899" Offset="1"/>
+                                                                </LinearGradientBrush>
+                                                            </Border.Background>
+                                                            <controls:SvgViewboxEx Width="18" Height="18"
+                                                                                   Fill="White"
+                                                                                   Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+                                                        </Border>
+
+                                                        <!-- Texts -->
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding WidgetName, FallbackValue=Widget}"
+                                                                       Foreground="{DynamicResource TextBrush}"
+                                                                       FontWeight="SemiBold"
+                                                                       FontSize="13"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding NodeTitle}"
+                                                                       Foreground="{DynamicResource TextBrush}"
+                                                                       Opacity="0.55"
+                                                                       FontSize="11"
+                                                                       Margin="0,2,0,0"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Visibility="{Binding NodeTitle, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"/>
+                                                        </StackPanel>
+
+                                                        <!-- Per-widget actions -->
+                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{StaticResource IconCircleButton}"
+                                                                    Margin="0,0,6,0"
+                                                                    ToolTip="Chỉ mở widget này (ngầm)">
+                                                                <TextBlock Text="📌" FontSize="14"/>
+                                                            </Button>
+                                                            <Button Command="{Binding DataContext.LaunchWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{StaticResource IconCircleButtonPrimary}"
+                                                                    ToolTip="Mở Editor + bật widget này">
+                                                                <TextBlock Text="🛠"
+                                                                           FontSize="13"
+                                                                           Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

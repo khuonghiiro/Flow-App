@@ -613,8 +613,31 @@ namespace FlowMy.Views
 
                 InitializeMinimap();
                 InitializeZoomPan();
-                ApplyResponsiveInitialZoom(); // Áp dụng zoom tương ứng màn hình (chỉ fresh workflow)
-                ScrollToCenter();
+
+                // Nếu workflow đã có saved viewport (load từ MainWindow launcher hoặc workflow có state)
+                // thì SKIP reset zoom/scroll để không ghi đè vị trí đã khôi phục.
+                bool hasSavedViewport = ViewModel != null &&
+                    (ViewModel.SavedScreenWidth > 0 ||
+                     System.Math.Abs(ViewModel.PanX) > 0.01 ||
+                     System.Math.Abs(ViewModel.PanY) > 0.01 ||
+                     System.Math.Abs(ViewModel.SavedViewportCenterX) > 0.01 ||
+                     System.Math.Abs(ViewModel.SavedViewportCenterY) > 0.01);
+
+                if (!hasSavedViewport)
+                {
+                    ApplyResponsiveInitialZoom(); // Áp dụng zoom tương ứng màn hình (chỉ fresh workflow)
+                    ScrollToCenter();
+                }
+                else
+                {
+                    // Workflow đã có state lưu → re-apply để chắc chắn không bị layout pass đè.
+                    try
+                    {
+                        ZoomPanHandlerService.RestoreViewState(
+                            ViewModel!.ZoomLevel, ViewModel.PanX, ViewModel.PanY);
+                    }
+                    catch { }
+                }
 
                 // Initialize theme from saved preference BEFORE drawing grid
                 _colorThemeService?.LoadThemePreference();
@@ -1280,8 +1303,16 @@ namespace FlowMy.Views
                         try
                         {
                             ZoomPanHandlerService.RestoreViewState(zoom, panX, panY);
-                            // Giữ behavior cũ ổn định: không re-apply responsive scale sau load
-                            // để tránh viewport bị nhảy ngoài vùng người dùng đã lưu.
+                            // Re-apply lần nữa ở ApplicationIdle để "khoá" viewport sau khi
+                            // toàn bộ layout pass kết thúc (tránh các Loaded event khác của
+                            // con trong tree làm ScrollViewer tự scroll, gây viewport "nhảy"
+                            // sau ~1 tick — đặc biệt khi mở editor từ MainWindow launcher).
+                            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+                            {
+                                try { ZoomPanHandlerService.RestoreViewState(zoom, panX, panY); } catch { }
+                                try { _viewportCullingService?.ForceUpdate(); } catch { }
+                                try { UpdateMinimap(); } catch { }
+                            }));
                             _viewportCullingService?.ForceUpdate();
                             UpdateMinimap();
                             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>

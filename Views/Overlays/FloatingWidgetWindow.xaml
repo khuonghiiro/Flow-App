@@ -17,6 +17,30 @@
         <DropShadowEffect x:Key="IdleGlow" Color="#7C3AED" BlurRadius="16" ShadowDepth="0" Opacity="0.6"/>
         <DropShadowEffect x:Key="ExpandedShadow" Color="#000000" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.45"/>
 
+        <!-- Context menu dùng cho cả idle shape và title bar -->
+        <ContextMenu x:Key="WidgetContextMenu"
+                     Background="{DynamicResource CardColor}"
+                     Foreground="{DynamicResource TextBrush}"
+                     BorderBrush="{DynamicResource ControlBorderBrush}"
+                     BorderThickness="1">
+            <MenuItem Tag="expand"
+                      Header="▸ Mở rộng widget"
+                      Click="ContextExpand_Click"/>
+            <MenuItem Tag="collapse"
+                      Header="▾ Thu nhỏ widget"
+                      Click="ContextCollapse_Click"/>
+            <Separator/>
+            <MenuItem Header="↻ Tải lại nội dung" Click="ContextReload_Click"/>
+            <MenuItem Tag="topmost"
+                      Header="📍 Luôn trên cùng"
+                      IsCheckable="True"
+                      Click="ContextTopmost_Click"/>
+            <Separator/>
+            <MenuItem Header="🚪 Đóng widget"
+                      Foreground="{DynamicResource DangerBrush}"
+                      Click="ContextClose_Click"/>
+        </ContextMenu>
+
         <!-- Close / Collapse button style — theme-aware -->
         <Style x:Key="WidgetTinyButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -78,6 +102,8 @@
     <Grid x:Name="RootGrid">
         <!-- ═══ STATE 1: Collapsed / Idle Shape ═══ -->
         <Grid x:Name="IdleContainer" Visibility="Visible"
+              ContextMenu="{StaticResource WidgetContextMenu}"
+              ContextMenuOpening="ContextMenu_Opening"
               MouseLeftButtonDown="Idle_MouseLeftButtonDown"
               MouseMove="Idle_MouseMove"
               MouseLeftButtonUp="Idle_MouseLeftButtonUp"
@@ -197,6 +223,8 @@
                             Height="28"
                             Cursor="SizeAll"
                             Background="{DynamicResource CardColor}"
+                            ContextMenu="{StaticResource WidgetContextMenu}"
+                            ContextMenuOpening="ContextMenu_Opening"
                             MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                             MouseMove="TitleBar_MouseMove"
                             MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"

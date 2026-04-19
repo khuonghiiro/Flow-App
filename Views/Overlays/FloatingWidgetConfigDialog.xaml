@@ -26,19 +26,39 @@
                 Padding="14,12"
                 Margin="0,0,0,10">
             <StackPanel>
-                <TextBlock Text="📌 Floating Widget — Cấu hình cho node bất kỳ"
-                           FontSize="18"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextBrush}"/>
-                <TextBlock Text="Chọn một node trên canvas hiện tại và thiết lập widget nổi. Nhấn &quot;Mở Widget&quot; để xuất ra desktop."
-                           Foreground="{DynamicResource TextBrush}"
-                           Opacity="0.75"
-                           Margin="0,4,0,0"
-                           TextWrapping="Wrap"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="📌 Floating Widget — Cấu hình cho node bất kỳ"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}"/>
+                        <TextBlock Text="Một workflow có thể có NHIỀU widget: chọn node khác trong danh sách để thêm, hoặc click &quot;🗑 Gỡ widget&quot; để xóa widget khỏi 1 node."
+                                   Foreground="{DynamicResource TextBrush}"
+                                   Opacity="0.75"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Border Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource PrimaryBrush}"
+                            CornerRadius="12"
+                            Padding="10,4"
+                            Margin="10,0,0,0">
+                        <TextBlock x:Name="WidgetCountBadge"
+                                   Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                   FontWeight="SemiBold"
+                                   FontSize="12"
+                                   Text="0 widget"/>
+                    </Border>
+                </Grid>
             </StackPanel>
         </Border>
 
-        <!-- Node selector + Widget name -->
+        <!-- Widget list + Node selector + Widget name -->
         <Border Grid.Row="1"
                 Background="{DynamicResource CardColor}"
                 BorderBrush="{DynamicResource BorderColor}"
@@ -47,7 +67,48 @@
                 Padding="14,10"
                 Margin="0,0,0,10">
             <StackPanel>
+                <!-- Widget list (quản lý nhiều widget trong 1 workflow) -->
                 <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="Widgets:"
+                               Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"
+                               FontWeight="SemiBold"/>
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource WindowBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderColor}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            MinHeight="40"
+                            MaxHeight="110"
+                            Padding="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="ExistingWidgetsItems">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                        <Button x:Name="RemoveWidgetButton"
+                                Content="🗑 Gỡ widget"
+                                Style="{DynamicResource PrimaryButton}"
+                                Padding="10,5"
+                                Click="RemoveWidgetButton_Click"
+                                ToolTip="Xóa widget khỏi node đang chọn"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>

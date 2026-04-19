@@ -8,6 +8,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Media;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
@@ -36,6 +37,7 @@ namespace FlowMy.Views.Overlays
 
             PopulateNodeList();
             PopulateMonitorList();
+            RefreshExistingWidgets();
         }
 
         private void PopulateNodeList()
@@ -44,7 +46,9 @@ namespace FlowMy.Views.Overlays
             foreach (var node in _nodes)
             {
                 var title = string.IsNullOrWhiteSpace(node.Title) ? "(chưa đặt tên)" : node.Title;
-                var display = $"{title}  —  {node.Type}  [{TrimId(node.Id)}]";
+                var hasWidget = node.FloatingWidget is { IsEnabled: true };
+                var prefix = hasWidget ? "📌 " : "    ";
+                var display = $"{prefix}{title}  —  {node.Type}  [{TrimId(node.Id)}]";
                 NodeComboBox.Items.Add(new ComboBoxItem { Content = display, Tag = node });
             }
 
@@ -55,6 +59,111 @@ namespace FlowMy.Views.Overlays
             else
             {
                 WidgetStatusText.Text = "Canvas chưa có node nào.";
+            }
+        }
+
+        /// <summary>
+        /// Render danh sách các widget đã bật (IsEnabled=true) trong workflow hiện tại
+        /// thành các chip có thể click để chọn nhanh.
+        /// </summary>
+        private void RefreshExistingWidgets()
+        {
+            if (ExistingWidgetsItems == null) return;
+            ExistingWidgetsItems.Items.Clear();
+
+            var configured = _nodes
+                .Where(n => n.FloatingWidget is { IsEnabled: true })
+                .ToList();
+
+            WidgetCountBadge.Text = configured.Count == 0
+                ? "Chưa có widget"
+                : $"{configured.Count} widget";
+
+            if (configured.Count == 0)
+            {
+                var empty = new TextBlock
+                {
+                    Text = "Chưa có widget nào được bật. Hãy chọn 1 node bên dưới và tích \"Bật chế độ Floating Widget\".",
+                    Foreground = (Brush?)Application.Current.TryFindResource("TextBrush") ?? Brushes.Gray,
+                    Opacity = 0.6,
+                    FontSize = 12,
+                    Margin = new Thickness(6, 4, 6, 4),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                ExistingWidgetsItems.Items.Add(empty);
+                return;
+            }
+
+            foreach (var node in configured)
+            {
+                var chip = BuildWidgetChip(node);
+                ExistingWidgetsItems.Items.Add(chip);
+            }
+        }
+
+        private UIElement BuildWidgetChip(WorkflowNode node)
+        {
+            var cfg = node.FloatingWidget!;
+            var name = string.IsNullOrWhiteSpace(cfg.WidgetName) ? (node.Title ?? "Widget") : cfg.WidgetName;
+            var isOpen = FloatingWidgetManager.Instance.IsWidgetOpen(node.Id);
+            var isSelected = ReferenceEquals(_selectedNode, node);
+
+            var border = new Border
+            {
+                CornerRadius = new CornerRadius(16),
+                Margin = new Thickness(4),
+                Padding = new Thickness(10, 4, 10, 4),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                BorderThickness = new Thickness(1),
+                Background = isSelected
+                    ? ((Brush?)Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.SlateBlue)
+                    : ((Brush?)Application.Current.TryFindResource("CardColor") ?? Brushes.Transparent),
+                BorderBrush = isSelected
+                    ? ((Brush?)Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.SlateBlue)
+                    : ((Brush?)Application.Current.TryFindResource("BorderColor") ?? Brushes.DimGray)
+            };
+
+            var panel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            panel.Children.Add(new TextBlock
+            {
+                Text = isOpen ? "●" : "○",
+                Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = isOpen
+                    ? ((Brush?)Application.Current.TryFindResource("SuccessBrush") ?? Brushes.LimeGreen)
+                    : (isSelected
+                        ? ((Brush?)Application.Current.TryFindResource("TextOnPrimaryBrush") ?? Brushes.White)
+                        : ((Brush?)Application.Current.TryFindResource("TextBrush") ?? Brushes.Gray)),
+                FontSize = 12
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = name,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = isSelected
+                    ? ((Brush?)Application.Current.TryFindResource("TextOnPrimaryBrush") ?? Brushes.White)
+                    : ((Brush?)Application.Current.TryFindResource("TextBrush") ?? Brushes.Gray)
+            });
+
+            border.Child = panel;
+            border.MouseLeftButtonUp += (_, _) => SelectNodeInCombo(node);
+            return border;
+        }
+
+        private void SelectNodeInCombo(WorkflowNode node)
+        {
+            // Auto-apply pending changes for current node trước khi đổi.
+            if (_selectedNode != null && !_loadingValues) ApplyValuesToConfig();
+
+            foreach (var obj in NodeComboBox.Items)
+            {
+                if (obj is ComboBoxItem cbi && ReferenceEquals(cbi.Tag, node))
+                {
+                    NodeComboBox.SelectedItem = cbi;
+                    return;
+                }
             }
         }
 
@@ -332,19 +441,40 @@ namespace FlowMy.Views.Overlays
 
             FloatingWidgetManager.Instance.OpenWidget(_selectedNode, _host);
             UpdateWidgetStatus();
+            RefreshExistingWidgets();
         }
 
         private void CloseWidgetButton_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedNode == null) return;
             FloatingWidgetManager.Instance.CloseWidget(_selectedNode.Id);
-            if (_selectedNode.FloatingWidget != null) _selectedNode.FloatingWidget.IsEnabled = false;
-            if (IsEnabledCheckBox.IsChecked == true)
-            {
-                _loadingValues = true;
-                try { IsEnabledCheckBox.IsChecked = false; }
-                finally { _loadingValues = false; }
-            }
+            // Không tắt IsEnabled — chỉ đóng widget instance hiện tại.
+            UpdateWidgetStatus();
+            RefreshExistingWidgets();
+        }
+
+        private void RemoveWidgetButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedNode == null) return;
+
+            var confirm = MessageBox.Show(
+                this,
+                $"Gỡ widget khỏi node \"{_selectedNode.Title ?? _selectedNode.Id}\"?\n\nThao tác này sẽ đóng widget (nếu đang mở) và xóa cấu hình widget của node này.",
+                "Gỡ Widget",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            FloatingWidgetManager.Instance.CloseWidget(_selectedNode.Id);
+            _selectedNode.FloatingWidget = null;
+
+            // Reload form cho node đang chọn (tạo config mặc định mới, không bật)
+            _selectedNode.FloatingWidget = new FloatingWidgetConfig();
+            LoadValuesFromConfig(_selectedNode.FloatingWidget);
+
+            PopulateNodeList();
+            SelectNodeInCombo(_selectedNode);
+            RefreshExistingWidgets();
             UpdateWidgetStatus();
         }
 
@@ -359,6 +489,9 @@ namespace FlowMy.Views.Overlays
                 FloatingWidgetManager.Instance.RefreshWidget(_selectedNode.Id);
             }
             UpdateWidgetStatus();
+            PopulateNodeList();
+            SelectNodeInCombo(_selectedNode);
+            RefreshExistingWidgets();
         }
 
         private void UseRatioSizeCheckBox_Toggled(object sender, RoutedEventArgs e)
