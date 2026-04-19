@@ -146,11 +146,7 @@ public partial class FloatingWidgetWindow : Window
         var size = Config.IdleSize;
         var iconValue = Config.IdleIconText;
 
-        // Hide all shapes first
-        IdleCircle.Visibility = Visibility.Collapsed;
-        IdleDiamond.Visibility = Visibility.Collapsed;
-        IdleSquare.Visibility = Visibility.Collapsed;
-        IdleRoundedSquare.Visibility = Visibility.Collapsed;
+        HideAllIdleShapes();
 
         // Xác định nội dung icon: ưu tiên SVG theo icon key, fallback text/emoji.
         bool isSvgKey = !string.IsNullOrWhiteSpace(iconValue)
@@ -165,6 +161,9 @@ public partial class FloatingWidgetWindow : Window
         ApplySlotIcon(IdleSquareSvg, IdleSquareIcon, iconValue, svgPath, size * 0.42, size * 0.5);
         // RoundedSquare
         ApplySlotIcon(IdleRoundedSvg, IdleRoundedIcon, iconValue, svgPath, size * 0.42, size * 0.5);
+        // Edge-dock square
+        var sq = Config.EdgeDockSquareSize;
+        ApplySlotIcon(EdgeDockSvg, EdgeDockIcon, iconValue, svgPath, sq * 0.55, sq * 0.6);
 
         switch (Config.IdleShape)
         {
@@ -198,6 +197,28 @@ public partial class FloatingWidgetWindow : Window
 
         // Apply opacity
         IdleContainer.Opacity = Config.IdleOpacity;
+    }
+
+    private void HideAllIdleShapes()
+    {
+        IdleCircle.Visibility = Visibility.Collapsed;
+        IdleDiamond.Visibility = Visibility.Collapsed;
+        IdleSquare.Visibility = Visibility.Collapsed;
+        IdleRoundedSquare.Visibility = Visibility.Collapsed;
+        EdgeDockSquare.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Chuyển idle shape sang dạng ô vuông nhỏ (EdgeDockSquare) khi bám cạnh.
+    /// </summary>
+    private void ApplyEdgeDockSquareShape()
+    {
+        HideAllIdleShapes();
+        var sq = Config.EdgeDockSquareSize;
+        EdgeDockSquare.Width = sq;
+        EdgeDockSquare.Height = sq;
+        EdgeDockSquare.Visibility = Visibility.Visible;
+        IdleContainer.Opacity = Math.Max(0.85, Config.IdleOpacity);
     }
 
     /// <summary>
@@ -240,12 +261,23 @@ public partial class FloatingWidgetWindow : Window
     {
         _isExpanded = false;
 
-        // Size
-        var size = Config.IdleSize;
-        // Add padding for diamond rotation
-        var windowSize = Config.IdleShape == WidgetIdleShape.Diamond ? size * 1.4 : size;
-        Width = windowSize + 8;  // padding for glow effect
-        Height = windowSize + 8;
+        // Size — nếu đang dock ở dạng ô vuông nhỏ thì dùng EdgeDockSquareSize,
+        // ngược lại dùng IdleSize (có padding cho diamond rotation).
+        if (_isSlideHidden && Config.EdgeDockAsSquare)
+        {
+            var sq = Config.EdgeDockSquareSize;
+            Width = sq + 8;
+            Height = sq + 8;
+            ApplyEdgeDockSquareShape();
+        }
+        else
+        {
+            var size = Config.IdleSize;
+            var windowSize = Config.IdleShape == WidgetIdleShape.Diamond ? size * 1.4 : size;
+            Width = windowSize + 8;  // padding for glow effect
+            Height = windowSize + 8;
+            ApplyIdleShape();
+        }
 
         IdleContainer.Visibility = Visibility.Visible;
         ExpandedContainer.Visibility = Visibility.Collapsed;
@@ -262,8 +294,26 @@ public partial class FloatingWidgetWindow : Window
     {
         if (_isExpanded) return;
 
-        // If slide hidden, restore position first
-        if (_isSlideHidden) RestoreFromSlide(animate: false);
+        // Ghi nhớ edge dock trước khi xóa state slide (RestoreFromSlide sẽ reset _dockedEdge).
+        var dockEdge = _isSlideHidden ? _dockedEdge : WidgetSnapEdge.None;
+        var wasDockedAsSquare = _isSlideHidden && Config.EdgeDockAsSquare;
+
+        // Nếu đang bám cạnh:
+        //   - EdgeDockAsSquare=true → KHÔNG restore vị trí cũ, expand ngay từ vị trí dock hiện tại
+        //     (vị trí sẽ được tính lại để neo vào cạnh, không khuất).
+        //   - EdgeDockAsSquare=false → restore vị trí trước khi dock rồi expand như thường.
+        if (_isSlideHidden)
+        {
+            if (Config.EdgeDockAsSquare)
+            {
+                // Chỉ xóa state flag, GIỮ lại Left/Top hiện tại để expand neo vào cạnh.
+                _isSlideHidden = false;
+            }
+            else
+            {
+                RestoreFromSlide(animate: false);
+            }
+        }
 
         _isExpanded = true;
         MarkActivity();
@@ -293,7 +343,19 @@ public partial class FloatingWidgetWindow : Window
             _ = ReloadContentAsync();
         }
 
-        // Clamp to work area
+        // Đặt lại vị trí theo cạnh dock (expanded body không bị khuất ra ngoài màn).
+        if (wasDockedAsSquare && dockEdge != WidgetSnapEdge.None)
+        {
+            var area = GetTargetWorkArea();
+            var margin = Math.Max(0, Config.SnapMargin);
+            var (nl, nt) = ComputeDockPosition(dockEdge, area, w, h, margin);
+            Left = nl;
+            Top = nt;
+            // Reset dockedEdge sau khi đã dùng tính toán vị trí
+            _dockedEdge = WidgetSnapEdge.None;
+        }
+
+        // Clamp cuối để đảm bảo luôn trong work area
         ClampToWorkArea();
 
         // Fade-in animation
@@ -421,8 +483,18 @@ public partial class FloatingWidgetWindow : Window
     private void Idle_MouseEnter(object sender, MouseEventArgs e)
     {
         MarkActivity();
-        if (_isSlideHidden)
+        if (!_isSlideHidden) return;
+
+        if (Config.EdgeDockAsSquare)
+        {
+            // Ô vuông bám cạnh: hover = expand LUÔN, không cần trả về vị trí cũ.
+            ExpandWidget();
+        }
+        else
+        {
+            // Hình idle bám cạnh: trả về vị trí cũ, user click để expand.
             RestoreFromSlide(animate: true);
+        }
     }
 
     // Title bar drag handlers
@@ -494,40 +566,102 @@ public partial class FloatingWidgetWindow : Window
     }
 
     // ═══════════════════════════════════════════
-    //  SLIDE TO EDGE (IDLE HIDE)
+    //  EDGE DOCK (thay cho SlideToEdge ẩn 1 phần cũ)
     // ═══════════════════════════════════════════
 
+    /// <summary>Cạnh mà widget đang dock vào. Dùng để clamp expand & place lại square.</summary>
+    private WidgetSnapEdge _dockedEdge = WidgetSnapEdge.None;
+
+    /// <summary>
+    /// Bám widget vào cạnh màn hình gần nhất sau khi idle.
+    /// - EdgeDockAsSquare=true: đổi sang ô vuông nhỏ, nằm TRỌN sát mép.
+    /// - EdgeDockAsSquare=false: giữ nguyên idle shape, nằm TRỌN sát mép (không khuất).
+    /// Trong cả 2 trường hợp widget KHÔNG còn bị khuất 1 phần ra ngoài màn.
+    /// </summary>
     private void SlideToEdge()
     {
         if (_isSlideHidden || _isExpanded) return;
-
-        var workArea = GetTargetWorkArea();
-        var cx = Left + Width / 2;
-        var hideAmount = Width * Config.SlideHidePercent;
 
         _slideOriginalLeft = Left;
         _slideOriginalTop = Top;
         _isSlideHidden = true;
 
-        double targetLeft;
-        if (cx < workArea.Left + workArea.Width / 2)
+        // Xác định cạnh gần nhất (4 cạnh)
+        var workArea = GetTargetWorkArea();
+        var cx = Left + Width / 2;
+        var cy = Top + Height / 2;
+        var distLeft = cx - workArea.Left;
+        var distRight = workArea.Right - cx;
+        var distTop = cy - workArea.Top;
+        var distBottom = workArea.Bottom - cy;
+        var minDist = Math.Min(Math.Min(distLeft, distRight), Math.Min(distTop, distBottom));
+
+        if (Math.Abs(minDist - distLeft) < 0.01) _dockedEdge = WidgetSnapEdge.Left;
+        else if (Math.Abs(minDist - distRight) < 0.01) _dockedEdge = WidgetSnapEdge.Right;
+        else if (Math.Abs(minDist - distTop) < 0.01) _dockedEdge = WidgetSnapEdge.Top;
+        else _dockedEdge = WidgetSnapEdge.Bottom;
+
+        // Đổi visual trước khi tính position để có kích thước mới chính xác
+        if (Config.EdgeDockAsSquare)
         {
-            // Slide to left edge
-            targetLeft = workArea.Left - hideAmount;
-        }
-        else
-        {
-            // Slide to right edge
-            targetLeft = workArea.Right - Width + hideAmount;
+            ApplyEdgeDockSquareShape();
+            var sq = Config.EdgeDockSquareSize;
+            Width = sq + 8;
+            Height = sq + 8;
         }
 
-        AnimateMoveTo(targetLeft, Top, 350);
+        var margin = Math.Max(0, Config.SnapMargin);
+        var (tl, tt) = ComputeDockPosition(_dockedEdge, workArea, Width, Height, margin);
+        AnimateMoveTo(tl, tt, 300);
     }
 
+    /// <summary>
+    /// Tính vị trí (left, top) để widget nằm TRỌN sát cạnh (không khuất ra ngoài work area).
+    /// Giữ nguyên trục còn lại (Y cho cạnh trái/phải, X cho cạnh trên/dưới) trong phạm vi work area.
+    /// </summary>
+    private (double Left, double Top) ComputeDockPosition(
+        WidgetSnapEdge edge, Rect workArea, double w, double h, double margin)
+    {
+        double l = Left, t = Top;
+        switch (edge)
+        {
+            case WidgetSnapEdge.Left:
+                l = workArea.Left + margin;
+                t = Math.Max(workArea.Top + margin, Math.Min(workArea.Bottom - h - margin, Top));
+                break;
+            case WidgetSnapEdge.Right:
+                l = workArea.Right - w - margin;
+                t = Math.Max(workArea.Top + margin, Math.Min(workArea.Bottom - h - margin, Top));
+                break;
+            case WidgetSnapEdge.Top:
+                t = workArea.Top + margin;
+                l = Math.Max(workArea.Left + margin, Math.Min(workArea.Right - w - margin, Left));
+                break;
+            case WidgetSnapEdge.Bottom:
+                t = workArea.Bottom - h - margin;
+                l = Math.Max(workArea.Left + margin, Math.Min(workArea.Right - w - margin, Left));
+                break;
+        }
+        return (l, t);
+    }
+
+    /// <summary>
+    /// Hủy trạng thái dock — đổi visual về idle shape gốc, trả về vị trí trước khi dock
+    /// (hoặc neo sát cạnh nếu vị trí gốc đã mất hiệu lực).
+    /// </summary>
     private void RestoreFromSlide(bool animate)
     {
         if (!_isSlideHidden) return;
         _isSlideHidden = false;
+
+        // Đổi visual trở lại idle shape bình thường & set size tương ứng
+        var idleSize = Config.IdleSize;
+        var windowSize = Config.IdleShape == WidgetIdleShape.Diamond ? idleSize * 1.4 : idleSize;
+        Width = windowSize + 8;
+        Height = windowSize + 8;
+        ApplyIdleShape();
+
+        _dockedEdge = WidgetSnapEdge.None;
 
         if (animate)
             AnimateMoveTo(_slideOriginalLeft, _slideOriginalTop, 250);
@@ -536,6 +670,7 @@ public partial class FloatingWidgetWindow : Window
             Left = _slideOriginalLeft;
             Top = _slideOriginalTop;
         }
+        ClampToWorkArea();
     }
 
     // ═══════════════════════════════════════════

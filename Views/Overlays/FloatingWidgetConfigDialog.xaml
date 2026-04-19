@@ -435,9 +435,15 @@
                                           Foreground="{DynamicResource TextBrush}"
                                           Margin="0,2,0,4"/>
                                 <CheckBox x:Name="SlideToEdgeCheckBox"
-                                          Content="Trượt bám cạnh màn hình khi idle"
+                                          Content="Tự bám cạnh màn hình sau khi idle"
                                           Foreground="{DynamicResource TextBrush}"
+                                          ToolTip="Bật: sau khi idle widget tự di chuyển sát cạnh màn hình gần nhất. Tắt: widget giữ nguyên vị trí."
                                           Margin="0,2,0,4"/>
+                                <CheckBox x:Name="EdgeDockAsSquareCheckBox"
+                                          Content="Khi bám cạnh: hiển thị ô vuông nhỏ chứa icon (hover = mở luôn)"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          ToolTip="Bật: khi bám cạnh đổi sang ô vuông nhỏ, hover vào expand ngay lập tức không cần trả về vị trí cũ. Tắt: giữ nguyên hình idle."
+                                          Margin="22,0,0,4"/>
                                 <Grid Margin="0,6,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -445,12 +451,15 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Timeout (giây)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBlock Text="Timeout idle (giây)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
                                         <TextBox x:Name="IdleTimeoutTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Ẩn (%)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                        <TextBox x:Name="SlideHidePercentTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
+                                        <TextBlock Text="Ô vuông bám cạnh (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="EdgeDockSquareSizeTextBox"
+                                                 Style="{DynamicResource BaseTextBox}"
+                                                 Height="28" Margin="0,4,0,0"
+                                                 ToolTip="Kích thước ô vuông nhỏ khi bám cạnh (16–80 px). Chỉ có tác dụng khi 'Khi bám cạnh: hiển thị ô vuông nhỏ' được bật."/>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>

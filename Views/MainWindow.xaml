@@ -349,8 +349,7 @@
                                     MaxWidth="400"
                                     Background="{DynamicResource CardColor}"
                                     BorderBrush="{DynamicResource BorderColor}"
-                                    BorderThickness="1"
-                                    Effect="{StaticResource CardShadow}">
+                                    BorderThickness="1">
                                 <StackPanel>
                                     <!-- Workflow header -->
                                     <Grid>
@@ -402,7 +401,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <Button Command="{Binding DataContext.OpenWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}"
-                                                Style="{StaticResource PillPrimary}"
+                                                Style="{DynamicResource PillPrimary}"
                                                 Margin="0,0,8,0"
                                                 ToolTip="Mở Workflow Editor (hiển thị canvas + tự bật các widget)">
                                             <StackPanel Orientation="Horizontal">

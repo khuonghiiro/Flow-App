@@ -239,15 +239,44 @@ namespace FlowMy.Models
         }
 
         private bool _slideToEdgeWhenIdle = true;
-        /// <summary>Khi idle, trượt widget bám sát vào cạnh (ẩn 1 phần).</summary>
+        /// <summary>
+        /// Khi idle (quá IdleTimeout mà không tương tác) thì tự bám sát cạnh màn hình.
+        /// - EdgeDockAsSquare=true: đổi sang ô vuông nhỏ chứa icon, nằm CẢ hình sát mép (không khuất).
+        /// - EdgeDockAsSquare=false: giữ nguyên hình idle (Circle/Diamond/...), vẫn nằm cả hình sát mép (không khuất như trước).
+        /// Nếu false, widget ở yên vị trí hiện tại (không bám cạnh).
+        /// </summary>
         public bool SlideToEdgeWhenIdle
         {
             get => _slideToEdgeWhenIdle;
             set { if (_slideToEdgeWhenIdle != value) { _slideToEdgeWhenIdle = value; OnPropertyChanged(); } }
         }
 
-        private double _slideHidePercent = 0.7;
-        /// <summary>Phần trăm widget ẩn đi khi slide vào cạnh (0.0–1.0). 0.7 = ẩn 70%, lộ 30%.</summary>
+        private bool _edgeDockAsSquare = true;
+        /// <summary>
+        /// Khi SlideToEdgeWhenIdle=true và widget bám cạnh:
+        /// - true (mặc định): hiển thị dạng ô vuông nhỏ chứa icon, hover vào là expand luôn (không cần "bung" ra trước).
+        /// - false: giữ nguyên hình idle của widget (Circle/Diamond/...) ở sát cạnh. Hover → trả về vị trí cũ rồi mới expand được bằng click.
+        /// </summary>
+        public bool EdgeDockAsSquare
+        {
+            get => _edgeDockAsSquare;
+            set { if (_edgeDockAsSquare != value) { _edgeDockAsSquare = value; OnPropertyChanged(); } }
+        }
+
+        private double _edgeDockSquareSize = 28;
+        /// <summary>Kích thước (px) ô vuông khi bám cạnh (EdgeDockAsSquare=true).</summary>
+        public double EdgeDockSquareSize
+        {
+            get => _edgeDockSquareSize;
+            set { var v = Math.Max(16, Math.Min(80, value)); if (Math.Abs(_edgeDockSquareSize - v) > 0.01) { _edgeDockSquareSize = v; OnPropertyChanged(); } }
+        }
+
+        private double _slideHidePercent = 0.0;
+        /// <summary>
+        /// (Legacy) Phần trăm widget ẩn đi khi slide vào cạnh. Hiện đã đổi hành vi:
+        /// widget không còn bị khuất 1 phần — luôn nằm trọn vẹn sát mép để dễ nhìn.
+        /// Giữ lại để tương thích file cấu hình cũ, nhưng không còn dùng để tính vị trí.
+        /// </summary>
         public double SlideHidePercent
         {
             get => _slideHidePercent;

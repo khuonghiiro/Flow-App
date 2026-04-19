@@ -201,6 +201,26 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                 </Grid>
             </Border>
+
+            <!-- Edge-dock square: hiển thị khi SlideToEdgeWhenIdle=true và EdgeDockAsSquare=true.
+                 Ô vuông nhỏ nằm CẢ hình sát mép, không khuất. Hover vào = expand luôn. -->
+            <Border x:Name="EdgeDockSquare"
+                    Width="28" Height="28"
+                    CornerRadius="6"
+                    Cursor="Hand"
+                    Visibility="Collapsed"
+                    Background="{DynamicResource PrimaryBrush}"
+                    Effect="{StaticResource IdleGlow}">
+                <Grid IsHitTestVisible="False">
+                    <controls:SvgViewboxEx x:Name="EdgeDockSvg"
+                                           Width="14" Height="14"
+                                           Fill="{DynamicResource TextOnPrimaryBrush}"
+                                           Visibility="Collapsed"/>
+                    <TextBlock x:Name="EdgeDockIcon" Text="⚡" FontSize="14"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- ═══ STATE 2: Expanded / Active ═══ -->

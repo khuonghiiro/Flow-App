@@ -291,8 +291,9 @@ namespace FlowMy.Views.Overlays
 
                 AutoCollapseCheckBox.IsChecked = cfg.AutoCollapseWhenIdle;
                 SlideToEdgeCheckBox.IsChecked = cfg.SlideToEdgeWhenIdle;
+                EdgeDockAsSquareCheckBox.IsChecked = cfg.EdgeDockAsSquare;
                 IdleTimeoutTextBox.Text = cfg.IdleTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
-                SlideHidePercentTextBox.Text = ((int)(cfg.SlideHidePercent * 100)).ToString(CultureInfo.InvariantCulture);
+                EdgeDockSquareSizeTextBox.Text = cfg.EdgeDockSquareSize.ToString("0.#", CultureInfo.InvariantCulture);
 
                 AlwaysOnTopCheckBox.IsChecked = cfg.AlwaysOnTop;
                 ShowInTaskbarCheckBox.IsChecked = cfg.ShowInTaskbar;
@@ -394,9 +395,9 @@ namespace FlowMy.Views.Overlays
 
             cfg.AutoCollapseWhenIdle = AutoCollapseCheckBox.IsChecked == true;
             cfg.SlideToEdgeWhenIdle = SlideToEdgeCheckBox.IsChecked == true;
+            cfg.EdgeDockAsSquare = EdgeDockAsSquareCheckBox.IsChecked == true;
             cfg.IdleTimeoutSeconds = (int)ParseDouble(IdleTimeoutTextBox.Text, cfg.IdleTimeoutSeconds);
-            var hidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent * 100);
-            cfg.SlideHidePercent = hidePercent / 100.0;
+            cfg.EdgeDockSquareSize = ParseDouble(EdgeDockSquareSizeTextBox.Text, cfg.EdgeDockSquareSize);
 
             cfg.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
             cfg.ShowInTaskbar = ShowInTaskbarCheckBox.IsChecked == true;
