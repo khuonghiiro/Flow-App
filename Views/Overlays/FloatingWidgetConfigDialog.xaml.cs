@@ -155,7 +155,11 @@ namespace FlowMy.Views.Overlays
         private void SelectNodeInCombo(WorkflowNode node)
         {
             // Auto-apply pending changes for current node trước khi đổi.
-            if (_selectedNode != null && !_loadingValues) ApplyValuesToConfig();
+            if (_selectedNode != null && !_loadingValues)
+            {
+                ApplyValuesToConfig();
+                SyncOpenWidgetRuntime(_selectedNode.Id);
+            }
 
             foreach (var obj in NodeComboBox.Items)
             {
@@ -198,6 +202,17 @@ namespace FlowMy.Views.Overlays
 
         private void NodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // Khi đổi node trực tiếp từ ComboBox: auto-apply + sync node cũ trước.
+            if (!_loadingValues && _selectedNode != null)
+            {
+                try
+                {
+                    ApplyValuesToConfig();
+                    SyncOpenWidgetRuntime(_selectedNode.Id);
+                }
+                catch { }
+            }
+
             if (NodeComboBox.SelectedItem is ComboBoxItem item && item.Tag is WorkflowNode node)
             {
                 _selectedNode = node;
@@ -242,6 +257,7 @@ namespace FlowMy.Views.Overlays
                     : cfg.WidgetName;
 
                 SelectComboByTag(IdleShapeComboBox, cfg.IdleShape.ToString());
+                SelectComboByTag(IdleAnimationComboBox, cfg.IdleAnimation.ToString());
                 IdleSizeTextBox.Text = cfg.IdleSize.ToString("0.#", CultureInfo.InvariantCulture);
                 IdleOpacityTextBox.Text = cfg.IdleOpacity.ToString("0.##", CultureInfo.InvariantCulture);
 
@@ -293,7 +309,7 @@ namespace FlowMy.Views.Overlays
                 SlideToEdgeCheckBox.IsChecked = cfg.SlideToEdgeWhenIdle;
                 EdgeDockAsSquareCheckBox.IsChecked = cfg.EdgeDockAsSquare;
                 IdleTimeoutTextBox.Text = cfg.IdleTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
-                EdgeDockSquareSizeTextBox.Text = cfg.EdgeDockSquareSize.ToString("0.#", CultureInfo.InvariantCulture);
+                SlideHidePercentTextBox.Text = (cfg.SlideHidePercent * 100).ToString("0.#", CultureInfo.InvariantCulture);
 
                 AlwaysOnTopCheckBox.IsChecked = cfg.AlwaysOnTop;
                 ShowInTaskbarCheckBox.IsChecked = cfg.ShowInTaskbar;
@@ -347,6 +363,7 @@ namespace FlowMy.Views.Overlays
             cfg.WidgetName = (WidgetNameTextBox.Text ?? string.Empty).Trim();
 
             cfg.IdleShape = ParseEnum(IdleShapeComboBox, WidgetIdleShape.Circle);
+            cfg.IdleAnimation = ParseEnum(IdleAnimationComboBox, WidgetIdleAnimation.Heartbeat);
             cfg.IdleSize = ParseDouble(IdleSizeTextBox.Text, cfg.IdleSize);
             cfg.IdleOpacity = ParseDouble(IdleOpacityTextBox.Text, cfg.IdleOpacity);
 
@@ -397,7 +414,7 @@ namespace FlowMy.Views.Overlays
             cfg.SlideToEdgeWhenIdle = SlideToEdgeCheckBox.IsChecked == true;
             cfg.EdgeDockAsSquare = EdgeDockAsSquareCheckBox.IsChecked == true;
             cfg.IdleTimeoutSeconds = (int)ParseDouble(IdleTimeoutTextBox.Text, cfg.IdleTimeoutSeconds);
-            cfg.EdgeDockSquareSize = ParseDouble(EdgeDockSquareSizeTextBox.Text, cfg.EdgeDockSquareSize);
+            cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent * 100.0) / 100.0;
 
             cfg.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
             cfg.ShowInTaskbar = ShowInTaskbarCheckBox.IsChecked == true;
@@ -410,6 +427,15 @@ namespace FlowMy.Views.Overlays
             cfg.ShowOnAllMonitors = ShowOnAllMonitorsCheckBox.IsChecked == true;
 
             return true;
+        }
+
+        private static void SyncOpenWidgetRuntime(string? nodeId)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId)) return;
+            if (FloatingWidgetManager.Instance.IsWidgetOpen(nodeId))
+            {
+                FloatingWidgetManager.Instance.RefreshWidget(nodeId);
+            }
         }
 
         private static double ParseDouble(string text, double fallback)
@@ -441,6 +467,7 @@ namespace FlowMy.Views.Overlays
             if (!ApplyValuesToConfig()) return;
 
             FloatingWidgetManager.Instance.OpenWidget(_selectedNode, _host);
+            SyncOpenWidgetRuntime(_selectedNode.Id);
             UpdateWidgetStatus();
             RefreshExistingWidgets();
         }
@@ -554,6 +581,64 @@ namespace FlowMy.Views.Overlays
             UpdateSizeLabels(switchingToRatio);
         }
 
+        private void LockPositionCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingValues) return;
+            // Khóa vị trí thì không cho các mode tự đổi vị trí.
+            _loadingValues = true;
+            try
+            {
+                AllowDragCheckBox.IsChecked = false;
+                SnapToEdgeCheckBox.IsChecked = false;
+                SlideToEdgeCheckBox.IsChecked = false;
+            }
+            finally { _loadingValues = false; }
+        }
+
+        private void LockPositionCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            // Không auto bật lại gì, user tự chọn.
+        }
+
+        private void AllowDragCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingValues) return;
+            if (LockPositionCheckBox.IsChecked == true)
+            {
+                _loadingValues = true;
+                try { LockPositionCheckBox.IsChecked = false; } finally { _loadingValues = false; }
+            }
+        }
+
+        private void AllowDragCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
+
+        private void SnapToEdgeCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingValues) return;
+            _loadingValues = true;
+            try
+            {
+                if (LockPositionCheckBox.IsChecked == true) LockPositionCheckBox.IsChecked = false;
+                // Bật snap thì nên có drag để user thả cạnh dễ hiểu.
+                if (AllowDragCheckBox.IsChecked != true) AllowDragCheckBox.IsChecked = true;
+            }
+            finally { _loadingValues = false; }
+        }
+
+        private void SnapToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
+
+        private void SlideToEdgeCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingValues) return;
+            if (LockPositionCheckBox.IsChecked == true)
+            {
+                _loadingValues = true;
+                try { LockPositionCheckBox.IsChecked = false; } finally { _loadingValues = false; }
+            }
+        }
+
+        private void SlideToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
+
         private void UpdateSizeLabels(bool useRatio)
         {
             if (useRatio)
@@ -578,8 +663,23 @@ namespace FlowMy.Views.Overlays
             if (_selectedNode != null && !_loadingValues)
             {
                 ApplyValuesToConfig();
+                SyncOpenWidgetRuntime(_selectedNode.Id);
             }
             Close();
+        }
+
+        public void SelectNodeById(string? nodeId)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId)) return;
+            foreach (var obj in NodeComboBox.Items)
+            {
+                if (obj is ComboBoxItem cbi && cbi.Tag is WorkflowNode node &&
+                    string.Equals(node.Id, nodeId, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    NodeComboBox.SelectedItem = cbi;
+                    return;
+                }
+            }
         }
     }
 }

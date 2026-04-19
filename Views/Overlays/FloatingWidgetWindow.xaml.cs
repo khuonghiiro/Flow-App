@@ -197,6 +197,7 @@ public partial class FloatingWidgetWindow : Window
 
         // Apply opacity
         IdleContainer.Opacity = Config.IdleOpacity;
+        ConfigureRippleLayersForCurrentShape();
     }
 
     private void HideAllIdleShapes()
@@ -219,6 +220,8 @@ public partial class FloatingWidgetWindow : Window
         EdgeDockSquare.Height = sq;
         EdgeDockSquare.Visibility = Visibility.Visible;
         IdleContainer.Opacity = Math.Max(0.85, Config.IdleOpacity);
+        ConfigureRippleLayersForCurrentShape();
+        ApplyIdleAnimation();
     }
 
     /// <summary>
@@ -286,8 +289,7 @@ public partial class FloatingWidgetWindow : Window
         if (_webView != null)
             _webView.Visibility = Visibility.Collapsed;
 
-        // Pulse animation on idle shape
-        AnimateIdlePulse();
+        ApplyIdleAnimation();
     }
 
     public void ExpandWidget()
@@ -425,7 +427,11 @@ public partial class FloatingWidgetWindow : Window
             }
 
             _isDragging = true;
-            if (_isSlideHidden) RestoreFromSlide(animate: false);
+            if (_isSlideHidden)
+            {
+                // Bắt đầu kéo từ trạng thái dock ẩn: lộ full shape + khôi phục hình/animation gốc.
+                RevealDockedWidgetFully(restoreOriginalShape: true);
+            }
         }
 
         Left = _dragStartLeft + dx;
@@ -484,17 +490,7 @@ public partial class FloatingWidgetWindow : Window
     {
         MarkActivity();
         if (!_isSlideHidden) return;
-
-        if (Config.EdgeDockAsSquare)
-        {
-            // Ô vuông bám cạnh: hover = expand LUÔN, không cần trả về vị trí cũ.
-            ExpandWidget();
-        }
-        else
-        {
-            // Hình idle bám cạnh: trả về vị trí cũ, user click để expand.
-            RestoreFromSlide(animate: true);
-        }
+        RevealDockedWidgetFully();
     }
 
     // Title bar drag handlers
@@ -574,9 +570,9 @@ public partial class FloatingWidgetWindow : Window
 
     /// <summary>
     /// Bám widget vào cạnh màn hình gần nhất sau khi idle.
-    /// - EdgeDockAsSquare=true: đổi sang ô vuông nhỏ, nằm TRỌN sát mép.
-    /// - EdgeDockAsSquare=false: giữ nguyên idle shape, nằm TRỌN sát mép (không khuất).
-    /// Trong cả 2 trường hợp widget KHÔNG còn bị khuất 1 phần ra ngoài màn.
+    /// - Có thể đổi sang ô vuông nhỏ (EdgeDockAsSquare=true).
+    /// - Widget sẽ ẩn một phần vào cạnh theo SlideHidePercent.
+    /// Hover vào chỉ lộ đầy đủ hình (không auto expand).
     /// </summary>
     private void SlideToEdge()
     {
@@ -612,7 +608,47 @@ public partial class FloatingWidgetWindow : Window
 
         var margin = Math.Max(0, Config.SnapMargin);
         var (tl, tt) = ComputeDockPosition(_dockedEdge, workArea, Width, Height, margin);
+
+        // Ẩn một phần widget vào cạnh
+        var hide = Math.Max(0, Math.Min(0.95, Config.SlideHidePercent));
+        var hideX = Width * hide;
+        var hideY = Height * hide;
+        switch (_dockedEdge)
+        {
+            case WidgetSnapEdge.Left: tl -= hideX; break;
+            case WidgetSnapEdge.Right: tl += hideX; break;
+            case WidgetSnapEdge.Top: tt -= hideY; break;
+            case WidgetSnapEdge.Bottom: tt += hideY; break;
+        }
         AnimateMoveTo(tl, tt, 300);
+    }
+
+    /// <summary>
+    /// Khi hover lúc đang ẩn một phần ở cạnh, kéo widget ra vị trí full-visible ở đúng cạnh đó.
+    /// Không mở expanded view.
+    /// </summary>
+    private void RevealDockedWidgetFully(bool restoreOriginalShape = true)
+    {
+        if (!_isSlideHidden) return;
+        var area = GetTargetWorkArea();
+        var margin = Math.Max(0, Config.SnapMargin);
+        double w = Width;
+        double h = Height;
+        if (restoreOriginalShape && Config.EdgeDockAsSquare)
+        {
+            var idleSize = Config.IdleSize;
+            var windowSize = Config.IdleShape == WidgetIdleShape.Diamond ? idleSize * 1.4 : idleSize;
+            w = windowSize + 8;
+            h = windowSize + 8;
+            Width = w;
+            Height = h;
+            ApplyIdleShape();
+            ApplyIdleAnimation();
+        }
+
+        var (tl, tt) = ComputeDockPosition(_dockedEdge, area, w, h, margin);
+        _isSlideHidden = false;
+        AnimateMoveTo(tl, tt, 180);
     }
 
     /// <summary>
@@ -903,6 +939,38 @@ public partial class FloatingWidgetWindow : Window
         }
     }
 
+    /// <summary>
+    /// Áp dụng lại toàn bộ config runtime cho widget đang mở để đồng bộ ngay sau khi user đổi trong dialog.
+    /// </summary>
+    public void ApplyConfigChanges()
+    {
+        try
+        {
+            Topmost = Config.AlwaysOnTop;
+            ShowInTaskbar = Config.ShowInTaskbar;
+            TitleText.Text = ResolveDisplayTitle(_node);
+
+            if (_isExpanded)
+            {
+                var (w, h) = ResolveExpandedSize();
+                Width = w;
+                Height = h;
+                ResizeGrip.Visibility = Config.AllowResize ? Visibility.Visible : Visibility.Collapsed;
+                TitleBar.Visibility = Config.ShowTitleBar ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else
+            {
+                // Nếu đang collapsed thì apply lại shape/animation/opacity tức thì.
+                ShowCollapsedState();
+                if (Config.SnapToEdge) SnapToNearestEdge();
+            }
+
+            ClampToWorkArea();
+            SavePosition();
+        }
+        catch { }
+    }
+
     private string BuildHtmlForWidget(HtmlUiNode htmlNode)
     {
         var html = htmlNode.HtmlCode ?? "<!DOCTYPE html><html><body><div>Widget</div></body></html>";
@@ -1162,21 +1230,142 @@ window.__ac.startWorkflow = acStartWorkflow;
     //  ANIMATIONS
     // ═══════════════════════════════════════════
 
-    private void AnimateIdlePulse()
+    private void ApplyIdleAnimation()
+    {
+        StopIdleAnimation();
+        switch (Config.IdleAnimation)
+        {
+            case WidgetIdleAnimation.None:
+                return;
+            case WidgetIdleAnimation.Ripple:
+                AnimateRipple();
+                return;
+            case WidgetIdleAnimation.Heartbeat:
+            default:
+                AnimateHeartbeat();
+                return;
+        }
+    }
+
+    private void StopIdleAnimation()
     {
         try
         {
-            var scaleUp = new DoubleAnimation(1.0, 1.08, TimeSpan.FromMilliseconds(800))
+            IdleScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            IdleScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            IdleDiamondScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            IdleDiamondScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            RippleScale1.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            RippleScale1.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            RippleScale2.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            RippleScale2.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            RippleLayer1.BeginAnimation(OpacityProperty, null);
+            RippleLayer2.BeginAnimation(OpacityProperty, null);
+            RippleLayer1.Visibility = Visibility.Collapsed;
+            RippleLayer2.Visibility = Visibility.Collapsed;
+        }
+        catch { }
+    }
+
+    private Border? GetVisibleIdleShape()
+    {
+        if (IdleCircle.Visibility == Visibility.Visible) return IdleCircle;
+        if (IdleDiamond.Visibility == Visibility.Visible) return IdleDiamond;
+        if (IdleSquare.Visibility == Visibility.Visible) return IdleSquare;
+        if (IdleRoundedSquare.Visibility == Visibility.Visible) return IdleRoundedSquare;
+        if (EdgeDockSquare.Visibility == Visibility.Visible) return EdgeDockSquare;
+        return null;
+    }
+
+    private void AnimateHeartbeat()
+    {
+        try
+        {
+            var scale = new DoubleAnimation(1.0, 1.1, TimeSpan.FromMilliseconds(380))
             {
                 AutoReverse = true,
                 RepeatBehavior = RepeatBehavior.Forever,
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
             };
 
-            IdleScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleUp);
-            IdleScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleUp);
+            if (IdleCircle.Visibility == Visibility.Visible)
+            {
+                IdleScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
+                IdleScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
+                return;
+            }
+            if (IdleDiamond.Visibility == Visibility.Visible)
+            {
+                IdleDiamondScale.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
+                IdleDiamondScale.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
+                return;
+            }
+
+            var active = GetVisibleIdleShape();
+            if (active == null) return;
+            if (active.RenderTransform is not ScaleTransform st)
+            {
+                st = new ScaleTransform(1, 1);
+                active.RenderTransform = st;
+                active.RenderTransformOrigin = new Point(0.5, 0.5);
+            }
+            st.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
+            st.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
         }
         catch { }
+    }
+
+    private void AnimateRipple()
+    {
+        try
+        {
+            ConfigureRippleLayersForCurrentShape();
+            RippleLayer1.Visibility = Visibility.Visible;
+            RippleLayer2.Visibility = Visibility.Visible;
+
+            var s1 = new DoubleAnimation(1.0, 1.7, TimeSpan.FromMilliseconds(1200))
+            {
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            var s2 = new DoubleAnimation(1.0, 2.0, TimeSpan.FromMilliseconds(1200))
+            {
+                BeginTime = TimeSpan.FromMilliseconds(350),
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            var o1 = new DoubleAnimation(0.45, 0.0, TimeSpan.FromMilliseconds(1200))
+            {
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            var o2 = new DoubleAnimation(0.35, 0.0, TimeSpan.FromMilliseconds(1200))
+            {
+                BeginTime = TimeSpan.FromMilliseconds(350),
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+
+            RippleScale1.BeginAnimation(ScaleTransform.ScaleXProperty, s1);
+            RippleScale1.BeginAnimation(ScaleTransform.ScaleYProperty, s1);
+            RippleScale2.BeginAnimation(ScaleTransform.ScaleXProperty, s2);
+            RippleScale2.BeginAnimation(ScaleTransform.ScaleYProperty, s2);
+            RippleLayer1.BeginAnimation(OpacityProperty, o1);
+            RippleLayer2.BeginAnimation(OpacityProperty, o2);
+        }
+        catch { }
+    }
+
+    private void ConfigureRippleLayersForCurrentShape()
+    {
+        var active = GetVisibleIdleShape();
+        if (active == null) return;
+
+        var w = active.Width > 0 ? active.Width : Config.IdleSize;
+        var h = active.Height > 0 ? active.Height : Config.IdleSize;
+        var cr = active.CornerRadius;
+        RippleLayer1.Width = w;
+        RippleLayer1.Height = h;
+        RippleLayer2.Width = w;
+        RippleLayer2.Height = h;
+        RippleLayer1.CornerRadius = cr;
+        RippleLayer2.CornerRadius = cr;
     }
 
     private void AnimateExpandFadeIn()

@@ -13,8 +13,10 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-        <!-- Idle shape glow effect (giữ purple glow để highlight widget) -->
-        <DropShadowEffect x:Key="IdleGlow" Color="#7C3AED" BlurRadius="16" ShadowDepth="0" Opacity="0.6"/>
+        <!-- Idle shadow nhẹ theo shape -->
+        <DropShadowEffect x:Key="IdleGlowCircle" Color="#7C3AED" BlurRadius="10" ShadowDepth="0" Opacity="0.22"/>
+        <DropShadowEffect x:Key="IdleGlowSquare" Color="#7C3AED" BlurRadius="10" ShadowDepth="0" Opacity="0.2"/>
+        <DropShadowEffect x:Key="IdleGlowDiamond" Color="#7C3AED" BlurRadius="9" ShadowDepth="0" Opacity="0.2"/>
         <DropShadowEffect x:Key="ExpandedShadow" Color="#000000" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.45"/>
 
         <!-- Context menu dùng cho cả idle shape và title bar -->
@@ -115,7 +117,7 @@
                     CornerRadius="24"
                     Cursor="Hand"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlow}"
+                    Effect="{StaticResource IdleGlowCircle}"
                     RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
                     <ScaleTransform x:Name="IdleScaleTransform" ScaleX="1" ScaleY="1"/>
@@ -140,7 +142,7 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlow}"
+                    Effect="{StaticResource IdleGlowDiamond}"
                     RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
                     <TransformGroup>
@@ -169,7 +171,7 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlow}"
+                    Effect="{StaticResource IdleGlowSquare}"
                     RenderTransformOrigin="0.5,0.5">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="IdleSquareSvg"
@@ -189,7 +191,7 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlow}"
+                    Effect="{StaticResource IdleGlowSquare}"
                     RenderTransformOrigin="0.5,0.5">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="IdleRoundedSvg"
@@ -203,14 +205,14 @@
             </Border>
 
             <!-- Edge-dock square: hiển thị khi SlideToEdgeWhenIdle=true và EdgeDockAsSquare=true.
-                 Ô vuông nhỏ nằm CẢ hình sát mép, không khuất. Hover vào = expand luôn. -->
+                 Có thể bị ẩn 1 phần vào cạnh theo cấu hình; hover vào chỉ lộ full shape. -->
             <Border x:Name="EdgeDockSquare"
                     Width="28" Height="28"
                     CornerRadius="6"
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlow}">
+                    Effect="{StaticResource IdleGlowSquare}">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="EdgeDockSvg"
                                            Width="14" Height="14"
@@ -220,6 +222,34 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                 </Grid>
+            </Border>
+
+            <!-- Ripple layers (ẩn mặc định), animate theo chế độ Sóng nước -->
+            <Border x:Name="RippleLayer1"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False"
+                    Width="48" Height="48"
+                    BorderThickness="2"
+                    BorderBrush="{DynamicResource PrimaryBrush}"
+                    Background="Transparent"
+                    Opacity="0.0"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="RippleScale1" ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
+            </Border>
+            <Border x:Name="RippleLayer2"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False"
+                    Width="48" Height="48"
+                    BorderThickness="2"
+                    BorderBrush="{DynamicResource PrimaryBrush}"
+                    Background="Transparent"
+                    Opacity="0.0"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="RippleScale2" ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
             </Border>
         </Grid>
 

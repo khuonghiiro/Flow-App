@@ -35,6 +35,14 @@ namespace FlowMy.Models
         FullContent = 2
     }
 
+    /// <summary>Hiệu ứng animation cho idle shape.</summary>
+    public enum WidgetIdleAnimation
+    {
+        None = 0,
+        Heartbeat = 1,
+        Ripple = 2
+    }
+
     /// <summary>
     /// Cấu hình đầy đủ để xuất một node ra ngoài màn hình dưới dạng floating widget.
     /// Được lưu vào workflow JSON khi persist.
@@ -89,6 +97,14 @@ namespace FlowMy.Models
         {
             get => _idleOpacity;
             set { var v = Math.Max(0.1, Math.Min(1.0, value)); if (Math.Abs(_idleOpacity - v) > 0.001) { _idleOpacity = v; OnPropertyChanged(); } }
+        }
+
+        private WidgetIdleAnimation _idleAnimation = WidgetIdleAnimation.Heartbeat;
+        /// <summary>Hiệu ứng của widget khi ở trạng thái idle.</summary>
+        public WidgetIdleAnimation IdleAnimation
+        {
+            get => _idleAnimation;
+            set { if (_idleAnimation != value) { _idleAnimation = value; OnPropertyChanged(); } }
         }
 
         // ── Kích thước khi mở rộng (Expanded) ──
@@ -241,8 +257,9 @@ namespace FlowMy.Models
         private bool _slideToEdgeWhenIdle = true;
         /// <summary>
         /// Khi idle (quá IdleTimeout mà không tương tác) thì tự bám sát cạnh màn hình.
-        /// - EdgeDockAsSquare=true: đổi sang ô vuông nhỏ chứa icon, nằm CẢ hình sát mép (không khuất).
-        /// - EdgeDockAsSquare=false: giữ nguyên hình idle (Circle/Diamond/...), vẫn nằm cả hình sát mép (không khuất như trước).
+        /// - EdgeDockAsSquare=true: đổi sang ô vuông nhỏ chứa icon.
+        /// - EdgeDockAsSquare=false: giữ nguyên hình idle (Circle/Diamond/...).
+        /// Khi dock, widget sẽ ẩn một phần theo SlideHidePercent; hover vào sẽ lộ đầy đủ hình.
         /// Nếu false, widget ở yên vị trí hiện tại (không bám cạnh).
         /// </summary>
         public bool SlideToEdgeWhenIdle
@@ -254,8 +271,8 @@ namespace FlowMy.Models
         private bool _edgeDockAsSquare = true;
         /// <summary>
         /// Khi SlideToEdgeWhenIdle=true và widget bám cạnh:
-        /// - true (mặc định): hiển thị dạng ô vuông nhỏ chứa icon, hover vào là expand luôn (không cần "bung" ra trước).
-        /// - false: giữ nguyên hình idle của widget (Circle/Diamond/...) ở sát cạnh. Hover → trả về vị trí cũ rồi mới expand được bằng click.
+        /// - true (mặc định): hiển thị dạng ô vuông nhỏ chứa icon.
+        /// - false: giữ nguyên hình idle gốc.
         /// </summary>
         public bool EdgeDockAsSquare
         {
@@ -271,11 +288,9 @@ namespace FlowMy.Models
             set { var v = Math.Max(16, Math.Min(80, value)); if (Math.Abs(_edgeDockSquareSize - v) > 0.01) { _edgeDockSquareSize = v; OnPropertyChanged(); } }
         }
 
-        private double _slideHidePercent = 0.0;
+        private double _slideHidePercent = 0.5;
         /// <summary>
-        /// (Legacy) Phần trăm widget ẩn đi khi slide vào cạnh. Hiện đã đổi hành vi:
-        /// widget không còn bị khuất 1 phần — luôn nằm trọn vẹn sát mép để dễ nhìn.
-        /// Giữ lại để tương thích file cấu hình cũ, nhưng không còn dùng để tính vị trí.
+        /// Phần trăm widget ẩn đi khi dock vào cạnh (0.0–0.95). 0.5 = ẩn nửa widget.
         /// </summary>
         public double SlideHidePercent
         {

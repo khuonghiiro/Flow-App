@@ -125,6 +125,7 @@ public sealed class FloatingWidgetManager
         {
             if (_activeWidgets.TryGetValue(nodeId, out var widget))
             {
+                try { widget.ApplyConfigChanges(); } catch { }
                 try { widget.RefreshContent(); } catch { }
             }
         }

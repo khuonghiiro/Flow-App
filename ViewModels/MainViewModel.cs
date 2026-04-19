@@ -1,6 +1,7 @@
 using FlowMy.Services;
 using FlowMy.Services.Interaction;
 using FlowMy.Views;
+using FlowMy.Views.Overlays;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -127,10 +128,25 @@ namespace FlowMy.ViewModels
             OpenWorkflowEditorInternal(group.WorkflowName, ids, headless: true);
         }
 
+        /// <summary>
+        /// Mở trực tiếp màn cấu hình widget từ MainWindow cho 1 shortcut cụ thể.
+        /// </summary>
+        [RelayCommand]
+        private void ConfigureWidget(WidgetShortcutItem? item)
+        {
+            if (item == null) return;
+            OpenWorkflowEditorInternal(
+                workflowNameToLoad: item.WorkflowName,
+                widgetNodeIds: null,
+                headless: false,
+                autoOpenConfigNodeId: item.NodeId);
+        }
+
         private void OpenWorkflowEditorInternal(
             string? workflowNameToLoad,
             IList<string>? widgetNodeIds,
-            bool headless)
+            bool headless,
+            string? autoOpenConfigNodeId = null)
         {
             if (App.Services == null) return;
 
@@ -227,6 +243,29 @@ namespace FlowMy.ViewModels
                     workflowWindow.Dispatcher.BeginInvoke(
                         new System.Action(ActivateWidgets),
                         System.Windows.Threading.DispatcherPriority.Background);
+                };
+            }
+
+            // Nếu được yêu cầu từ MainWindow: auto bật dialog cấu hình widget ngay khi editor load xong.
+            if (!string.IsNullOrWhiteSpace(autoOpenConfigNodeId))
+            {
+                workflowWindow.Loaded += (_, __) =>
+                {
+                    try
+                    {
+                        var nodes = workflowWindow.ViewModel?.Nodes?.ToList()
+                            ?? new List<FlowMy.Models.WorkflowNode>();
+                        if (nodes.Count == 0) return;
+
+                        var dialog = new FloatingWidgetConfigDialog(nodes, workflowWindow)
+                        {
+                            Owner = workflowWindow
+                        };
+                        dialog.SelectNodeById(autoOpenConfigNodeId);
+                        dialog.ShowDialog();
+                        RefreshWidgetShortcuts();
+                    }
+                    catch { }
                 };
             }
 

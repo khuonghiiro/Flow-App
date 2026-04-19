@@ -210,6 +210,16 @@
                                     <ComboBoxItem Content="Vuông bo góc (Rounded)" Tag="RoundedSquare"/>
                                 </ComboBox>
 
+                                <TextBlock Text="Animation idle" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <ComboBox x:Name="IdleAnimationComboBox"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          Margin="0,4,0,8"
+                                          Height="30">
+                                    <ComboBoxItem Content="Không (None)" Tag="None"/>
+                                    <ComboBoxItem Content="Tim đập (Heartbeat)" Tag="Heartbeat"/>
+                                    <ComboBoxItem Content="Sóng nước (Ripple)" Tag="Ripple"/>
+                                </ComboBox>
+
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -380,15 +390,21 @@
                                 <CheckBox x:Name="AllowDragCheckBox"
                                           Content="Cho phép kéo di chuyển"
                                           Foreground="{DynamicResource TextBrush}"
-                                          Margin="0,2,0,4"/>
+                                          Margin="0,2,0,4"
+                                          Checked="AllowDragCheckBox_Checked"
+                                          Unchecked="AllowDragCheckBox_Unchecked"/>
                                 <CheckBox x:Name="SnapToEdgeCheckBox"
                                           Content="Bám sát cạnh màn hình khi thả"
                                           Foreground="{DynamicResource TextBrush}"
-                                          Margin="0,2,0,4"/>
+                                          Margin="0,2,0,4"
+                                          Checked="SnapToEdgeCheckBox_Checked"
+                                          Unchecked="SnapToEdgeCheckBox_Unchecked"/>
                                 <CheckBox x:Name="LockPositionCheckBox"
                                           Content="Khóa vị trí"
                                           Foreground="{DynamicResource TextBrush}"
-                                          Margin="0,2,0,4"/>
+                                          Margin="0,2,0,4"
+                                          Checked="LockPositionCheckBox_Checked"
+                                          Unchecked="LockPositionCheckBox_Unchecked"/>
                                 <TextBlock Text="Cạnh ưu tiên" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,6,0,0"/>
                                 <ComboBox x:Name="PreferredEdgeComboBox"
                                           Style="{DynamicResource BaseComboBox}"
@@ -438,11 +454,13 @@
                                           Content="Tự bám cạnh màn hình sau khi idle"
                                           Foreground="{DynamicResource TextBrush}"
                                           ToolTip="Bật: sau khi idle widget tự di chuyển sát cạnh màn hình gần nhất. Tắt: widget giữ nguyên vị trí."
-                                          Margin="0,2,0,4"/>
+                                          Margin="0,2,0,4"
+                                          Checked="SlideToEdgeCheckBox_Checked"
+                                          Unchecked="SlideToEdgeCheckBox_Unchecked"/>
                                 <CheckBox x:Name="EdgeDockAsSquareCheckBox"
-                                          Content="Khi bám cạnh: hiển thị ô vuông nhỏ chứa icon (hover = mở luôn)"
+                                          Content="Khi bám cạnh: hiển thị ô vuông nhỏ chứa icon"
                                           Foreground="{DynamicResource TextBrush}"
-                                          ToolTip="Bật: khi bám cạnh đổi sang ô vuông nhỏ, hover vào expand ngay lập tức không cần trả về vị trí cũ. Tắt: giữ nguyên hình idle."
+                                          ToolTip="Bật: khi bám cạnh đổi sang ô vuông nhỏ. Tắt: giữ nguyên hình idle."
                                           Margin="22,0,0,4"/>
                                 <Grid Margin="0,6,0,0">
                                     <Grid.ColumnDefinitions>
@@ -455,11 +473,11 @@
                                         <TextBox x:Name="IdleTimeoutTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Ô vuông bám cạnh (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                        <TextBox x:Name="EdgeDockSquareSizeTextBox"
+                                        <TextBlock Text="Ẩn vào cạnh (%)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="SlideHidePercentTextBox"
                                                  Style="{DynamicResource BaseTextBox}"
                                                  Height="28" Margin="0,4,0,0"
-                                                 ToolTip="Kích thước ô vuông nhỏ khi bám cạnh (16–80 px). Chỉ có tác dụng khi 'Khi bám cạnh: hiển thị ô vuông nhỏ' được bật."/>
+                                                 ToolTip="Phần trăm widget bị ẩn vào trong cạnh màn hình khi dock (0–95). Ví dụ 50 = ẩn nửa widget."/>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>

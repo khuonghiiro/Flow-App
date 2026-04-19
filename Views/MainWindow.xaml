@@ -86,6 +86,7 @@
 
         <!-- Icon button (32x32 circle) -->
         <Style x:Key="IconCircleButton" TargetType="Button">
+            <Setter Property="Foreground"                Value="{DynamicResource TextBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Width" Value="32"/>
             <Setter Property="Height" Value="32"/>
@@ -288,7 +289,7 @@
                            VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock Grid.Column="1"
-                       Text="Click 🛠 để mở editor, 📌 để chỉ bật widget (chạy ngầm)"
+                       Text="⚙ cấu hình nhanh, 🛠 mở editor, 📌 chỉ bật widget (ngầm)"
                        Foreground="{DynamicResource TextBrush}"
                        Opacity="0.55"
                        FontSize="12"
@@ -473,16 +474,23 @@
 
                                                         <!-- Per-widget actions -->
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Button Command="{Binding DataContext.ConfigureWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{DynamicResource IconCircleButton}"
+                                                                    Margin="0,0,6,0"
+                                                                    ToolTip="Mở nhanh màn cấu hình widget này">
+                                                                <TextBlock Text="⚙" FontSize="13"/>
+                                                            </Button>
                                                             <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
-                                                                    Style="{StaticResource IconCircleButton}"
+                                                                    Style="{DynamicResource IconCircleButton}"
                                                                     Margin="0,0,6,0"
                                                                     ToolTip="Chỉ mở widget này (ngầm)">
                                                                 <TextBlock Text="📌" FontSize="14"/>
                                                             </Button>
                                                             <Button Command="{Binding DataContext.LaunchWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
-                                                                    Style="{StaticResource IconCircleButtonPrimary}"
+                                                                    Style="{DynamicResource IconCircleButtonPrimary}"
                                                                     ToolTip="Mở Editor + bật widget này">
                                                                 <TextBlock Text="🛠"
                                                                            FontSize="13"
