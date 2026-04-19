@@ -486,9 +486,12 @@ namespace FlowMy.ViewModels
                 parent.ChildrenDashedLineHeightTrim = trim;
         }
 
-        private static void AttachTreeChild(ExecutionTraceTreeNodeViewModel parent, ExecutionTraceTreeNodeViewModel child)
+        private static void AttachTreeChild(ExecutionTraceTreeNodeViewModel parent, ExecutionTraceTreeNodeViewModel child, int? insertIndex = null)
         {
-            parent.Children.Add(child);
+            if (insertIndex is >= 0 and int ix && ix <= parent.Children.Count)
+                parent.Children.Insert(ix, child);
+            else
+                parent.Children.Add(child);
             RefreshTreeConnectorMetadata(parent);
             parent.NotifyHasChildrenChanged();
         }
@@ -939,12 +942,29 @@ namespace FlowMy.ViewModels
                         }
                     }
 
+                    ExecutionTraceTreeNodeViewModel? endAfterSibling = null;
                     if (node.Type == NodeType.End)
                     {
-                        parentTreeNode = PickLatestNodeInExactExecution(executionKey, rootExecutionId, node.Id) ?? parentTreeNode;
+                        endAfterSibling = PickLatestNodeInExactExecution(executionKey, rootExecutionId, node.Id);
+                        if (endAfterSibling?.Parent != null)
+                            parentTreeNode = endAfterSibling.Parent;
                     }
 
-                    AttachTreeChild(parentTreeNode, treeNode);
+                    int? insertIndex = null;
+                    if (node.Type == NodeType.End && endAfterSibling?.Parent != null &&
+                        ReferenceEquals(endAfterSibling.Parent, parentTreeNode))
+                    {
+                        var afterIdx = parentTreeNode.Children.IndexOf(endAfterSibling);
+                        if (afterIdx >= 0)
+                            insertIndex = afterIdx + 1;
+                    }
+
+                    var visualDepth = parentTreeNode.IsRunRoot ? 1 : parentTreeNode.Depth + 1;
+                    treeNode.ApplyTraceVisualDepth(visualDepth);
+                    if (_executionTraceDepthByRun.TryGetValue(rootExecutionId, out var depthByNodeForVisual))
+                        depthByNodeForVisual[node.Id] = visualDepth;
+
+                    AttachTreeChild(parentTreeNode, treeNode, insertIndex);
                     var nodeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);
                     if (!_executionTraceTreeNodesByRunAndNode.TryGetValue(nodeKey, out var list))
                     {

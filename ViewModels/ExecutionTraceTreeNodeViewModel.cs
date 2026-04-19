@@ -17,7 +17,11 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public bool IsRunRoot { get; }
     public bool ShowConnector { get; }
     public Brush? NodeBrush { get; }
-    public int Depth { get; }
+
+    private int _depth;
+
+    public int Depth => _depth;
+
     public Thickness ConnectorIndent { get; }
     public ExecutionTraceTreeNodeViewModel? Parent { get; internal set; }
     public bool ShowTopStem => ShowConnector;
@@ -100,16 +104,34 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         IsRunRoot = isRunRoot;
         ShowConnector = !isRunRoot;
         NodeBrush = nodeBrush;
-        Depth = depth < 0 ? 0 : depth;
+        _depth = depth < 0 ? 0 : depth;
         ConnectorIndent = IsRunRoot ? new Thickness(0) : new Thickness(0, 0, 2, 0);
-        const int indentPerDepth = 38;
-        var leftIndent = IsRunRoot ? 0 : (Depth * indentPerDepth);
-        ItemMargin = new Thickness(leftIndent, 6, 4, 6);
-        ChildrenDashedLineMargin = new Thickness(leftIndent + 30, 0, 0, 0);
+        ApplyTraceMarginsForDepth();
         IsExpanded = true;
         IsVisible = true;
         IsLastSibling = true;
         IsFirstSibling = true;
+    }
+
+    /// <summary>Align visual indent with resolved tree parent (e.g. End as sibling of last step, not nested under it).</summary>
+    public void ApplyTraceVisualDepth(int newDepth)
+    {
+        newDepth = newDepth < 0 ? 0 : newDepth;
+        if (_depth == newDepth)
+            return;
+        _depth = newDepth;
+        ApplyTraceMarginsForDepth();
+        OnPropertyChanged(nameof(Depth));
+        OnPropertyChanged(nameof(ItemMargin));
+        OnPropertyChanged(nameof(ChildrenDashedLineMargin));
+    }
+
+    private void ApplyTraceMarginsForDepth()
+    {
+        const int indentPerDepth = 38;
+        var leftIndent = IsRunRoot ? 0 : (_depth * indentPerDepth);
+        ItemMargin = new Thickness(leftIndent, 6, 4, 6);
+        ChildrenDashedLineMargin = new Thickness(leftIndent + 30, 0, 0, 0);
     }
 
     partial void OnIsLastSiblingChanged(bool value)
