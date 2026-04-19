@@ -1780,6 +1780,52 @@ Cursor="Hand"
                     </Grid>
                 </ScrollViewer>
 
+                <!-- Nút nổi mở lại Execution Log panel khi user đã ẩn panel nhưng còn bật EnableExecutionTraceLog.
+                     Đặt Grid.Row=0 (chung row với canvas) + align bottom-right để luôn nhìn thấy khi panel log collapsed. -->
+                <Button Grid.Row="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,20,16"
+                        Panel.ZIndex="50"
+                        Cursor="Hand"
+                        Command="{Binding ToggleExecutionTracePanelCommand}"
+                        ToolTip="Mở lại Execution Log panel"
+                        Visibility="{Binding IsExecutionTraceReopenerVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd"
+                                    Background="{DynamicResource PrimaryBrush}"
+                                    CornerRadius="18"
+                                    Padding="12,8"
+                                    SnapsToDevicePixels="True">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="2" Opacity="0.35"/>
+                                </Border.Effect>
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:SvgViewboxEx Width="14" Height="14"
+                                                           Fill="{DynamicResource TextOnPrimaryBrush}"
+                                                           VerticalAlignment="Center"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='timeline-arrow duotone-light'}"/>
+                                    <TextBlock Text="Mở Execution Log"
+                                               Margin="8,0,0,0"
+                                               Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                               FontWeight="SemiBold"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.9"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.75"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
                 <Border Visibility="{Binding IsExecutionTracePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                         Background="{DynamicResource CardColor}"
                         BorderBrush="{DynamicResource BorderColor}"
@@ -2098,7 +2144,8 @@ Cursor="Hand"
                                                             BorderBrush="{Binding TraceCardBorderBrush}"
                                                             Background="{Binding TraceCardBackgroundBrush}"
                                                             HorizontalAlignment="Left"
-                                                            MinWidth="220">
+                                                            MinWidth="220"
+                                                            MaxWidth="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.ExecutionTraceCardMaxWidth}">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="18"/>
@@ -2143,6 +2190,7 @@ Cursor="Hand"
                                                                         <ColumnDefinition Width="*"/>
                                                                         <ColumnDefinition Width="Auto"/>
                                                                         <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="Auto"/>
                                                                     </Grid.ColumnDefinitions>
                                                                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                                                                         <Border Width="20"
@@ -2162,7 +2210,9 @@ Cursor="Hand"
                                                                                    FontWeight="SemiBold"
                                                                                    FontSize="11"
                                                                                    Foreground="{DynamicResource TextBrush}"
-                                                                                   VerticalAlignment="Center"/>
+                                                                                   VerticalAlignment="Center"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   ToolTip="{Binding NodeTitle}"/>
                                                                     </StackPanel>
                                                                     <TextBlock Grid.Column="1"
                                                                                Text="{Binding ElapsedText}"
@@ -2178,35 +2228,130 @@ Cursor="Hand"
                                                                                    Foreground="{DynamicResource TextOnPrimaryBrush}"
                                                                                    VerticalAlignment="Center"/>
                                                                     </Border>
+                                                                    <!-- Per-card toggle: collapsed = trim ellipsis, expanded = wrap full -->
+                                                                    <ToggleButton Grid.Column="3"
+                                                                                  Width="22" Height="20"
+                                                                                  Margin="6,0,0,0"
+                                                                                  Padding="0"
+                                                                                  Cursor="Hand"
+                                                                                  Background="Transparent"
+                                                                                  BorderThickness="1"
+                                                                                  BorderBrush="{DynamicResource BorderColor}"
+                                                                                  IsChecked="{Binding IsDetailsExpanded, Mode=TwoWay}"
+                                                                                  Visibility="{Binding ShowDetailsToggle, Converter={StaticResource LocalBoolToVis}}">
+                                                                        <ToggleButton.ToolTip>
+                                                                            <TextBlock>
+                                                                                <Run Text="Mở rộng / thu gọn IN/OUT/ERR"/>
+                                                                            </TextBlock>
+                                                                        </ToggleButton.ToolTip>
+                                                                        <ToggleButton.Template>
+                                                                            <ControlTemplate TargetType="ToggleButton">
+                                                                                <Border x:Name="Bd"
+                                                                                        Background="{TemplateBinding Background}"
+                                                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                                                        CornerRadius="3"
+                                                                                        SnapsToDevicePixels="True">
+                                                                                    <Path x:Name="Arrow"
+                                                                                          Data="M 3 5 L 8 10 L 13 5"
+                                                                                          Stroke="{DynamicResource TextBrush}"
+                                                                                          StrokeThickness="1.4"
+                                                                                          Fill="Transparent"
+                                                                                          HorizontalAlignment="Center"
+                                                                                          VerticalAlignment="Center"
+                                                                                          RenderTransformOrigin="0.5,0.5">
+                                                                                        <Path.RenderTransform>
+                                                                                            <RotateTransform Angle="0"/>
+                                                                                        </Path.RenderTransform>
+                                                                                    </Path>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MenuItemHoverBackgroundBrush}"/>
+                                                                                    </Trigger>
+                                                                                    <Trigger Property="IsChecked" Value="True">
+                                                                                        <Setter TargetName="Arrow" Property="RenderTransform">
+                                                                                            <Setter.Value>
+                                                                                                <RotateTransform Angle="180"/>
+                                                                                            </Setter.Value>
+                                                                                        </Setter>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </ToggleButton.Template>
+                                                                    </ToggleButton>
                                                                 </Grid>
 
                                                                 <TextBlock Margin="0,4,0,0"
                                                                            FontSize="9"
                                                                            Opacity="0.55"
                                                                            Foreground="{DynamicResource TextBrush}"
+                                                                           TextTrimming="CharacterEllipsis"
                                                                            Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
 
+                                                                <!-- IN: màu xanh lá đậm. Collapsed → ellipsis, expanded → wrap. -->
                                                                 <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
                                                                            Margin="0,3,0,0"
-                                                                           Foreground="#2E7D32"
+                                                                           Foreground="#1B5E20"
                                                                            FontSize="9"
-                                                                           MaxWidth="880"
-                                                                           TextWrapping="Wrap"
-                                                                           Visibility="{Binding InputSummary, Converter={StaticResource NullOrEmptyToCollapsed}}"/>
+                                                                           ToolTip="{Binding InputSummary}"
+                                                                           Visibility="{Binding InputSummary, Converter={StaticResource NullOrEmptyToCollapsed}}">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                                            <Setter Property="TextWrapping" Value="NoWrap"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                                    <Setter Property="TextTrimming" Value="None"/>
+                                                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+
+                                                                <!-- OUT: màu xanh dương đậm, phân biệt rõ với IN. -->
                                                                 <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
                                                                            Margin="0,2,0,0"
-                                                                           Foreground="#2E7D32"
+                                                                           Foreground="#0D47A1"
                                                                            FontSize="9"
-                                                                           MaxWidth="880"
-                                                                           TextWrapping="Wrap"
-                                                                           Visibility="{Binding OutputSummary, Converter={StaticResource NullOrEmptyToCollapsed}}"/>
+                                                                           ToolTip="{Binding OutputSummary}"
+                                                                           Visibility="{Binding OutputSummary, Converter={StaticResource NullOrEmptyToCollapsed}}">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                                            <Setter Property="TextWrapping" Value="NoWrap"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                                    <Setter Property="TextTrimming" Value="None"/>
+                                                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+
+                                                                <!-- ERR: đỏ đậm. -->
                                                                 <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
                                                                            Margin="0,2,0,0"
-                                                                           Foreground="#C62828"
+                                                                           Foreground="#B71C1C"
                                                                            FontSize="9"
-                                                                           MaxWidth="880"
-                                                                           TextWrapping="Wrap"
-                                                                           Visibility="{Binding ErrorMessage, Converter={StaticResource NullOrEmptyToCollapsed}}"/>
+                                                                           FontWeight="SemiBold"
+                                                                           ToolTip="{Binding ErrorMessage}"
+                                                                           Visibility="{Binding ErrorMessage, Converter={StaticResource NullOrEmptyToCollapsed}}">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                                            <Setter Property="TextWrapping" Value="NoWrap"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                                    <Setter Property="TextTrimming" Value="None"/>
+                                                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>

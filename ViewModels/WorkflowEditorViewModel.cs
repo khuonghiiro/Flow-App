@@ -150,10 +150,53 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private double executionTraceZoom = 1.0;
 
+        /// <summary>
+        /// Giới hạn chiều rộng card log (title + IN/OUT/ERR). Vượt quá sẽ trim ellipsis khi collapsed
+        /// hoặc wrap xuống dòng khi user expand từng card.
+        /// </summary>
+        [ObservableProperty]
+        private double executionTraceCardMaxWidth = 380;
+
+        // ---- Cấu hình xuất log (JSON) ----
+        // Cho phép bật/tắt từng trường nặng (IN/OUT/ERR) + cắt độ dài để giảm kích thước file.
+
+        [ObservableProperty]
+        private bool exportIncludeInput = true;
+
+        [ObservableProperty]
+        private bool exportIncludeOutput = true;
+
+        [ObservableProperty]
+        private bool exportIncludeError = true;
+
+        /// <summary>
+        /// Độ dài tối đa (ký tự) cho IN/OUT/ERR khi export. 0 hoặc âm = không cắt (giữ nguyên).
+        /// </summary>
+        [ObservableProperty]
+        private int exportMaxFieldLength = 0;
+
+        /// <summary>True để kèm cấu trúc cây Run (tree) ngoài danh sách flat rows.</summary>
+        [ObservableProperty]
+        private bool exportIncludeTree = true;
+
+        /// <summary>True để chỉ xuất các rows đang thỏa filter/search hiện tại.</summary>
+        [ObservableProperty]
+        private bool exportOnlyCurrentFilter = false;
+
+        /// <summary>True để xuất JSON pretty-printed (dễ đọc, file to hơn một chút).</summary>
+        [ObservableProperty]
+        private bool exportPrettyPrint = true;
+
         public ObservableCollection<string> ExecutionTraceStatusOptions { get; } = new() { "All", "running", "completed", "failed" };
         public ObservableCollection<string> ExecutionTraceNodeTypeOptions { get; } = new() { "All" };
 
         public bool IsExecutionTracePanelVisible => EnableExecutionTraceLog && IsExecutionTracePanelExpanded;
+
+        /// <summary>
+        /// True khi user đã bật trace nhưng đang ẩn panel → hiển thị nút nổi để mở lại panel.
+        /// </summary>
+        public bool IsExecutionTraceReopenerVisible => EnableExecutionTraceLog && !IsExecutionTracePanelExpanded;
+
         public double ExecutionTracePanelHeight => IsExecutionTracePanelMaximized ? 10000d : 320d;
 
         /// <summary>True khi panel log đang mở và maximize — ẩn canvas để chỉ xem log.</summary>
@@ -203,6 +246,7 @@ namespace FlowMy.ViewModels
         partial void OnEnableExecutionTraceLogChanged(bool value)
         {
             OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+            OnPropertyChanged(nameof(IsExecutionTraceReopenerVisible));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
             if (!value)
                 ClearExecutionTraceLogs();
@@ -211,6 +255,7 @@ namespace FlowMy.ViewModels
         partial void OnIsExecutionTracePanelExpandedChanged(bool value)
         {
             OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+            OnPropertyChanged(nameof(IsExecutionTraceReopenerVisible));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
         }
 
@@ -268,6 +313,14 @@ namespace FlowMy.ViewModels
                 return;
             }
 
+            var configDialog = new FlowMy.Views.Overlays.ExecutionTraceExportDialog
+            {
+                Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                     ?? Application.Current?.MainWindow,
+                DataContext = this
+            };
+            if (configDialog.ShowDialog() != true) return;
+
             var dialog = new SaveFileDialog
             {
                 Filter = "JSON files (*.json)|*.json",
@@ -278,27 +331,46 @@ namespace FlowMy.ViewModels
 
             try
             {
-                List<object> rows;
+                var includeIn = ExportIncludeInput;
+                var includeOut = ExportIncludeOutput;
+                var includeErr = ExportIncludeError;
+                var maxLen = ExportMaxFieldLength > 0 ? ExportMaxFieldLength : 0;
+                var onlyFiltered = ExportOnlyCurrentFilter;
+
+                IEnumerable<ExecutionTraceLogItemViewModel> source;
                 lock (_executionTraceLock)
                 {
-                    rows = ExecutionTraceLogs.Select(x => new
+                    source = onlyFiltered && ExecutionTraceFilteredView != null
+                        ? ExecutionTraceFilteredView.Cast<ExecutionTraceLogItemViewModel>().ToList()
+                        : ExecutionTraceLogs.ToList();
+                }
+
+                var rows = source.Select(x => (object)new
+                {
+                    x.TimestampUtc,
+                    x.TimestampText,
+                    x.RootExecutionId,
+                    x.ExecutionId,
+                    x.Status,
+                    x.ElapsedText,
+                    x.NodeId,
+                    x.NodeTitle,
+                    x.NodeType,
+                    x.ParentNodeId,
+                    x.ParentNodeTitle,
+                    x.Depth,
+                    InputSummary = includeIn ? TruncateForExport(x.InputSummary, maxLen) : null,
+                    OutputSummary = includeOut ? TruncateForExport(x.OutputSummary, maxLen) : null,
+                    ErrorMessage = includeErr ? TruncateForExport(x.ErrorMessage, maxLen) : null
+                }).ToList();
+
+                object? treePayload = null;
+                if (ExportIncludeTree)
+                {
+                    lock (_executionTraceLock)
                     {
-                        x.TimestampUtc,
-                        x.TimestampText,
-                        x.RootExecutionId,
-                        x.ExecutionId,
-                        x.Status,
-                        x.ElapsedText,
-                        x.NodeId,
-                        x.NodeTitle,
-                        x.NodeType,
-                        x.ParentNodeId,
-                        x.ParentNodeTitle,
-                        x.Depth,
-                        x.InputSummary,
-                        x.OutputSummary,
-                        x.ErrorMessage
-                    } as object).ToList();
+                        treePayload = ExecutionTraceRunRoots.Select(r => BuildExportTreeNode(r, includeIn, includeOut, includeErr, maxLen)).ToList();
+                    }
                 }
 
                 var payload = new
@@ -308,13 +380,28 @@ namespace FlowMy.ViewModels
                     {
                         search = ExecutionTraceSearchText,
                         status = ExecutionTraceStatusFilter,
-                        nodeType = ExecutionTraceNodeTypeFilter
+                        nodeType = ExecutionTraceNodeTypeFilter,
+                        onlyFiltered
+                    },
+                    options = new
+                    {
+                        includeInput = includeIn,
+                        includeOutput = includeOut,
+                        includeError = includeErr,
+                        maxFieldLength = maxLen,
+                        includeTree = ExportIncludeTree,
+                        prettyPrint = ExportPrettyPrint
                     },
                     total = rows.Count,
-                    items = rows
+                    items = rows,
+                    tree = treePayload
                 };
 
-                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                {
+                    WriteIndented = ExportPrettyPrint,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
                 File.WriteAllText(dialog.FileName, json);
                 MessageBox.Show("Đã xuất execution log JSON thành công.", "Execution Log", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -322,6 +409,39 @@ namespace FlowMy.ViewModels
             {
                 MessageBox.Show($"Xuất log thất bại: {ex.Message}", "Execution Log", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private static string? TruncateForExport(string? value, int maxLen)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+            if (maxLen <= 0 || value.Length <= maxLen) return value;
+            return value.Substring(0, maxLen) + "...";
+        }
+
+        private static object BuildExportTreeNode(
+            ExecutionTraceTreeNodeViewModel vm,
+            bool includeIn,
+            bool includeOut,
+            bool includeErr,
+            int maxLen)
+        {
+            return new
+            {
+                vm.RootExecutionId,
+                vm.ExecutionId,
+                vm.NodeId,
+                vm.NodeTitle,
+                vm.NodeType,
+                vm.ParentNodeId,
+                vm.Depth,
+                vm.IsRunRoot,
+                vm.Status,
+                vm.ElapsedText,
+                InputSummary = includeIn ? TruncateForExport(vm.InputSummary, maxLen) : null,
+                OutputSummary = includeOut ? TruncateForExport(vm.OutputSummary, maxLen) : null,
+                ErrorMessage = includeErr ? TruncateForExport(vm.ErrorMessage, maxLen) : null,
+                Children = vm.Children.Select(c => BuildExportTreeNode(c, includeIn, includeOut, includeErr, maxLen)).ToList()
+            };
         }
 
         [RelayCommand]
