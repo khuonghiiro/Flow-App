@@ -101,6 +101,12 @@ namespace FlowMy.Views
         private double _prevSplitterColumnMinWidth = 5;
         private double _prevSplitterColumnMaxWidth = 5;
 
+        /// <summary>
+        /// Đánh dấu menu trái đang bị auto-collapse vì user đặt panel log ở dock Left.
+        /// True = chuyển dock khác cần tự bung lại menu trái (nếu user chưa tự toggle).
+        /// </summary>
+        private bool _traceDockAutoCollapsedLeftMenu;
+
         private ConnectionLineStyle _connectionLineStyle = ConnectionLineStyle.Bezier;
 
         // GPU Settings
@@ -222,7 +228,11 @@ namespace FlowMy.Views
 
             // Nếu preferences đã lưu mode=Detached thì reparent panel log sang cửa sổ riêng
             // ngay sau khi cửa sổ chính load xong (defer để CanvasHostGrid đã build visual tree).
-            Loaded += (_, _) => SyncExecutionTraceDetachState();
+            Loaded += (_, _) =>
+            {
+                SyncExecutionTraceDetachState();
+                SyncLeftMenuForExecutionTraceDockMode();
+            };
             // Đảm bảo đóng cửa sổ detach khi main window close để không bị window dangling.
             Closed += (_, _) =>
             {
@@ -1228,6 +1238,7 @@ namespace FlowMy.Views
                 || e.PropertyName == nameof(WorkflowEditorViewModel.EnableExecutionTraceLog))
             {
                 SyncExecutionTraceDetachState();
+                SyncLeftMenuForExecutionTraceDockMode();
             }
 
             // Khi bắt đầu load workflow (IsLoading -> true) dọn UI cũ để tránh port/line rác.

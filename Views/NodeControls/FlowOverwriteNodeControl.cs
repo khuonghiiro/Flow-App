@@ -40,6 +40,16 @@ public static class FlowOverwriteNodeControl
             BorderThickness = new Thickness(2),
             CornerRadius = new CornerRadius(10),
             Cursor = Cursors.Hand,
+            // Shadow chuẩn: đồng bộ với các NodeControl khác (xem NODE_CREATION_SPEC §4.5 bước 3),
+            // nếu không set sẽ bị mất drop-shadow khi thả node vào canvas.
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = Colors.Black,
+                Direction = 270,
+                ShadowDepth = 5,
+                BlurRadius = 10,
+                Opacity = 0.5
+            },
             Tag = node
         };
         border.Focusable = true;

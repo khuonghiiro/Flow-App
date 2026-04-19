@@ -246,6 +246,10 @@ namespace FlowMy.Views
             if (_isViewportExpandedUiHidden)
                 return;
 
+            // User bấm tay thu menu trái => clear flag auto-collapse của trace dock,
+            // để không bị tự bung lại khi đổi dock mode sau này.
+            _traceDockAutoCollapsedLeftMenu = false;
+
             var from = ReadCurrentPaletteTotalWidth();
             if (from < NodePaletteMinOpenTotal)
                 from = _nodePaletteStoredOpenTotalWidth;
@@ -264,6 +268,10 @@ namespace FlowMy.Views
             if (_isViewportExpandedUiHidden)
                 return;
 
+            // User bấm tay mở menu trái => clear flag auto-collapse của trace dock,
+            // tránh việc khi chuyển sang mode khác lại lặp bung thêm lần nữa.
+            _traceDockAutoCollapsedLeftMenu = false;
+
             _suppressExpandDuringOpenAnimation = true;
             NodePaletteExpandButton.BeginAnimation(UIElement.OpacityProperty, null);
             NodePaletteExpandButton.Opacity = 1;
@@ -275,6 +283,64 @@ namespace FlowMy.Views
                 _suppressExpandDuringOpenAnimation = false;
                 Settings.Default.WorkflowEditorNodePaletteOpen = true;
                 Settings.Default.Save();
+            });
+        }
+
+        /// <summary>
+        /// Đồng bộ trạng thái menu trái theo dock mode của panel Execution Log.
+        /// - Khi user chuyển panel sang dock Left: nếu menu trái đang mở, tự thu gọn (remember = true)
+        ///   để tránh tranh chấp vùng hiển thị (menu + panel log cùng bên trái).
+        /// - Khi user chuyển sang Bottom/Right/Detached: nếu trước đó ta đã auto-collapse, tự mở lại.
+        /// - Nếu menu trái vốn đã đóng sẵn (Settings=false) thì không đụng tới: giữ nguyên ý muốn của user.
+        /// </summary>
+        private void SyncLeftMenuForExecutionTraceDockMode()
+        {
+            if (ViewModel == null) return;
+            if (_isViewportExpandedUiHidden) return;
+
+            // Panel log phải thực sự ở chế độ dock-Left và đang hiện mới coi là tranh vùng.
+            bool panelLeftActive = ViewModel.IsTraceDockLeft
+                                   && ViewModel.IsExecutionTracePanelExpanded
+                                   && ViewModel.EnableExecutionTraceLog;
+
+            if (panelLeftActive)
+            {
+                // Chỉ auto-thu nếu menu đang mở. Width > ngưỡng mới được coi là "đang mở".
+                bool menuOpen = Settings.Default.WorkflowEditorNodePaletteOpen
+                                && ReadCurrentPaletteTotalWidth() > NodePaletteExpandShowBelowTotal;
+                if (!menuOpen) return;
+                if (_traceDockAutoCollapsedLeftMenu) return; // đã auto-thu rồi
+
+                _traceDockAutoCollapsedLeftMenu = true;
+
+                var from = ReadCurrentPaletteTotalWidth();
+                if (from < NodePaletteMinOpenTotal)
+                    from = _nodePaletteStoredOpenTotalWidth;
+                _nodePaletteStoredOpenTotalWidth = Math.Clamp(from, NodePaletteMinOpenTotal, NodePaletteMaxOpenTotal);
+
+                // KHÔNG đổi Settings.WorkflowEditorNodePaletteOpen: giữ intent "user muốn mở"
+                // để khi panel log rời dock Left ta bung lại đúng trạng thái cũ.
+                StartPaletteWidthAnimation(from, 0, onCompleted: null);
+                PlayExpandButtonEntrance();
+                return;
+            }
+
+            // Không còn ở dock Left. Nếu trước đó ta auto-thu, thì tự bung lại.
+            if (!_traceDockAutoCollapsedLeftMenu) return;
+            _traceDockAutoCollapsedLeftMenu = false;
+
+            // Chỉ bung nếu user vẫn còn muốn menu trái mở (Settings intent = true).
+            if (!Settings.Default.WorkflowEditorNodePaletteOpen) return;
+
+            _suppressExpandDuringOpenAnimation = true;
+            NodePaletteExpandButton.BeginAnimation(UIElement.OpacityProperty, null);
+            NodePaletteExpandButton.Opacity = 1;
+            NodePaletteExpandButton.Visibility = Visibility.Collapsed;
+
+            var target = Math.Clamp(_nodePaletteStoredOpenTotalWidth, NodePaletteMinOpenTotal, NodePaletteMaxOpenTotal);
+            StartPaletteWidthAnimation(0, target, () =>
+            {
+                _suppressExpandDuringOpenAnimation = false;
             });
         }
     }

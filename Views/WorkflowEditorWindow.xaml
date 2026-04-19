@@ -142,7 +142,6 @@
                                 Width="100"
                                 Margin="8,0,0,0"
                                 Cursor="Hand"
-                                Background="#EF4444"
                                 Padding="8,4">
                             <StackPanel Orientation="Horizontal">
                                 <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
@@ -2061,6 +2060,12 @@ Cursor="Hand"
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </Border.Resources>
+                            <!-- Responsive: khi dock Left/Right hoặc panel narrow, toolbar dài hơn width sẽ cuộn ngang thay vì bị che. -->
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Disabled"
+                                          Padding="0"
+                                          BorderThickness="0"
+                                          Focusable="False">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -2225,6 +2230,7 @@ Cursor="Hand"
                                     </Button>
                                 </StackPanel>
                             </Grid>
+                            </ScrollViewer>
                         </Border>
 
                         <Grid Grid.Row="1">
