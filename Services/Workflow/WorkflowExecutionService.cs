@@ -38,6 +38,15 @@ namespace FlowMy.Services.Workflow
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>> _scopedStringOutputsByRun =
             new(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Bản sao "bền" theo gốc root-run: RootRunId → ExecutionId → NodeId → key → value.
+        /// Giữ lại giá trị ngay cả khi <see cref="_scopedStringOutputsByRun"/> bị clear/evict trước khi downstream đọc
+        /// (ví dụ: AsyncTask nhiều dispatch + HTTP chạy lâu → lookup chain primary miss, sticky cover).
+        /// Chỉ bị xóa khi root run thực sự kết thúc (xem <see cref="ClearScopedOutputsForRun"/>).
+        /// </summary>
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>>> _stickyScopedStringOutputsByRoot =
+            new(StringComparer.Ordinal);
+
         /// <summary>Giới hạn số snapshot run còn giữ trong RAM (tránh rò nếu quên Clear); run cũ nhất bị evict.</summary>
         private const int MaxScopedRunsRetained = 64;
 
@@ -59,6 +68,19 @@ namespace FlowMy.Services.Workflow
             var byKey = byNode.GetOrAdd(nodeId,
                 static _ => new ConcurrentDictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
             byKey[k] = value;
+
+            // Mirror vào sticky theo root run để downstream vẫn đọc được dù primary scoped bị evict/clear sớm.
+            var rootId = NormalizeToRootRunId(executionId);
+            if (!string.IsNullOrWhiteSpace(rootId))
+            {
+                var stickyByExec = _stickyScopedStringOutputsByRoot.GetOrAdd(rootId,
+                    static _ => new ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>>(StringComparer.Ordinal));
+                var stickyByNode = stickyByExec.GetOrAdd(executionId,
+                    static _ => new ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>(StringComparer.OrdinalIgnoreCase));
+                var stickyByKey = stickyByNode.GetOrAdd(nodeId,
+                    static _ => new ConcurrentDictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
+                stickyByKey[k] = value;
+            }
         }
 
         internal bool TryGetScopedNodeStringOutput(string executionId, string nodeId, string key, out string? value)
@@ -67,17 +89,40 @@ namespace FlowMy.Services.Workflow
             if (string.IsNullOrWhiteSpace(executionId) || string.IsNullOrWhiteSpace(nodeId)) return false;
             var k = (key ?? string.Empty).Trim();
             if (k.Length == 0) return false;
-            if (!_scopedStringOutputsByRun.TryGetValue(executionId, out var byNode)) return false;
-            if (!byNode.TryGetValue(nodeId, out var byKey)) return false;
-            if (byKey.TryGetValue(k, out value)) return true;
-            foreach (var kv in byKey)
+
+            // 1) Primary scoped store.
+            if (_scopedStringOutputsByRun.TryGetValue(executionId, out var byNode) &&
+                byNode.TryGetValue(nodeId, out var byKey))
             {
-                if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                if (byKey.TryGetValue(k, out value)) return true;
+                foreach (var kv in byKey)
                 {
-                    value = kv.Value;
-                    return true;
+                    if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = kv.Value;
+                        return true;
+                    }
                 }
             }
+
+            // 2) Sticky fallback (theo root run): tồn tại kể cả sau khi primary bị clear/evict sớm.
+            var rootId = NormalizeToRootRunId(executionId);
+            if (!string.IsNullOrWhiteSpace(rootId) &&
+                _stickyScopedStringOutputsByRoot.TryGetValue(rootId, out var stickyByExec) &&
+                stickyByExec.TryGetValue(executionId, out var stickyByNode) &&
+                stickyByNode.TryGetValue(nodeId, out var stickyByKey))
+            {
+                if (stickyByKey.TryGetValue(k, out value)) return true;
+                foreach (var kv in stickyByKey)
+                {
+                    if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = kv.Value;
+                        return true;
+                    }
+                }
+            }
+
             return false;
         }
 
@@ -144,7 +189,11 @@ namespace FlowMy.Services.Workflow
             }
         }
 
-        /// <summary>Xóa snapshot output của một lần chạy (gọi sau khi workflow kết thúc để giảm RAM).</summary>
+        /// <summary>
+        /// Xóa snapshot output của một lần chạy (gọi sau khi workflow kết thúc để giảm RAM).
+        /// Chỉ xóa sticky store khi <paramref name="executionId"/> là ROOT run (không phải dispatch/at-manual branch) —
+        /// downstream trong cùng root run vẫn đọc được giá trị của các dispatch đã hoàn tất.
+        /// </summary>
         public void ClearScopedOutputsForRun(string executionId)
         {
             if (string.IsNullOrWhiteSpace(executionId)) return;
@@ -159,11 +208,69 @@ namespace FlowMy.Services.Workflow
                     _scopedRunLruNodes.Remove(executionId);
                 }
             }
+
+            // Sticky store: chỉ xóa khi root run (không phải dispatch/at-manual branch).
+            // Lý do: nhiều dispatch có thể clear primary trong quá trình loop nhưng downstream vẫn cần đọc giá trị.
+            if (!IsParallelScopedRun(executionId))
+            {
+                _stickyScopedStringOutputsByRoot.TryRemove(executionId, out _);
+
+                // Dọn luôn mọi entry primary thuộc root này (dispatch-X / at-manual-…) để tránh leak.
+                var prefix = executionId + ":";
+                var orphanKeys = _scopedStringOutputsByRun.Keys
+                    .Where(k => k.StartsWith(prefix, StringComparison.Ordinal))
+                    .ToList();
+                foreach (var orphan in orphanKeys)
+                {
+                    _scopedStringOutputsByRun.TryRemove(orphan, out _);
+                    lock (_scopedRunRegistryLock)
+                    {
+                        if (_scopedRunLruNodes.TryGetValue(orphan, out var n))
+                        {
+                            _scopedRunLru.Remove(n);
+                            _scopedRunLruNodes.Remove(orphan);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// True nếu <paramref name="executionId"/> nằm trong nhánh chạy song song (AsyncTask dispatch hoặc at-manual branch).
+        /// Trong các nhánh này KHÔNG được fallback về state dùng chung của <see cref="WorkflowNode.ResolvedOutputs"/>
+        /// vì nó bị ghi đè chéo giữa các dispatch (dispatch hoàn thành sau cùng "thắng").
+        /// </summary>
+        internal static bool IsParallelScopedRun(string? executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId)) return false;
+            return executionId.Contains(":dispatch-", StringComparison.Ordinal) ||
+                   executionId.Contains(":at-manual-", StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Bóc toàn bộ hậu tố <c>:dispatch-…</c> và <c>:at-manual-…</c> để lấy id gốc của root run
+        /// (dùng làm khóa cho <see cref="_stickyScopedStringOutputsByRoot"/>).
+        /// </summary>
+        private static string NormalizeToRootRunId(string? executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId)) return string.Empty;
+            var id = executionId.Trim();
+            while (true)
+            {
+                var iA = id.LastIndexOf(":at-manual-", StringComparison.Ordinal);
+                var iD = id.LastIndexOf(":dispatch-", StringComparison.Ordinal);
+                var i = Math.Max(iA, iD);
+                if (i < 0) return id;
+                id = id[..i];
+            }
         }
 
         /// <summary>
         /// Resolve theo snapshot scoped của <paramref name="executionId"/> (nếu có), fallback UI/node phẳng.
         /// Dùng khi không có full <see cref="NodeExecutors.NodeExecutionEnvironment"/> (mirror Storage, v.v.).
+        /// Lookup chain đã được gia cố bằng sticky-per-root-run (xem <see cref="SetScopedNodeStringOutput"/>)
+        /// nên primary miss hầu như chỉ xảy ra với node publish qua sự kiện ngoài (WebNode browser events, v.v.).
+        /// Với các node đó shared <see cref="WorkflowNode.DynamicOutputs"/> là nguồn hợp lệ duy nhất.
         /// </summary>
         internal string ResolveDynamicValueForRun(WorkflowNode? node, string? key, string? executionId)
         {
@@ -174,9 +281,13 @@ namespace FlowMy.Services.Workflow
             if (!string.IsNullOrWhiteSpace(executionId) &&
                 TryGetScopedNodeStringOutputForLookupChain(executionId, node.Id, k, out var scoped) &&
                 scoped != null)
+            {
                 resolved = scoped;
+            }
             else
+            {
                 resolved = NodeDataPanelService.ResolveDynamicValueByKey(node, k) ?? string.Empty;
+            }
             return string.Equals(resolved, "—", StringComparison.Ordinal) ? string.Empty : resolved;
         }
 
