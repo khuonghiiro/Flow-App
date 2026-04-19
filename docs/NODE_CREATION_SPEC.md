@@ -17,6 +17,7 @@
 8. [Responsive Screen & Dialog Sizing](#8-responsive-screen--dialog-sizing)
 9. [Lỗi thường gặp & cách tránh](#9-lỗi-thường-gặp--cách-tránh)
 10. [Reference Implementations](#10-reference-implementations)
+11. [IconKey / ColorKey — Checklist bắt buộc cho mọi node](#11-iconkey--colorkey--checklist-bắt-buộc-cho-mọi-node)
 
 ---
 
@@ -1616,4 +1617,92 @@ Node A (source)                     Node B (consumer)
 
 ---
 
-*Tài liệu tổng hợp từ AI_NODE_FLOW_GUIDE.md, NODE_DIALOG_GUIDE.md, Node_Dialog_V2.md và source code thực tế — 2026-04-18*
+## 11. IconKey / ColorKey — Checklist bắt buộc cho mọi node
+
+> Mọi node mới (hoặc node cũ bị thiếu) PHẢI khai báo đầy đủ ở **4 chỗ** dưới đây. Nếu thiếu bất kỳ
+> chỗ nào, node sẽ bị rơi vào fallback (icon `circle-nodes`, nền `AccentBrush`, icon màu đen trên nền tối).
+
+### 11.1 Bốn chỗ phải khớp nhau
+
+| # | File | Khai báo gì | Ghi chú |
+|---|------|-------------|---------|
+| 1 | `Views/WorkflowEditorWindow.xaml` (khối `NodeTemplatesPanel`) | `Tag="<NodeType>"` + `Background="{DynamicResource <ColorKey>Brush}"` + `ConverterParameter='<iconKey>'` + `Fill="{DynamicResource TextOn<ColorKey>Brush}"` | Hiển thị ở palette bên trái |
+| 2 | `Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs` (`GetIconNameForNodeType`) | `case "<NodeType>" => "<iconKey>"` | Icon node hiển thị trên canvas |
+| 3 | `Workflow/TemplateFactory.cs` (hàm `Create<NodeType>`) | `ColorKey = "<ColorKey>"` trên model | Dùng cho theme & serialize |
+| 4 | `ViewModels/WorkflowEditorViewModel.cs` (`ResolveNodeIconKey`) | `NodeType.<X> => "<iconKey>"` | Icon hiển thị trong Execution Trace panel (log chạy) |
+
+**Ví dụ node `Storage`** (dùng ColorKey `VioletHaze`, iconKey `arrow-progress sharp-regular`):
+
+```xml
+<!-- (1) Views/WorkflowEditorWindow.xaml -->
+<Border Style="{StaticResource PaletteIconNodeStyle}"
+        Background="{DynamicResource VioletHazeBrush}"
+        Tag="Storage">
+  <controls:SvgViewboxEx
+      Source="{Binding Source={x:Static sys:String.Empty},
+               Converter={StaticResource IconKeyToPathConverter},
+               ConverterParameter='arrow-progress sharp-regular'}"
+      Fill="{DynamicResource TextOnVioletHazeBrush}"/>
+</Border>
+```
+
+```csharp
+// (2) Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs
+"Storage" => "arrow-progress sharp-regular",
+
+// (3) Workflow/TemplateFactory.cs
+var node = new StorageNode { ColorKey = "VioletHaze", Type = NodeType.Storage };
+
+// (4) ViewModels/WorkflowEditorViewModel.cs → ResolveNodeIconKey(...)
+NodeType.Storage => "arrow-progress sharp-regular",
+```
+
+### 11.2 Cách ColorKey được dùng (quan trọng)
+
+- **Nền node trên canvas / palette**: `DynamicResource <ColorKey>Brush` — brush phải tồn tại trong
+  `Themes/Base/Colors/Common.xaml` (mọi ColorKey trong hệ thống đều đã có cặp brush tương ứng).
+- **Màu chữ / icon trên nền đó**: `DynamicResource TextOn<ColorKey>Brush` — được đặt sẵn (White
+  cho nền tối, `#1F2937`/`#333` cho nền sáng). **Không hardcode `Black`/`White`**.
+- **Trace Log card** (ViewModels/`ExecutionTraceTreeNodeViewModel.cs`): card tự resolve icon brush
+  theo quy ước `TextOn{ColorKey}Brush` trong hàm `ResolveIconBrush`. Vì vậy chỉ cần node có
+  `ColorKey` đúng và brush `TextOn<ColorKey>Brush` tồn tại là icon sẽ tự tương phản; không phải sửa
+  thêm code.
+
+### 11.3 Khi thêm ColorKey mới
+
+Nếu node dùng ColorKey **chưa tồn tại** (ví dụ `NeonLime`), phải thêm 2 brush trong
+`Themes/Base/Colors/Common.xaml`:
+
+```xml
+<SolidColorBrush x:Key="NeonLimeBrush" Color="#C6FF00"/>
+<SolidColorBrush x:Key="TextOnNeonLimeBrush" Color="#1F2937"/>  <!-- tối vì nền quá sáng -->
+```
+
+Nếu không có `TextOn<ColorKey>Brush`, trace card tự fallback về `TextOnPrimaryBrush` (thường là
+trắng) — đủ dùng nhưng **không khuyến khích**, nhất là với nền ColorKey sáng (sẽ bị mờ chữ).
+
+### 11.4 Execution Trace panel — các điểm phụ thuộc cấu hình
+
+Ngoài IconKey/ColorKey, panel "Hiện log chạy" còn dùng:
+
+- `WorkflowExecutionContext.CurrentExecutionId` (AsyncLocal) — executor phải set khi dispatch để
+  log không nhảy sai khi có AsyncTask song song (đã có sẵn trong `WorkflowExecutionService.ExecuteNodeAsync`).
+- `WorkflowEditorViewModel.ResolveTraceNodeBrush(node)` — fallback về `AccentBrush` nếu ColorKey
+  không resolve được brush.
+- `ExecutionTracePreferencesStore` (`Services/Utilities/`) — lưu `EnableExecutionTraceLog`,
+  `IsExecutionTracePanelExpanded`, cấu hình export... tại `%LocalAppData%\FlowMy\execution-trace-preferences.json`.
+
+### 11.5 Checklist nhanh khi tạo node mới
+
+```yaml
+☐ Thêm NodeType enum value (Models/Nodes/NodeType.cs)
+☐ Palette: Border + Tag + ColorKey background + iconKey + TextOn...Brush fill  (WorkflowEditorWindow.xaml)
+☐ Canvas icon: GetIconNameForNodeType → thêm case                              (WorkflowEditorWindow.TemplateNodeHandler.cs)
+☐ Template: Create<X>() set ColorKey                                            (TemplateFactory.cs)
+☐ Execution Trace iconKey: ResolveNodeIconKey → thêm case                       (WorkflowEditorViewModel.cs)
+☐ Nếu ColorKey mới: thêm <X>Brush + TextOn<X>Brush                              (Themes/Base/Colors/Common.xaml)
+```
+
+---
+
+*Tài liệu tổng hợp từ AI_NODE_FLOW_GUIDE.md, NODE_DIALOG_GUIDE.md, Node_Dialog_V2.md và source code thực tế — cập nhật 2026-04-19*

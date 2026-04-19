@@ -2145,7 +2145,10 @@ Cursor="Hand"
                                                             Background="{Binding TraceCardBackgroundBrush}"
                                                             HorizontalAlignment="Left"
                                                             MinWidth="220"
-                                                            MaxWidth="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.ExecutionTraceCardMaxWidth}">
+                                                            MaxWidth="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.ExecutionTraceCardMaxWidth}"
+                                                            Cursor="Hand"
+                                                            ToolTip="Click để di chuyển canvas tới node này"
+                                                            MouseLeftButtonUp="ExecutionLogNodeIcon_MouseLeftButtonUp">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="18"/>
@@ -2203,7 +2206,7 @@ Cursor="Hand"
                                                                                 Background="{Binding NodeBrush}">
                                                                             <controls:SvgViewboxEx Width="11"
                                                                                                    Height="11"
-                                                                                                   Fill="{DynamicResource TextOnPrimaryBrush}"
+                                                                                                   Fill="{Binding IconBrush}"
                                                                                                    Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
                                                                         </Border>
                                                                         <TextBlock Text="{Binding NodeTitle}"

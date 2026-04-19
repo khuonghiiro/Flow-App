@@ -1,0 +1,70 @@
+using System;
+using System.IO;
+using System.Text.Json;
+
+namespace FlowMy.Services.Utilities
+{
+    /// <summary>
+    /// Cấu hình user-level cho Execution Trace panel (bật log run, cấu hình export...),
+    /// tồn tại giữa các lần mở app để đỡ bấm lại mỗi lần.
+    /// </summary>
+    public sealed class ExecutionTracePreferences
+    {
+        public bool EnableExecutionTraceLog { get; set; } = false;
+        public bool IsExecutionTracePanelExpanded { get; set; } = true;
+        public double ExecutionTraceCardMaxWidth { get; set; } = 720;
+
+        // Export defaults
+        public bool ExportIncludeInput { get; set; } = true;
+        public bool ExportIncludeOutput { get; set; } = true;
+        public bool ExportIncludeError { get; set; } = true;
+        public int ExportMaxFieldLength { get; set; } = 0;
+        public bool ExportIncludeTree { get; set; } = true;
+        public bool ExportOnlyCurrentFilter { get; set; } = false;
+        public bool ExportPrettyPrint { get; set; } = true;
+    }
+
+    public static class ExecutionTracePreferencesStore
+    {
+        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+        private static string GetSettingsFilePath()
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var folder = Path.Combine(appData, "FlowMy");
+            Directory.CreateDirectory(folder);
+            return Path.Combine(folder, "execution-trace-preferences.json");
+        }
+
+        public static ExecutionTracePreferences Load()
+        {
+            try
+            {
+                var file = GetSettingsFilePath();
+                if (!File.Exists(file))
+                    return new ExecutionTracePreferences();
+                var json = File.ReadAllText(file);
+                return JsonSerializer.Deserialize<ExecutionTracePreferences>(json, JsonOptions)
+                    ?? new ExecutionTracePreferences();
+            }
+            catch
+            {
+                return new ExecutionTracePreferences();
+            }
+        }
+
+        public static void Save(ExecutionTracePreferences prefs)
+        {
+            try
+            {
+                var file = GetSettingsFilePath();
+                var json = JsonSerializer.Serialize(prefs, JsonOptions);
+                File.WriteAllText(file, json);
+            }
+            catch
+            {
+                // best-effort; never throw from settings persistence
+            }
+        }
+    }
+}

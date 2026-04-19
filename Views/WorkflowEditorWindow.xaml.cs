@@ -414,6 +414,26 @@ namespace FlowMy.Views
         private void ExecutionLogNodeIcon_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement fe) return;
+
+            // Khi gắn trên toàn card (TraceNodeCard), bỏ qua nếu user thực sự bấm vào các control
+            // con (ToggleButton mở rộng children, toggle IN/OUT/ERR, button copy...). Những control đó
+            // tự xử lý click riêng; ta chỉ điều hướng khi user bấm vào vùng trống của card.
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                var walker = dep;
+                while (walker != null && !ReferenceEquals(walker, fe))
+                {
+                    if (walker is System.Windows.Controls.Primitives.ButtonBase
+                        || walker is System.Windows.Controls.Primitives.TextBoxBase
+                        || walker is System.Windows.Controls.Primitives.ToggleButton
+                        || walker is System.Windows.Controls.ComboBox)
+                    {
+                        return;
+                    }
+                    walker = System.Windows.Media.VisualTreeHelper.GetParent(walker);
+                }
+            }
+
             if (fe.DataContext is FlowMy.ViewModels.ExecutionTraceLogItemViewModel row && row.Node != null)
             {
                 TryScrollToNodePreserveZoom(row.Node);

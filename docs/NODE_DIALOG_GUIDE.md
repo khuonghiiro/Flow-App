@@ -4216,24 +4216,52 @@ Common icon keys in `IconResources.cs`:
 
 Use with `IconKeyToPathConverter` to get SVG path.
 
-### Palette icon ↔ node type mapping (GetIconNameForNodeType)
+### Palette icon ↔ node type mapping — **Bộ 4 phải khớp nhau**
 
-- **Quy tắc**: Khi thêm 1 icon mới trong palette bên trái (kéo node từ menu trái ra canvas), bạn **phải**:
-  - **(1)** Đặt `Tag` của `Border` trong `WorkflowEditorWindow.xaml` đúng với `nodeType` của node (ví dụ: `Tag="StringSplit"`).
-  - **(2)** Chọn `IconKey` (tham số `ConverterParameter`) cho icon hiển thị trong palette (ví dụ: `ConverterParameter='scissors'`).
-  - **(3)** Thêm map tương ứng trong `GetIconNameForNodeType(string nodeType)` ở `WorkflowEditorWindow.TemplateNodeHandler.cs` để node trên canvas dùng **cùng icon**.
+Khi thêm node mới **hoặc** phát hiện node cũ bị thiếu icon/color (đặc biệt là trong Execution Trace
+panel), đảm bảo đủ **4 khai báo** dưới đây. Thiếu bất kỳ dòng nào → node rơi vào fallback
+(`circle-nodes`, `AccentBrush`, icon đen trên nền tối — rất khó nhìn).
 
-Ví dụ với node `StringSplit`:
-- `WorkflowEditorWindow.xaml`:
-  - `Tag="StringSplit"`
-  - `ConverterParameter='scissors'`
-- `WorkflowEditorWindow.TemplateNodeHandler.cs`:
-  - Trong `GetIconNameForNodeType`: thêm case `"StringSplit" => "scissors",`
+| # | File | Khai báo |
+|---|------|----------|
+| (1) | `Views/WorkflowEditorWindow.xaml` palette | `Tag="<NodeType>"` + `Background="{DynamicResource <ColorKey>Brush}"` + `ConverterParameter='<iconKey>'` + `Fill="{DynamicResource TextOn<ColorKey>Brush}"` |
+| (2) | `Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs` | `"<NodeType>" => "<iconKey>"` trong `GetIconNameForNodeType` |
+| (3) | `Workflow/TemplateFactory.cs` | `ColorKey = "<ColorKey>"` khi tạo model |
+| (4) | `ViewModels/WorkflowEditorViewModel.cs` | `NodeType.<X> => "<iconKey>"` trong `ResolveNodeIconKey` (dùng cho Execution Trace / Run Log) |
 
-**Kết luận**: Mỗi loại node mới phải có **bộ 3 khớp nhau**:
-- `NodeType/Tag` (ví dụ: `StringSplit`)
-- Icon key trong XAML palette (ví dụ: `'scissors'`)
-- Icon name trả về từ `GetIconNameForNodeType` (ví dụ: `"scissors"`)
+Ví dụ với node `StringSplit` (ColorKey `OceanBlue`, iconKey `scissors light`):
+
+```xml
+<!-- (1) palette -->
+<Border Style="{StaticResource PaletteIconNodeStyle}"
+        Background="{DynamicResource OceanBlueBrush}"
+        Tag="StringSplit">
+    <controls:SvgViewboxEx
+        Source="{Binding Source={x:Static sys:String.Empty},
+                 Converter={StaticResource IconKeyToPathConverter},
+                 ConverterParameter='scissors light'}"
+        Fill="{DynamicResource TextOnOceanBlueBrush}"/>
+</Border>
+```
+
+```csharp
+// (2) GetIconNameForNodeType
+"StringSplit" => "scissors light",
+
+// (3) TemplateFactory.CreateStringSplit(...)
+ColorKey = "OceanBlue",
+
+// (4) WorkflowEditorViewModel.ResolveNodeIconKey(...)
+NodeType.StringSplit => "scissors light",
+```
+
+**ColorKey → màu chữ/icon tương phản**: luôn lấy từ `DynamicResource TextOn<ColorKey>Brush`.
+Brush này đã định nghĩa sẵn cho tất cả ColorKey trong `Themes/Base/Colors/Common.xaml`. Execution
+Trace card tự dùng chính `TextOn{ColorKey}Brush` cho icon fill → bạn **không cần** hardcode màu
+trong code behind. Nếu thêm ColorKey mới, nhớ thêm cả cặp brush này.
+
+> Xem thêm checklist đầy đủ ở `docs/NODE_CREATION_SPEC.md` §11 (IconKey / ColorKey — Checklist bắt
+> buộc cho mọi node).
 
 ---
 

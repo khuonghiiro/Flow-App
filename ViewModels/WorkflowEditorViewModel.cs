@@ -232,8 +232,26 @@ namespace FlowMy.ViewModels
                 InitializeSampleNodes();
             }
 
-            enableExecutionTraceLog = false;
-            isExecutionTracePanelExpanded = true;
+            // Khôi phục cấu hình Execution Trace panel đã lưu từ lần chạy trước (AppData\FlowMy).
+            try
+            {
+                var prefs = FlowMy.Services.Utilities.ExecutionTracePreferencesStore.Load();
+                enableExecutionTraceLog = prefs.EnableExecutionTraceLog;
+                isExecutionTracePanelExpanded = prefs.IsExecutionTracePanelExpanded;
+                if (prefs.ExecutionTraceCardMaxWidth >= 200) executionTraceCardMaxWidth = prefs.ExecutionTraceCardMaxWidth;
+                exportIncludeInput = prefs.ExportIncludeInput;
+                exportIncludeOutput = prefs.ExportIncludeOutput;
+                exportIncludeError = prefs.ExportIncludeError;
+                exportMaxFieldLength = prefs.ExportMaxFieldLength;
+                exportIncludeTree = prefs.ExportIncludeTree;
+                exportOnlyCurrentFilter = prefs.ExportOnlyCurrentFilter;
+                exportPrettyPrint = prefs.ExportPrettyPrint;
+            }
+            catch
+            {
+                enableExecutionTraceLog = false;
+                isExecutionTracePanelExpanded = true;
+            }
             ExecutionTraceFilteredView = CollectionViewSource.GetDefaultView(ExecutionTraceLogs);
             if (ExecutionTraceFilteredView != null)
             {
@@ -250,19 +268,55 @@ namespace FlowMy.ViewModels
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
             if (!value)
                 ClearExecutionTraceLogs();
+            SaveExecutionTracePreferencesSafe();
         }
 
         partial void OnIsExecutionTracePanelExpandedChanged(bool value)
         {
+            // Nếu đang maximize và user ẩn panel → cũng un-maximize để canvas hiện lại,
+            // tránh trường hợp panel ẩn nhưng canvas vẫn bị che khi lần sau mở lại.
+            if (!value && IsExecutionTracePanelMaximized)
+                IsExecutionTracePanelMaximized = false;
             OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
             OnPropertyChanged(nameof(IsExecutionTraceReopenerVisible));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
+            SaveExecutionTracePreferencesSafe();
         }
 
         partial void OnIsExecutionTracePanelMaximizedChanged(bool value)
         {
             OnPropertyChanged(nameof(ExecutionTracePanelHeight));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
+        }
+
+        partial void OnExecutionTraceCardMaxWidthChanged(double value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExportIncludeInputChanged(bool value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExportIncludeOutputChanged(bool value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExportIncludeErrorChanged(bool value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExportMaxFieldLengthChanged(int value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExportIncludeTreeChanged(bool value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExportOnlyCurrentFilterChanged(bool value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExportPrettyPrintChanged(bool value) => SaveExecutionTracePreferencesSafe();
+
+        private void SaveExecutionTracePreferencesSafe()
+        {
+            try
+            {
+                FlowMy.Services.Utilities.ExecutionTracePreferencesStore.Save(new FlowMy.Services.Utilities.ExecutionTracePreferences
+                {
+                    EnableExecutionTraceLog = EnableExecutionTraceLog,
+                    IsExecutionTracePanelExpanded = IsExecutionTracePanelExpanded,
+                    ExecutionTraceCardMaxWidth = ExecutionTraceCardMaxWidth,
+                    ExportIncludeInput = ExportIncludeInput,
+                    ExportIncludeOutput = ExportIncludeOutput,
+                    ExportIncludeError = ExportIncludeError,
+                    ExportMaxFieldLength = ExportMaxFieldLength,
+                    ExportIncludeTree = ExportIncludeTree,
+                    ExportOnlyCurrentFilter = ExportOnlyCurrentFilter,
+                    ExportPrettyPrint = ExportPrettyPrint,
+                });
+            }
+            catch { /* best-effort */ }
         }
 
         partial void OnExecutionTraceSearchTextChanged(string value) => RefreshExecutionTraceFilter();
@@ -813,6 +867,14 @@ namespace FlowMy.ViewModels
                 NodeType.FolderFilePaths => "file-import duotone-light",
                 NodeType.KeyValueBridge => "list-check solid",
                 NodeType.FlowOverwrite => "merge sharp-regular",
+                NodeType.Notification => "message-captions duotone-regular",
+                NodeType.Storage => "arrow-progress sharp-regular",
+                NodeType.Callback => "arrows-turn-right regular",
+                NodeType.FileDownload => "download solid",
+                NodeType.AsyncTaskDispatchCollect => "list-radio regular",
+                NodeType.KeyScopedStore => "arrow-progress sharp-regular",
+                NodeType.LoopContext => "arrows-spin duotone",
+                NodeType.Condition => "list-tree sharp-light",
                 _ => "circle-nodes duotone-regular"
             };
         }
@@ -997,7 +1059,8 @@ namespace FlowMy.ViewModels
                 parentNodeId: parentNodeId ?? string.Empty,
                 isRunRoot: false,
                 nodeBrush: ResolveTraceNodeBrush(node),
-                depth: depth)
+                depth: depth,
+                nodeColorKey: string.IsNullOrWhiteSpace(node.ColorKey) ? null : node.ColorKey)
             {
                 InputSummary = item.InputSummary,
                 Status = "running"
@@ -1087,6 +1150,11 @@ namespace FlowMy.ViewModels
                     treeNode.ApplyTraceVisualDepth(visualDepth);
                     if (_executionTraceDepthByRun.TryGetValue(rootExecutionId, out var depthByNodeForVisual))
                         depthByNodeForVisual[node.Id] = visualDepth;
+
+                    // Nếu incoming.FromNode null (AsyncTask dispatch, scheduler resume...), dùng chính
+                    // parentTreeNode đã resolve để card trace luôn có "from node" thay vì hiện trống.
+                    if (string.IsNullOrWhiteSpace(treeNode.ParentNodeId) && !parentTreeNode.IsRunRoot)
+                        treeNode.ParentNodeId = parentTreeNode.NodeId;
 
                     AttachTreeChild(parentTreeNode, treeNode, insertIndex);
                     var nodeKey = BuildTreeRunNodeKey(rootExecutionId, node.Id);

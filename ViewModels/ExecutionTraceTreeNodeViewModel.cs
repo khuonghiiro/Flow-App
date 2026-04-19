@@ -13,10 +13,24 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public string NodeTitle { get; }
     public string NodeType { get; }
     public string IconKey { get; }
-    public string ParentNodeId { get; }
+
+    /// <summary>
+    /// Id của node cha trong tree. Khởi tạo từ <c>incoming?.FromNode?.Id</c>; nếu null/empty
+    /// thì <see cref="FlowMy.ViewModels.WorkflowEditorViewModel"/> sẽ gán lại bằng id của
+    /// <c>parentTreeNode</c> thực tế (AsyncTaskBody/Run/...) để card không bị hiện "from node:" trống.
+    /// </summary>
+    [ObservableProperty]
+    private string parentNodeId = string.Empty;
+
     public bool IsRunRoot { get; }
     public bool ShowConnector { get; }
     public Brush? NodeBrush { get; }
+
+    /// <summary>
+    /// Brush cho icon khi card dùng <see cref="NodeBrush"/> làm nền. Map theo quy ước
+    /// <c>TextOn{ColorKey}Brush</c> để icon luôn tương phản với nền (tránh nền tối + icon đen).
+    /// </summary>
+    public Brush IconBrush { get; }
 
     private int _depth;
 
@@ -92,7 +106,8 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         string parentNodeId,
         bool isRunRoot,
         Brush? nodeBrush = null,
-        int depth = 0)
+        int depth = 0,
+        string? nodeColorKey = null)
     {
         RootExecutionId = rootExecutionId;
         ExecutionId = executionId;
@@ -100,10 +115,11 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         NodeTitle = nodeTitle;
         NodeType = nodeType;
         IconKey = iconKey;
-        ParentNodeId = parentNodeId;
+        this.parentNodeId = parentNodeId ?? string.Empty;
         IsRunRoot = isRunRoot;
         ShowConnector = !isRunRoot;
         NodeBrush = nodeBrush;
+        IconBrush = ResolveIconBrush(nodeColorKey);
         _depth = depth < 0 ? 0 : depth;
         ConnectorIndent = IsRunRoot ? new Thickness(0) : new Thickness(0, 0, 2, 0);
         ApplyTraceMarginsForDepth();
@@ -168,5 +184,30 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         var b = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
         b.Freeze();
         return b;
+    }
+
+    /// <summary>
+    /// Resolve icon brush từ theme theo quy ước <c>TextOn{ColorKey}Brush</c>, fallback
+    /// <c>TextOnPrimaryBrush</c> rồi trắng. Giữ icon luôn dễ nhìn kể cả khi nền node tối.
+    /// </summary>
+    private static Brush ResolveIconBrush(string? nodeColorKey)
+    {
+        try
+        {
+            var app = System.Windows.Application.Current;
+            if (app != null && !string.IsNullOrWhiteSpace(nodeColorKey))
+            {
+                var clean = nodeColorKey!.Trim();
+                if (clean.EndsWith("Brush"))
+                    clean = clean.Substring(0, clean.Length - "Brush".Length);
+                if (app.TryFindResource($"TextOn{clean}Brush") is Brush b1) return b1;
+                if (app.TryFindResource($"TextOn{clean}") is Brush b2) return b2;
+            }
+            if (app?.TryFindResource("TextOnPrimaryBrush") is Brush fallback) return fallback;
+        }
+        catch { }
+        var w = new SolidColorBrush(Colors.White);
+        w.Freeze();
+        return w;
     }
 }
