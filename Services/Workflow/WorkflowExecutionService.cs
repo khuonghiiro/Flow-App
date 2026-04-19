@@ -1251,6 +1251,10 @@ namespace FlowMy.Services.Workflow
             node.LastBranchId = resolvedBranchId;
             node.LastParentFlowScopeId = resolvedParentScopeId;
 
+            // AsyncLocal context: concurrent AsyncTask dispatches share the same WorkflowNode
+            // instance, so the field above can be raced. AsyncLocal isolates each dispatch per async flow.
+            WorkflowExecutionContext.CurrentExecutionId = executionId;
+
             // Báo cho UI biết connection dẫn tới node đang xử lý (nếu có)
             onEnteringNode?.Invoke(incomingConnection);
             onNodeStarted?.Invoke(node, incomingConnection);

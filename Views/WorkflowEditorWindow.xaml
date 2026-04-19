@@ -1812,6 +1812,64 @@ Cursor="Hand"
                                 BorderBrush="{DynamicResource BorderColor}"
                                 BorderThickness="0,0,0,1"
                                 Padding="10,6">
+                            <Border.Resources>
+                                <!-- Toolbar icon button: uniform size, hover/press background feedback. -->
+                                <Style x:Key="TraceToolbarIconButton" TargetType="Button">
+                                    <Setter Property="Width" Value="28"/>
+                                    <Setter Property="Height" Value="24"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="2,0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                    <Setter Property="ToolTipService.InitialShowDelay" Value="400"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd"
+                                                        Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="4"
+                                                        SnapsToDevicePixels="True">
+                                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                      Margin="{TemplateBinding Padding}"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#55FFFFFF"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                                <!-- Same feedback, wider to fit text+icon like "Tải log". -->
+                                <Style x:Key="TraceToolbarTextIconButton" TargetType="Button" BasedOn="{StaticResource TraceToolbarIconButton}">
+                                    <Setter Property="Width" Value="NaN"/>
+                                    <Setter Property="Padding" Value="8,0"/>
+                                    <Setter Property="Margin" Value="0,0,6,0"/>
+                                </Style>
+                                <!-- Thin separator between logical groups in the toolbar. -->
+                                <Style x:Key="TraceToolbarSeparator" TargetType="Rectangle">
+                                    <Setter Property="Width" Value="1"/>
+                                    <Setter Property="Height" Value="16"/>
+                                    <Setter Property="Fill" Value="#55FFFFFF"/>
+                                    <Setter Property="Margin" Value="6,0"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </Border.Resources>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -1821,10 +1879,6 @@ Cursor="Hand"
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
@@ -1865,80 +1919,76 @@ Cursor="Hand"
                                          Text="{Binding ExecutionTraceSearchText, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="Tìm theo node name/id/key/output/error"/>
 
-                                <Button Grid.Column="7"
-                                        Margin="0,0,8,0"
-                                        Padding="8,2"
-                                        Command="{Binding ExportExecutionTraceLogsCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Xuất log run ra JSON">
-                                    <StackPanel Orientation="Horizontal">
+                                <StackPanel Grid.Column="7"
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Right">
+                                    <Button Style="{StaticResource TraceToolbarTextIconButton}"
+                                            Command="{Binding ExportExecutionTraceLogsCommand}"
+                                            ToolTip="Xuất log run ra JSON">
+                                        <StackPanel Orientation="Horizontal">
+                                            <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                                   VerticalAlignment="Center"
+                                                                   Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-export duotone-light'}"/>
+                                            <TextBlock Margin="6,0,0,0"
+                                                       Foreground="White"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       Text="Tải log"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Rectangle Style="{StaticResource TraceToolbarSeparator}"/>
+
+                                    <Button Style="{StaticResource TraceToolbarIconButton}"
+                                            Command="{Binding ExpandAllExecutionTraceTreeCommand}"
+                                            ToolTip="Mở tất cả nhánh">
                                         <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-export duotone-light'}"/>
-                                        <TextBlock Margin="5,0,0,0" Foreground="White" VerticalAlignment="Center" Text="Tải log"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Grid.Column="8"
-                                        Margin="8,0,0,0"
-                                        Padding="8,2"
-                                        Command="{Binding ExpandAllExecutionTraceTreeCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Mở tất cả nhánh">
-                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-plus solid'}"/>
-                                </Button>
-                                <Button Grid.Column="8"
-                                        Margin="38,0,0,0"
-                                        Padding="8,2"
-                                        Command="{Binding CollapseAllExecutionTraceTreeCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Đóng tất cả nhánh">
-                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-minus duotone-light'}"/>
-                                </Button>
-                                <Button Grid.Column="8"
-                                        Margin="68,0,0,0"
-                                        Padding="8,2"
-                                        Command="{Binding ClearExecutionTraceLogsCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Xóa log hiện tại">
-                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='trash-can duotone-regular'}"/>
-                                </Button>
-                                <Button Grid.Column="9"
-                                        Margin="0,0,6,0"
-                                        Padding="6,2"
-                                        Command="{Binding ZoomOutExecutionTraceCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Thu nhỏ log tree">
-                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass-minus duotone-regular'}"/>
-                                </Button>
-                                <Button Grid.Column="9"
-                                        Margin="30,0,0,0"
-                                        Padding="6,2"
-                                        Command="{Binding ZoomInExecutionTraceCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Phóng to log tree">
-                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass-plus duotone-regular'}"/>
-                                </Button>
-                                <Button Grid.Column="10"
-                                        Margin="0,0,6,0"
-                                        Padding="8,2"
-                                        Command="{Binding ToggleExecutionTracePanelMaximizeCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Phóng to/thu nhỏ panel log">
-                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='window-maximize duotone-regular'}"/>
-                                </Button>
-                                <Button Grid.Column="11"
-                                        Padding="8,2"
-                                        Command="{Binding ToggleExecutionTracePanelCommand}"
-                                        Style="{DynamicResource TransparentButtonStyle}"
-                                        ToolTip="Ẩn/hiện panel log">
-                                    <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chevron-down duotone-regular'}"/>
-                                </Button>
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-plus solid'}"/>
+                                    </Button>
+                                    <Button Style="{StaticResource TraceToolbarIconButton}"
+                                            Command="{Binding CollapseAllExecutionTraceTreeCommand}"
+                                            ToolTip="Đóng tất cả nhánh">
+                                        <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-minus duotone-light'}"/>
+                                    </Button>
+                                    <Button Style="{StaticResource TraceToolbarIconButton}"
+                                            Command="{Binding ClearExecutionTraceLogsCommand}"
+                                            ToolTip="Xóa log hiện tại">
+                                        <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='trash-can duotone-regular'}"/>
+                                    </Button>
+
+                                    <Rectangle Style="{StaticResource TraceToolbarSeparator}"/>
+
+                                    <Button Style="{StaticResource TraceToolbarIconButton}"
+                                            Command="{Binding ZoomOutExecutionTraceCommand}"
+                                            ToolTip="Thu nhỏ log tree">
+                                        <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass-minus duotone-regular'}"/>
+                                    </Button>
+                                    <Button Style="{StaticResource TraceToolbarIconButton}"
+                                            Command="{Binding ZoomInExecutionTraceCommand}"
+                                            ToolTip="Phóng to log tree">
+                                        <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='magnifying-glass-plus duotone-regular'}"/>
+                                    </Button>
+
+                                    <Rectangle Style="{StaticResource TraceToolbarSeparator}"/>
+
+                                    <Button Style="{StaticResource TraceToolbarIconButton}"
+                                            Command="{Binding ToggleExecutionTracePanelMaximizeCommand}"
+                                            ToolTip="Phóng to/thu nhỏ panel log">
+                                        <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='window-maximize duotone-regular'}"/>
+                                    </Button>
+                                    <Button Style="{StaticResource TraceToolbarIconButton}"
+                                            Command="{Binding ToggleExecutionTracePanelCommand}"
+                                            ToolTip="Ẩn/hiện panel log">
+                                        <controls:SvgViewboxEx Width="12" Height="12" Fill="White"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chevron-down duotone-regular'}"/>
+                                    </Button>
+                                </StackPanel>
                             </Grid>
                         </Border>
 

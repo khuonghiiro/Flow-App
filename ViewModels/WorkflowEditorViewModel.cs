@@ -817,7 +817,11 @@ namespace FlowMy.ViewModels
         private void TraceNodeStarted(WorkflowNode node, WorkflowConnection? incoming, string laneId)
         {
             if (!EnableExecutionTraceLog || node == null) return;
-            var executionKey = string.IsNullOrWhiteSpace(node.LastExecutionId) ? laneId : node.LastExecutionId!;
+            // Ưu tiên AsyncLocal (an toàn với AsyncTask dispatch song song) rồi mới fallback field chia sẻ.
+            var ambient = FlowMy.Services.Workflow.WorkflowExecutionContext.CurrentExecutionId;
+            var executionKey = !string.IsNullOrWhiteSpace(ambient)
+                ? ambient!
+                : (string.IsNullOrWhiteSpace(node.LastExecutionId) ? laneId : node.LastExecutionId!);
             var rootExecutionId = NormalizeRootExecutionId(executionKey);
             var parentTitle = incoming?.FromNode?.Title;
             var parentNodeId = incoming?.FromNode?.Id;
@@ -1007,7 +1011,10 @@ namespace FlowMy.ViewModels
         private void TraceNodeCompleted(WorkflowNode node, TimeSpan elapsed)
         {
             if (!EnableExecutionTraceLog || node == null) return;
-            var executionKey = node.LastExecutionId ?? string.Empty;
+            var ambient = FlowMy.Services.Workflow.WorkflowExecutionContext.CurrentExecutionId;
+            var executionKey = !string.IsNullOrWhiteSpace(ambient)
+                ? ambient!
+                : (node.LastExecutionId ?? string.Empty);
             var elapsedText = FormatElapsed(elapsed);
             // Snapshot on executor thread: UI callback may run after ClearScopedOutputsForRun (finally),
             // lúc đó TryGetScopedNodeStringOutputForLookupChain không còn dữ liệu → OUT trống.
@@ -1075,8 +1082,13 @@ namespace FlowMy.ViewModels
         private void TraceNodeFailed(WorkflowNode node, string errorMessage)
         {
             if (!EnableExecutionTraceLog || node == null) return;
-            var executionKey = node.LastExecutionId ?? string.Empty;
-            var effectiveExecutionId = string.IsNullOrWhiteSpace(node.LastExecutionId) ? "failed" : node.LastExecutionId!;
+            var ambient = FlowMy.Services.Workflow.WorkflowExecutionContext.CurrentExecutionId;
+            var executionKey = !string.IsNullOrWhiteSpace(ambient)
+                ? ambient!
+                : (node.LastExecutionId ?? string.Empty);
+            var effectiveExecutionId = !string.IsNullOrWhiteSpace(ambient)
+                ? ambient!
+                : (string.IsNullOrWhiteSpace(node.LastExecutionId) ? "failed" : node.LastExecutionId!);
             var err = ToCompactText(errorMessage, 400);
             Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
