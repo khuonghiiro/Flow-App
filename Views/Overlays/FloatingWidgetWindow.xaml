@@ -1,0 +1,277 @@
+<Window x:Class="FlowMy.Views.Overlays.FloatingWidgetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        Title="Widget">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Idle shape glow effect -->
+        <DropShadowEffect x:Key="IdleGlow" Color="#7C3AED" BlurRadius="16" ShadowDepth="0" Opacity="0.6"/>
+        <DropShadowEffect x:Key="ExpandedShadow" Color="#000000" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.45"/>
+
+        <!-- Close / Collapse button style -->
+        <Style x:Key="WidgetTinyButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#C4B5FD"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#3F3F46"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#52525B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Close button (red hover) -->
+        <Style x:Key="WidgetCloseButton" TargetType="Button" BasedOn="{StaticResource WidgetTinyButton}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#DC2626"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#B91C1C"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="RootGrid">
+        <!-- ═══ STATE 1: Collapsed / Idle Shape ═══ -->
+        <Grid x:Name="IdleContainer" Visibility="Visible"
+              MouseLeftButtonDown="Idle_MouseLeftButtonDown"
+              MouseMove="Idle_MouseMove"
+              MouseLeftButtonUp="Idle_MouseLeftButtonUp"
+              MouseEnter="Idle_MouseEnter">
+
+            <!-- Circle shape (default) -->
+            <Border x:Name="IdleCircle"
+                    Width="48" Height="48"
+                    CornerRadius="24"
+                    Cursor="Hand"
+                    Effect="{StaticResource IdleGlow}"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#7C3AED" Offset="0"/>
+                        <GradientStop Color="#4F46E5" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="IdleScaleTransform" ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
+                <TextBlock x:Name="IdleIcon" Text="⚡"
+                           FontSize="20"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="White"
+                           IsHitTestVisible="False"/>
+            </Border>
+
+            <!-- Diamond shape (rotated square) -->
+            <Border x:Name="IdleDiamond"
+                    Width="40" Height="40"
+                    CornerRadius="4"
+                    Cursor="Hand"
+                    Visibility="Collapsed"
+                    Effect="{StaticResource IdleGlow}"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#7C3AED" Offset="0"/>
+                        <GradientStop Color="#4F46E5" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.RenderTransform>
+                    <TransformGroup>
+                        <RotateTransform Angle="45"/>
+                        <ScaleTransform x:Name="IdleDiamondScale" ScaleX="1" ScaleY="1"/>
+                    </TransformGroup>
+                </Border.RenderTransform>
+                <TextBlock Text="⚡" FontSize="16"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="White" IsHitTestVisible="False"
+                           RenderTransformOrigin="0.5,0.5">
+                    <TextBlock.RenderTransform>
+                        <RotateTransform Angle="-45"/>
+                    </TextBlock.RenderTransform>
+                </TextBlock>
+            </Border>
+
+            <!-- Square shape -->
+            <Border x:Name="IdleSquare"
+                    Width="48" Height="48"
+                    CornerRadius="0"
+                    Cursor="Hand"
+                    Visibility="Collapsed"
+                    Effect="{StaticResource IdleGlow}"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#7C3AED" Offset="0"/>
+                        <GradientStop Color="#4F46E5" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <TextBlock Text="⚡" FontSize="20"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="White" IsHitTestVisible="False"/>
+            </Border>
+
+            <!-- RoundedSquare shape -->
+            <Border x:Name="IdleRoundedSquare"
+                    Width="48" Height="48"
+                    CornerRadius="10"
+                    Cursor="Hand"
+                    Visibility="Collapsed"
+                    Effect="{StaticResource IdleGlow}"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#7C3AED" Offset="0"/>
+                        <GradientStop Color="#4F46E5" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <TextBlock Text="⚡" FontSize="20"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="White" IsHitTestVisible="False"/>
+            </Border>
+        </Grid>
+
+        <!-- ═══ STATE 2: Expanded / Active ═══ -->
+        <Grid x:Name="ExpandedContainer" Visibility="Collapsed">
+            <Border x:Name="ExpandedBorder"
+                    CornerRadius="12"
+                    BorderThickness="1"
+                    Effect="{StaticResource ExpandedShadow}"
+                    ClipToBounds="True">
+                <Border.Background>
+                    <SolidColorBrush Color="#18181B"/>
+                </Border.Background>
+                <Border.BorderBrush>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#3F3F46" Offset="0"/>
+                        <GradientStop Color="#27272A" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.BorderBrush>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- Title bar -->
+                        <RowDefinition Height="*"/>     <!-- Content (WebView2) -->
+                    </Grid.RowDefinitions>
+
+                    <!-- ── Title Bar ── -->
+                    <Border x:Name="TitleBar" Grid.Row="0"
+                            Height="28"
+                            Cursor="SizeAll"
+                            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+                            MouseMove="TitleBar_MouseMove"
+                            MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
+                            MouseEnter="TitleBar_MouseEnter">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#1E1B2E" Offset="0"/>
+                                <GradientStop Color="#18181B" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="8,0,4,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>  <!-- Drag handle -->
+                                <ColumnDefinition Width="*"/>     <!-- Title -->
+                                <ColumnDefinition Width="Auto"/>  <!-- Buttons -->
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Drag handle dots -->
+                            <TextBlock Grid.Column="0" Text="⠿"
+                                       Foreground="#6B7280" FontSize="14"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"
+                                       IsHitTestVisible="False"/>
+
+                            <!-- Title -->
+                            <TextBlock x:Name="TitleText" Grid.Column="1"
+                                       Text="Widget"
+                                       Foreground="#A5B4FC"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       IsHitTestVisible="False"/>
+
+                            <!-- Control buttons -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <!-- Collapse button -->
+                                <Button x:Name="CollapseBtn" Content="▾"
+                                        Style="{StaticResource WidgetTinyButton}"
+                                        ToolTip="Thu nhỏ"
+                                        Click="CollapseBtn_Click" Margin="0,0,2,0"/>
+                                <!-- Close button -->
+                                <Button x:Name="CloseBtn" Content="×"
+                                        Style="{StaticResource WidgetCloseButton}"
+                                        FontSize="14" FontWeight="Bold"
+                                        Foreground="#F87171"
+                                        ToolTip="Đóng widget"
+                                        Click="CloseBtn_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- ── Content Area ── -->
+                    <Border Grid.Row="1" x:Name="ContentArea" ClipToBounds="True"
+                            CornerRadius="0,0,12,12">
+                        <!-- WebView2 hoặc content sẽ được thêm programmatically -->
+                    </Border>
+
+                    <!-- ── Resize Grip (bottom-right) ── -->
+                    <Thumb x:Name="ResizeGrip" Grid.Row="1"
+                           Width="16" Height="16"
+                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                           Cursor="SizeNWSE" Opacity="0.4"
+                           DragDelta="ResizeGrip_DragDelta">
+                        <Thumb.Template>
+                            <ControlTemplate>
+                                <Canvas Width="16" Height="16">
+                                    <Line X1="12" Y1="16" X2="16" Y2="12" Stroke="#6B7280" StrokeThickness="1.5"/>
+                                    <Line X1="8" Y1="16" X2="16" Y2="8" Stroke="#6B7280" StrokeThickness="1.5"/>
+                                    <Line X1="4" Y1="16" X2="16" Y2="4" Stroke="#6B7280" StrokeThickness="1.5"/>
+                                </Canvas>
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

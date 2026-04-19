@@ -68,7 +68,7 @@
 
                 <!-- Header -->
                 <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                    <TextBlock Text="?? Ch?n t? h?p ph�m"
+                    <TextBlock Text="⌨ Chọn tổ hợp phím"
                                FontSize="16"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource TextBrush}"
@@ -80,9 +80,9 @@
                                Opacity="0.85"
                                TextAlignment="Center"
                                LineHeight="16">
-                        <Run Text="Nh?n c�c ph�m theo th? t? d? t?o t? h?p ph�m"/>
+                        <Run Text="Nhấn các phím theo thứ tự để tạo tổ hợp phím"/>
                         <LineBreak/>
-                        <Run Text="V� d?: Ctrl ? Shift ? K = Ctrl+Shift+K"/>
+                        <Run Text="Ví dụ: Ctrl → Shift → K = Ctrl+Shift+K"/>
                     </TextBlock>
                 </StackPanel>
 
@@ -101,7 +101,7 @@
                                    VerticalAlignment="Center"
                                    Margin="0,0,10,0"/>
                         <TextBlock x:Name="HotkeyText"
-                                   Text="Chua ch?n"
+                                   Text="Chưa chọn"
                                    FontSize="13"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextBrush}"
@@ -122,13 +122,13 @@
 
                     <Button x:Name="RemoveLastButton"
                             Grid.Column="0"
-                            Content="? X�a cu?i"
+                            Content="← Xóa cuối"
                             Height="32"
                             MinWidth="90"
                             Padding="12,0"
                             Margin="0,0,8,0"
                             FontSize="12"
-                            ToolTip="X�a ph�m v?a nh?p (ho?c nh?n Backspace)">
+                            ToolTip="Xóa phím vừa nhập (hoặc nhấn Backspace)">
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="Background" Value="#1AFFFFFF"/>
@@ -164,13 +164,13 @@
 
                     <Button x:Name="ClearButton"
                             Grid.Column="1"
-                            Content="??? X�a h?t"
+                            Content="🗑 Xóa hết"
                             Height="32"
                             MinWidth="80"
                             Padding="12,0"
                             Margin="0,0,8,0"
                             FontSize="12"
-                            ToolTip="X�a to�n b? t? h?p ph�m">
+                            ToolTip="Xóa toàn bộ tổ hợp phím">
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="Background" Value="#1AFF4444"/>

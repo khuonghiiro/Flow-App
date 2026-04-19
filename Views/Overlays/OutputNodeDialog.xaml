@@ -40,15 +40,15 @@
                           Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
                             Style="{DynamicResource PrimaryButton}"
                             Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
+                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
                             Command="{Binding RunSingleNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                             Style="{DynamicResource DangerButton}"
-                            Content="�" 
+                            Content="✕" 
                             FontSize="12" 
                             FontWeight="Bold" 
                             Cursor="Hand"
@@ -57,7 +57,7 @@
                 </Grid>
             </Border>
 
-            <!-- Content: 2 tab Logic + T�i s? d?ng flow -->
+            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
             <TabControl Grid.Row="1"
                         Background="Transparent"
                         BorderThickness="0">
@@ -66,7 +66,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
                     <!-- TitleDisplayMode -->
-                    <TextBlock Text="Hi?n th? ti�u d?:"
+                    <TextBlock Text="Hiển thị tiêu đề:"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="14"
                                FontWeight="SemiBold"
@@ -82,7 +82,7 @@
                               SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
                     <!-- TitleColorMode Section -->
-                    <TextBlock Text="M�u ti�u d?:"
+                    <TextBlock Text="Màu tiêu đề:"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="14"
                                FontWeight="SemiBold"
@@ -144,7 +144,7 @@
                         
                         <Button x:Name="AddVariableButton"
                                 Grid.Column="1"
-                                Content="+ Th�m"
+                                Content="+ Thêm"
                                 Width="70"
                                 Height="28"
                                 FontSize="12"
@@ -243,7 +243,7 @@
                             
                             <!-- Empty state -->
                             <TextBlock x:Name="EmptyStateText"
-                                       Text="Chua c� variable n�o. Nh?n '+ Th�m' d? t?o input variable."
+                                       Text="Chưa có variable nào. Nhấn '+ Thêm' để tạo input variable."
                                        Foreground="{DynamicResource TextMuted}"
                                        FontSize="12"
                                        FontStyle="Italic"
@@ -272,91 +272,91 @@
                     <!-- Info -->
                     <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="?? Hu?ng d?n Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="💡 Hướng dẫn Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             
                             <!-- Basic Usage -->
-                            <TextBlock Text="1. Gi� tr? thu?ng:" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="1. Giá trị thường:" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" LineHeight="18" Margin="0,0,0,8">
-                                <Run>� S? d?ng {variableKey} d? ch�n gi� tr?</Run>
+                                <Run>• Sử dụng {variableKey} để chèn giá trị</Run>
                                 <LineBreak/>
-                                <Run>� V� d?: "Xin ch�o {name}" ? "Xin ch�o John"</Run>
+                                <Run>• Ví dụ: "Xin chào {name}" → "Xin chào John"</Run>
                             </TextBlock>
                             
                             <!-- Array Usage -->
-                            <TextBlock Text="2. M?ng (Array):" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="2. Mảng (Array):" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" LineHeight="18" Margin="0,0,0,8">
-                                <Run>� {variableKey[0...n]} - Hi?n th? t?t c? ph?n t?: [item1, item2, ...]</Run>
+                                <Run>• {variableKey[0...n]} - Hiển thị tất cả phần tử: [item1, item2, ...]</Run>
                                 <LineBreak/>
-                                <Run>� {variableKey[0]} - L?y ph?n t? d?u ti�n (index 0)</Run>
+                                <Run>• {variableKey[0]} - Lấy phần tử đầu tiên (index 0)</Run>
                                 <LineBreak/>
-                                <Run>� {variableKey[1]} - L?y ph?n t? th? hai (index 1)</Run>
+                                <Run>• {variableKey[1]} - Lấy phần tử thứ hai (index 1)</Run>
                                 <LineBreak/>
-                                <Run>� V� d?: "Danh s�ch: {items[0...n]}" ? "Danh s�ch: [apple, banana, orange]"</Run>
+                                <Run>• Ví dụ: "Danh sách: {items[0...n]}" → "Danh sách: [apple, banana, orange]"</Run>
                             </TextBlock>
                             
                             <!-- Object Usage -->
                             <TextBlock Text="3. JSON Object:" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" LineHeight="18" Margin="0,0,0,8">
-                                <Run>� {variableKey[fieldName]} - L?y tru?ng c?a object</Run>
+                                <Run>• {variableKey[fieldName]} - Lấy trường của object</Run>
                                 <LineBreak/>
-                                <Run>� V� d?: "T�n: {user[name]}" ? "T�n: John" (n?u user = {"name": "John", "age": 30})</Run>
+                                <Run>• Ví dụ: "Tên: {user[name]}" → "Tên: John" (nếu user = {"name": "John", "age": 30})</Run>
                             </TextBlock>
                             
                             <!-- Nested Array in Object -->
-                            <TextBlock Text="4. M?ng trong Object (Nested Array):" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="4. Mảng trong Object (Nested Array):" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" LineHeight="18" Margin="0,0,0,8">
-                                <Run>� {variableKey[fieldName][index]} - L?y ph?n t? t?i index c?a m?ng trong object field</Run>
+                                <Run>• {variableKey[fieldName][index]} - Lấy phần tử tại index của mảng trong object field</Run>
                                 <LineBreak/>
-                                <Run>� {variableKey[fieldName][0...n]} - Hi?n th? t?t c? ph?n t? c?a m?ng trong object field</Run>
+                                <Run>• {variableKey[fieldName][0...n]} - Hiển thị tất cả phần tử của mảng trong object field</Run>
                             </TextBlock>
                             
                             <!-- Detailed Example -->
                             <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                 <StackPanel>
-                                    <TextBlock Text="?? V� d? chi ti?t v?i JSON Object:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <TextBlock Text="📌 Ví dụ chi tiết với JSON Object:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" LineHeight="16" FontFamily="Consolas">
-                                        <Run>Gi? s? c� JSON object:</Run>
+                                        <Run>Giả sử có JSON object:</Run>
                                         <LineBreak/>
                                         <Run Foreground="{DynamicResource WarningColor}">{"name": "John", "items": ["apple", "banana", "orange"]}</Run>
                                         <LineBreak/>
                                         <LineBreak/>
-                                        <Run>K?t qu? khi s? d?ng:</Run>
+                                        <Run>Kết quả khi sử dụng:</Run>
                                         <LineBreak/>
-                                        <Run Foreground="{DynamicResource SuccessColor}">� {data[name]}</Run>
-                                        <Run> ? </Run>
+                                        <Run Foreground="{DynamicResource SuccessColor}">• {data[name]}</Run>
+                                        <Run> → </Run>
                                         <Run Foreground="{DynamicResource WarningColor}">"John"</Run>
                                         <LineBreak/>
-                                        <Run Foreground="{DynamicResource SuccessColor}">� {data[items][0]}</Run>
-                                        <Run> ? </Run>
+                                        <Run Foreground="{DynamicResource SuccessColor}">• {data[items][0]}</Run>
+                                        <Run> → </Run>
                                         <Run Foreground="{DynamicResource WarningColor}">"apple"</Run>
                                         <LineBreak/>
-                                        <Run Foreground="{DynamicResource SuccessColor}">� {data[items][1]}</Run>
-                                        <Run> ? </Run>
+                                        <Run Foreground="{DynamicResource SuccessColor}">• {data[items][1]}</Run>
+                                        <Run> → </Run>
                                         <Run Foreground="{DynamicResource WarningColor}">"banana"</Run>
                                         <LineBreak/>
-                                        <Run Foreground="{DynamicResource SuccessColor}">� {data[items][0...n]}</Run>
-                                        <Run> ? </Run>
+                                        <Run Foreground="{DynamicResource SuccessColor}">• {data[items][0...n]}</Run>
+                                        <Run> → </Run>
                                         <Run Foreground="{DynamicResource WarningColor}">"[apple, banana, orange]"</Run>
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
                             
                             <!-- Examples -->
-                            <TextBlock Text="?? V� d? t?ng h?p Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                            <TextBlock Text="📋 Ví dụ tổng hợp Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,8,0,4"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" LineHeight="18">
-                                <Run>� "{name} c� {count} m?c: {items[0...n]}"</Run>
+                                <Run>• "{name} có {count} mục: {items[0...n]}"</Run>
                                 <LineBreak/>
-                                <Run>� "User: {user[name]}, Age: {user[age]}"</Run>
+                                <Run>• "User: {user[name]}, Age: {user[age]}"</Run>
                                 <LineBreak/>
-                                <Run>� "Item d?u ti�n: {data[items][0]}"</Run>
+                                <Run>• "Item đầu tiên: {data[items][0]}"</Run>
                                 <LineBreak/>
-                                <Run>� "{data[name]} c� {data[items][0...n]} trong gi? h�ng"</Run>
+                                <Run>• "{data[name]} có {data[items][0...n]} trong giỏ hàng"</Run>
                             </TextBlock>
                         </StackPanel>
                     </Border>
 
                     <!-- Outputs Section (auto-generated from OutputKey) -->
-                    <TextBlock Text="Outputs (t? d?ng t?o t? OutputKey):" 
+                    <TextBlock Text="Outputs (tự động tạo từ OutputKey):" 
                                Foreground="{DynamicResource TextBrush}" 
                                FontSize="14" 
                                FontWeight="SemiBold" 
@@ -368,12 +368,12 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: T�i s? d?ng flow -->
-                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 2: Tái sử dụng flow -->
+                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- C?u h�nh v? tr� c?ng IN/OUT -->
-                            <TextBlock Text="V? tr� c?ng IN/OUT:"
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -387,7 +387,7 @@
 
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (c?ng v�o)"
+                                    <TextBlock Text="Port IN (cổng vào)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -400,7 +400,7 @@
 
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (c?ng ra)"
+                                    <TextBlock Text="Port OUT (cổng ra)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -412,7 +412,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- C?u h�nh t�i s? d?ng flow -->
+                            <!-- Cấu hình tái sử dụng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -458,9 +458,9 @@
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>
 
-                                                <!-- Ki?u line OUT -->
+                                                <!-- Kiểu line OUT -->
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Ki?u line OUT"
+                                                    <TextBlock Text="Kiểu line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12"
                                                                Opacity="0.7"

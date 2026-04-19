@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:nodes="clr-namespace:FlowMy.Models.Nodes"
         xmlns:converters="clr-namespace:FlowMy.Converters"
-        Title="X? l� ?nh"
+        Title="Xử lý ảnh"
         WindowStyle="None"
         ResizeMode="CanResize"
         AllowsTransparency="True"
@@ -40,21 +40,21 @@
                              VerticalContentAlignment="Center" Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
-                                Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
+                                Margin="8,0,0,0" ToolTip="Chạy logic node này"
                                 Command="{Binding RunSingleNodeCommand}"/>
 
-                        <Button x:Name="PlayFlowButton" Width="24" Height="24" Content="??" FontSize="12"
+                        <Button x:Name="PlayFlowButton" Width="24" Height="24" Content="▶▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
-                                Margin="8,0,0,0" ToolTip="Ch?y workflow t? node n�y"
+                                Margin="8,0,0,0" ToolTip="Chạy workflow từ node này"
                                 Command="{Binding RunWorkflowFromNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
-                                Content="�"
+                                Content="✕"
                                 FontSize="12"
                                 FontWeight="Bold"
                                 Cursor="Hand"
@@ -72,7 +72,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Title display mode -->
-                            <TextBlock Text="Hi?n th? ti�u d?:"
+                            <TextBlock Text="Hiển thị tiêu đề:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -86,7 +86,7 @@
                                       SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
                             <!-- Title color -->
-                            <TextBlock Text="M�u ti�u d?:"
+                            <TextBlock Text="Màu tiêu đề:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -100,14 +100,14 @@
                                       SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"/>
 
                             <!-- URL -->
-                            <TextBlock Text="?nh t? link/file:"
+                            <TextBlock Text="Ảnh từ link/file:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
                             <Button x:Name="OpenImageButton"
-                                    Content="M? ?nh..."
+                                    Content="Mở ảnh..."
                                     Style="{DynamicResource PrimaryButton}"
                                     Height="34"
                                     HorizontalAlignment="Left"
@@ -115,7 +115,7 @@
                                     Margin="0,0,0,10"
                                     Click="OpenImageButton_Click"/>
 
-                            <TextBlock Text="Link / du?ng d?n / Link Url online:"
+                            <TextBlock Text="Link / đường dẫn / Link Url online:"
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding ImageUrl, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
@@ -129,7 +129,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Node (l?y link tr?c ti?p)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Node (lấy link trực tiếp)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                     <ComboBox x:Name="UrlNodeComboBox" Height="36"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding AvailableNodeOptions}"
@@ -146,20 +146,20 @@
                                 </StackPanel>
                             </Grid>
 
-                            <Button Content="�p d?ng (d�ng link/file)"
+                            <Button Content="Áp dụng (dùng link/file)"
                                     Style="{DynamicResource PrimaryButton}"
                                     Height="36"
                                     Margin="0,0,0,18"
                                     Command="{Binding ApplyUrlToNodeCommand}"/>
 
                             <!-- Base64 -->
-                            <TextBlock Text="?nh t? Base64:"
+                            <TextBlock Text="Ảnh từ Base64:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
-                            <TextBlock Text="Base64 (raw ho?c data URI):"
+                            <TextBlock Text="Base64 (raw hoặc data URI):"
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding ImageBase64, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
@@ -176,7 +176,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Node (thay th? Base64)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Node (thay thế Base64)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                     <ComboBox x:Name="Base64NodeComboBox" Height="36"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding AvailableNodeOptions}"
@@ -193,7 +193,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <Button Content="�p d?ng (d�ng Base64)"
+                            <Button Content="Áp dụng (dùng Base64)"
                                     Style="{DynamicResource PrimaryButton}"
                                     Height="36"
                                     Margin="0,0,0,18"
@@ -223,14 +223,14 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- GPU -->
-                            <CheckBox Content="Uu ti�n GPU khi x? l� (n?u c�)"
+                            <CheckBox Content="Ưu tiên GPU khi xử lý (nếu có)"
                                       IsChecked="{Binding PreferGpu, Mode=TwoWay}"
                                       Foreground="{DynamicResource TextMuted}"
                                       FontSize="12"
                                       Margin="0,0,0,14"/>
 
                             <!-- Filter input -->
-                            <TextBlock Text="Filter dang d�ng:"
+                            <TextBlock Text="Filter đang dùng:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <TextBox x:Name="FilterTextBox"
@@ -238,12 +238,12 @@
                                      Style="{DynamicResource BaseTextBoxV2}"
                                      Height="36"
                                      Margin="0,0,0,4"/>
-                            <TextBlock Text="�? tr?ng = kh�ng x? l� FFmpeg, ?nh truy?n th?ng sang output."
+                            <TextBlock Text="Để trống = không xử lý FFmpeg, ảnh truyền thẳng sang output."
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" FontStyle="Italic"
                                        Margin="0,0,0,16"/>
 
                             <!-- Examples table -->
-                            <TextBlock Text="V� d? filter (click D�ng d? �p d?ng):"
+                            <TextBlock Text="Ví dụ filter (click Dùng để áp dụng):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -258,7 +258,7 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="Filter" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="Bold" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="T�c d?ng" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="Bold" Padding="6,7,6,7"/>
+                                        <TextBlock Grid.Column="1" Text="Tác dụng" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="Bold" Padding="6,7,6,7"/>
                                         <TextBlock Grid.Column="2" Text="" Padding="6,7"/>
                                     </Grid>
 
@@ -270,8 +270,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="scale=1920:1080" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7" TextWrapping="Wrap"/>
-                                        <TextBlock Grid.Column="1" Text="Resize v? k�ch thu?c c? d?nh" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="scale=1920:1080"
+                                        <TextBlock Grid.Column="1" Text="Resize về kích thước cố định" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="scale=1920:1080"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -286,8 +286,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="scale=iw/2:ih/2" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7" TextWrapping="Wrap"/>
-                                        <TextBlock Grid.Column="1" Text="Thu nh? c�n 50%" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="scale=iw/2:ih/2"
+                                        <TextBlock Grid.Column="1" Text="Thu nhỏ còn 50%" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="scale=iw/2:ih/2"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -302,8 +302,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="hflip" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="L?t ngang (mirror)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="hflip"
+                                        <TextBlock Grid.Column="1" Text="Lật ngang (mirror)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="hflip"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -318,8 +318,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="vflip" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="L?t d?c" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="vflip"
+                                        <TextBlock Grid.Column="1" Text="Lật dọc" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="vflip"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -334,8 +334,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="transpose=1" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="Xoay 90� (CW)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="transpose=1"
+                                        <TextBlock Grid.Column="1" Text="Xoay 90° (CW)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="transpose=1"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -350,8 +350,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="rotate=PI/4" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="Xoay 45� (tu? g�c)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="rotate=PI/4"
+                                        <TextBlock Grid.Column="1" Text="Xoay 45° (tuỳ góc)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="rotate=PI/4"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -366,8 +366,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="crop=400:300:100:50" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7" TextWrapping="Wrap"/>
-                                        <TextBlock Grid.Column="1" Text="C?t v�ng ch? nh?t (w:h:x:y)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="crop=400:300:100:50"
+                                        <TextBlock Grid.Column="1" Text="Cắt vùng chữ nhật (w:h:x:y)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="crop=400:300:100:50"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -382,8 +382,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="eq=brightness=0.1:contrast=1.5" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7" TextWrapping="Wrap"/>
-                                        <TextBlock Grid.Column="1" Text="Ch?nh s�ng / tuong ph?n" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="eq=brightness=0.1:contrast=1.5"
+                                        <TextBlock Grid.Column="1" Text="Chỉnh sáng / tương phản" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="eq=brightness=0.1:contrast=1.5"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -398,8 +398,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="format=gray" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="Chuy?n den tr?ng" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="format=gray"
+                                        <TextBlock Grid.Column="1" Text="Chuyển đen trắng" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="format=gray"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -414,8 +414,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="unsharp=5:5:1.5" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="L�m n�t ?nh" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="unsharp=5:5:1.5"
+                                        <TextBlock Grid.Column="1" Text="Làm nét ảnh" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="unsharp=5:5:1.5"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -430,8 +430,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="boxblur=5:1" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7"/>
-                                        <TextBlock Grid.Column="1" Text="L�m m? ?nh" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="boxblur=5:1"
+                                        <TextBlock Grid.Column="1" Text="Làm mờ ảnh" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="boxblur=5:1"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -446,8 +446,8 @@
                                             <ColumnDefinition Width="44"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="scale=800:600,hflip" Foreground="{DynamicResource TextBrush}" FontSize="11" FontFamily="Consolas" Padding="10,7,6,7" TextWrapping="Wrap"/>
-                                        <TextBlock Grid.Column="1" Text="K?t h?p nhi?u filter (d�ng d?u ,)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
-                                        <Button Grid.Column="2" Content="D�ng" Tag="scale=800:600,hflip"
+                                        <TextBlock Grid.Column="1" Text="Kết hợp nhiều filter (dùng dấu ,)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Padding="6,7,6,7" TextWrapping="Wrap"/>
+                                        <Button Grid.Column="2" Content="Dùng" Tag="scale=800:600,hflip"
                                                 Height="26" Margin="4,4" FontSize="10" Padding="4,0"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Click="FilterExample_Click"/>
@@ -460,11 +460,11 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 3: C?u h�nh -->
-                <TabItem Header="C?u h�nh" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 3: Cấu hình -->
+                <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="V? tr� c?ng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -491,13 +491,13 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Node render ?nh -->
-                            <TextBlock Text="Node render ?nh:"
+                            <!-- Node render ảnh -->
+                            <TextBlock Text="Node render ảnh:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        Margin="0,16,0,8"/>
-                            <TextBlock Text="Ch?n node nh?n k?t qu? render (d�ng ExecutionId d? map ?nh v? crop)"
+                            <TextBlock Text="Chọn node nhận kết quả render (dùng ExecutionId để map ảnh về crop)"
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,6"/>
 
                             <Grid Margin="0,0,0,12">
@@ -526,28 +526,28 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- T�i s? d?ng flow (ReuseRoutes) -->
-                            <TextBlock Text="T�i s? d?ng flow:"
+                            <!-- Tái sử dụng flow (ReuseRoutes) -->
+                            <TextBlock Text="Tái sử dụng flow:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        Margin="0,16,0,8"/>
-                            <TextBlock Text="C?u h�nh route l?i flow theo t?ng node IN ? node OUT v� ki?u line cho t?ng connection."
+                            <TextBlock Text="Cấu hình route lại flow theo từng node IN → node OUT và kiểu line cho từng connection."
                                        Foreground="{DynamicResource TextMuted}"
                                        FontSize="11"
                                        Margin="0,0,0,8"
                                        TextWrapping="Wrap"/>
 
-                            <!-- V? tr� c?ng IN/OUT d�ng chung cho ReuseRoutes -->
+                            <!-- Vị trí cổng IN/OUT dùng chung cho ReuseRoutes -->
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Port IN (c?ng v�o) -->
+                                <!-- Port IN (cổng vào) -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (c?ng v�o)"
+                                    <TextBlock Text="Port IN (cổng vào)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -558,9 +558,9 @@
                                               SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
 
-                                <!-- Port OUT (c?ng ra) -->
+                                <!-- Port OUT (cổng ra) -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (c?ng ra)"
+                                    <TextBlock Text="Port OUT (cổng ra)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -572,7 +572,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Danh s�ch ReuseRoutes -->
+                            <!-- Danh sách ReuseRoutes -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -618,9 +618,9 @@
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>
 
-                                                <!-- Ki?u line OUT -->
+                                                <!-- Kiểu line OUT -->
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Ki?u line OUT"
+                                                    <TextBlock Text="Kiểu line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12"
                                                                Opacity="0.7"
@@ -641,25 +641,25 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 3: Luu ?nh c?t -->
-                <TabItem Header="Luu ?nh c?t" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 3: Lưu ảnh cắt -->
+                <TabItem Header="Lưu ảnh cắt" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Folder luu ?nh c?t:"
+                            <TextBlock Text="Folder lưu ảnh cắt:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
-                            <TextBlock Text="N?u kh�ng ch?n Node+Key, s? d�ng thu m?c Downloads c?a user."
+                            <TextBlock Text="Nếu không chọn Node+Key, sẽ dùng thư mục Downloads của user."
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,6"/>
 
-                            <TextBlock Text="Folder m?c d?nh (t�y ch?n):"
+                            <TextBlock Text="Folder mặc định (tùy chọn):"
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding CroppedFolderPath, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
                                      Height="32"
                                      Margin="0,0,0,12"/>
 
-                            <TextBlock Text="Ho?c l?y t? Node + Key (string folder path):"
+                            <TextBlock Text="Hoặc lấy từ Node + Key (string folder path):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,4,0,6"/>
 

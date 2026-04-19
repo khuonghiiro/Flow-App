@@ -32,15 +32,15 @@
                              Style="{DynamicResource BaseTextBoxV2}" FontSize="16" Padding="0,4,0,4"
                              VerticalContentAlignment="Center" Cursor="IBeam"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
                             Style="{DynamicResource PrimaryButton}"
                             Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
+                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
                             Command="{Binding RunSingleNodeCommand}"/>
 
                                             <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                             Style="{DynamicResource DangerButton}"
-                            Content="�" 
+                            Content="✕" 
                             FontSize="12" 
                             FontWeight="Bold" 
                             Cursor="Hand"
@@ -49,7 +49,7 @@
                 </Grid>
             </Border>
 
-            <!-- Content: 2 tab Logic + T�i s? d?ng flow -->
+            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
             <TabControl Grid.Row="1"
                         Background="Transparent"
                         BorderThickness="0">
@@ -57,7 +57,7 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <TextBlock Text="Hi?n th? ti�u d?:"
+                    <TextBlock Text="Hiển thị tiêu đề:"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ComboBox x:Name="TitleDisplayModeComboBox" Height="36"
                               Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
@@ -65,7 +65,7 @@
                               SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                               SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
-                    <TextBlock Text="M�u ti�u d?:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -82,25 +82,25 @@
                                 BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                     </Grid>
 
-                    <!-- Input: nhi?u d�ng Node + Key + Key t�y ch?nh -->
-                    <TextBlock Text="Input (node ngu?n + key) � m?i d�ng = m?t bi?n trong code:"
+                    <!-- Input: nhiều dòng Node + Key + Key tùy chỉnh -->
+                    <TextBlock Text="Input (node nguồn + key) — mỗi dòng = một biến trong code:"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}" Margin="0,0,0,6">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="0,0,0,8">
-                                    <!-- Checkbox cho ph�p ch?y l?i logic -->
+                                    <!-- Checkbox cho phép chạy lại logic -->
                                     <CheckBox IsChecked="{Binding ShouldReExecute, Mode=TwoWay}"
                                               Margin="0,0,0,6"
                                               Foreground="{DynamicResource TextBrush}"
                                               FontSize="12">
                                         <TextBlock TextWrapping="Wrap">
-                                            <Run Text="Cho ph�p ch?y l?i logic node ngu?n d? l?y d? li?u m?i nh?t"/>
-                                            <Run Text=" (b? t�ch = ch? l?y data c� s?n, kh�ng re-execute)" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                            <Run Text="Cho phép chạy lại logic node nguồn để lấy dữ liệu mới nhất"/>
+                                            <Run Text=" (bỏ tích = chỉ lấy data có sẵn, không re-execute)" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
                                         </TextBlock>
                                     </CheckBox>
                                     
-                                    <!-- D�ng input mapping -->
+                                    <!-- Dòng input mapping -->
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -126,10 +126,10 @@
                                                       SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="4">
-                                            <TextBlock Text="Bi?n trong code (tr?ng = d�ng key d� ch?n)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                            <TextBlock Text="Biến trong code (trống = dùng key đã chọn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                             <TextBox Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{DynamicResource BaseTextBoxV2}" Height="36"
-                                                     ToolTip="T�n bi?n trong code. �? tr?ng th� d�ng key t? combobox Key."/>
+                                                     ToolTip="Tên biến trong code. Để trống thì dùng key từ combobox Key."/>
                                         </StackPanel>
                                         <Button Grid.Column="5" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
                                                 Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -140,26 +140,26 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Button Content="+ Th�m input" Height="32" Margin="0,0,0,8"
+                    <Button Content="+ Thêm input" Height="32" Margin="0,0,0,8"
                             Command="{Binding AddInputMappingCommand}"
                             Width="120" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
                     <TextBlock Margin="0,0,0,12" Foreground="{DynamicResource TextSecondary}" FontSize="12">
-                        <Run Text="Bi?n trong code: "/>
+                        <Run Text="Biến trong code: "/>
                         <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
                     </TextBlock>
 
-                    <!-- Code editor: font size + ph�ng to popup -->
+                    <!-- Code editor: font size + phóng to popup -->
                     <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Code (JavaScript). return { key: value }; ho?c d�ng function main()."
+                        <TextBlock Text="Code (JavaScript). return { key: value }; hoặc dùng function main()."
                                    Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
-                                   ToolTip="Xem th�m: m? 'V� d? ch?y code &amp; G?i �' d? bi?t c�ch tr? v? khi c� nhi?u h�m."/>
+                                   ToolTip="Xem thêm: mở 'Ví dụ chạy code &amp; Gợi ý' để biết cách trả về khi có nhiều hàm."/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button x:Name="ExpandCodeButton" Content="? Ph�ng to" Width="90" Height="28" Margin="0,0,6,0"
-                                    ToolTip="M? c?a s? so?n code l?n hon"
+                            <Button x:Name="ExpandCodeButton" Content="⛶ Phóng to" Width="90" Height="28" Margin="0,0,6,0"
+                                    ToolTip="Mở cửa sổ soạn code lớn hơn"
                                     Foreground="{DynamicResource TextBrush}" Background="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
                                     Cursor="Hand" Padding="8,0" FontSize="12" Click="ExpandCodeButton_Click"/>
                             <Button Content="A-" Width="28" Height="28" Margin="0,0,4,0"
@@ -173,13 +173,13 @@
                         </StackPanel>
                     </Grid>
                     <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap">
-                        <Run Text="Tip: Output 'js' g?i sang WebNode c� th? ch?nh timeout ch? outputs b?ng comment:"/>
+                        <Run Text="Tip: Output 'js' gửi sang WebNode có thể chỉnh timeout chờ outputs bằng comment:"/>
                         <LineBreak/>
                         <Run Text="// AC_RESPONSE_TIMEOUT_MS=0" FontFamily="Consolas" Foreground="{DynamicResource WarningColor}"/>
-                        <Run Text="  (kh�ng ch? outputs, b? qua timeout)"/>
+                        <Run Text="  (không chờ outputs, bỏ qua timeout)"/>
                         <LineBreak/>
                         <Run Text="// AC_RESPONSE_TIMEOUT_MS=3000" FontFamily="Consolas" Foreground="{DynamicResource WarningColor}"/>
-                        <Run Text="  (ch? t?i da 3000ms, n?u kh�ng ghi d�ng n�y th� d�ng timeout m?c d?nh c?a WebNode)."/>
+                        <Run Text="  (chờ tối đa 3000ms, nếu không ghi dòng này thì dùng timeout mặc định của WebNode)."/>
                     </TextBlock>
                     <controls:SyntaxHighlightCodeEditor x:Name="CodeEditor"
                              Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
@@ -187,34 +187,34 @@
                              IsAutoHighlightEnabled="False"
                              MinHeight="140" MaxHeight="320" Margin="0,0,0,12"/>
 
-                    <!-- V� d? & G?i � -->
+                    <!-- Ví dụ & Gợi ý -->
                     <Expander x:Name="ExampleHintsExpander" IsExpanded="False" Margin="0,0,0,12">
                         <Expander.Header>
-                            <TextBlock Text="V� d? ch?y code &amp; G?i �" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Ví dụ chạy code &amp; Gợi ý" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
                         </Expander.Header>
                         <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="C�ch ch?y:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <TextBlock Text="Cách chạy:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
-                                    <Run Text="1) Ch?n Node + Key l�m input (v� d? node HttpRequest, key responseBody)."/>
+                                    <Run Text="1) Chọn Node + Key làm input (ví dụ node HttpRequest, key responseBody)."/>
                                     <LineBreak/>
-                                    <Run Text="2) Bi?n trong code = t�n key (ho?c key t�y ch?nh). Ch?y workflow ? node Code l?y data t? node ngu?n, g�n v�o bi?n r?i ch?y script."/>
+                                    <Run Text="2) Biến trong code = tên key (hoặc key tùy chỉnh). Chạy workflow → node Code lấy data từ node nguồn, gán vào biến rồi chạy script."/>
                                     <LineBreak/>
-                                    <Run Text="3) Script ph?i tr? v? object { key: value }. C�c key tr�ng v?i Output keys s? du?c dua ra node."/>
+                                    <Run Text="3) Script phải trả về object { key: value }. Các key trùng với Output keys sẽ được đưa ra node."/>
                                 </TextBlock>
-                                <TextBlock Text="Nhi?u input c�ng t�n bi?n:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <TextBlock Text="Nhiều input cùng tên biến:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
-                                    <Run Text="Khi c� nhi?u input d�ng c�ng t�n bi?n (vd. 2 node d?u map v�o bi?n &quot;input&quot;): h? th?ng s? �p d?ng bi?n t? node dang c� logic ch?y d?n Code node. Node kh�c chua ch?y t?i kh�ng �p d?ng. Bi?n kh�c t�n th� �p d?ng b�nh thu?ng."/>
+                                    <Run Text="Khi có nhiều input dùng cùng tên biến (vd. 2 node đều map vào biến &quot;input&quot;): hệ thống sẽ áp dụng biến từ node đang có logic chạy đến Code node. Node khác chưa chạy tới không áp dụng. Biến khác tên thì áp dụng bình thường."/>
                                 </TextBlock>
-                                <TextBlock Text="Nhi?u h�m � c�ch tr? v? (d�ng main):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <TextBlock Text="Nhiều hàm — cách trả về (dùng main):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
-                                    <Run Text="Khi b?n vi?t nhi?u h�m (v� d? processOrder, helper...) m� kh�ng c� bi?u th?c return ? cu?i script, h? th?ng s? t? t�m v� g?i "/>
+                                    <Run Text="Khi bạn viết nhiều hàm (ví dụ processOrder, helper...) mà không có biểu thức return ở cuối script, hệ thống sẽ tự tìm và gọi "/>
                                     <Run Text="function main()" FontWeight="SemiBold" Foreground="{DynamicResource SuccessColor}"/>
-                                    <Run Text=". B?n ch? c?n d?nh nghia main() v� trong d� return object k?t qu?."/>
+                                    <Run Text=". Bạn chỉ cần định nghĩa main() và trong đó return object kết quả."/>
                                 </TextBlock>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
                                     <StackPanel>
-                                        <TextBlock Text="� C�ch 1 (khuy?n ngh?): �?nh nghia function main() v� return object trong main." Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <TextBlock Text="• Cách 1 (khuyến nghị): Định nghĩa function main() và return object trong main." Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
                                             <Run Text="function processOrder(order) { ... }"/>
                                             <LineBreak/>
@@ -222,21 +222,21 @@
                                             <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text="); }"/>
                                         </TextBlock>
-                                        <TextBlock Text="� C�ch 2: Vi?t bi?u th?c cu?i c�ng l� l?i g?i h�m tr? object (v� d? processOrder(input);)." Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBlock Text="• Cách 2: Viết biểu thức cuối cùng là lời gọi hàm trả object (ví dụ processOrder(input);)." Foreground="{DynamicResource TextSecondary}"/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Bi?n &amp; h�m g?i �:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <TextBlock Text="Biến &amp; hàm gợi ý:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Margin="0,0,0,4">
-                                            <Run Text="� Bi?n input: " Foreground="{DynamicResource TextSecondary}"/>
+                                            <Run Text="• Biến input: " Foreground="{DynamicResource TextSecondary}"/>
                                             <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold"/>
-                                            <Run Text=" (chu?i t? node ngu?n)" Foreground="{DynamicResource TextSecondary}"/>
+                                            <Run Text=" (chuỗi từ node nguồn)" Foreground="{DynamicResource TextSecondary}"/>
                                         </TextBlock>
-                                        <TextBlock Text="� JSON.parse(str) � chuy?n chu?i JSON th�nh object" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Text="� JSON.stringify(obj) � chuy?n object th�nh chu?i JSON" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Text="� return { key1: value1, key2: value2 }; � b?t bu?c d? tr? output" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Text="� Output 'js' ch?y trong WebView2 (kh�ng c� bi?n t? input): nh�ng gi� tr? b?ng string concatenation:" Foreground="{DynamicResource WarningColor}" Margin="0,4,0,2"/>
+                                        <TextBlock Text="• JSON.parse(str) — chuyển chuỗi JSON thành object" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• JSON.stringify(obj) — chuyển object thành chuỗi JSON" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• return { key1: value1, key2: value2 }; — bắt buộc để trả output" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• Output 'js' chạy trong WebView2 (không có biến từ input): nhúng giá trị bằng string concatenation:" Foreground="{DynamicResource WarningColor}" Margin="0,4,0,2"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,4">
                                             <Run Text="const textToInput = JSON.stringify("/>
                                             <Run Text="{Binding FirstInputVariableName, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
@@ -244,7 +244,7 @@
                                             <LineBreak/>
                                             <Run Text="return { js: 'const textToInput = ' + textToInput + '; ...' };"/>
                                         </TextBlock>
-                                        <TextBlock Text="Ho?c d�ng template literal (n?u Jint h? tr?):" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,4,0,2"/>
+                                        <TextBlock Text="Hoặc dùng template literal (nếu Jint hỗ trợ):" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,4,0,2"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                             <Run Text="return { js: `const textToInput = ${JSON.stringify("/>
                                             <Run Text="{Binding FirstInputVariableName, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
@@ -252,7 +252,7 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="V� d? (input l� chu?i JSON c� m?ng items):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                <TextBlock Text="Ví dụ (input là chuỗi JSON có mảng items):" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6">
                                     <TextBlock FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                         <Run Text="var data = JSON.parse("/>
@@ -266,7 +266,7 @@
                                         <Run Text="return { count: count, first: first };"/>
                                     </TextBlock>
                                 </Border>
-                                <Button Content="Ch�n m?u co b?n" Command="{Binding InsertExampleSnippetCommand}"
+                                <Button Content="Chèn mẫu cơ bản" Command="{Binding InsertExampleSnippetCommand}"
                                         Width="140" Height="28" Margin="0,10,0,0" HorizontalAlignment="Left"
                                         Foreground="{DynamicResource TextBrush}" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" Cursor="Hand" Padding="8,0" FontSize="12"/>
                             </StackPanel>
@@ -274,7 +274,7 @@
                     </Expander>
 
                     <!-- Output keys -->
-                    <TextBlock Text="Output keys (tr�ng v?i key trong object return):"
+                    <TextBlock Text="Output keys (trùng với key trong object return):"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
                         <StackPanel>
@@ -297,7 +297,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Button Content="+ Th�m output key" Height="32" Margin="0,8,0,0"
+                            <Button Content="+ Thêm output key" Height="32" Margin="0,8,0,0"
                                     Command="{Binding AddOutputKeyCommand}"
                                     Width="120"
                                     Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
@@ -310,12 +310,12 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: T�i s? d?ng flow -->
-                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 2: Tái sử dụng flow -->
+                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- C?u h�nh v? tr� c?ng IN/OUT -->
-                            <TextBlock Text="V? tr� c?ng IN/OUT:"
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -329,7 +329,7 @@
 
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (c?ng v�o)"
+                                    <TextBlock Text="Port IN (cổng vào)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -342,7 +342,7 @@
 
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (c?ng ra)"
+                                    <TextBlock Text="Port OUT (cổng ra)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -354,7 +354,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- C?u h�nh t�i s? d?ng flow -->
+                            <!-- Cấu hình tái sử dụng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -399,7 +399,7 @@
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Ki?u line OUT"
+                                                    <TextBlock Text="Kiểu line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12"
                                                                Opacity="0.7"

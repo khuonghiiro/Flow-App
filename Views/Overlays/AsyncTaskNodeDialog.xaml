@@ -43,15 +43,15 @@
                           Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
-                                Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
+                                Margin="8,0,0,0" ToolTip="Chạy logic node này"
                                 Command="{Binding RunSingleNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
-                                Content="�"
+                                Content="✕"
                                 FontSize="12"
                                 FontWeight="Bold"
                                 Cursor="Hand"
@@ -60,7 +60,7 @@
                 </Grid>
             </Border>
 
-            <!-- Content: 2 tab Logic + T�i s? d?ng flow -->
+            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
             <TabControl Grid.Row="1"
                         Background="Transparent"
                         BorderThickness="0">
@@ -68,11 +68,11 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <!-- Ch? d? ch?y: Song song / Tu?n t? -->
-                    <TextBlock Text="Ch? d? ch?y:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <!-- Chế độ chạy: Song song / Tuần tự -->
+                    <TextBlock Text="Chế độ chạy:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     
                     <CheckBox x:Name="RunInParallelCheckBox"
-                              Content="Ch?y song song (parallel)"
+                              Content="Chạy song song (parallel)"
                               IsChecked="{Binding RunInParallel, Mode=TwoWay}"
                               Foreground="{DynamicResource TextBrush}" FontSize="12"
                               Margin="0,0,0,8"/>
@@ -80,14 +80,14 @@
                     <Border Background="{DynamicResource BorderColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
                             CornerRadius="6" Padding="10" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="So s�nh th?i gian:" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="So sánh thời gian:" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <TextBlock x:Name="ExecutionModeExplanation"
                                        Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap" Opacity="0.85"
                                        LineHeight="18"/>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="Ki?u giao di?n tr�n canvas:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="Kiểu giao diện trên canvas:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ComboBox Height="36" Margin="0,0,0,12"
                               Style="{DynamicResource BaseComboBox}"
                               ItemsSource="{Binding UiModeOptions}"
@@ -96,7 +96,7 @@
                               SelectedValue="{Binding UiPresentationMode, Mode=TwoWay}"/>
 
                     <StackPanel Visibility="{Binding ShowDispatchLoopUi, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Ki?u dispatch (gi?ng Loop):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Kiểu dispatch (giống Loop):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <ComboBox Height="36" Margin="0,0,0,12"
                                   Style="{DynamicResource BaseComboBox}"
                                   ItemsSource="{Binding DispatchLoopTypeOptions}"
@@ -105,7 +105,7 @@
                                   SelectedValue="{Binding DispatchLoopType, Mode=TwoWay}"/>
 
                         <StackPanel Visibility="{Binding ShowDispatchRepeatPanel, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="S? l?n l?p (N):" Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,4"/>
+                            <TextBlock Text="Số lần lặp (N):" Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,4"/>
                             <TextBox Style="{DynamicResource BaseTextBoxV2}" Height="32"
                                      Text="{Binding DispatchRepeatCount, Mode=TwoWay}" Margin="0,0,0,12"/>
                         </StackPanel>
@@ -120,7 +120,7 @@
                         </StackPanel>
 
                         <CheckBox x:Name="ReadResultsInBodyCheckBox"
-                                  Content="�?c k?t qu? trong body (m?c d?nh)"
+                                  Content="Đọc kết quả trong body (mặc định)"
                                   IsChecked="{Binding ReadResultsInBody, Mode=TwoWay}"
                                   Foreground="{DynamicResource TextBrush}"
                                   FontSize="12"
@@ -128,7 +128,7 @@
                     </StackPanel>
 
                     <StackPanel Visibility="{Binding ShowManualTasksUi, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="C�c task (s? b�n c?nh port out tuong ?ng v?i Task N):"
+                    <TextBlock Text="Các task (số bên cạnh port out tương ứng với Task N):"
                                Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                     <ItemsControl x:Name="TasksItemsControl" ItemsSource="{Binding Tasks}">
@@ -154,7 +154,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Button Content="+ Th�m task" Height="36" Margin="0,8,0,0"
+                    <Button Content="+ Thêm task" Height="36" Margin="0,8,0,0"
                             Command="{Binding AddTaskCommand}"
                             Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
                     </StackPanel>
@@ -166,19 +166,19 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: T�i s? d?ng flow -->
-                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 2: Tái sử dụng flow -->
+                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Ch? c?u h�nh v? tr� c?ng IN cho AsyncTaskNode (c?ng OUT do renderer chuy�n bi?t qu?n l�) -->
-                            <TextBlock Text="V? tr� c?ng IN:"
+                            <!-- Chỉ cấu hình vị trí cổng IN cho AsyncTaskNode (cổng OUT do renderer chuyên biệt quản lý) -->
+                            <TextBlock Text="Vị trí cổng IN:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
                             <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="Port IN (c?ng v�o)"
+                                <TextBlock Text="Port IN (cổng vào)"
                                            Foreground="{DynamicResource TextBrush}"
                                            FontSize="12"
                                            Opacity="0.8"
@@ -189,7 +189,7 @@
                                           SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
                             </StackPanel>
 
-                            <!-- AsyncTaskNode c� nhi?u port OUT (m?i task), kh�ng d�ng ReuseRoutes -->
+                            <!-- AsyncTaskNode có nhiều port OUT (mỗi task), không dùng ReuseRoutes -->
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

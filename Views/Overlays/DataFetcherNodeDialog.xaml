@@ -49,28 +49,28 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <!-- Fetch Now -->
                         <Button Width="24" Height="24"
-                                Content="?"
+                                Content="↻"
                                 FontSize="11"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
                                 Margin="8,0,0,0"
-                                ToolTip="L?y gi� tr? ngay (preview)"
+                                ToolTip="Lấy giá trị ngay (preview)"
                                 Command="{Binding FetchNowCommand}"/>
                         <!-- Play -->
                         <Button x:Name="PlayButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
-                                Content="?"
+                                Content="▶"
                                 FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
                                 Margin="8,0,0,0"
-                                ToolTip="Ch?y logic node n�y"
+                                ToolTip="Chạy logic node này"
                                 Command="{Binding RunSingleNodeCommand}"/>
                         <!-- Close -->
                         <Button x:Name="CloseButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
-                                Content="�"
+                                Content="✕"
                                 FontSize="12"
                                 FontWeight="Bold"
                                 Cursor="Hand"
@@ -92,7 +92,7 @@
                         <StackPanel>
 
                             <!-- TitleDisplayMode -->
-                            <TextBlock Text="Hi?n th? ti�u d?:"
+                            <TextBlock Text="Hiển thị tiêu đề:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <ComboBox Height="32"
@@ -105,8 +105,8 @@
 
                             <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
-                            <!-- Node ngu?n -->
-                            <TextBlock Text="Node ngu?n (l?y output t? node n�o):"
+                            <!-- Node nguồn -->
+                            <TextBlock Text="Node nguồn (lấy output từ node nào):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <ComboBox Height="34"
@@ -118,8 +118,8 @@
                                       SelectedValue="{Binding SelectedSourceNodeId, Mode=TwoWay}"
                                       SelectionChanged="SourceNodeComboBox_SelectionChanged"/>
 
-                            <!-- Output key (ch? hi?n khi kh�ng fetch t?t c?) -->
-                            <TextBlock Text="Output key c? th? (d? tr?ng = l?y t?t c?):"
+                            <!-- Output key (chỉ hiện khi không fetch tất cả) -->
+                            <TextBlock Text="Output key cụ thể (để trống = lấy tất cả):"
                                        Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                        Margin="0,0,0,6"
                                        Visibility="{Binding HasSourceNode, Converter={StaticResource BoolToVisConverter}}"/>
@@ -131,13 +131,13 @@
                                       DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"
                                       Visibility="{Binding HasSourceNode, Converter={StaticResource BoolToVisConverter}}"/>
-                            <TextBlock Text="(N?u kh�ng ch?n key, DataFetcher s? copy TO�N B? outputs c?a node ngu?n)"
+                            <TextBlock Text="(Nếu không chọn key, DataFetcher sẽ copy TOÀN BỘ outputs của node nguồn)"
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                        Margin="0,0,0,10"
                                        Visibility="{Binding HasSourceNode, Converter={StaticResource BoolToVisConverter}}"/>
 
                             <!-- WebNode wait -->
-                            <CheckBox Content="? Ch? trang WebNode load xong r?i m?i l?y"
+                            <CheckBox Content="⏳ Chờ trang WebNode load xong rồi mới lấy"
                                       Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                       IsChecked="{Binding WaitForWebNodeLoad, Mode=TwoWay}"
                                       Margin="0,0,0,14"
@@ -146,7 +146,7 @@
                             <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
                             <!-- Preview -->
-                            <TextBlock Text="Gi� tr? d� l?y (preview):"
+                            <TextBlock Text="Giá trị đã lấy (preview):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10,8" Margin="0,0,0,14">
@@ -157,27 +157,27 @@
 
                             <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
-                            <CheckBox Content="?? Ch?y l?i node ngu?n tru?c khi l?y d? li?u"
+                            <CheckBox Content="🔄 Chạy lại node nguồn trước khi lấy dữ liệu"
                                       Foreground="{DynamicResource PrimaryBrush}" FontSize="12"
                                       IsChecked="{Binding RunSourceNodeFirst, Mode=TwoWay}"
                                       Margin="16,0,0,4"
-                                      ToolTip="Khi b?t: DataFetcher s? k�ch ho?t ch?y l?i node ngu?n (nhu nh?n ? c?a node d�) tru?c khi copy data. �?m b?o l?y du?c gi� tr? M?I NH?T d� node ngu?n chua ch?y."/>
-                            <TextBlock Text="(B?t t�y ch?n n�y n?u node ngu?n chua ch?y ho?c c?n refresh tru?c khi l?y)"
+                                      ToolTip="Khi bật: DataFetcher sẽ kích hoạt chạy lại node nguồn (như nhấn ▶ của node đó) trước khi copy data. Đảm bảo lấy được giá trị MỚI NHẤT dù node nguồn chưa chạy."/>
+                            <TextBlock Text="(Bật tùy chọn này nếu node nguồn chưa chạy hoặc cần refresh trước khi lấy)"
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                        Margin="16,0,0,14"/>
 
                             <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>   
                             <!-- Timer -->
-                            <TextBlock Text="? Timer t? d?ng:"
+                            <TextBlock Text="⏱ Timer tự động:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
-                            <CheckBox Content="B?t Timer (t? d?ng l?y theo chu k?)"
+                            <CheckBox Content="Bật Timer (tự động lấy theo chu kỳ)"
                                       Foreground="{DynamicResource TextBrush}" FontSize="12"
                                       IsChecked="{Binding EnableTimer, Mode=TwoWay}"
                                       Margin="0,0,0,8"/>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,14"
                                         IsEnabled="{Binding EnableTimer}">
-                                <TextBlock Text="Chu k?:" Foreground="{DynamicResource TextMuted}" FontSize="12"
+                                <TextBlock Text="Chu kỳ:" Foreground="{DynamicResource TextMuted}" FontSize="12"
                                            VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <TextBox Text="{Binding TimerIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          Width="70" Height="32"
@@ -189,7 +189,7 @@
                                           SelectedItem="{Binding TimerUnit, Mode=TwoWay}"/>
                             </StackPanel>
 
-                            <CheckBox Content="Ch? ch?y chu k? ch�nh khi output d� c� data (m?c d?nh: t?t)"
+                            <CheckBox Content="Chỉ chạy chu kỳ chính khi output đã có data (mặc định: tắt)"
                                       Foreground="{DynamicResource PrimaryBrush}" FontSize="12"
                                       IsChecked="{Binding EnableDataReadyScan, Mode=TwoWay}"
                                       Margin="0,0,0,8"
@@ -209,7 +209,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </StackPanel.Style>
-                                <TextBlock Text="Chu k? qu�t data:" Foreground="{DynamicResource TextMuted}" FontSize="12"
+                                <TextBlock Text="Chu kỳ quét data:" Foreground="{DynamicResource TextMuted}" FontSize="12"
                                            VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <TextBox Text="{Binding DataReadyScanIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          Width="70" Height="32"
@@ -220,11 +220,11 @@
                                           ItemsSource="{Binding TimerUnitOptions}"
                                           SelectedItem="{Binding DataReadyScanUnit, Mode=TwoWay}"/>
                             </StackPanel>
-                            <TextBlock Text="Luu �: chu k? qu�t data kh�ng du?c l?n hon chu k? Timer ch�nh."
+                            <TextBlock Text="Lưu ý: chu kỳ quét data không được lớn hơn chu kỳ Timer chính."
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                        Margin="0,0,0,14"/>
 
-                            <TextBlock Text="Key d�ng d? ki?m tra data-ready (ch?n 1 ho?c nhi?u):"
+                            <TextBlock Text="Key dùng để kiểm tra data-ready (chọn 1 hoặc nhiều):"
                                        Foreground="{DynamicResource TextMuted}" FontSize="12"
                                        Margin="0,0,0,6"/>
                             <Border Background="{DynamicResource CardColor}"
@@ -246,17 +246,17 @@
                                     </ItemsControl>
                                 </ScrollViewer>
                             </Border>
-                            <TextBlock Text="�? tr?ng danh s�ch n�y = d�ng logic cu (theo key c? th? ho?c b?t k? output c� data)."
+                            <TextBlock Text="Để trống danh sách này = dùng logic cũ (theo key cụ thể hoặc bất kỳ output có data)."
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                        Margin="0,0,0,14"/>
 
                             <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
                             <!-- Realtime -->
-                            <TextBlock Text="? Realtime:"
+                            <TextBlock Text="⚡ Realtime:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
-                            <CheckBox Content="B?t Realtime (nh?n ngay khi node ngu?n x? l� xong)"
+                            <CheckBox Content="Bật Realtime (nhận ngay khi node nguồn xử lý xong)"
                                       Foreground="{DynamicResource TextBrush}" FontSize="12"
                                       IsChecked="{Binding EnableRealtime, Mode=TwoWay}"
                                       Margin="0,0,0,8"/>
@@ -265,7 +265,7 @@
 
                             <!-- Outputs Panel -->
                             <TextBlock x:Name="TextBlockOutputPanel"
-                                       Text="Outputs (gi� tr? d� fetch):"
+                                       Text="Outputs (giá trị đã fetch):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <Border Background="{DynamicResource WindowBodyBackground}"
@@ -282,13 +282,13 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- TAB C?U H�NH -->
-                <TabItem Header="C?u h�nh" Style="{StaticResource HttpTabItemStyle}">
+                <!-- TAB CẤU HÌNH -->
+                <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
 
-                            <!-- M�u ti�u d? -->
-                            <TextBlock Text="M�u ti�u d?:"
+                            <!-- Màu tiêu đề -->
+                            <TextBlock Text="Màu tiêu đề:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <Grid Margin="0,0,0,14">
@@ -310,8 +310,8 @@
                                         BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                             </Grid>
 
-                            <!-- V? tr� Port IN/OUT -->
-                            <TextBlock Text="V? tr� c?ng IN/OUT:"
+                            <!-- Vị trí Port IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <Grid Margin="0,0,0,14">
@@ -356,7 +356,7 @@
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Ki?u line OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="Kiểu line OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
                                                     <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                               ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               SelectedValuePath="Key" DisplayMemberPath="DisplayName"
@@ -368,7 +368,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <TextBlock Text="Ghi ch�: DataFetcher ch?y theo flow khi c� port IN k?t n?i. Timer/Realtime l� ch? d? ph? th�m."
+                            <TextBlock Text="Ghi chú: DataFetcher chạy theo flow khi có port IN kết nối. Timer/Realtime là chế độ phụ thêm."
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap"
                                        Margin="0,0,0,0"/>
                         </StackPanel>

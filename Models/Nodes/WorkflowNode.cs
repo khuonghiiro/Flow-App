@@ -394,6 +394,14 @@ namespace FlowMy.Models
         public string? LastBranchId { get; set; }
         public string? LastParentFlowScopeId { get; set; }
 
+        // ── Floating Widget ──
+        /// <summary>
+        /// Cấu hình để xuất node ra ngoài màn hình dưới dạng floating widget.
+        /// Null / IsEnabled=false = không dùng. Được persist vào workflow JSON.
+        /// Đặt ở WorkflowNode base để bất kỳ node nào cũng có thể mở rộng thành widget.
+        /// </summary>
+        public FloatingWidgetConfig? FloatingWidget { get; set; }
+
         // Backward compatibility - giữ lại để không break code cũ
         public string? Condition { get; set; }
 

@@ -1,0 +1,273 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace FlowMy.Models
+{
+    // ── Enums cho Floating Widget ──
+
+    /// <summary>Hình dạng khi widget thu nhỏ (idle).</summary>
+    public enum WidgetIdleShape
+    {
+        Circle = 0,
+        Diamond = 1,
+        Square = 2,
+        RoundedSquare = 3
+    }
+
+    /// <summary>Cạnh màn hình ưu tiên khi snap.</summary>
+    public enum WidgetSnapEdge
+    {
+        None = 0,
+        Left = 1,
+        Right = 2,
+        Top = 3,
+        Bottom = 4
+    }
+
+    /// <summary>Chế độ hiển thị widget.</summary>
+    public enum WidgetDisplayMode
+    {
+        /// <summary>Bình thường — có title bar + content.</summary>
+        Normal = 0,
+        /// <summary>Nhỏ gọn — title bar rất mỏng.</summary>
+        Compact = 1,
+        /// <summary>Full content — ẩn title bar hoàn toàn.</summary>
+        FullContent = 2
+    }
+
+    /// <summary>
+    /// Cấu hình đầy đủ để xuất một node ra ngoài màn hình dưới dạng floating widget.
+    /// Được lưu vào workflow JSON khi persist.
+    /// Kiến trúc mở rộng: bất kỳ WorkflowNode nào cũng có thể có FloatingWidgetConfig.
+    /// </summary>
+    public class FloatingWidgetConfig : INotifyPropertyChanged
+    {
+        // ── Kích hoạt ──
+        private bool _isEnabled;
+        /// <summary>Bật/tắt chế độ floating widget cho node này.</summary>
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set { if (_isEnabled != value) { _isEnabled = value; OnPropertyChanged(); } }
+        }
+
+        // ── Hình dạng khi thu nhỏ (Idle / Collapsed) ──
+        private WidgetIdleShape _idleShape = WidgetIdleShape.Circle;
+        public WidgetIdleShape IdleShape
+        {
+            get => _idleShape;
+            set { if (_idleShape != value) { _idleShape = value; OnPropertyChanged(); } }
+        }
+
+        private double _idleSize = 48;
+        /// <summary>Kích thước (px) hình dạng khi idle. Mặc định 48.</summary>
+        public double IdleSize
+        {
+            get => _idleSize;
+            set { var v = Math.Max(24, Math.Min(120, value)); if (Math.Abs(_idleSize - v) > 0.01) { _idleSize = v; OnPropertyChanged(); } }
+        }
+
+        private string _idleIconText = "⚡";
+        /// <summary>Icon/emoji hiển thị bên trong hình idle.</summary>
+        public string IdleIconText
+        {
+            get => _idleIconText;
+            set { if (_idleIconText != value) { _idleIconText = value ?? "⚡"; OnPropertyChanged(); } }
+        }
+
+        private double _idleOpacity = 0.85;
+        public double IdleOpacity
+        {
+            get => _idleOpacity;
+            set { var v = Math.Max(0.1, Math.Min(1.0, value)); if (Math.Abs(_idleOpacity - v) > 0.001) { _idleOpacity = v; OnPropertyChanged(); } }
+        }
+
+        // ── Kích thước khi mở rộng (Expanded) ──
+        private double _expandedWidth = 400;
+        public double ExpandedWidth
+        {
+            get => _expandedWidth;
+            set { var v = Math.Max(200, value); if (Math.Abs(_expandedWidth - v) > 0.01) { _expandedWidth = v; OnPropertyChanged(); } }
+        }
+
+        private double _expandedHeight = 300;
+        public double ExpandedHeight
+        {
+            get => _expandedHeight;
+            set { var v = Math.Max(150, value); if (Math.Abs(_expandedHeight - v) > 0.01) { _expandedHeight = v; OnPropertyChanged(); } }
+        }
+
+        private bool _allowResize = true;
+        /// <summary>Cho phép kéo thay đổi kích thước khi expanded.</summary>
+        public bool AllowResize
+        {
+            get => _allowResize;
+            set { if (_allowResize != value) { _allowResize = value; OnPropertyChanged(); } }
+        }
+
+        private double _minExpandedWidth = 200;
+        public double MinExpandedWidth { get => _minExpandedWidth; set { _minExpandedWidth = value; OnPropertyChanged(); } }
+
+        private double _minExpandedHeight = 150;
+        public double MinExpandedHeight { get => _minExpandedHeight; set { _minExpandedHeight = value; OnPropertyChanged(); } }
+
+        private double _maxExpandedWidth = 1200;
+        public double MaxExpandedWidth { get => _maxExpandedWidth; set { _maxExpandedWidth = value; OnPropertyChanged(); } }
+
+        private double _maxExpandedHeight = 900;
+        public double MaxExpandedHeight { get => _maxExpandedHeight; set { _maxExpandedHeight = value; OnPropertyChanged(); } }
+
+        // ── Vị trí & Di chuyển ──
+        private bool _allowDrag = true;
+        /// <summary>Cho phép kéo widget di chuyển.</summary>
+        public bool AllowDrag
+        {
+            get => _allowDrag;
+            set { if (_allowDrag != value) { _allowDrag = value; OnPropertyChanged(); } }
+        }
+
+        private bool _snapToEdge = true;
+        /// <summary>Tự bám sát vào cạnh màn hình gần nhất khi thả.</summary>
+        public bool SnapToEdge
+        {
+            get => _snapToEdge;
+            set { if (_snapToEdge != value) { _snapToEdge = value; OnPropertyChanged(); } }
+        }
+
+        private WidgetSnapEdge _preferredEdge = WidgetSnapEdge.Right;
+        public WidgetSnapEdge PreferredEdge
+        {
+            get => _preferredEdge;
+            set { if (_preferredEdge != value) { _preferredEdge = value; OnPropertyChanged(); } }
+        }
+
+        private double _snapMargin = 4;
+        /// <summary>Khoảng cách (px) từ widget tới cạnh màn hình khi snap.</summary>
+        public double SnapMargin
+        {
+            get => _snapMargin;
+            set { if (Math.Abs(_snapMargin - value) > 0.01) { _snapMargin = value; OnPropertyChanged(); } }
+        }
+
+        private double? _savedX;
+        /// <summary>Vị trí X đã lưu (persist).</summary>
+        public double? SavedX { get => _savedX; set { _savedX = value; OnPropertyChanged(); } }
+
+        private double? _savedY;
+        /// <summary>Vị trí Y đã lưu (persist).</summary>
+        public double? SavedY { get => _savedY; set { _savedY = value; OnPropertyChanged(); } }
+
+        // ── Hành vi Idle (Tự bám sát khi không dùng) ──
+        private bool _autoCollapseWhenIdle = true;
+        /// <summary>Tự thu nhỏ về idle shape khi không tương tác.</summary>
+        public bool AutoCollapseWhenIdle
+        {
+            get => _autoCollapseWhenIdle;
+            set { if (_autoCollapseWhenIdle != value) { _autoCollapseWhenIdle = value; OnPropertyChanged(); } }
+        }
+
+        private int _idleTimeoutSeconds = 10;
+        /// <summary>Số giây không tương tác trước khi thu nhỏ.</summary>
+        public int IdleTimeoutSeconds
+        {
+            get => _idleTimeoutSeconds;
+            set { var v = Math.Max(1, value); if (_idleTimeoutSeconds != v) { _idleTimeoutSeconds = v; OnPropertyChanged(); } }
+        }
+
+        private bool _slideToEdgeWhenIdle = true;
+        /// <summary>Khi idle, trượt widget bám sát vào cạnh (ẩn 1 phần).</summary>
+        public bool SlideToEdgeWhenIdle
+        {
+            get => _slideToEdgeWhenIdle;
+            set { if (_slideToEdgeWhenIdle != value) { _slideToEdgeWhenIdle = value; OnPropertyChanged(); } }
+        }
+
+        private double _slideHidePercent = 0.7;
+        /// <summary>Phần trăm widget ẩn đi khi slide vào cạnh (0.0–1.0). 0.7 = ẩn 70%, lộ 30%.</summary>
+        public double SlideHidePercent
+        {
+            get => _slideHidePercent;
+            set { var v = Math.Max(0, Math.Min(0.95, value)); if (Math.Abs(_slideHidePercent - v) > 0.001) { _slideHidePercent = v; OnPropertyChanged(); } }
+        }
+
+        // ── Trạng thái Window ──
+        private bool _alwaysOnTop = true;
+        /// <summary>Topmost — không cho cửa sổ khác đè lên.</summary>
+        public bool AlwaysOnTop
+        {
+            get => _alwaysOnTop;
+            set { if (_alwaysOnTop != value) { _alwaysOnTop = value; OnPropertyChanged(); } }
+        }
+
+        private bool _lockPosition;
+        /// <summary>Khóa vị trí, không cho di chuyển.</summary>
+        public bool LockPosition
+        {
+            get => _lockPosition;
+            set { if (_lockPosition != value) { _lockPosition = value; OnPropertyChanged(); } }
+        }
+
+        private bool _showInTaskbar;
+        /// <summary>Hiện trên thanh taskbar Windows.</summary>
+        public bool ShowInTaskbar
+        {
+            get => _showInTaskbar;
+            set { if (_showInTaskbar != value) { _showInTaskbar = value; OnPropertyChanged(); } }
+        }
+
+        // ── Title bar ──
+        private bool _showTitleBar = true;
+        /// <summary>Hiện thanh tiêu đề mini phía trên widget.</summary>
+        public bool ShowTitleBar
+        {
+            get => _showTitleBar;
+            set { if (_showTitleBar != value) { _showTitleBar = value; OnPropertyChanged(); } }
+        }
+
+        private bool _autoHideTitleBar = true;
+        /// <summary>Tự ẩn title bar khi không tương tác, hiện lại khi hover.</summary>
+        public bool AutoHideTitleBar
+        {
+            get => _autoHideTitleBar;
+            set { if (_autoHideTitleBar != value) { _autoHideTitleBar = value; OnPropertyChanged(); } }
+        }
+
+        private int _titleBarHideTimeoutSeconds = 3;
+        /// <summary>Số giây không hover trước khi ẩn title bar.</summary>
+        public int TitleBarHideTimeoutSeconds
+        {
+            get => _titleBarHideTimeoutSeconds;
+            set { var v = Math.Max(1, value); if (_titleBarHideTimeoutSeconds != v) { _titleBarHideTimeoutSeconds = v; OnPropertyChanged(); } }
+        }
+
+        // ── Display Mode ──
+        private WidgetDisplayMode _displayMode = WidgetDisplayMode.Normal;
+        public WidgetDisplayMode DisplayMode
+        {
+            get => _displayMode;
+            set { if (_displayMode != value) { _displayMode = value; OnPropertyChanged(); } }
+        }
+
+        // ── Multi-monitor ──
+        private int _monitorIndex = -1;
+        /// <summary>Chỉ số màn hình. -1 = primary, 0..N = màn hình cụ thể.</summary>
+        public int MonitorIndex
+        {
+            get => _monitorIndex;
+            set { if (_monitorIndex != value) { _monitorIndex = value; OnPropertyChanged(); } }
+        }
+
+        private bool _showOnAllMonitors;
+        /// <summary>Hiển thị widget trên tất cả màn hình (tạo 1 instance per monitor).</summary>
+        public bool ShowOnAllMonitors
+        {
+            get => _showOnAllMonitors;
+            set { if (_showOnAllMonitors != value) { _showOnAllMonitors = value; OnPropertyChanged(); } }
+        }
+
+        // ── INotifyPropertyChanged ──
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? prop = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(prop));
+    }
+}
