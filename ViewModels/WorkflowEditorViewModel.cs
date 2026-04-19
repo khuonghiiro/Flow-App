@@ -451,10 +451,15 @@ namespace FlowMy.ViewModels
                     tree = treePayload
                 };
 
+                // MaxDepth mặc định của System.Text.Json = 64. Tree execution có thể lồng sâu (AsyncTask/Callback loop lặp lại),
+                // nên ta đẩy lên 1024 để không bị "object cycle / depth > 64" khi xuất log. ReferenceHandler.IgnoreCycles
+                // phòng hờ trường hợp cấu trúc tự tham chiếu (không xảy ra hiện tại nhưng an toàn cho tương lai).
                 var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
                 {
                     WriteIndented = ExportPrettyPrint,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                    MaxDepth = 1024,
+                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
                 });
                 File.WriteAllText(dialog.FileName, json);
                 MessageBox.Show("Đã xuất execution log JSON thành công.", "Execution Log", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -528,6 +533,25 @@ namespace FlowMy.ViewModels
         private void ZoomOutExecutionTrace()
         {
             ExecutionTraceZoom = Math.Max(0.6, ExecutionTraceZoom - 0.1);
+        }
+
+        /// <summary>
+        /// Copy text (IN/OUT/ERR hoặc 1 chip key:value) trên card trace vào clipboard.
+        /// Nhận <see cref="string"/> làm parameter để binding thẳng từ XAML.
+        /// </summary>
+        [RelayCommand]
+        private void CopyTraceText(object? parameter)
+        {
+            try
+            {
+                var text = parameter?.ToString();
+                if (string.IsNullOrEmpty(text)) return;
+                System.Windows.Clipboard.SetText(text);
+            }
+            catch
+            {
+                // Clipboard có thể busy khi app khác đang giữ; bỏ qua để không phá UX.
+            }
         }
 
         private static void SetTreeExpandedRecursive(ExecutionTraceTreeNodeViewModel node, bool expanded)

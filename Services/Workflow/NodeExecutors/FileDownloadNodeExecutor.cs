@@ -1073,6 +1073,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 break;
             }
 
+            // Fallback: một số node (Web, HtmlUI, ...) populate output vào DynamicOutputs bất đồng bộ
+            // và không luôn publish sang scoped store ngay. Khi scoped-miss, đọc từ shared state qua service
+            // để có URL/cURL chính xác thay vì fallback về chuỗi rỗng gây HTTP 400.
+            if (string.IsNullOrWhiteSpace(v) || v == "—")
+            {
+                var shared = env.Service.ResolveDynamicValueForRun(source, sourceOutputKey, env.ExecutionId);
+                if (!string.IsNullOrWhiteSpace(shared) && shared != "—")
+                    v = shared;
+            }
+
             if (v == "—" || string.IsNullOrWhiteSpace(v))
                 return staticValue ?? string.Empty;
             return v;

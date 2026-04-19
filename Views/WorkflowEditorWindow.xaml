@@ -2144,6 +2144,7 @@ Cursor="Hand"
                                                             BorderBrush="{Binding TraceCardBorderBrush}"
                                                             Background="{Binding TraceCardBackgroundBrush}"
                                                             HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
                                                             MinWidth="220"
                                                             MaxWidth="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.ExecutionTraceCardMaxWidth}"
                                                             Cursor="Hand"
@@ -2292,69 +2293,362 @@ Cursor="Hand"
                                                                            TextTrimming="CharacterEllipsis"
                                                                            Text="{Binding ParentNodeId, StringFormat=from node: {0}}"/>
 
-                                                                <!-- IN: màu xanh lá đậm. Collapsed → ellipsis, expanded → wrap. -->
-                                                                <TextBlock Text="{Binding InputSummary, StringFormat=IN: {0}}"
-                                                                           Margin="0,3,0,0"
-                                                                           Foreground="#1B5E20"
-                                                                           FontSize="9"
-                                                                           ToolTip="{Binding InputSummary}"
-                                                                           Visibility="{Binding InputSummary, Converter={StaticResource NullOrEmptyToCollapsed}}">
-                                                                    <TextBlock.Style>
-                                                                        <Style TargetType="TextBlock">
-                                                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                                                            <Setter Property="TextWrapping" Value="NoWrap"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
-                                                                                    <Setter Property="TextTrimming" Value="None"/>
-                                                                                    <Setter Property="TextWrapping" Value="Wrap"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </TextBlock.Style>
-                                                                </TextBlock>
+                                                                <!--
+                                                                    Khối IN/OUT/ERR:
+                                                                    - Khi đóng (IsDetailsExpanded=false): chỉ hiện 1 dòng tóm tắt, ellipsis, chiều cao tối thiểu.
+                                                                    - Khi mở: hiện danh sách chip key/value wrap text + nút Copy riêng cho từng dòng IN/OUT/ERR.
+                                                                    - Dùng Visibility để LOẠI phần mở rộng khỏi visual tree khi đóng, đảm bảo re-measure đúng
+                                                                    để height tự co (trước đây wrapped content giữ height cũ khi toggle back).
+                                                                -->
 
-                                                                <!-- OUT: màu xanh dương đậm, phân biệt rõ với IN. -->
-                                                                <TextBlock Text="{Binding OutputSummary, StringFormat=OUT: {0}}"
-                                                                           Margin="0,2,0,0"
-                                                                           Foreground="#0D47A1"
-                                                                           FontSize="9"
-                                                                           ToolTip="{Binding OutputSummary}"
-                                                                           Visibility="{Binding OutputSummary, Converter={StaticResource NullOrEmptyToCollapsed}}">
-                                                                    <TextBlock.Style>
-                                                                        <Style TargetType="TextBlock">
-                                                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                                                            <Setter Property="TextWrapping" Value="NoWrap"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
-                                                                                    <Setter Property="TextTrimming" Value="None"/>
-                                                                                    <Setter Property="TextWrapping" Value="Wrap"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </TextBlock.Style>
-                                                                </TextBlock>
+                                                                <!-- IN -->
+                                                                <StackPanel Margin="0,4,0,0"
+                                                                            Visibility="{Binding HasInput, Converter={StaticResource LocalBoolToVis}}">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <Border Grid.Column="0"
+                                                                                Background="#E8F5E9"
+                                                                                BorderBrush="#A5D6A7"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="3"
+                                                                                Padding="4,0"
+                                                                                Margin="0,0,6,0"
+                                                                                VerticalAlignment="Center">
+                                                                            <TextBlock Text="IN"
+                                                                                       FontSize="9"
+                                                                                       FontWeight="Bold"
+                                                                                       Foreground="#1B5E20"/>
+                                                                        </Border>
+                                                                        <!-- Collapsed: single-line summary ellipsis -->
+                                                                        <TextBlock Grid.Column="1"
+                                                                                   Text="{Binding InputSummary}"
+                                                                                   FontSize="9"
+                                                                                   Foreground="#1B5E20"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   TextWrapping="NoWrap"
+                                                                                   VerticalAlignment="Center"
+                                                                                   ToolTip="{Binding InputSummary}">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                        <Button Grid.Column="2"
+                                                                                Width="20" Height="18"
+                                                                                Padding="0"
+                                                                                Cursor="Hand"
+                                                                                Background="Transparent"
+                                                                                BorderBrush="#A5D6A7"
+                                                                                BorderThickness="1"
+                                                                                ToolTip="Copy toàn bộ IN"
+                                                                                Command="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.CopyTraceTextCommand}"
+                                                                                CommandParameter="{Binding InputSummary}">
+                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#1B5E20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        </Button>
+                                                                    </Grid>
+                                                                    <!-- Expanded: list of parsed key/value chips -->
+                                                                    <ItemsControl Margin="0,3,0,0"
+                                                                                  ItemsSource="{Binding InputItems}">
+                                                                        <ItemsControl.Style>
+                                                                            <Style TargetType="ItemsControl">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <MultiDataTrigger>
+                                                                                        <MultiDataTrigger.Conditions>
+                                                                                            <Condition Binding="{Binding IsDetailsExpanded}" Value="True"/>
+                                                                                            <Condition Binding="{Binding HasInputItems}" Value="True"/>
+                                                                                        </MultiDataTrigger.Conditions>
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </MultiDataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </ItemsControl.Style>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate DataType="{x:Type viewModels:TraceKeyValueItem}">
+                                                                                <Border Background="#F1F8F4"
+                                                                                        BorderBrush="#C8E6C9"
+                                                                                        BorderThickness="1"
+                                                                                        CornerRadius="3"
+                                                                                        Padding="5,3"
+                                                                                        Margin="0,0,0,2">
+                                                                                    <Grid>
+                                                                                        <Grid.ColumnDefinitions>
+                                                                                            <ColumnDefinition Width="*"/>
+                                                                                            <ColumnDefinition Width="Auto"/>
+                                                                                        </Grid.ColumnDefinitions>
+                                                                                        <StackPanel Grid.Column="0">
+                                                                                            <TextBlock Text="{Binding Key}"
+                                                                                                       FontSize="9"
+                                                                                                       FontWeight="SemiBold"
+                                                                                                       Foreground="#2E7D32"
+                                                                                                       TextWrapping="Wrap"
+                                                                                                       Visibility="{Binding HasKey, Converter={StaticResource LocalBoolToVis}}"/>
+                                                                                            <TextBlock Text="{Binding Value}"
+                                                                                                       FontSize="9"
+                                                                                                       Foreground="#1B5E20"
+                                                                                                       TextWrapping="Wrap"
+                                                                                                       Margin="0,1,0,0"/>
+                                                                                        </StackPanel>
+                                                                                        <Button Grid.Column="1"
+                                                                                                Width="18" Height="16"
+                                                                                                Margin="4,0,0,0"
+                                                                                                Padding="0"
+                                                                                                Cursor="Hand"
+                                                                                                Background="Transparent"
+                                                                                                BorderThickness="0"
+                                                                                                ToolTip="Copy dòng này"
+                                                                                                VerticalAlignment="Top"
+                                                                                                Command="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.CopyTraceTextCommand}"
+                                                                                                CommandParameter="{Binding CopyText}">
+                                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#2E7D32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                        </Button>
+                                                                                    </Grid>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                    <!-- Expanded fallback: không parse được key/value → show wrap text thô -->
+                                                                    <TextBlock Text="{Binding InputSummary}"
+                                                                               Margin="0,3,0,0"
+                                                                               FontSize="9"
+                                                                               Foreground="#1B5E20"
+                                                                               TextWrapping="Wrap">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <MultiDataTrigger>
+                                                                                        <MultiDataTrigger.Conditions>
+                                                                                            <Condition Binding="{Binding IsDetailsExpanded}" Value="True"/>
+                                                                                            <Condition Binding="{Binding HasInputItems}" Value="False"/>
+                                                                                        </MultiDataTrigger.Conditions>
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </MultiDataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </StackPanel>
 
-                                                                <!-- ERR: đỏ đậm. -->
-                                                                <TextBlock Text="{Binding ErrorMessage, StringFormat=ERR: {0}}"
-                                                                           Margin="0,2,0,0"
-                                                                           Foreground="#B71C1C"
-                                                                           FontSize="9"
-                                                                           FontWeight="SemiBold"
-                                                                           ToolTip="{Binding ErrorMessage}"
-                                                                           Visibility="{Binding ErrorMessage, Converter={StaticResource NullOrEmptyToCollapsed}}">
-                                                                    <TextBlock.Style>
-                                                                        <Style TargetType="TextBlock">
-                                                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                                                            <Setter Property="TextWrapping" Value="NoWrap"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
-                                                                                    <Setter Property="TextTrimming" Value="None"/>
-                                                                                    <Setter Property="TextWrapping" Value="Wrap"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </TextBlock.Style>
-                                                                </TextBlock>
+                                                                <!-- OUT -->
+                                                                <StackPanel Margin="0,3,0,0"
+                                                                            Visibility="{Binding HasOutput, Converter={StaticResource LocalBoolToVis}}">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <Border Grid.Column="0"
+                                                                                Background="#E3F2FD"
+                                                                                BorderBrush="#90CAF9"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="3"
+                                                                                Padding="4,0"
+                                                                                Margin="0,0,6,0"
+                                                                                VerticalAlignment="Center">
+                                                                            <TextBlock Text="OUT"
+                                                                                       FontSize="9"
+                                                                                       FontWeight="Bold"
+                                                                                       Foreground="#0D47A1"/>
+                                                                        </Border>
+                                                                        <TextBlock Grid.Column="1"
+                                                                                   Text="{Binding OutputSummary}"
+                                                                                   FontSize="9"
+                                                                                   Foreground="#0D47A1"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   TextWrapping="NoWrap"
+                                                                                   VerticalAlignment="Center"
+                                                                                   ToolTip="{Binding OutputSummary}">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                        <Button Grid.Column="2"
+                                                                                Width="20" Height="18"
+                                                                                Padding="0"
+                                                                                Cursor="Hand"
+                                                                                Background="Transparent"
+                                                                                BorderBrush="#90CAF9"
+                                                                                BorderThickness="1"
+                                                                                ToolTip="Copy toàn bộ OUT"
+                                                                                Command="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.CopyTraceTextCommand}"
+                                                                                CommandParameter="{Binding OutputSummary}">
+                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#0D47A1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        </Button>
+                                                                    </Grid>
+                                                                    <ItemsControl Margin="0,3,0,0"
+                                                                                  ItemsSource="{Binding OutputItems}">
+                                                                        <ItemsControl.Style>
+                                                                            <Style TargetType="ItemsControl">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <MultiDataTrigger>
+                                                                                        <MultiDataTrigger.Conditions>
+                                                                                            <Condition Binding="{Binding IsDetailsExpanded}" Value="True"/>
+                                                                                            <Condition Binding="{Binding HasOutputItems}" Value="True"/>
+                                                                                        </MultiDataTrigger.Conditions>
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </MultiDataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </ItemsControl.Style>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate DataType="{x:Type viewModels:TraceKeyValueItem}">
+                                                                                <Border Background="#EFF5FB"
+                                                                                        BorderBrush="#BBDEFB"
+                                                                                        BorderThickness="1"
+                                                                                        CornerRadius="3"
+                                                                                        Padding="5,3"
+                                                                                        Margin="0,0,0,2">
+                                                                                    <Grid>
+                                                                                        <Grid.ColumnDefinitions>
+                                                                                            <ColumnDefinition Width="*"/>
+                                                                                            <ColumnDefinition Width="Auto"/>
+                                                                                        </Grid.ColumnDefinitions>
+                                                                                        <StackPanel Grid.Column="0">
+                                                                                            <TextBlock Text="{Binding Key}"
+                                                                                                       FontSize="9"
+                                                                                                       FontWeight="SemiBold"
+                                                                                                       Foreground="#1565C0"
+                                                                                                       TextWrapping="Wrap"
+                                                                                                       Visibility="{Binding HasKey, Converter={StaticResource LocalBoolToVis}}"/>
+                                                                                            <TextBlock Text="{Binding Value}"
+                                                                                                       FontSize="9"
+                                                                                                       Foreground="#0D47A1"
+                                                                                                       TextWrapping="Wrap"
+                                                                                                       Margin="0,1,0,0"/>
+                                                                                        </StackPanel>
+                                                                                        <Button Grid.Column="1"
+                                                                                                Width="18" Height="16"
+                                                                                                Margin="4,0,0,0"
+                                                                                                Padding="0"
+                                                                                                Cursor="Hand"
+                                                                                                Background="Transparent"
+                                                                                                BorderThickness="0"
+                                                                                                ToolTip="Copy dòng này"
+                                                                                                VerticalAlignment="Top"
+                                                                                                Command="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.CopyTraceTextCommand}"
+                                                                                                CommandParameter="{Binding CopyText}">
+                                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#1565C0" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                        </Button>
+                                                                                    </Grid>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                    <TextBlock Text="{Binding OutputSummary}"
+                                                                               Margin="0,3,0,0"
+                                                                               FontSize="9"
+                                                                               Foreground="#0D47A1"
+                                                                               TextWrapping="Wrap">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <MultiDataTrigger>
+                                                                                        <MultiDataTrigger.Conditions>
+                                                                                            <Condition Binding="{Binding IsDetailsExpanded}" Value="True"/>
+                                                                                            <Condition Binding="{Binding HasOutputItems}" Value="False"/>
+                                                                                        </MultiDataTrigger.Conditions>
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </MultiDataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </StackPanel>
+
+                                                                <!-- ERR -->
+                                                                <StackPanel Margin="0,3,0,0"
+                                                                            Visibility="{Binding HasError, Converter={StaticResource LocalBoolToVis}}">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <Border Grid.Column="0"
+                                                                                Background="#FFEBEE"
+                                                                                BorderBrush="#EF9A9A"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="3"
+                                                                                Padding="4,0"
+                                                                                Margin="0,0,6,0"
+                                                                                VerticalAlignment="Center">
+                                                                            <TextBlock Text="ERR"
+                                                                                       FontSize="9"
+                                                                                       FontWeight="Bold"
+                                                                                       Foreground="#B71C1C"/>
+                                                                        </Border>
+                                                                        <TextBlock Grid.Column="1"
+                                                                                   Text="{Binding ErrorMessage}"
+                                                                                   FontSize="9"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="#B71C1C"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   TextWrapping="NoWrap"
+                                                                                   VerticalAlignment="Center"
+                                                                                   ToolTip="{Binding ErrorMessage}">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                        <Button Grid.Column="2"
+                                                                                Width="20" Height="18"
+                                                                                Padding="0"
+                                                                                Cursor="Hand"
+                                                                                Background="Transparent"
+                                                                                BorderBrush="#EF9A9A"
+                                                                                BorderThickness="1"
+                                                                                ToolTip="Copy toàn bộ ERR"
+                                                                                Command="{Binding ElementName=ExecutionTraceTreeItemsControl, Path=DataContext.CopyTraceTextCommand}"
+                                                                                CommandParameter="{Binding ErrorMessage}">
+                                                                            <TextBlock Text="⧉" FontSize="10" Foreground="#B71C1C" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        </Button>
+                                                                    </Grid>
+                                                                    <TextBlock Text="{Binding ErrorMessage}"
+                                                                               Margin="0,3,0,0"
+                                                                               FontSize="9"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="#B71C1C"
+                                                                               TextWrapping="Wrap">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsDetailsExpanded}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </StackPanel>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>

@@ -1,9 +1,28 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Media;
 
 namespace FlowMy.ViewModels;
+
+/// <summary>
+/// Một dòng key/value đã parse từ InputSummary/OutputSummary. Dùng để hiển thị ở card trace
+/// theo dạng chip (nhãn khóa đậm + giá trị), thay vì blob text dài khó đọc.
+/// </summary>
+public sealed class TraceKeyValueItem
+{
+    public string Key { get; }
+    public string Value { get; }
+    public bool HasKey => !string.IsNullOrWhiteSpace(Key);
+    public string CopyText => HasKey ? $"{Key}: {Value}" : (Value ?? string.Empty);
+
+    public TraceKeyValueItem(string? key, string? value)
+    {
+        Key = (key ?? string.Empty).Trim();
+        Value = value ?? string.Empty;
+    }
+}
 
 public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
 {
@@ -57,10 +76,19 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private string errorMessage = string.Empty;
 
-    public bool HasAnyDetails =>
-        !string.IsNullOrWhiteSpace(InputSummary) ||
-        !string.IsNullOrWhiteSpace(OutputSummary) ||
-        !string.IsNullOrWhiteSpace(ErrorMessage);
+    /// <summary>Danh sách key/value đã parse từ <see cref="InputSummary"/>; rỗng nếu không phải dạng key:value.</summary>
+    public ObservableCollection<TraceKeyValueItem> InputItems { get; } = new();
+
+    /// <summary>Danh sách key/value đã parse từ <see cref="OutputSummary"/>; rỗng nếu không phải dạng key:value.</summary>
+    public ObservableCollection<TraceKeyValueItem> OutputItems { get; } = new();
+
+    public bool HasInputItems => InputItems.Count > 0;
+    public bool HasOutputItems => OutputItems.Count > 0;
+    public bool HasInput => !string.IsNullOrWhiteSpace(InputSummary);
+    public bool HasOutput => !string.IsNullOrWhiteSpace(OutputSummary);
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    public bool HasAnyDetails => HasInput || HasOutput || HasError;
 
     public bool ShowDetailsToggle => HasAnyDetails;
 
@@ -155,14 +183,131 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowBottomStem));
     }
 
-    partial void OnInputSummaryChanged(string value) => NotifyDetailsFlagsChanged();
-    partial void OnOutputSummaryChanged(string value) => NotifyDetailsFlagsChanged();
-    partial void OnErrorMessageChanged(string value) => NotifyDetailsFlagsChanged();
+    partial void OnInputSummaryChanged(string value)
+    {
+        RebuildItems(InputItems, value);
+        OnPropertyChanged(nameof(HasInputItems));
+        OnPropertyChanged(nameof(HasInput));
+        NotifyDetailsFlagsChanged();
+    }
+
+    partial void OnOutputSummaryChanged(string value)
+    {
+        RebuildItems(OutputItems, value);
+        OnPropertyChanged(nameof(HasOutputItems));
+        OnPropertyChanged(nameof(HasOutput));
+        NotifyDetailsFlagsChanged();
+    }
+
+    partial void OnErrorMessageChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasError));
+        NotifyDetailsFlagsChanged();
+    }
 
     private void NotifyDetailsFlagsChanged()
     {
         OnPropertyChanged(nameof(HasAnyDetails));
         OnPropertyChanged(nameof(ShowDetailsToggle));
+    }
+
+    /// <summary>
+    /// Parse summary dạng <c>"key1: val1 | key2: val2"</c> thành danh sách chip key/value.
+    /// Bỏ qua các ký tự <c>|</c>/<c>:</c> nằm trong chuỗi JSON/cURL bằng cách chỉ split
+    /// ở separator <c>" | "</c> cấp ngoài cùng và cắt value tại dấu <c>": "</c> ĐẦU TIÊN.
+    /// Nếu không parse được cặp nào thì trả về list rỗng và UI hiện nguyên summary thô.
+    /// </summary>
+    private static void RebuildItems(ObservableCollection<TraceKeyValueItem> target, string? summary)
+    {
+        target.Clear();
+        if (string.IsNullOrWhiteSpace(summary)) return;
+
+        var parts = SplitTopLevel(summary!, " | ");
+        foreach (var raw in parts)
+        {
+            var part = raw.Trim();
+            if (part.Length == 0) continue;
+            var idx = FindFirstKeyValueSeparator(part);
+            if (idx < 0)
+            {
+                target.Add(new TraceKeyValueItem(string.Empty, part));
+                continue;
+            }
+            var key = part[..idx].Trim();
+            var value = part[(idx + 2)..].Trim();
+            target.Add(new TraceKeyValueItem(key, value));
+        }
+    }
+
+    /// <summary>Split trên separator <paramref name="sep"/>, nhưng không split ở bên trong cặp ngoặc/kép.</summary>
+    private static List<string> SplitTopLevel(string input, string sep)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrEmpty(sep))
+        {
+            result.Add(input);
+            return result;
+        }
+        int depthCurly = 0, depthSquare = 0, depthParen = 0;
+        char? quote = null;
+        int start = 0;
+        for (int i = 0; i <= input.Length - sep.Length; i++)
+        {
+            var c = input[i];
+            if (quote.HasValue)
+            {
+                if (c == '\\' && i + 1 < input.Length) { i++; continue; }
+                if (c == quote.Value) quote = null;
+                continue;
+            }
+            if (c == '"' || c == '\'') { quote = c; continue; }
+            if (c == '{') depthCurly++;
+            else if (c == '}') depthCurly = System.Math.Max(0, depthCurly - 1);
+            else if (c == '[') depthSquare++;
+            else if (c == ']') depthSquare = System.Math.Max(0, depthSquare - 1);
+            else if (c == '(') depthParen++;
+            else if (c == ')') depthParen = System.Math.Max(0, depthParen - 1);
+
+            if (depthCurly == 0 && depthSquare == 0 && depthParen == 0 &&
+                string.CompareOrdinal(input, i, sep, 0, sep.Length) == 0)
+            {
+                result.Add(input.Substring(start, i - start));
+                i += sep.Length - 1;
+                start = i + 1;
+            }
+        }
+        if (start <= input.Length)
+            result.Add(input.Substring(start));
+        return result;
+    }
+
+    /// <summary>Tìm dấu <c>": "</c> đầu tiên ở cấp ngoài cùng (ngoài ngoặc/ngoài kép).</summary>
+    private static int FindFirstKeyValueSeparator(string input)
+    {
+        int depthCurly = 0, depthSquare = 0, depthParen = 0;
+        char? quote = null;
+        for (int i = 0; i < input.Length - 1; i++)
+        {
+            var c = input[i];
+            if (quote.HasValue)
+            {
+                if (c == '\\' && i + 1 < input.Length) { i++; continue; }
+                if (c == quote.Value) quote = null;
+                continue;
+            }
+            if (c == '"' || c == '\'') { quote = c; continue; }
+            if (c == '{') depthCurly++;
+            else if (c == '}') depthCurly = System.Math.Max(0, depthCurly - 1);
+            else if (c == '[') depthSquare++;
+            else if (c == ']') depthSquare = System.Math.Max(0, depthSquare - 1);
+            else if (c == '(') depthParen++;
+            else if (c == ')') depthParen = System.Math.Max(0, depthParen - 1);
+
+            if (depthCurly == 0 && depthSquare == 0 && depthParen == 0 &&
+                c == ':' && input[i + 1] == ' ')
+                return i;
+        }
+        return -1;
     }
 
     public void NotifyHasChildrenChanged()
