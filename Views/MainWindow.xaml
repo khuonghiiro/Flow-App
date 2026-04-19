@@ -183,6 +183,11 @@
                                        Opacity="0.82"
                                        FontSize="13"
                                        Margin="0,2,0,0"/>
+                            <TextBlock Text="Mẹo: nút ⚙ bên phải mở lại cấu hình widget gần nhất."
+                                       Foreground="White"
+                                       Opacity="0.72"
+                                       FontSize="11"
+                                       Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -211,6 +216,35 @@
 
                 <!-- Right: primary actions -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding ConfigureLastWidgetCommand}"
+                            Width="40" Height="40"
+                            Cursor="Hand"
+                            Margin="0,0,10,0"
+                            ToolTip="Mở lại cấu hình widget gần nhất bạn vừa chỉnh"
+                            IsEnabled="{Binding HasLastConfiguredWidget}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd"
+                                        CornerRadius="20"
+                                        Background="#33FFFFFF">
+                                    <TextBlock Text="⚙"
+                                               FontSize="16"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#55FFFFFF"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
                     <Button Command="{Binding RefreshWidgetShortcutsCommand}"
                             Width="40" Height="40"
                             Cursor="Hand"

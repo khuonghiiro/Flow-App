@@ -19,6 +19,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private int widgetEnabledCount;
         [ObservableProperty] private int workflowCount;
         [ObservableProperty] private bool hasWidgetShortcuts;
+        [ObservableProperty] private string lastConfiguredWorkflowName = string.Empty;
+        [ObservableProperty] private string lastConfiguredNodeId = string.Empty;
+        [ObservableProperty] private bool hasLastConfiguredWidget;
 
         public MainViewModel()
         {
@@ -63,6 +66,19 @@ namespace FlowMy.ViewModels
                 WorkflowCount = 0;
             }
             HasWidgetShortcuts = WidgetShortcuts.Count > 0;
+
+            // Validate shortcut gần nhất còn tồn tại sau khi refresh.
+            if (!string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) &&
+                !string.IsNullOrWhiteSpace(LastConfiguredNodeId))
+            {
+                HasLastConfiguredWidget = WidgetShortcuts.Any(w =>
+                    string.Equals(w.WorkflowName, LastConfiguredWorkflowName, System.StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(w.NodeId, LastConfiguredNodeId, System.StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                HasLastConfiguredWidget = false;
+            }
         }
 
         /// <summary>
@@ -135,11 +151,45 @@ namespace FlowMy.ViewModels
         private void ConfigureWidget(WidgetShortcutItem? item)
         {
             if (item == null) return;
+            LastConfiguredWorkflowName = item.WorkflowName ?? string.Empty;
+            LastConfiguredNodeId = item.NodeId ?? string.Empty;
+            HasLastConfiguredWidget = !string.IsNullOrWhiteSpace(LastConfiguredWorkflowName)
+                                      && !string.IsNullOrWhiteSpace(LastConfiguredNodeId);
             OpenWorkflowEditorInternal(
                 workflowNameToLoad: item.WorkflowName,
                 widgetNodeIds: null,
-                headless: false,
+                headless: true,
                 autoOpenConfigNodeId: item.NodeId);
+        }
+
+        /// <summary>
+        /// Mở lại nhanh màn cấu hình của widget gần nhất đã chỉnh từ MainWindow.
+        /// </summary>
+        [RelayCommand]
+        private void ConfigureLastWidget()
+        {
+            if (!HasLastConfiguredWidget ||
+                string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) ||
+                string.IsNullOrWhiteSpace(LastConfiguredNodeId))
+            {
+                return;
+            }
+
+            // Nếu list mới refresh mà item đã bị xóa thì dừng.
+            var exists = WidgetShortcuts.Any(w =>
+                string.Equals(w.WorkflowName, LastConfiguredWorkflowName, System.StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(w.NodeId, LastConfiguredNodeId, System.StringComparison.OrdinalIgnoreCase));
+            if (!exists)
+            {
+                HasLastConfiguredWidget = false;
+                return;
+            }
+
+            OpenWorkflowEditorInternal(
+                workflowNameToLoad: LastConfiguredWorkflowName,
+                widgetNodeIds: null,
+                headless: true,
+                autoOpenConfigNodeId: LastConfiguredNodeId);
         }
 
         private void OpenWorkflowEditorInternal(
@@ -257,13 +307,37 @@ namespace FlowMy.ViewModels
                             ?? new List<FlowMy.Models.WorkflowNode>();
                         if (nodes.Count == 0) return;
 
+                        var nodeIdsInWorkflow = nodes
+                            .Select(n => n.Id)
+                            .Where(id => !string.IsNullOrWhiteSpace(id))
+                            .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+
                         var dialog = new FloatingWidgetConfigDialog(nodes, workflowWindow)
                         {
-                            Owner = workflowWindow
+                            // Nếu mở cấu hình từ MainWindow ở chế độ headless thì owner là MainWindow
+                            // để dialog luôn hiện dù editor đang ẩn.
+                            Owner = headless ? mainWindow : workflowWindow
                         };
                         dialog.SelectNodeById(autoOpenConfigNodeId);
                         dialog.ShowDialog();
                         RefreshWidgetShortcuts();
+
+                        // Với luồng config-headless: nếu sau khi đóng dialog workflow này không có
+                        // widget nào đang active thì đóng editor nền ngay để giải phóng tài nguyên.
+                        if (headless)
+                        {
+                            var active = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
+                            bool hasAnyWidgetFromThisWorkflow = active.Any(id => nodeIdsInWorkflow.Contains(id));
+                            if (!hasAnyWidgetFromThisWorkflow)
+                            {
+                                try { workflowWindow.Close(); } catch { }
+                            }
+                            else
+                            {
+                                // Nếu có widget active thì giữ editor nền sống, và tự đóng khi widget cuối đóng.
+                                HookHeadlessAutoCloseOnLastWidget(workflowWindow);
+                            }
+                        }
                     }
                     catch { }
                 };

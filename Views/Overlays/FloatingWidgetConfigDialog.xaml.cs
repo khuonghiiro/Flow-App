@@ -438,6 +438,15 @@ namespace FlowMy.Views.Overlays
             }
         }
 
+        private void PersistWorkflowChanges()
+        {
+            try
+            {
+                _host?.ViewModel?.SaveWorkflowSilently();
+            }
+            catch { /* best effort */ }
+        }
+
         private static double ParseDouble(string text, double fallback)
         {
             if (string.IsNullOrWhiteSpace(text)) return fallback;
@@ -520,6 +529,7 @@ namespace FlowMy.Views.Overlays
             PopulateNodeList();
             SelectNodeInCombo(_selectedNode);
             RefreshExistingWidgets();
+            PersistWorkflowChanges();
         }
 
         private void UseRatioSizeCheckBox_Toggled(object sender, RoutedEventArgs e)
@@ -664,6 +674,7 @@ namespace FlowMy.Views.Overlays
             {
                 ApplyValuesToConfig();
                 SyncOpenWidgetRuntime(_selectedNode.Id);
+                PersistWorkflowChanges();
             }
             Close();
         }
