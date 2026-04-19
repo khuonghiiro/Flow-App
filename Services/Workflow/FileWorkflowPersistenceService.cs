@@ -812,6 +812,17 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     break;
                 case "TargetElement": node.TargetElement = value; break;
                 case "FlowScopeKey": node.FlowScopeKey = value; break;
+                case "FloatingWidget":
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            var cfg = JsonSerializer.Deserialize<FloatingWidgetConfig>(value);
+                            if (cfg != null) node.FloatingWidget = cfg;
+                        }
+                    }
+                    catch { /* ignore malformed */ }
+                    break;
                 case "RepeatCount":
                     if (int.TryParse(value, out var rc))
                     {
@@ -4174,6 +4185,16 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         if (!string.IsNullOrEmpty(node.Key)) dict["Key"] = node.Key;
         if (node.MouseEvent.HasValue) dict["MouseEvent"] = node.MouseEvent.Value.ToString();
         if (!string.IsNullOrEmpty(node.TargetElement)) dict["TargetElement"] = node.TargetElement;
+
+        // FloatingWidget config (áp dụng cho mọi node type)
+        if (node.FloatingWidget != null)
+        {
+            try
+            {
+                dict["FloatingWidget"] = JsonSerializer.Serialize(node.FloatingWidget);
+            }
+            catch { /* ignore */ }
+        }
 
         // KeyPressEventNode serialization
         if (node is KeyPressEventNode kp)

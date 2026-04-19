@@ -13,7 +13,9 @@ namespace FlowMy.Controls
 {
     public partial class IconSelectorUserControl : UserControl, INotifyPropertyChanged
     {
-        private Dictionary<string, string> availableIcons => IconResources.AvailableIcons;
+        // Ưu tiên manifest động (available_icons.txt) tạo bởi ExtractIcons.ps1, fallback
+        // AvailableIcons dictionary tĩnh. Dùng qua IconResources.EffectiveIcons.
+        private IReadOnlyDictionary<string, string> availableIcons => IconResources.EffectiveIcons;
         private string selectedIcon;
         private Dictionary<string, string> filteredIcons;
 
@@ -62,7 +64,7 @@ namespace FlowMy.Controls
         {
             InitializeComponent();
             selectedIcon = string.Empty;
-            filteredIcons = new Dictionary<string, string>(availableIcons);
+            filteredIcons = availableIcons.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             Loaded += (s, e) =>
             {
@@ -98,17 +100,19 @@ namespace FlowMy.Controls
                     Padding = new Thickness(5)
                 };
 
-                // DÃ¹ng SvgViewboxEx
+                // Dùng SvgViewboxEx; Fill fallback về TextBrush nếu theme không có TextOnPrimaryBrush.
                 var svgViewbox = new SvgViewboxEx
                 {
                     Source = new Uri(iconPair.Value, UriKind.RelativeOrAbsolute),
                     Width = 18,
                     Height = 18,
-                    Fill = (System.Windows.Media.Brush)FindResource("TextOnPrimaryBrush")
+                    Fill = (TryFindResource("TextOnPrimaryBrush") as System.Windows.Media.Brush)
+                           ?? (TryFindResource("TextBrush") as System.Windows.Media.Brush)
+                           ?? System.Windows.Media.Brushes.Black
                 };
 
                 iconButton.Content = svgViewbox;
-                iconButton.Style = (Style)FindResource("ModernIconButtonStyle");
+                iconButton.Style = TryFindResource("ModernIconButtonStyle") as Style;
                 iconButton.Click += IconButton_Click;
 
                 IconGrid.Children.Add(iconButton);
@@ -174,16 +178,14 @@ namespace FlowMy.Controls
 
         private void UpdateIconButtonStyles()
         {
+            var normalStyle   = TryFindResource("ModernIconButtonStyle")  as Style;
+            var selectedStyle = TryFindResource("SelectedIconButtonStyle") as Style;
+
             foreach (Button button in IconGrid.Children.OfType<Button>())
             {
-                if (button.Tag?.ToString() == SelectedIcon)
-                {
-                    button.Style = (Style)FindResource("SelectedIconButtonStyle");
-                }
-                else
-                {
-                    button.Style = (Style)FindResource("ModernIconButtonStyle");
-                }
+                button.Style = button.Tag?.ToString() == SelectedIcon
+                    ? selectedStyle
+                    : normalStyle;
             }
         }
 
@@ -222,7 +224,7 @@ namespace FlowMy.Controls
 
                 if (string.IsNullOrEmpty(searchText))
                 {
-                    filteredIcons = new Dictionary<string, string>(availableIcons);
+                    filteredIcons = availableIcons.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 }
                 else
                 {
@@ -242,7 +244,7 @@ namespace FlowMy.Controls
             if (SearchIconKeywordBox != null)
             {
                 SearchIconKeywordBox.Text = "";
-                filteredIcons = new Dictionary<string, string>(availableIcons);
+                filteredIcons = availableIcons.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 currentPage = 0;
                 InitializeIconGrid();
             }
@@ -250,24 +252,32 @@ namespace FlowMy.Controls
 
         private void UpdateIconDisplay()
         {
-            if (IconDisplaySvg != null && PlaceholderText != null)
+            if (PlaceholderText == null || SelectedIconPanel == null || IconDisplaySvg == null)
+                return;
+
+            if (!string.IsNullOrEmpty(SelectedIcon))
             {
-                if (!string.IsNullOrEmpty(SelectedIcon))
+                string iconPath = IconResources.GetIconPath(SelectedIcon);
+                if (!string.IsNullOrEmpty(iconPath))
                 {
-                    string iconPath = IconResources.GetIconPath(SelectedIcon);
-                    if (!string.IsNullOrEmpty(iconPath))
-                    {
-                        IconDisplaySvg.Source = new Uri(iconPath, UriKind.RelativeOrAbsolute);
-                        IconDisplaySvg.Visibility = Visibility.Visible;
-                        PlaceholderText.Visibility = Visibility.Collapsed;
-                    }
+                    IconDisplaySvg.Source = new Uri(iconPath, UriKind.RelativeOrAbsolute);
                 }
                 else
                 {
                     IconDisplaySvg.Source = null;
-                    IconDisplaySvg.Visibility = Visibility.Collapsed;
-                    PlaceholderText.Visibility = Visibility.Visible;
                 }
+
+                if (SelectedIconNameText != null)
+                    SelectedIconNameText.Text = SelectedIcon;
+
+                SelectedIconPanel.Visibility = Visibility.Visible;
+                PlaceholderText.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                IconDisplaySvg.Source = null;
+                SelectedIconPanel.Visibility = Visibility.Collapsed;
+                PlaceholderText.Visibility = Visibility.Visible;
             }
         }
 

@@ -3118,6 +3118,24 @@ Cursor="Hand"
                                       Width="18" Height="18" Fill="{DynamicResource SkyAzureBrush}"/>
                     </Button>
 
+                        <!-- Floating Widget Config Button — cấu hình widget cho node bất kỳ trên canvas -->
+                        <Button x:Name="OpenFloatingWidgetButton"
+                            Click="OpenFloatingWidgetButton_Click"
+                            Height="25"
+                            Width="25"
+                            Margin="0, 0,10,0"
+                            VerticalAlignment="Bottom"
+                            Style="{DynamicResource TransparentButtonStyle}"
+                            ToolTip="Cấu hình Floating Widget cho node">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.2"/>
+                            </Button.Effect>
+                            <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
+                                             Converter={StaticResource IconKeyToPathConverter}, 
+                                             ConverterParameter='hill-rockslide duotone'}"
+                                          Width="18" Height="18" Fill="{DynamicResource WarningBrush}"/>
+                        </Button>
+
                         <!-- Grid Type Selector Button -->
                         <Button x:Name="GridTypeButton"
                             Visibility="Collapsed"

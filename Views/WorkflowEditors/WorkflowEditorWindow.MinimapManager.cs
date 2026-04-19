@@ -99,6 +99,30 @@ namespace FlowMy.Views
         }
 
         /// <summary>
+        /// Mở dialog cấu hình Floating Widget — cho phép chọn node bất kỳ trên canvas
+        /// hiện tại và thiết lập widget nổi.
+        /// </summary>
+        private void OpenFloatingWidgetButton_Click(object sender, RoutedEventArgs e)
+        {
+            var nodes = ViewModel?.Nodes?.ToList() ?? new System.Collections.Generic.List<Models.WorkflowNode>();
+            if (nodes.Count == 0)
+            {
+                System.Windows.MessageBox.Show(this,
+                    "Canvas hiện tại chưa có node nào để cấu hình widget.",
+                    "Floating Widget",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new FloatingWidgetConfigDialog(nodes, this)
+            {
+                Owner = this
+            };
+            dialog.ShowDialog();
+        }
+
+        /// <summary>
         /// Chọn style Bezier
         /// </summary>
         private void LineStyle_Bezier_Click(object sender, RoutedEventArgs e)

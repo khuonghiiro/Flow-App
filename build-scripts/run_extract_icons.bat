@@ -1,6 +1,11 @@
 @echo off
 echo ================================================
 echo   Icon Extraction Script Runner
+echo ------------------------------------------------
+echo   - Quet va sao chep cac icon SVG duoc su dung
+echo     vao thu muc Assets\Icons
+echo   - Tao/ghi de file Assets\Icons\available_icons.txt
+echo     liet ke toan bo icon co san (dung runtime)
 echo ================================================
 echo.
 

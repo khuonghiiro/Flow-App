@@ -1,6 +1,5 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
-using FlowMy.Services;
 using FlowMy.Views.NodeControls;
 using System.Windows;
 using System.Windows.Controls;
@@ -96,21 +95,10 @@ namespace FlowMy.Views
         {
             var contextMenu = new ContextMenu();
 
-            // ── Floating Widget toggle ──
-            // HtmlUi, Web, MediaGallery được hỗ trợ chính; các node khác cũng có thể dùng
-            var isWidgetOpen = FloatingWidgetManager.Instance.IsWidgetOpen(node.Id);
-            var widgetItem = new MenuItem
-            {
-                Header = isWidgetOpen ? "📌 Đóng Widget" : "📌 Mở Widget",
-                FontWeight = FontWeights.SemiBold
-            };
-            widgetItem.Click += (s, e) =>
-            {
-                FloatingWidgetManager.Instance.ToggleWidget(node, this);
-            };
-            contextMenu.Items.Add(widgetItem);
-
-            return contextMenu; // Trả về menu (các menu port cũ bên dưới đang disabled)
+            // Context menu cho node hiện đang rỗng (các menu port cũ bên dưới đang disabled).
+            // Cấu hình Floating Widget đã được chuyển sang nút dành riêng cạnh
+            // CanvasSettingsPopupButton (xem FloatingWidgetConfigDialog).
+            return contextMenu;
 
             // Start và End nodes không có context menu (hoặc chỉ có menu rỗng)
             if (node.Type == NodeType.Start || node.Type == NodeType.End)

@@ -129,6 +129,10 @@
 		<Content Include="Assets\Icons\**\*.svg">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<!-- Manifest icon do script ExtractIcons.ps1 tạo — IconSelectorUserControl đọc runtime. -->
+		<Content Include="Assets\Icons\available_icons.txt" Condition="Exists('Assets\Icons\available_icons.txt')">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	  </ItemGroup>
 	
 		<ItemGroup>

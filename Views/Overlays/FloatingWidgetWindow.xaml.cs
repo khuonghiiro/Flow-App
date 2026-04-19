@@ -63,8 +63,8 @@ public partial class FloatingWidgetWindow : Window
         Topmost = Config.AlwaysOnTop;
         ShowInTaskbar = Config.ShowInTaskbar;
 
-        // Set title
-        TitleText.Text = string.IsNullOrWhiteSpace(node.Title) ? "Widget" : node.Title;
+        // Set title (ưu tiên WidgetName, fallback node.Title)
+        TitleText.Text = ResolveDisplayTitle(node);
 
         // Window position
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -135,7 +135,7 @@ public partial class FloatingWidgetWindow : Window
     private void ApplyIdleShape()
     {
         var size = Config.IdleSize;
-        var icon = Config.IdleIconText;
+        var iconValue = Config.IdleIconText;
 
         // Hide all shapes first
         IdleCircle.Visibility = Visibility.Collapsed;
@@ -143,14 +143,26 @@ public partial class FloatingWidgetWindow : Window
         IdleSquare.Visibility = Visibility.Collapsed;
         IdleRoundedSquare.Visibility = Visibility.Collapsed;
 
+        // Xác định nội dung icon: ưu tiên SVG theo icon key, fallback text/emoji.
+        bool isSvgKey = !string.IsNullOrWhiteSpace(iconValue)
+                        && FlowMy.IconResources.IconExists(iconValue);
+        string? svgPath = isSvgKey ? FlowMy.IconResources.GetIconPath(iconValue) : null;
+
+        // Circle
+        ApplySlotIcon(IdleCircleSvg, IdleIcon, iconValue, svgPath, size * 0.42, size * 0.5);
+        // Diamond (nhỏ hơn do đã xoay)
+        ApplySlotIcon(IdleDiamondSvg, IdleDiamondIcon, iconValue, svgPath, size * 0.33, size * 0.42);
+        // Square
+        ApplySlotIcon(IdleSquareSvg, IdleSquareIcon, iconValue, svgPath, size * 0.42, size * 0.5);
+        // RoundedSquare
+        ApplySlotIcon(IdleRoundedSvg, IdleRoundedIcon, iconValue, svgPath, size * 0.42, size * 0.5);
+
         switch (Config.IdleShape)
         {
             case WidgetIdleShape.Circle:
                 IdleCircle.Width = size;
                 IdleCircle.Height = size;
                 IdleCircle.CornerRadius = new CornerRadius(size / 2);
-                IdleIcon.Text = icon;
-                IdleIcon.FontSize = size * 0.42;
                 IdleCircle.Visibility = Visibility.Visible;
                 break;
 
@@ -177,6 +189,38 @@ public partial class FloatingWidgetWindow : Window
 
         // Apply opacity
         IdleContainer.Opacity = Config.IdleOpacity;
+    }
+
+    /// <summary>
+    /// Cập nhật 1 cặp (SvgViewboxEx + TextBlock) cho một shape:
+    /// Nếu svgPath có giá trị thì hiển thị SVG, ngược lại hiển thị text/emoji.
+    /// </summary>
+    private static void ApplySlotIcon(
+        FlowMy.Controls.SvgViewboxEx svg,
+        TextBlock text,
+        string? rawIconValue,
+        string? svgPath,
+        double textFontSize,
+        double svgSize)
+    {
+        if (svg == null || text == null) return;
+
+        if (!string.IsNullOrEmpty(svgPath))
+        {
+            svg.Source = new System.Uri(svgPath, System.UriKind.RelativeOrAbsolute);
+            svg.Width = svgSize;
+            svg.Height = svgSize;
+            svg.Visibility = Visibility.Visible;
+            text.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            svg.Source = null;
+            svg.Visibility = Visibility.Collapsed;
+            text.Text = string.IsNullOrWhiteSpace(rawIconValue) ? "⚡" : rawIconValue;
+            text.FontSize = textFontSize;
+            text.Visibility = Visibility.Visible;
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -215,9 +259,10 @@ public partial class FloatingWidgetWindow : Window
         _isExpanded = true;
         MarkActivity();
 
-        // Size
-        Width = Config.ExpandedWidth;
-        Height = Config.ExpandedHeight;
+        // Size (px hoặc tỉ lệ theo work area)
+        var (w, h) = ResolveExpandedSize();
+        Width = w;
+        Height = h;
 
         IdleContainer.Visibility = Visibility.Collapsed;
         ExpandedContainer.Visibility = Visibility.Visible;
@@ -250,9 +295,18 @@ public partial class FloatingWidgetWindow : Window
     {
         if (!_isExpanded) return;
 
-        // Save expanded size back to config
-        Config.ExpandedWidth = Width;
-        Config.ExpandedHeight = Height;
+        // Save expanded size back to config theo đúng mode
+        if (Config.UseRatioSize)
+        {
+            var area = GetTargetWorkArea();
+            if (area.Width > 0) Config.WidthRatio = Math.Max(0.05, Math.Min(1.0, Width / area.Width));
+            if (area.Height > 0) Config.HeightRatio = Math.Max(0.05, Math.Min(1.0, Height / area.Height));
+        }
+        else
+        {
+            Config.ExpandedWidth = Width;
+            Config.ExpandedHeight = Height;
+        }
 
         ShowCollapsedState();
 
@@ -525,13 +579,61 @@ public partial class FloatingWidgetWindow : Window
     {
         if (!Config.AllowResize) return;
 
-        var newW = Math.Max(Config.MinExpandedWidth, Math.Min(Config.MaxExpandedWidth, Width + e.HorizontalChange));
-        var newH = Math.Max(Config.MinExpandedHeight, Math.Min(Config.MaxExpandedHeight, Height + e.VerticalChange));
+        var (minW, minH, maxW, maxH) = ResolveSizeBounds();
+        var newW = Math.Max(minW, Math.Min(maxW, Width + e.HorizontalChange));
+        var newH = Math.Max(minH, Math.Min(maxH, Height + e.VerticalChange));
 
         Width = newW;
         Height = newH;
 
         MarkActivity();
+    }
+
+    /// <summary>
+    /// Trả về kích thước expanded: nếu UseRatioSize thì tính theo work area (đã clamp min/max).
+    /// Ngược lại dùng ExpandedWidth/ExpandedHeight (px).
+    /// </summary>
+    private (double Width, double Height) ResolveExpandedSize()
+    {
+        if (!Config.UseRatioSize)
+        {
+            return (
+                Math.Max(Config.MinExpandedWidth, Math.Min(Config.MaxExpandedWidth, Config.ExpandedWidth)),
+                Math.Max(Config.MinExpandedHeight, Math.Min(Config.MaxExpandedHeight, Config.ExpandedHeight))
+            );
+        }
+
+        var area = GetTargetWorkArea();
+        var w = Math.Round(area.Width * Config.WidthRatio);
+        var h = Math.Round(area.Height * Config.HeightRatio);
+
+        // Clamp theo min/max ratio bounds cũng tính theo work area
+        var minW = area.Width * Config.MinWidthRatio;
+        var minH = area.Height * Config.MinHeightRatio;
+        var maxW = area.Width * Config.MaxWidthRatio;
+        var maxH = area.Height * Config.MaxHeightRatio;
+
+        return (
+            Math.Max(minW, Math.Min(maxW, w)),
+            Math.Max(minH, Math.Min(maxH, h))
+        );
+    }
+
+    /// <summary>Trả về (minW, minH, maxW, maxH) tính theo mode hiện tại (px hoặc ratio).</summary>
+    private (double MinW, double MinH, double MaxW, double MaxH) ResolveSizeBounds()
+    {
+        if (!Config.UseRatioSize)
+        {
+            return (Config.MinExpandedWidth, Config.MinExpandedHeight, Config.MaxExpandedWidth, Config.MaxExpandedHeight);
+        }
+
+        var area = GetTargetWorkArea();
+        return (
+            area.Width * Config.MinWidthRatio,
+            area.Height * Config.MinHeightRatio,
+            area.Width * Config.MaxWidthRatio,
+            area.Height * Config.MaxHeightRatio
+        );
     }
 
     // ═══════════════════════════════════════════
@@ -917,9 +1019,16 @@ window.__ac.startWorkflow = acStartWorkflow;
         {
             Dispatcher.BeginInvoke(() =>
             {
-                TitleText.Text = string.IsNullOrWhiteSpace(_node.Title) ? "Widget" : _node.Title;
+                TitleText.Text = ResolveDisplayTitle(_node);
             });
         }
+    }
+
+    private static string ResolveDisplayTitle(WorkflowNode node)
+    {
+        var custom = node.FloatingWidget?.WidgetName;
+        if (!string.IsNullOrWhiteSpace(custom)) return custom;
+        return string.IsNullOrWhiteSpace(node.Title) ? "Widget" : node.Title;
     }
 
     // ═══════════════════════════════════════════

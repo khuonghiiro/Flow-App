@@ -1,6 +1,7 @@
 <Window x:Class="FlowMy.Views.Overlays.FloatingWidgetWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -12,14 +13,14 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-        <!-- Idle shape glow effect -->
+        <!-- Idle shape glow effect (giữ purple glow để highlight widget) -->
         <DropShadowEffect x:Key="IdleGlow" Color="#7C3AED" BlurRadius="16" ShadowDepth="0" Opacity="0.6"/>
         <DropShadowEffect x:Key="ExpandedShadow" Color="#000000" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.45"/>
 
-        <!-- Close / Collapse button style -->
+        <!-- Close / Collapse button style — theme-aware -->
         <Style x:Key="WidgetTinyButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#C4B5FD"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Width" Value="24"/>
@@ -37,10 +38,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3F3F46"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#52525B"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonPressedBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -48,8 +49,9 @@
             </Setter>
         </Style>
 
-        <!-- Close button (red hover) -->
+        <!-- Close button (red hover) — theme-aware -->
         <Style x:Key="WidgetCloseButton" TargetType="Button" BasedOn="{StaticResource WidgetTinyButton}">
+            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -58,10 +60,13 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#DC2626"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#B91C1C"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.8"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -83,23 +88,23 @@
                     Width="48" Height="48"
                     CornerRadius="24"
                     Cursor="Hand"
+                    Background="{DynamicResource PrimaryBrush}"
                     Effect="{StaticResource IdleGlow}"
                     RenderTransformOrigin="0.5,0.5">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#7C3AED" Offset="0"/>
-                        <GradientStop Color="#4F46E5" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
                 <Border.RenderTransform>
                     <ScaleTransform x:Name="IdleScaleTransform" ScaleX="1" ScaleY="1"/>
                 </Border.RenderTransform>
-                <TextBlock x:Name="IdleIcon" Text="⚡"
-                           FontSize="20"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="White"
-                           IsHitTestVisible="False"/>
+                <Grid IsHitTestVisible="False">
+                    <controls:SvgViewboxEx x:Name="IdleCircleSvg"
+                                           Width="20" Height="20"
+                                           Fill="{DynamicResource TextOnPrimaryBrush}"
+                                           Visibility="Collapsed"/>
+                    <TextBlock x:Name="IdleIcon" Text="⚡"
+                               FontSize="20"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                </Grid>
             </Border>
 
             <!-- Diamond shape (rotated square) -->
@@ -108,28 +113,27 @@
                     CornerRadius="4"
                     Cursor="Hand"
                     Visibility="Collapsed"
+                    Background="{DynamicResource PrimaryBrush}"
                     Effect="{StaticResource IdleGlow}"
                     RenderTransformOrigin="0.5,0.5">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#7C3AED" Offset="0"/>
-                        <GradientStop Color="#4F46E5" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
                 <Border.RenderTransform>
                     <TransformGroup>
                         <RotateTransform Angle="45"/>
                         <ScaleTransform x:Name="IdleDiamondScale" ScaleX="1" ScaleY="1"/>
                     </TransformGroup>
                 </Border.RenderTransform>
-                <TextBlock Text="⚡" FontSize="16"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Foreground="White" IsHitTestVisible="False"
-                           RenderTransformOrigin="0.5,0.5">
-                    <TextBlock.RenderTransform>
+                <Grid IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
                         <RotateTransform Angle="-45"/>
-                    </TextBlock.RenderTransform>
-                </TextBlock>
+                    </Grid.RenderTransform>
+                    <controls:SvgViewboxEx x:Name="IdleDiamondSvg"
+                                           Width="16" Height="16"
+                                           Fill="{DynamicResource TextOnPrimaryBrush}"
+                                           Visibility="Collapsed"/>
+                    <TextBlock x:Name="IdleDiamondIcon" Text="⚡" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                </Grid>
             </Border>
 
             <!-- Square shape -->
@@ -138,17 +142,18 @@
                     CornerRadius="0"
                     Cursor="Hand"
                     Visibility="Collapsed"
+                    Background="{DynamicResource PrimaryBrush}"
                     Effect="{StaticResource IdleGlow}"
                     RenderTransformOrigin="0.5,0.5">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#7C3AED" Offset="0"/>
-                        <GradientStop Color="#4F46E5" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <TextBlock Text="⚡" FontSize="20"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Foreground="White" IsHitTestVisible="False"/>
+                <Grid IsHitTestVisible="False">
+                    <controls:SvgViewboxEx x:Name="IdleSquareSvg"
+                                           Width="20" Height="20"
+                                           Fill="{DynamicResource TextOnPrimaryBrush}"
+                                           Visibility="Collapsed"/>
+                    <TextBlock x:Name="IdleSquareIcon" Text="⚡" FontSize="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                </Grid>
             </Border>
 
             <!-- RoundedSquare shape -->
@@ -157,17 +162,18 @@
                     CornerRadius="10"
                     Cursor="Hand"
                     Visibility="Collapsed"
+                    Background="{DynamicResource PrimaryBrush}"
                     Effect="{StaticResource IdleGlow}"
                     RenderTransformOrigin="0.5,0.5">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#7C3AED" Offset="0"/>
-                        <GradientStop Color="#4F46E5" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <TextBlock Text="⚡" FontSize="20"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Foreground="White" IsHitTestVisible="False"/>
+                <Grid IsHitTestVisible="False">
+                    <controls:SvgViewboxEx x:Name="IdleRoundedSvg"
+                                           Width="20" Height="20"
+                                           Fill="{DynamicResource TextOnPrimaryBrush}"
+                                           Visibility="Collapsed"/>
+                    <TextBlock x:Name="IdleRoundedIcon" Text="⚡" FontSize="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                </Grid>
             </Border>
         </Grid>
 
@@ -176,17 +182,10 @@
             <Border x:Name="ExpandedBorder"
                     CornerRadius="12"
                     BorderThickness="1"
+                    Background="{DynamicResource WindowBackgroundBrush}"
+                    BorderBrush="{DynamicResource ControlBorderBrush}"
                     Effect="{StaticResource ExpandedShadow}"
                     ClipToBounds="True">
-                <Border.Background>
-                    <SolidColorBrush Color="#18181B"/>
-                </Border.Background>
-                <Border.BorderBrush>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#3F3F46" Offset="0"/>
-                        <GradientStop Color="#27272A" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.BorderBrush>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>  <!-- Title bar -->
@@ -197,16 +196,11 @@
                     <Border x:Name="TitleBar" Grid.Row="0"
                             Height="28"
                             Cursor="SizeAll"
+                            Background="{DynamicResource CardColor}"
                             MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                             MouseMove="TitleBar_MouseMove"
                             MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
                             MouseEnter="TitleBar_MouseEnter">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#1E1B2E" Offset="0"/>
-                                <GradientStop Color="#18181B" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
                         <Grid Margin="8,0,4,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>  <!-- Drag handle -->
@@ -216,14 +210,16 @@
 
                             <!-- Drag handle dots -->
                             <TextBlock Grid.Column="0" Text="⠿"
-                                       Foreground="#6B7280" FontSize="14"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       Opacity="0.55"
+                                       FontSize="14"
                                        VerticalAlignment="Center" Margin="0,0,6,0"
                                        IsHitTestVisible="False"/>
 
                             <!-- Title -->
                             <TextBlock x:Name="TitleText" Grid.Column="1"
                                        Text="Widget"
-                                       Foreground="#A5B4FC"
+                                       Foreground="{DynamicResource PrimaryBrush}"
                                        FontSize="11" FontWeight="SemiBold"
                                        VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"
@@ -241,7 +237,6 @@
                                 <Button x:Name="CloseBtn" Content="×"
                                         Style="{StaticResource WidgetCloseButton}"
                                         FontSize="14" FontWeight="Bold"
-                                        Foreground="#F87171"
                                         ToolTip="Đóng widget"
                                         Click="CloseBtn_Click"/>
                             </StackPanel>
@@ -258,14 +253,14 @@
                     <Thumb x:Name="ResizeGrip" Grid.Row="1"
                            Width="16" Height="16"
                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                           Cursor="SizeNWSE" Opacity="0.4"
+                           Cursor="SizeNWSE" Opacity="0.5"
                            DragDelta="ResizeGrip_DragDelta">
                         <Thumb.Template>
                             <ControlTemplate>
                                 <Canvas Width="16" Height="16">
-                                    <Line X1="12" Y1="16" X2="16" Y2="12" Stroke="#6B7280" StrokeThickness="1.5"/>
-                                    <Line X1="8" Y1="16" X2="16" Y2="8" Stroke="#6B7280" StrokeThickness="1.5"/>
-                                    <Line X1="4" Y1="16" X2="16" Y2="4" Stroke="#6B7280" StrokeThickness="1.5"/>
+                                    <Line X1="12" Y1="16" X2="16" Y2="12" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
+                                    <Line X1="8" Y1="16" X2="16" Y2="8" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
+                                    <Line X1="4" Y1="16" X2="16" Y2="4" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
                                 </Canvas>
                             </ControlTemplate>
                         </Thumb.Template>

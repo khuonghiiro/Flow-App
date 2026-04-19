@@ -51,6 +51,15 @@ namespace FlowMy.Models
             set { if (_isEnabled != value) { _isEnabled = value; OnPropertyChanged(); } }
         }
 
+        // ── Tên widget (hiển thị ở MainWindow, launcher, ...) ──
+        private string _widgetName = string.Empty;
+        /// <summary>Tên widget do người dùng đặt. Nếu trống, fallback về node.Title.</summary>
+        public string WidgetName
+        {
+            get => _widgetName;
+            set { if (_widgetName != value) { _widgetName = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
         // ── Hình dạng khi thu nhỏ (Idle / Collapsed) ──
         private WidgetIdleShape _idleShape = WidgetIdleShape.Circle;
         public WidgetIdleShape IdleShape
@@ -116,6 +125,61 @@ namespace FlowMy.Models
 
         private double _maxExpandedHeight = 900;
         public double MaxExpandedHeight { get => _maxExpandedHeight; set { _maxExpandedHeight = value; OnPropertyChanged(); } }
+
+        // ── Kích thước theo tỉ lệ màn hình (0.0–1.0) ──
+        private bool _useRatioSize;
+        /// <summary>
+        /// Nếu true, kích thước expanded tính theo tỉ lệ screen (WidthRatio/HeightRatio).
+        /// Nếu false (mặc định), dùng ExpandedWidth/ExpandedHeight (px).
+        /// </summary>
+        public bool UseRatioSize
+        {
+            get => _useRatioSize;
+            set { if (_useRatioSize != value) { _useRatioSize = value; OnPropertyChanged(); } }
+        }
+
+        private double _widthRatio = 0.3;
+        /// <summary>Tỉ lệ bề rộng so với work area (0.05 – 1.0).</summary>
+        public double WidthRatio
+        {
+            get => _widthRatio;
+            set { var v = Math.Max(0.05, Math.Min(1.0, value)); if (Math.Abs(_widthRatio - v) > 0.0001) { _widthRatio = v; OnPropertyChanged(); } }
+        }
+
+        private double _heightRatio = 0.35;
+        public double HeightRatio
+        {
+            get => _heightRatio;
+            set { var v = Math.Max(0.05, Math.Min(1.0, value)); if (Math.Abs(_heightRatio - v) > 0.0001) { _heightRatio = v; OnPropertyChanged(); } }
+        }
+
+        private double _minWidthRatio = 0.15;
+        public double MinWidthRatio
+        {
+            get => _minWidthRatio;
+            set { var v = Math.Max(0.05, Math.Min(1.0, value)); if (Math.Abs(_minWidthRatio - v) > 0.0001) { _minWidthRatio = v; OnPropertyChanged(); } }
+        }
+
+        private double _minHeightRatio = 0.15;
+        public double MinHeightRatio
+        {
+            get => _minHeightRatio;
+            set { var v = Math.Max(0.05, Math.Min(1.0, value)); if (Math.Abs(_minHeightRatio - v) > 0.0001) { _minHeightRatio = v; OnPropertyChanged(); } }
+        }
+
+        private double _maxWidthRatio = 0.9;
+        public double MaxWidthRatio
+        {
+            get => _maxWidthRatio;
+            set { var v = Math.Max(0.05, Math.Min(1.0, value)); if (Math.Abs(_maxWidthRatio - v) > 0.0001) { _maxWidthRatio = v; OnPropertyChanged(); } }
+        }
+
+        private double _maxHeightRatio = 0.9;
+        public double MaxHeightRatio
+        {
+            get => _maxHeightRatio;
+            set { var v = Math.Max(0.05, Math.Min(1.0, value)); if (Math.Abs(_maxHeightRatio - v) > 0.0001) { _maxHeightRatio = v; OnPropertyChanged(); } }
+        }
 
         // ── Vị trí & Di chuyển ──
         private bool _allowDrag = true;

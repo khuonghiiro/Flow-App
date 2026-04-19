@@ -40,21 +40,31 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
         ToolTip="Icon đã chọn">
 
                 <Grid>
-                    <!-- Icon SVG -->
-                    <!-- Icon SVG - MỚI -->
-                    <local:SvgViewboxEx x:Name="IconDisplaySvg"
-                         Width="18"
-                         Height="18"
-                         Margin="10,0,0,0"
-                         HorizontalAlignment="Left"
-                         VerticalAlignment="Center"
-                         Fill="{DynamicResource TextBrush}"
-                         Visibility="Collapsed"/>
+                    <!-- Khi đã chọn: icon SVG + tên icon (dynamic theo TextBrush) -->
+                    <StackPanel x:Name="SelectedIconPanel"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                Margin="10,0,32,0"
+                                Visibility="Collapsed">
+                        <local:SvgViewboxEx x:Name="IconDisplaySvg"
+                             Width="18"
+                             Height="18"
+                             VerticalAlignment="Center"
+                             Fill="{DynamicResource TextBrush}"/>
+                        <TextBlock x:Name="SelectedIconNameText"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   FontSize="13"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
 
-                    <!-- Placeholder -->
+                    <!-- Placeholder khi chưa chọn -->
                     <TextBlock x:Name="PlaceholderText"
                    Text="Chọn icon..."
-                   Foreground="Gray"
+                   Foreground="{DynamicResource TextBrush}"
+                   Opacity="0.55"
                    Margin="10,0,0,0"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Left"
@@ -73,7 +83,7 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
     BorderThickness="0"
     Content="✕"
     FontSize="12"
-    Foreground="#666666"
+    Foreground="{DynamicResource TextBrush}"
     Cursor="Hand"
     Visibility="Collapsed"
     Click="ClearButton_Click"
@@ -83,17 +93,18 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}"
-                            CornerRadius="10"
-                            Width="20"
-                            Height="20">
+                                            <Border x:Name="bd"
+                                                    Background="{TemplateBinding Background}"
+                                                    CornerRadius="10"
+                                                    Width="20"
+                                                    Height="20">
                                                 <ContentPresenter HorizontalAlignment="Center"
-                          VerticalAlignment="Center"/>
+                                                                  VerticalAlignment="Center"/>
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FFE0E0"/>
-                                                    <Setter Property="Foreground" Value="#F44336"/>
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -111,29 +122,28 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
                     Width="{Binding ButtonHeight, RelativeSource={RelativeSource AncestorType=UserControl}, FallbackValue=40}"
                     Height="{Binding ButtonHeight, RelativeSource={RelativeSource AncestorType=UserControl}, FallbackValue=40}"
                     Margin="-1,0,0,0"
-                    Background="#2196F3"
-                    Foreground="White"
+                    Background="{DynamicResource PrimaryBrush}"
+                    Foreground="{DynamicResource TextOnPrimaryBrush}"
                     BorderThickness="0"
                     Padding="10,5"
                     Cursor="Hand"
                     Click="SelectIcon_Click"
                     ToolTip="Chọn icon">
 
-                <!-- SVG Icon -->
-              
                 <local:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
-   Converter={StaticResource IconKeyToPathConverter}, 
-   ConverterParameter='folder-open duotone-light'}"
-Width="18"
-Fill="{DynamicResource TextOnPrimaryBrush}"
-Height="18"/>
+                                             Converter={StaticResource IconKeyToPathConverter}, 
+                                             ConverterParameter='folder-open duotone-light'}"
+                                    Width="18"
+                                    Height="18"
+                                    Fill="{DynamicResource TextOnPrimaryBrush}"/>
 
                 <Button.Style>
                     <Style TargetType="Button">
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
+                                    <Border x:Name="bd"
+                                            Background="{TemplateBinding Background}"
                                             CornerRadius="0,6,6,0"
                                             Width="{TemplateBinding Width}"
                                             Height="{TemplateBinding Height}">
@@ -142,10 +152,10 @@ Height="18"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#1976D2"/>
+                                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/>
                                         </Trigger>
                                         <Trigger Property="IsPressed" Value="True">
-                                            <Setter Property="Background" Value="#1565C0"/>
+                                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -197,7 +207,8 @@ Height="18"/>
                                  TextChanged="SearchTextBox_TextChanged"/>
 
                         <TextBlock Text="Tìm kiếm icon..."
-                                   Foreground="Gray"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   Opacity="0.55"
                                    Margin="30,0,0,0"
                                    VerticalAlignment="Center"
                                    IsHitTestVisible="False"
@@ -244,11 +255,12 @@ Height="18"/>
                                        FontSize="13"
                                        FontWeight="SemiBold"
                                        HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource ControlBorderBrush}"/>
+                                       Foreground="{DynamicResource TextBrush}"/>
                             <TextBlock x:Name="TotalIconsText"
                                        Text="(0 icons)"
                                        FontSize="11"
-                                       Foreground="{DynamicResource ControlBorderBrush}"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       Opacity="0.65"
                                        HorizontalAlignment="Center"
                                        Margin="0,2,0,0"/>
                         </StackPanel>
@@ -268,7 +280,8 @@ Height="18"/>
                     <!-- Footer info -->
                     <TextBlock Text="Click vào biểu tượng để chọn"
                                FontSize="12"
-                               Foreground="{DynamicResource ControlBorderBrush}"
+                               Foreground="{DynamicResource TextBrush}"
+                               Opacity="0.65"
                                HorizontalAlignment="Center"
                                Margin="0,10,0,0"/>
 

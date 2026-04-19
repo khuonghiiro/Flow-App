@@ -1,0 +1,462 @@
+<Window x:Class="FlowMy.Views.Overlays.FloatingWidgetConfigDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
+        Title="Cấu hình Floating Widget"
+        Width="760"
+        Height="640"
+        MinWidth="680"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource CardColor}"
+                BorderBrush="{DynamicResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="14,12"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="📌 Floating Widget — Cấu hình cho node bất kỳ"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextBrush}"/>
+                <TextBlock Text="Chọn một node trên canvas hiện tại và thiết lập widget nổi. Nhấn &quot;Mở Widget&quot; để xuất ra desktop."
+                           Foreground="{DynamicResource TextBrush}"
+                           Opacity="0.75"
+                           Margin="0,4,0,0"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Node selector + Widget name -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource CardColor}"
+                BorderBrush="{DynamicResource BorderColor}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="14,10"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="Node:"
+                               Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"
+                               FontWeight="SemiBold"/>
+                    <ComboBox Grid.Column="1"
+                              x:Name="NodeComboBox"
+                              Height="32"
+                              Style="{DynamicResource BaseComboBox}"
+                              SelectionChanged="NodeComboBox_SelectionChanged"/>
+                    <TextBlock Grid.Column="2"
+                               x:Name="WidgetStatusText"
+                               VerticalAlignment="Center"
+                               Margin="12,0,0,0"
+                               Foreground="{DynamicResource TextBrush}"
+                               Opacity="0.75"/>
+                </Grid>
+
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="Tên widget:"
+                               Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"
+                               FontWeight="SemiBold"/>
+                    <TextBox Grid.Column="1"
+                             x:Name="WidgetNameTextBox"
+                             Style="{DynamicResource BaseTextBox}"
+                             Height="30"
+                             ToolTip="Tên hiển thị của widget trong MainWindow launcher. Nếu trống sẽ dùng tên node."/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Settings -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="SettingsPanel" IsEnabled="False">
+
+                <!-- Kích hoạt -->
+                <Border Background="{DynamicResource CardColor}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="14,10"
+                        Margin="0,0,0,10">
+                    <StackPanel>
+                        <CheckBox x:Name="IsEnabledCheckBox"
+                                  Content="Bật chế độ Floating Widget cho node này"
+                                  Foreground="{DynamicResource TextBrush}"
+                                  FontWeight="SemiBold"/>
+                        <TextBlock Text="Khi bật, widget sẽ tự động mở mỗi lần load workflow."
+                                   Foreground="{DynamicResource TextBrush}"
+                                   Opacity="0.6"
+                                   FontSize="11"
+                                   Margin="22,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 2 cột settings -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Cột trái -->
+                    <StackPanel Grid.Column="0" Margin="0,0,5,0">
+
+                        <!-- Hình dạng Idle -->
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Hình dạng khi thu nhỏ"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock Text="Kiểu hình" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <ComboBox x:Name="IdleShapeComboBox"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          Margin="0,4,0,8"
+                                          Height="30">
+                                    <ComboBoxItem Content="Tròn (Circle)" Tag="Circle"/>
+                                    <ComboBoxItem Content="Thoi (Diamond)" Tag="Diamond"/>
+                                    <ComboBoxItem Content="Vuông (Square)" Tag="Square"/>
+                                    <ComboBoxItem Content="Vuông bo góc (Rounded)" Tag="RoundedSquare"/>
+                                </ComboBox>
+
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Kích thước (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="IdleSizeTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Opacity (0.1–1.0)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="IdleOpacityTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Icon (SVG library)"
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <controls:IconSelectorUserControl x:Name="IdleIconSelector"
+                                                                  ButtonHeight="34"
+                                                                  Margin="0,4,0,6"/>
+                                <TextBlock Text="Hoặc nhập emoji/ký tự (dùng khi chưa chọn icon SVG)"
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11"/>
+                                <TextBox x:Name="IdleIconTextBox"
+                                         Style="{DynamicResource BaseTextBox}"
+                                         Height="28"
+                                         Margin="0,4,0,0"
+                                         ToolTip="Ví dụ: ⚡, 🚀, A"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Kích thước Expanded -->
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Kích thước khi mở rộng"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Margin="0,0,0,6"/>
+
+                                <CheckBox x:Name="UseRatioSizeCheckBox"
+                                          Content="Theo tỉ lệ màn hình (0.0 – 1.0). Bỏ chọn để dùng px."
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,0,0,6"
+                                          Checked="UseRatioSizeCheckBox_Toggled"
+                                          Unchecked="UseRatioSizeCheckBox_Toggled"/>
+
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock x:Name="WidthLabel" Text="Rộng (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="ExpandedWidthTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock x:Name="HeightLabel" Text="Cao (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="ExpandedHeightTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <CheckBox x:Name="AllowResizeCheckBox"
+                                          Content="Cho phép thay đổi kích thước"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,4,0,6"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock x:Name="MinLabel" Text="Min W × H (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="4"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="MinWidthTextBox" Style="{DynamicResource BaseTextBox}" Height="28"/>
+                                            <TextBox Grid.Column="2" x:Name="MinHeightTextBox" Style="{DynamicResource BaseTextBox}" Height="28"/>
+                                        </Grid>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock x:Name="MaxLabel" Text="Max W × H (px)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="4"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="MaxWidthTextBox" Style="{DynamicResource BaseTextBox}" Height="28"/>
+                                            <TextBox Grid.Column="2" x:Name="MaxHeightTextBox" Style="{DynamicResource BaseTextBox}" Height="28"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Trạng thái Window -->
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Trạng thái Window"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Margin="0,0,0,6"/>
+                                <CheckBox x:Name="AlwaysOnTopCheckBox"
+                                          Content="Luôn nổi trên cùng (Always on top)"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <CheckBox x:Name="ShowInTaskbarCheckBox"
+                                          Content="Hiện trên Taskbar"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <CheckBox x:Name="ShowTitleBarCheckBox"
+                                          Content="Hiện thanh tiêu đề"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <CheckBox x:Name="AutoHideTitleBarCheckBox"
+                                          Content="Tự ẩn tiêu đề khi không tương tác"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="Thời gian ẩn tiêu đề (giây)"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               Opacity="0.85"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1"
+                                             x:Name="TitleBarHideTimeoutTextBox"
+                                             Style="{DynamicResource BaseTextBox}"
+                                             Width="70" Height="28"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Cột phải -->
+                    <StackPanel Grid.Column="1" Margin="5,0,0,0">
+
+                        <!-- Vị trí & Di chuyển -->
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Vị trí &amp; Di chuyển"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Margin="0,0,0,6"/>
+                                <CheckBox x:Name="AllowDragCheckBox"
+                                          Content="Cho phép kéo di chuyển"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <CheckBox x:Name="SnapToEdgeCheckBox"
+                                          Content="Bám sát cạnh màn hình khi thả"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <CheckBox x:Name="LockPositionCheckBox"
+                                          Content="Khóa vị trí"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <TextBlock Text="Cạnh ưu tiên" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                <ComboBox x:Name="PreferredEdgeComboBox"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          Margin="0,4,0,6"
+                                          Height="30">
+                                    <ComboBoxItem Content="Không chỉ định" Tag="None"/>
+                                    <ComboBoxItem Content="Trái" Tag="Left"/>
+                                    <ComboBoxItem Content="Phải" Tag="Right"/>
+                                    <ComboBoxItem Content="Trên" Tag="Top"/>
+                                    <ComboBoxItem Content="Dưới" Tag="Bottom"/>
+                                </ComboBox>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="Khoảng cách cạnh (px)"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               Opacity="0.85"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1"
+                                             x:Name="SnapMarginTextBox"
+                                             Style="{DynamicResource BaseTextBox}"
+                                             Height="28" Margin="10,0,0,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Hành vi Idle -->
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Hành vi khi không dùng"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Margin="0,0,0,6"/>
+                                <CheckBox x:Name="AutoCollapseCheckBox"
+                                          Content="Tự động thu nhỏ khi idle"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <CheckBox x:Name="SlideToEdgeCheckBox"
+                                          Content="Trượt bám cạnh màn hình khi idle"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,4"/>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Timeout (giây)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="IdleTimeoutTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Ẩn (%)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                        <TextBox x:Name="SlideHidePercentTextBox" Style="{DynamicResource BaseTextBox}" Height="28" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Display Mode + Multi-monitor -->
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Hiển thị &amp; Màn hình"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock Text="Chế độ hiển thị" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <ComboBox x:Name="DisplayModeComboBox"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          Margin="0,4,0,6"
+                                          Height="30">
+                                    <ComboBoxItem Content="Bình thường (Normal)" Tag="Normal"/>
+                                    <ComboBoxItem Content="Nhỏ gọn (Compact)" Tag="Compact"/>
+                                    <ComboBoxItem Content="Full content" Tag="FullContent"/>
+                                </ComboBox>
+                                <TextBlock Text="Màn hình" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                <ComboBox x:Name="MonitorComboBox"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          Margin="0,4,0,6"
+                                          Height="30"/>
+                                <CheckBox x:Name="ShowOnAllMonitorsCheckBox"
+                                          Content="Hiển thị trên tất cả màn hình"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="OpenWidgetButton"
+                    Content="▶ Mở Widget"
+                    MinWidth="130"
+                    Margin="0,0,8,0"
+                    Style="{DynamicResource PrimaryButton}"
+                    Click="OpenWidgetButton_Click"/>
+            <Button x:Name="CloseWidgetButton"
+                    Content="■ Đóng Widget"
+                    MinWidth="130"
+                    Margin="0,0,8,0"
+                    Style="{DynamicResource PrimaryButton}"
+                    Click="CloseWidgetButton_Click"/>
+            <Button x:Name="ApplyButton"
+                    Content="Áp dụng"
+                    MinWidth="100"
+                    Margin="0,0,8,0"
+                    Style="{DynamicResource PrimaryButton}"
+                    Click="ApplyButton_Click"/>
+            <Button x:Name="CloseDialogButton"
+                    Content="Đóng"
+                    MinWidth="100"
+                    Style="{DynamicResource PrimaryButton}"
+                    Click="CloseDialogButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
