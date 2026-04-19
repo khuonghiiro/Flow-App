@@ -31,6 +31,13 @@ namespace FlowMy.Services.Interaction
         private AsyncTaskBodyNode? _draggedNodeOwningAsyncBody;
         private List<WorkflowNode>? _draggedLoopBodyChildren;
         private List<WorkflowNode>? _draggedAsyncBodyChildren;
+
+        // Stash DropShadowEffect của các border đang bị drag. Khi một element WPF có Effect,
+        // toàn bộ visual con được rasterize thành bitmap rồi áp effect (blur + offset).
+        // Trong lúc position thay đổi mỗi frame, bitmap này được raster lại ở device bounds
+        // mới → edges + text nhìn như bị "mờ" / softening (dù cache đã tắt). Giải pháp:
+        // tạm thời bỏ Effect khi bắt đầu drag, khôi phục nguyên trạng khi thả chuột.
+        private readonly Dictionary<Border, System.Windows.Media.Effects.Effect> _stashedEffects = new();
         
         // Sử dụng CompositionTarget.Rendering để sync với refresh rate và tăng hiệu suất GPU
         private EventHandler? _renderingHandler;
@@ -176,6 +183,47 @@ namespace FlowMy.Services.Interaction
                     .Where(n => n != asyncBody && n is not LoopNode)
                     .ToList()
                 : null;
+
+            // Tạm bỏ DropShadowEffect trên các border sắp di chuyển: Effect làm WPF raster
+            // visual subtree thành bitmap rồi áp blur, mỗi frame raster lại ở bounds mới
+            // → viền + chữ nhìn mềm / mờ ngay cả khi cache đã tắt và toạ độ đã snap pixel.
+            // Khi thả chuột, Effect cũ được khôi phục nguyên vẹn.
+            StashEffectsForDrag(host.DraggedNode);
+        }
+
+        private void StashEffectsForDrag(WorkflowNode? dragged)
+        {
+            if (dragged == null) return;
+            _stashedEffects.Clear();
+
+            void Stash(Border? b)
+            {
+                if (b == null || b.Effect == null) return;
+                if (_stashedEffects.ContainsKey(b)) return;
+                _stashedEffects[b] = b.Effect;
+                b.Effect = null;
+            }
+
+            Stash(dragged.Border);
+
+            if (_draggedLoopBodyChildren != null)
+            {
+                foreach (var child in _draggedLoopBodyChildren) Stash(child.Border);
+            }
+            if (_draggedAsyncBodyChildren != null)
+            {
+                foreach (var child in _draggedAsyncBodyChildren) Stash(child.Border);
+            }
+        }
+
+        private void RestoreStashedEffects()
+        {
+            if (_stashedEffects.Count == 0) return;
+            foreach (var kv in _stashedEffects)
+            {
+                if (kv.Key != null) kv.Key.Effect = kv.Value;
+            }
+            _stashedEffects.Clear();
         }
 
         private static bool IsInteractiveElement(DependencyObject? source)
@@ -828,6 +876,11 @@ namespace FlowMy.Services.Interaction
                     _canvasSizeUpdateTimer?.Stop();
                 }
                 
+                // Khôi phục DropShadowEffect TRƯỚC khi bật lại cache. Nếu khôi phục sau
+                // cache thì Effect mới sẽ invalidate bitmap cache → phải cache lại một lần
+                // nữa, vừa thừa vừa có thể gây flash nhẹ.
+                RestoreStashedEffects();
+
                 // Tối ưu GPU: Re-apply cache sau khi drag xong để tăng tốc render
                 if (GpuDetectionHelper.IsGpuAvailable)
                 {

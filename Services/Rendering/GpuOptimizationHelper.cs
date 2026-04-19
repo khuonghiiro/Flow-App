@@ -116,15 +116,34 @@ namespace FlowMy.Services.Rendering
                     if (rt != top) System.Windows.Controls.Canvas.SetTop(border, rt);
                 }
 
+                // Lấy DPI scale để cache bitmap ở độ phân giải device (tránh upscale bilinear).
+                // Ở màn hình 125%/150%/200% DPI, nếu cache ở RenderAtScale=1.0 thì bitmap chỉ
+                // có 1 pixel / 1 logical unit, khi compose lên device sẽ phải phóng lớn
+                // → node mờ dù user chọn chất lượng cao nhất.
+                double dpiScale = 1.0;
+                try
+                {
+                    var dpi = VisualTreeHelper.GetDpi(border);
+                    if (dpi.DpiScaleX > 0) dpiScale = dpi.DpiScaleX;
+                }
+                catch { /* border chưa attach vào visual tree -> giữ 1.0 */ }
+
+                // Ở High/Best cache ở scale DPI để giữ độ nét tuyệt đối của chữ + viền.
+                // Ở Low/Medium ưu tiên hiệu năng, giữ scale 1.0 để bitmap nhỏ, cache nhanh.
+                double renderAtScale = quality >= GpuRenderQuality.High ? dpiScale : 1.0;
+
                 // TỐI ƯU: Dùng BitmapCache cho static nodes (không đang drag) để tăng tốc GPU rendering
                 RenderOptions.SetCachingHint(border, CachingHint.Cache);
-                // Dùng BitmapCache với RenderAtScale = 1.0 để tối ưu hiệu suất
-                // Không dùng EnableClearType để giảm overhead
                 border.CacheMode = new BitmapCache
                 {
-                    EnableClearType = false, // Tắt ClearType để giảm overhead
-                    RenderAtScale = 1.0,     // Render ở scale 1:1 để tối ưu
-                    SnapsToDevicePixels = GpuRenderQualityHelper.ShouldSnapToDevicePixels(quality)
+                    // Bật ClearType ở High/Best để chữ trong node không bị gray-scale AA
+                    // (vốn nhìn mờ hơn khi compose lên background đậm).
+                    EnableClearType = quality >= GpuRenderQuality.High,
+                    RenderAtScale = renderAtScale,
+                    // LUÔN snap bitmap về device pixel khi compose. Nếu không snap thì
+                    // dù Canvas.Left/Top đã round integer logical, ở DPI != 100% vẫn rơi
+                    // vào vị trí sub-device-pixel → bilinear resample → mờ.
+                    SnapsToDevicePixels = true
                 };
 
                 // Đảm bảo không có visual artifacts

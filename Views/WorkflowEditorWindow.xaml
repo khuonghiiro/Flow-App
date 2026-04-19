@@ -1947,7 +1947,9 @@ Cursor="Hand"
                                 <DataTrigger Binding="{Binding IsExecutionTracePanelInMainGrid}" Value="True">
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
-                                <!-- Dock Left: spans all rows, column 0. -->
+                                <!-- Dock Left: spans all rows, column 0.
+                                     ZIndex=150 để nằm trên NodePaletteExpandButton (ZIndex=120) ở góc trái,
+                                     nếu không nút toggle ẩn/hiện palette sẽ đè lên panel log. -->
                                 <MultiDataTrigger>
                                     <MultiDataTrigger.Conditions>
                                         <Condition Binding="{Binding IsExecutionTracePanelInMainGrid}" Value="True"/>
@@ -1957,6 +1959,7 @@ Cursor="Hand"
                                     <Setter Property="Grid.RowSpan" Value="3"/>
                                     <Setter Property="Grid.Column" Value="0"/>
                                     <Setter Property="Grid.ColumnSpan" Value="1"/>
+                                    <Setter Property="Panel.ZIndex" Value="150"/>
                                     <Setter Property="Height" Value="{x:Static sys:Double.NaN}"/>
                                     <Setter Property="Width" Value="{Binding ExecutionTracePanelDockWidth}"/>
                                 </MultiDataTrigger>
@@ -2060,25 +2063,11 @@ Cursor="Hand"
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </Border.Resources>
-                            <!-- Responsive: khi dock Left/Right hoặc panel narrow, toolbar dài hơn width sẽ cuộn ngang thay vì bị che. -->
-                            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                          VerticalScrollBarVisibility="Disabled"
-                                          Padding="0"
-                                          BorderThickness="0"
-                                          Focusable="False">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Responsive: khi dock Left/Right hoặc panel narrow, toolbar wrap xuống dòng thay vì cuộn ngang.
+                                 Mỗi "nhóm logic" (title / filter / search / action) đóng gói trong 1 StackPanel con
+                                 để các item liên quan (label + combobox) không tách đôi ở biên wrap. -->
+                            <WrapPanel Orientation="Horizontal" ItemHeight="28">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                                     <controls:SvgViewboxEx Width="14"
                                                            Height="14"
                                                            Margin="0,0,6,0"
@@ -2091,34 +2080,33 @@ Cursor="Hand"
                                                FontSize="11"/>
                                 </StackPanel>
 
-                                <TextBlock Grid.Column="1" Text="Status" Foreground="White" Opacity="0.8" VerticalAlignment="Center" Margin="12,0,6,0"/>
-                                <ComboBox Grid.Column="2"
-                                          Width="100"
-                                          Height="24"
-                                          ItemsSource="{Binding ExecutionTraceStatusOptions}"
-                                          SelectedItem="{Binding ExecutionTraceStatusFilter, Mode=TwoWay}"
-                                          VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Status" Foreground="White" Opacity="0.8" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <ComboBox Width="100"
+                                              Height="24"
+                                              ItemsSource="{Binding ExecutionTraceStatusOptions}"
+                                              SelectedItem="{Binding ExecutionTraceStatusFilter, Mode=TwoWay}"
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
 
-                                <TextBlock Grid.Column="3" Text="Type" Foreground="White" Opacity="0.8" VerticalAlignment="Center" Margin="12,0,6,0"/>
-                                <ComboBox Grid.Column="4"
-                                          Width="130"
-                                          Height="24"
-                                          ItemsSource="{Binding ExecutionTraceNodeTypeOptions}"
-                                          SelectedItem="{Binding ExecutionTraceNodeTypeFilter, Mode=TwoWay}"
-                                          VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Type" Foreground="White" Opacity="0.8" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <ComboBox Width="130"
+                                              Height="24"
+                                              ItemsSource="{Binding ExecutionTraceNodeTypeOptions}"
+                                              SelectedItem="{Binding ExecutionTraceNodeTypeFilter, Mode=TwoWay}"
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
 
-                                <TextBox Grid.Column="5"
-                                         Width="240"
+                                <TextBox Width="240"
                                          Height="24"
-                                         Margin="12,0,8,0"
+                                         Margin="0,0,12,0"
                                          VerticalAlignment="Center"
                                          Text="{Binding ExecutionTraceSearchText, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="Tìm theo node name/id/key/output/error"/>
 
-                                <StackPanel Grid.Column="7"
-                                            Orientation="Horizontal"
-                                            VerticalAlignment="Center"
-                                            HorizontalAlignment="Right">
+                                <StackPanel Orientation="Horizontal"
+                                            VerticalAlignment="Center">
                                     <Button Style="{StaticResource TraceToolbarTextIconButton}"
                                             Command="{Binding ExportExecutionTraceLogsCommand}"
                                             ToolTip="Xuất log run ra JSON">
@@ -2229,8 +2217,7 @@ Cursor="Hand"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chevron-down duotone-regular'}"/>
                                     </Button>
                                 </StackPanel>
-                            </Grid>
-                            </ScrollViewer>
+                            </WrapPanel>
                         </Border>
 
                         <Grid Grid.Row="1">
