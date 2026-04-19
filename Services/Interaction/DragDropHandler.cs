@@ -336,8 +336,9 @@ namespace FlowMy.Services.Interaction
 
                 foreach (var child in childNodes)
                 {
-                    double cx = child.X + dx;
-                    double cy = child.Y + dy;
+                    // Snap child position: tránh BitmapCache render subpixel gây mờ sau drag.
+                    double cx = Math.Round(child.X + dx);
+                    double cy = Math.Round(child.Y + dy);
                     // Update renderer first so Conditional diamond can move satellite nodes by delta.
                     host.UpdateNodePosition(child, cx, cy);
                     viewModel.UpdateNodePosition(child, cx, cy);
@@ -376,8 +377,9 @@ namespace FlowMy.Services.Interaction
 
                 foreach (var child in childNodes)
                 {
-                    double cx = child.X + dx;
-                    double cy = child.Y + dy;
+                    // Snap child position: tránh BitmapCache render subpixel gây mờ sau drag.
+                    double cx = Math.Round(child.X + dx);
+                    double cy = Math.Round(child.Y + dy);
                     // Update renderer first so Conditional diamond can move satellite nodes by delta.
                     host.UpdateNodePosition(child, cx, cy);
                     viewModel.UpdateNodePosition(child, cx, cy);
@@ -406,6 +408,14 @@ namespace FlowMy.Services.Interaction
 
             if (host.DraggedNode != null)
             {
+                // Snap toạ độ về integer pixel. Lý do: BitmapCache render lại bitmap tại
+                // offset subpixel sẽ bị bilinear-resample → hình ảnh node bị mờ sau khi
+                // drag xong (khác với lúc mới kéo từ palette rơi ở vị trí nguyên).
+                // Snap ngay tại drag-move để toạ độ model + Canvas.Left/Top luôn khớp,
+                // và drag cảm nhận mượt ở cấp pixel (không dao động subpixel).
+                newX = Math.Round(newX);
+                newY = Math.Round(newY);
+
                 viewModel.UpdateNodePosition(host.DraggedNode, newX, newY);
 
                 // ✅ Update node position thông qua renderer để update title position

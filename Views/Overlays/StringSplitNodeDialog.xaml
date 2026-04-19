@@ -16,7 +16,7 @@
         MaxWidth="800"
         MinHeight="400">
     <Window.Resources>
-        <!-- Dùng lại converter giống LoopNodeDialog để show/hide error text -->
+        <!-- D�ng l?i converter gi?ng LoopNodeDialog d? show/hide error text -->
         <converters:InverseStringNullOrEmptyToVisibilityConverter x:Key="StringToVisibilityConverter"/>
     </Window.Resources>
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
@@ -34,7 +34,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- ⚠️ CRITICAL: Title TextBox với binding NodeTitle -->
+                    <!-- ?? CRITICAL: Title TextBox v?i binding NodeTitle -->
                     <TextBox x:Name="TitleTextBox"
                           Grid.Column="0"
                           Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
@@ -44,17 +44,17 @@
                           VerticalContentAlignment="Center"
                           Cursor="IBeam"/>
 
-                    <!-- ⚠️ CRITICAL: Close button phải gọi SaveTitleCommand -->
+                    <!-- ?? CRITICAL: Close button ph?i g?i SaveTitleCommand -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
                             Style="{DynamicResource PrimaryButton}"
                             Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                            Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
                             Command="{Binding RunSingleNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                             Style="{DynamicResource DangerButton}"
-                            Content="×" 
+                            Content="�" 
                             FontSize="12" 
                             FontWeight="Bold" 
                             Cursor="Hand"
@@ -63,7 +63,7 @@
                 </Grid>
             </Border>
 
-            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
+            <!-- Content: 2 tab Logic + T�i s? d?ng flow -->
             <TabControl Grid.Row="1"
                         Background="Transparent"
                         BorderThickness="0">
@@ -72,7 +72,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
                     <!-- TitleDisplayMode Section -->
-                    <TextBlock Text="Hiển thị tiêu đề:"
+                    <TextBlock Text="Hi?n th? ti�u d?:"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="14"
                                FontWeight="SemiBold"
@@ -88,7 +88,7 @@
                               SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
                     <!-- TitleColorMode Section -->
-                    <TextBlock Text="Màu tiêu đề:"
+                    <TextBlock Text="M�u ti�u d?:"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="14"
                                FontWeight="SemiBold"
@@ -131,9 +131,9 @@
                              Style="{DynamicResource BaseTextBoxV2}"
                              Height="36"
                              Margin="0,0,0,4"
-                             ToolTip="Regex pattern để cắt chuỗi (mặc định: \r?\n để cắt theo dòng)"/>
+                             ToolTip="Regex pattern d? c?t chu?i (m?c d?nh: \r?\n d? c?t theo d�ng)"/>
                     
-                    <TextBlock Text="Mặc định: \r?\n (cắt theo dòng mới)"
+                    <TextBlock Text="M?c d?nh: \r?\n (c?t theo d�ng m?i)"
                                Foreground="{DynamicResource TextMuted}"
                                FontSize="11"
                                Margin="0,0,0,16"/>
@@ -149,9 +149,9 @@
                              Style="{DynamicResource BaseTextBoxV2}"
                              Height="36"
                              Margin="0,0,0,4"
-                             ToolTip="Key của output (để trống sẽ dùng 'ListItems')"/>
+                             ToolTip="Key c?a output (d? tr?ng s? d�ng 'ListItems')"/>
                     
-                    <TextBlock Text="Để trống sẽ dùng key mặc định: 'ListItems'"
+                    <TextBlock Text="�? tr?ng s? d�ng key m?c d?nh: 'ListItems'"
                                Foreground="{DynamicResource TextMuted}"
                                FontSize="11"
                                Margin="0,0,0,16"/>
@@ -172,7 +172,7 @@
                         <StackPanel x:Name="InputsPanel"/>
                     </Border>
 
-                    <!-- Error message khi input type không phải String -->
+                    <!-- Error message khi input type kh�ng ph?i String -->
                     <TextBlock Text="{Binding InputErrorMessage}"
                                Foreground="{DynamicResource DangerColor}"
                                FontSize="11"
@@ -200,13 +200,13 @@
 
                     <!-- Note Section -->
                     <Border Background="{DynamicResource HeaderBackgroundBrush}" 
-                            BorderBrush="#3366B3FF" 
+                            BorderBrush="{DynamicResource PrimaryGlowBrush}" 
                             BorderThickness="1" 
                             CornerRadius="8" 
                             Padding="12" 
                             Margin="0,0,0,0">
                         <StackPanel>
-                            <TextBlock Text="ℹ️ Lưu ý:"
+                            <TextBlock Text="?? Luu �:"
                                        Foreground="{DynamicResource PrimaryBrush}"
                                        FontSize="13"
                                        FontWeight="SemiBold"
@@ -215,9 +215,9 @@
                                        Foreground="{DynamicResource TextMuted}"
                                        FontSize="12"
                                        LineHeight="18">
-                                • Node sẽ tự động bỏ qua các item rỗng, null, hoặc chỉ có khoảng trắng<LineBreak/>
-                                • Output là mảng string<LineBreak/>
-                                • Có thể đổi key của output để dễ nhận diện
+                                � Node s? t? d?ng b? qua c�c item r?ng, null, ho?c ch? c� kho?ng tr?ng<LineBreak/>
+                                � Output l� m?ng string<LineBreak/>
+                                � C� th? d?i key c?a output d? d? nh?n di?n
                             </TextBlock>
                         </StackPanel>
                     </Border>
@@ -225,12 +225,12 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: Tái sử dụng flow -->
-                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 2: T�i s? d?ng flow -->
+                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <!-- C?u h�nh v? tr� c?ng IN/OUT -->
+                            <TextBlock Text="V? tr� c?ng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -244,7 +244,7 @@
 
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (cổng vào)"
+                                    <TextBlock Text="Port IN (c?ng v�o)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -257,7 +257,7 @@
 
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (cổng ra)"
+                                    <TextBlock Text="Port OUT (c?ng ra)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -269,7 +269,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Cấu hình tái sử dụng flow -->
+                            <!-- C?u h�nh t�i s? d?ng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -315,9 +315,9 @@
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>
 
-                                                <!-- Kiểu line OUT -->
+                                                <!-- Ki?u line OUT -->
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Kiểu line OUT"
+                                                    <TextBlock Text="Ki?u line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12"
                                                                Opacity="0.7"

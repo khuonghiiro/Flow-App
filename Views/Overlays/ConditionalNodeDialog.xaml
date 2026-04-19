@@ -92,7 +92,7 @@
                     <ItemsControl x:Name="ConditionsItemsControl" ItemsSource="{Binding Conditions}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#22FFFFFF" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                <Border Background="{DynamicResource BorderColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
                                         CornerRadius="8" Padding="12" Margin="0,0,0,12">
                                     <Grid>
                                         <Grid.RowDefinitions>
@@ -111,7 +111,7 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <Border Grid.Column="0"
-                                                    Background="#33FFFFFF"
+                                                    Background="{DynamicResource CardHoverBackground}"
                                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                                     BorderThickness="1"
                                                     CornerRadius="10"
@@ -151,7 +151,7 @@
                                             <ItemsControl ItemsSource="{Binding SubConditions}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Background="#18FFFFFF" BorderBrush="#28FFFFFF" BorderThickness="1"
+                                                        <Border Background="{DynamicResource CardHoverBackground}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
                                                                 CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                                             <Grid>
                                                                 <Grid.RowDefinitions>

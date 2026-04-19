@@ -99,6 +99,23 @@ namespace FlowMy.Services.Rendering
             // Lưu ý: luôn tắt cache khi đang kéo để tránh ghost/artifacts.
             if (shouldCache && !isDragging)
             {
+                // Snap Canvas.Left/Top về pixel nguyên TRƯỚC khi bật BitmapCache.
+                // BitmapCache render bitmap ở offset subpixel sẽ bị resample (bilinear)
+                // → node trông "mờ" sau khi di chuyển. Snap đảm bảo bitmap được paint
+                // chính xác trên grid pixel, giữ độ sắc nét như lúc mới rơi vào canvas.
+                var left = System.Windows.Controls.Canvas.GetLeft(border);
+                var top = System.Windows.Controls.Canvas.GetTop(border);
+                if (!double.IsNaN(left))
+                {
+                    var rl = System.Math.Round(left);
+                    if (rl != left) System.Windows.Controls.Canvas.SetLeft(border, rl);
+                }
+                if (!double.IsNaN(top))
+                {
+                    var rt = System.Math.Round(top);
+                    if (rt != top) System.Windows.Controls.Canvas.SetTop(border, rt);
+                }
+
                 // TỐI ƯU: Dùng BitmapCache cho static nodes (không đang drag) để tăng tốc GPU rendering
                 RenderOptions.SetCachingHint(border, CachingHint.Cache);
                 // Dùng BitmapCache với RenderAtScale = 1.0 để tối ưu hiệu suất

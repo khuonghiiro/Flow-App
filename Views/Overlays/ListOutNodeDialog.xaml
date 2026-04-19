@@ -39,15 +39,15 @@
                           Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
                             Style="{DynamicResource PrimaryButton}"
                             Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                            Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
                             Command="{Binding RunSingleNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                             Style="{DynamicResource DangerButton}"
-                            Content="×" 
+                            Content="�" 
                             FontSize="12" 
                             FontWeight="Bold" 
                             Cursor="Hand"
@@ -56,7 +56,7 @@
                 </Grid>
             </Border>
 
-            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
+            <!-- Content: 2 tab Logic + T�i s? d?ng flow -->
             <TabControl Grid.Row="1"
                         Background="Transparent"
                         BorderThickness="0">
@@ -65,7 +65,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
                     <!-- TitleDisplayMode -->
-                    <TextBlock Text="Hiển thị tiêu đề:"
+                    <TextBlock Text="Hi?n th? ti�u d?:"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="14"
                                FontWeight="SemiBold"
@@ -81,7 +81,7 @@
                               SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
                     <!-- TitleColorMode Section -->
-                    <TextBlock Text="Màu tiêu đề:"
+                    <TextBlock Text="M�u ti�u d?:"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="14"
                                FontWeight="SemiBold"
@@ -129,12 +129,12 @@
                         
                         <Button x:Name="AddMappingButton"
                                 Grid.Column="1"
-                                Content="+ Thêm"
+                                Content="+ Th�m"
                                 Width="70"
                                 Height="28"
                                 FontSize="12"
                                 Foreground="{DynamicResource TextBrush}"
-                                Background="#FF3B82F6"
+                                Background="{DynamicResource PrimaryBrush}"
                                 BorderThickness="0"
                                 Cursor="Hand"
                                 Command="{Binding AddMappingCommand}">
@@ -170,7 +170,7 @@
 
                                                 <!-- Row 1: New Key -->
                                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
-                                                    <TextBlock Text="Key mới:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="Key m?i:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
                                                     <TextBox Text="{Binding NewKey, UpdateSourceTrigger=PropertyChanged}"
                                                              Style="{DynamicResource BaseTextBoxV2}"
                                                              Height="32"
@@ -179,11 +179,11 @@
 
                                                 <!-- Remove Button -->
                                                 <Button Grid.Row="0" Grid.Column="1"
-                                                        Content="−"
+                                                        Content="-"
                                                         Width="28" Height="28"
                                                         FontSize="18" FontWeight="Bold"
                                                         Foreground="{DynamicResource TextBrush}"
-                                                        Background="#FFEF4444"
+                                                        Background="{DynamicResource DangerBrush}"
                                                         BorderThickness="0"
                                                         Cursor="Hand"
                                                         VerticalAlignment="Bottom"
@@ -228,7 +228,7 @@
                             
                             <!-- Empty state -->
                             <TextBlock x:Name="EmptyStateText"
-                                       Text="Chưa có mapping nào. Nhấn '+ Thêm' để tạo output mapping."
+                                       Text="Chua c� mapping n�o. Nh?n '+ Th�m' d? t?o output mapping."
                                        Foreground="{DynamicResource TextMuted}"
                                        FontSize="12"
                                        FontStyle="Italic"
@@ -239,21 +239,21 @@
                     </Border>
 
                     <!-- Info -->
-                    <Border Background="#FF1E3A5F" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                    <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="💡 Hướng dẫn:" Foreground="{DynamicResource PrimaryBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="?? Hu?ng d?n:" Foreground="{DynamicResource PrimaryBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" LineHeight="18">
-                                <Run>• Node này lọc và đổi tên outputs từ các node upstream</Run>
+                                <Run>� Node n�y l?c v� d?i t�n outputs t? c�c node upstream</Run>
                                 <LineBreak/>
-                                <Run>• Các node downstream chỉ thấy outputs đã cấu hình ở đây</Run>
+                                <Run>� C�c node downstream ch? th?y outputs d� c?u h�nh ? d�y</Run>
                                 <LineBreak/>
-                                <Run>• Hữu ích để đơn giản hóa data flow và đổi tên keys</Run>
+                                <Run>� H?u �ch d? don gi?n h�a data flow v� d?i t�n keys</Run>
                             </TextBlock>
                         </StackPanel>
                     </Border>
 
                     <!-- Outputs Section (auto-generated from mappings) -->
-                    <TextBlock Text="Outputs (tự động tạo từ mappings):" 
+                    <TextBlock Text="Outputs (t? d?ng t?o t? mappings):" 
                                Foreground="{DynamicResource TextBrush}" 
                                FontSize="14" 
                                FontWeight="SemiBold" 
@@ -265,12 +265,12 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: Tái sử dụng flow -->
-                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 2: T�i s? d?ng flow -->
+                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <!-- C?u h�nh v? tr� c?ng IN/OUT -->
+                            <TextBlock Text="V? tr� c?ng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -284,7 +284,7 @@
 
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (cổng vào)"
+                                    <TextBlock Text="Port IN (c?ng v�o)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -297,7 +297,7 @@
 
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (cổng ra)"
+                                    <TextBlock Text="Port OUT (c?ng ra)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -309,7 +309,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Cấu hình tái sử dụng flow -->
+                            <!-- C?u h�nh t�i s? d?ng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -354,7 +354,7 @@
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Kiểu line OUT"
+                                                    <TextBlock Text="Ki?u line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12"
                                                                Opacity="0.7"

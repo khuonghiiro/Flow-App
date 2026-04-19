@@ -41,17 +41,17 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="PlayButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
-                                Content="▶" FontSize="12"
+                                Content="?" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
                                 Margin="8,0,0,0"
-                                ToolTip="Chạy logic node này"
+                                ToolTip="Ch?y logic node n�y"
                                 Command="{Binding RunSingleNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0" 
                                 Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
-                                Content="×"
+                                Content="�"
                                 FontSize="12"
                                 FontWeight="Bold"
                                 Cursor="Hand"
@@ -64,7 +64,7 @@
             <!-- Content -->
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16" Grid.Row="1">
                 <StackPanel>
-                    <TextBlock Text="Nguồn node (trong body AsyncTask):"
+                    <TextBlock Text="Ngu?n node (trong body AsyncTask):"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
                     <ComboBox Height="36"
@@ -75,7 +75,7 @@
                               SelectedValue="{Binding SelectedSourceBodyNodeId, Mode=TwoWay}"
                               Margin="0,0,0,16"/>
 
-                    <TextBlock Text="Output key cần collect:"
+                    <TextBlock Text="Output key c?n collect:"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
                     <ComboBox Height="36"
@@ -86,19 +86,19 @@
                               SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"
                               Margin="0,0,0,16"/>
 
-                    <Border Background="#22FFFFFF" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                    <Border Background="{DynamicResource BorderColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
                             CornerRadius="6" Padding="12" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="Kết quả sau khi collect sẽ được xuất ra output key:"
+                            <TextBlock Text="K?t qu? sau khi collect s? du?c xu?t ra output key:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock Text="results (JSON object string)"
                                        Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.9"/>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="Gợi ý:"
+                    <TextBlock Text="G?i �:"
                                Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <TextBlock Text="Sau khi node chạy xong, các node phía sau node này có thể dùng OutputNode để đọc {results[0]}, {results[1]}..."
+                    <TextBlock Text="Sau khi node ch?y xong, c�c node ph�a sau node n�y c� th? d�ng OutputNode d? d?c {results[0]}, {results[1]}..."
                                Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Opacity="0.95"/>
                 </StackPanel>
             </ScrollViewer>

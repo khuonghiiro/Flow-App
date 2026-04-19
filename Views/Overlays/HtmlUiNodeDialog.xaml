@@ -222,7 +222,7 @@
                                                     <Button Grid.Column="5" Content="−" Width="26" Height="26" Margin="8,0,0,0" VerticalAlignment="Bottom"
                                                             Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
-                                                            Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"/>
+                                                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
                                                 </Grid>
                                                 <!-- Row 2: Auto-refresh controls -->
                                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
@@ -273,7 +273,7 @@
                                     <Run Text="3) Trong HTML/CSS/JS, dùng {variableName} để thay thế bằng giá trị từ node nguồn."/>
                                 </TextBlock>
                                 <TextBlock Text="Ví dụ trong HTML:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Text="• Hiển thị giá trị trực tiếp:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
@@ -286,7 +286,7 @@
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="Ví dụ trong JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Text="• Parse JSON từ input:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
@@ -305,7 +305,7 @@
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="Ví dụ trong CSS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Text="• Dùng cho màu sắc:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
@@ -318,7 +318,7 @@
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="Lưu ý:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="#1E293B" Padding="10" CornerRadius="6" Margin="0,0,0,14">
+                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,14">
                                     <StackPanel>
                                         <TextBlock Text="• {variableName} sẽ được replace bằng giá trị string từ node nguồn" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
                                         <TextBlock Text="• Nếu giá trị là JSON, dùng JSON.parse('{variableName}') trong JS để parse" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
@@ -332,7 +332,7 @@
                                 </Border>
 
                                 <!-- === REAL-TIME window.__ac === -->
-                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="#2563EB" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,0">
+                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,0">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                             <TextBlock Text="⚡ Real-time: " Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
@@ -352,11 +352,11 @@
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock Text="Cách 1 — Nhận 1 param:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
                                                             Tag="window.__ac.onUpdate('price', function(price) {&amp;#xA;    document.getElementById('price').textContent = price;&amp;#xA;});"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex1"
                                                             ToolTip="Điền sẵn HTML/CSS/JS ví dụ này vào editor"/>
                                                 </StackPanel>
@@ -378,11 +378,11 @@
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock Text="Cách 2 — Nhận nhiều params cùng lúc:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
                                                             Tag="// Khi cả price lẫn quantity thay đổi đều gọi callback này&amp;#xA;window.__ac.onUpdate('price', 'quantity', function(price, quantity) {&amp;#xA;    var total = parseFloat(price || 0) * parseInt(quantity || 0);&amp;#xA;    document.getElementById('total').textContent = 'Tổng: ' + total;&amp;#xA;});"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex2"
                                                             ToolTip="Điền sẵn HTML/CSS/JS ví dụ price × quantity vào editor"/>
                                                 </StackPanel>
@@ -406,11 +406,11 @@
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock Text="Cách 3 — Gọi nhiều func khi 1 param thay đổi:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
                                                             Tag="function updateChart(price) { /* vẽ chart */ }&amp;#xA;function updateBadge(price) { /* cập nhật badge */ }&amp;#xA;function updateHistory(price) { /* thêm vào lịch sử */ }&amp;#xA;&amp;#xA;// Gọi 3 func trong 1 callback khi price cập nhật&amp;#xA;window.__ac.onUpdate('price', function(price) {&amp;#xA;    updateChart(price);&amp;#xA;    updateBadge(price);&amp;#xA;    updateHistory(price);&amp;#xA;});"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex3"
                                                             ToolTip="Điền sẵn HTML/CSS/JS ví dụ chart + badge + history vào editor"/>
                                                 </StackPanel>
@@ -445,11 +445,11 @@
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock Text="Cách 4 — Đọc trực tiếp (polling):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
                                                             Tag="setInterval(function() {&amp;#xA;    var p = window.__ac.live['price'];  // luôn là giá trị mới nhất&amp;#xA;    document.getElementById('out').textContent = p ?? '—';&amp;#xA;}, 500);"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex4"
                                                             ToolTip="Điền sẵn HTML/CSS/JS ví dụ polling dashboard vào editor"/>
                                                 </StackPanel>
@@ -473,7 +473,7 @@
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock Text="Cách 5 — Tải file bằng curl và lấy link local trả về:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
                                                             Tag="// 1) Gọi host tải file bằng raw curl&#xA;var rawCurl = &quot;curl --location 'https://assets.grok.com/.../generated_video.mp4?cache=1' --header 'Cookie: ...'&quot;;&#xA;var key = 'gid|https://assets.grok.com/...';&#xA;if (typeof acDownloadByCurl === 'function') {&#xA;  acDownloadByCurl(rawCurl, 'grok_video.mp4', key);&#xA;}&#xA;&#xA;// 2) Nhận kết quả tải xong từ host&#xA;window.addEventListener('__ac_curl_download_done', function (ev) {&#xA;  var d = (ev &amp;&amp; ev.detail) ? ev.detail : {};&#xA;  if (!d.ok) {&#xA;    console.log('Download fail:', d.error);&#xA;    return;&#xA;  }&#xA;  // d.localUrl: URL local dạng https://downloads.local/xxx.mp4 (phát được trong UI)&#xA;  // d.path: đường dẫn file thật trong Downloads\\Workflow_Downloads\\Videos&#xA;  document.getElementById('status').textContent = d.localUrl || d.path;&#xA;});"/>
                                                 </StackPanel>
@@ -508,12 +508,12 @@
                                         </Border>
 
                                         <!-- Ví dụ 6: datas {guildId: localPath} -->
-                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="#0EA5E9" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,8,0,0">
+                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,8,0,0">
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                     <TextBlock Text="Cách 6 — Nhận datas dạng {guildId: localPath} và phát video local (không bị chặn):" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
                                                             Tag="// Input mapping gợi ý: key = datas (string JSON/object)&#xA;// Ví dụ datas: {&quot;8a85...733f&quot;:&quot;C:\\_DU_AN\\App_Desktop\\download_20260409_145008.mp4&quot;}&#xA;(function() {&#xA;  var currentGuildId = ''; // set từ outputGuildId hoặc từ UI của bạn&#xA;  var v = document.getElementById('previewVideo');&#xA;  if (!v) return;&#xA;&#xA;  function pickPathFromDatas(datas, gid) {&#xA;    if (!datas) return '';&#xA;    if (typeof datas === 'string') {&#xA;      try { datas = JSON.parse(datas); } catch (_) { return ''; }&#xA;    }&#xA;    if (!datas || typeof datas !== 'object') return '';&#xA;    var p = datas[gid];&#xA;    if (typeof p !== 'string') return '';&#xA;    return p.trim();&#xA;  }&#xA;&#xA;  function playLocalPath(localPath) {&#xA;    if (!localPath || typeof acResolveLocalPath !== 'function') return;&#xA;    var reqId = 'play_' + Date.now();&#xA;    function onResolved(ev) {&#xA;      var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;      if (String(d.requestId || '') !== reqId) return;&#xA;      window.removeEventListener('__ac_local_path_resolved', onResolved);&#xA;      if (!d.ok || !d.localUrl) return;&#xA;      // QUAN TRỌNG: dùng localUrl https://localfiles-*.local..., KHÔNG dùng file:///...&#xA;      v.src = d.localUrl;&#xA;      try { v.load(); } catch (_) {}&#xA;      var pp = v.play &amp;&amp; v.play();&#xA;      if (pp &amp;&amp; typeof pp.catch === 'function') pp.catch(function(){});&#xA;    }&#xA;    window.addEventListener('__ac_local_path_resolved', onResolved);&#xA;    acResolveLocalPath(localPath, reqId);&#xA;  }&#xA;&#xA;  if (window.__ac &amp;&amp; typeof window.__ac.onUpdate === 'function') {&#xA;    window.__ac.onUpdate('datas', function(datas) {&#xA;      var path = pickPathFromDatas(datas, currentGuildId);&#xA;      if (path) playLocalPath(path);&#xA;    });&#xA;  }&#xA;})();"/>
                                                 </StackPanel>
@@ -547,16 +547,16 @@
                                         </Border>
 
                                         <!-- Ví dụ 7: áp dụng thực tế theo grok.* -->
-                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="#22C55E" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                                     <TextBlock Text="Ví dụ áp dụng nhanh (theo grok.html / grok.js / grok.css):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
                                                             Tag="// HTML&#xA;&lt;div class=&quot;card-media card-media-inline&quot;&gt;&#xA;  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;&#xA;&lt;/div&gt;&#xA;&#xA;// JS&#xA;var currentGuildId = (window.__ac &amp;&amp; window.__ac.live) ? (window.__ac.live.outputGuildId || '') : '';&#xA;window.__ac.onUpdate('datas', function(datas) {&#xA;  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }&#xA;  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';&#xA;  if (!localPath || typeof acResolveLocalPath !== 'function') return;&#xA;  var reqId = 'play_' + Date.now();&#xA;  window.addEventListener('__ac_local_path_resolved', function onR(ev) {&#xA;    var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;    if (String(d.requestId || '') !== reqId) return;&#xA;    window.removeEventListener('__ac_local_path_resolved', onR);&#xA;    if (!d.ok || !d.localUrl) return;&#xA;    var v = document.getElementById('previewVideo'); if (!v) return;&#xA;    v.src = d.localUrl; try { v.load(); } catch (_) {}&#xA;  });&#xA;  acResolveLocalPath(localPath, reqId);&#xA;});&#xA;&#xA;// CSS&#xA;.card-media-inline { position: relative; }&#xA;.card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex_grok_local"
                                                             ToolTip="Điền sẵn mẫu grok local video vào 4 tab code"/>
                                                 </StackPanel>
@@ -645,7 +645,7 @@
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
                         </Expander.Header>
                         <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14"
-                                BorderBrush="#0EA5E9" BorderThickness="1">
+                                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
                             <StackPanel>
 
                                 <!-- Mô tả tổng quan -->
@@ -655,7 +655,7 @@
 
                                 <!-- API Reference box -->
                                 <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="10" Margin="0,0,0,12"
-                                        BorderBrush="#0EA5E9" BorderThickness="1">
+                                        BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
                                     <StackPanel>
                                         <TextBlock Text="📌 API Reference:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
@@ -676,11 +676,11 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                             <TextBlock Text="SEQ 1 — Nhiều bước tuần tự (click → fill → submit):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                    Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="CopySnippet_Click"
                                                     Tag="// SEQ: từng bước chạy xong mới sang bước tiếp theo&#xA;// Bước 1: click nút&#xA;__tab1_exec_seq(`document.querySelector('#loginBtn').click();`);&#xA;&#xA;// Bước 2: đợi bước 1 xong, rồi fill input (Tab1 đã mở modal/form)&#xA;__tab1_exec_seq(`document.querySelector('#usernameInput').value = 'myUser';`);&#xA;&#xA;// Bước 3: submit&#xA;__tab1_exec_seq(`document.querySelector('form').submit();`);"/>
                                             <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                    Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="ApplyExample_Click" Tag="tab1_seq1"
                                                     ToolTip="Điền sẵn ví dụ sequential Tab2→Tab1 vào editor"/>
                                         </StackPanel>
@@ -712,11 +712,11 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                             <TextBlock Text="PAR — 2 request chạy song song (không đợi nhau):" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                    Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="CopySnippet_Click"
                                                     Tag="// PAR: cả 2 chạy ngay lập tức, không đợi nhau&#xA;__tab1_exec_par(`console.log('[Tab1] request1 started:', Date.now());`);&#xA;__tab1_exec_par(`document.title = 'Processing...';`);&#xA;&#xA;// Khác với SEQ: par2 KHÔNG đợi par1 xong"/>
                                             <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                    Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="ApplyExample_Click" Tag="tab1_par1"
                                                     ToolTip="Điền sẵn ví dụ parallel Tab2→Tab1 vào editor"/>
                                         </StackPanel>
@@ -742,11 +742,11 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                             <TextBlock Text="SEQ 2 — Fetch API trong Tab1 + navigate sau khi done:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                    Background="#1D4ED8" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="CopySnippet_Click"
                                                     Tag="// SEQ: dùng fetch trong Tab1 (có session/cookie đầy đủ)&#xA;// Bước 1: ensure Tab1 ở đúng origin&#xA;__tab1_exec_seq(`&#xA;    if (!window.location.href.includes('grok.com')) {&#xA;        window.location.href = 'https://grok.com';&#xA;    }&#xA;`);&#xA;&#xA;// Bước 2: dùng async fetch trong Tab1 (có cookie grok.com)&#xA;__tab1_exec_seq(`&#xA;    (async () => {&#xA;        const r = await fetch('/api/data', { credentials: 'include' });&#xA;        const data = await r.json();&#xA;        window.__tab1Data = data; // lưu cho bước sau&#xA;        console.log('[Tab1 fetch]', data);&#xA;    })();&#xA;`);&#xA;&#xA;// Bước 3: navigate Tab1 đến kết quả&#xA;__tab1_exec_seq(`window.location.href = '/result/' + (window.__tab1Data?.id ?? '');`);"/>
                                             <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                    Background="#059669" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="ApplyExample_Click" Tag="tab1_seq2"
                                                     ToolTip="Điền sẵn ví dụ fetch + navigate Tab1 vào editor"/>
                                         </StackPanel>
@@ -947,7 +947,7 @@
                                                         <Button Grid.Column="1" Content="−" Width="26" Height="26" Margin="8,0,0,0"
                                                                 Command="{Binding DataContext.RemoveOutputKeyCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                 CommandParameter="{Binding}"
-                                                                Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"/>
+                                                                Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -984,7 +984,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border Margin="0,0,0,8" Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="6"
-                                                        BorderBrush="#0EA5E9" BorderThickness="1">
+                                                        BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*"/>
@@ -1020,7 +1020,7 @@
                                                         <Button Grid.Column="5" Content="✕" Width="26" Height="26" Margin="8,0,0,0" VerticalAlignment="Bottom"
                                                                 Command="{Binding DataContext.RemoveAsyncDataSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                 CommandParameter="{Binding}"
-                                                                Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"
+                                                                Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"
                                                                 ToolTip="Xóa nguồn này"/>
                                                     </Grid>
                                                 </Border>
@@ -1034,14 +1034,14 @@
                                     Width="180" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
 
                             <!-- Hướng dẫn JS API -->
-                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="#0EA5E9" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="📘 Hướng dẫn sử dụng window.__acAsync trong JS" Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
                                         <Run Text="Khác với "/>
                                         <Run Text="window.__ac" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
                                         <Run Text=" (dùng cho Input Mappings — tab Logic), "/>
-                                        <Run Text="window.__acAsync" Foreground="#0EA5E9" FontFamily="Consolas" FontWeight="SemiBold"/>
+                                        <Run Text="window.__acAsync" Foreground="{DynamicResource AccentBrush}" FontFamily="Consolas" FontWeight="SemiBold"/>
                                         <Run Text=" chuyên nhận dữ liệu từ các nhánh async task song song. Mỗi nhánh xong sẽ push kết quả realtime — không cần polling."/>
                                     </TextBlock>
 
@@ -1050,13 +1050,13 @@
                                         <StackPanel>
                                             <TextBlock Text="Cách 1 — Nhận 1 key cụ thể:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                             <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                <Run Text="window.__acAsync.onReceive(" Foreground="#0EA5E9"/>
+                                                <Run Text="window.__acAsync.onReceive(" Foreground="{DynamicResource AccentBrush}"/>
                                                 <Run Text="'myKey'" Foreground="{DynamicResource WarningColor}"/>
-                                                <Run Text=", function(value) {" Foreground="#0EA5E9"/>
+                                                <Run Text=", function(value) {" Foreground="{DynamicResource AccentBrush}"/>
                                                 <LineBreak/>
                                                 <Run Text="    document.getElementById('result').textContent = value;"/>
                                                 <LineBreak/>
-                                                <Run Text="});" Foreground="#0EA5E9"/>
+                                                <Run Text="});" Foreground="{DynamicResource AccentBrush}"/>
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
@@ -1066,8 +1066,8 @@
                                         <StackPanel>
                                             <TextBlock Text="Cách 2 — Nhận tất cả data (object):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                             <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                <Run Text="window.__acAsync.onReceive(" Foreground="#0EA5E9"/>
-                                                <Run Text="function(allData) {" Foreground="#0EA5E9"/>
+                                                <Run Text="window.__acAsync.onReceive(" Foreground="{DynamicResource AccentBrush}"/>
+                                                <Run Text="function(allData) {" Foreground="{DynamicResource AccentBrush}"/>
                                                 <LineBreak/>
                                                 <Run Text="    // allData = { key1: val1, key2: val2, ... }"/>
                                                 <LineBreak/>
@@ -1077,7 +1077,7 @@
                                                 <LineBreak/>
                                                 <Run Text="    });"/>
                                                 <LineBreak/>
-                                                <Run Text="});" Foreground="#0EA5E9"/>
+                                                <Run Text="});" Foreground="{DynamicResource AccentBrush}"/>
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
@@ -1087,15 +1087,15 @@
                                         <StackPanel>
                                             <TextBlock Text="Cách 3 — Đọc trực tiếp (polling):" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                             <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                <Run Text="var val = " Foreground="#0EA5E9"/>
+                                                <Run Text="var val = " Foreground="{DynamicResource AccentBrush}"/>
                                                 <Run Text="window.__acAsync.data['myKey']" Foreground="{DynamicResource WarningColor}"/>
-                                                <Run Text=";" Foreground="#0EA5E9"/>
+                                                <Run Text=";" Foreground="{DynamicResource AccentBrush}"/>
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
 
                                     <!-- Lưu ý -->
-                                    <Border Background="#1E293B" CornerRadius="6" Padding="10" Margin="0,0,0,0">
+                                    <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10" Margin="0,0,0,0">
                                         <StackPanel>
                                             <TextBlock Text="💡 Lưu ý:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11">
@@ -1402,7 +1402,7 @@
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
                                                 <Border x:Name="bd" CornerRadius="6"
-                                                        Background="#1E40AF" Padding="{TemplateBinding Padding}">
+                                                        Background="{DynamicResource PrimaryBrush}" Padding="{TemplateBinding Padding}">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="📚" FontSize="12" Margin="0,0,5,0"
                                                                    VerticalAlignment="Center"/>
@@ -1463,7 +1463,7 @@
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                     <Button x:Name="AddAssetFromUrlButton" Content="⬇ Tải về" Height="36" Width="90" Margin="0,0,0,8"
                                             Style="{StaticResource OfflineAssetActionButton}"
-                                            Background="#0EA5E9"
+                                            Background="{DynamicResource AccentBrush}"
                                             Click="AddAssetFromUrl_Click"
                                             ToolTip="Tải file từ URL. Google Fonts css2: tạo một .css chứa @font-face + font base64 để dùng offline trong HtmlUi."/>
                                     <Button x:Name="AddAssetFromFileButton" Content="📁 Chọn file" Height="36" Width="90" Margin="0,0,0,8"
@@ -1595,12 +1595,12 @@
                                                         <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,0,0,0">
                                                             <Button Content="⬇" Width="28" Height="28" Margin="0,0,0,4"
                                                                     Style="{StaticResource OfflineAssetIconButton}"
-                                                                    Background="#0EA5E9"
+                                                                    Background="{DynamicResource AccentBrush}"
                                                                     Click="DownloadAsset_Click" Tag="{Binding}"
                                                                     FontSize="14" ToolTip="Tải về từ URL (ghi đè nếu đã có)"/>
                                                             <Button Content="🗑" Width="28" Height="28"
                                                                     Style="{StaticResource OfflineAssetIconButton}"
-                                                                    Background="#EF4444"
+                                                                    Background="{DynamicResource DangerBrush}"
                                                                     Command="{Binding DataContext.RemoveOfflineAssetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                     CommandParameter="{Binding}"
                                                                     FontSize="12" ToolTip="Xóa khỏi danh sách (không xóa file trên disk)"/>
@@ -1699,7 +1699,7 @@
                                        Foreground="{DynamicResource PrimaryBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <TextBlock Text="Dùng như checklist nhanh khi viết/sửa HTML UI."
                                        Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
-                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="#1D4ED8" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
+                            <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
                                 <StackPanel>
                                     <TextBlock Text="Luồng chuẩn để phát video local (AI mới đọc là làm được):"
                                                Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>

@@ -1,4 +1,4 @@
-<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.FileDownloadNodeDialog"
+﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.FileDownloadNodeDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
@@ -85,7 +85,7 @@
                                       DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
-                            <Separator Background="#22FFFFFF" Margin="0,0,0,14"/>
+                            <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
                             <TextBlock Text="Tên file (mẫu)"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
@@ -148,7 +148,7 @@
                                 <ItemsControl ItemsSource="{Binding AdditionalSaveRows}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Margin="0,0,0,8" Background="#1A334155" CornerRadius="6" Padding="8">
+                                            <Border Margin="0,0,0,8" Background="{DynamicResource CardColor}" CornerRadius="6" Padding="8">
                                                 <Grid>
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="Auto"/>
@@ -193,7 +193,7 @@
                                                                 VerticalAlignment="Bottom"
                                                                 Command="{Binding DataContext.RemoveAdditionalSaveRowCommand, RelativeSource={RelativeSource AncestorType=local:FileDownloadNodeDialog}}"
                                                                 CommandParameter="{Binding}"
-                                                                Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"/>
+                                                                Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
                                                     </Grid>
                                                 </Grid>
                                             </Border>
@@ -206,7 +206,7 @@
                                         Style="{DynamicResource PrimaryButton}"/>
                             </StackPanel>
 
-                            <Separator Background="#22FFFFFF" Margin="0,0,0,14"/>
+                            <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
                             <TextBlock Text="URL tải (GET/POST theo curl nếu dùng curl)"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
@@ -291,11 +291,11 @@
                                           SelectedValue="{Binding FolderSourceOutputKey, Mode=TwoWay}"/>
                             </Grid>
 
-                            <Separator Background="#22FFFFFF" Margin="0,0,0,14"/>
+                            <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
                             <TextBlock Text="Kết quả lần chạy gần nhất"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <Border Background="#1A334155" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
+                            <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
                                 <TextBlock Text="{Binding LastRunSummary}"
                                            Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap"/>
                             </Border>

@@ -43,15 +43,15 @@
                           Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
                             Style="{DynamicResource PrimaryButton}"
                             Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                            Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
                             Command="{Binding RunSingleNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                             Style="{DynamicResource DangerButton}"
-                            Content="×"
+                            Content="�"
                             FontSize="12"
                             FontWeight="Bold"
                             Cursor="Hand"
@@ -66,7 +66,7 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Hiển thị tiêu đề:"
+                            <TextBlock Text="Hi?n th? ti�u d?:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -81,7 +81,7 @@
                                       DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
-                            <TextBlock Text="Màu tiêu đề:"
+                            <TextBlock Text="M�u ti�u d?:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -113,7 +113,7 @@
                             </Grid>
 
                             <StackPanel Margin="0,0,0,12">
-                                <CheckBox Content="Chế độ Pass (ghi KV từ luồng)"
+                                <CheckBox Content="Ch? d? Pass (ghi KV t? lu?ng)"
                                           IsChecked="{Binding IsPassKeyMode, Mode=TwoWay}"
                                           Foreground="{DynamicResource TextBrush}"
                                           FontSize="14"/>
@@ -122,8 +122,8 @@
                                            FontSize="11"
                                            LineHeight="16"
                                            Margin="22,4,0,10"
-                                           Text="Bật: hiện cổng IN/OUT trên canvas — mỗi lần luồng chạy qua, giá trị được append vào kho key/value runtime (dùng chung trong một lần chạy workflow). Tắt: chuyển sang Get — đọc KV đã có theo interval, thường không cần nối cổng IN (trừ khi bật “Xoá dữ liệu” bên dưới)."/>
-                                <CheckBox Content="Xoá dữ liệu (cleanup KV runtime)"
+                                           Text="B?t: hi?n c?ng IN/OUT tr�n canvas � m?i l?n lu?ng ch?y qua, gi� tr? du?c append v�o kho key/value runtime (d�ng chung trong m?t l?n ch?y workflow). T?t: chuy?n sang Get � d?c KV d� c� theo interval, thu?ng kh�ng c?n n?i c?ng IN (tr? khi b?t �Xo� d? li?u� b�n du?i)."/>
+                                <CheckBox Content="Xo� d? li?u (cleanup KV runtime)"
                                           IsChecked="{Binding EnableDataCleanup, Mode=TwoWay}"
                                           Foreground="{DynamicResource TextBrush}"
                                           FontSize="13"/>
@@ -132,7 +132,7 @@
                                            FontSize="11"
                                            LineHeight="16"
                                            Margin="22,4,0,0"
-                                           Text="Bật: node dùng để xóa KV theo cấu hình mục “KV Data Cleanup”. Cổng IN trên canvas luôn hiện để bạn nối luồng kích hoạt cleanup — kể cả khi Pass đang tắt (Get)."/>
+                                           Text="B?t: node d�ng d? x�a KV theo c?u h�nh m?c �KV Data Cleanup�. C?ng IN tr�n canvas lu�n hi?n d? b?n n?i lu?ng k�ch ho?t cleanup � k? c? khi Pass dang t?t (Get)."/>
                             </StackPanel>
 
                             <StackPanel Visibility="{Binding EnableDataCleanup, Converter={StaticResource InverseBoolToVisibilityConverter}}">
@@ -258,7 +258,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <Button Content="+ Thêm nguồn append"
+                                <Button Content="+ Th�m ngu?n append"
                                         Style="{DynamicResource PrimaryButton}"
                                         Height="32"
                                         Click="AddAdditionalAppendSource_Click"
@@ -281,12 +281,12 @@
                             </Border>
 
                             <Border Background="{DynamicResource HeaderBackgroundBrush}"
-                                    BorderBrush="#3366B3FF"
+                                    BorderBrush="{DynamicResource PrimaryGlowBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Padding="12">
                                 <StackPanel>
-                                    <TextBlock Text="ℹ️ Runtime"
+                                    <TextBlock Text="?? Runtime"
                                                Foreground="{DynamicResource PrimaryBrush}"
                                                FontSize="13"
                                                FontWeight="SemiBold"
@@ -295,13 +295,13 @@
                                                Foreground="{DynamicResource TextMuted}"
                                                FontSize="12"
                                                LineHeight="18"
-                                               Text="• Kho kv dùng chung trong một lần chạy (ExecutionId). Trong Code node: kv['myKey'] đọc; gán kv['myKey']=x để ghi (append nếu trùng key).&#x0a;• Pass: cổng IN/OUT trên flow để ghi KV. Get: không cần IN; đọc store theo interval.&#x0a;• Cleanup: bật “Xoá dữ liệu” thì luôn có cổng IN để nối luồng kích hoạt xóa."/>
+                                               Text="� Kho kv d�ng chung trong m?t l?n ch?y (ExecutionId). Trong Code node: kv['myKey'] d?c; g�n kv['myKey']=x d? ghi (append n?u tr�ng key).&#x0a;� Pass: c?ng IN/OUT tr�n flow d? ghi KV. Get: kh�ng c?n IN; d?c store theo interval.&#x0a;� Cleanup: b?t �Xo� d? li?u� th� lu�n c� c?ng IN d? n?i lu?ng k�ch ho?t x�a."/>
                                 </StackPanel>
                             </Border>
 
-                            <Separator Background="#22FFFFFF" Margin="0,12,0,12"/>
+                            <Separator Background="{DynamicResource BorderColor}" Margin="0,12,0,12"/>
 
-                            <TextBlock Text="🧹 KV Data Cleanup"
+                            <TextBlock Text="?? KV Data Cleanup"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -311,16 +311,16 @@
                                        FontSize="11"
                                        LineHeight="16"
                                        Margin="0,0,0,10"
-                                       Text="Cấu hình xóa dữ liệu runtime của một node KeyValueBridge (Pass) khác. Luồng phải chạy qua cổng IN của node này (khi đã bật “Xoá dữ liệu”) thì cleanup mới chạy theo workflow. Nút “Thực hiện xóa” chỉ để thử tay trên máy bạn."/>
+                                       Text="C?u h�nh x�a d? li?u runtime c?a m?t node KeyValueBridge (Pass) kh�c. Lu?ng ph?i ch?y qua c?ng IN c?a node n�y (khi d� b?t �Xo� d? li?u�) th� cleanup m?i ch?y theo workflow. N�t �Th?c hi?n x�a� ch? d? th? tay tr�n m�y b?n."/>
 
                             <StackPanel Visibility="{Binding EnableDataCleanup, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="1) Điều kiện trigger (bắt buộc)"
+                                <TextBlock Text="1) �i?u ki?n trigger (b?t bu?c)"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="12"
                                            FontWeight="SemiBold"
                                            Margin="0,0,0,4"/>
                                 <TextBlock TextWrapping="Wrap"
-                                           Text="Chọn node có output động, rồi chọn output key. Cột phải: chọn giá trị kỳ vọng. Với kỳ vọng “true” hoặc “1”, giá trị trigger thực tế được coi là khớp nếu là truthy (true, 1, yes, số khác 0…). Với “false”/“0” thì cần falsy (false, 0, no…). Không khớp thì bỏ qua xóa."
+                                           Text="Ch?n node c� output d?ng, r?i ch?n output key. C?t ph?i: ch?n gi� tr? k? v?ng. V?i k? v?ng �true� ho?c �1�, gi� tr? trigger th?c t? du?c coi l� kh?p n?u l� truthy (true, 1, yes, s? kh�c 0�). V?i �false�/�0� th� c?n falsy (false, 0, no�). Kh�ng kh?p th� b? qua x�a."
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            LineHeight="16"
@@ -335,7 +335,7 @@
                                               Height="36"
                                               Margin="0,0,6,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Node nguồn: phải có ít nhất một output động (dynamic output)."
+                                              ToolTip="Node ngu?n: ph?i c� �t nh?t m?t output d?ng (dynamic output)."
                                               ItemsSource="{Binding CleanupTriggerSourceOptions}"
                                               SelectedValuePath="NodeId"
                                               DisplayMemberPath="Title"
@@ -344,7 +344,7 @@
                                               Height="36"
                                               Margin="0,0,6,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Output key trên node trigger — giá trị sẽ được so với ô bên phải."
+                                              ToolTip="Output key tr�n node trigger � gi� tr? s? du?c so v?i � b�n ph?i."
                                               ItemsSource="{Binding CleanupTriggerOutputKeyOptions}"
                                               SelectedValuePath="Key"
                                               DisplayMemberPath="DisplayName"
@@ -352,34 +352,34 @@
                                     <ComboBox Grid.Column="2"
                                               Height="36"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Giá trị kỳ vọng (so khớp kiểu boolean/số)."
+                                              ToolTip="Gi� tr? k? v?ng (so kh?p ki?u boolean/s?)."
                                               ItemsSource="{Binding CleanupTriggerExpectedValueOptions}"
                                               SelectedItem="{Binding CleanupTriggerExpectedValue, Mode=TwoWay}"/>
                                 </Grid>
-                                <TextBlock Text="Cột trái → giữa → phải: node trigger · output đọc giá trị · giá trị kỳ vọng."
+                                <TextBlock Text="C?t tr�i ? gi?a ? ph?i: node trigger � output d?c gi� tr? � gi� tr? k? v?ng."
                                            Foreground="{DynamicResource TextMuted}"
                                            FontSize="10"
                                            Margin="0,0,0,6"/>
 
-                                <CheckBox Content="Khi trigger khớp: xóa toàn bộ KV runtime của node đích (bỏ qua key / filter bên dưới)"
+                                <CheckBox Content="Khi trigger kh?p: x�a to�n b? KV runtime c?a node d�ch (b? qua key / filter b�n du?i)"
                                           Foreground="{DynamicResource DangerColor}"
                                           FontSize="12"
                                           IsChecked="{Binding ClearAllDataForSelectedNode, Mode=TwoWay}"
                                           Margin="0,0,0,4"/>
                                 <TextBlock TextWrapping="Wrap"
-                                           Text="Tick: sau khi điều kiện trigger thỏa, xóa hết key của node KeyValueBridge đích đã chọn ở bước 2. Bỏ tick: xóa theo key / lọc mảng ở các bước dưới."
+                                           Text="Tick: sau khi di?u ki?n trigger th?a, x�a h?t key c?a node KeyValueBridge d�ch d� ch?n ? bu?c 2. B? tick: x�a theo key / l?c m?ng ? c�c bu?c du?i."
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            LineHeight="16"
                                            Margin="22,0,0,10"/>
 
-                                <TextBlock Text="2) Node KV đích (Pass) bị xóa data"
+                                <TextBlock Text="2) Node KV d�ch (Pass) b? x�a data"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="12"
                                            FontWeight="SemiBold"
                                            Margin="0,0,0,4"/>
                                 <TextBlock TextWrapping="Wrap"
-                                           Text="Liệt kê các KeyValueBridge Pass hoặc Get (không bật “Xoá dữ liệu” trên chính node đó). Chọn Pass để xóa trực tiếp kho kv gốc; chọn Get thì xóa cả scope Get và Pass nguồn (nếu có). Node cleanup hiện tại không nằm trong danh sách."
+                                           Text="Li?t k� c�c KeyValueBridge Pass ho?c Get (kh�ng b?t �Xo� d? li?u� tr�n ch�nh node d�). Ch?n Pass d? x�a tr?c ti?p kho kv g?c; ch?n Get th� x�a c? scope Get v� Pass ngu?n (n?u c�). Node cleanup hi?n t?i kh�ng n?m trong danh s�ch."
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            LineHeight="16"
@@ -387,25 +387,25 @@
                                 <ComboBox Height="36"
                                           Style="{DynamicResource BaseComboBox}"
                                           Margin="0,0,0,8"
-                                          ToolTip="Node KVB Pass hoặc Get (không phải node cleanup). Pass = xóa kho kv gốc; Get = xóa kv Get + kv Pass nguồn nếu có."
+                                          ToolTip="Node KVB Pass ho?c Get (kh�ng ph?i node cleanup). Pass = x�a kho kv g?c; Get = x�a kv Get + kv Pass ngu?n n?u c�."
                                           ItemsSource="{Binding DeleteBridgeNodeOptions}"
                                           SelectedValuePath="NodeId"
                                           DisplayMemberPath="Title"
                                           SelectedValue="{Binding SelectedDeleteBridgeNodeId, Mode=TwoWay}"/>
 
                                 <StackPanel Visibility="{Binding ClearAllDataForSelectedNode, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                                <TextBlock Text="3) Key cần xóa (hoặc xóa cả node)"
+                                <TextBlock Text="3) Key c?n x�a (ho?c x�a c? node)"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="12"
                                            FontWeight="SemiBold"
                                            Margin="0,0,0,4"/>
                                 <TextBlock TextWrapping="Wrap"
-                                           Text="Chỉ hiện khi không bật “xóa toàn bộ” ở trên: nhập hoặc chọn một key trong ô combobox (danh sách từ snapshot runtime). Hai combobox map động là tùy chọn."
+                                           Text="Ch? hi?n khi kh�ng b?t �x�a to�n b?� ? tr�n: nh?p ho?c ch?n m?t key trong � combobox (danh s�ch t? snapshot runtime). Hai combobox map d?ng l� t�y ch?n."
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            LineHeight="16"
                                            Margin="0,0,0,6"/>
-                                <TextBlock Text="Map động tên key (tùy chọn):"
+                                <TextBlock Text="Map d?ng t�n key (t�y ch?n):"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            Margin="0,0,0,4"/>
@@ -418,7 +418,7 @@
                                               Height="36"
                                               Margin="0,0,4,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Node có output string — thường là tên key cần xóa do luồng trước tính ra."
+                                              ToolTip="Node c� output string � thu?ng l� t�n key c?n x�a do lu?ng tru?c t�nh ra."
                                               ItemsSource="{Binding CleanupKeySourceOptions}"
                                               SelectedValuePath="NodeId"
                                               DisplayMemberPath="Title"
@@ -427,7 +427,7 @@
                                               Height="36"
                                               Margin="4,0,0,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Output key chứa chuỗi tên key."
+                                              ToolTip="Output key ch?a chu?i t�n key."
                                               ItemsSource="{Binding CleanupKeySourceOutputKeyOptions}"
                                               SelectedValuePath="Key"
                                               DisplayMemberPath="DisplayName"
@@ -437,22 +437,22 @@
                                           Style="{DynamicResource BaseComboBox}"
                                           Margin="0,0,0,8"
                                           IsEditable="True"
-                                          ToolTip="Key tĩnh (gõ) hoặc chọn từ danh sách key đang có trên node đích. Nếu đã map động ở trên thì map được ưu tiên khi chạy."
+                                          ToolTip="Key tinh (g�) ho?c ch?n t? danh s�ch key dang c� tr�n node d�ch. N?u d� map d?ng ? tr�n th� map du?c uu ti�n khi ch?y."
                                           ItemsSource="{Binding DeleteKeyOptions}"
                                           Text="{Binding DeleteTargetKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                <TextBlock Text="4) Xóa theo phần tử trong mảng JSON (tùy chọn)"
+                                <TextBlock Text="4) X�a theo ph?n t? trong m?ng JSON (t�y ch?n)"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="12"
                                            FontWeight="SemiBold"
                                            Margin="0,0,0,4"/>
                                 <TextBlock TextWrapping="Wrap"
-                                           Text="Dùng khi value của key là mảng object và bạn chỉ muốn bỏ các phần tử có field = value. Có thể gõ tĩnh ở hai ô text, hoặc map thêm từ output node (ưu tiên khi chạy nếu đã bind)."
+                                           Text="D�ng khi value c?a key l� m?ng object v� b?n ch? mu?n b? c�c ph?n t? c� field = value. C� th? g� tinh ? hai � text, ho?c map th�m t? output node (uu ti�n khi ch?y n?u d� bind)."
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            LineHeight="16"
                                            Margin="0,0,0,6"/>
-                                <TextBlock Text="Tên field JSON (map động tùy chọn):"
+                                <TextBlock Text="T�n field JSON (map d?ng t�y ch?n):"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            Margin="0,0,0,4"/>
@@ -465,7 +465,7 @@
                                               Height="36"
                                               Margin="0,0,4,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Node cung cấp tên field (string), ví dụ tên cột trong object mảng."
+                                              ToolTip="Node cung c?p t�n field (string), v� d? t�n c?t trong object m?ng."
                                               ItemsSource="{Binding CleanupFilterFieldSourceOptions}"
                                               SelectedValuePath="NodeId"
                                               DisplayMemberPath="Title"
@@ -474,13 +474,13 @@
                                               Height="36"
                                               Margin="4,0,0,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Output key → chuỗi tên field."
+                                              ToolTip="Output key ? chu?i t�n field."
                                               ItemsSource="{Binding CleanupFilterFieldSourceOutputKeyOptions}"
                                               SelectedValuePath="Key"
                                               DisplayMemberPath="DisplayName"
                                               SelectedValue="{Binding CleanupFilterFieldSourceOutputKey, Mode=TwoWay}"/>
                                 </Grid>
-                                <TextBlock Text="Giá trị tĩnh: tên field (trái) · giá trị cần khớp (phải)"
+                                <TextBlock Text="Gi� tr? tinh: t�n field (tr�i) � gi� tr? c?n kh?p (ph?i)"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            Margin="0,0,0,4"/>
@@ -493,20 +493,20 @@
                                              Height="36"
                                              Margin="0,0,4,0"
                                              Style="{DynamicResource BaseTextBoxV2}"
-                                             ToolTip="Ví dụ: cardId — trường trong mỗi object của mảng."
+                                             ToolTip="V� d?: cardId � tru?ng trong m?i object c?a m?ng."
                                              Text="{Binding ArrayFilterField, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                     <TextBox Grid.Column="1"
                                              Height="36"
                                              Margin="4,0,0,0"
                                              Style="{DynamicResource BaseTextBoxV2}"
-                                             ToolTip="Ví dụ: UUID hoặc chuỗi id — object nào có field bằng giá trị này thì bị loại khỏi mảng."
+                                             ToolTip="V� d?: UUID ho?c chu?i id � object n�o c� field b?ng gi� tr? n�y th� b? lo?i kh?i m?ng."
                                              Text="{Binding ArrayFilterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 </Grid>
-                                <TextBlock Text="Ví dụ: field = cardId, value = db90733a-aed0-440a-ba1d-6773271268b9"
+                                <TextBlock Text="V� d?: field = cardId, value = db90733a-aed0-440a-ba1d-6773271268b9"
                                            Foreground="{DynamicResource TextMuted}"
                                            FontSize="10"
                                            Margin="0,0,0,6"/>
-                                <TextBlock Text="Giá trị filter — map động (tùy chọn, thay cho ô text phải):"
+                                <TextBlock Text="Gi� tr? filter � map d?ng (t�y ch?n, thay cho � text ph?i):"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="11"
                                            Margin="0,0,0,4"/>
@@ -519,7 +519,7 @@
                                               Height="36"
                                               Margin="0,0,4,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Node nguồn giá trị cần so khớp (cùng nghĩa với ô text phải)."
+                                              ToolTip="Node ngu?n gi� tr? c?n so kh?p (c�ng nghia v?i � text ph?i)."
                                               ItemsSource="{Binding CleanupFilterValueSourceOptions}"
                                               SelectedValuePath="NodeId"
                                               DisplayMemberPath="Title"
@@ -528,19 +528,19 @@
                                               Height="36"
                                               Margin="4,0,0,0"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Output key → giá trị so khớp với field đã chọn."
+                                              ToolTip="Output key ? gi� tr? so kh?p v?i field d� ch?n."
                                               ItemsSource="{Binding CleanupFilterValueSourceOutputKeyOptions}"
                                               SelectedValuePath="Key"
                                               DisplayMemberPath="DisplayName"
                                               SelectedValue="{Binding CleanupFilterValueSourceOutputKey, Mode=TwoWay}"/>
                                 </Grid>
-                                <CheckBox Content="Xóa tất cả item khớp điều kiện (tắt = chỉ xóa 1 item)"
+                                <CheckBox Content="X�a t?t c? item kh?p di?u ki?n (t?t = ch? x�a 1 item)"
                                           Foreground="{DynamicResource TextSecondary}"
                                           FontSize="12"
                                           IsChecked="{Binding RemoveAllMatchedArrayItems, Mode=TwoWay}"
                                           Margin="0,0,0,8"/>
-                                <Border Background="#10233447"
-                                        BorderBrush="#224B5563"
+                                <Border Background="{DynamicResource CardColor}"
+                                        BorderBrush="{DynamicResource BorderColor}"
                                         BorderThickness="1"
                                         CornerRadius="6"
                                         Padding="8"
@@ -562,14 +562,14 @@
                                     </StackPanel>
                                 </Border>
 
-                                <Button Content="Thực hiện xóa KV data"
+                                <Button Content="Th?c hi?n x�a KV data"
                                         Height="32"
                                         Style="{DynamicResource DangerButton}"
                                         Cursor="Hand"
                                         Margin="0,0,0,8"
                                         Command="{Binding DeleteKvDataCommand}"/>
 
-                                <Border Background="#1A334155"
+                                <Border Background="{DynamicResource CardColor}"
                                         CornerRadius="6"
                                         Padding="10,8"
                                         Margin="0,0,0,8">
@@ -580,7 +580,7 @@
                                 </Border>
                                 </StackPanel>
 
-                                <TextBlock Text="Preview dữ liệu hiện tại trước khi xóa:"
+                                <TextBlock Text="Preview d? li?u hi?n t?i tru?c khi x�a:"
                                            Foreground="{DynamicResource TextSecondary}"
                                            FontSize="12"
                                            Margin="0,0,0,6"/>
@@ -593,7 +593,7 @@
                                         Cursor="Hand"
                                         Command="{Binding RefreshDeletePreviewNowCommand}"/>
                                 <Border Background="{DynamicResource WindowBackground}"
-                                        BorderBrush="#224B5563"
+                                        BorderBrush="{DynamicResource BorderColor}"
                                         BorderThickness="1"
                                         CornerRadius="6"
                                         Padding="8"
@@ -611,10 +611,10 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
+                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="V? tr� c?ng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -688,7 +688,7 @@
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Kiểu line OUT"
+                                                    <TextBlock Text="Ki?u line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12"
                                                                Opacity="0.7"

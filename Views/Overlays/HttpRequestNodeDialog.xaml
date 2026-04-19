@@ -47,15 +47,15 @@
                           Cursor="IBeam"/>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
                             Style="{DynamicResource PrimaryButton}"
                             Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                            Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
                             Command="{Binding RunSingleNodeCommand}"/>
 
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                             Style="{DynamicResource DangerButton}"
-                            Content="×" 
+                            Content="�" 
                             FontSize="12" 
                             FontWeight="Bold" 
                             Cursor="Hand"
@@ -66,13 +66,13 @@
 
             <!-- Content with tabs: Logic + Bypass + Reuse Flow -->
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
-                <!-- Tab 1: Logic (giữ nguyên nội dung cũ) -->
+                <!-- Tab 1: Logic (gi? nguy�n n?i dung cu) -->
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16">
                     
                     <!-- Title Display Mode -->
-                    <TextBlock Text="Hiển thị tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="Hi?n th? ti�u d?:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ComboBox x:Name="TitleDisplayModeComboBox"
                               Height="36"
                               Style="{DynamicResource BaseComboBox}"
@@ -83,7 +83,7 @@
                               SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
                     <!-- Title Color Mode -->
-                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="M�u ti�u d?:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -122,7 +122,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Text="Request URL:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <Button Grid.Row="1" Grid.Column="1" Content="📋 Import cURL" 
+                        <Button Grid.Row="1" Grid.Column="1" Content="?? Import cURL" 
                                 Style="{DynamicResource PrimaryButton}"
                                 FontSize="11"
                                 MinWidth="90"
@@ -132,7 +132,7 @@
                                 Margin="0,0,8,0"
                                 Click="ImportCurl_Click"
                                 ToolTip="Paste cURL command from clipboard (Ctrl+V)"/>
-                        <Button Grid.Row="1" Grid.Column="2" Content="📤 Copy cURL" 
+                        <Button Grid.Row="1" Grid.Column="2" Content="?? Copy cURL" 
                                 Style="{DynamicResource SecondaryButton}"
                                 FontSize="11"
                                 MinWidth="90"
@@ -166,13 +166,13 @@
                                  Style="{DynamicResource BaseTextBoxV2}"
                                  Height="36"
                                  MinWidth="200"
-                                 ToolTip="Nhập URL hoặc paste cURL command (tự động parse)"
+                                 ToolTip="Nh?p URL ho?c paste cURL command (t? d?ng parse)"
                                  PreviewKeyDown="UrlTextBox_PreviewKeyDown"
                                  TextChanged="UrlTextBox_TextChanged"/>
                     </Grid>
                     
                     <!-- Dynamic URL Binding -->
-                    <Expander Header="Bind URL từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,16">
+                    <Expander Header="Bind URL t? node kh�c" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,16">
                         <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="8" Padding="12" Margin="0,8,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -210,7 +210,7 @@
                     </Expander>
 
                     <!-- cURL Command Binding -->
-                    <Expander Header="Bind cURL command từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,16">
+                    <Expander Header="Bind cURL command t? node kh�c" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,16">
                         <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="8" Padding="12" Margin="0,8,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -256,7 +256,7 @@
                                 <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="0,8,8,8" Padding="12" Margin="0,0,0,0">
                                     <StackPanel>
                                         <StackPanel x:Name="HeadersPanel"/>
-                                        <Button Content="+ Thêm Header" 
+                                        <Button Content="+ Th�m Header" 
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Width="120"
                                                 HorizontalAlignment="Left"
@@ -273,7 +273,7 @@
                                 <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="0,8,8,8" Padding="12">
                                     <StackPanel>
                                         <StackPanel x:Name="ParamsPanel"/>
-                                        <Button Content="+ Thêm Param" 
+                                        <Button Content="+ Th�m Param" 
                                                 HorizontalAlignment="Left"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 FontSize="11"
@@ -318,7 +318,7 @@
                                             </Grid>
                                         
                                         <!-- Dynamic Body Binding -->
-                                        <Expander Header="Bind Body từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11">
+                                        <Expander Header="Bind Body t? node kh�c" Foreground="{DynamicResource TextSecondary}" FontSize="11">
                                             <Grid Margin="0,8,0,0">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
@@ -349,7 +349,7 @@
                                         <StackPanel x:Name="FormDataPanel" Visibility="{Binding IsFormDataVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                                             <TextBlock Text="Form Data:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,8"/>
                                             <StackPanel x:Name="FormDataItemsPanel"/>
-                                            <Button Content="+ Thêm Field" 
+                                            <Button Content="+ Th�m Field" 
                                                     Style="{DynamicResource SecondaryButton}"
                                                     HorizontalAlignment="Left"
                                                     Margin="0,8,0,0"
@@ -394,7 +394,7 @@
                                                  Style="{DynamicResource BaseTextBoxV2}"
                                                  Height="32"
                                                  Margin="0,0,0,8"/>
-                                        <Expander Header="Bind Token từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11">
+                                        <Expander Header="Bind Token t? node kh�c" Foreground="{DynamicResource TextSecondary}" FontSize="11">
                                             <Grid Margin="0,8,0,0">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
@@ -432,7 +432,7 @@
                                                  Style="{DynamicResource BaseTextBoxV2}"
                                                  Height="32"
                                                  Margin="0,0,0,8"/>
-                                        <Expander Header="Bind Key Value từ node khác" Foreground="{DynamicResource TextSecondary}" FontSize="11">
+                                        <Expander Header="Bind Key Value t? node kh�c" Foreground="{DynamicResource TextSecondary}" FontSize="11">
                                             <Grid Margin="0,8,0,0">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
@@ -456,7 +456,7 @@
                                             </Grid>
                                         </Expander>
                                         
-                                        <CheckBox Content="Gửi trong Header (bỏ tick = Query Param)"
+                                        <CheckBox Content="G?i trong Header (b? tick = Query Param)"
                                                   IsChecked="{Binding ApiKeyInHeader, Mode=TwoWay}"
                                                   Foreground="{DynamicResource TextSecondary}"
                                                   Margin="0,0,0,8"/>
@@ -467,7 +467,7 @@
                     </TabControl>
 
                     <!-- Timeout Setting -->
-                    <TextBlock Text="Timeout (giây):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="Timeout (gi�y):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <TextBox Text="{Binding TimeoutSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Style="{DynamicResource BaseTextBoxV2}"
                              Height="36"
@@ -492,13 +492,13 @@
                     </Border>
 
                     <!-- Info Note -->
-                    <Border Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="#3366B3FF" BorderThickness="1" CornerRadius="8" Padding="12">
+                    <Border Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="{DynamicResource PrimaryGlowBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
                         <StackPanel>
-                            <TextBlock Text="ℹ️ Lưu ý:" Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="?? Luu �:" Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" LineHeight="18">
-                                • Mỗi trường có thể bind giá trị động từ node khác<LineBreak/>
-                                • Outputs bao gồm: Status Code, Response Body, Headers, Success, Error<LineBreak/>
-                                • Timeout mặc định là 30 giây
+                                � M?i tru?ng c� th? bind gi� tr? d?ng t? node kh�c<LineBreak/>
+                                � Outputs bao g?m: Status Code, Response Body, Headers, Success, Error<LineBreak/>
+                                � Timeout m?c d?nh l� 30 gi�y
                             </TextBlock>
                         </StackPanel>
                     </Border>
@@ -506,23 +506,23 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: ⚡ Bypass / Anti-Bot -->
-                <TabItem Header="⚡ Bypass / Anti-Bot" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 2: ? Bypass / Anti-Bot -->
+                <TabItem Header="? Bypass / Anti-Bot" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16">
-                            <Border Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="#33FBBF24" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                            <Border Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
                                 <StackPanel>
-                                    <TextBlock Text="⚡ Bypass / Anti-Bot (libcurl)" Foreground="{DynamicResource WarningColor}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="? Bypass / Anti-Bot (libcurl)" Foreground="{DynamicResource WarningColor}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" LineHeight="18" Margin="0,0,0,10">
-                                        - Bật chế độ này khi API bị chặn bởi Cloudflare, cần TLS fingerprint, hoặc gặp lỗi SSL/TLS trên HttpClient.<LineBreak/>
-                                        - Trên node canvas sẽ hiện badge ⚡ (màu nghệ) để biết node đang dùng bypass.<LineBreak/>
-                                        - Nếu máy bạn không có `libcurl.dll` phù hợp, app sẽ tự fallback sang chạy `curl.exe` (nếu tìm thấy).<LineBreak/>
-                                        - `ImpersonateBrowser` chỉ hoạt động khi bạn dùng bản `curl-impersonate` (curl thường sẽ bỏ qua option này).
+                                        - B?t ch? d? n�y khi API b? ch?n b?i Cloudflare, c?n TLS fingerprint, ho?c g?p l?i SSL/TLS tr�n HttpClient.<LineBreak/>
+                                        - Tr�n node canvas s? hi?n badge ? (m�u ngh?) d? bi?t node dang d�ng bypass.<LineBreak/>
+                                        - N?u m�y b?n kh�ng c� `libcurl.dll` ph� h?p, app s? t? fallback sang ch?y `curl.exe` (n?u t�m th?y).<LineBreak/>
+                                        - `ImpersonateBrowser` ch? ho?t d?ng khi b?n d�ng b?n `curl-impersonate` (curl thu?ng s? b? qua option n�y).
                                     </TextBlock>
 
                                     <!-- Toggle UseCurl -->
-                                    <CheckBox Content="Dùng libcurl (bypass CORS, Cloudflare, TLS fingerprint)"
+                                    <CheckBox Content="D�ng libcurl (bypass CORS, Cloudflare, TLS fingerprint)"
                                               IsChecked="{Binding UseCurl, Mode=TwoWay}"
                                               Foreground="{DynamicResource TextBrush}"
                                               FontSize="13"
@@ -540,7 +540,7 @@
                                                   Style="{DynamicResource BaseComboBox}"
                                                   Margin="0,0,8,0"
                                                   SelectedValue="{Binding ImpersonateBrowser, Mode=TwoWay}"
-                                                  ToolTip="Chọn browser để impersonate TLS fingerprint (yêu cầu curl-impersonate)">
+                                                  ToolTip="Ch?n browser d? impersonate TLS fingerprint (y�u c?u curl-impersonate)">
                                             <ComboBoxItem Content="" Tag=""/>
                                             <ComboBoxItem Content="chrome120 (Chrome 120)" Tag="chrome120"/>
                                             <ComboBoxItem Content="chrome116 (Chrome 116)" Tag="chrome116"/>
@@ -568,36 +568,36 @@
                                                  Style="{DynamicResource BaseTextBoxV2}"
                                                  Height="32"
                                                  Width="120"
-                                                 ToolTip="Nhập tên browser tùy chỉnh (e.g. chrome120)"/>
+                                                 ToolTip="Nh?p t�n browser t�y ch?nh (e.g. chrome120)"/>
                                     </Grid>
 
                                     <!-- curl.exe Path -->
-                                    <TextBlock Text="curl.exe Path (để trống = auto-detect):" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
+                                    <TextBlock Text="curl.exe Path (d? tr?ng = auto-detect):" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
                                     <TextBox Text="{Binding CurlPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{DynamicResource BaseTextBoxV2}"
                                              Height="32"
-                                             ToolTip="Đường dẫn curl.exe hoặc curl-impersonate.exe. Để trống để auto-detect (System32, PATH, app dir)"
+                                             ToolTip="�u?ng d?n curl.exe ho?c curl-impersonate.exe. �? tr?ng d? auto-detect (System32, PATH, app dir)"
                                              Margin="0,0,0,8"/>
 
                                     <StackPanel Margin="0,0,0,10">
-                                        <CheckBox Content="Dùng chế độ raw cURL command (bật = kiểu mới, tắt = logic cũ)"
+                                        <CheckBox Content="D�ng ch? d? raw cURL command (b?t = ki?u m?i, t?t = logic cu)"
                                                   IsChecked="{Binding AutoAppendCurlWriteOut, Mode=TwoWay}"
                                                   Foreground="{DynamicResource TextBrush}"
                                                   FontSize="12"
                                                   Margin="0,0,0,4"/>
-                                        <TextBlock Text="Mặc định: Tắt (unchecked). Khi bật, cURL sẽ tự động gắn thêm cờ output (-w) để lấy chính xác Status Code. Khi tắt, lệnh cURL của bạn sẽ được giữ nguyên 100% không bị can thiệp."
+                                        <TextBlock Text="M?c d?nh: T?t (unchecked). Khi b?t, cURL s? t? d?ng g?n th�m c? output (-w) d? l?y ch�nh x�c Status Code. Khi t?t, l?nh cURL c?a b?n s? du?c gi? nguy�n 100% kh�ng b? can thi?p."
                                                    Foreground="{DynamicResource TextSecondary}"
                                                    FontSize="11"
                                                    Margin="24,0,0,0"
                                                    TextWrapping="Wrap"/>
                                     </StackPanel>
 
-                                    <Border Background="#0FFFFFFF" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                                    <Border Background="{DynamicResource CardHoverBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
                                         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" LineHeight="18">
-                                            Cách dùng nhanh:<LineBreak/>
-                                            1) Bật “Dùng libcurl”.<LineBreak/>
-                                            2) Nếu cần giả lập TLS như trình duyệt: chọn `chrome120` / `firefox117`… (cần `curl-impersonate`).<LineBreak/>
-                                            3) Nếu app không gọi được CurlThin/libcurl: trỏ `curl.exe Path` tới `curl-impersonate.exe` hoặc `curl.exe` trên máy.
+                                            C�ch d�ng nhanh:<LineBreak/>
+                                            1) B?t �D�ng libcurl�.<LineBreak/>
+                                            2) N?u c?n gi? l?p TLS nhu tr�nh duy?t: ch?n `chrome120` / `firefox117`� (c?n `curl-impersonate`).<LineBreak/>
+                                            3) N?u app kh�ng g?i du?c CurlThin/libcurl: tr? `curl.exe Path` t?i `curl-impersonate.exe` ho?c `curl.exe` tr�n m�y.
                                         </TextBlock>
                                     </Border>
                                 </StackPanel>
@@ -606,11 +606,11 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 3: Tái sử dụng flow (route theo node in/out trực tiếp) -->
-                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 3: T�i s? d?ng flow (route theo node in/out tr?c ti?p) -->
+                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16" >
-                            <TextBlock Text="Route lại flow để tái sử dụng logic node này"
+                            <TextBlock Text="Route l?i flow d? t�i s? d?ng logic node n�y"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -620,13 +620,13 @@
                                        Foreground="{DynamicResource TextSecondary}"
                                        FontSize="12"
                                        Margin="0,0,0,12">
-                                Nếu không chọn gì, node sẽ chạy flow mặc định như hiện tại.
-                                Nếu cấu hình, khi flow đi vào từ một node IN cụ thể thì sau khi chạy xong node hiện tại
-                                sẽ nhảy sang node OUT được chọn tương ứng.
+                                N?u kh�ng ch?n g�, node s? ch?y flow m?c d?nh nhu hi?n t?i.
+                                N?u c?u h�nh, khi flow di v�o t? m?t node IN c? th? th� sau khi ch?y xong node hi?n t?i
+                                s? nh?y sang node OUT du?c ch?n tuong ?ng.
                             </TextBlock>
 
-                            <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <!-- C?u h�nh v? tr� c?ng IN/OUT -->
+                            <TextBlock Text="V? tr� c?ng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -640,7 +640,7 @@
 
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (cổng vào)"
+                                    <TextBlock Text="Port IN (c?ng v�o)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -653,7 +653,7 @@
 
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (cổng ra)"
+                                    <TextBlock Text="Port OUT (c?ng ra)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -665,7 +665,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Cấu hình tái sử dụng flow -->
+                            <!-- C?u h�nh t�i s? d?ng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -710,7 +710,7 @@
 
                                                 <!-- Connection line style -->
                                                 <StackPanel Orientation="Vertical" Grid.Column="2">
-                                                    <TextBlock Text="Kiểu line OUT"
+                                                    <TextBlock Text="Ki?u line OUT"
                                                                Foreground="{DynamicResource TextSecondary}"
                                                                FontSize="11"
                                                                Margin="0,0,0,2"/>
@@ -728,7 +728,7 @@
                             </ItemsControl>
 
                             <Border Background="{DynamicResource HeaderBackgroundBrush}"
-                                    BorderBrush="#3356CCF2"
+                                    BorderBrush="{DynamicResource PrimaryGlowBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Padding="10"
@@ -736,8 +736,8 @@
                                 <TextBlock TextWrapping="Wrap"
                                            Foreground="{DynamicResource PrimaryBrush}"
                                            FontSize="12">
-                                    Chỉ những node nối TRỰC TIẾP vào/ra node này mới xuất hiện ở đây.
-                                    Mỗi node IN chỉ chọn được đúng 1 node OUT tương ứng.
+                                    Ch? nh?ng node n?i TR?C TI?P v�o/ra node n�y m?i xu?t hi?n ? d�y.
+                                    M?i node IN ch? ch?n du?c d�ng 1 node OUT tuong ?ng.
                                 </TextBlock>
                             </Border>
                         </StackPanel>

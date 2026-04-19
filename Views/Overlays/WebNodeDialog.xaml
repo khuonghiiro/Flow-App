@@ -32,21 +32,21 @@
                              Style="{DynamicResource BaseTextBoxV2}" FontSize="16" Padding="0,4,0,4"
                              VerticalContentAlignment="Center" Cursor="IBeam"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
+                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="?" FontSize="12"
                             Style="{DynamicResource PrimaryButton}"
                             Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                            Margin="8,0,0,0" ToolTip="Ch?y logic node n�y"
                             Command="{Binding RunSingleNodeCommand}"/>
                         <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
                             Style="{DynamicResource DangerButton}"
-                            Content="×" FontSize="12" FontWeight="Bold"
+                            Content="�" FontSize="12" FontWeight="Bold"
                             Cursor="Hand"
                             Margin="8,0,0,0" Click="CloseButton_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
+            <!-- Content: 2 tab Logic + T�i s? d?ng flow -->
             <TabControl Grid.Row="1"
                         Background="Transparent"
                         BorderThickness="0">
@@ -55,14 +55,14 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
 
-                    <!-- Hiển thị tiêu đề / Màu tiêu đề -->
-                    <TextBlock Text="Hiển thị tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <!-- Hi?n th? ti�u d? / M�u ti�u d? -->
+                    <TextBlock Text="Hi?n th? ti�u d?:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ComboBox x:Name="TitleDisplayModeComboBox" Height="36" Margin="0,0,0,8"
                               Style="{DynamicResource BaseComboBox}"
                               ItemsSource="{Binding TitleDisplayModeOptions}"
                               SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                               SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="M�u ti�u d?:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -83,15 +83,15 @@
                               IsChecked="{Binding EnableSleepMode, Mode=TwoWay}"
                               Foreground="{DynamicResource TextBrush}"
                               FontSize="12"
-                              ToolTip="Mặc định bật. Khi node đang nghỉ, WebView sẽ không giữ trạng thái hoạt động liên tục; chỉ đánh thức lại khi có flow hoặc nguồn JS chạy vào node.">
-                        <TextBlock Text="Chế độ nghỉ: chỉ đánh thức node khi có flow hoặc JS source chạy vào"
+                              ToolTip="M?c d?nh b?t. Khi node dang ngh?, WebView s? kh�ng gi? tr?ng th�i ho?t d?ng li�n t?c; ch? d�nh th?c l?i khi c� flow ho?c ngu?n JS ch?y v�o node.">
+                        <TextBlock Text="Ch? d? ngh?: ch? d�nh th?c node khi c� flow ho?c JS source ch?y v�o"
                                    TextWrapping="Wrap"/>
                     </CheckBox>
 
                     <StackPanel Orientation="Horizontal"
                                 Margin="0,0,0,16"
                                 IsEnabled="{Binding EnableSleepMode}">
-                        <TextBlock Text="Ngủ sau"
+                        <TextBlock Text="Ng? sau"
                                    Foreground="{DynamicResource TextMuted}"
                                    FontSize="12"
                                    VerticalAlignment="Center"
@@ -101,23 +101,23 @@
                                  Width="90"
                                  Height="30"
                                  VerticalContentAlignment="Center"
-                                 ToolTip="Khoảng thời gian rảnh trước khi node chuyển sang trạng thái nghỉ."/>
+                                 ToolTip="Kho?ng th?i gian r?nh tru?c khi node chuy?n sang tr?ng th�i ngh?."/>
                         <ComboBox ItemsSource="{Binding SleepIdleTimeoutUnitOptions}"
                                   SelectedItem="{Binding SleepIdleTimeoutUnit, Mode=TwoWay}"
                                   Style="{DynamicResource BaseComboBox}"
                                   Width="80"
                                   Height="30"
                                   Margin="8,0,0,0"
-                                  ToolTip="Đơn vị: ms, s, phút."/>
-                        <TextBlock Text="khi rảnh"
+                                  ToolTip="�on v?: ms, s, ph�t."/>
+                        <TextBlock Text="khi r?nh"
                                    Foreground="{DynamicResource TextMuted}"
                                    FontSize="12"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0"/>
                     </StackPanel>
 
-                    <!-- Input: nhiều dòng Node + Key + Key tùy chỉnh -->
-                    <TextBlock Text="Input (node nguồn + key) – mỗi dòng = một biến trong URL template:"
+                    <!-- Input: nhi?u d�ng Node + Key + Key t�y ch?nh -->
+                    <TextBlock Text="Input (node ngu?n + key) � m?i d�ng = m?t bi?n trong URL template:"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}" Margin="0,0,0,6">
                         <ItemsControl.ItemTemplate>
@@ -147,41 +147,41 @@
                                                   SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="4">
-                                        <TextBlock Text="Biến trong URL (trống = dùng key đã chọn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Bi?n trong URL (tr?ng = d�ng key d� ch?n)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                         <TextBox Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
                                                  Style="{DynamicResource BaseTextBoxV2}" Height="36"
-                                                 ToolTip="Tên biến trong URL template. Để trống thì dùng key từ combobox Key. Ví dụ: {name} trong URL sẽ được thay bằng giá trị này."/>
+                                                 ToolTip="T�n bi?n trong URL template. �? tr?ng th� d�ng key t? combobox Key. V� d?: {name} trong URL s? du?c thay b?ng gi� tr? n�y."/>
                                     </StackPanel>
-                                    <Button Grid.Column="5" Content="−" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                    <Button Grid.Column="5" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
                                             Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding}"
-                                            Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"/>
+                                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Button Content="+ Thêm input" Height="32" Margin="0,0,0,8"
+                    <Button Content="+ Th�m input" Height="32" Margin="0,0,0,8"
                             Command="{Binding AddInputMappingCommand}"
                             Width="120" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
                     <TextBlock Margin="0,0,0,16" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap">
-                        <Run Text="💡 Sử dụng: "/>
-                        <Run Text="Trong ExtractUrl, dùng {tên_biến} để thay thế động. Ví dụ: https://api.example.com/v1/projects/{name}/flowMedia:batchGenerateImages"/>
+                        <Run Text="?? S? d?ng: "/>
+                        <Run Text="Trong ExtractUrl, d�ng {t�n_bi?n} d? thay th? d?ng. V� d?: https://api.example.com/v1/projects/{name}/flowMedia:batchGenerateImages"/>
                     </TextBlock>
 
-                    <!-- JS inject: nhiều node+key – khi node đó chạy đến Web thì chạy JS tương ứng trong WebView2 -->
-                    <TextBlock Text="Chạy JS từ node khác (Node + Key) – mỗi dòng = 1 node: khi node đó chạy đến Web thì chạy JS:"
+                    <!-- JS inject: nhi?u node+key � khi node d� ch?y d?n Web th� ch?y JS tuong ?ng trong WebView2 -->
+                    <TextBlock Text="Ch?y JS t? node kh�c (Node + Key) � m?i d�ng = 1 node: khi node d� ch?y d?n Web th� ch?y JS:"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <ItemsControl x:Name="JsSourcesItemsControl" ItemsSource="{Binding JsSourcesList}" Margin="0,0,0,6">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate >
                                 <Border Margin="0,0,0,10"
-                                        Background="#0AFFFFFF"
+                                        Background="{DynamicResource CardHoverBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="6"
                                         Padding="8,8,8,8">
                                     <StackPanel>
-                                        <!-- Dòng 1: Chọn Node + Key + nút xóa -->
+                                        <!-- D�ng 1: Ch?n Node + Key + n�t x�a -->
                                         <Grid Margin="0,0,0,6">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -197,51 +197,51 @@
                                                           SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Key (chứa JS string)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                <TextBlock Text="Key (ch?a JS string)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                                 <ComboBox Height="36" Style="{DynamicResource BaseComboBox}"
                                                           ItemsSource="{Binding AvailableOutputKeyOptions}"
                                                           SelectedValuePath="Key" DisplayMemberPath="DisplayName"
                                                           SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
                                             </StackPanel>
-                                            <Button Grid.Column="3" Content="−" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                            <Button Grid.Column="3" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
                                                     Command="{Binding DataContext.RemoveJsSourceCommand, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
                                                     CommandParameter="{Binding}"
-                                                    Foreground="{DynamicResource TextBrush}" Background="#FFEF4444" BorderThickness="0" Cursor="Hand"/>
+                                                    Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
                                         </Grid>
-                                        <!-- Dòng 2: Tự động chạy JS theo timer -->
+                                        <!-- D�ng 2: T? d?ng ch?y JS theo timer -->
                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                             <CheckBox IsChecked="{Binding AutoTimerEnabled, Mode=TwoWay}"
                                                       Foreground="{DynamicResource TextMuted}"
                                                       FontSize="12"
                                                       VerticalAlignment="Center"
                                                       Margin="0,0,8,0"
-                                                      ToolTip="Khi bật, WebNode sẽ tự động lấy JS từ node+key đã chọn và chạy vào WebView2 theo chu kỳ nhất định (không cần flow đến node).">
-                                                <TextBlock Text="Tự động chạy JS theo timer" Foreground="{DynamicResource TextMuted}" FontSize="12"/>
+                                                      ToolTip="Khi b?t, WebNode s? t? d?ng l?y JS t? node+key d� ch?n v� ch?y v�o WebView2 theo chu k? nh?t d?nh (kh�ng c?n flow d?n node).">
+                                                <TextBlock Text="T? d?ng ch?y JS theo timer" Foreground="{DynamicResource TextMuted}" FontSize="12"/>
                                             </CheckBox>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal"
                                                     Margin="0,4,0,0"
                                                     IsEnabled="{Binding AutoTimerEnabled}">
-                                            <TextBlock Text="Mỗi" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <TextBlock Text="M?i" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                             <TextBox Text="{Binding AutoTimerIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{DynamicResource BaseTextBoxV2}"
                                                      Width="80" Height="30"
                                                      VerticalContentAlignment="Center"
-                                                     ToolTip="Khoảng thời gian giữa 2 lần chạy JS tự động."/>
+                                                     ToolTip="Kho?ng th?i gian gi?a 2 l?n ch?y JS t? d?ng."/>
                                             <ComboBox ItemsSource="{Binding AutoTimerUnitOptions}"
                                                       SelectedItem="{Binding AutoTimerIntervalUnit, Mode=TwoWay}"
                                                       Style="{DynamicResource BaseComboBox}"
                                                       Width="70" Height="30"
                                                       Margin="6,0,0,0"
-                                                      ToolTip="Đơn vị thời gian: mili giây, giây, phút."/>
-                                            <TextBlock Text="chạy JS 1 lần" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                                      ToolTip="�on v? th?i gian: mili gi�y, gi�y, ph�t."/>
+                                            <TextBlock Text="ch?y JS 1 l?n" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Button Content="+ Thêm JS source" Height="32" Margin="0,0,0,16"
+                    <Button Content="+ Th�m JS source" Height="32" Margin="0,0,0,16"
                             Command="{Binding AddJsSourceCommand}"
                             Width="140" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
 
@@ -251,8 +251,8 @@
                                       FontSize="12"
                                       Margin="0,0,0,8"
                                       IsChecked="{Binding AutoReloadEnabled, Mode=TwoWay}"
-                                      ToolTip="Tự động tải lại trang (F5) sau mỗi khoảng thời gian được cấu hình.">
-                                <TextBlock Text="Tự động tải lại trang (load page timer)"
+                                      ToolTip="T? d?ng t?i l?i trang (F5) sau m?i kho?ng th?i gian du?c c?u h�nh.">
+                                <TextBlock Text="T? d?ng t?i l?i trang (load page timer)"
                                            TextWrapping="Wrap"/>
                             </CheckBox>
 
@@ -264,20 +264,20 @@
                                          Width="100"
                                          Height="32"
                                          VerticalContentAlignment="Center"
-                                         ToolTip="Khoảng thời gian giữa hai lần tải lại trang."/>
+                                         ToolTip="Kho?ng th?i gian gi?a hai l?n t?i l?i trang."/>
                                 <ComboBox ItemsSource="{Binding AutoReloadUnitOptions}"
                                           SelectedItem="{Binding AutoReloadIntervalUnit, Mode=TwoWay}"
                                           Style="{DynamicResource BaseComboBox}"
                                           Width="80"
                                           Height="32"
                                           Margin="8,0,0,0"
-                                          ToolTip="Đơn vị thời gian: mili giây, giây, phút."/>
+                                          ToolTip="�on v? th?i gian: mili gi�y, gi�y, ph�t."/>
                             </StackPanel>
                             
                     <!-- Cookie configuration -->
-                    <TextBlock Text="Cookie (paste text cookie để set vào WebView2):"
+                    <TextBlock Text="Cookie (paste text cookie d? set v�o WebView2):"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <TextBlock Text="Hỗ trợ Netscape format hoặc JSON format {url, cookies:[...]}. Click 'Chạy' để set cookie và mở website."
+                    <TextBlock Text="H? tr? Netscape format ho?c JSON format {url, cookies:[...]}. Click 'Ch?y' d? set cookie v� m? website."
                                Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
@@ -292,20 +292,20 @@
                                  MaxHeight="200"
                                  VerticalScrollBarVisibility="Auto"
                                  Margin="0,0,8,0"
-                                 ToolTip="Paste cookie text từ browser (Netscape format hoặc JSON). Click 'Chạy' để set cookie và mở website."/>
-                        <Button Grid.Column="1" Content="▶ Chạy" Width="80" Height="36"
+                                 ToolTip="Paste cookie text t? browser (Netscape format ho?c JSON). Click 'Ch?y' d? set cookie v� m? website."/>
+                        <Button Grid.Column="1" Content="? Ch?y" Width="80" Height="36"
                                 VerticalAlignment="Top"
                                 Style="{DynamicResource SuccessButton}"
                                 Command="{Binding ApplyCookieCommand}"
                                 Cursor="Hand"
-                                ToolTip="Parse cookie và set vào WebView2. Nếu có URL thì mở luôn website đó."/>
+                                ToolTip="Parse cookie v� set v�o WebView2. N?u c� URL th� m? lu�n website d�."/>
                     </Grid>
                 </StackPanel>
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: Chặn request -->
-                <TabItem Header="Chặn request" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 2: Ch?n request -->
+                <TabItem Header="Ch?n request" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <CheckBox Foreground="{DynamicResource TextBrush}"
@@ -313,15 +313,15 @@
                                       Margin="0,0,0,12"
                                       HorizontalContentAlignment="Stretch"
                                       IsChecked="{Binding BlockAllRequestsAfterFirstMatch, Mode=TwoWay}">
-                                <TextBlock Text="Sau khi chặn được 1 request thì chặn luôn tất cả các request phía sau (trong lần chạy node này)"
+                                <TextBlock Text="Sau khi ch?n du?c 1 request th� ch?n lu�n t?t c? c�c request ph�a sau (trong l?n ch?y node n�y)"
                                            TextWrapping="Wrap"
                                            TextTrimming="CharacterEllipsis"/>
                             </CheckBox>
 
-                            <!-- Chặn request -->
-                            <TextBlock Text="Chặn request (URL Pattern):"
+                            <!-- Ch?n request -->
+                            <TextBlock Text="Ch?n request (URL Pattern):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <TextBlock Text="Danh sách URL pattern (string contains). Nếu URL chứa pattern -> Chặn."
+                            <TextBlock Text="Danh s�ch URL pattern (string contains). N?u URL ch?a pattern -> Ch?n."
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
 
                             <ItemsControl ItemsSource="{Binding BlockingRules}">
@@ -340,7 +340,7 @@
                                                 <ComboBox Grid.Column="0" Height="36"
                                                           Style="{DynamicResource BaseComboBox}"
                                                           SelectedItem="{Binding Method, Mode=TwoWay}"
-                                                          ToolTip="HTTP method để chặn. Chọn 'All' để chặn tất cả methods.">
+                                                          ToolTip="HTTP method d? ch?n. Ch?n 'All' d? ch?n t?t c? methods.">
                                                     <sys:String>All</sys:String>
                                                     <sys:String>GET</sys:String>
                                                     <sys:String>POST</sys:String>
@@ -354,7 +354,7 @@
                                                 <!-- URL Pattern TextBox (cha) -->
                                                 <TextBox Grid.Column="2" Text="{Binding UrlPattern, UpdateSourceTrigger=PropertyChanged}"
                                                          Style="{DynamicResource BaseTextBoxV2}" Height="36"
-                                                         ToolTip="URL pattern (string contains). Ví dụ: https://example.com/api"/>
+                                                         ToolTip="URL pattern (string contains). V� d?: https://example.com/api"/>
 
                                                 <!-- Remove Button -->
                                                 <Button Grid.Column="3" Content="-" Width="36" Height="36" Margin="8,0,0,0"
@@ -364,7 +364,7 @@
                                             </Grid>
 
                                             <!-- URL con -->
-                                            <TextBlock Text="URL con (mỗi dòng 1 pattern riêng, chỉ chặn sau khi URL cha ở trên đã bị chặn ít nhất 1 lần):"
+                                            <TextBlock Text="URL con (m?i d�ng 1 pattern ri�ng, ch? ch?n sau khi URL cha ? tr�n d� b? ch?n �t nh?t 1 l?n):"
                                                        Foreground="{DynamicResource TextMuted}"
                                                        FontSize="11"
                                                        Margin="0,4,0,4"
@@ -400,9 +400,9 @@
                                                                      Text="{Binding UrlPattern, UpdateSourceTrigger=PropertyChanged}"
                                                                      Style="{DynamicResource BaseTextBoxV2}"
                                                                      Height="32"
-                                                                     ToolTip="URL con cần chặn sau khi URL cha đã bị chặn ít nhất 1 lần."/>
+                                                                     ToolTip="URL con c?n ch?n sau khi URL cha d� b? ch?n �t nh?t 1 l?n."/>
 
-                                                            <!-- Nút xóa URL con -->
+                                                            <!-- N�t x�a URL con -->
                                                             <Button Grid.Column="3" Content="-" Width="32" Height="32" Margin="8,0,0,0"
                                                                     Style="{DynamicResource DangerButton}"
                                                                     Command="{Binding DataContext.RemoveChildBlockingRuleCommand, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
@@ -412,7 +412,7 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
 
-                                            <Button Content="+ Thêm URL con"
+                                            <Button Content="+ Th�m URL con"
                                                     Height="24"
                                                     Width="140"
                                                     Margin="0,4,0,0"
@@ -425,15 +425,15 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <Button Content="+ Thêm pattern" Height="32" HorizontalAlignment="Left" Width="120"
+                            <Button Content="+ Th�m pattern" Height="32" HorizontalAlignment="Left" Width="120"
                                     Style="{DynamicResource PrimaryButton}"
                                     Command="{Binding AddBlockingRuleCommand}" Margin="0,0,0,16"/>
 
                             <!-- Thay request (intercept rules) -->
-                            <TextBlock Text="Thay request (match URL → thay URL/params/body bằng Node+Key):"
+                            <TextBlock Text="Thay request (match URL ? thay URL/params/body b?ng Node+Key):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <StackPanel x:Name="InterceptRulesPanel" Margin="0,0,0,8"/>
-                            <Button x:Name="AddInterceptRuleButton" Content="+ Thêm rule" Height="32"
+                            <Button x:Name="AddInterceptRuleButton" Content="+ Th�m rule" Height="32"
                                     Style="{DynamicResource PrimaryButton}" Margin="0,0,0,16" Click="AddInterceptRuleButton_Click"/>
                         </StackPanel>
                     </ScrollViewer>
@@ -444,19 +444,19 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Live sync execution results -->
-                            <CheckBox Content="Cập nhật luôn ô Result của node khi WebView2 bắt được response (live)"
+                            <CheckBox Content="C?p nh?t lu�n � Result c?a node khi WebView2 b?t du?c response (live)"
                                       Foreground="{DynamicResource TextBrush}" FontSize="12"
                                       IsChecked="{Binding SyncLiveOutputsToResults, Mode=TwoWay}"
                                       Margin="0,0,0,16"/>
 
                             <!-- Outputs (Response outputs) -->
-                            <TextBlock Text="Outputs (Lấy response từ URL - so sánh khớp URL pattern, lấy request cuối cùng khớp):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Outputs (L?y response t? URL - so s�nh kh?p URL pattern, l?y request cu?i c�ng kh?p):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <StackPanel x:Name="ResponseOutputsPanel" Margin="0,0,0,8"/>
-                            <Button x:Name="AddResponseOutputButton" Content="+ Thêm output" Height="32"
+                            <Button x:Name="AddResponseOutputButton" Content="+ Th�m output" Height="32"
                                     Style="{DynamicResource PrimaryButton}" Margin="0,0,0,16" Click="AddResponseOutputButton_Click"/>
 
-                            <!-- Timeout chờ outputs -->
-                            <TextBlock Text="Timeout đợi outputs (ms, 0 = không chờ):"
+                            <!-- Timeout ch? outputs -->
+                            <TextBlock Text="Timeout d?i outputs (ms, 0 = kh�ng ch?):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding ResponseOutputsWaitTimeoutMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
@@ -464,10 +464,10 @@
                                      Width="160"
                                      HorizontalAlignment="Left"
                                      Margin="0,0,0,16"
-                                     ToolTip="Thời gian tối đa WebNodeExecutor chờ cho các outputs được đánh dấu 'Đợi key này' trước khi chạy node tiếp theo. 0 = không chờ."/>
+                                     ToolTip="Th?i gian t?i da WebNodeExecutor ch? cho c�c outputs du?c d�nh d?u '�?i key n�y' tru?c khi ch?y node ti?p theo. 0 = kh�ng ch?."/>
 
                             <!-- Wait mode: ALL vs ANY -->
-                            <TextBlock Text="Chế độ đợi key:"
+                            <TextBlock Text="Ch? d? d?i key:"
                                        Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <ComboBox Height="36"
                                       Width="320"
@@ -483,12 +483,12 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 4: Tái sử dụng flow -->
-                <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
+                <!-- Tab 4: T�i s? d?ng flow -->
+                <TabItem Header="T�i s? d?ng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <!-- C?u h�nh v? tr� c?ng IN/OUT -->
+                            <TextBlock Text="V? tr� c?ng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
@@ -502,7 +502,7 @@
 
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (cổng vào)"
+                                    <TextBlock Text="Port IN (c?ng v�o)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -515,7 +515,7 @@
 
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (cổng ra)"
+                                    <TextBlock Text="Port OUT (c?ng ra)"
                                                Foreground="{DynamicResource TextBrush}"
                                                FontSize="12"
                                                Opacity="0.8"
@@ -527,7 +527,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Cấu hình tái sử dụng flow -->
+                            <!-- C?u h�nh t�i s? d?ng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -572,7 +572,7 @@
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Kiểu line OUT"
+                                                    <TextBlock Text="Ki?u line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12"
                                                                Opacity="0.7"

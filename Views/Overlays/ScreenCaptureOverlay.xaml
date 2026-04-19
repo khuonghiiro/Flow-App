@@ -14,21 +14,21 @@
         KeyDown="Window_KeyDown">
 
     <Grid>
-        <!-- Lớp phủ tối -->
+        <!-- L?p ph? t?i -->
         <Rectangle x:Name="DarkOverlay" 
                    Fill="#80000000"
                    IsHitTestVisible="False"/>
 
-        <!-- Canvas để vẽ khung chọn -->
+        <!-- Canvas d? v? khung ch?n -->
         <Canvas x:Name="SelectionCanvas">
-            <!-- Khung chọn -->
+            <!-- Khung ch?n -->
             <Rectangle x:Name="SelectionRectangle"
                        Stroke="#0078D4"
                        StrokeThickness="2"
                        Fill="Transparent"
                        Visibility="Collapsed"/>
 
-            <!-- Hiển thị kích thước -->
+            <!-- Hi?n th? k�ch thu?c -->
             <Border x:Name="InfoPanel"
                     Background="#E0FFFFFF"
                     CornerRadius="4"
@@ -37,11 +37,11 @@
                 <TextBlock x:Name="InfoText"
                            FontSize="12"
                            FontWeight="Medium"
-                           Foreground="#333333"/>
+                           Foreground="{DynamicResource TextBrush}"/>
             </Border>
         </Canvas>
 
-        <!-- Hướng dẫn -->
+        <!-- Hu?ng d?n -->
         <Border VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 Margin="0,20,0,0"
@@ -49,11 +49,11 @@
                 CornerRadius="6"
                 Padding="16,8">
             <TextBlock FontSize="14" 
-                       Foreground="#333333"
+                       Foreground="{DynamicResource TextBrush}"
                        FontWeight="Medium">
-                <Run Text="Kéo chuột để chọn vùng cần chụp"/>
-                <Run Text=" • " FontWeight="Bold"/>
-                <Run Text="ESC để hủy"/>
+                <Run Text="K�o chu?t d? ch?n v�ng c?n ch?p"/>
+                <Run Text=" � " FontWeight="Bold"/>
+                <Run Text="ESC d? h?y"/>
             </TextBlock>
         </Border>
     </Grid>
