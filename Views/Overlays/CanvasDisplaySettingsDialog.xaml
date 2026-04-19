@@ -120,6 +120,29 @@
                                 <RadioButton x:Name="AnimationModeOffRadio" Content="Tắt Animation" Tag="Off" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
                                 <RadioButton x:Name="AnimationModeDashedRadio" Content="Hiển thị nét đứt" Tag="Dashed" GroupName="AnimationModeGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
                             </WrapPanel>
+
+                            <!-- Thông báo hiển thị khi "Bật Animation" bị disable do Cache Node đang bật -->
+                            <Border x:Name="AnimationDisabledNotice"
+                                    Visibility="Collapsed"
+                                    Background="{DynamicResource CardColor}"
+                                    BorderBrush="{DynamicResource WarningBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="8,6"
+                                    Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="⚠ Animation đang bị tắt vì 'Cache node' đang bật."
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               TextWrapping="Wrap" FontSize="12"/>
+                                    <TextBlock Text="Cache node dùng BitmapCache để node được raster sẵn một lần → tăng FPS nhưng line animation (energy dot) chạy trên connection sẽ không đồng bộ được với bitmap đã cache, dẫn tới giật/nháy."
+                                               Foreground="{DynamicResource TextBrush}" Opacity="0.75"
+                                               TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
+                                    <TextBlock Text="👉 Để bật lại: mở tab 'Canvas' → bỏ tích 'Cache node'."
+                                               Foreground="{DynamicResource TextBrush}" Opacity="0.9"
+                                               TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">

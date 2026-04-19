@@ -172,6 +172,14 @@ namespace FlowMy.Views.Overlays
             {
                 AnimationModeAnimatedRadio.IsEnabled = true;
             }
+
+            // Hiện banner giải thích khi radio bị disable, ẩn khi cache off.
+            if (AnimationDisabledNotice != null)
+            {
+                AnimationDisabledNotice.Visibility = cacheEnabled
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
 
         private static void SelectByTag(ComboBox comboBox, string tag)
