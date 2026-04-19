@@ -1,4 +1,4 @@
-<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
+﻿<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -1994,26 +1994,6 @@ Cursor="Hand"
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                        <DataTemplate DataType="{x:Type viewModels:ExecutionTraceConnectorGuideViewModel}">
-                                            <!-- Trục dọc nối tiếp tại depth cha (không vẽ ngang) -->
-                                            <Grid x:Name="TraceGuideCell"
-                                                  Width="38"
-                                                  VerticalAlignment="Stretch"
-                                                  ClipToBounds="False">
-                                                <Line X1="19"
-                                                      Y1="0"
-                                                      X2="19"
-                                                      Y2="{Binding ElementName=TraceGuideCell, Path=ActualHeight}"
-                                                      Stroke="#C8C8C8"
-                                                      StrokeThickness="1"
-                                                      StrokeDashArray="4,3"
-                                                      StrokeDashCap="Flat"
-                                                      HorizontalAlignment="Left"
-                                                      VerticalAlignment="Top"
-                                                      SnapsToDevicePixels="True"
-                                                      Visibility="{Binding ShowVertical, Converter={StaticResource LocalBoolToVis}}"/>
-                                            </Grid>
-                                        </DataTemplate>
 
                                         <DataTemplate DataType="{x:Type viewModels:ExecutionTraceTreeNodeViewModel}">
                                             <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource LocalBoolToVis}}"
@@ -2025,61 +2005,31 @@ Cursor="Hand"
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <ItemsControl Grid.Column="0"
-                                                                  ItemsSource="{Binding ConnectorGuides}"
-                                                                  VerticalAlignment="Stretch"
-                                                                  ClipToBounds="False">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <StackPanel Orientation="Horizontal"/>
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                    </ItemsControl>
-
-                                                    <!-- Solid L above dashed stub (ZIndex) -->
-                                                    <Grid Grid.Column="1"
+                                                    <!-- Solid L-connector only (indent = ItemMargin; no extra guide columns) -->
+                                                    <Grid Grid.Column="0"
                                                           x:Name="TraceConnectorHost"
                                                           Width="60"
                                                           Height="{Binding ElementName=TraceNodeCard, Path=ActualHeight, FallbackValue=36}"
                                                           VerticalAlignment="Top"
                                                           Margin="0,0,4,0"
-                                                          Panel.ZIndex="1"
                                                           Visibility="{Binding ShowConnector, Converter={StaticResource LocalBoolToVis}}">
                                                         <Grid.RowDefinitions>
                                                             <RowDefinition Height="*"/>
                                                             <RowDefinition Height="*"/>
                                                         </Grid.RowDefinitions>
-                                                        <!-- Dashed horizontal stub 4..26px; solid bar from 30 (no overlap) -->
-                                                        <Rectangle Grid.RowSpan="2"
-                                                                   Height="1"
-                                                                   VerticalAlignment="Center"
-                                                                   HorizontalAlignment="Left"
-                                                                   Width="22"
-                                                                   Margin="4,0,0,0"
-                                                                   Fill="Transparent"
-                                                                   Stroke="#C8C8C8"
-                                                                   StrokeThickness="1"
-                                                                   StrokeDashArray="4,3"
-                                                                   StrokeDashCap="Flat"
-                                                                   SnapsToDevicePixels="True"
-                                                                   Panel.ZIndex="0"
-                                                                   Visibility="{Binding ShowHorizontalConnector, Converter={StaticResource LocalBoolToVis}}"/>
                                                         <Rectangle Grid.Row="0"
                                                                    Width="1"
                                                                    Fill="#B8B8B8"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Stretch"
-                                                                   Panel.ZIndex="1"
                                                                    Visibility="{Binding ShowTopStem, Converter={StaticResource LocalBoolToVis}}"/>
                                                         <Rectangle Grid.Row="1"
                                                                    Width="1"
                                                                    Fill="#B8B8B8"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Stretch"
-                                                                   Panel.ZIndex="1"
                                                                    Visibility="{Binding ShowBottomStem, Converter={StaticResource LocalBoolToVis}}"/>
                                                         <Rectangle Grid.RowSpan="2"
                                                                    Height="1"
@@ -2087,11 +2037,10 @@ Cursor="Hand"
                                                                    VerticalAlignment="Center"
                                                                    HorizontalAlignment="Stretch"
                                                                    Margin="30,0,0,0"
-                                                                   Panel.ZIndex="1"
                                                                    Visibility="{Binding ShowHorizontalConnector, Converter={StaticResource LocalBoolToVis}}"/>
                                                     </Grid>
 
-                                                    <Border Grid.Column="2"
+                                                    <Border Grid.Column="1"
                                                             x:Name="TraceNodeCard"
                                                             Padding="6,5"
                                                             CornerRadius="4"

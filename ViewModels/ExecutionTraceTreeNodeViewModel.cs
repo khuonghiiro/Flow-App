@@ -1,7 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 
@@ -22,7 +20,6 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     public int Depth { get; }
     public Thickness ConnectorIndent { get; }
     public ExecutionTraceTreeNodeViewModel? Parent { get; internal set; }
-    public ObservableCollection<ExecutionTraceConnectorGuideViewModel> ConnectorGuides { get; } = new();
     public bool ShowTopStem => ShowConnector;
     public bool ShowBottomStem => ShowConnector && !IsLastSibling;
     public bool ShowHorizontalConnector => ShowConnector;
@@ -75,9 +72,6 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private double childrenDashedLineHeightTrim;
 
-    /// <summary>X1 in the first guide cell so the dashed horizontal meets the left spine (12px column, x=7).</summary>
-    public double GuideDashedLineX1 { get; private set; }
-
     /// <summary>Viền card (ảnh mẫu: xám nhạt).</summary>
     public Brush TraceCardBorderBrush => CreateTraceBorderBrush();
 
@@ -111,21 +105,11 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         const int indentPerDepth = 38;
         var leftIndent = IsRunRoot ? 0 : (Depth * indentPerDepth);
         ItemMargin = new Thickness(leftIndent, 6, 4, 6);
-        ChildrenDashedLineMargin = new Thickness(leftIndent + 28, 0, 0, 0);
-        GuideDashedLineX1 = ComputeGuideDashedLineX1(indentPerDepth);
+        ChildrenDashedLineMargin = new Thickness(leftIndent + 30, 0, 0, 0);
         IsExpanded = true;
         IsVisible = true;
         IsLastSibling = true;
         IsFirstSibling = true;
-    }
-
-    private double ComputeGuideDashedLineX1(int indentPerDepth)
-    {
-        if (IsRunRoot) return 0;
-        const int spineLocalX = 7;
-        const int outerSpineColumnWidth = 14;
-        var leftIndent = Depth * indentPerDepth;
-        return spineLocalX - (outerSpineColumnWidth + leftIndent);
     }
 
     partial void OnIsLastSiblingChanged(bool value)
@@ -149,23 +133,6 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         OnPropertyChanged(nameof(HasMultipleChildren));
     }
 
-    /// <summary>Align dashed trunk X with connector after guide columns (38px each) are applied.</summary>
-    public void ApplyChildrenDashedLineMargin()
-    {
-        const int col = 38;
-        var x = Depth * col + ConnectorGuides.Count * col + 28;
-        ChildrenDashedLineMargin = new Thickness(x, 0, 0, 0);
-        OnPropertyChanged(nameof(ChildrenDashedLineMargin));
-    }
-
-    public void SetConnectorGuides(IEnumerable<bool> ancestorHasNextSibling)
-    {
-        ConnectorGuides.Clear();
-        var list = ancestorHasNextSibling as IList<bool> ?? ancestorHasNextSibling.ToList();
-        for (var i = 0; i < list.Count; i++)
-            ConnectorGuides.Add(new ExecutionTraceConnectorGuideViewModel(list[i], i == 0));
-    }
-
     private Brush CreateTraceBorderBrush()
     {
         // Ảnh mẫu: viền xám rất nhạt, không tô màu theo level.
@@ -179,17 +146,5 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         var b = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
         b.Freeze();
         return b;
-    }
-}
-
-public sealed class ExecutionTraceConnectorGuideViewModel
-{
-    public bool ShowVertical { get; }
-    public bool IsFirstGuideColumn { get; }
-
-    public ExecutionTraceConnectorGuideViewModel(bool showVertical, bool isFirstGuideColumn)
-    {
-        ShowVertical = showVertical;
-        IsFirstGuideColumn = isFirstGuideColumn;
     }
 }
