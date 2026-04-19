@@ -14,6 +14,17 @@ namespace FlowMy.Services.Utilities
         public bool IsExecutionTracePanelExpanded { get; set; } = true;
         public double ExecutionTraceCardMaxWidth { get; set; } = 380;
 
+        // DevTools-like docking config cho panel log.
+        // DockMode: "Bottom" | "Left" | "Right" | "Detached"
+        public string ExecutionTracePanelDockMode { get; set; } = "Bottom";
+        public double ExecutionTracePanelDockHeight { get; set; } = 320;
+        public double ExecutionTracePanelDockWidth { get; set; } = 480;
+        // Detached window vị trí / kích thước (để mở lại đúng chỗ).
+        public double ExecutionTracePanelDetachedLeft { get; set; } = double.NaN;
+        public double ExecutionTracePanelDetachedTop { get; set; } = double.NaN;
+        public double ExecutionTracePanelDetachedWidth { get; set; } = 820;
+        public double ExecutionTracePanelDetachedHeight { get; set; } = 520;
+
         // Export defaults
         public bool ExportIncludeInput { get; set; } = true;
         public bool ExportIncludeOutput { get; set; } = true;

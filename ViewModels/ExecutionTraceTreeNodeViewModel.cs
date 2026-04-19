@@ -76,17 +76,43 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private string errorMessage = string.Empty;
 
-    /// <summary>Danh sách key/value đã parse từ <see cref="InputSummary"/>; rỗng nếu không phải dạng key:value.</summary>
+    /// <summary>
+    /// Phiên bản đầy đủ (KHÔNG cắt ngắn) của IN/OUT/ERR để dùng khi user mở rộng card.
+    /// <see cref="InputSummary"/>/<see cref="OutputSummary"/> vẫn giữ bản đã compact cho dòng đóng.
+    /// </summary>
+    [ObservableProperty]
+    private string fullInputSummary = string.Empty;
+
+    [ObservableProperty]
+    private string fullOutputSummary = string.Empty;
+
+    [ObservableProperty]
+    private string fullErrorMessage = string.Empty;
+
+    /// <summary>Danh sách key/value đã parse từ <see cref="InputSummary"/> (compact); rỗng nếu không phải dạng key:value.</summary>
     public ObservableCollection<TraceKeyValueItem> InputItems { get; } = new();
 
-    /// <summary>Danh sách key/value đã parse từ <see cref="OutputSummary"/>; rỗng nếu không phải dạng key:value.</summary>
+    /// <summary>Danh sách key/value đã parse từ <see cref="OutputSummary"/> (compact); rỗng nếu không phải dạng key:value.</summary>
     public ObservableCollection<TraceKeyValueItem> OutputItems { get; } = new();
+
+    /// <summary>Key/value đầy đủ parse từ <see cref="FullInputSummary"/> — dùng khi mở rộng card.</summary>
+    public ObservableCollection<TraceKeyValueItem> FullInputItems { get; } = new();
+
+    /// <summary>Key/value đầy đủ parse từ <see cref="FullOutputSummary"/> — dùng khi mở rộng card.</summary>
+    public ObservableCollection<TraceKeyValueItem> FullOutputItems { get; } = new();
 
     public bool HasInputItems => InputItems.Count > 0;
     public bool HasOutputItems => OutputItems.Count > 0;
+    public bool HasFullInputItems => FullInputItems.Count > 0;
+    public bool HasFullOutputItems => FullOutputItems.Count > 0;
     public bool HasInput => !string.IsNullOrWhiteSpace(InputSummary);
     public bool HasOutput => !string.IsNullOrWhiteSpace(OutputSummary);
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    /// <summary>Text để hiện ở chế độ expanded: ưu tiên Full* (không cắt), fallback về compact.</summary>
+    public string InputSummaryExpanded => string.IsNullOrEmpty(FullInputSummary) ? InputSummary : FullInputSummary;
+    public string OutputSummaryExpanded => string.IsNullOrEmpty(FullOutputSummary) ? OutputSummary : FullOutputSummary;
+    public string ErrorMessageExpanded => string.IsNullOrEmpty(FullErrorMessage) ? ErrorMessage : FullErrorMessage;
 
     public bool HasAnyDetails => HasInput || HasOutput || HasError;
 
@@ -188,6 +214,7 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         RebuildItems(InputItems, value);
         OnPropertyChanged(nameof(HasInputItems));
         OnPropertyChanged(nameof(HasInput));
+        OnPropertyChanged(nameof(InputSummaryExpanded));
         NotifyDetailsFlagsChanged();
     }
 
@@ -196,13 +223,34 @@ public sealed partial class ExecutionTraceTreeNodeViewModel : ObservableObject
         RebuildItems(OutputItems, value);
         OnPropertyChanged(nameof(HasOutputItems));
         OnPropertyChanged(nameof(HasOutput));
+        OnPropertyChanged(nameof(OutputSummaryExpanded));
         NotifyDetailsFlagsChanged();
     }
 
     partial void OnErrorMessageChanged(string value)
     {
         OnPropertyChanged(nameof(HasError));
+        OnPropertyChanged(nameof(ErrorMessageExpanded));
         NotifyDetailsFlagsChanged();
+    }
+
+    partial void OnFullInputSummaryChanged(string value)
+    {
+        RebuildItems(FullInputItems, value);
+        OnPropertyChanged(nameof(HasFullInputItems));
+        OnPropertyChanged(nameof(InputSummaryExpanded));
+    }
+
+    partial void OnFullOutputSummaryChanged(string value)
+    {
+        RebuildItems(FullOutputItems, value);
+        OnPropertyChanged(nameof(HasFullOutputItems));
+        OnPropertyChanged(nameof(OutputSummaryExpanded));
+    }
+
+    partial void OnFullErrorMessageChanged(string value)
+    {
+        OnPropertyChanged(nameof(ErrorMessageExpanded));
     }
 
     private void NotifyDetailsFlagsChanged()

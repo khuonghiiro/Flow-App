@@ -187,6 +187,39 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool exportPrettyPrint = true;
 
+        // ---- DevTools-like docking cho panel log ----
+        // Mode string dùng "Bottom" | "Left" | "Right" | "Detached" (dễ bind DataTrigger trong XAML).
+
+        [ObservableProperty]
+        private string executionTracePanelDockMode = "Bottom";
+
+        /// <summary>Chiều cao panel khi dock Bottom (user kéo GridSplitter sẽ cập nhật).</summary>
+        [ObservableProperty]
+        private double executionTracePanelDockHeight = 320;
+
+        /// <summary>Chiều rộng panel khi dock Left/Right.</summary>
+        [ObservableProperty]
+        private double executionTracePanelDockWidth = 480;
+
+        /// <summary>Position/size của cửa sổ tách rời (persist giữa các lần mở).</summary>
+        [ObservableProperty]
+        private double executionTracePanelDetachedLeft = double.NaN;
+        [ObservableProperty]
+        private double executionTracePanelDetachedTop = double.NaN;
+        [ObservableProperty]
+        private double executionTracePanelDetachedWidth = 820;
+        [ObservableProperty]
+        private double executionTracePanelDetachedHeight = 520;
+
+        public bool IsTraceDockBottom => string.Equals(ExecutionTracePanelDockMode, "Bottom", StringComparison.OrdinalIgnoreCase);
+        public bool IsTraceDockLeft => string.Equals(ExecutionTracePanelDockMode, "Left", StringComparison.OrdinalIgnoreCase);
+        public bool IsTraceDockRight => string.Equals(ExecutionTracePanelDockMode, "Right", StringComparison.OrdinalIgnoreCase);
+        public bool IsTraceDockDetached => string.Equals(ExecutionTracePanelDockMode, "Detached", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>True khi panel log đang được hosted trong cửa sổ tách — ẩn hẳn khỏi main grid.</summary>
+        public bool IsExecutionTracePanelInMainGrid =>
+            IsExecutionTracePanelVisible && !IsTraceDockDetached;
+
         public ObservableCollection<string> ExecutionTraceStatusOptions { get; } = new() { "All", "running", "completed", "failed" };
         public ObservableCollection<string> ExecutionTraceNodeTypeOptions { get; } = new() { "All" };
 
@@ -197,7 +230,9 @@ namespace FlowMy.ViewModels
         /// </summary>
         public bool IsExecutionTraceReopenerVisible => EnableExecutionTraceLog && !IsExecutionTracePanelExpanded;
 
-        public double ExecutionTracePanelHeight => IsExecutionTracePanelMaximized ? 10000d : 320d;
+        /// <summary>Height truyền cho panel dock=Bottom. Khi maximize: Double.NaN để panel stretch toàn bộ.
+        /// Khi bình thường: trả ExecutionTracePanelDockHeight (user resize được qua GridSplitter).</summary>
+        public double ExecutionTracePanelHeight => IsExecutionTracePanelMaximized ? double.NaN : ExecutionTracePanelDockHeight;
 
         /// <summary>True khi panel log đang mở và maximize — ẩn canvas để chỉ xem log.</summary>
         public bool IsExecutionLogMaximizedOverCanvas =>
@@ -239,6 +274,14 @@ namespace FlowMy.ViewModels
                 enableExecutionTraceLog = prefs.EnableExecutionTraceLog;
                 isExecutionTracePanelExpanded = prefs.IsExecutionTracePanelExpanded;
                 if (prefs.ExecutionTraceCardMaxWidth >= 200) executionTraceCardMaxWidth = prefs.ExecutionTraceCardMaxWidth;
+                if (!string.IsNullOrWhiteSpace(prefs.ExecutionTracePanelDockMode))
+                    executionTracePanelDockMode = prefs.ExecutionTracePanelDockMode!;
+                if (prefs.ExecutionTracePanelDockHeight >= 120) executionTracePanelDockHeight = prefs.ExecutionTracePanelDockHeight;
+                if (prefs.ExecutionTracePanelDockWidth >= 240) executionTracePanelDockWidth = prefs.ExecutionTracePanelDockWidth;
+                executionTracePanelDetachedLeft = prefs.ExecutionTracePanelDetachedLeft;
+                executionTracePanelDetachedTop = prefs.ExecutionTracePanelDetachedTop;
+                if (prefs.ExecutionTracePanelDetachedWidth >= 300) executionTracePanelDetachedWidth = prefs.ExecutionTracePanelDetachedWidth;
+                if (prefs.ExecutionTracePanelDetachedHeight >= 200) executionTracePanelDetachedHeight = prefs.ExecutionTracePanelDetachedHeight;
                 exportIncludeInput = prefs.ExportIncludeInput;
                 exportIncludeOutput = prefs.ExportIncludeOutput;
                 exportIncludeError = prefs.ExportIncludeError;
@@ -266,6 +309,7 @@ namespace FlowMy.ViewModels
             OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
             OnPropertyChanged(nameof(IsExecutionTraceReopenerVisible));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
+            OnPropertyChanged(nameof(IsExecutionTracePanelInMainGrid));
             if (!value)
                 ClearExecutionTraceLogs();
             SaveExecutionTracePreferencesSafe();
@@ -280,6 +324,7 @@ namespace FlowMy.ViewModels
             OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
             OnPropertyChanged(nameof(IsExecutionTraceReopenerVisible));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
+            OnPropertyChanged(nameof(IsExecutionTracePanelInMainGrid));
             SaveExecutionTracePreferencesSafe();
         }
 
@@ -288,6 +333,28 @@ namespace FlowMy.ViewModels
             OnPropertyChanged(nameof(ExecutionTracePanelHeight));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
         }
+
+        partial void OnExecutionTracePanelDockModeChanged(string value)
+        {
+            OnPropertyChanged(nameof(IsTraceDockBottom));
+            OnPropertyChanged(nameof(IsTraceDockLeft));
+            OnPropertyChanged(nameof(IsTraceDockRight));
+            OnPropertyChanged(nameof(IsTraceDockDetached));
+            OnPropertyChanged(nameof(IsExecutionTracePanelInMainGrid));
+            SaveExecutionTracePreferencesSafe();
+        }
+
+        partial void OnExecutionTracePanelDockHeightChanged(double value)
+        {
+            OnPropertyChanged(nameof(ExecutionTracePanelHeight));
+            SaveExecutionTracePreferencesSafe();
+        }
+
+        partial void OnExecutionTracePanelDockWidthChanged(double value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExecutionTracePanelDetachedLeftChanged(double value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExecutionTracePanelDetachedTopChanged(double value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExecutionTracePanelDetachedWidthChanged(double value) => SaveExecutionTracePreferencesSafe();
+        partial void OnExecutionTracePanelDetachedHeightChanged(double value) => SaveExecutionTracePreferencesSafe();
 
         partial void OnExecutionTraceCardMaxWidthChanged(double value) => SaveExecutionTracePreferencesSafe();
         partial void OnExportIncludeInputChanged(bool value) => SaveExecutionTracePreferencesSafe();
@@ -307,6 +374,13 @@ namespace FlowMy.ViewModels
                     EnableExecutionTraceLog = EnableExecutionTraceLog,
                     IsExecutionTracePanelExpanded = IsExecutionTracePanelExpanded,
                     ExecutionTraceCardMaxWidth = ExecutionTraceCardMaxWidth,
+                    ExecutionTracePanelDockMode = ExecutionTracePanelDockMode,
+                    ExecutionTracePanelDockHeight = ExecutionTracePanelDockHeight,
+                    ExecutionTracePanelDockWidth = ExecutionTracePanelDockWidth,
+                    ExecutionTracePanelDetachedLeft = ExecutionTracePanelDetachedLeft,
+                    ExecutionTracePanelDetachedTop = ExecutionTracePanelDetachedTop,
+                    ExecutionTracePanelDetachedWidth = ExecutionTracePanelDetachedWidth,
+                    ExecutionTracePanelDetachedHeight = ExecutionTracePanelDetachedHeight,
                     ExportIncludeInput = ExportIncludeInput,
                     ExportIncludeOutput = ExportIncludeOutput,
                     ExportIncludeError = ExportIncludeError,
@@ -333,6 +407,28 @@ namespace FlowMy.ViewModels
         private void ToggleExecutionTracePanelMaximize()
         {
             IsExecutionTracePanelMaximized = !IsExecutionTracePanelMaximized;
+        }
+
+        /// <summary>Đặt vị trí dock panel log: Bottom/Left/Right/Detached (nhận từ XAML CommandParameter).</summary>
+        [RelayCommand]
+        private void SetExecutionTracePanelDockMode(object? parameter)
+        {
+            var mode = parameter?.ToString();
+            if (string.IsNullOrWhiteSpace(mode)) return;
+            // Chuẩn hóa để khớp với so sánh IsTraceDockBottom/Left/Right/Detached (OrdinalIgnoreCase).
+            switch (mode.Trim().ToLowerInvariant())
+            {
+                case "bottom": ExecutionTracePanelDockMode = "Bottom"; break;
+                case "left": ExecutionTracePanelDockMode = "Left"; break;
+                case "right": ExecutionTracePanelDockMode = "Right"; break;
+                case "detached":
+                case "detach":
+                case "float":
+                    ExecutionTracePanelDockMode = "Detached";
+                    // Đảm bảo panel đang expanded khi detach — view sẽ tự mở window khi thấy mode=Detached.
+                    if (!IsExecutionTracePanelExpanded) IsExecutionTracePanelExpanded = true;
+                    break;
+            }
         }
 
         [RelayCommand]
@@ -951,6 +1047,13 @@ namespace FlowMy.ViewModels
         }
 
         private string BuildInputSummaryForExecution(WorkflowNode node, WorkflowConnection? incoming, string executionId)
+            => BuildInputSummaryForExecutionCore(node, incoming, executionId, maxPerValue: 220, maxParts: 4);
+
+        /// <summary>Bản không cắt ngắn của <see cref="BuildInputSummaryForExecution"/> — dùng khi user mở rộng card trace.</summary>
+        private string BuildFullInputSummaryForExecution(WorkflowNode node, WorkflowConnection? incoming, string executionId)
+            => BuildInputSummaryForExecutionCore(node, incoming, executionId, maxPerValue: int.MaxValue, maxParts: int.MaxValue);
+
+        private string BuildInputSummaryForExecutionCore(WorkflowNode node, WorkflowConnection? incoming, string executionId, int maxPerValue, int maxParts)
         {
             if (incoming?.FromNode == null || string.IsNullOrWhiteSpace(executionId))
                 return BuildInputSummary(node);
@@ -966,16 +1069,23 @@ namespace FlowMy.ViewModels
                 if (string.IsNullOrWhiteSpace(key)) continue;
                 if (!_workflowExecutionService.TryGetScopedNodeStringOutputForLookupChain(executionId, source.Id, key, out var val))
                     continue;
-                var compact = ToCompactText(val);
+                var compact = ToCompactText(val, maxPerValue);
                 if (string.IsNullOrWhiteSpace(compact)) continue;
                 parts.Add($"{source.Title ?? source.Id}.{key}: {compact}");
-                if (parts.Count >= 4) break;
+                if (parts.Count >= maxParts) break;
             }
 
             return parts.Count > 0 ? string.Join(" | ", parts) : BuildInputSummary(node);
         }
 
         private string BuildOutputSummaryForExecution(WorkflowNode node, string executionId)
+            => BuildOutputSummaryForExecutionCore(node, executionId, maxPerValue: 220, maxParts: 4);
+
+        /// <summary>Bản không cắt ngắn của <see cref="BuildOutputSummaryForExecution"/> — dùng khi user mở rộng card trace.</summary>
+        private string BuildFullOutputSummaryForExecution(WorkflowNode node, string executionId)
+            => BuildOutputSummaryForExecutionCore(node, executionId, maxPerValue: int.MaxValue, maxParts: int.MaxValue);
+
+        private string BuildOutputSummaryForExecutionCore(WorkflowNode node, string executionId, int maxPerValue, int maxParts)
         {
             if (string.IsNullOrWhiteSpace(executionId) || node.DynamicOutputs == null || node.DynamicOutputs.Count == 0)
                 return BuildOutputSummary(node);
@@ -987,10 +1097,10 @@ namespace FlowMy.ViewModels
                 if (string.IsNullOrWhiteSpace(key)) continue;
                 if (!_workflowExecutionService.TryGetScopedNodeStringOutputForLookupChain(executionId, node.Id, key, out var val))
                     continue;
-                var compact = ToCompactText(val);
+                var compact = ToCompactText(val, maxPerValue);
                 if (string.IsNullOrWhiteSpace(compact)) continue;
                 parts.Add($"{key}: {compact}");
-                if (parts.Count >= 4) break;
+                if (parts.Count >= maxParts) break;
             }
 
             return parts.Count > 0 ? string.Join(" | ", parts) : BuildOutputSummary(node);
@@ -1059,6 +1169,7 @@ namespace FlowMy.ViewModels
             }
 
             var inputSummary = BuildInputSummaryForExecution(node, incoming, executionKey);
+            var fullInputSummary = BuildFullInputSummaryForExecution(node, incoming, executionKey);
             var item = new ExecutionTraceLogItemViewModel(
                 node: node,
                 executionId: executionKey,
@@ -1087,6 +1198,7 @@ namespace FlowMy.ViewModels
                 nodeColorKey: string.IsNullOrWhiteSpace(node.ColorKey) ? null : node.ColorKey)
             {
                 InputSummary = item.InputSummary,
+                FullInputSummary = fullInputSummary,
                 Status = "running"
             };
 
@@ -1233,6 +1345,9 @@ namespace FlowMy.ViewModels
             var outputSummarySnapshot = BuildOutputSummaryForExecution(node, executionKey);
             if (string.IsNullOrWhiteSpace(outputSummarySnapshot))
                 outputSummarySnapshot = BuildOutputSummary(node);
+            var fullOutputSummarySnapshot = BuildFullOutputSummaryForExecution(node, executionKey);
+            if (string.IsNullOrWhiteSpace(fullOutputSummarySnapshot))
+                fullOutputSummarySnapshot = outputSummarySnapshot;
 
             Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
@@ -1267,6 +1382,9 @@ namespace FlowMy.ViewModels
                         trow.OutputSummary = string.IsNullOrWhiteSpace(outputSummarySnapshot)
                             ? BuildOutputSummaryForExecution(node, trow.ExecutionId)
                             : outputSummarySnapshot;
+                        trow.FullOutputSummary = string.IsNullOrWhiteSpace(fullOutputSummarySnapshot)
+                            ? BuildFullOutputSummaryForExecution(node, trow.ExecutionId)
+                            : fullOutputSummarySnapshot;
                     }
                 }
             }));
@@ -1302,6 +1420,7 @@ namespace FlowMy.ViewModels
                 ? ambient!
                 : (string.IsNullOrWhiteSpace(node.LastExecutionId) ? "failed" : node.LastExecutionId!);
             var err = ToCompactText(errorMessage, 400);
+            var fullErr = errorMessage ?? string.Empty;
             Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
                 if (!EnableExecutionTraceLog) return;
@@ -1339,6 +1458,7 @@ namespace FlowMy.ViewModels
                     {
                         trow.Status = "failed";
                         trow.ErrorMessage = err;
+                        trow.FullErrorMessage = fullErr;
                     }
                 }
             }));

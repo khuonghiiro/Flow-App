@@ -88,6 +88,10 @@ namespace FlowMy.Views
         private Visibility _prevExecutionPanelVisibility = Visibility.Visible;
         private Visibility _prevPersistencePanelVisibility = Visibility.Visible;
         private Visibility _prevNodePaletteExpandButtonVisibility = Visibility.Collapsed;
+        private Visibility _prevExecutionTracePanelVisibility = Visibility.Visible;
+        /// <summary>Giá trị <c>IsExecutionTracePanelVisible</c> trong VM trước khi ẩn do phóng to node;
+        /// dùng để khôi phục đúng trạng thái panel log khi đóng chế độ phóng to.</summary>
+        private bool? _prevIsExecutionTracePanelVisibleVm;
         private ScrollBarVisibility _prevCanvasHScroll = ScrollBarVisibility.Hidden;
         private ScrollBarVisibility _prevCanvasVScroll = ScrollBarVisibility.Hidden;
         private GridLength _prevLeftMenuColumnWidth = new GridLength(200);
@@ -215,6 +219,16 @@ namespace FlowMy.Views
 
             InitializeServices();
             SetupEventHandlers();
+
+            // Nếu preferences đã lưu mode=Detached thì reparent panel log sang cửa sổ riêng
+            // ngay sau khi cửa sổ chính load xong (defer để CanvasHostGrid đã build visual tree).
+            Loaded += (_, _) => SyncExecutionTraceDetachState();
+            // Đảm bảo đóng cửa sổ detach khi main window close để không bị window dangling.
+            Closed += (_, _) =>
+            {
+                try { _executionTraceDetachedWindow?.Close(); } catch { }
+                _executionTraceDetachedWindow = null;
+            };
         }
 
         private void InitializeServices()
@@ -937,6 +951,10 @@ namespace FlowMy.Views
                 }
 
                 _prevNodePaletteExpandButtonVisibility = NodePaletteExpandButton?.Visibility ?? Visibility.Collapsed;
+                _prevExecutionTracePanelVisibility = ExecutionTracePanelHostBorder?.Visibility ?? Visibility.Visible;
+                // IsExecutionTracePanelVisible là computed (read-only), nên ta lưu/ghi vào IsExecutionTracePanelExpanded
+                // (source của expand state) để khôi phục đúng trạng thái khi thoát chế độ phóng to.
+                if (ViewModel != null) _prevIsExecutionTracePanelVisibleVm = ViewModel.IsExecutionTracePanelExpanded;
 
                 // Collapse left menu + splitter columns so canvas feels fullscreen.
                 if (LeftMenuBorder?.Parent is Grid grid && grid.ColumnDefinitions.Count >= 2)
@@ -968,6 +986,11 @@ namespace FlowMy.Views
                 if (ExecutionPanel != null) ExecutionPanel.Visibility = Visibility.Collapsed;
                 if (PersistencePanel != null) PersistencePanel.Visibility = Visibility.Collapsed;
 
+                // Ẩn panel Execution Log ở dưới canvas để Web/HtmlUi có toàn bộ chiều cao viewport.
+                if (ExecutionTracePanelHostBorder != null) ExecutionTracePanelHostBorder.Visibility = Visibility.Collapsed;
+                if (ViewModel != null && ViewModel.IsExecutionTracePanelExpanded)
+                    ViewModel.IsExecutionTracePanelExpanded = false;
+
                 // Hide canvas scrollbars (bottom/right)
                 if (ScrollViewer != null)
                 {
@@ -984,6 +1007,12 @@ namespace FlowMy.Views
                 if (WorkflowManagementPanel != null) WorkflowManagementPanel.Visibility = _prevWorkflowManagementPanelVisibility;
                 if (ExecutionPanel != null) ExecutionPanel.Visibility = _prevExecutionPanelVisibility;
                 if (PersistencePanel != null) PersistencePanel.Visibility = _prevPersistencePanelVisibility;
+
+                // Khôi phục Execution Log panel về trạng thái trước khi phóng to.
+                if (ExecutionTracePanelHostBorder != null) ExecutionTracePanelHostBorder.Visibility = _prevExecutionTracePanelVisibility;
+                if (ViewModel != null && _prevIsExecutionTracePanelVisibleVm.HasValue)
+                    ViewModel.IsExecutionTracePanelExpanded = _prevIsExecutionTracePanelVisibleVm.Value;
+                _prevIsExecutionTracePanelVisibleVm = null;
 
                 // Restore canvas scrollbars
                 if (ScrollViewer != null)
@@ -1006,6 +1035,136 @@ namespace FlowMy.Views
                     splitterCol.MinWidth = _prevSplitterColumnMinWidth;
                     splitterCol.MaxWidth = _prevSplitterColumnMaxWidth;
                 }
+            }
+        }
+
+        // ======= Execution Trace panel: resize handles + detach window =======
+        // Min/max cho kích thước panel log. Giá trị nhỏ hơn ~120 gây ẩn nội dung; lớn hơn 2000 không thực tế.
+        private const double TraceDockMinHeight = 120;
+        private const double TraceDockMaxHeight = 2000;
+        private const double TraceDockMinWidth = 240;
+        private const double TraceDockMaxWidth = 2000;
+
+        private void TraceDockBottomResizer_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+        {
+            if (ViewModel == null) return;
+            // Kéo xuống = VerticalChange dương → giảm chiều cao panel (panel ở dưới canvas).
+            var newH = ViewModel.ExecutionTracePanelDockHeight - e.VerticalChange;
+            ViewModel.ExecutionTracePanelDockHeight = System.Math.Max(TraceDockMinHeight, System.Math.Min(TraceDockMaxHeight, newH));
+        }
+
+        private void TraceDockLeftResizer_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+        {
+            if (ViewModel == null) return;
+            // Panel dock trái: kéo phải = HorizontalChange dương → tăng width.
+            var newW = ViewModel.ExecutionTracePanelDockWidth + e.HorizontalChange;
+            ViewModel.ExecutionTracePanelDockWidth = System.Math.Max(TraceDockMinWidth, System.Math.Min(TraceDockMaxWidth, newW));
+        }
+
+        private void TraceDockRightResizer_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+        {
+            if (ViewModel == null) return;
+            // Panel dock phải: kéo phải = HorizontalChange dương → giảm width.
+            var newW = ViewModel.ExecutionTracePanelDockWidth - e.HorizontalChange;
+            ViewModel.ExecutionTracePanelDockWidth = System.Math.Max(TraceDockMinWidth, System.Math.Min(TraceDockMaxWidth, newW));
+        }
+
+        /// <summary>Reference cửa sổ detach đang mở. Null khi panel đang dock trong main grid.</summary>
+        private FlowMy.Views.Overlays.ExecutionTraceDetachedWindow? _executionTraceDetachedWindow;
+
+        /// <summary>
+        /// Đồng bộ trạng thái panel log theo <see cref="WorkflowEditorViewModel.ExecutionTracePanelDockMode"/>.
+        /// "Detached" → reparent <c>ExecutionTracePanelHostBorder</c> sang window rời;
+        /// các mode khác → đưa Border về main grid (CanvasHostGrid).
+        /// </summary>
+        private void SyncExecutionTraceDetachState()
+        {
+            if (ViewModel == null || ExecutionTracePanelHostBorder == null || CanvasHostGrid == null) return;
+
+            bool wantDetached = ViewModel.IsTraceDockDetached
+                                && ViewModel.EnableExecutionTraceLog
+                                && ViewModel.IsExecutionTracePanelExpanded;
+
+            if (wantDetached)
+            {
+                if (_executionTraceDetachedWindow != null && _executionTraceDetachedWindow.IsVisible) return;
+                AttachExecutionTracePanelToWindow();
+            }
+            else
+            {
+                if (_executionTraceDetachedWindow == null) return;
+                ReturnExecutionTracePanelToMainGrid();
+            }
+        }
+
+        private void AttachExecutionTracePanelToWindow()
+        {
+            if (ViewModel == null || ExecutionTracePanelHostBorder == null || CanvasHostGrid == null) return;
+
+            // Gỡ Border khỏi grid chính (WPF chỉ cho 1 parent).
+            if (CanvasHostGrid.Children.Contains(ExecutionTracePanelHostBorder))
+                CanvasHostGrid.Children.Remove(ExecutionTracePanelHostBorder);
+
+            // Reset các thuộc tính layout "bottom dock" để window host cho đúng (stretch full window).
+            ExecutionTracePanelHostBorder.ClearValue(Grid.RowProperty);
+            ExecutionTracePanelHostBorder.ClearValue(Grid.RowSpanProperty);
+            ExecutionTracePanelHostBorder.ClearValue(Grid.ColumnProperty);
+            ExecutionTracePanelHostBorder.ClearValue(Grid.ColumnSpanProperty);
+            ExecutionTracePanelHostBorder.ClearValue(FrameworkElement.WidthProperty);
+            ExecutionTracePanelHostBorder.ClearValue(FrameworkElement.HeightProperty);
+            ExecutionTracePanelHostBorder.Visibility = Visibility.Visible;
+
+            var win = new FlowMy.Views.Overlays.ExecutionTraceDetachedWindow();
+            win.Owner = this;
+            win.BindToViewModel(ViewModel);
+            win.AttachContent(ExecutionTracePanelHostBorder);
+            win.Closed += ExecutionTraceDetachedWindow_Closed;
+            _executionTraceDetachedWindow = win;
+            win.Show();
+        }
+
+        private void ExecutionTraceDetachedWindow_Closed(object? sender, EventArgs e)
+        {
+            // User đóng cửa sổ → trả panel về main grid và đưa mode về Bottom.
+            if (_executionTraceDetachedWindow != null)
+                _executionTraceDetachedWindow.Closed -= ExecutionTraceDetachedWindow_Closed;
+
+            ReturnExecutionTracePanelToMainGrid();
+
+            if (ViewModel != null && ViewModel.IsTraceDockDetached)
+                ViewModel.ExecutionTracePanelDockMode = "Bottom";
+        }
+
+        private void ReturnExecutionTracePanelToMainGrid()
+        {
+            if (ExecutionTracePanelHostBorder == null || CanvasHostGrid == null) return;
+
+            if (_executionTraceDetachedWindow != null)
+            {
+                var removed = _executionTraceDetachedWindow.DetachContent();
+                // Nếu ai đó đã thay content khác (edge-case), tránh add UIElement khác vào main grid.
+                if (removed is Border b && ReferenceEquals(b, ExecutionTracePanelHostBorder))
+                {
+                    // no-op: Border đã detached, sẵn sàng để add lại.
+                }
+            }
+
+            // Xóa local values để Style DataTriggers tiếp tục điều khiển Grid.Row/Col, Width/Height, Visibility.
+            ExecutionTracePanelHostBorder.ClearValue(Grid.RowProperty);
+            ExecutionTracePanelHostBorder.ClearValue(Grid.RowSpanProperty);
+            ExecutionTracePanelHostBorder.ClearValue(Grid.ColumnProperty);
+            ExecutionTracePanelHostBorder.ClearValue(Grid.ColumnSpanProperty);
+            ExecutionTracePanelHostBorder.ClearValue(FrameworkElement.WidthProperty);
+            ExecutionTracePanelHostBorder.ClearValue(FrameworkElement.HeightProperty);
+            ExecutionTracePanelHostBorder.ClearValue(UIElement.VisibilityProperty);
+
+            if (!CanvasHostGrid.Children.Contains(ExecutionTracePanelHostBorder))
+                CanvasHostGrid.Children.Add(ExecutionTracePanelHostBorder);
+
+            if (_executionTraceDetachedWindow != null)
+            {
+                try { _executionTraceDetachedWindow.Close(); } catch { }
+                _executionTraceDetachedWindow = null;
             }
         }
 
@@ -1062,6 +1221,14 @@ namespace FlowMy.Views
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             _eventService.HandleViewModelPropertyChanged(e);
+
+            // Đồng bộ Detach/Attach panel log mỗi khi mode/expand/enable thay đổi.
+            if (e.PropertyName == nameof(WorkflowEditorViewModel.ExecutionTracePanelDockMode)
+                || e.PropertyName == nameof(WorkflowEditorViewModel.IsExecutionTracePanelExpanded)
+                || e.PropertyName == nameof(WorkflowEditorViewModel.EnableExecutionTraceLog))
+            {
+                SyncExecutionTraceDetachState();
+            }
 
             // Khi bắt đầu load workflow (IsLoading -> true) dọn UI cũ để tránh port/line rác.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsLoading))

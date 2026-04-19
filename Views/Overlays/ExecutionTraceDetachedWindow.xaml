@@ -1,0 +1,12 @@
+<Window x:Class="FlowMy.Views.Overlays.ExecutionTraceDetachedWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Execution Log - Flow App"
+        Width="820" Height="520"
+        MinWidth="420" MinHeight="260"
+        WindowStartupLocation="Manual"
+        Background="{DynamicResource BackgroundColor}"
+        ShowInTaskbar="True"
+        Topmost="False">
+    <Grid x:Name="HostGrid"/>
+</Window>
