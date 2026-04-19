@@ -1053,6 +1053,25 @@ namespace FlowMy.ViewModels
             }));
         }
 
+        /// <summary>Cập nhật card gốc "Run …" (không gắn với WorkflowNode nên không qua TraceNodeCompleted).</summary>
+        private void TraceRunRootSetStatus(string executionId, string status, string? elapsedText = null)
+        {
+            if (!EnableExecutionTraceLog || string.IsNullOrWhiteSpace(executionId)) return;
+            var rootKey = NormalizeRootExecutionId(executionId);
+            Application.Current?.Dispatcher?.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (!EnableExecutionTraceLog) return;
+                lock (_executionTraceLock)
+                {
+                    if (!_executionTraceTreeRootByRun.TryGetValue(rootKey, out var rootNode) || !rootNode.IsRunRoot)
+                        return;
+                    rootNode.Status = status;
+                    if (elapsedText != null)
+                        rootNode.ElapsedText = elapsedText;
+                }
+            }));
+        }
+
         private void TraceNodeFailed(WorkflowNode node, string errorMessage)
         {
             if (!EnableExecutionTraceLog || node == null) return;
@@ -1309,6 +1328,7 @@ namespace FlowMy.ViewModels
                                     incomingConnection: null,
                                     reachableToEnd: null,
                                     executionId: runId).ConfigureAwait(false);
+                                TraceRunRootSetStatus(runId, "completed");
                             }
                             finally
                             {
@@ -1466,6 +1486,7 @@ namespace FlowMy.ViewModels
                                 incomingConnection: null,
                                 reachableToEnd: null,
                                 executionId: runId).ConfigureAwait(false);
+                            TraceRunRootSetStatus(runId, "completed");
                         }
                         finally
                         {
@@ -1599,6 +1620,7 @@ namespace FlowMy.ViewModels
                                 incomingConnection: null,
                                 reachableToEnd: null,
                                 executionId: runId).ConfigureAwait(false);
+                            TraceRunRootSetStatus(runId, "completed");
                         }
                         finally
                         {
