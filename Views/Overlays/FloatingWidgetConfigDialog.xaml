@@ -266,22 +266,54 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Màu nền idle (#RRGGBB)"
+                                        <TextBlock Text="Màu nền idle"
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                        <TextBox x:Name="IdleBackgroundColorTextBox"
-                                                 Style="{DynamicResource BaseTextBox}"
-                                                 Height="28"
-                                                 Margin="0,4,0,0"
-                                                 ToolTip="Ví dụ: #6366F1. Để trống = màu Primary của theme."/>
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border x:Name="IdleBackgroundColorPreview"
+                                                    Grid.Column="0"
+                                                    Height="28"
+                                                    CornerRadius="4"
+                                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                    BorderThickness="1"
+                                                    Background="{DynamicResource PrimaryBrush}"/>
+                                            <Button Grid.Column="1"
+                                                    Content="🎨"
+                                                    Width="30"
+                                                    Height="28"
+                                                    Padding="0,0,0,0"
+                                                    Margin="8,0,0,0"
+                                                    ToolTip="Chọn màu nền idle"
+                                                    Click="PickIdleBackgroundColor_Click"/>
+                                        </Grid>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Màu icon / chữ (#RRGGBB)"
+                                        <TextBlock Text="Màu icon / chữ"
                                                    Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
-                                        <TextBox x:Name="IdleForegroundColorTextBox"
-                                                 Style="{DynamicResource BaseTextBox}"
-                                                 Height="28"
-                                                 Margin="0,4,0,0"
-                                                 ToolTip="Ví dụ: #FFFFFF. Để trống = TextOnPrimary của theme."/>
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border x:Name="IdleForegroundColorPreview"
+                                                    Grid.Column="0"
+                                                    Height="28"
+                                                    CornerRadius="4"
+                                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                    BorderThickness="1"
+                                                    Background="{DynamicResource TextOnPrimaryBrush}"/>
+                                            <Button Grid.Column="1"
+                                                    Content="🎨"
+                                                    Width="30"
+                                                    Height="28"
+                                                    Padding="0,0,0,0"
+                                                    Margin="8,0,0,0"
+                                                    ToolTip="Chọn màu icon/chữ idle"
+                                                    Click="PickIdleForegroundColor_Click"/>
+                                        </Grid>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -376,19 +408,50 @@
                                 <CheckBox x:Name="AlwaysOnTopCheckBox"
                                           Content="Luôn nổi trên cùng (Always on top)"
                                           Foreground="{DynamicResource TextBrush}"
-                                          Margin="0,2,0,4"/>
+                                          Margin="0,2,0,0"/>
+                                <TextBlock Text="Bật: widget luôn nằm trên các cửa sổ khác. Tắt: widget có thể bị cửa sổ khác che."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.65"
+                                           FontSize="11" Margin="22,0,0,4" TextWrapping="Wrap"/>
+
                                 <CheckBox x:Name="ShowInTaskbarCheckBox"
                                           Content="Hiện trên Taskbar"
                                           Foreground="{DynamicResource TextBrush}"
-                                          Margin="0,2,0,4"/>
-                                <CheckBox x:Name="ShowTitleBarCheckBox"
-                                          Content="Hiện thanh tiêu đề"
-                                          Foreground="{DynamicResource TextBrush}"
-                                          Margin="0,2,0,4"/>
-                                <CheckBox x:Name="AutoHideTitleBarCheckBox"
-                                          Content="Tự ẩn tiêu đề khi không tương tác"
-                                          Foreground="{DynamicResource TextBrush}"
-                                          Margin="0,2,0,4"/>
+                                          Margin="0,2,0,0"/>
+                                <TextBlock Text="Bật: có icon riêng trên taskbar để chuyển nhanh. Tắt: widget chỉ hiện dạng overlay."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.65"
+                                           FontSize="11" Margin="22,0,0,6" TextWrapping="Wrap"/>
+
+                                <TextBlock Text="Chế độ thanh tiêu đề"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,2,0,4"/>
+                                <RadioButton x:Name="TitleBarAlwaysVisibleRadio"
+                                             Content="Luôn hiển thị tiêu đề"
+                                             GroupName="TitleBarMode"
+                                             Foreground="{DynamicResource TextBrush}"
+                                             Margin="0,2,0,0"
+                                             Checked="TitleBarModeRadio_Checked"/>
+                                <TextBlock Text="Dễ thao tác kéo/thu nhỏ liên tục; phù hợp khi cần chỉnh widget thường xuyên."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.65"
+                                           FontSize="11" Margin="22,0,0,3" TextWrapping="Wrap"/>
+                                <RadioButton x:Name="TitleBarAutoHideRadio"
+                                             Content="Tự ẩn tiêu đề khi không tương tác"
+                                             GroupName="TitleBarMode"
+                                             Foreground="{DynamicResource TextBrush}"
+                                             Margin="0,2,0,0"
+                                             Checked="TitleBarModeRadio_Checked"/>
+                                <TextBlock Text="Gọn giao diện: title sẽ tự ẩn, hệ thống hiển thị nút tròn đỏ cạnh widget để gọi lại tiêu đề."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.65"
+                                           FontSize="11" Margin="22,0,0,3" TextWrapping="Wrap"/>
+                                <RadioButton x:Name="TitleBarHiddenRadio"
+                                             Content="Ẩn hoàn toàn tiêu đề"
+                                             GroupName="TitleBarMode"
+                                             Foreground="{DynamicResource TextBrush}"
+                                             Margin="0,2,0,0"
+                                             Checked="TitleBarModeRadio_Checked"/>
+                                <TextBlock Text="Tối đa diện tích nội dung; không còn thanh tiêu đề, dùng menu chuột phải và nút cạnh widget để thao tác."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.65"
+                                           FontSize="11" Margin="22,0,0,4" TextWrapping="Wrap"/>
                                 <Grid Margin="0,6,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>

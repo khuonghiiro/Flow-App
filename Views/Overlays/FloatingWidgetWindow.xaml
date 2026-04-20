@@ -86,6 +86,39 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="WidgetTitleRevealButton" TargetType="Button" BasedOn="{StaticResource DangerButton}">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Content" Value="≡"/>
+            <Setter Property="ToolTip" Value="Hiện thanh tiêu đề widget"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TextOnDangerBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerPressedBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
@@ -326,6 +359,16 @@
                     </Thumb>
                 </Grid>
             </Border>
+            <Popup x:Name="TitleBarRevealPopup"
+                   PlacementTarget="{Binding ElementName=ExpandedBorder}"
+                   Placement="Right"
+                   StaysOpen="True"
+                   AllowsTransparency="True"
+                   IsOpen="False">
+                <Button x:Name="TitleBarRevealButton"
+                        Style="{StaticResource WidgetTitleRevealButton}"
+                        Click="TitleBarRevealButton_Click"/>
+            </Popup>
         </Grid>
     </Grid>
 </Window>

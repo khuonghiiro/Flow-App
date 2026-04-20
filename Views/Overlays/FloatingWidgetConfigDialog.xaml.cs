@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using System.Windows.Media;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
+using WinForms = System.Windows.Forms;
 
 namespace FlowMy.Views.Overlays
 {
@@ -24,6 +25,8 @@ namespace FlowMy.Views.Overlays
         private readonly IWorkflowEditorHost _host;
         private WorkflowNode? _selectedNode;
         private bool _loadingValues;
+        private string? _idleBackgroundColorHex;
+        private string? _idleForegroundColorHex;
 
         public FloatingWidgetConfigDialog(IEnumerable<WorkflowNode> nodes, IWorkflowEditorHost host)
         {
@@ -322,8 +325,9 @@ namespace FlowMy.Views.Overlays
                     IdleIconTextBox.Text = raw;
                 }
 
-                IdleBackgroundColorTextBox.Text = cfg.IdleBackgroundColor ?? string.Empty;
-                IdleForegroundColorTextBox.Text = cfg.IdleForegroundColor ?? string.Empty;
+                _idleBackgroundColorHex = cfg.IdleBackgroundColor;
+                _idleForegroundColorHex = cfg.IdleForegroundColor;
+                UpdateIdleColorPreviews();
 
                 UseRatioSizeCheckBox.IsChecked = cfg.UseRatioSize;
                 AllowResizeCheckBox.IsChecked = cfg.AllowResize;
@@ -363,9 +367,14 @@ namespace FlowMy.Views.Overlays
 
                 AlwaysOnTopCheckBox.IsChecked = cfg.AlwaysOnTop;
                 ShowInTaskbarCheckBox.IsChecked = cfg.ShowInTaskbar;
-                ShowTitleBarCheckBox.IsChecked = cfg.ShowTitleBar;
-                AutoHideTitleBarCheckBox.IsChecked = cfg.AutoHideTitleBar;
+                if (!cfg.ShowTitleBar)
+                    TitleBarHiddenRadio.IsChecked = true;
+                else if (cfg.AutoHideTitleBar)
+                    TitleBarAutoHideRadio.IsChecked = true;
+                else
+                    TitleBarAlwaysVisibleRadio.IsChecked = true;
                 TitleBarHideTimeoutTextBox.Text = cfg.TitleBarHideTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
+                UpdateTitleTimeoutState();
 
                 SelectComboByTag(DisplayModeComboBox, cfg.DisplayMode.ToString());
                 SelectMonitor(cfg.MonitorIndex);
@@ -432,12 +441,12 @@ namespace FlowMy.Views.Overlays
                 cfg.IdleIconText = "⚡";
             }
 
-            cfg.IdleBackgroundColor = string.IsNullOrWhiteSpace(IdleBackgroundColorTextBox.Text)
+            cfg.IdleBackgroundColor = string.IsNullOrWhiteSpace(_idleBackgroundColorHex)
                 ? null
-                : IdleBackgroundColorTextBox.Text.Trim();
-            cfg.IdleForegroundColor = string.IsNullOrWhiteSpace(IdleForegroundColorTextBox.Text)
+                : _idleBackgroundColorHex;
+            cfg.IdleForegroundColor = string.IsNullOrWhiteSpace(_idleForegroundColorHex)
                 ? null
-                : IdleForegroundColorTextBox.Text.Trim();
+                : _idleForegroundColorHex;
 
             cfg.UseRatioSize = UseRatioSizeCheckBox.IsChecked == true;
             cfg.AllowResize = AllowResizeCheckBox.IsChecked == true;
@@ -475,8 +484,8 @@ namespace FlowMy.Views.Overlays
 
             cfg.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
             cfg.ShowInTaskbar = ShowInTaskbarCheckBox.IsChecked == true;
-            cfg.ShowTitleBar = ShowTitleBarCheckBox.IsChecked == true;
-            cfg.AutoHideTitleBar = AutoHideTitleBarCheckBox.IsChecked == true;
+            cfg.ShowTitleBar = TitleBarAlwaysVisibleRadio.IsChecked == true || TitleBarAutoHideRadio.IsChecked == true;
+            cfg.AutoHideTitleBar = TitleBarAutoHideRadio.IsChecked == true;
             cfg.TitleBarHideTimeoutSeconds = (int)ParseDouble(TitleBarHideTimeoutTextBox.Text, cfg.TitleBarHideTimeoutSeconds);
 
             cfg.DisplayMode = ParseEnum(DisplayModeComboBox, WidgetDisplayMode.Normal);
@@ -617,10 +626,10 @@ namespace FlowMy.Views.Overlays
             if (_selectedNode == null) return;
             ApplyValuesToConfig();
 
-            // Nếu widget đang mở, refresh để áp dụng tức thì
-            if (FloatingWidgetManager.Instance.IsWidgetOpen(_selectedNode.Id))
+            // Sync toàn bộ widget đang mở để đảm bảo mọi config mới hiển thị tức thì.
+            foreach (var nodeId in FloatingWidgetManager.Instance.GetActiveWidgetNodeIds())
             {
-                FloatingWidgetManager.Instance.RefreshWidget(_selectedNode.Id);
+                FloatingWidgetManager.Instance.RefreshWidget(nodeId);
             }
             UpdateWidgetStatus();
             PopulateNodeList();
@@ -745,6 +754,115 @@ namespace FlowMy.Views.Overlays
         }
 
         private void SlideToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
+
+        private void TitleBarModeRadio_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingValues) return;
+            UpdateTitleTimeoutState();
+        }
+
+        private void UpdateTitleTimeoutState()
+        {
+            if (TitleBarHideTimeoutTextBox == null) return;
+            var isAutoHide = TitleBarAutoHideRadio.IsChecked == true;
+            TitleBarHideTimeoutTextBox.IsEnabled = isAutoHide;
+            TitleBarHideTimeoutTextBox.Opacity = isAutoHide ? 1 : 0.55;
+        }
+
+        private void PickIdleBackgroundColor_Click(object sender, RoutedEventArgs e)
+        {
+            var hex = ShowColorPicker(_idleBackgroundColorHex);
+            if (!string.IsNullOrWhiteSpace(hex))
+            {
+                _idleBackgroundColorHex = hex;
+                UpdateIdleColorPreviews();
+            }
+        }
+
+        private void PickIdleForegroundColor_Click(object sender, RoutedEventArgs e)
+        {
+            var hex = ShowColorPicker(_idleForegroundColorHex);
+            if (!string.IsNullOrWhiteSpace(hex))
+            {
+                _idleForegroundColorHex = hex;
+                UpdateIdleColorPreviews();
+            }
+        }
+
+        private void UpdateIdleColorPreviews()
+        {
+            if (IdleBackgroundColorPreview != null)
+            {
+                IdleBackgroundColorPreview.Background = ResolveBrush(
+                    _idleBackgroundColorHex,
+                    (Brush?)Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.SlateBlue);
+                IdleBackgroundColorPreview.ToolTip = string.IsNullOrWhiteSpace(_idleBackgroundColorHex)
+                    ? "Đang dùng màu Primary của theme"
+                    : _idleBackgroundColorHex;
+            }
+
+            if (IdleForegroundColorPreview != null)
+            {
+                IdleForegroundColorPreview.Background = ResolveBrush(
+                    _idleForegroundColorHex,
+                    (Brush?)Application.Current.TryFindResource("TextOnPrimaryBrush") ?? Brushes.White);
+                IdleForegroundColorPreview.ToolTip = string.IsNullOrWhiteSpace(_idleForegroundColorHex)
+                    ? "Đang dùng màu TextOnPrimary của theme"
+                    : _idleForegroundColorHex;
+            }
+        }
+
+        private static string? ShowColorPicker(string? currentHex)
+        {
+            try
+            {
+                using var dialog = new WinForms.ColorDialog
+                {
+                    FullOpen = true
+                };
+
+                if (!string.IsNullOrWhiteSpace(currentHex) && currentHex.StartsWith("#", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        dialog.Color = System.Drawing.ColorTranslator.FromHtml(currentHex);
+                    }
+                    catch { }
+                }
+
+                if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                {
+                    var c = dialog.Color;
+                    return $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        private static Brush ResolveBrush(string? key, Brush fallback)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return fallback;
+
+            try
+            {
+                if (key.StartsWith("#", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    var converter = new BrushConverter();
+                    var brush = converter.ConvertFromString(key) as Brush;
+                    if (brush != null) return brush;
+                }
+
+                var resource = Application.Current.TryFindResource(key);
+                if (resource is Brush b) return b;
+                if (resource is Color c) return new SolidColorBrush(c);
+            }
+            catch { }
+
+            return fallback;
+        }
 
         private void UpdateSizeLabels(bool useRatio)
         {

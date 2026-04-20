@@ -79,6 +79,8 @@ public partial class FloatingWidgetWindow : Window
         // Window position
         WindowStartupLocation = WindowStartupLocation.Manual;
         Loaded += OnLoaded;
+        LocationChanged += (_, _) => UpdateTitleRevealButtonPlacement();
+        SizeChanged += (_, _) => UpdateTitleRevealButtonPlacement();
 
         // Listen for node title changes
         if (_node is INotifyPropertyChanged npc)
@@ -321,7 +323,7 @@ public partial class FloatingWidgetWindow : Window
         }
         else
         {
-            svg.Source = null;
+            svg.Source = null!;
             svg.Visibility = Visibility.Collapsed;
             text.Text = string.IsNullOrWhiteSpace(rawIconValue) ? "⚡" : rawIconValue;
             text.FontSize = textFontSize;
@@ -336,6 +338,7 @@ public partial class FloatingWidgetWindow : Window
     private void ShowCollapsedState()
     {
         _isExpanded = false;
+        SetTitleRevealOpen(false);
 
         // Size — nếu đang dock ở dạng ô vuông nhỏ thì dùng EdgeDockSquareSize,
         // ngược lại dùng IdleSize (có padding cho diamond rotation).
@@ -403,13 +406,7 @@ public partial class FloatingWidgetWindow : Window
 
         // Show/hide resize grip
         ResizeGrip.Visibility = Config.AllowResize ? Visibility.Visible : Visibility.Collapsed;
-
-        // Show/hide title bar
-        TitleBar.Visibility = Config.ShowTitleBar ? Visibility.Visible : Visibility.Collapsed;
-
-        // Start title bar auto-hide timer
-        if (Config.AutoHideTitleBar && Config.ShowTitleBar)
-            StartTitleBarHideTimer();
+        ApplyTitleBarBehavior(forceShowTitleBar: false);
 
         // Show WebView2
         if (_webView != null)
@@ -590,13 +587,18 @@ public partial class FloatingWidgetWindow : Window
     private void TitleBar_MouseEnter(object sender, MouseEventArgs e)
     {
         MarkActivity();
-        // Show title bar if hidden
-        if (TitleBar.Opacity < 1)
+        if (TitleBar.Visibility != Visibility.Visible)
         {
-            var anim = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(200));
-            TitleBar.BeginAnimation(OpacityProperty, anim);
+            ShowTitleBarTemporarily();
+            return;
         }
         RestartTitleBarHideTimer();
+    }
+
+    private void TitleBarRevealButton_Click(object sender, RoutedEventArgs e)
+    {
+        MarkActivity();
+        ShowTitleBarTemporarily();
     }
 
     // ═══════════════════════════════════════════
@@ -826,6 +828,8 @@ public partial class FloatingWidgetWindow : Window
     private void StartTitleBarHideTimer()
     {
         StopTitleBarHideTimer();
+        if (!Config.ShowTitleBar || !Config.AutoHideTitleBar) return;
+
         _titleBarHideTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(Config.TitleBarHideTimeoutSeconds)
@@ -835,9 +839,9 @@ public partial class FloatingWidgetWindow : Window
             StopTitleBarHideTimer();
             if (_isExpanded && Config.AutoHideTitleBar)
             {
-                // Fade out title bar
-                var anim = new DoubleAnimation(0.15, TimeSpan.FromMilliseconds(500));
-                TitleBar.BeginAnimation(OpacityProperty, anim);
+                TitleBar.Visibility = Visibility.Collapsed;
+                SetTitleRevealOpen(true);
+                UpdateTitleRevealButtonPlacement();
             }
         };
         _titleBarHideTimer.Start();
@@ -853,6 +857,97 @@ public partial class FloatingWidgetWindow : Window
     {
         if (Config.AutoHideTitleBar && Config.ShowTitleBar)
             StartTitleBarHideTimer();
+    }
+
+    private void ApplyTitleBarBehavior(bool forceShowTitleBar = false)
+    {
+        if (!_isExpanded)
+        {
+            TitleBar.Visibility = Visibility.Collapsed;
+            SetTitleRevealOpen(false);
+            StopTitleBarHideTimer();
+            return;
+        }
+
+        if (!Config.ShowTitleBar)
+        {
+            TitleBar.Visibility = Visibility.Collapsed;
+            SetTitleRevealOpen(true);
+            StopTitleBarHideTimer();
+            UpdateTitleRevealButtonPlacement();
+            return;
+        }
+
+        TitleBar.Visibility = Visibility.Visible;
+        SetTitleRevealOpen(false);
+        UpdateTitleRevealButtonPlacement();
+
+        if (Config.AutoHideTitleBar && !forceShowTitleBar)
+            StartTitleBarHideTimer();
+        else
+            StopTitleBarHideTimer();
+    }
+
+    private void ShowTitleBarTemporarily()
+    {
+        if (!_isExpanded || !Config.ShowTitleBar) return;
+        TitleBar.Visibility = Visibility.Visible;
+        SetTitleRevealOpen(false);
+        UpdateTitleRevealButtonPlacement();
+        RestartTitleBarHideTimer();
+    }
+
+    private void UpdateTitleRevealButtonPlacement()
+    {
+        var popup = GetTitleRevealPopup();
+        if (!_isExpanded || TitleBarRevealButton == null || popup == null) return;
+        if (!popup.IsOpen) return;
+
+        var area = GetTargetWorkArea();
+        var cx = Left + Width / 2;
+        var cy = Top + Height / 2;
+        var distLeft = cx - area.Left;
+        var distRight = area.Right - cx;
+        var distTop = cy - area.Top;
+        var distBottom = area.Bottom - cy;
+        var minDist = Math.Min(Math.Min(distLeft, distRight), Math.Min(distTop, distBottom));
+
+        const double gap = 6;
+
+        if (Math.Abs(minDist - distLeft) < 0.01)
+        {
+            popup.Placement = PlacementMode.Right;
+            popup.HorizontalOffset = gap;
+            popup.VerticalOffset = (Height / 2.0) - (TitleBarRevealButton.Height / 2.0);
+        }
+        else if (Math.Abs(minDist - distRight) < 0.01)
+        {
+            popup.Placement = PlacementMode.Left;
+            popup.HorizontalOffset = -gap;
+            popup.VerticalOffset = (Height / 2.0) - (TitleBarRevealButton.Height / 2.0);
+        }
+        else if (Math.Abs(minDist - distTop) < 0.01)
+        {
+            popup.Placement = PlacementMode.Bottom;
+            popup.HorizontalOffset = (Width / 2.0) - (TitleBarRevealButton.Width / 2.0);
+            popup.VerticalOffset = gap;
+        }
+        else
+        {
+            popup.Placement = PlacementMode.Top;
+            popup.HorizontalOffset = (Width / 2.0) - (TitleBarRevealButton.Width / 2.0);
+            popup.VerticalOffset = -gap;
+        }
+    }
+
+    private Popup? GetTitleRevealPopup()
+        => TitleBarRevealButton?.Parent as Popup;
+
+    private void SetTitleRevealOpen(bool isOpen)
+    {
+        var popup = GetTitleRevealPopup();
+        if (popup != null)
+            popup.IsOpen = isOpen;
     }
 
     // ═══════════════════════════════════════════
@@ -1029,8 +1124,8 @@ public partial class FloatingWidgetWindow : Window
                 Width = w;
                 Height = h;
                 ResizeGrip.Visibility = Config.AllowResize ? Visibility.Visible : Visibility.Collapsed;
-                TitleBar.Visibility = Config.ShowTitleBar ? Visibility.Visible : Visibility.Collapsed;
                 ApplyIdleChrome();
+                ApplyTitleBarBehavior(forceShowTitleBar: false);
             }
             else
             {
@@ -1390,20 +1485,20 @@ window.__ac.startWorkflow = acStartWorkflow;
             RippleLayer1.Visibility = Visibility.Visible;
             RippleLayer2.Visibility = Visibility.Visible;
 
-            var s1 = new DoubleAnimation(1.0, 1.7, TimeSpan.FromMilliseconds(1200))
+            var s1 = new DoubleAnimation(1.0, 2.15, TimeSpan.FromMilliseconds(1300))
             {
                 RepeatBehavior = RepeatBehavior.Forever
             };
-            var s2 = new DoubleAnimation(1.0, 2.0, TimeSpan.FromMilliseconds(1200))
+            var s2 = new DoubleAnimation(1.0, 2.55, TimeSpan.FromMilliseconds(1300))
             {
                 BeginTime = TimeSpan.FromMilliseconds(350),
                 RepeatBehavior = RepeatBehavior.Forever
             };
-            var o1 = new DoubleAnimation(0.45, 0.0, TimeSpan.FromMilliseconds(1200))
+            var o1 = new DoubleAnimation(0.5, 0.0, TimeSpan.FromMilliseconds(1300))
             {
                 RepeatBehavior = RepeatBehavior.Forever
             };
-            var o2 = new DoubleAnimation(0.35, 0.0, TimeSpan.FromMilliseconds(1200))
+            var o2 = new DoubleAnimation(0.4, 0.0, TimeSpan.FromMilliseconds(1300))
             {
                 BeginTime = TimeSpan.FromMilliseconds(350),
                 RepeatBehavior = RepeatBehavior.Forever
@@ -1427,12 +1522,38 @@ window.__ac.startWorkflow = acStartWorkflow;
         var w = active.Width > 0 ? active.Width : Config.IdleSize;
         var h = active.Height > 0 ? active.Height : Config.IdleSize;
         var cr = active.CornerRadius;
+        if (active == IdleCircle)
+            cr = new CornerRadius(Math.Min(w, h) / 2.0);
+        else if (active == IdleRoundedSquare)
+            cr = new CornerRadius(Math.Min(w, h) * 0.2);
         RippleLayer1.Width = w;
         RippleLayer1.Height = h;
         RippleLayer2.Width = w;
         RippleLayer2.Height = h;
         RippleLayer1.CornerRadius = cr;
         RippleLayer2.CornerRadius = cr;
+        RippleLayer1.Clip = BuildRippleClip(active, w, h, cr);
+        RippleLayer2.Clip = BuildRippleClip(active, w, h, cr);
+    }
+
+    private static Geometry BuildRippleClip(Border active, double w, double h, CornerRadius cornerRadius)
+    {
+        if (active.Name == "IdleDiamond")
+        {
+            var figure = new PathFigure { StartPoint = new Point(w / 2.0, 0), IsClosed = true, IsFilled = true };
+            figure.Segments.Add(new LineSegment(new Point(w, h / 2.0), true));
+            figure.Segments.Add(new LineSegment(new Point(w / 2.0, h), true));
+            figure.Segments.Add(new LineSegment(new Point(0, h / 2.0), true));
+            return new PathGeometry(new[] { figure });
+        }
+
+        if (active.Name == "IdleCircle")
+            return new EllipseGeometry(new Rect(0, 0, w, h));
+
+        if (cornerRadius.TopLeft > 0.01 || cornerRadius.TopRight > 0.01 || cornerRadius.BottomLeft > 0.01 || cornerRadius.BottomRight > 0.01)
+            return new RectangleGeometry(new Rect(0, 0, w, h), cornerRadius.TopLeft, cornerRadius.TopLeft);
+
+        return new RectangleGeometry(new Rect(0, 0, w, h));
     }
 
     private void AnimateExpandFadeIn()
