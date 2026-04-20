@@ -1066,6 +1066,14 @@ public partial class FloatingWidgetWindow : Window
         const double topBottomGap = 3; // giữ margin nhỏ cho case top/bottom
         var btnW = _titleRevealActionsPanel?.ActualWidth ?? 0; // B4: ưu tiên đo từ panel thật (chứa toàn bộ nút) thay vì đo từng button/window để không bị sai do template/padding.
         var btnH = _titleRevealActionsPanel?.ActualHeight ?? 0; // B4: chiều cao thực sau layout là nguồn chuẩn cho neo trái/phải/top/bottom.
+        if ((btnW <= 0 || btnH <= 0) && _titleRevealActionsPanel != null)
+        {
+            // First-open case: panel may not be visible yet, so use DesiredSize from explicit measure.
+            _titleRevealActionsPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var desired = _titleRevealActionsPanel.DesiredSize;
+            if (btnW <= 0) btnW = desired.Width;
+            if (btnH <= 0) btnH = desired.Height;
+        }
         if (btnW <= 0) btnW = _titleRevealHost.ActualWidth > 0 ? _titleRevealHost.ActualWidth : _titleRevealHost.Width; // B5: fallback khi frame đầu chưa đo xong.
         if (btnH <= 0) btnH = _titleRevealHost.ActualHeight > 0 ? _titleRevealHost.ActualHeight : _titleRevealHost.Height; // B5: fallback tương ứng cho height.
         if (btnW <= 0) btnW = verticalDock ? 22 : 68; // B6: fallback cuối cùng để thuật toán không nhận 0 và nhảy vị trí.
@@ -1133,6 +1141,7 @@ public partial class FloatingWidgetWindow : Window
         _titleRevealHost.Show();
         _titleRevealHost.Topmost = Topmost;
         Dispatcher.BeginInvoke(new Action(ApplyTitleRevealHostBounds), DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(new Action(ApplyTitleRevealHostBounds), DispatcherPriority.Render);
     }
 
     private void SyncTitleRevealHostTopmost()
