@@ -107,6 +107,22 @@ namespace FlowMy.Models
             set { if (_idleAnimation != value) { _idleAnimation = value; OnPropertyChanged(); } }
         }
 
+        private string? _idleBackgroundColor;
+        /// <summary>Màu nền hình idle (#hex). Để trống = dùng PrimaryBrush của theme.</summary>
+        public string? IdleBackgroundColor
+        {
+            get => _idleBackgroundColor;
+            set { if (_idleBackgroundColor != value) { _idleBackgroundColor = value; OnPropertyChanged(); } }
+        }
+
+        private string? _idleForegroundColor;
+        /// <summary>Màu icon/chữ trong hình idle (#hex). Để trống = TextOnPrimaryBrush của theme.</summary>
+        public string? IdleForegroundColor
+        {
+            get => _idleForegroundColor;
+            set { if (_idleForegroundColor != value) { _idleForegroundColor = value; OnPropertyChanged(); } }
+        }
+
         // ── Kích thước khi mở rộng (Expanded) ──
         private double _expandedWidth = 400;
         public double ExpandedWidth

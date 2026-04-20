@@ -43,56 +43,43 @@
                       Click="ContextClose_Click"/>
         </ContextMenu>
 
-        <!-- Close / Collapse button style — theme-aware -->
-        <Style x:Key="WidgetTinyButton" TargetType="Button">
+        <!-- Thu nhỏ widget — viền theme, chevron rõ nét -->
+        <Style x:Key="WidgetCollapseButton" TargetType="Button">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="22"/>
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Width" Value="24"/>
-            <Setter Property="Height" Value="24"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="ToolTip" Value="Thu nhỏ"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="4" Padding="0">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2"
+                                SnapsToDevicePixels="True">
+                            <Path Data="M 3.5 6 L 8 10.5 L 12.5 6"
+                                  Stroke="{TemplateBinding Foreground}"
+                                  StrokeThickness="1.35"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  Fill="Transparent"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  SnapsToDevicePixels="True"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource SecondaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonPressedBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Close button (red hover) — theme-aware -->
-        <Style x:Key="WidgetCloseButton" TargetType="Button" BasedOn="{StaticResource WidgetTinyButton}">
-            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerBrush}"/>
-                                <Setter TargetName="Bd" Property="Opacity" Value="0.8"/>
-                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -256,10 +243,10 @@
         <!-- ═══ STATE 2: Expanded / Active ═══ -->
         <Grid x:Name="ExpandedContainer" Visibility="Collapsed">
             <Border x:Name="ExpandedBorder"
-                    CornerRadius="12"
+                    CornerRadius="0"
                     BorderThickness="1"
                     Background="{DynamicResource WindowBackgroundBrush}"
-                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                    BorderBrush="{DynamicResource BorderColor}"
                     Effect="{StaticResource ExpandedShadow}"
                     ClipToBounds="True">
                 <Grid>
@@ -270,60 +257,54 @@
 
                     <!-- ── Title Bar ── -->
                     <Border x:Name="TitleBar" Grid.Row="0"
-                            Height="28"
+                            Height="32"
                             Cursor="SizeAll"
-                            Background="{DynamicResource CardColor}"
+                            Background="{DynamicResource WindowBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderColor}"
+                            BorderThickness="0,0,0,1"
                             ContextMenu="{StaticResource WidgetContextMenu}"
                             ContextMenuOpening="ContextMenu_Opening"
                             MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                             MouseMove="TitleBar_MouseMove"
                             MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
                             MouseEnter="TitleBar_MouseEnter">
-                        <Grid Margin="8,0,4,0">
+                        <Grid Margin="10,0,8,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>  <!-- Drag handle -->
                                 <ColumnDefinition Width="*"/>     <!-- Title -->
                                 <ColumnDefinition Width="Auto"/>  <!-- Buttons -->
                             </Grid.ColumnDefinitions>
 
-                            <!-- Drag handle dots -->
-                            <TextBlock Grid.Column="0" Text="⠿"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       Opacity="0.55"
-                                       FontSize="14"
-                                       VerticalAlignment="Center" Margin="0,0,6,0"
+                            <!-- Drag handle -->
+                            <TextBlock Grid.Column="0" Text="⋮⋮"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       Opacity="0.9"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" Margin="0,0,8,0"
                                        IsHitTestVisible="False"/>
 
                             <!-- Title -->
                             <TextBlock x:Name="TitleText" Grid.Column="1"
                                        Text="Widget"
-                                       Foreground="{DynamicResource PrimaryBrush}"
-                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold"
                                        VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"
                                        IsHitTestVisible="False"/>
 
-                            <!-- Control buttons -->
-                            <StackPanel Grid.Column="2" Orientation="Horizontal"
-                                        VerticalAlignment="Center">
-                                <!-- Collapse button -->
-                                <Button x:Name="CollapseBtn" Content="▾"
-                                        Style="{StaticResource WidgetTinyButton}"
-                                        ToolTip="Thu nhỏ"
-                                        Click="CollapseBtn_Click" Margin="0,0,2,0"/>
-                                <!-- Close button -->
-                                <Button x:Name="CloseBtn" Content="×"
-                                        Style="{StaticResource WidgetCloseButton}"
-                                        FontSize="14" FontWeight="Bold"
-                                        ToolTip="Đóng widget"
-                                        Click="CloseBtn_Click"/>
-                            </StackPanel>
+                            <!-- Thu nhỏ (đóng: chuột phải → Đóng widget) -->
+                            <Button x:Name="CollapseBtn" Grid.Column="2"
+                                    Style="{StaticResource WidgetCollapseButton}"
+                                    Click="CollapseBtn_Click"
+                                    VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
 
                     <!-- ── Content Area ── -->
                     <Border Grid.Row="1" x:Name="ContentArea" ClipToBounds="True"
-                            CornerRadius="0,0,12,12">
+                            Background="{DynamicResource CardColor}"
+                            CornerRadius="0">
                         <!-- WebView2 hoặc content sẽ được thêm programmatically -->
                     </Border>
 

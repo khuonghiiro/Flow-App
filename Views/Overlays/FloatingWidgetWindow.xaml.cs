@@ -15,6 +15,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 
 namespace FlowMy.Views.Overlays;
@@ -198,6 +199,7 @@ public partial class FloatingWidgetWindow : Window
         // Apply opacity
         IdleContainer.Opacity = Config.IdleOpacity;
         ConfigureRippleLayersForCurrentShape();
+        ApplyIdleChrome();
     }
 
     private void HideAllIdleShapes()
@@ -207,6 +209,76 @@ public partial class FloatingWidgetWindow : Window
         IdleSquare.Visibility = Visibility.Collapsed;
         IdleRoundedSquare.Visibility = Visibility.Collapsed;
         EdgeDockSquare.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Màu nền / icon idle từ hex hoặc theme; glow và ripple đồng bộ với nền.
+    /// </summary>
+    private void ApplyIdleChrome()
+    {
+        var defBg = Application.Current.TryFindResource("PrimaryBrush") as Brush
+                    ?? new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED));
+        var defFg = Application.Current.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White;
+
+        var bg = ParseHexBrush(Config.IdleBackgroundColor) ?? defBg;
+        var fg = ParseHexBrush(Config.IdleForegroundColor) ?? defFg;
+
+        var glowColor = BrushToGlowColor(bg);
+
+        void Paint(Border b, double blur, double glowOpacity)
+        {
+            b.Background = bg;
+            b.Effect = new DropShadowEffect
+            {
+                Color = glowColor,
+                BlurRadius = blur,
+                ShadowDepth = 0,
+                Opacity = glowOpacity
+            };
+        }
+
+        Paint(IdleCircle, 10, 0.22);
+        Paint(IdleDiamond, 9, 0.2);
+        Paint(IdleSquare, 10, 0.2);
+        Paint(IdleRoundedSquare, 10, 0.2);
+        Paint(EdgeDockSquare, 10, 0.2);
+
+        void PaintIcon(Controls.SvgViewboxEx svg, TextBlock tb)
+        {
+            svg.Fill = fg;
+            tb.Foreground = fg;
+        }
+
+        PaintIcon(IdleCircleSvg, IdleIcon);
+        PaintIcon(IdleDiamondSvg, IdleDiamondIcon);
+        PaintIcon(IdleSquareSvg, IdleSquareIcon);
+        PaintIcon(IdleRoundedSvg, IdleRoundedIcon);
+        PaintIcon(EdgeDockSvg, EdgeDockIcon);
+
+        var ring = new SolidColorBrush(glowColor);
+        RippleLayer1.BorderBrush = ring;
+        RippleLayer2.BorderBrush = ring;
+    }
+
+    private static SolidColorBrush? ParseHexBrush(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) return null;
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex.Trim());
+            return new SolidColorBrush(color);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Color BrushToGlowColor(Brush brush)
+    {
+        if (brush is SolidColorBrush scb)
+            return scb.Color;
+        return Color.FromRgb(0x7C, 0x3A, 0xED);
     }
 
     /// <summary>
@@ -221,6 +293,7 @@ public partial class FloatingWidgetWindow : Window
         EdgeDockSquare.Visibility = Visibility.Visible;
         IdleContainer.Opacity = Math.Max(0.85, Config.IdleOpacity);
         ConfigureRippleLayersForCurrentShape();
+        ApplyIdleChrome();
         ApplyIdleAnimation();
     }
 
@@ -510,7 +583,7 @@ public partial class FloatingWidgetWindow : Window
 
     private void TitleBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        // Với title bar: chỉ drag, không toggle khi click đơn (title bar đã có nút ▾ và ✕).
+        // Với title bar: chỉ drag, không toggle khi click đơn (có nút thu nhỏ; đóng qua menu chuột phải).
         EndInteraction(e);
     }
 
@@ -957,6 +1030,7 @@ public partial class FloatingWidgetWindow : Window
                 Height = h;
                 ResizeGrip.Visibility = Config.AllowResize ? Visibility.Visible : Visibility.Collapsed;
                 TitleBar.Visibility = Config.ShowTitleBar ? Visibility.Visible : Visibility.Collapsed;
+                ApplyIdleChrome();
             }
             else
             {
@@ -1158,13 +1232,6 @@ window.__ac.startWorkflow = acStartWorkflow;
     private void CollapseBtn_Click(object sender, RoutedEventArgs e)
     {
         CollapseWidget();
-    }
-
-    private void CloseBtn_Click(object sender, RoutedEventArgs e)
-    {
-        // Save position
-        SavePosition();
-        Close();
     }
 
     // ═══════════════════════════════════════════

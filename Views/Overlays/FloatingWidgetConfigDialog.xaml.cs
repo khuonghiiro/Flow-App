@@ -107,6 +107,24 @@ namespace FlowMy.Views.Overlays
             var name = string.IsNullOrWhiteSpace(cfg.WidgetName) ? (node.Title ?? "Widget") : cfg.WidgetName;
             var isOpen = FloatingWidgetManager.Instance.IsWidgetOpen(node.Id);
             var isSelected = ReferenceEquals(_selectedNode, node);
+            var isEnabled = cfg.IsEnabled;
+
+            var primary = (Brush?)Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.SlateBlue;
+            var secondary = (Brush?)Application.Current.TryFindResource("SecondaryBrush") ?? Brushes.Gray;
+            var primaryHover = (Brush?)Application.Current.TryFindResource("PrimaryHoverBrush") ?? primary;
+            var secondaryHover = (Brush?)Application.Current.TryFindResource("SecondaryHoverBrush") ?? secondary;
+            var activeRoyalPurple = ParseHexBrush("#7851A9") ?? ((Brush?)Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.SlateBlue);
+            var coralVivid = ParseHexBrush("#FF6F61") ?? ((Brush?)Application.Current.TryFindResource("SuccessBrush") ?? Brushes.OrangeRed);
+            var coralVividHover = ParseHexBrush("#FF816F") ?? coralVivid;
+            var subtleSecondary = CreateSubtleBrush(secondary, 0.2);
+            var subtleSecondaryHover = CreateSubtleBrush(secondaryHover, 0.3);
+
+            var baseBg = isSelected
+                ? activeRoyalPurple
+                : (isEnabled ? coralVivid : subtleSecondary);
+            var hoverBg = isSelected
+                ? primaryHover
+                : (isEnabled ? coralVividHover : subtleSecondaryHover);
 
             var border = new Border
             {
@@ -115,15 +133,15 @@ namespace FlowMy.Views.Overlays
                 Padding = new Thickness(10, 4, 10, 4),
                 Cursor = System.Windows.Input.Cursors.Hand,
                 BorderThickness = new Thickness(1),
-                Background = isSelected
-                    ? ((Brush?)Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.SlateBlue)
-                    : ((Brush?)Application.Current.TryFindResource("CardColor") ?? Brushes.Transparent),
+                Background = baseBg,
                 BorderBrush = isSelected
-                    ? ((Brush?)Application.Current.TryFindResource("PrimaryBrush") ?? Brushes.SlateBlue)
-                    : ((Brush?)Application.Current.TryFindResource("BorderColor") ?? Brushes.DimGray)
+                    ? activeRoyalPurple
+                    : (isEnabled ? coralVivid : secondary)
             };
 
             var panel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            var onPrimary = (Brush?)Application.Current.TryFindResource("TextOnPrimaryBrush") ?? Brushes.White;
+            var textBrush = (Brush?)Application.Current.TryFindResource("TextBrush") ?? Brushes.WhiteSmoke;
             panel.Children.Add(new TextBlock
             {
                 Text = isOpen ? "●" : "○",
@@ -131,9 +149,7 @@ namespace FlowMy.Views.Overlays
                 VerticalAlignment = VerticalAlignment.Center,
                 Foreground = isOpen
                     ? ((Brush?)Application.Current.TryFindResource("SuccessBrush") ?? Brushes.LimeGreen)
-                    : (isSelected
-                        ? ((Brush?)Application.Current.TryFindResource("TextOnPrimaryBrush") ?? Brushes.White)
-                        : ((Brush?)Application.Current.TryFindResource("TextBrush") ?? Brushes.Gray)),
+                    : (isSelected ? onPrimary : textBrush),
                 FontSize = 12
             });
             panel.Children.Add(new TextBlock
@@ -142,14 +158,43 @@ namespace FlowMy.Views.Overlays
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = isSelected
-                    ? ((Brush?)Application.Current.TryFindResource("TextOnPrimaryBrush") ?? Brushes.White)
-                    : ((Brush?)Application.Current.TryFindResource("TextBrush") ?? Brushes.Gray)
+                Foreground = isSelected ? onPrimary : textBrush
             });
 
             border.Child = panel;
+            border.MouseEnter += (_, _) => { border.Background = hoverBg; };
+            border.MouseLeave += (_, _) => { border.Background = baseBg; };
             border.MouseLeftButtonUp += (_, _) => SelectNodeInCombo(node);
+            border.ToolTip = isSelected
+                ? "Widget đang được chọn để chỉnh cấu hình"
+                : (isEnabled
+                    ? "Widget đang bật"
+                    : "Widget đang tắt (chưa bật floating)");
             return border;
+        }
+
+        private static Brush CreateSubtleBrush(Brush source, double alpha)
+        {
+            if (source is SolidColorBrush solid)
+            {
+                var c = solid.Color;
+                return new SolidColorBrush(Color.FromArgb((byte)(Math.Max(0, Math.Min(1, alpha)) * 255), c.R, c.G, c.B));
+            }
+            return source;
+        }
+
+        private static Brush? ParseHexBrush(string? hex)
+        {
+            if (string.IsNullOrWhiteSpace(hex)) return null;
+            try
+            {
+                var c = (Color)ColorConverter.ConvertFromString(hex.Trim());
+                return new SolidColorBrush(c);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private void SelectNodeInCombo(WorkflowNode node)
@@ -220,12 +265,14 @@ namespace FlowMy.Views.Overlays
                 LoadValuesFromConfig(node.FloatingWidget);
                 SettingsPanel.IsEnabled = true;
                 UpdateWidgetStatus();
+                RefreshExistingWidgets();
             }
             else
             {
                 _selectedNode = null;
                 SettingsPanel.IsEnabled = false;
                 WidgetStatusText.Text = string.Empty;
+                RefreshExistingWidgets();
             }
         }
 
@@ -274,6 +321,9 @@ namespace FlowMy.Views.Overlays
                     IdleIconSelector.SetSelectedIcon(string.Empty);
                     IdleIconTextBox.Text = raw;
                 }
+
+                IdleBackgroundColorTextBox.Text = cfg.IdleBackgroundColor ?? string.Empty;
+                IdleForegroundColorTextBox.Text = cfg.IdleForegroundColor ?? string.Empty;
 
                 UseRatioSizeCheckBox.IsChecked = cfg.UseRatioSize;
                 AllowResizeCheckBox.IsChecked = cfg.AllowResize;
@@ -382,6 +432,13 @@ namespace FlowMy.Views.Overlays
                 cfg.IdleIconText = "⚡";
             }
 
+            cfg.IdleBackgroundColor = string.IsNullOrWhiteSpace(IdleBackgroundColorTextBox.Text)
+                ? null
+                : IdleBackgroundColorTextBox.Text.Trim();
+            cfg.IdleForegroundColor = string.IsNullOrWhiteSpace(IdleForegroundColorTextBox.Text)
+                ? null
+                : IdleForegroundColorTextBox.Text.Trim();
+
             cfg.UseRatioSize = UseRatioSizeCheckBox.IsChecked == true;
             cfg.AllowResize = AllowResizeCheckBox.IsChecked == true;
 
@@ -479,6 +536,46 @@ namespace FlowMy.Views.Overlays
             SyncOpenWidgetRuntime(_selectedNode.Id);
             UpdateWidgetStatus();
             RefreshExistingWidgets();
+        }
+
+        private void OpenAllWidgetsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedNode != null && !_loadingValues)
+            {
+                ApplyValuesToConfig();
+                SyncOpenWidgetRuntime(_selectedNode.Id);
+            }
+
+            var enabled = _nodes.Where(n => n.FloatingWidget is { IsEnabled: true }).ToList();
+            if (enabled.Count == 0)
+            {
+                MessageBox.Show(this, "Không có widget nào đang bật (checked) để mở.", "Floating Widget", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            foreach (var node in enabled)
+            {
+                FloatingWidgetManager.Instance.OpenWidget(node, _host);
+                SyncOpenWidgetRuntime(node.Id);
+            }
+
+            UpdateWidgetStatus();
+            RefreshExistingWidgets();
+            PersistWorkflowChanges();
+        }
+
+        private void CloseAllWidgetsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedNode != null && !_loadingValues)
+            {
+                ApplyValuesToConfig();
+                SyncOpenWidgetRuntime(_selectedNode.Id);
+            }
+
+            FloatingWidgetManager.Instance.CloseAllWidgets();
+            UpdateWidgetStatus();
+            RefreshExistingWidgets();
+            PersistWorkflowChanges();
         }
 
         private void CloseWidgetButton_Click(object sender, RoutedEventArgs e)
