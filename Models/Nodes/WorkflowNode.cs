@@ -11,6 +11,11 @@ namespace FlowMy.Models
     {
         public string NodeId { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
+        public NodeType NodeType { get; set; } = NodeType.Generic;
+        public string NodeTypeDisplayName { get; set; } = "Generic";
+        public string IconKey { get; set; } = "cog";
+        public Brush? NodeBrush { get; set; }
+        public Brush? NodeTextBrush { get; set; }
 
         public override string ToString() => string.IsNullOrWhiteSpace(Title) ? NodeId : Title;
     }

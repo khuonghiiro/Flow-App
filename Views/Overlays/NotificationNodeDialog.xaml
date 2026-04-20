@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
         Title="Notification Node"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -110,12 +111,12 @@
                                                Foreground="{DynamicResource TextSecondary}"
                                                FontSize="11"
                                                Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding TitleSourceNodes}"
-                                              SelectedValue="{Binding TitleSelectedSourceNodeId, Mode=TwoWay}"
-                                              SelectedValuePath="NodeId"
-                                              DisplayMemberPath="Title"/>
+                                    <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                            ItemsSource="{Binding TitleSourceNodes}"
+                                                                            SelectedValue="{Binding TitleSelectedSourceNodeId, Mode=TwoWay}"
+                                                                            SelectedValuePath="NodeId"
+                                                                            DisplayMemberPath="Title"
+                                                                            PlaceholderText="Tìm node nguồn..." />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1">

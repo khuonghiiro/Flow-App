@@ -6,6 +6,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
+using System.Windows.Media;
 
 namespace FlowMy.ViewModels
 {
@@ -182,7 +184,12 @@ namespace FlowMy.ViewModels
                 var option = new WorkflowDataSourceOption
                 {
                     NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
+                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title,
+                    NodeType = n.Type,
+                    NodeTypeDisplayName = ResolveNodeTypeDisplayName(n.Type),
+                    IconKey = ResolveNodeIconKey(n.Type),
+                    NodeBrush = n.NodeBrush,
+                    NodeTextBrush = ResolveTextOnNodeBrush(n.ColorKey)
                 };
 
                 TitleSourceNodes.Add(option);
@@ -350,6 +357,95 @@ namespace FlowMy.ViewModels
         {
             _notificationNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        private static string ResolveNodeTypeDisplayName(NodeType type)
+        {
+            return type switch
+            {
+                NodeType.IfElse => "Conditional",
+                NodeType.KeyPressEvent => "Key Press Event",
+                NodeType.HotkeyPressEvent => "Hotkey Press Event",
+                NodeType.MouseEvent => "Mouse Event",
+                NodeType.StringSplit => "String Split",
+                NodeType.AssignData => "Assign Data",
+                NodeType.MediaGallery => "Media Gallery",
+                NodeType.ImageProcessing => "Image Processing",
+                NodeType.HttpRequest => "HTTP Request",
+                NodeType.FileDownload => "File Download",
+                NodeType.DataFetcher => "Data Fetcher",
+                NodeType.KeyValueBridge => "Key Value Bridge",
+                NodeType.FlowOverwrite => "Flow Overwrite",
+                NodeType.FolderFilePaths => "Folder File Paths",
+                NodeType.AsyncTaskDispatchCollect => "Async Dispatch Collect",
+                NodeType.KeyScopedStore => "Key Scoped Store",
+                _ => type.ToString()
+            };
+        }
+
+        private static string ResolveNodeIconKey(NodeType type)
+        {
+            return type switch
+            {
+                NodeType.Start => "play duotone-regular",
+                NodeType.End => "flag-checkered sharp-duotone-solid",
+                NodeType.Input => "left-to-dotted-line duotone-regular",
+                NodeType.Output => "right-to-dotted-line duotone-regular",
+                NodeType.Process => "cog",
+                NodeType.IfElse => "list-tree sharp-light",
+                NodeType.Loop => "arrows-spin duotone",
+                NodeType.Break => "circle-stop duotone",
+                NodeType.Continue => "diagram-predecessor duotone-light",
+                NodeType.Delay => "timer regular",
+                NodeType.Keyboard => "keyboard duotone",
+                NodeType.KeyPressEvent => "key duotone-regular",
+                NodeType.HotkeyPressEvent => "keyboard duotone",
+                NodeType.MouseEvent => "computer-mouse duotone",
+                NodeType.Variable => "square-root-variable",
+                NodeType.Function => "calculator",
+                NodeType.ScreenPosition => "crosshairs sharp-duotone-solid",
+                NodeType.ScreenCapture => "camera-viewfinder duotone-light",
+                NodeType.StringSplit => "scissors light",
+                NodeType.ListOut => "list-radio regular",
+                NodeType.AssignData => "arrows-left-right duotone",
+                NodeType.MediaGallery => "image-stack duotone",
+                NodeType.ImageProcessing => "image notdog-duo-solid",
+                NodeType.Code => "code duotone-regular",
+                NodeType.HtmlUi => "html5 brands",
+                NodeType.Folder => "folder-open duotone-thin",
+                NodeType.HttpRequest => "globe-pointer sharp-duotone-light",
+                NodeType.Web => "internet-explorer brands",
+                NodeType.AsyncTask => "diagram-project duotone-light",
+                NodeType.DataFetcher => "inbox-out duotone-light",
+                NodeType.FolderFilePaths => "file-import duotone-light",
+                NodeType.KeyValueBridge => "list-check solid",
+                NodeType.FlowOverwrite => "merge sharp-regular",
+                NodeType.Notification => "message-captions duotone-regular",
+                NodeType.Storage => "arrow-progress sharp-regular",
+                NodeType.Callback => "arrows-turn-right regular",
+                NodeType.FileDownload => "download solid",
+                NodeType.AsyncTaskDispatchCollect => "list-radio regular",
+                NodeType.KeyScopedStore => "arrow-progress sharp-regular",
+                NodeType.LoopContext => "arrows-spin duotone",
+                NodeType.Condition => "list-tree sharp-light",
+                _ => "cog"
+            };
+        }
+
+        private static Brush ResolveTextOnNodeBrush(string? nodeColorKey)
+        {
+            var app = Application.Current;
+            if (app != null && !string.IsNullOrWhiteSpace(nodeColorKey))
+            {
+                var clean = nodeColorKey.Trim();
+                if (clean.EndsWith("Brush", StringComparison.OrdinalIgnoreCase))
+                    clean = clean[..^"Brush".Length];
+
+                if (app.TryFindResource($"TextOn{clean}Brush") is Brush textOnBrush) return textOnBrush;
+                if (app.TryFindResource($"TextOn{clean}") is Brush textOnKey) return textOnKey;
+            }
+
+            return app?.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White;
         }
     }
 }
