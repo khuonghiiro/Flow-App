@@ -362,29 +362,11 @@ namespace FlowMy.Controls
             Child = _image;
         }
 
-        // ── Auto-inherit Foreground khi Fill chưa set ───────────────────────
+        // ── Khi parent đổi, reload để resolve lại màu ───────────────────────
         protected override void OnVisualParentChanged(DependencyObject oldParent)
         {
             base.OnVisualParentChanged(oldParent);
-
-            var local = ReadLocalValue(FillProperty);
-            bool notSet = local == DependencyProperty.UnsetValue
-                       || (local == null && BindingOperations.GetBinding(this, FillProperty) == null);
-
-            if (notSet)
-            {
-                DependencyObject p = VisualTreeHelper.GetParent(this);
-                while (p != null)
-                {
-                    if (p is Control || p is TextBlock)
-                    {
-                        BindingOperations.SetBinding(this, FillProperty,
-                            new Binding("Foreground") { Source = p, Mode = BindingMode.OneWay });
-                        break;
-                    }
-                    p = VisualTreeHelper.GetParent(p);
-                }
-            }
+            ReloadIcon();
         }
 
         // ── Core: load SVG → apply color → set ImageSource ─────────────────
@@ -451,8 +433,10 @@ namespace FlowMy.Controls
 
         private Brush GetEffectiveFill()
         {
+            // Ưu tiên Fill nếu được cung cấp.
             if (Fill != null) return Fill;
 
+            // Fill null => fallback lấy Foreground từ control cha gần nhất.
             DependencyObject p = VisualTreeHelper.GetParent(this);
             while (p != null)
             {
