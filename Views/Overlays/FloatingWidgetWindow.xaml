@@ -13,12 +13,6 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-        <!-- Idle shadow nhẹ theo shape -->
-        <DropShadowEffect x:Key="IdleGlowCircle" Color="#7C3AED" BlurRadius="10" ShadowDepth="0" Opacity="0.22"/>
-        <DropShadowEffect x:Key="IdleGlowSquare" Color="#7C3AED" BlurRadius="10" ShadowDepth="0" Opacity="0.2"/>
-        <DropShadowEffect x:Key="IdleGlowDiamond" Color="#7C3AED" BlurRadius="9" ShadowDepth="0" Opacity="0.2"/>
-        <DropShadowEffect x:Key="ExpandedShadow" Color="#000000" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.45"/>
-
         <!-- Context menu dùng cho cả idle shape và title bar -->
         <ContextMenu x:Key="WidgetContextMenu"
                      Background="{DynamicResource CardColor}"
@@ -139,7 +133,6 @@
                     CornerRadius="24"
                     Cursor="Hand"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlowCircle}"
                     RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
                     <ScaleTransform x:Name="IdleScaleTransform" ScaleX="1" ScaleY="1"/>
@@ -164,7 +157,6 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlowDiamond}"
                     RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
                     <TransformGroup>
@@ -193,7 +185,6 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlowSquare}"
                     RenderTransformOrigin="0.5,0.5">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="IdleSquareSvg"
@@ -213,7 +204,6 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlowSquare}"
                     RenderTransformOrigin="0.5,0.5">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="IdleRoundedSvg"
@@ -233,8 +223,7 @@
                     CornerRadius="6"
                     Cursor="Hand"
                     Visibility="Collapsed"
-                    Background="{DynamicResource PrimaryBrush}"
-                    Effect="{StaticResource IdleGlowSquare}">
+                    Background="{DynamicResource PrimaryBrush}">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="EdgeDockSvg"
                                            Width="14" Height="14"

@@ -118,10 +118,10 @@ public partial class FloatingWidgetWindow : Window
         // Start idle timer
         StartIdleTimer();
 
-        // If HtmlUiNode, pre-initialize WebView2
+        // If HtmlUiNode, pre-initialize WebView2 in background so initial window show is not blocked.
         if (_node is HtmlUiNode)
         {
-            await InitWebView2Async();
+            _ = InitWebView2Async();
         }
     }
 
@@ -1036,12 +1036,13 @@ public partial class FloatingWidgetWindow : Window
         if (_titleRevealHost == null || !_isExpanded) return;
 
         var area = GetTargetWorkArea();
-        // Theo commit spacing ổn định: neo theo bound thật của ExpandedBorder.
-        var borderOrigin = ExpandedBorder.TranslatePoint(new Point(0, 0), this);
-        var widgetLeft = Left + borderOrigin.X;
-        var widgetTop = Top + borderOrigin.Y;
-        var widgetRight = widgetLeft + (ExpandedBorder.ActualWidth > 0 ? ExpandedBorder.ActualWidth : Width);
-        var widgetBottom = widgetTop + (ExpandedBorder.ActualHeight > 0 ? ExpandedBorder.ActualHeight : Height);
+        // Use window bounds directly to avoid placement drift on side-docked cases.
+        var widgetWidth = ActualWidth > 0 ? ActualWidth : Width;
+        var widgetHeight = ActualHeight > 0 ? ActualHeight : Height;
+        var widgetLeft = Left;
+        var widgetTop = Top;
+        var widgetRight = widgetLeft + widgetWidth;
+        var widgetBottom = widgetTop + widgetHeight;
 
         var distLeft = Math.Abs(widgetLeft - area.Left);
         var distRight = Math.Abs(area.Right - widgetRight);
@@ -1059,7 +1060,7 @@ public partial class FloatingWidgetWindow : Window
         if (_titleRevealCollapseButton != null) _titleRevealCollapseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: áp cùng quy tắc spacing cho nút "-" để kích thước đo không lệch.
         if (_titleRevealOutsideCollapseToggleButton != null) _titleRevealOutsideCollapseToggleButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: mọi nút mới đều phải có margin theo orientation, nếu không ActualWidth/Height thay đổi bất định.
         if (_titleRevealPinToggleButton != null) _titleRevealPinToggleButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: đồng bộ nút pin với nhóm để tránh chênh 1-2px sau khi thêm feature.
-        _titleRevealHost.UpdateLayout(); // B3: bắt buộc re-measure sau khi đổi orientation/margin; thiếu bước này sẽ đo nhầm size frame trước và tạo "khoảng cách ảo".
+        _titleRevealActionsPanel?.UpdateLayout();
 
         const double sideGap = 5;      // yêu cầu UI: cách cạnh widget 5px ở case trái/phải
         const double topBottomGap = 3; // giữ margin nhỏ cho case top/bottom
@@ -1130,12 +1131,8 @@ public partial class FloatingWidgetWindow : Window
 
         ApplyTitleRevealHostBounds();
         _titleRevealHost.Show();
-        _titleRevealHost.UpdateLayout();
         _titleRevealHost.Topmost = Topmost;
-        ApplyTitleRevealHostBounds();
-
         Dispatcher.BeginInvoke(new Action(ApplyTitleRevealHostBounds), DispatcherPriority.Loaded);
-        Dispatcher.BeginInvoke(new Action(ApplyTitleRevealHostBounds), DispatcherPriority.Render);
     }
 
     private void SyncTitleRevealHostTopmost()
