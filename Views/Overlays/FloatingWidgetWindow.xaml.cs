@@ -1747,7 +1747,8 @@ window.__ac.startWorkflow = acStartWorkflow;
     {
         try
         {
-            var scale = new DoubleAnimation(1.0, 1.1, TimeSpan.FromMilliseconds(380))
+            // Keep pulse amplitude small to avoid subpixel blur/jitter on transparent overlay windows.
+            var scale = new DoubleAnimation(1.0, 1.06, TimeSpan.FromMilliseconds(420))
             {
                 AutoReverse = true,
                 RepeatBehavior = RepeatBehavior.Forever,

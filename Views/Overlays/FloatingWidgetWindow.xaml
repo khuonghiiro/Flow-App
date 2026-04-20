@@ -8,6 +8,9 @@
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
         Title="Widget">
 
     <Window.Resources>
@@ -117,7 +120,10 @@
         </Style>
     </Window.Resources>
 
-    <Grid x:Name="RootGrid">
+    <Grid x:Name="RootGrid"
+          SnapsToDevicePixels="True"
+          UseLayoutRounding="True"
+          RenderOptions.BitmapScalingMode="HighQuality">
         <!-- ═══ STATE 1: Collapsed / Idle Shape ═══ -->
         <Grid x:Name="IdleContainer" Visibility="Visible"
               ContextMenu="{StaticResource WidgetContextMenu}"
@@ -125,7 +131,9 @@
               MouseLeftButtonDown="Idle_MouseLeftButtonDown"
               MouseMove="Idle_MouseMove"
               MouseLeftButtonUp="Idle_MouseLeftButtonUp"
-              MouseEnter="Idle_MouseEnter">
+              MouseEnter="Idle_MouseEnter"
+              SnapsToDevicePixels="True"
+              UseLayoutRounding="True">
 
             <!-- Circle shape (default) -->
             <Border x:Name="IdleCircle"
@@ -133,6 +141,8 @@
                     CornerRadius="24"
                     Cursor="Hand"
                     Background="{DynamicResource PrimaryBrush}"
+                    SnapsToDevicePixels="True"
+                    UseLayoutRounding="True"
                     RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
                     <ScaleTransform x:Name="IdleScaleTransform" ScaleX="1" ScaleY="1"/>
@@ -157,6 +167,8 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
+                    SnapsToDevicePixels="True"
+                    UseLayoutRounding="True"
                     RenderTransformOrigin="0.5,0.5">
                 <Border.RenderTransform>
                     <TransformGroup>
@@ -185,6 +197,8 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
+                    SnapsToDevicePixels="True"
+                    UseLayoutRounding="True"
                     RenderTransformOrigin="0.5,0.5">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="IdleSquareSvg"
@@ -204,6 +218,8 @@
                     Cursor="Hand"
                     Visibility="Collapsed"
                     Background="{DynamicResource PrimaryBrush}"
+                    SnapsToDevicePixels="True"
+                    UseLayoutRounding="True"
                     RenderTransformOrigin="0.5,0.5">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="IdleRoundedSvg"
@@ -223,7 +239,9 @@
                     CornerRadius="6"
                     Cursor="Hand"
                     Visibility="Collapsed"
-                    Background="{DynamicResource PrimaryBrush}">
+                    Background="{DynamicResource PrimaryBrush}"
+                    SnapsToDevicePixels="True"
+                    UseLayoutRounding="True">
                 <Grid IsHitTestVisible="False">
                     <controls:SvgViewboxEx x:Name="EdgeDockSvg"
                                            Width="14" Height="14"
