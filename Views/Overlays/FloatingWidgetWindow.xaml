@@ -87,7 +87,7 @@
             </Setter>
         </Style>
 
-        <Style x:Key="WidgetTitleRevealButton" TargetType="Button" BasedOn="{StaticResource DangerButton}">
+        <Style x:Key="WidgetTitleRevealButton" TargetType="Button">
             <Setter Property="Width" Value="24"/>
             <Setter Property="Height" Value="24"/>
             <Setter Property="Padding" Value="0"/>
@@ -95,6 +95,8 @@
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Content" Value="≡"/>
             <Setter Property="ToolTip" Value="Hiện thanh tiêu đề widget"/>
+            <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnDangerBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="{DynamicResource TextOnDangerBrush}"/>
             <Setter Property="Template">
@@ -280,7 +282,6 @@
                     BorderThickness="1"
                     Background="{DynamicResource WindowBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderColor}"
-                    Effect="{StaticResource ExpandedShadow}"
                     ClipToBounds="True">
                 <Grid>
                     <Grid.RowDefinitions>

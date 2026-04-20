@@ -351,10 +351,9 @@ public partial class FloatingWidgetWindow : Window
         }
         else
         {
-            var size = Config.IdleSize;
-            var windowSize = Config.IdleShape == WidgetIdleShape.Diamond ? size * 1.4 : size;
-            Width = windowSize + 8;  // padding for glow effect
-            Height = windowSize + 8;
+            var dims = GetCollapsedWindowMetrics();
+            Width = dims.WindowWidth;
+            Height = dims.WindowHeight;
             ApplyIdleShape();
         }
 
@@ -611,6 +610,7 @@ public partial class FloatingWidgetWindow : Window
         var cx = Left + Width / 2;
         var cy = Top + Height / 2;
         var margin = Config.SnapMargin;
+        var (padX, padY) = GetCollapsedRipplePadding();
 
         // Calculate distances to each edge
         var distLeft = cx - workArea.Left;
@@ -624,13 +624,13 @@ public partial class FloatingWidgetWindow : Window
         var targetTop = Top;
 
         if (Math.Abs(minDist - distLeft) < 0.01)
-            targetLeft = workArea.Left + margin;
+            targetLeft = workArea.Left + margin - padX;
         else if (Math.Abs(minDist - distRight) < 0.01)
-            targetLeft = workArea.Right - Width - margin;
+            targetLeft = workArea.Right - Width - margin + padX;
         else if (Math.Abs(minDist - distTop) < 0.01)
-            targetTop = workArea.Top + margin;
+            targetTop = workArea.Top + margin - padY;
         else
-            targetTop = workArea.Bottom - Height - margin;
+            targetTop = workArea.Bottom - Height - margin + padY;
 
         // Animate snap
         AnimateMoveTo(targetLeft, targetTop, 200);
@@ -711,10 +711,9 @@ public partial class FloatingWidgetWindow : Window
         double h = Height;
         if (restoreOriginalShape && Config.EdgeDockAsSquare)
         {
-            var idleSize = Config.IdleSize;
-            var windowSize = Config.IdleShape == WidgetIdleShape.Diamond ? idleSize * 1.4 : idleSize;
-            w = windowSize + 8;
-            h = windowSize + 8;
+            var dims = GetCollapsedWindowMetrics();
+            w = dims.WindowWidth;
+            h = dims.WindowHeight;
             Width = w;
             Height = h;
             ApplyIdleShape();
@@ -733,24 +732,25 @@ public partial class FloatingWidgetWindow : Window
     private (double Left, double Top) ComputeDockPosition(
         WidgetSnapEdge edge, Rect workArea, double w, double h, double margin)
     {
+        var (padX, padY) = GetCollapsedRipplePadding();
         double l = Left, t = Top;
         switch (edge)
         {
             case WidgetSnapEdge.Left:
-                l = workArea.Left + margin;
-                t = Math.Max(workArea.Top + margin, Math.Min(workArea.Bottom - h - margin, Top));
+                l = workArea.Left + margin - padX;
+                t = Math.Max(workArea.Top + margin - padY, Math.Min(workArea.Bottom - h - margin + padY, Top));
                 break;
             case WidgetSnapEdge.Right:
-                l = workArea.Right - w - margin;
-                t = Math.Max(workArea.Top + margin, Math.Min(workArea.Bottom - h - margin, Top));
+                l = workArea.Right - w - margin + padX;
+                t = Math.Max(workArea.Top + margin - padY, Math.Min(workArea.Bottom - h - margin + padY, Top));
                 break;
             case WidgetSnapEdge.Top:
-                t = workArea.Top + margin;
-                l = Math.Max(workArea.Left + margin, Math.Min(workArea.Right - w - margin, Left));
+                t = workArea.Top + margin - padY;
+                l = Math.Max(workArea.Left + margin - padX, Math.Min(workArea.Right - w - margin + padX, Left));
                 break;
             case WidgetSnapEdge.Bottom:
-                t = workArea.Bottom - h - margin;
-                l = Math.Max(workArea.Left + margin, Math.Min(workArea.Right - w - margin, Left));
+                t = workArea.Bottom - h - margin + padY;
+                l = Math.Max(workArea.Left + margin - padX, Math.Min(workArea.Right - w - margin + padX, Left));
                 break;
         }
         return (l, t);
@@ -766,10 +766,9 @@ public partial class FloatingWidgetWindow : Window
         _isSlideHidden = false;
 
         // Đổi visual trở lại idle shape bình thường & set size tương ứng
-        var idleSize = Config.IdleSize;
-        var windowSize = Config.IdleShape == WidgetIdleShape.Diamond ? idleSize * 1.4 : idleSize;
-        Width = windowSize + 8;
-        Height = windowSize + 8;
+        var dims = GetCollapsedWindowMetrics();
+        Width = dims.WindowWidth;
+        Height = dims.WindowHeight;
         ApplyIdleShape();
 
         _dockedEdge = WidgetSnapEdge.None;
@@ -913,30 +912,23 @@ public partial class FloatingWidgetWindow : Window
         var minDist = Math.Min(Math.Min(distLeft, distRight), Math.Min(distTop, distBottom));
 
         const double gap = 6;
+        var btnW = TitleBarRevealButton.ActualWidth > 0 ? TitleBarRevealButton.ActualWidth : TitleBarRevealButton.Width;
+        var btnH = TitleBarRevealButton.ActualHeight > 0 ? TitleBarRevealButton.ActualHeight : TitleBarRevealButton.Height;
+        var edgePad = 8.0;
 
-        if (Math.Abs(minDist - distLeft) < 0.01)
+        if (Math.Abs(minDist - distLeft) < 0.01 || Math.Abs(minDist - distRight) < 0.01)
         {
-            popup.Placement = PlacementMode.Right;
-            popup.HorizontalOffset = gap;
-            popup.VerticalOffset = (Height / 2.0) - (TitleBarRevealButton.Height / 2.0);
-        }
-        else if (Math.Abs(minDist - distRight) < 0.01)
-        {
-            popup.Placement = PlacementMode.Left;
-            popup.HorizontalOffset = -gap;
-            popup.VerticalOffset = (Height / 2.0) - (TitleBarRevealButton.Height / 2.0);
-        }
-        else if (Math.Abs(minDist - distTop) < 0.01)
-        {
-            popup.Placement = PlacementMode.Bottom;
-            popup.HorizontalOffset = (Width / 2.0) - (TitleBarRevealButton.Width / 2.0);
-            popup.VerticalOffset = gap;
+            var pinTop = distTop <= distBottom;
+            popup.Placement = Math.Abs(minDist - distLeft) < 0.01 ? PlacementMode.Right : PlacementMode.Left;
+            popup.HorizontalOffset = Math.Abs(minDist - distLeft) < 0.01 ? gap : -gap;
+            popup.VerticalOffset = pinTop ? edgePad : Math.Max(edgePad, Height - btnH - edgePad);
         }
         else
         {
-            popup.Placement = PlacementMode.Top;
-            popup.HorizontalOffset = (Width / 2.0) - (TitleBarRevealButton.Width / 2.0);
-            popup.VerticalOffset = -gap;
+            var pinLeft = distLeft <= distRight;
+            popup.Placement = Math.Abs(minDist - distTop) < 0.01 ? PlacementMode.Bottom : PlacementMode.Top;
+            popup.VerticalOffset = Math.Abs(minDist - distTop) < 0.01 ? gap : -gap;
+            popup.HorizontalOffset = pinLeft ? edgePad : Math.Max(edgePad, Width - btnW - edgePad);
         }
     }
 
@@ -1530,6 +1522,12 @@ window.__ac.startWorkflow = acStartWorkflow;
         RippleLayer1.Height = h;
         RippleLayer2.Width = w;
         RippleLayer2.Height = h;
+        RippleLayer1.HorizontalAlignment = HorizontalAlignment.Center;
+        RippleLayer1.VerticalAlignment = VerticalAlignment.Center;
+        RippleLayer2.HorizontalAlignment = HorizontalAlignment.Center;
+        RippleLayer2.VerticalAlignment = VerticalAlignment.Center;
+        RippleLayer1.BorderThickness = new Thickness(ResolveRippleStrokeThickness(active));
+        RippleLayer2.BorderThickness = new Thickness(ResolveRippleStrokeThickness(active));
         RippleLayer1.CornerRadius = cr;
         RippleLayer2.CornerRadius = cr;
         RippleLayer1.Clip = BuildRippleClip(active, w, h, cr);
@@ -1548,12 +1546,31 @@ window.__ac.startWorkflow = acStartWorkflow;
         }
 
         if (active.Name == "IdleCircle")
-            return new EllipseGeometry(new Rect(0, 0, w, h));
+            return new EllipseGeometry(new Point(w / 2.0, h / 2.0), w / 2.0, h / 2.0);
 
         if (cornerRadius.TopLeft > 0.01 || cornerRadius.TopRight > 0.01 || cornerRadius.BottomLeft > 0.01 || cornerRadius.BottomRight > 0.01)
             return new RectangleGeometry(new Rect(0, 0, w, h), cornerRadius.TopLeft, cornerRadius.TopLeft);
 
         return new RectangleGeometry(new Rect(0, 0, w, h));
+    }
+
+    private static double ResolveRippleStrokeThickness(Border active)
+    {
+        if (active.Name == "IdleCircle") return 1.35;
+        if (active.Name == "IdleDiamond") return 1.25;
+        if (active.Name == "IdleRoundedSquare") return 1.4;
+        return 1.45;
+    }
+
+    private static double ResolveRippleStrokeThickness(WidgetIdleShape shape)
+    {
+        return shape switch
+        {
+            WidgetIdleShape.Circle => 1.35,
+            WidgetIdleShape.Diamond => 1.25,
+            WidgetIdleShape.RoundedSquare => 1.4,
+            _ => 1.45
+        };
     }
 
     private void AnimateExpandFadeIn()
@@ -1612,10 +1629,46 @@ window.__ac.startWorkflow = acStartWorkflow;
     private void ClampToWorkArea()
     {
         var workArea = GetTargetWorkArea();
-        if (Left < workArea.Left) Left = workArea.Left;
-        if (Top < workArea.Top) Top = workArea.Top;
-        if (Left + Width > workArea.Right) Left = workArea.Right - Width;
-        if (Top + Height > workArea.Bottom) Top = workArea.Bottom - Height;
+        var (padX, padY) = GetCollapsedRipplePadding();
+        var minLeft = workArea.Left - padX;
+        var maxLeft = workArea.Right - Width + padX;
+        var minTop = workArea.Top - padY;
+        var maxTop = workArea.Bottom - Height + padY;
+
+        if (Left < minLeft) Left = minLeft;
+        if (Top < minTop) Top = minTop;
+        if (Left > maxLeft) Left = maxLeft;
+        if (Top > maxTop) Top = maxTop;
+    }
+
+    private (double PadX, double PadY) GetCollapsedRipplePadding()
+    {
+        if (_isExpanded || Config.IdleAnimation != WidgetIdleAnimation.Ripple)
+            return (0, 0);
+        if (EdgeDockSquare.Visibility == Visibility.Visible)
+            return (0, 0);
+
+        var dims = GetCollapsedWindowMetrics();
+        return (dims.PadX, dims.PadY);
+    }
+
+    private (double WindowWidth, double WindowHeight, double PadX, double PadY) GetCollapsedWindowMetrics()
+    {
+        var size = Config.IdleSize;
+        var coreVisualSize = Config.IdleShape == WidgetIdleShape.Diamond ? size * 1.4 : size;
+        var coreWindowSize = coreVisualSize + 8.0; // glow padding
+        var windowSize = coreWindowSize;
+
+        if (Config.IdleAnimation == WidgetIdleAnimation.Ripple)
+        {
+            var rippleBase = Config.IdleShape == WidgetIdleShape.Diamond ? size * 0.85 : size;
+            var rippleStroke = ResolveRippleStrokeThickness(Config.IdleShape);
+            var rippleOuter = rippleBase * 2.55 + (rippleStroke * 2) + 8.0;
+            windowSize = Math.Max(coreWindowSize, rippleOuter);
+        }
+
+        var pad = Math.Max(0, (windowSize - coreWindowSize) / 2.0);
+        return (windowSize, windowSize, pad, pad);
     }
 
     private void SavePosition()
