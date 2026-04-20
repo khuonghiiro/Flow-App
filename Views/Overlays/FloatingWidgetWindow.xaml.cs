@@ -58,9 +58,11 @@ public partial class FloatingWidgetWindow : Window
     private WebView2? _webView;
     private bool _webViewInitialized;
 
-    /// <summary>Cửa sổ nhỏ độc lập cho nút đỏ — Popup WPF không đặt được ổn định ngoài window cha.</summary>
+    /// <summary>Mini toolbar ngoài widget (đóng + thu nhỏ) thay cho Popup.</summary>
     private Window? _titleRevealHost;
-    private Button? _titleRevealButton;
+    private StackPanel? _titleRevealActionsPanel;
+    private Button? _titleRevealCloseButton;
+    private Button? _titleRevealCollapseButton;
 
     // ── Slide animation state ──
     private double _slideOriginalLeft;
@@ -601,7 +603,8 @@ public partial class FloatingWidgetWindow : Window
     private void TitleBarRevealButton_Click(object sender, RoutedEventArgs e)
     {
         MarkActivity();
-        ShowTitleBarTemporarily();
+        if (_isExpanded)
+            CollapseWidget();
     }
 
     // ═══════════════════════════════════════════
@@ -904,23 +907,59 @@ public partial class FloatingWidgetWindow : Window
     {
         if (_titleRevealHost != null) return;
 
-        var btn = new Button
+        var closeBtn = new Button
         {
             Focusable = true,
             Width = 24,
             Height = 24,
-            Content = "≡",
-            FontSize = 12,
-            FontWeight = FontWeights.Bold,
-            Background = Brushes.IndianRed,
-            Foreground = Brushes.White,
-            BorderBrush = Brushes.White,
+            Content = "x",
+            FontSize = 13,
+            Style = (Style)TryFindResource("DangerButton"),
             BorderThickness = new Thickness(1),
-            ToolTip = "Hiện thanh tiêu đề widget"
+            ToolTip = "Đóng widget",
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 4, 0),
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
         };
-        if (TryFindResource("WidgetTitleRevealButton") is Style revealStyle)
-            btn.Style = revealStyle;
-        btn.Click += TitleBarRevealButton_Click;
+        closeBtn.Click += TitleRevealCloseButton_Click;
+
+        var collapseBtn = new Button
+        {
+            Focusable = true,
+            Width = 24,
+            Height = 24,
+            Content = "-",
+            FontSize = 14,
+            Style = (Style)TryFindResource("PrimaryButton"),
+            BorderThickness = new Thickness(1),
+            ToolTip = "Thu nhỏ về biểu tượng",
+            Padding = new Thickness(0),
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
+        collapseBtn.Click += TitleBarRevealButton_Click;
+
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0),
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
+        row.Children.Add(closeBtn);
+        row.Children.Add(collapseBtn);
+
+        var panel = new Border
+        {
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(0),
+            Child = row,
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
 
         var host = new Window
         {
@@ -933,19 +972,22 @@ public partial class FloatingWidgetWindow : Window
             SizeToContent = SizeToContent.WidthAndHeight,
             ShowActivated = false,
             SnapsToDevicePixels = true,
+            UseLayoutRounding = true,
             Focusable = false,
-            MinWidth = 24,
-            MinHeight = 24,
-            Content = btn
+            MinWidth = 0,
+            MinHeight = 0,
+            Content = panel
         };
 
-        _titleRevealButton = btn;
+        _titleRevealCloseButton = closeBtn;
+        _titleRevealCollapseButton = collapseBtn;
+        _titleRevealActionsPanel = row;
         _titleRevealHost = host;
     }
 
     private void ApplyTitleRevealHostBounds()
     {
-        if (_titleRevealHost == null || _titleRevealButton == null || !_isExpanded) return;
+        if (_titleRevealHost == null || !_isExpanded) return;
 
         var area = GetTargetWorkArea();
         var cx = Left + Width / 2;
@@ -956,18 +998,24 @@ public partial class FloatingWidgetWindow : Window
         var distBottom = area.Bottom - cy;
         var minDist = Math.Min(Math.Min(distLeft, distRight), Math.Min(distTop, distBottom));
 
-        const double gap = 6;
-        var btnW = _titleRevealButton.ActualWidth > 0 ? _titleRevealButton.ActualWidth : _titleRevealButton.Width;
-        var btnH = _titleRevealButton.ActualHeight > 0 ? _titleRevealButton.ActualHeight : _titleRevealButton.Height;
-        if (btnW <= 0) btnW = 24;
-        if (btnH <= 0) btnH = 24;
+        const double gap = 3;
+        var btnW = _titleRevealHost.ActualWidth > 0 ? _titleRevealHost.ActualWidth : _titleRevealHost.Width;
+        var btnH = _titleRevealHost.ActualHeight > 0 ? _titleRevealHost.ActualHeight : _titleRevealHost.Height;
+        if (btnW <= 0) btnW = 56;
+        if (btnH <= 0) btnH = 32;
         var edgePad = 8.0;
 
         var tw = Width;
         var th = Height;
 
         double sl, st;
-        if (Math.Abs(minDist - distLeft) < 0.01 || Math.Abs(minDist - distRight) < 0.01)
+        var verticalDock = Math.Abs(minDist - distLeft) < 0.01 || Math.Abs(minDist - distRight) < 0.01;
+        if (_titleRevealActionsPanel != null)
+            _titleRevealActionsPanel.Orientation = verticalDock ? Orientation.Vertical : Orientation.Horizontal;
+        if (_titleRevealCloseButton != null)
+            _titleRevealCloseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 4) : new Thickness(0, 0, 4, 0);
+
+        if (verticalDock)
         {
             var pinTop = distTop <= distBottom;
             st = pinTop ? Top + edgePad : Top + Math.Max(edgePad, th - btnH - edgePad);
@@ -994,8 +1042,8 @@ public partial class FloatingWidgetWindow : Window
         sl = Math.Max(area.Left, Math.Min(sl, area.Right - btnW));
         st = Math.Max(area.Top, Math.Min(st, area.Bottom - btnH));
 
-        _titleRevealHost.Left = sl;
-        _titleRevealHost.Top = st;
+        _titleRevealHost.Left = Math.Round(sl);
+        _titleRevealHost.Top = Math.Round(st);
     }
 
     private void UpdateTitleRevealButtonPlacement()
@@ -1023,6 +1071,7 @@ public partial class FloatingWidgetWindow : Window
 
         ApplyTitleRevealHostBounds();
         _titleRevealHost.Show();
+        _titleRevealHost.UpdateLayout();
         _titleRevealHost.Topmost = Topmost;
         ApplyTitleRevealHostBounds();
 
@@ -1034,6 +1083,12 @@ public partial class FloatingWidgetWindow : Window
     {
         if (_titleRevealHost != null)
             _titleRevealHost.Topmost = Topmost;
+    }
+
+    private void TitleRevealCloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        SavePosition();
+        Close();
     }
 
     // ═══════════════════════════════════════════
@@ -1853,7 +1908,9 @@ window.__ac.startWorkflow = acStartWorkflow;
         }
         catch { }
         _titleRevealHost = null;
-        _titleRevealButton = null;
+        _titleRevealActionsPanel = null;
+        _titleRevealCloseButton = null;
+        _titleRevealCollapseButton = null;
 
         base.OnClosed(e);
     }
