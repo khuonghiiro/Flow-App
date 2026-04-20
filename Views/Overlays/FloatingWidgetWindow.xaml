@@ -360,15 +360,6 @@
                     </Thumb>
                 </Grid>
             </Border>
-            <Popup x:Name="TitleBarRevealPopup"
-                   Placement="Absolute"
-                   StaysOpen="True"
-                   AllowsTransparency="True"
-                   IsOpen="False">
-                <Button x:Name="TitleBarRevealButton"
-                        Style="{StaticResource WidgetTitleRevealButton}"
-                        Click="TitleBarRevealButton_Click"/>
-            </Popup>
         </Grid>
     </Grid>
 </Window>

@@ -58,6 +58,10 @@ public partial class FloatingWidgetWindow : Window
     private WebView2? _webView;
     private bool _webViewInitialized;
 
+    /// <summary>Cửa sổ nhỏ độc lập cho nút đỏ — Popup WPF không đặt được ổn định ngoài window cha.</summary>
+    private Window? _titleRevealHost;
+    private Button? _titleRevealButton;
+
     // ── Slide animation state ──
     private double _slideOriginalLeft;
     private double _slideOriginalTop;
@@ -896,11 +900,52 @@ public partial class FloatingWidgetWindow : Window
         RestartTitleBarHideTimer();
     }
 
-    private void UpdateTitleRevealButtonPlacement()
+    private void EnsureTitleRevealHost()
     {
-        var popup = GetTitleRevealPopup();
-        if (!_isExpanded || TitleBarRevealButton == null || popup == null) return;
-        if (!popup.IsOpen) return;
+        if (_titleRevealHost != null) return;
+
+        var btn = new Button
+        {
+            Focusable = true,
+            Width = 24,
+            Height = 24,
+            Content = "≡",
+            FontSize = 12,
+            FontWeight = FontWeights.Bold,
+            Background = Brushes.IndianRed,
+            Foreground = Brushes.White,
+            BorderBrush = Brushes.White,
+            BorderThickness = new Thickness(1),
+            ToolTip = "Hiện thanh tiêu đề widget"
+        };
+        if (TryFindResource("WidgetTitleRevealButton") is Style revealStyle)
+            btn.Style = revealStyle;
+        btn.Click += TitleBarRevealButton_Click;
+
+        var host = new Window
+        {
+            Owner = this,
+            WindowStyle = WindowStyle.None,
+            AllowsTransparency = true,
+            Background = Brushes.Transparent,
+            ShowInTaskbar = false,
+            ResizeMode = ResizeMode.NoResize,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ShowActivated = false,
+            SnapsToDevicePixels = true,
+            Focusable = false,
+            MinWidth = 24,
+            MinHeight = 24,
+            Content = btn
+        };
+
+        _titleRevealButton = btn;
+        _titleRevealHost = host;
+    }
+
+    private void ApplyTitleRevealHostBounds()
+    {
+        if (_titleRevealHost == null || _titleRevealButton == null || !_isExpanded) return;
 
         var area = GetTargetWorkArea();
         var cx = Left + Width / 2;
@@ -912,51 +957,83 @@ public partial class FloatingWidgetWindow : Window
         var minDist = Math.Min(Math.Min(distLeft, distRight), Math.Min(distTop, distBottom));
 
         const double gap = 6;
-        var btnW = TitleBarRevealButton.ActualWidth > 0 ? TitleBarRevealButton.ActualWidth : TitleBarRevealButton.Width;
-        var btnH = TitleBarRevealButton.ActualHeight > 0 ? TitleBarRevealButton.ActualHeight : TitleBarRevealButton.Height;
+        var btnW = _titleRevealButton.ActualWidth > 0 ? _titleRevealButton.ActualWidth : _titleRevealButton.Width;
+        var btnH = _titleRevealButton.ActualHeight > 0 ? _titleRevealButton.ActualHeight : _titleRevealButton.Height;
         if (btnW <= 0) btnW = 24;
         if (btnH <= 0) btnH = 24;
         var edgePad = 8.0;
 
-        // Dùng tọa độ cửa sổ (DIP) — cùng hệ với PlacementMode.Absolute — để nút nằm ngoài khung expanded,
-        // không bị PlacementTarget co vào trong client area.
-        popup.Placement = PlacementMode.Absolute;
-        double hx, hy;
+        var tw = Width;
+        var th = Height;
+
+        double sl, st;
         if (Math.Abs(minDist - distLeft) < 0.01 || Math.Abs(minDist - distRight) < 0.01)
         {
             var pinTop = distTop <= distBottom;
-            var vy = pinTop ? Top + edgePad : Top + Math.Max(edgePad, Height - btnH - edgePad);
+            st = pinTop ? Top + edgePad : Top + Math.Max(edgePad, th - btnH - edgePad);
             if (Math.Abs(minDist - distLeft) < 0.01)
-                hx = Left - btnW - gap;
+                // Sát cạnh trái màn hình -> đặt nút ở ngoài cạnh phải widget (vẫn nằm trong màn hình).
+                sl = Left + tw + gap;
             else
-                hx = Left + Width + gap;
-            hy = vy;
+                // Sát cạnh phải màn hình -> đặt nút ở ngoài cạnh trái widget.
+                sl = Left - btnW - gap;
         }
         else
         {
             var pinLeft = distLeft <= distRight;
-            var vx = pinLeft ? Left + edgePad : Left + Math.Max(edgePad, Width - btnW - edgePad);
+            sl = pinLeft ? Left + edgePad : Left + Math.Max(edgePad, tw - btnW - edgePad);
             if (Math.Abs(minDist - distTop) < 0.01)
-                hy = Top - btnH - gap;
+                // Sát cạnh trên màn hình -> đặt nút ở ngoài cạnh dưới widget.
+                st = Top + th + gap;
             else
-                hy = Top + Height + gap;
-            hx = vx;
+                // Sát cạnh dưới màn hình -> đặt nút ở ngoài cạnh trên widget.
+                st = Top - btnH - gap;
         }
 
-        hx = Math.Max(area.Left + 2, Math.Min(hx, area.Right - btnW - 2));
-        hy = Math.Max(area.Top + 2, Math.Min(hy, area.Bottom - btnH - 2));
-        popup.HorizontalOffset = hx;
-        popup.VerticalOffset = hy;
+        // Giữ nút trong work area nhưng vẫn ưu tiên nằm ngoài widget.
+        sl = Math.Max(area.Left, Math.Min(sl, area.Right - btnW));
+        st = Math.Max(area.Top, Math.Min(st, area.Bottom - btnH));
+
+        _titleRevealHost.Left = sl;
+        _titleRevealHost.Top = st;
     }
 
-    private Popup? GetTitleRevealPopup()
-        => TitleBarRevealButton?.Parent as Popup;
+    private void UpdateTitleRevealButtonPlacement()
+    {
+        EnsureTitleRevealHost();
+        if (_titleRevealHost == null) return;
+        ApplyTitleRevealHostBounds();
+    }
 
     private void SetTitleRevealOpen(bool isOpen)
     {
-        var popup = GetTitleRevealPopup();
-        if (popup != null)
-            popup.IsOpen = isOpen;
+        if (!isOpen)
+        {
+            _titleRevealHost?.Hide();
+            return;
+        }
+
+        if (!_isExpanded) return;
+
+        EnsureTitleRevealHost();
+        if (_titleRevealHost == null) return;
+
+        _titleRevealHost.Owner = this;
+        _titleRevealHost.Topmost = Topmost;
+
+        ApplyTitleRevealHostBounds();
+        _titleRevealHost.Show();
+        _titleRevealHost.Topmost = Topmost;
+        ApplyTitleRevealHostBounds();
+
+        Dispatcher.BeginInvoke(new Action(ApplyTitleRevealHostBounds), DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(new Action(ApplyTitleRevealHostBounds), DispatcherPriority.Render);
+    }
+
+    private void SyncTitleRevealHostTopmost()
+    {
+        if (_titleRevealHost != null)
+            _titleRevealHost.Topmost = Topmost;
     }
 
     // ═══════════════════════════════════════════
@@ -1125,6 +1202,7 @@ public partial class FloatingWidgetWindow : Window
         {
             Topmost = Config.AlwaysOnTop;
             ShowInTaskbar = Config.ShowInTaskbar;
+            SyncTitleRevealHostTopmost();
             TitleText.Text = ResolveDisplayTitle(_node);
 
             if (_isExpanded)
@@ -1389,6 +1467,7 @@ window.__ac.startWorkflow = acStartWorkflow;
         Topmost = !Topmost;
         if (_node.FloatingWidget != null)
             _node.FloatingWidget.AlwaysOnTop = Topmost;
+        SyncTitleRevealHostTopmost();
     }
 
     private void ContextClose_Click(object sender, RoutedEventArgs e)
@@ -1763,5 +1842,19 @@ window.__ac.startWorkflow = acStartWorkflow;
 
         // Save config
         SavePosition();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        try
+        {
+            _titleRevealHost?.Hide();
+            _titleRevealHost?.Close();
+        }
+        catch { }
+        _titleRevealHost = null;
+        _titleRevealButton = null;
+
+        base.OnClosed(e);
     }
 }
