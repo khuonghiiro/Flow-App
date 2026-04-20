@@ -344,9 +344,9 @@ public partial class FloatingWidgetWindow : Window
         // ngược lại dùng IdleSize (có padding cho diamond rotation).
         if (_isSlideHidden && Config.EdgeDockAsSquare)
         {
-            var sq = Config.EdgeDockSquareSize;
-            Width = sq + 8;
-            Height = sq + 8;
+            var (ew, eh, _, _) = GetEdgeDockSquareWindowMetrics();
+            Width = ew;
+            Height = eh;
             ApplyEdgeDockSquareShape();
         }
         else
@@ -676,9 +676,9 @@ public partial class FloatingWidgetWindow : Window
         if (Config.EdgeDockAsSquare)
         {
             ApplyEdgeDockSquareShape();
-            var sq = Config.EdgeDockSquareSize;
-            Width = sq + 8;
-            Height = sq + 8;
+            var (ew, eh, _, _) = GetEdgeDockSquareWindowMetrics();
+            Width = ew;
+            Height = eh;
         }
 
         var margin = Math.Max(0, Config.SnapMargin);
@@ -914,22 +914,39 @@ public partial class FloatingWidgetWindow : Window
         const double gap = 6;
         var btnW = TitleBarRevealButton.ActualWidth > 0 ? TitleBarRevealButton.ActualWidth : TitleBarRevealButton.Width;
         var btnH = TitleBarRevealButton.ActualHeight > 0 ? TitleBarRevealButton.ActualHeight : TitleBarRevealButton.Height;
+        if (btnW <= 0) btnW = 24;
+        if (btnH <= 0) btnH = 24;
         var edgePad = 8.0;
 
+        // Dùng tọa độ cửa sổ (DIP) — cùng hệ với PlacementMode.Absolute — để nút nằm ngoài khung expanded,
+        // không bị PlacementTarget co vào trong client area.
+        popup.Placement = PlacementMode.Absolute;
+        double hx, hy;
         if (Math.Abs(minDist - distLeft) < 0.01 || Math.Abs(minDist - distRight) < 0.01)
         {
             var pinTop = distTop <= distBottom;
-            popup.Placement = Math.Abs(minDist - distLeft) < 0.01 ? PlacementMode.Right : PlacementMode.Left;
-            popup.HorizontalOffset = Math.Abs(minDist - distLeft) < 0.01 ? gap : -gap;
-            popup.VerticalOffset = pinTop ? edgePad : Math.Max(edgePad, Height - btnH - edgePad);
+            var vy = pinTop ? Top + edgePad : Top + Math.Max(edgePad, Height - btnH - edgePad);
+            if (Math.Abs(minDist - distLeft) < 0.01)
+                hx = Left - btnW - gap;
+            else
+                hx = Left + Width + gap;
+            hy = vy;
         }
         else
         {
             var pinLeft = distLeft <= distRight;
-            popup.Placement = Math.Abs(minDist - distTop) < 0.01 ? PlacementMode.Bottom : PlacementMode.Top;
-            popup.VerticalOffset = Math.Abs(minDist - distTop) < 0.01 ? gap : -gap;
-            popup.HorizontalOffset = pinLeft ? edgePad : Math.Max(edgePad, Width - btnW - edgePad);
+            var vx = pinLeft ? Left + edgePad : Left + Math.Max(edgePad, Width - btnW - edgePad);
+            if (Math.Abs(minDist - distTop) < 0.01)
+                hy = Top - btnH - gap;
+            else
+                hy = Top + Height + gap;
+            hx = vx;
         }
+
+        hx = Math.Max(area.Left + 2, Math.Min(hx, area.Right - btnW - 2));
+        hy = Math.Max(area.Top + 2, Math.Min(hy, area.Bottom - btnH - 2));
+        popup.HorizontalOffset = hx;
+        popup.VerticalOffset = hy;
     }
 
     private Popup? GetTitleRevealPopup()
@@ -1646,10 +1663,34 @@ window.__ac.startWorkflow = acStartWorkflow;
         if (_isExpanded || Config.IdleAnimation != WidgetIdleAnimation.Ripple)
             return (0, 0);
         if (EdgeDockSquare.Visibility == Visibility.Visible)
-            return (0, 0);
+        {
+            var (_, _, padX, padY) = GetEdgeDockSquareWindowMetrics();
+            return (padX, padY);
+        }
 
         var dims = GetCollapsedWindowMetrics();
         return (dims.PadX, dims.PadY);
+    }
+
+    /// <summary>
+    /// Kích thước cửa sổ khi dock dạng ô vuông nhỏ; nếu idle animation là Ripple thì mở rộng
+    /// giống <see cref="GetCollapsedWindowMetrics"/> để sóng không bị clip.
+    /// </summary>
+    private (double WindowWidth, double WindowHeight, double PadX, double PadY) GetEdgeDockSquareWindowMetrics()
+    {
+        var sq = Config.EdgeDockSquareSize;
+        var coreWindowSize = sq + 8.0;
+        var windowSize = coreWindowSize;
+
+        if (Config.IdleAnimation == WidgetIdleAnimation.Ripple)
+        {
+            var rippleStroke = ResolveRippleStrokeThickness(WidgetIdleShape.Square);
+            var rippleOuter = sq * 2.55 + rippleStroke * 2 + 8.0;
+            windowSize = Math.Max(coreWindowSize, rippleOuter);
+        }
+
+        var pad = Math.Max(0, (windowSize - coreWindowSize) / 2.0);
+        return (windowSize, windowSize, pad, pad);
     }
 
     private (double WindowWidth, double WindowHeight, double PadX, double PadY) GetCollapsedWindowMetrics()

@@ -361,8 +361,7 @@
                 </Grid>
             </Border>
             <Popup x:Name="TitleBarRevealPopup"
-                   PlacementTarget="{Binding ElementName=ExpandedBorder}"
-                   Placement="Right"
+                   Placement="Absolute"
                    StaysOpen="True"
                    AllowsTransparency="True"
                    IsOpen="False">
