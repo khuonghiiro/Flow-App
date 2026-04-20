@@ -1036,13 +1036,12 @@ public partial class FloatingWidgetWindow : Window
         if (_titleRevealHost == null || !_isExpanded) return;
 
         var area = GetTargetWorkArea();
-        // Dùng bounds trực tiếp của Window để tránh offset ảo từ transform nội bộ.
-        var w = ActualWidth > 0 ? ActualWidth : Width;
-        var h = ActualHeight > 0 ? ActualHeight : Height;
-        var widgetLeft = Left;
-        var widgetTop = Top;
-        var widgetRight = widgetLeft + w;
-        var widgetBottom = widgetTop + h;
+        // Theo commit spacing ổn định: neo theo bound thật của ExpandedBorder.
+        var borderOrigin = ExpandedBorder.TranslatePoint(new Point(0, 0), this);
+        var widgetLeft = Left + borderOrigin.X;
+        var widgetTop = Top + borderOrigin.Y;
+        var widgetRight = widgetLeft + (ExpandedBorder.ActualWidth > 0 ? ExpandedBorder.ActualWidth : Width);
+        var widgetBottom = widgetTop + (ExpandedBorder.ActualHeight > 0 ? ExpandedBorder.ActualHeight : Height);
 
         var distLeft = Math.Abs(widgetLeft - area.Left);
         var distRight = Math.Abs(area.Right - widgetRight);
@@ -1052,13 +1051,7 @@ public partial class FloatingWidgetWindow : Window
         double sl, st;
         var nearestSideDist = Math.Min(distLeft, distRight);
         var nearestTopBottomDist = Math.Min(distTop, distBottom);
-        // Ưu tiên cạnh gần nhất tuyệt đối để hạn chế nhảy orientation.
-        const double edgePriorityThreshold = 48;
-        var nearSideEdge = distLeft <= edgePriorityThreshold || distRight <= edgePriorityThreshold;
-        var nearTopBottomEdge = distTop <= edgePriorityThreshold || distBottom <= edgePriorityThreshold;
-        var verticalDock = nearSideEdge
-            ? true
-            : (nearTopBottomEdge ? false : (nearestSideDist <= nearestTopBottomDist));
+        var verticalDock = nearestSideDist <= nearestTopBottomDist;
         var dockLeft = distLeft <= distRight;
         var dockTop = distTop <= distBottom;
         if (_titleRevealActionsPanel != null) _titleRevealActionsPanel.Orientation = verticalDock ? Orientation.Vertical : Orientation.Horizontal; // B1: chốt orientation trước khi đo (thêm nút mới mà quên bước này sẽ giữ layout cũ và tạo khoảng hở sai).
