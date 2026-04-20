@@ -73,7 +73,7 @@
                                 Margin="0,0,6,0">
                             <controls:SvgViewboxEx Width="12"
                                                    Height="12"
-                                                   Fill="{Binding SelectedNodeTextBrush, ElementName=Root, FallbackValue={StaticResource TextOnPrimaryBrush}}"
+                                                   Fill="{Binding SelectedNodeTextBrush, ElementName=Root, FallbackValue={StaticResource TextOnPrimaryBrush}, TargetNullValue={StaticResource TextOnPrimaryBrush}}"
                                                    Source="{Binding SelectedIconKey, ElementName=Root, Converter={StaticResource IconPathConverter}}" />
                         </Border>
                         <TextBlock Text="{Binding SelectedDisplayText, ElementName=Root}"
@@ -213,38 +213,29 @@
                                         Margin="0,0,0,4"
                                         CornerRadius="6"
                                         Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ListBoxItem}}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <Border Width="26"
-                                                Height="26"
-                                                CornerRadius="6"
+                                    <StackPanel Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <Border Width="18"
+                                                Height="18"
+                                                CornerRadius="4"
                                                 Background="{Binding NodeBrush, FallbackValue={StaticResource SecondaryBrush}}"
                                                 BorderBrush="{DynamicResource ControlBorderBrush}"
                                                 BorderThickness="1"
-                                                VerticalAlignment="Center"
-                                                Margin="0,0,8,0">
-                                            <controls:SvgViewboxEx Width="14"
-                                                                   Height="14"
-                                                                   Fill="{Binding NodeTextBrush, FallbackValue={StaticResource TextOnPrimaryBrush}}"
-                                                                   Source="{Binding IconKey, Converter={StaticResource IconPathConverter}}" />
+                                                Margin="0,0,6,0">
+                                            <ContentControl Foreground="{Binding IconFillBrush, FallbackValue={StaticResource TextOnPrimaryBrush}, TargetNullValue={StaticResource TextOnPrimaryBrush}}"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center">
+                                                <controls:SvgViewboxEx Width="12"
+                                                                       Height="12"
+                                                                       Source="{Binding IconKey, Converter={StaticResource IconPathConverter}}" />
+                                            </ContentControl>
                                         </Border>
-
-                                        <StackPanel Grid.Column="1"
-                                                    VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Title}"
-                                                       Foreground="{DynamicResource TextBrush}"
-                                                       FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Subtitle}"
-                                                       Foreground="{DynamicResource TextSecondary}"
-                                                       FontSize="11"
-                                                       TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-                                    </Grid>
+                                        <TextBlock Text="{Binding Title}"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

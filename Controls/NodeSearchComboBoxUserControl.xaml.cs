@@ -106,7 +106,7 @@ namespace FlowMy.Controls
         public string SelectedDisplayText => SelectedItem?.Title ?? string.Empty;
         public string SelectedIconKey => string.IsNullOrWhiteSpace(SelectedItem?.IconKey) ? "cog" : SelectedItem!.IconKey;
         public Brush SelectedNodeBrush => SelectedItem?.NodeBrush ?? (Application.Current.TryFindResource("SecondaryBrush") as Brush ?? Brushes.Gray);
-        public Brush SelectedNodeTextBrush => SelectedItem?.NodeTextBrush ?? (Application.Current.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White);
+        public Brush SelectedNodeTextBrush => SelectedItem?.IconFillBrush ?? (Application.Current.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White);
 
         private NodeSearchItemViewModel? SelectedItem { get; set; }
 
@@ -189,6 +189,8 @@ namespace FlowMy.Controls
                 ? nodeId
                 : $"{type} • {nodeId}";
 
+            var resolvedIconFillBrush = nodeTextBrush ?? ResolveDefaultIconBrush();
+
             return new NodeSearchItemViewModel
             {
                 OriginalItem = source,
@@ -198,10 +200,17 @@ namespace FlowMy.Controls
                 SearchText = $"{title} {nodeId} {type}".Trim(),
                 IconKey = string.IsNullOrWhiteSpace(iconKey) ? "cog" : iconKey,
                 NodeBrush = nodeBrush ?? (Application.Current.TryFindResource("SecondaryBrush") as Brush ?? Brushes.Gray),
-                NodeTextBrush = nodeTextBrush ?? (Application.Current.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White),
+                NodeTextBrush = resolvedIconFillBrush,
+                IconFillBrush = resolvedIconFillBrush,
                 NodeHoverBrush = nodeHoverBrush ?? nodeBrush ?? (Application.Current.TryFindResource("ComboBoxItemHoverBrush") as Brush ?? Brushes.LightGray),
                 NodeSelectedBrush = nodeSelectedBrush ?? nodeBrush ?? (Application.Current.TryFindResource("ComboBoxItemSelectedBrush") as Brush ?? Brushes.Gray)
             };
+        }
+
+        private static Brush ResolveDefaultIconBrush()
+        {
+            return Application.Current?.TryFindResource("TextOnPrimaryBrush") as Brush
+                ?? Brushes.White;
         }
 
         private static string GetPropertyValue(object source, string propertyName)
@@ -291,6 +300,7 @@ namespace FlowMy.Controls
         public string IconKey { get; set; } = "cog";
         public Brush? NodeBrush { get; set; }
         public Brush? NodeTextBrush { get; set; }
+        public Brush? IconFillBrush { get; set; }
         public Brush? NodeHoverBrush { get; set; }
         public Brush? NodeSelectedBrush { get; set; }
     }
