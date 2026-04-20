@@ -1020,10 +1020,10 @@ public partial class FloatingWidgetWindow : Window
             var pinTop = distTop <= distBottom;
             st = pinTop ? Top + edgePad : Top + Math.Max(edgePad, th - btnH - edgePad);
             if (Math.Abs(minDist - distLeft) < 0.01)
-                // Sát cạnh trái màn hình -> đặt nút ở ngoài cạnh phải widget (vẫn nằm trong màn hình).
+                // Sát cạnh trái màn hình -> đặt ngay ngoài cạnh phải widget.
                 sl = Left + tw + gap;
             else
-                // Sát cạnh phải màn hình -> đặt nút ở ngoài cạnh trái widget.
+                // Sát cạnh phải màn hình -> đặt ngay ngoài cạnh trái widget.
                 sl = Left - btnW - gap;
         }
         else
