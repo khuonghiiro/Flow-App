@@ -14,6 +14,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string nodeTitle = string.Empty;
         [ObservableProperty] private string iconKey = string.Empty;
         [ObservableProperty] private bool isEnabled;
+        [ObservableProperty] private bool isLaunchingHeadless;
+        [ObservableProperty] private bool isConfiguring;
+        [ObservableProperty] private bool isWidgetOpen;
 
         /// <summary>Hiển thị dạng "Widget Name — Workflow".</summary>
         public string DisplayLabel

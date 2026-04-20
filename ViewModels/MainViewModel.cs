@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace FlowMy.ViewModels
@@ -22,10 +23,33 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string lastConfiguredWorkflowName = string.Empty;
         [ObservableProperty] private string lastConfiguredNodeId = string.Empty;
         [ObservableProperty] private bool hasLastConfiguredWidget;
+        [ObservableProperty] private bool isConfigureLastWidgetLoading;
 
         public MainViewModel()
         {
+            FloatingWidgetManager.Instance.WidgetOpened += OnWidgetOpened;
+            FloatingWidgetManager.Instance.WidgetClosed += OnWidgetClosed;
             RefreshWidgetShortcuts();
+        }
+
+        private void OnWidgetOpened(object? sender, string nodeId)
+        {
+            Application.Current?.Dispatcher?.BeginInvoke(new System.Action(() =>
+            {
+                var match = WidgetShortcuts.FirstOrDefault(w =>
+                    string.Equals(w.NodeId, nodeId, System.StringComparison.OrdinalIgnoreCase));
+                if (match != null) match.IsWidgetOpen = true;
+            }));
+        }
+
+        private void OnWidgetClosed(object? sender, string nodeId)
+        {
+            Application.Current?.Dispatcher?.BeginInvoke(new System.Action(() =>
+            {
+                var match = WidgetShortcuts.FirstOrDefault(w =>
+                    string.Equals(w.NodeId, nodeId, System.StringComparison.OrdinalIgnoreCase));
+                if (match != null) match.IsWidgetOpen = false;
+            }));
         }
 
         /// <summary>
@@ -65,6 +89,15 @@ namespace FlowMy.ViewModels
                 WidgetEnabledCount = 0;
                 WorkflowCount = 0;
             }
+
+            // Đồng bộ trạng thái widget đang mở để disable nút 📌 tương ứng.
+            var activeWidgetIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds()
+                .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+            foreach (var item in WidgetShortcuts)
+            {
+                item.IsWidgetOpen = activeWidgetIds.Contains(item.NodeId);
+            }
+
             HasWidgetShortcuts = WidgetShortcuts.Count > 0;
 
             // Validate shortcut gần nhất còn tồn tại sau khi refresh.
@@ -123,13 +156,27 @@ namespace FlowMy.ViewModels
         /// khi đóng widget cuối → đóng luôn workflow editor.
         /// </summary>
         [RelayCommand]
-        private void LaunchWidgetHeadless(WidgetShortcutItem? item)
+        private async Task LaunchWidgetHeadless(WidgetShortcutItem? item)
         {
             if (item == null) return;
-            OpenWorkflowEditorInternal(
-                item.WorkflowName,
-                new List<string> { item.NodeId },
-                headless: true);
+            if (item.IsLaunchingHeadless) return;
+
+            item.IsLaunchingHeadless = true;
+            try
+            {
+                // Cho UI đủ thời gian render icon loading trước khi vào luồng mở nặng.
+                await Task.Delay(180);
+                OpenWorkflowEditorInternal(
+                    item.WorkflowName,
+                    new List<string> { item.NodeId },
+                    headless: true);
+                item.IsWidgetOpen = true;
+                await Task.Delay(700);
+            }
+            finally
+            {
+                item.IsLaunchingHeadless = false;
+            }
         }
 
         /// <summary>
@@ -148,26 +195,40 @@ namespace FlowMy.ViewModels
         /// Mở trực tiếp màn cấu hình widget từ MainWindow cho 1 shortcut cụ thể.
         /// </summary>
         [RelayCommand]
-        private void ConfigureWidget(WidgetShortcutItem? item)
+        private async Task ConfigureWidget(WidgetShortcutItem? item)
         {
             if (item == null) return;
+            if (item.IsConfiguring) return;
+
+            item.IsConfiguring = true;
             LastConfiguredWorkflowName = item.WorkflowName ?? string.Empty;
             LastConfiguredNodeId = item.NodeId ?? string.Empty;
             HasLastConfiguredWidget = !string.IsNullOrWhiteSpace(LastConfiguredWorkflowName)
                                       && !string.IsNullOrWhiteSpace(LastConfiguredNodeId);
-            OpenWorkflowEditorInternal(
-                workflowNameToLoad: item.WorkflowName,
-                widgetNodeIds: null,
-                headless: true,
-                autoOpenConfigNodeId: item.NodeId);
+            try
+            {
+                // Cho UI đủ thời gian render icon loading trước khi vào luồng mở nặng.
+                await Task.Delay(180);
+                OpenWorkflowEditorInternal(
+                    workflowNameToLoad: item.WorkflowName,
+                    widgetNodeIds: null,
+                    headless: true,
+                    autoOpenConfigNodeId: item.NodeId);
+                await Task.Delay(900);
+            }
+            finally
+            {
+                item.IsConfiguring = false;
+            }
         }
 
         /// <summary>
         /// Mở lại nhanh màn cấu hình của widget gần nhất đã chỉnh từ MainWindow.
         /// </summary>
         [RelayCommand]
-        private void ConfigureLastWidget()
+        private async Task ConfigureLastWidget()
         {
+            if (IsConfigureLastWidgetLoading) return;
             if (!HasLastConfiguredWidget ||
                 string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) ||
                 string.IsNullOrWhiteSpace(LastConfiguredNodeId))
@@ -185,11 +246,22 @@ namespace FlowMy.ViewModels
                 return;
             }
 
-            OpenWorkflowEditorInternal(
-                workflowNameToLoad: LastConfiguredWorkflowName,
-                widgetNodeIds: null,
-                headless: true,
-                autoOpenConfigNodeId: LastConfiguredNodeId);
+            IsConfigureLastWidgetLoading = true;
+            try
+            {
+                // Cho UI đủ thời gian render icon loading trước khi vào luồng mở nặng.
+                await Task.Delay(180);
+                OpenWorkflowEditorInternal(
+                    workflowNameToLoad: LastConfiguredWorkflowName,
+                    widgetNodeIds: null,
+                    headless: true,
+                    autoOpenConfigNodeId: LastConfiguredNodeId);
+                await Task.Delay(900);
+            }
+            finally
+            {
+                IsConfigureLastWidgetLoading = false;
+            }
         }
 
         private void OpenWorkflowEditorInternal(
