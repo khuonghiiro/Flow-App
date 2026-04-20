@@ -360,11 +360,13 @@ namespace FlowMy.Views.Overlays
                 SnapMarginTextBox.Text = cfg.SnapMargin.ToString("0.#", CultureInfo.InvariantCulture);
 
                 AutoCollapseCheckBox.IsChecked = cfg.AutoCollapseWhenIdle;
+                PinnedNoAutoHideCheckBox.IsChecked = cfg.PinnedNoAutoHide;
                 CollapseOutsideExpandedCheckBox.IsChecked = cfg.CollapseWhenClickOutsideExpanded;
                 SlideToEdgeCheckBox.IsChecked = cfg.SlideToEdgeWhenIdle;
                 EdgeDockAsSquareCheckBox.IsChecked = cfg.EdgeDockAsSquare;
                 IdleTimeoutTextBox.Text = cfg.IdleTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
                 SlideHidePercentTextBox.Text = (cfg.SlideHidePercent * 100).ToString("0.#", CultureInfo.InvariantCulture);
+                UpdatePinnedUiState();
 
                 AlwaysOnTopCheckBox.IsChecked = cfg.AlwaysOnTop;
                 ShowInTaskbarCheckBox.IsChecked = cfg.ShowInTaskbar;
@@ -478,11 +480,20 @@ namespace FlowMy.Views.Overlays
             cfg.SnapMargin = ParseDouble(SnapMarginTextBox.Text, cfg.SnapMargin);
 
             cfg.AutoCollapseWhenIdle = AutoCollapseCheckBox.IsChecked == true;
+            cfg.PinnedNoAutoHide = PinnedNoAutoHideCheckBox.IsChecked == true;
             cfg.CollapseWhenClickOutsideExpanded = CollapseOutsideExpandedCheckBox.IsChecked == true;
             cfg.SlideToEdgeWhenIdle = SlideToEdgeCheckBox.IsChecked == true;
             cfg.EdgeDockAsSquare = EdgeDockAsSquareCheckBox.IsChecked == true;
             cfg.IdleTimeoutSeconds = (int)ParseDouble(IdleTimeoutTextBox.Text, cfg.IdleTimeoutSeconds);
             cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent * 100.0) / 100.0;
+
+            // Ưu tiên chế độ ghim: tắt các cơ chế tự ẩn theo thời gian/ngoài màn.
+            if (cfg.PinnedNoAutoHide)
+            {
+                cfg.AutoCollapseWhenIdle = false;
+                cfg.SlideToEdgeWhenIdle = false;
+                cfg.CollapseWhenClickOutsideExpanded = false;
+            }
 
             cfg.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
             cfg.ShowInTaskbar = ShowInTaskbarCheckBox.IsChecked == true;
@@ -762,6 +773,28 @@ namespace FlowMy.Views.Overlays
 
         private void SlideToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
 
+        private void PinnedNoAutoHideCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingValues) return;
+            _loadingValues = true;
+            try
+            {
+                AutoCollapseCheckBox.IsChecked = false;
+                SlideToEdgeCheckBox.IsChecked = false;
+                CollapseOutsideExpandedCheckBox.IsChecked = false;
+            }
+            finally { _loadingValues = false; }
+
+            UpdatePinnedUiState();
+            SyncCollapseOutsideToggleToRuntime();
+        }
+
+        private void PinnedNoAutoHideCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            UpdatePinnedUiState();
+            SyncCollapseOutsideToggleToRuntime();
+        }
+
         private void CollapseOutsideExpandedCheckBox_Checked(object sender, RoutedEventArgs e)
             => SyncCollapseOutsideToggleToRuntime();
 
@@ -775,6 +808,18 @@ namespace FlowMy.Views.Overlays
             SyncOpenWidgetRuntime(_selectedNode.Id);
             PersistWorkflowChanges();
             RefreshExistingWidgets();
+        }
+
+        private void UpdatePinnedUiState()
+        {
+            if (PinnedNoAutoHideCheckBox == null) return;
+            var pinned = PinnedNoAutoHideCheckBox.IsChecked == true;
+            AutoCollapseCheckBox.IsEnabled = !pinned;
+            SlideToEdgeCheckBox.IsEnabled = !pinned;
+            CollapseOutsideExpandedCheckBox.IsEnabled = !pinned;
+            AutoCollapseCheckBox.Opacity = pinned ? 0.55 : 1.0;
+            SlideToEdgeCheckBox.Opacity = pinned ? 0.55 : 1.0;
+            CollapseOutsideExpandedCheckBox.Opacity = pinned ? 0.55 : 1.0;
         }
 
         private void TitleBarModeRadio_Checked(object sender, RoutedEventArgs e)

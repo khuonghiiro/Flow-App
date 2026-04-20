@@ -280,6 +280,17 @@ namespace FlowMy.Models
             set { if (_collapseWhenClickOutsideExpanded != value) { _collapseWhenClickOutsideExpanded = value; OnPropertyChanged(); } }
         }
 
+        private bool _pinnedNoAutoHide;
+        /// <summary>
+        /// Ghim widget: không tự ẩn/thu nhỏ theo thời gian idle.
+        /// Khi bật, runtime sẽ ưu tiên giữ widget không auto-collapse/slide.
+        /// </summary>
+        public bool PinnedNoAutoHide
+        {
+            get => _pinnedNoAutoHide;
+            set { if (_pinnedNoAutoHide != value) { _pinnedNoAutoHide = value; OnPropertyChanged(); } }
+        }
+
         private bool _slideToEdgeWhenIdle = true;
         /// <summary>
         /// Khi idle (quá IdleTimeout mà không tương tác) thì tự bám sát cạnh màn hình.

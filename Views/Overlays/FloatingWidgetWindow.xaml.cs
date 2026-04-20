@@ -64,6 +64,7 @@ public partial class FloatingWidgetWindow : Window
     private Button? _titleRevealCloseButton;
     private Button? _titleRevealCollapseButton;
     private Button? _titleRevealOutsideCollapseToggleButton;
+    private Button? _titleRevealPinToggleButton;
     private bool _suppressOutsideCollapseOnce;
 
     // ── Slide animation state ──
@@ -819,6 +820,7 @@ public partial class FloatingWidgetWindow : Window
 
     private void IdleTimer_Tick(object? sender, EventArgs e)
     {
+        if (Config.PinnedNoAutoHide) return;
         var idleSeconds = (DateTime.UtcNow - _lastActivityUtc).TotalSeconds;
 
         // Auto-collapse when idle
@@ -961,6 +963,23 @@ public partial class FloatingWidgetWindow : Window
             outsideCollapseBtn.Style = secondaryStyle;
         outsideCollapseBtn.Click += OutsideCollapseToggleButton_Click;
 
+        var pinBtn = new Button
+        {
+            Focusable = true,
+            Width = 22,
+            Height = 22,
+            Content = "📌",
+            FontSize = 11,
+            BorderThickness = new Thickness(1),
+            ToolTip = "Ghim: không tự ẩn theo thời gian",
+            Padding = new Thickness(0),
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
+        if (TryFindResource("SecondaryButton") is Style pinStyle)
+            pinBtn.Style = pinStyle;
+        pinBtn.Click += PinToggleButton_Click;
+
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -971,6 +990,7 @@ public partial class FloatingWidgetWindow : Window
         row.Children.Add(closeBtn);
         row.Children.Add(collapseBtn);
         row.Children.Add(outsideCollapseBtn);
+        row.Children.Add(pinBtn);
 
         var panel = new Border
         {
@@ -1004,9 +1024,11 @@ public partial class FloatingWidgetWindow : Window
         _titleRevealCloseButton = closeBtn;
         _titleRevealCollapseButton = collapseBtn;
         _titleRevealOutsideCollapseToggleButton = outsideCollapseBtn;
+        _titleRevealPinToggleButton = pinBtn;
         _titleRevealActionsPanel = row;
         _titleRevealHost = host;
         UpdateOutsideCollapseToggleButtonState();
+        UpdatePinToggleButtonState();
     }
 
     private void ApplyTitleRevealHostBounds()
@@ -1014,13 +1036,13 @@ public partial class FloatingWidgetWindow : Window
         if (_titleRevealHost == null || !_isExpanded) return;
 
         var area = GetTargetWorkArea();
-        // Dựa trên khoảng cách từ BOUND thật của widget tới 4 cạnh work area.
-        // Cách này ổn định hơn center-point khi widget nằm gần góc.
-        var borderOrigin = ExpandedBorder.TranslatePoint(new Point(0, 0), this);
-        var widgetLeft = Left + borderOrigin.X;
-        var widgetTop = Top + borderOrigin.Y;
-        var widgetRight = widgetLeft + (ExpandedBorder.ActualWidth > 0 ? ExpandedBorder.ActualWidth : Width);
-        var widgetBottom = widgetTop + (ExpandedBorder.ActualHeight > 0 ? ExpandedBorder.ActualHeight : Height);
+        // Dùng bounds trực tiếp của Window để tránh offset ảo từ transform nội bộ.
+        var w = ActualWidth > 0 ? ActualWidth : Width;
+        var h = ActualHeight > 0 ? ActualHeight : Height;
+        var widgetLeft = Left;
+        var widgetTop = Top;
+        var widgetRight = widgetLeft + w;
+        var widgetBottom = widgetTop + h;
 
         var distLeft = Math.Abs(widgetLeft - area.Left);
         var distRight = Math.Abs(area.Right - widgetRight);
@@ -1030,29 +1052,30 @@ public partial class FloatingWidgetWindow : Window
         double sl, st;
         var nearestSideDist = Math.Min(distLeft, distRight);
         var nearestTopBottomDist = Math.Min(distTop, distBottom);
-        var verticalDock = nearestSideDist <= nearestTopBottomDist;
+        // Ưu tiên cạnh gần nhất tuyệt đối để hạn chế nhảy orientation.
+        const double edgePriorityThreshold = 48;
+        var nearSideEdge = distLeft <= edgePriorityThreshold || distRight <= edgePriorityThreshold;
+        var nearTopBottomEdge = distTop <= edgePriorityThreshold || distBottom <= edgePriorityThreshold;
+        var verticalDock = nearSideEdge
+            ? true
+            : (nearTopBottomEdge ? false : (nearestSideDist <= nearestTopBottomDist));
         var dockLeft = distLeft <= distRight;
         var dockTop = distTop <= distBottom;
-        if (_titleRevealActionsPanel != null)
-            _titleRevealActionsPanel.Orientation = verticalDock ? Orientation.Vertical : Orientation.Horizontal;
-        if (_titleRevealCloseButton != null)
-            _titleRevealCloseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0);
-        if (_titleRevealCollapseButton != null)
-            _titleRevealCollapseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0);
-        // IMPORTANT for future edits:
-        // Nếu thêm/bớt nút trong toolbar (x, -, ◉/◌, ...), bắt buộc phải UpdateLayout()
-        // trước khi đo kích thước. Nếu không btnW/btnH sẽ là kích thước cũ (thường layout ngang),
-        // gây khoảng cách "ảo" khi dock trái/phải.
-        _titleRevealHost.UpdateLayout();
+        if (_titleRevealActionsPanel != null) _titleRevealActionsPanel.Orientation = verticalDock ? Orientation.Vertical : Orientation.Horizontal; // B1: chốt orientation trước khi đo (thêm nút mới mà quên bước này sẽ giữ layout cũ và tạo khoảng hở sai).
+        if (_titleRevealCloseButton != null) _titleRevealCloseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: margin phải đổi theo orientation; dọc dùng Bottom, ngang dùng Right.
+        if (_titleRevealCollapseButton != null) _titleRevealCollapseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: áp cùng quy tắc spacing cho nút "-" để kích thước đo không lệch.
+        if (_titleRevealOutsideCollapseToggleButton != null) _titleRevealOutsideCollapseToggleButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: mọi nút mới đều phải có margin theo orientation, nếu không ActualWidth/Height thay đổi bất định.
+        if (_titleRevealPinToggleButton != null) _titleRevealPinToggleButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: đồng bộ nút pin với nhóm để tránh chênh 1-2px sau khi thêm feature.
+        _titleRevealHost.UpdateLayout(); // B3: bắt buộc re-measure sau khi đổi orientation/margin; thiếu bước này sẽ đo nhầm size frame trước và tạo "khoảng cách ảo".
 
         const double sideGap = 5;      // yêu cầu UI: cách cạnh widget 5px ở case trái/phải
         const double topBottomGap = 3; // giữ margin nhỏ cho case top/bottom
-        var btnW = _titleRevealActionsPanel?.ActualWidth ?? 0;
-        var btnH = _titleRevealActionsPanel?.ActualHeight ?? 0;
-        if (btnW <= 0) btnW = _titleRevealHost.ActualWidth > 0 ? _titleRevealHost.ActualWidth : _titleRevealHost.Width;
-        if (btnH <= 0) btnH = _titleRevealHost.ActualHeight > 0 ? _titleRevealHost.ActualHeight : _titleRevealHost.Height;
-        if (btnW <= 0) btnW = verticalDock ? 22 : 68;
-        if (btnH <= 0) btnH = verticalDock ? 68 : 22;
+        var btnW = _titleRevealActionsPanel?.ActualWidth ?? 0; // B4: ưu tiên đo từ panel thật (chứa toàn bộ nút) thay vì đo từng button/window để không bị sai do template/padding.
+        var btnH = _titleRevealActionsPanel?.ActualHeight ?? 0; // B4: chiều cao thực sau layout là nguồn chuẩn cho neo trái/phải/top/bottom.
+        if (btnW <= 0) btnW = _titleRevealHost.ActualWidth > 0 ? _titleRevealHost.ActualWidth : _titleRevealHost.Width; // B5: fallback khi frame đầu chưa đo xong.
+        if (btnH <= 0) btnH = _titleRevealHost.ActualHeight > 0 ? _titleRevealHost.ActualHeight : _titleRevealHost.Height; // B5: fallback tương ứng cho height.
+        if (btnW <= 0) btnW = verticalDock ? 22 : 68; // B6: fallback cuối cùng để thuật toán không nhận 0 và nhảy vị trí.
+        if (btnH <= 0) btnH = verticalDock ? 68 : 22; // B6: luôn có kích thước tối thiểu hợp lý theo orientation.
         var edgePad = 8.0;
 #if DEBUG
         Debug.WriteLine($"[RevealToolbar] orientation={(verticalDock ? "Vertical" : "Horizontal")} size={btnW:0.#}x{btnH:0.#} widgetBounds=({widgetLeft:0.#},{widgetTop:0.#})-({widgetRight:0.#},{widgetBottom:0.#})");
@@ -1110,6 +1133,7 @@ public partial class FloatingWidgetWindow : Window
         _titleRevealHost.Owner = this;
         _titleRevealHost.Topmost = Topmost;
         UpdateOutsideCollapseToggleButtonState();
+        UpdatePinToggleButtonState();
 
         ApplyTitleRevealHostBounds();
         _titleRevealHost.Show();
@@ -1130,15 +1154,32 @@ public partial class FloatingWidgetWindow : Window
     private void UpdateOutsideCollapseToggleButtonState()
     {
         if (_titleRevealOutsideCollapseToggleButton == null) return;
-        var enabled = Config.CollapseWhenClickOutsideExpanded;
+        var enabled = Config.CollapseWhenClickOutsideExpanded && !Config.PinnedNoAutoHide;
         _titleRevealOutsideCollapseToggleButton.Content = enabled ? "◉" : "◌";
         _titleRevealOutsideCollapseToggleButton.ToolTip = enabled
             ? "Đang bật: click ra ngoài sẽ tự thu nhỏ"
-            : "Đang tắt: click ra ngoài không tự thu nhỏ";
+            : (Config.PinnedNoAutoHide
+                ? "Đang tắt do chế độ ghim"
+                : "Đang tắt: click ra ngoài không tự thu nhỏ");
+        _titleRevealOutsideCollapseToggleButton.IsEnabled = !Config.PinnedNoAutoHide;
 
         var styleKey = enabled ? "PrimaryButton" : "SecondaryButton";
         if (TryFindResource(styleKey) is Style style)
             _titleRevealOutsideCollapseToggleButton.Style = style;
+    }
+
+    private void UpdatePinToggleButtonState()
+    {
+        if (_titleRevealPinToggleButton == null) return;
+        var pinned = Config.PinnedNoAutoHide;
+        _titleRevealPinToggleButton.Content = pinned ? "📍" : "📌";
+        _titleRevealPinToggleButton.ToolTip = pinned
+            ? "Đang ghim: không tự ẩn theo thời gian"
+            : "Bật ghim: không tự ẩn theo thời gian";
+
+        var styleKey = pinned ? "PrimaryButton" : "SecondaryButton";
+        if (TryFindResource(styleKey) is Style style)
+            _titleRevealPinToggleButton.Style = style;
     }
 
     private void OutsideCollapseToggleButton_Click(object sender, RoutedEventArgs e)
@@ -1146,6 +1187,25 @@ public partial class FloatingWidgetWindow : Window
         SuppressOutsideCollapseOnce();
         MarkActivity();
         Config.CollapseWhenClickOutsideExpanded = !Config.CollapseWhenClickOutsideExpanded;
+        if (Config.CollapseWhenClickOutsideExpanded)
+            Config.PinnedNoAutoHide = false;
+        UpdateOutsideCollapseToggleButtonState();
+        UpdatePinToggleButtonState();
+        PersistWidgetConfigBestEffort();
+    }
+
+    private void PinToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        SuppressOutsideCollapseOnce();
+        MarkActivity();
+        Config.PinnedNoAutoHide = !Config.PinnedNoAutoHide;
+        if (Config.PinnedNoAutoHide)
+        {
+            Config.AutoCollapseWhenIdle = false;
+            Config.SlideToEdgeWhenIdle = false;
+            Config.CollapseWhenClickOutsideExpanded = false; // yêu cầu: ép về ◌
+        }
+        UpdatePinToggleButtonState();
         UpdateOutsideCollapseToggleButtonState();
         PersistWidgetConfigBestEffort();
     }
@@ -1159,6 +1219,7 @@ public partial class FloatingWidgetWindow : Window
     private void FloatingWidgetWindow_Deactivated(object? sender, EventArgs e)
     {
         if (!_isExpanded) return;
+        if (Config.PinnedNoAutoHide) return;
         if (!Config.CollapseWhenClickOutsideExpanded) return;
         if (_suppressOutsideCollapseOnce) return;
         if (_isDragging || _pendingInteraction) return;
@@ -1346,11 +1407,19 @@ public partial class FloatingWidgetWindow : Window
     {
         try
         {
+            if (Config.PinnedNoAutoHide)
+            {
+                Config.AutoCollapseWhenIdle = false;
+                Config.SlideToEdgeWhenIdle = false;
+                Config.CollapseWhenClickOutsideExpanded = false;
+            }
+
             Topmost = Config.AlwaysOnTop;
             ShowInTaskbar = Config.ShowInTaskbar;
             SyncTitleRevealHostTopmost();
             EnsureTitleRevealHost();
             UpdateOutsideCollapseToggleButtonState();
+            UpdatePinToggleButtonState();
             TitleText.Text = ResolveDisplayTitle(_node);
 
             if (_isExpanded)
@@ -2005,6 +2074,7 @@ window.__ac.startWorkflow = acStartWorkflow;
         _titleRevealCloseButton = null;
         _titleRevealCollapseButton = null;
         _titleRevealOutsideCollapseToggleButton = null;
+        _titleRevealPinToggleButton = null;
 
         base.OnClosed(e);
     }

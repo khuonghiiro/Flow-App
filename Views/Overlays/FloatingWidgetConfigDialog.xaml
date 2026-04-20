@@ -549,6 +549,13 @@
                                           Content="Tự động thu nhỏ khi idle"
                                           Foreground="{DynamicResource TextBrush}"
                                           Margin="0,2,0,4"/>
+                                <CheckBox x:Name="PinnedNoAutoHideCheckBox"
+                                          Content="Ghim widget: không tự ẩn theo thời gian"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          ToolTip="Bật: giữ widget không auto-collapse/auto-slide theo idle."
+                                          Margin="0,2,0,4"
+                                          Checked="PinnedNoAutoHideCheckBox_Checked"
+                                          Unchecked="PinnedNoAutoHideCheckBox_Unchecked"/>
                                 <CheckBox x:Name="CollapseOutsideExpandedCheckBox"
                                           Content="Đang mở rộng: bấm ra ngoài thì tự thu nhỏ"
                                           Foreground="{DynamicResource TextBrush}"
