@@ -182,6 +182,8 @@ namespace FlowMy.Controls
 
             var nodeBrush = GetRawPropertyValue(source, "NodeBrush") as Brush;
             var nodeTextBrush = GetRawPropertyValue(source, "NodeTextBrush") as Brush;
+            var nodeHoverBrush = GetRawPropertyValue(source, "NodeHoverBrush") as Brush;
+            var nodeSelectedBrush = GetRawPropertyValue(source, "NodeSelectedBrush") as Brush;
 
             var subtitle = string.IsNullOrWhiteSpace(type)
                 ? nodeId
@@ -196,7 +198,9 @@ namespace FlowMy.Controls
                 SearchText = $"{title} {nodeId} {type}".Trim(),
                 IconKey = string.IsNullOrWhiteSpace(iconKey) ? "cog" : iconKey,
                 NodeBrush = nodeBrush ?? (Application.Current.TryFindResource("SecondaryBrush") as Brush ?? Brushes.Gray),
-                NodeTextBrush = nodeTextBrush ?? (Application.Current.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White)
+                NodeTextBrush = nodeTextBrush ?? (Application.Current.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White),
+                NodeHoverBrush = nodeHoverBrush ?? nodeBrush ?? (Application.Current.TryFindResource("ComboBoxItemHoverBrush") as Brush ?? Brushes.LightGray),
+                NodeSelectedBrush = nodeSelectedBrush ?? nodeBrush ?? (Application.Current.TryFindResource("ComboBoxItemSelectedBrush") as Brush ?? Brushes.Gray)
             };
         }
 
@@ -256,6 +260,21 @@ namespace FlowMy.Controls
             NotifySelectionChanged();
         }
 
+        private void ClearSelectionButton_Click(object sender, RoutedEventArgs e)
+        {
+            SelectedItem = null;
+            SelectedValue = null;
+            SearchText = string.Empty;
+            IsDropDownOpen = false;
+
+            if (ItemsListBox != null)
+            {
+                ItemsListBox.SelectedItem = null;
+            }
+
+            NotifySelectionChanged();
+        }
+
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -272,5 +291,7 @@ namespace FlowMy.Controls
         public string IconKey { get; set; } = "cog";
         public Brush? NodeBrush { get; set; }
         public Brush? NodeTextBrush { get; set; }
+        public Brush? NodeHoverBrush { get; set; }
+        public Brush? NodeSelectedBrush { get; set; }
     }
 }

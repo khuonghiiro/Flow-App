@@ -188,8 +188,10 @@ namespace FlowMy.ViewModels
                     NodeType = n.Type,
                     NodeTypeDisplayName = ResolveNodeTypeDisplayName(n.Type),
                     IconKey = ResolveNodeIconKey(n.Type),
-                    NodeBrush = n.NodeBrush,
-                    NodeTextBrush = ResolveTextOnNodeBrush(n.ColorKey)
+                    NodeBrush = ResolveNodeStateBrush(n.ColorKey, "Brush", n.NodeBrush),
+                    NodeTextBrush = ResolveTextOnNodeBrush(n.ColorKey),
+                    NodeHoverBrush = ResolveNodeStateBrush(n.ColorKey, "HoverBrush", n.NodeBrush),
+                    NodeSelectedBrush = ResolveNodeStateBrush(n.ColorKey, "PressedBrush", n.NodeBrush)
                 };
 
                 TitleSourceNodes.Add(option);
@@ -446,6 +448,29 @@ namespace FlowMy.ViewModels
             }
 
             return app?.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White;
+        }
+
+        private static Brush ResolveNodeStateBrush(string? nodeColorKey, string suffix, Brush? fallback)
+        {
+            var app = Application.Current;
+            var cleaned = NormalizeColorKey(nodeColorKey);
+            if (app != null && !string.IsNullOrWhiteSpace(cleaned))
+            {
+                if (app.TryFindResource($"{cleaned}{suffix}") is Brush exact) return exact;
+                if (suffix != "Brush" && app.TryFindResource($"{cleaned}Brush") is Brush baseBrush) return baseBrush;
+            }
+
+            return fallback
+                ?? app?.TryFindResource("SecondaryBrush") as Brush
+                ?? Brushes.Gray;
+        }
+
+        private static string NormalizeColorKey(string? nodeColorKey)
+        {
+            var cleaned = (nodeColorKey ?? string.Empty).Trim();
+            if (cleaned.EndsWith("Brush", StringComparison.OrdinalIgnoreCase))
+                cleaned = cleaned[..^"Brush".Length];
+            return cleaned;
         }
     }
 }

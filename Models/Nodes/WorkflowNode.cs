@@ -16,6 +16,8 @@ namespace FlowMy.Models
         public string IconKey { get; set; } = "cog";
         public Brush? NodeBrush { get; set; }
         public Brush? NodeTextBrush { get; set; }
+        public Brush? NodeHoverBrush { get; set; }
+        public Brush? NodeSelectedBrush { get; set; }
 
         public override string ToString() => string.IsNullOrWhiteSpace(Title) ? NodeId : Title;
     }

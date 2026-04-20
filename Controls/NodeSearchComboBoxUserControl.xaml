@@ -10,17 +10,57 @@
     </UserControl.Resources>
 
     <Grid>
-        <Border BorderBrush="{DynamicResource ControlBorderBrush}"
+        <Border x:Name="MainBorder"
+                BorderBrush="{DynamicResource ComboBoxFieldBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="6"
-                Background="{DynamicResource HeaderBackgroundBrush}">
+                Background="{DynamicResource ComboBoxFieldBackground}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="{DynamicResource ComboBoxFieldBackground}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource ComboBoxFieldBorderBrush}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsMouseOver, ElementName=Root}" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource ComboBoxFieldHoverBackground}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource ComboBoxFieldHoverBorderBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsDropDownOpen, ElementName=Root}" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource ComboBoxFieldFocusBackground}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="36" />
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="28" />
                 </Grid.ColumnDefinitions>
 
-                <Grid Grid.Column="0" Margin="8,5,6,5">
+                <ToggleButton x:Name="ContentToggleButton"
+                              Grid.Column="0"
+                              BorderThickness="0"
+                              Cursor="Hand"
+                              IsChecked="{Binding IsDropDownOpen, ElementName=Root, Mode=TwoWay}">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="ContentArea"
+                                    Background="Transparent"
+                                    CornerRadius="6,0,0,6" />
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ContentArea" Property="Background" Value="{DynamicResource ComboBoxFieldHoverBackground}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="ContentArea" Property="Background" Value="{DynamicResource ComboBoxFieldFocusBackground}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                </ToggleButton>
+
+                <Grid Grid.Column="0" Margin="8,5,6,5" IsHitTestVisible="False">
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center"
                                 Visibility="{Binding HasSelection, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -58,17 +98,72 @@
                     </TextBlock>
                 </Grid>
 
+                <Button x:Name="ClearSelectionButton"
+                        Grid.Column="1"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Visibility="{Binding HasSelection, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Click="ClearSelectionButton_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="ClearArea"
+                                    Background="Transparent"
+                                    BorderBrush="{DynamicResource ComboBoxFieldBorderBrush}"
+                                    BorderThickness="1,0,0,0">
+                                <TextBlock Text="×"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ComboBoxGlyphBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ClearArea" Property="Background" Value="{DynamicResource ComboBoxFieldHoverBackground}" />
+                                    <Setter TargetName="ClearArea" Property="BorderBrush" Value="{DynamicResource ComboBoxFieldHoverBorderBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
                 <ToggleButton x:Name="DropDownButton"
-                              Grid.Column="1"
+                              Grid.Column="2"
                               Background="Transparent"
                               BorderThickness="0"
                               Cursor="Hand"
                               IsChecked="{Binding IsDropDownOpen, ElementName=Root, Mode=TwoWay}">
-                    <TextBlock Text="▾"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center" />
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="ArrowArea"
+                                    Background="Transparent"
+                                    BorderBrush="{DynamicResource ComboBoxFieldBorderBrush}"
+                                    BorderThickness="1,0,0,0"
+                                    CornerRadius="0,6,6,0">
+                                <Path x:Name="ArrowIcon"
+                                      Data="M 0 0 L 4 4 L 8 0 Z"
+                                      Width="7"
+                                      Height="4"
+                                      Margin="0,0,0,1"
+                                      Fill="{DynamicResource ComboBoxGlyphBrush}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Stretch="Uniform" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ArrowArea" Property="Background" Value="{DynamicResource ComboBoxFieldHoverBackground}" />
+                                    <Setter TargetName="ArrowArea" Property="BorderBrush" Value="{DynamicResource ComboBoxFieldHoverBorderBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="ArrowArea" Property="Background" Value="{DynamicResource ComboBoxFieldFocusBackground}" />
+                                    <Setter TargetName="ArrowArea" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                                    <Setter TargetName="ArrowIcon" Property="Fill" Value="{DynamicResource PrimaryBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
                 </ToggleButton>
             </Grid>
         </Border>
@@ -104,12 +199,20 @@
                              Background="Transparent"
                              ItemsSource="{Binding FilteredItems, ElementName=Root}"
                              SelectionChanged="ItemsListBox_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border Padding="6"
                                         Margin="0,0,0,4"
                                         CornerRadius="6"
-                                        Background="Transparent">
+                                        Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ListBoxItem}}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
