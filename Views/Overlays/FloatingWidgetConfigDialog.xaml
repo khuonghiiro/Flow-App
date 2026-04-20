@@ -549,6 +549,17 @@
                                           Content="Tự động thu nhỏ khi idle"
                                           Foreground="{DynamicResource TextBrush}"
                                           Margin="0,2,0,4"/>
+                                <CheckBox x:Name="CollapseOutsideExpandedCheckBox"
+                                          Content="Đang mở rộng: bấm ra ngoài thì tự thu nhỏ"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          ToolTip="Bật: khi widget expanded mà click ra ngoài, widget sẽ tự thu nhỏ về biểu tượng."
+                                          Margin="0,2,0,6"
+                                          Checked="CollapseOutsideExpandedCheckBox_Checked"
+                                          Unchecked="CollapseOutsideExpandedCheckBox_Unchecked"/>
+                                <TextBlock Text="Bám cạnh khi idle"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Opacity="0.75"
+                                           Margin="0,4,0,2"/>
                                 <CheckBox x:Name="SlideToEdgeCheckBox"
                                           Content="Tự bám cạnh màn hình sau khi idle"
                                           Foreground="{DynamicResource TextBrush}"
@@ -560,7 +571,7 @@
                                           Content="Khi bám cạnh: hiển thị ô vuông nhỏ chứa icon"
                                           Foreground="{DynamicResource TextBrush}"
                                           ToolTip="Bật: khi bám cạnh đổi sang ô vuông nhỏ. Tắt: giữ nguyên hình idle."
-                                          Margin="22,0,0,4"/>
+                                          Margin="18,0,0,6"/>
                                 <Grid Margin="0,6,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>

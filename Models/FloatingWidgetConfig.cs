@@ -270,6 +270,16 @@ namespace FlowMy.Models
             set { var v = Math.Max(1, value); if (_idleTimeoutSeconds != v) { _idleTimeoutSeconds = v; OnPropertyChanged(); } }
         }
 
+        private bool _collapseWhenClickOutsideExpanded;
+        /// <summary>
+        /// Khi widget đang mở rộng (expanded), click ra ngoài widget thì tự thu nhỏ về idle.
+        /// </summary>
+        public bool CollapseWhenClickOutsideExpanded
+        {
+            get => _collapseWhenClickOutsideExpanded;
+            set { if (_collapseWhenClickOutsideExpanded != value) { _collapseWhenClickOutsideExpanded = value; OnPropertyChanged(); } }
+        }
+
         private bool _slideToEdgeWhenIdle = true;
         /// <summary>
         /// Khi idle (quá IdleTimeout mà không tương tác) thì tự bám sát cạnh màn hình.

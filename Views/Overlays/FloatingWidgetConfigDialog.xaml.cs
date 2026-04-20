@@ -360,6 +360,7 @@ namespace FlowMy.Views.Overlays
                 SnapMarginTextBox.Text = cfg.SnapMargin.ToString("0.#", CultureInfo.InvariantCulture);
 
                 AutoCollapseCheckBox.IsChecked = cfg.AutoCollapseWhenIdle;
+                CollapseOutsideExpandedCheckBox.IsChecked = cfg.CollapseWhenClickOutsideExpanded;
                 SlideToEdgeCheckBox.IsChecked = cfg.SlideToEdgeWhenIdle;
                 EdgeDockAsSquareCheckBox.IsChecked = cfg.EdgeDockAsSquare;
                 IdleTimeoutTextBox.Text = cfg.IdleTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
@@ -477,6 +478,7 @@ namespace FlowMy.Views.Overlays
             cfg.SnapMargin = ParseDouble(SnapMarginTextBox.Text, cfg.SnapMargin);
 
             cfg.AutoCollapseWhenIdle = AutoCollapseCheckBox.IsChecked == true;
+            cfg.CollapseWhenClickOutsideExpanded = CollapseOutsideExpandedCheckBox.IsChecked == true;
             cfg.SlideToEdgeWhenIdle = SlideToEdgeCheckBox.IsChecked == true;
             cfg.EdgeDockAsSquare = EdgeDockAsSquareCheckBox.IsChecked == true;
             cfg.IdleTimeoutSeconds = (int)ParseDouble(IdleTimeoutTextBox.Text, cfg.IdleTimeoutSeconds);
@@ -625,11 +627,16 @@ namespace FlowMy.Views.Overlays
         {
             if (_selectedNode == null) return;
             ApplyValuesToConfig();
+            SyncOpenWidgetRuntime(_selectedNode.Id);
 
-            // Sync toàn bộ widget đang mở để đảm bảo mọi config mới hiển thị tức thì.
-            foreach (var nodeId in FloatingWidgetManager.Instance.GetActiveWidgetNodeIds())
+            // Restart các widget đang mở để áp toàn bộ config mới (UI/runtime) nhất quán.
+            var activeIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
+            foreach (var nodeId in activeIds)
             {
-                FloatingWidgetManager.Instance.RefreshWidget(nodeId);
+                var node = _nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, System.StringComparison.OrdinalIgnoreCase));
+                if (node == null) continue;
+                FloatingWidgetManager.Instance.CloseWidget(nodeId);
+                FloatingWidgetManager.Instance.OpenWidget(node, _host);
             }
             UpdateWidgetStatus();
             PopulateNodeList();
@@ -754,6 +761,21 @@ namespace FlowMy.Views.Overlays
         }
 
         private void SlideToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
+
+        private void CollapseOutsideExpandedCheckBox_Checked(object sender, RoutedEventArgs e)
+            => SyncCollapseOutsideToggleToRuntime();
+
+        private void CollapseOutsideExpandedCheckBox_Unchecked(object sender, RoutedEventArgs e)
+            => SyncCollapseOutsideToggleToRuntime();
+
+        private void SyncCollapseOutsideToggleToRuntime()
+        {
+            if (_loadingValues || _selectedNode == null) return;
+            ApplyValuesToConfig();
+            SyncOpenWidgetRuntime(_selectedNode.Id);
+            PersistWorkflowChanges();
+            RefreshExistingWidgets();
+        }
 
         private void TitleBarModeRadio_Checked(object sender, RoutedEventArgs e)
         {
