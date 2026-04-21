@@ -419,7 +419,7 @@ namespace FlowMy.ViewModels
             item.AvailableNodeOptions.Clear();
             foreach (var opt in JsAvailableNodeOptions)
             {
-                item.AvailableNodeOptions.Add(new WorkflowDataSourceOption { NodeId = opt.NodeId, Title = opt.Title });
+                item.AvailableNodeOptions.Add(CreateDataSourceOption_Clone(opt));
             }
         }
 
@@ -499,11 +499,7 @@ namespace FlowMy.ViewModels
                 if (n is not InputNode && (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0))
                     continue;
 
-                newOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                newOptions.Add(CreateDataSourceOption(n));
             }
 
             // 2. ⚠️ CRITICAL: Đảm bảo các JS source nodes cũng có trong danh sách
@@ -518,11 +514,7 @@ namespace FlowMy.ViewModels
                 var node = vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
                 if (node != null)
                 {
-                    newOptions.Add(new WorkflowDataSourceOption
-                    {
-                        NodeId = node.Id,
-                        Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : node.Title
-                    });
+                    newOptions.Add(CreateDataSourceOption(node));
                 }
             }
 
@@ -611,11 +603,7 @@ namespace FlowMy.ViewModels
                 if (n is not InputNode && (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0))
                     continue;
 
-                newOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                newOptions.Add(CreateDataSourceOption(n));
             }
 
             // 2. ⚠️ CRITICAL: Đảm bảo các node đã được chọn trong InputMappings cũng có trong danh sách
@@ -651,11 +639,7 @@ namespace FlowMy.ViewModels
                     continue; // node thực sự không còn tồn tại
 
                 // Thêm node vào danh sách (ngay cả khi không có connection)
-                newOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = node.Id,
-                    Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : node.Title
-                });
+                newOptions.Add(CreateDataSourceOption(node));
             }
 
             // 3. ⚠️ CRITICAL: Replace collection một lần để tránh ComboBox mất ItemsSource trong lúc Clear()
