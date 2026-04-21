@@ -79,6 +79,8 @@ namespace FlowMy.Views
         private double _energyTextSpinSeconds = Settings.Default.EnergyTextSpinSeconds <= 0 ? 0.7 : Settings.Default.EnergyTextSpinSeconds; // seconds / vòng 360
         private bool _energyMeteorMode;
         private bool _isApplyingEnergyMenuState = false;
+        private bool _headlessCanvasOptimizationEnabled;
+        private HashSet<string> _headlessHiddenWidgetNodeIds = new(StringComparer.OrdinalIgnoreCase);
         
         // UI chrome hide/show when expanding a node to viewport
         private bool _isViewportExpandedUiHidden = false;
@@ -157,6 +159,73 @@ namespace FlowMy.Views
         private readonly ScreenPositionNodeRenderer _screenPositionNodeRenderer;
         private readonly ViewportCullingService _viewportCullingService;
         private readonly NodeDialogManager _nodeDialogManager;
+
+        public void ConfigureHeadlessCanvasOptimization(IEnumerable<string>? widgetNodeIdsToHide)
+        {
+            _headlessCanvasOptimizationEnabled = true;
+            _headlessHiddenWidgetNodeIds = (widgetNodeIdsToHide ?? Enumerable.Empty<string>())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private bool ShouldRenderNodeInHeadlessMode(WorkflowNode node)
+        {
+            if (!_headlessCanvasOptimizationEnabled) return true;
+            if (node == null) return false;
+            if (_headlessHiddenWidgetNodeIds.Contains(node.Id)) return false;
+            return node.Type == NodeType.HtmlUi || node.Type == NodeType.Web;
+        }
+
+        private void ApplyHeadlessCanvasOptimization()
+        {
+            if (!_headlessCanvasOptimizationEnabled || ViewModel == null) return;
+
+            // Chạy logic workflow, tắt tối đa phần render connection/animation.
+            SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Off);
+            try { _connectionRenderer.ClearAllConnectionVisuals(); } catch { }
+
+            // Ẩn UI chrome editor để giảm chi phí layout/render.
+            SetViewportExpandedUiHidden(true);
+            if (ExecutionFloatingPanel != null) ExecutionFloatingPanel.Visibility = Visibility.Collapsed;
+            if (MinimapBorder != null) MinimapBorder.Visibility = Visibility.Collapsed;
+
+            // Giữ lại Web/HtmlUi (trừ node widget đang được mở dạng floating).
+            foreach (var node in ViewModel.Nodes)
+            {
+                bool shouldRender = ShouldRenderNodeInHeadlessMode(node);
+                if (shouldRender)
+                {
+                    if (node.Border == null)
+                    {
+                        try { RenderNode(node); } catch { }
+                    }
+                    else
+                    {
+                        node.Border.Visibility = Visibility.Visible;
+                        if (node.TitleTextBlockUI != null) node.TitleTextBlockUI.Visibility = Visibility.Visible;
+                        foreach (var p in node.Ports)
+                        {
+                            if (p?.PortUI != null) p.PortUI.Visibility = Visibility.Visible;
+                        }
+                    }
+                }
+                else
+                {
+                    if (node.Border != null)
+                    {
+                        // Không remove visual để tránh abort WebView2 khi control đang init.
+                        node.Border.Visibility = Visibility.Collapsed;
+                        if (node.TitleTextBlockUI != null) node.TitleTextBlockUI.Visibility = Visibility.Collapsed;
+                        foreach (var p in node.Ports)
+                        {
+                            if (p?.PortUI != null) p.PortUI.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+            }
+
+            _viewportCullingService?.ForceUpdate();
+        }
 
         // Kéo thả panel nổi hiển thị node đang chạy
         private bool _isDraggingExecutionPanel;
@@ -678,6 +747,7 @@ namespace FlowMy.Views
                 RefreshAutoStartScopeBorders();
 
                 InitializeNodePaletteFromSettings();
+                ApplyHeadlessCanvasOptimization();
             };
 
             SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Animated);
@@ -1344,6 +1414,10 @@ namespace FlowMy.Views
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine($"Error restoring view state after load: {ex.Message}");
+                        }
+                        finally
+                        {
+                            ApplyHeadlessCanvasOptimization();
                         }
                     }));
                 }

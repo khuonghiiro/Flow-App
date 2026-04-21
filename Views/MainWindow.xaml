@@ -96,7 +96,7 @@
                         <Border x:Name="bd"
                                 CornerRadius="16"
                                 Background="Transparent"
-                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderBrush="{DynamicResource CanvasGridBrush}"
                                 BorderThickness="1">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>

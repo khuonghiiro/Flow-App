@@ -450,6 +450,7 @@ namespace FlowMy.ViewModels
 
             if (headless)
             {
+                workflowWindow.ConfigureHeadlessCanvasOptimization(widgetNodeIds);
                 // Không ẩn MainWindow: user vẫn thấy launcher và card gốc.
                 // WorkflowEditorWindow chạy ngầm để widget sống được.
                 workflowWindow.ShowInTaskbar = false;
@@ -476,36 +477,54 @@ namespace FlowMy.ViewModels
             void ActivateWidgets()
             {
                 if (widgetNodeIds == null || widgetNodeIds.Count == 0) return;
-                try
+                workflowWindow.Dispatcher.BeginInvoke(async () =>
                 {
-                    var vm = workflowWindow.ViewModel;
-                    if (vm == null) return;
-
-                    foreach (var wid in widgetNodeIds)
+                    try
                     {
-                        if (string.IsNullOrWhiteSpace(wid)) continue;
-                        var node = vm.Nodes?.FirstOrDefault(n =>
-                            string.Equals(n.Id, wid, System.StringComparison.OrdinalIgnoreCase));
-                        if (node == null) continue;
+                        var targetIds = widgetNodeIds
+                            .Where(id => !string.IsNullOrWhiteSpace(id))
+                            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+                        if (targetIds.Count == 0) return;
 
-                        node.FloatingWidget ??= new FlowMy.Models.FloatingWidgetConfig();
-                        node.FloatingWidget.IsEnabled = true;
-                        if (headless)
+                        var remaining = new HashSet<string>(targetIds, System.StringComparer.OrdinalIgnoreCase);
+
+                        // Chờ workflow load xong rồi mới map nodeId -> node để tránh miss khi Loaded chạy quá sớm.
+                        for (int attempt = 0; attempt < 40 && remaining.Count > 0; attempt++)
                         {
-                            // Launch từ nút 📌 ở MainWindow: widget chạy ngầm, không tạo item trên taskbar.
-                            node.FloatingWidget.ShowInTaskbar = false;
+                            var vm = workflowWindow.ViewModel;
+                            if (vm != null && vm.Nodes != null && vm.Nodes.Count > 0)
+                            {
+                                foreach (var wid in remaining.ToList())
+                                {
+                                    var node = vm.Nodes.FirstOrDefault(n =>
+                                        string.Equals(n.Id, wid, System.StringComparison.OrdinalIgnoreCase));
+                                    if (node == null) continue;
+
+                                    node.FloatingWidget ??= new FlowMy.Models.FloatingWidgetConfig();
+                                    node.FloatingWidget.IsEnabled = true;
+                                    if (headless)
+                                    {
+                                        // Launch từ nút 📌 ở MainWindow: widget chạy ngầm, không tạo item trên taskbar.
+                                        node.FloatingWidget.ShowInTaskbar = false;
+                                    }
+
+                                    FloatingWidgetManager.Instance.OpenWidget(node, workflowWindow);
+                                    remaining.Remove(wid);
+                                }
+                            }
+
+                            if (remaining.Count == 0) break;
+                            await Task.Delay(100);
                         }
-
-                        FloatingWidgetManager.Instance.OpenWidget(node, workflowWindow);
+                        if (headless && remaining.Count == 0)
+                        {
+                            // Sau khi mở widget cuối: nếu không còn widget nào active → đóng editor
+                            HookHeadlessAutoCloseOnLastWidget(workflowWindow);
+                        }
                     }
-
-                    if (headless)
-                    {
-                        // Sau khi mở widget cuối: nếu không còn widget nào active → đóng editor
-                        HookHeadlessAutoCloseOnLastWidget(workflowWindow);
-                    }
-                }
-                catch { /* best effort */ }
+                    catch { /* best effort */ }
+                }, System.Windows.Threading.DispatcherPriority.Background);
             }
 
             if (widgetNodeIds != null && widgetNodeIds.Count > 0)
