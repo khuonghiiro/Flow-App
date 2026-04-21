@@ -1658,12 +1658,6 @@ public partial class FloatingWidgetWindow : Window
         System.Diagnostics.Debug.WriteLine(
             $"[FloatingWidget:{nodeIdForLog}] JS push key='{key}' value='{value}' inspect={inspect}");
 #endif
-
-        if (!inspect.Contains("\"hasAsyncPush\":true", StringComparison.Ordinal)
-            && !inspect.Contains("\"hasLivePush\":true", StringComparison.Ordinal))
-        {
-            _pendingAsyncBuffer.Add((key ?? string.Empty, value ?? string.Empty));
-        }
     }
 
     private string BuildBridgeJs()
@@ -2287,12 +2281,21 @@ window.__acPush = function(key, value) {
 #endif
                         if (_webViewInitialized)
                         {
-                            DrainPendingAsyncQueueToBuffer(htmlNode);
-                            if (_isExpanded && _htmlRuntimeReady)
+                            var rounds = 0;
+                            while (true)
                             {
-                                var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
-                                if (flushedCount == 0)
-                                    await PushAsyncCacheIfChangedAsync(htmlNode);
+                                DrainPendingAsyncQueueToBuffer(htmlNode);
+                                if (_isExpanded && _htmlRuntimeReady)
+                                {
+                                    var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+                                    if (flushedCount == 0)
+                                        await PushAsyncCacheIfChangedAsync(htmlNode);
+                                }
+
+                                // Có thể có item mới enqueue đúng lúc đang flush; lặp thêm 1-2 vòng để không hụt item cuối.
+                                if (htmlNode.PendingAsyncPushQueue.IsEmpty) break;
+                                if (++rounds >= 8) break;
+                                await Task.Yield();
                             }
                         }
                         else
