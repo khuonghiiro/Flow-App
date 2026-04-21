@@ -60,7 +60,6 @@ public partial class FloatingWidgetWindow : Window
     private bool _webViewContentLoaded;
     private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
-    private string? _lastAsyncCacheSignature;
     private readonly List<(string Key, string Value)> _pendingAsyncBuffer = new();
 
     /// <summary>Mini toolbar ngoài widget (đóng + thu nhỏ) thay cho Popup.</summary>
@@ -433,8 +432,10 @@ public partial class FloatingWidgetWindow : Window
                 _ = Dispatcher.InvokeAsync(async () =>
                 {
                     var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
-                    if (flushedCount == 0)
-                        await PushAsyncCacheIfChangedAsync(htmlNode);
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[FloatingWidget:{htmlNode.Id}] Expand flush flushedCount={flushedCount}, bufferCount={_pendingAsyncBuffer.Count}");
+#endif
                 }, DispatcherPriority.Background);
             }
             else if (!_webViewContentLoaded)
@@ -1370,8 +1371,10 @@ public partial class FloatingWidgetWindow : Window
                         if (_node is HtmlUiNode htmlNode)
                         {
                             var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
-                            if (flushedCount == 0)
-                                await PushAsyncCacheIfChangedAsync(htmlNode);
+#if DEBUG
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[FloatingWidget:{htmlNode.Id}] NavigationCompleted flush flushedCount={flushedCount}, bufferCount={_pendingAsyncBuffer.Count}");
+#endif
                         }
                     }, DispatcherPriority.Background);
                 };
@@ -1414,7 +1417,6 @@ public partial class FloatingWidgetWindow : Window
                     _webView.CoreWebView2.NavigateToString(html);
                 }
                 _lastContentSignature = signature;
-                _lastAsyncCacheSignature = null;
                 _webViewContentLoaded = true;
             }
             else if (_node is WebNode webNode)
@@ -1554,39 +1556,6 @@ public partial class FloatingWidgetWindow : Window
         return sb.ToString();
     }
 
-    private static string BuildAsyncCacheSignature(HtmlUiNode node)
-    {
-        if (node.AsyncDataCache == null || node.AsyncDataCache.IsEmpty) return string.Empty;
-        var sb = new StringBuilder();
-        foreach (var kv in node.AsyncDataCache.OrderBy(k => k.Key, StringComparer.Ordinal))
-        {
-            sb.Append(kv.Key).Append('=').Append(kv.Value ?? string.Empty).Append(';');
-        }
-        return sb.ToString();
-    }
-
-    private async Task PushAsyncCacheIfChangedAsync(HtmlUiNode node)
-    {
-        if (_webView?.CoreWebView2 == null) return;
-        var sig = BuildAsyncCacheSignature(node);
-        if (string.Equals(sig, _lastAsyncCacheSignature, StringComparison.Ordinal))
-            return;
-
-        _lastAsyncCacheSignature = sig;
-        if (string.IsNullOrWhiteSpace(sig)) return;
-
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine(
-            $"[FloatingWidget:{node.Id}] PushAsyncCache changed, count={node.AsyncDataCache?.Count ?? 0}, keys=[{string.Join(", ", node.AsyncDataCache.Keys)}]");
-#endif
-
-        foreach (var kv in node.AsyncDataCache)
-        {
-            if (IsPlaceholderValue(kv.Value)) continue;
-            await PushKeyValueToWidgetRuntimeAsync(kv.Key ?? string.Empty, kv.Value ?? string.Empty, node.Id);
-        }
-    }
-
     private void DrainPendingAsyncQueueToBuffer(HtmlUiNode node)
     {
         var items = new List<(string Key, string Value)>();
@@ -1605,6 +1574,10 @@ public partial class FloatingWidgetWindow : Window
             if (IsPlaceholderValue(kvp.Value)) continue;
             _pendingAsyncBuffer.Add((kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
         }
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine(
+            $"[FloatingWidget:{node.Id}] Buffer after drain count={_pendingAsyncBuffer.Count}");
+#endif
     }
 
     private async Task<int> FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
@@ -1616,6 +1589,10 @@ public partial class FloatingWidgetWindow : Window
         _pendingAsyncBuffer.Clear();
         foreach (var kv in snapshot)
             await PushKeyValueToWidgetRuntimeAsync(kv.Key, kv.Value, node.Id);
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine(
+            $"[FloatingWidget:{node.Id}] Flush buffered flushedCount={snapshot.Count}, bufferRemaining={_pendingAsyncBuffer.Count}");
+#endif
         return snapshot.Count;
     }
 
@@ -1631,6 +1608,10 @@ public partial class FloatingWidgetWindow : Window
         if (!_htmlRuntimeReady)
         {
             _pendingAsyncBuffer.Add((key ?? string.Empty, value ?? string.Empty));
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine(
+                $"[FloatingWidget:{nodeIdForLog}] Runtime not ready => rebuffer key='{key}', bufferCount={_pendingAsyncBuffer.Count}");
+#endif
             return;
         }
 
@@ -2288,8 +2269,10 @@ window.__acPush = function(key, value) {
                                 if (_isExpanded && _htmlRuntimeReady)
                                 {
                                     var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
-                                    if (flushedCount == 0)
-                                        await PushAsyncCacheIfChangedAsync(htmlNode);
+#if DEBUG
+                                    System.Diagnostics.Debug.WriteLine(
+                                        $"[FloatingWidget:{htmlNode.Id}] Pending loop round={rounds}, flushedCount={flushedCount}, queueEmpty={htmlNode.PendingAsyncPushQueue.IsEmpty}, bufferCount={_pendingAsyncBuffer.Count}");
+#endif
                                 }
 
                                 // Có thể có item mới enqueue đúng lúc đang flush; lặp thêm 1-2 vòng để không hụt item cuối.
