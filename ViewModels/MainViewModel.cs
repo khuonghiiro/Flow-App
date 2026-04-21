@@ -164,14 +164,13 @@ namespace FlowMy.ViewModels
             item.IsLaunchingHeadless = true;
             try
             {
-                // Cho UI đủ thời gian render icon loading trước khi vào luồng mở nặng.
-                await Task.Delay(180);
+                // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
+                await Task.Yield();
                 OpenWorkflowEditorInternal(
                     item.WorkflowName,
                     new List<string> { item.NodeId },
                     headless: true);
                 item.IsWidgetOpen = true;
-                await Task.Delay(700);
             }
             finally
             {
@@ -207,14 +206,13 @@ namespace FlowMy.ViewModels
                                       && !string.IsNullOrWhiteSpace(LastConfiguredNodeId);
             try
             {
-                // Cho UI đủ thời gian render icon loading trước khi vào luồng mở nặng.
-                await Task.Delay(180);
+                // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
+                await Task.Yield();
                 OpenWorkflowEditorInternal(
                     workflowNameToLoad: item.WorkflowName,
                     widgetNodeIds: null,
                     headless: true,
                     autoOpenConfigNodeId: item.NodeId);
-                await Task.Delay(900);
             }
             finally
             {
@@ -249,14 +247,13 @@ namespace FlowMy.ViewModels
             IsConfigureLastWidgetLoading = true;
             try
             {
-                // Cho UI đủ thời gian render icon loading trước khi vào luồng mở nặng.
-                await Task.Delay(180);
+                // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
+                await Task.Yield();
                 OpenWorkflowEditorInternal(
                     workflowNameToLoad: LastConfiguredWorkflowName,
                     widgetNodeIds: null,
                     headless: true,
                     autoOpenConfigNodeId: LastConfiguredNodeId);
-                await Task.Delay(900);
             }
             finally
             {
@@ -283,23 +280,6 @@ namespace FlowMy.ViewModels
             }
 
             workflowWindow.Owner = mainWindow;
-
-            // Preload workflow TRƯỚC khi Show() để tránh flash/viewport nhảy:
-            // LoadWorkflow chạy ngay trong ViewModel, IsLoading đã trở về false
-            // trước khi cửa sổ render lần đầu. Khi cửa sổ Loaded → ViewState
-            // được apply đúng 1 lần (kèm re-apply ở ApplicationIdle).
-            if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
-            {
-                try
-                {
-                    var vm = workflowWindow.ViewModel;
-                    if (vm != null)
-                    {
-                        vm.CurrentWorkflowName = workflowNameToLoad!;
-                    }
-                }
-                catch { /* ignore: fall back tới gán sau Loaded */ }
-            }
 
             if (headless)
             {
@@ -429,6 +409,23 @@ namespace FlowMy.ViewModels
                 // Show để Loaded event kích hoạt + workflow engine sống, sau đó ẩn lại
                 workflowWindow.Show();
                 workflowWindow.Hide();
+            }
+
+            // Set workflow name SAU khi window đã show để giảm block khởi tạo ban đầu trên MainWindow.
+            if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
+            {
+                workflowWindow.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new System.Action(() =>
+                {
+                    try
+                    {
+                        var vm = workflowWindow.ViewModel;
+                        if (vm != null && !string.Equals(vm.CurrentWorkflowName, workflowNameToLoad, System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            vm.CurrentWorkflowName = workflowNameToLoad!;
+                        }
+                    }
+                    catch { }
+                }));
             }
         }
 
