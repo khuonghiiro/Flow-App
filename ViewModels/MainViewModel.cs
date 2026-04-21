@@ -177,6 +177,8 @@ namespace FlowMy.ViewModels
             if (item == null) return;
             if (item.IsLaunchingHeadless) return;
 
+            System.Diagnostics.Debug.WriteLine($"[LaunchHeadless] Starting for '{item.WorkflowName}' / nodeId={item.NodeId}");
+
             item.IsLaunchingHeadless = true;
             try
             {
@@ -187,6 +189,7 @@ namespace FlowMy.ViewModels
                     new List<string> { item.NodeId },
                     headless: true);
                 item.IsWidgetOpen = true;
+                System.Diagnostics.Debug.WriteLine("[LaunchHeadless] OpenWorkflowEditorInternal returned.");
             }
             finally
             {
@@ -209,17 +212,31 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private async Task ReopenHeadlessWorkflow(WidgetShortcutItem? item)
         {
+            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Called. item={item?.WorkflowName ?? "null"}");
+
             if (item == null || string.IsNullOrWhiteSpace(item.WorkflowName)) return;
-            if (item.IsReopeningHeadless) return;
-            if (!_headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow))
+            if (item.IsReopeningHeadless)
+            {
+                System.Diagnostics.Debug.WriteLine("[ReopenHeadless] SKIP: IsReopeningHeadless=true");
+                return;
+            }
+
+            bool found = _headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow);
+            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] _headlessWorkflowWindows.TryGetValue => found={found}, window={workflowWindow?.GetHashCode()}");
+            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] _headlessWorkflowWindows keys: [{string.Join(", ", _headlessWorkflowWindows.Keys)}]");
+
+            if (!found || workflowWindow == null)
             {
                 // Fallback: map headless chưa sẵn sàng => mở editor ngay để user không phải bấm lần 2.
+                System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Fallback: opening non-headless");
                 OpenWorkflowEditorInternal(
                     item.WorkflowName,
                     new List<string> { item.NodeId },
                     headless: false);
                 return;
             }
+
+            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Window state: IsVisible={workflowWindow.IsVisible}, WindowState={workflowWindow.WindowState}, Visibility={workflowWindow.Visibility}");
 
             item.IsReopeningHeadless = true;
             try
@@ -228,6 +245,8 @@ namespace FlowMy.ViewModels
                 {
                     try
                     {
+                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Inside InvokeAsync. WindowState={workflowWindow.WindowState}, IsVisible={workflowWindow.IsVisible}");
+
                         workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
                         workflowWindow.ApplyLowestRenderPresetForDebugReopen();
                         workflowWindow.PrepareForInteractiveDebugSession();
@@ -237,10 +256,12 @@ namespace FlowMy.ViewModels
                         workflowWindow.WindowState = WindowState.Normal;
                         if (!workflowWindow.IsVisible)
                         {
+                            System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Calling Show()");
                             workflowWindow.Show();
                         }
                         else
                         {
+                            System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Already visible, setting Visibility=Visible");
                             workflowWindow.Visibility = Visibility.Visible;
                         }
                         workflowWindow.Topmost = true;
@@ -248,22 +269,31 @@ namespace FlowMy.ViewModels
                         workflowWindow.Focus();
                         workflowWindow.Topmost = false;
                         SetHeadlessDebugVisibleForWorkflow(item.WorkflowName, true);
+                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] After Show/Activate. IsVisible={workflowWindow.IsVisible}, WindowState={workflowWindow.WindowState}");
                     }
-                    catch { }
+                    catch (System.Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] EXCEPTION in InvokeAsync: {ex}");
+                    }
                 }), System.Windows.Threading.DispatcherPriority.Normal);
 
                 await workflowWindow.Dispatcher.InvokeAsync(new System.Action(() =>
                 {
                     try
                     {
+                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Setting Maximized. Current WindowState={workflowWindow.WindowState}");
                         workflowWindow.WindowState = WindowState.Maximized;
                     }
-                    catch { }
+                    catch (System.Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] EXCEPTION setting Maximized: {ex}");
+                    }
                 }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
             finally
             {
                 item.IsReopeningHeadless = false;
+                System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Done.");
             }
         }
 
@@ -567,6 +597,7 @@ namespace FlowMy.ViewModels
                     var nameToRegister = workflowNameToLoad;
                     workflowWindow.Loaded += (_, __) =>
                     {
+                        System.Diagnostics.Debug.WriteLine($"[HeadlessMap] workflowWindow.Loaded fired for '{nameToRegister}'. Registering in _headlessWorkflowWindows.");
                         _headlessWorkflowWindows[nameToRegister] = workflowWindow;
                         SetHeadlessDebugVisibleForWorkflow(nameToRegister, false);
                     };
