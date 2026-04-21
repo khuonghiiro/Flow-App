@@ -33,6 +33,9 @@ namespace FlowMy.Views.NodeControls
         private static readonly Dictionary<Border, double> _webViewZoomLevels = new(); // Lưu zoom level của từng WebView2
         // Tránh init đồng thời nhiều WebView2 khi mở workflow lớn (giảm khựng UI).
         private static readonly System.Threading.SemaphoreSlim _webView2InitGate = new(1, 1);
+        private static int _webViewInitSequence;
+        private const int WebViewInitStaggerMs = 120;
+        private const int WebViewInitStaggerMaxMs = 2200;
 
         // Lưu zoom theo tên miền (domain) trong phạm vi workflow hiện tại
         private static readonly Dictionary<string, double> _domainZoomByHost = new(StringComparer.OrdinalIgnoreCase);
@@ -83,6 +86,14 @@ namespace FlowMy.Views.NodeControls
             {
                 _webView2InitGate.Release();
             }
+        }
+
+        private static int GetInitStaggerDelayMs()
+        {
+            var sequence = System.Threading.Interlocked.Increment(ref _webViewInitSequence);
+            var delay = (sequence - 1) * WebViewInitStaggerMs;
+            if (delay < 0) return 0;
+            return Math.Min(delay, WebViewInitStaggerMaxMs);
         }
 
         /// <summary>
@@ -397,6 +408,7 @@ namespace FlowMy.Views.NodeControls
                 // Ẩn WebView2 ban đầu để tránh block UI thread khi khởi tạo
                 Visibility = Visibility.Collapsed
             };
+            var isDisposed = false;
             Grid.SetRow(webView, 1);
 
             // JS injection bridge: when workflow runs WebNodeExecutor it sets node.PendingJavaScript.
@@ -2242,6 +2254,17 @@ if (window.__elementInspector) {
             {
                 try
                 {
+                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
+                        return;
+
+                    // Stagger init để tránh nhiều node WebView2 giành UI thread cùng lúc khi vừa load workflow.
+                    var staggerDelayMs = GetInitStaggerDelayMs();
+                    if (staggerDelayMs > 0)
+                        await Task.Delay(staggerDelayMs);
+
+                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
+                        return;
+
                     CoreWebView2Environment? env = null;
                     try
                     {
@@ -4771,6 +4794,7 @@ if (window.__elementInspector) {
             border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
             border.Unloaded += (s, e) =>
             {
+                isDisposed = true;
                 try
                 {
                     // Đóng WebView2 khi node bị xóa: dừng media (nhạc, video) và giải phóng tài nguyên

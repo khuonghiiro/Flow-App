@@ -2417,9 +2417,6 @@ namespace FlowMy.ViewModels
             IsLoading = true;
             try
             {
-                Nodes.Clear();
-                Connections.Clear();
-
                 CurrentWorkflowName = result.Name;
 
                 ZoomLevel = result.ZoomLevel;
@@ -2439,12 +2436,9 @@ namespace FlowMy.ViewModels
                     ConnectionLineStyle = restoredStyle;
                 else
                     ConnectionLineStyle = ConnectionLineStyle.Bezier;
-
-                foreach (var node in result.Nodes)
-                    Nodes.Add(node);
-
-                foreach (var conn in result.Connections)
-                    Connections.Add(conn);
+                // Batch replace để giảm notify/render từng phần tử khi load workflow lớn.
+                Nodes = new ObservableCollection<WorkflowNode>(result.Nodes);
+                Connections = new ObservableCollection<WorkflowConnection>(result.Connections);
             }
             catch (Exception ex)
             {
