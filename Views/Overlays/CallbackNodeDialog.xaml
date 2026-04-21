@@ -103,24 +103,14 @@
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
                             
-                            <ComboBox x:Name="TargetNodeComboBox"
+                            <controls:NodeSearchComboBoxUserControl x:Name="TargetNodeComboBox"
                                       Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
                                       Margin="0,0,0,16"
                                       ItemsSource="{Binding AvailableNodes}"
-                                      SelectedValuePath="Id"
-                                      SelectedValue="{Binding TargetNodeId, Mode=TwoWay}">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock>
-                                            <Run Text="{Binding Title, Mode=OneWay}"/>
-                                            <Run Text=" (" Foreground="{DynamicResource TextSecondary}"/>
-                                            <Run Text="{Binding Id, Mode=OneWay}" Foreground="{DynamicResource TextSecondary}"/>
-                                            <Run Text=")" Foreground="{DynamicResource TextSecondary}"/>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
+                                      SelectedValuePath="NodeId"
+                                      DisplayMemberPath="Title"
+                                      SelectedValue="{Binding TargetNodeId, Mode=TwoWay}"
+                                      PlaceholderText="Chọn node callback..."/>
                             
                             <!-- Max Callback Count -->
                             <TextBlock Text="Số lần callback tối đa trong 1 luồng:"

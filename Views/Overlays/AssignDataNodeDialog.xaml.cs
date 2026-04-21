@@ -1,4 +1,5 @@
-﻿using FlowMy.Models;
+﻿using FlowMy.Controls;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
@@ -88,11 +89,10 @@ namespace FlowMy.Views.Overlays
                     new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                 }
             };
-            var srcNodeCombo = new ComboBox
+            var srcNodeCombo = new NodeSearchComboBoxUserControl
             {
                 Height = 32,
                 Margin = new Thickness(0, 0, 8, 0),
-                Style = baseCombo,
                 ItemsSource = _viewModel.AvailableNodeOptions,
                 SelectedValuePath = nameof(WorkflowDataSourceOption.NodeId),
                 DisplayMemberPath = nameof(WorkflowDataSourceOption.Title)
@@ -108,10 +108,13 @@ namespace FlowMy.Views.Overlays
             };
             srcKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(assignment.SourceNodeId);
             if (!string.IsNullOrEmpty(assignment.SourceOutputKey)) srcKeyCombo.SelectedValue = assignment.SourceOutputKey;
-            srcNodeCombo.SelectionChanged += (s, e) =>
+            var srcNodeDp = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                NodeSearchComboBoxUserControl.SelectedValueProperty,
+                typeof(NodeSearchComboBoxUserControl));
+            srcNodeDp?.AddValueChanged(srcNodeCombo, (s, e) =>
             {
                 if (srcNodeCombo.SelectedValue is string id) { assignment.SourceNodeId = id; srcKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(id); }
-            };
+            });
             srcKeyCombo.SelectionChanged += (s, e) => { if (srcKeyCombo.SelectedValue is string k) assignment.SourceOutputKey = k; };
 
             // Use Grid instead of StackPanel so ComboBox stretches to fill column
@@ -199,11 +202,10 @@ namespace FlowMy.Views.Overlays
                     new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                 }
             };
-            var tgtNodeCombo = new ComboBox
+            var tgtNodeCombo = new NodeSearchComboBoxUserControl
             {
                 Height = 32,
                 Margin = new Thickness(0, 0, 8, 0),
-                Style = baseCombo,
                 ItemsSource = _viewModel.AvailableNodeOptions,
                 SelectedValuePath = nameof(WorkflowDataSourceOption.NodeId),
                 DisplayMemberPath = nameof(WorkflowDataSourceOption.Title)
@@ -219,10 +221,13 @@ namespace FlowMy.Views.Overlays
             };
             tgtKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(assignment.TargetNodeId);
             if (!string.IsNullOrEmpty(assignment.TargetKey)) tgtKeyCombo.SelectedValue = assignment.TargetKey;
-            tgtNodeCombo.SelectionChanged += (s, e) =>
+            var tgtNodeDp = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                NodeSearchComboBoxUserControl.SelectedValueProperty,
+                typeof(NodeSearchComboBoxUserControl));
+            tgtNodeDp?.AddValueChanged(tgtNodeCombo, (s, e) =>
             {
                 if (tgtNodeCombo.SelectedValue is string id) { assignment.TargetNodeId = id; tgtKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(id); }
-            };
+            });
             tgtKeyCombo.SelectionChanged += (s, e) => { if (tgtKeyCombo.SelectedValue is string k) assignment.TargetKey = k; };
 
             // Use Grid instead of StackPanel so ComboBox stretches to fill column

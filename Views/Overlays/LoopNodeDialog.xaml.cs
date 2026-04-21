@@ -1,3 +1,4 @@
+using FlowMy.Controls;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
@@ -198,19 +199,21 @@ namespace FlowMy.Views.Overlays
                     mapping.SourceOutputKey = key;
             };
 
-            var nodeCombo = new ComboBox
+            var nodeCombo = new NodeSearchComboBoxUserControl
             {
                 Height = 36,
                 Width = 160,
                 Margin = new Thickness(0, 0, 8, 0),
-                Style = Application.Current.TryFindResource("BaseComboBox") as Style,
                 ItemsSource = _viewModel.BodyNodeOptions,
                 SelectedValuePath = nameof(WorkflowDataSourceOption.NodeId),
                 DisplayMemberPath = nameof(WorkflowDataSourceOption.Title)
             };
             if (!string.IsNullOrEmpty(mapping.SourceNodeId))
                 nodeCombo.SelectedValue = mapping.SourceNodeId;
-            nodeCombo.SelectionChanged += (s, e) =>
+            var nodeDp = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                NodeSearchComboBoxUserControl.SelectedValueProperty,
+                typeof(NodeSearchComboBoxUserControl));
+            nodeDp?.AddValueChanged(nodeCombo, (s, e) =>
             {
                 if (nodeCombo.SelectedValue is string nodeId)
                 {
@@ -218,7 +221,7 @@ namespace FlowMy.Views.Overlays
                     keyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(nodeId);
                     keyCombo.SelectedValue = mapping.SourceOutputKey;
                 }
-            };
+            });
 
             var removeBtn = new Button
             {
@@ -270,12 +273,11 @@ namespace FlowMy.Views.Overlays
 
             // Dòng 1: Node nguồn + Key nguồn
             var row1 = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
-            var srcNodeCombo = new ComboBox
+            var srcNodeCombo = new NodeSearchComboBoxUserControl
             {
                 Height = 36,
                 MinWidth = 140,
                 Margin = new Thickness(0, 0, 8, 0),
-                Style = Application.Current.TryFindResource("BaseComboBox") as Style,
                 ItemsSource = _viewModel.BodyNodeOptions,
                 SelectedValuePath = nameof(WorkflowDataSourceOption.NodeId),
                 DisplayMemberPath = nameof(WorkflowDataSourceOption.Title)
@@ -291,10 +293,13 @@ namespace FlowMy.Views.Overlays
             };
             srcKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(assignment.SourceNodeId);
             if (!string.IsNullOrEmpty(assignment.SourceOutputKey)) srcKeyCombo.SelectedValue = assignment.SourceOutputKey;
-            srcNodeCombo.SelectionChanged += (s, e) =>
+            var srcNodeDp = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                NodeSearchComboBoxUserControl.SelectedValueProperty,
+                typeof(NodeSearchComboBoxUserControl));
+            srcNodeDp?.AddValueChanged(srcNodeCombo, (s, e) =>
             {
                 if (srcNodeCombo.SelectedValue is string id) { assignment.SourceNodeId = id; srcKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(id); }
-            };
+            });
             srcKeyCombo.SelectionChanged += (s, e) => { if (srcKeyCombo.SelectedValue is string k) assignment.SourceOutputKey = k; };
             row1.Children.Add(srcNodeCombo);
             row1.Children.Add(srcKeyCombo);
@@ -311,12 +316,11 @@ namespace FlowMy.Views.Overlays
 
             // Dòng 3: Node đích + Key đích
             var row3 = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
-            var tgtNodeCombo = new ComboBox
+            var tgtNodeCombo = new NodeSearchComboBoxUserControl
             {
                 Height = 36,
                 MinWidth = 140,
                 Margin = new Thickness(0, 0, 8, 0),
-                Style = Application.Current.TryFindResource("BaseComboBox") as Style,
                 ItemsSource = _viewModel.BodyNodeOptions,
                 SelectedValuePath = nameof(WorkflowDataSourceOption.NodeId),
                 DisplayMemberPath = nameof(WorkflowDataSourceOption.Title)
@@ -332,10 +336,13 @@ namespace FlowMy.Views.Overlays
             };
             tgtKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(assignment.TargetNodeId);
             if (!string.IsNullOrEmpty(assignment.TargetKey)) tgtKeyCombo.SelectedValue = assignment.TargetKey;
-            tgtNodeCombo.SelectionChanged += (s, e) =>
+            var tgtNodeDp = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                NodeSearchComboBoxUserControl.SelectedValueProperty,
+                typeof(NodeSearchComboBoxUserControl));
+            tgtNodeDp?.AddValueChanged(tgtNodeCombo, (s, e) =>
             {
                 if (tgtNodeCombo.SelectedValue is string id) { assignment.TargetNodeId = id; tgtKeyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(id); }
-            };
+            });
             tgtKeyCombo.SelectionChanged += (s, e) => { if (tgtKeyCombo.SelectedValue is string k) assignment.TargetKey = k; };
             row3.Children.Add(tgtNodeCombo);
             row3.Children.Add(tgtKeyCombo);

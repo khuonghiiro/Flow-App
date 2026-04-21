@@ -636,11 +636,7 @@ namespace FlowMy.Services.Interaction
                         .ToList();
 
                     var options = producerNodes
-                        .Select(n => new WorkflowDataSourceOption
-                        {
-                            NodeId = n.Id,
-                            Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                        })
+                        .Select(BaseNodeDialogViewModel.CreateDataSourceOption)
                         .ToList();
 
                     // Bỏ auto-expand: chỉ mở khi user click toggle để tránh render nhiều dẫn đến đơ

@@ -1,6 +1,7 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.ViewModels;
 using System.Globalization;
 using System.Text.Json;
 using System.Windows;
@@ -1604,11 +1605,7 @@ namespace FlowMy.Services.Rendering
                                         .ToList();
 
                                     var options = producerNodes
-                                        .Select(n => new WorkflowDataSourceOption
-                                        {
-                                            NodeId = n.Id,
-                                            Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                                        })
+                                        .Select(BaseNodeDialogViewModel.CreateDataSourceOption)
                                         .ToList();
 
                                     newInput.AvailableSources = options;

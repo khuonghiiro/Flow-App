@@ -177,11 +177,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
             .Select(c => c.FromNode!)
             .GroupBy(n => n.Id, System.StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
-            .Select(n => new WorkflowDataSourceOption
-            {
-                NodeId = n.Id,
-                Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-            })
+            .Select(BaseNodeDialogViewModel.CreateDataSourceOption)
             .ToList();
 
         // Giữ các node đã được chọn trước đó trong options để không làm combobox "rơi" selection.
@@ -205,11 +201,9 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
             var node = vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, selectedId, StringComparison.OrdinalIgnoreCase));
             if (node != null)
             {
-                byId[selectedId] = new WorkflowDataSourceOption
-                {
-                    NodeId = node.Id,
-                    Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : $"{node.Title} (không còn nối trực tiếp)"
-                };
+                var opt = BaseNodeDialogViewModel.CreateDataSourceOption(node);
+                opt.Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : $"{node.Title} (không còn nối trực tiếp)";
+                byId[selectedId] = opt;
             }
             else
             {
@@ -263,11 +257,7 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
             .Select(g => g.First())
             .ToDictionary(
                 n => n.Id,
-                n => new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                },
+                BaseNodeDialogViewModel.CreateDataSourceOption,
                 StringComparer.OrdinalIgnoreCase);
 
         foreach (var row in Sources)
@@ -299,11 +289,9 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
             string.Equals(n.Id, selectedId, StringComparison.OrdinalIgnoreCase));
         if (node != null)
         {
-            byId[selectedId] = new WorkflowDataSourceOption
-            {
-                NodeId = node.Id,
-                Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : $"{node.Title} (không còn trong upstream)"
-            };
+            var opt = BaseNodeDialogViewModel.CreateDataSourceOption(node);
+            opt.Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : $"{node.Title} (không còn trong upstream)";
+            byId[selectedId] = opt;
             return;
         }
 

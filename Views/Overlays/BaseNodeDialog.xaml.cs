@@ -1,3 +1,4 @@
+using FlowMy.Controls;
 using FlowMy.Models;
 using FlowMy.ViewModels;
 using System.ComponentModel;
@@ -272,18 +273,17 @@ namespace FlowMy.Views.Overlays
             stack.Children.Add(valueDef);
 
             // Source node combo
-            var sourceCombo = new ComboBox
+            var sourceCombo = new NodeSearchComboBoxUserControl
             {
                 Height = 36,
                 Margin = new Thickness(0, 0, 0, 6),
-                Style = Application.Current.TryFindResource("BaseComboBox") as Style,
                 ItemsSource = inputVm.AvailableSources,
                 SelectedValuePath = nameof(WorkflowDataSourceOption.NodeId),
                 DisplayMemberPath = nameof(WorkflowDataSourceOption.Title),
                 SelectedValue = inputVm.SelectedSourceNodeId
             };
 
-            sourceCombo.SetBinding(ComboBox.SelectedValueProperty,
+            sourceCombo.SetBinding(NodeSearchComboBoxUserControl.SelectedValueProperty,
                 new System.Windows.Data.Binding(nameof(InputItemViewModel.SelectedSourceNodeId))
                 {
                     Source = inputVm,

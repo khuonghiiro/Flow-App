@@ -1,3 +1,4 @@
+using FlowMy.Controls;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
@@ -74,12 +75,11 @@ namespace FlowMy.Views.Overlays
 
             var rowPanel = new StackPanel { Orientation = Orientation.Horizontal };
 
-            var nodeCombo = new ComboBox
+            var nodeCombo = new NodeSearchComboBoxUserControl
             {
                 Height = 32,
                 MinWidth = 120,
                 Margin = new Thickness(0, 0, 8, 0),
-                Style = baseCombo,
                 ItemsSource = _viewModel.AvailableNodeOptions,
                 SelectedValuePath = nameof(Models.WorkflowDataSourceOption.NodeId),
                 DisplayMemberPath = nameof(Models.WorkflowDataSourceOption.Title)
@@ -109,14 +109,17 @@ namespace FlowMy.Views.Overlays
             valueBox.Text = kv.ValueConfirm ?? string.Empty;
             valueBox.TextChanged += (s, e) => kv.ValueConfirm = (s as TextBox)?.Text;
 
-            nodeCombo.SelectionChanged += (s, e) =>
+            var nodeDp = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                NodeSearchComboBoxUserControl.SelectedValueProperty,
+                typeof(NodeSearchComboBoxUserControl));
+            nodeDp?.AddValueChanged(nodeCombo, (s, e) =>
             {
                 if (nodeCombo.SelectedValue is string id)
                 {
                     kv.SourceNodeId = id;
                     keyCombo.ItemsSource = _viewModel.GetOutputKeysForNode(id);
                 }
-            };
+            });
             keyCombo.SelectionChanged += (s, e) =>
             {
                 if (keyCombo.SelectedValue is string k) kv.SourceOutputKey = k;

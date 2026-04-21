@@ -51,7 +51,7 @@ namespace FlowMy.ViewModels
         /// <summary>
         /// Danh sách các node có thể callback (tất cả node trừ Start, End, và chính node này)
         /// </summary>
-        public ObservableCollection<WorkflowNode> AvailableNodes { get; } = new();
+        public ObservableCollection<WorkflowDataSourceOption> AvailableNodes { get; } = new();
         public ObservableCollection<CallbackFlowBehaviorOption> FlowBehaviorOptions { get; } = new()
         {
             new CallbackFlowBehaviorOption(CallbackFlowBehavior.JumpOnly, "Chỉ callback (Jump only)"),
@@ -179,7 +179,7 @@ namespace FlowMy.ViewModels
 
             foreach (var node in nodes)
             {
-                AvailableNodes.Add(node);
+                AvailableNodes.Add(CreateDataSourceOption(node));
             }
         }
 
