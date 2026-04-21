@@ -45,6 +45,7 @@ namespace FlowMy.ViewModels
 
         private readonly object _runningNodesBookkeepingLock = new();
         private readonly Dictionary<WorkflowNode, int> _nodeRunningRefCount = new();
+        private CancellationTokenSource? _workflowLoadCts;
 
         /// <summary>Số lượt chạy song song trên lane auto-scheduled (không dùng IsExecuting).</summary>
         private int _autoScheduledLaneRunsInFlight;
@@ -80,7 +81,7 @@ namespace FlowMy.ViewModels
         {
             if (IsLoading || string.IsNullOrEmpty(value)) return;
             if (_isRefreshingAfterSave) return; // Save vừa xong, chỉ refresh ComboBox, không reload
-            LoadWorkflow(value);
+            _ = LoadWorkflowAsync(value);
         }
 
         [ObservableProperty]
@@ -3020,50 +3021,41 @@ namespace FlowMy.ViewModels
             catch { }
         }
 
-        private void LoadWorkflow(string name)
+        private async Task LoadWorkflowAsync(string name)
         {
-            if (IsLoading) return;
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            CancellationTokenSource? previousCts = null;
+            var cts = new CancellationTokenSource();
+            previousCts = Interlocked.Exchange(ref _workflowLoadCts, cts);
+            previousCts?.Cancel();
+            previousCts?.Dispose();
+
             try
             {
                 IsLoading = true;
-                var result = _persistenceService.Load(name);
+                var token = cts.Token;
+                var result = await Task.Run(() =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    return _persistenceService.Load(name);
+                }, token);
+
+                if (token.IsCancellationRequested || !ReferenceEquals(_workflowLoadCts, cts))
+                    return;
+
                 if (result == null) return;
-
-                Nodes.Clear();
-                Connections.Clear();
-
-                CurrentWorkflowName = result.Name;
-
-                // ⭐ CRITICAL: Restore view state BEFORE adding nodes
-                // This ensures nodes are rendered at the correct positions with the right zoom/pan
-                ZoomLevel = result.ZoomLevel;
-                PanX = result.PanX;
-                PanY = result.PanY;
-
-                // Restore connection line style (fallback Bezier nếu thiếu)
-                if (!string.IsNullOrWhiteSpace(result.ConnectionLineStyle) &&
-                    Enum.TryParse<ConnectionLineStyle>(result.ConnectionLineStyle, out var restoredStyle))
-                {
-                    ConnectionLineStyle = restoredStyle;
-                }
-                else
-                {
-                    ConnectionLineStyle = ConnectionLineStyle.Bezier;
-                }
-
-                foreach (var node in result.Nodes)
-                {
-                    Nodes.Add(node);
-                }
-
-                foreach (var conn in result.Connections)
-                {
-                    Connections.Add(conn);
-                }
+                ApplyWorkflowLoadResult(result);
             }
+            catch (OperationCanceledException) { }
             catch { }
             finally
             {
+                if (ReferenceEquals(_workflowLoadCts, cts))
+                {
+                    _workflowLoadCts = null;
+                }
+                cts.Dispose();
                 IsLoading = false;
             }
         }
