@@ -2453,22 +2453,6 @@ namespace FlowMy.ViewModels
             {
                 IsLoading = false;
             }
-
-            if (Nodes.Count > 0)
-            {
-                var tempNodes = Nodes.ToList();
-                Nodes.Clear();
-                foreach (var node in tempNodes)
-                    Nodes.Add(node);
-            }
-
-            if (Connections.Count > 0)
-            {
-                var tempConns = Connections.ToList();
-                Connections.Clear();
-                foreach (var conn in tempConns)
-                    Connections.Add(conn);
-            }
         }
 
         private static void EnsureLoopBodyPortsExist(LoopBodyNode bodyNode)

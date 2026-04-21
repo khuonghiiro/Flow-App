@@ -3,6 +3,7 @@ using FlowMy.Models.Nodes;
 using FlowMy.Models.Persistence;
 using FlowMy.Services.Rendering;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
     private readonly FlowMy.Workflow.TemplateFactory _templateFactory;
     private readonly string _workflowsDir;
+    private static readonly ConcurrentDictionary<string, CachedWorkflowJson> _workflowJsonCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed record CachedWorkflowJson(DateTime LastWriteUtc, string Json);
 
     /// <summary>Đường dẫn mặc định: Documents\Workflow_Json; nếu không lấy được Documents thì fallback cạnh exe.</summary>
     public static string GetDefaultWorkflowsDirectory()
@@ -150,6 +154,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
             File.WriteAllText(filePath, json);
             File.SetAttributes(filePath, FileAttributes.Normal);
+            _workflowJsonCache[filePath] = new CachedWorkflowJson(File.GetLastWriteTimeUtc(filePath), json);
 
             WebNodeCacheHelper.SaveWorkflowWebNodeCaches(_workflowsDir, workflowName, nodes);
         }
@@ -169,7 +174,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             var path = Path.Combine(_workflowsDir, $"{workflowName}.json");
             if (!File.Exists(path)) return null;
 
-            var json = File.ReadAllText(path);
+            var fileLastWriteUtc = File.GetLastWriteTimeUtc(path);
+            var json = TryGetCachedWorkflowJson(path, fileLastWriteUtc) ?? File.ReadAllText(path);
+            _workflowJsonCache[path] = new CachedWorkflowJson(fileLastWriteUtc, json);
             var result = ImportFromJson(json);
             if (result != null)
             {
@@ -200,6 +207,17 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             System.Diagnostics.Debug.WriteLine($"Error loading workflow: {ex.Message}");
             return null;
         }
+    }
+
+    private static string? TryGetCachedWorkflowJson(string filePath, DateTime fileLastWriteUtc)
+    {
+        if (_workflowJsonCache.TryGetValue(filePath, out var cache) &&
+            cache.LastWriteUtc == fileLastWriteUtc)
+        {
+            return cache.Json;
+        }
+
+        return null;
     }
 
     /// <summary>
