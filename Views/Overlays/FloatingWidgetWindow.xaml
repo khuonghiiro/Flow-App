@@ -2,6 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:FlowMy.Controls"
+        xmlns:conv="clr-namespace:FlowMy.Converters"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -15,6 +17,7 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
 
         <!-- Context menu dùng cho cả idle shape và title bar -->
         <ContextMenu x:Key="WidgetContextMenu"
@@ -313,7 +316,8 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>  <!-- Drag handle -->
                                 <ColumnDefinition Width="*"/>     <!-- Title -->
-                                <ColumnDefinition Width="Auto"/>  <!-- Buttons -->
+                                <ColumnDefinition Width="Auto"/>  <!-- Run buttons -->
+                                <ColumnDefinition Width="Auto"/>  <!-- Collapse -->
                             </Grid.ColumnDefinitions>
 
                             <!-- Drag handle -->
@@ -334,13 +338,124 @@
                                        TextTrimming="CharacterEllipsis"
                                        IsHitTestVisible="False"/>
 
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,8,0">
+                                <Button x:Name="StartWorkflowBtn"
+                                        Width="24"
+                                        Height="24"
+                                        Margin="0,0,4,0"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        ToolTip="Chạy workflow"
+                                        Click="StartWorkflowBtn_Click">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource WidgetCollapseButton}">
+                                            <Setter Property="Width" Value="24"/>
+                                            <Setter Property="Height" Value="24"/>
+                                        </Style>
+                                    </Button.Style>
+                                    <Grid>
+                                        <controls:SvgViewboxEx Width="13"
+                                                               Height="13"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play duotone-regular'}"
+                                                               Fill="{DynamicResource TextOnSkyAzureBrush}"/>
+                                        <Border x:Name="StartRunCountBadge"
+                                                Width="13"
+                                                Height="13"
+                                                CornerRadius="6.5"
+                                                Background="{DynamicResource DangerBrush}"
+                                                BorderBrush="{DynamicResource TextOnDangerBrush}"
+                                                BorderThickness="1"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Margin="0,-3,-3,0"
+                                                Visibility="Collapsed">
+                                            <TextBlock x:Name="StartRunCountText"
+                                                       Text="0"
+                                                       FontSize="8"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextOnDangerBrush}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
+                                </Button>
+
+                                <Button x:Name="StopWorkflowBtn"
+                                        Width="24"
+                                        Height="24"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        ToolTip="Dừng workflow đang chạy"
+                                        Click="StopWorkflowBtn_Click"
+                                        MouseEnter="StopWorkflowBtn_MouseEnter"
+                                        MouseLeave="StopWorkflowBtn_MouseLeave">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource WidgetCollapseButton}">
+                                            <Setter Property="Width" Value="24"/>
+                                            <Setter Property="Height" Value="24"/>
+                                        </Style>
+                                    </Button.Style>
+                                    <Grid>
+                                        <controls:SvgViewboxEx Width="13"
+                                                               Height="13"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='flag-checkered sharp-duotone-solid'}"
+                                                               Fill="White"/>
+                                        <Border x:Name="StopRunCountBadge"
+                                                Width="13"
+                                                Height="13"
+                                                CornerRadius="6.5"
+                                                Background="{DynamicResource DangerBrush}"
+                                                BorderBrush="{DynamicResource TextOnDangerBrush}"
+                                                BorderThickness="1"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Margin="0,-3,-3,0"
+                                                Visibility="Collapsed">
+                                            <TextBlock x:Name="StopRunCountText"
+                                                       Text="0"
+                                                       FontSize="8"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextOnDangerBrush}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
+                                </Button>
+                            </StackPanel>
+
                             <!-- Thu nhỏ (đóng: chuột phải → Đóng widget) -->
-                            <Button x:Name="CollapseBtn" Grid.Column="2"
+                            <Button x:Name="CollapseBtn" Grid.Column="3"
                                     Style="{StaticResource WidgetCollapseButton}"
                                     Click="CollapseBtn_Click"
                                     VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
+
+                    <Popup x:Name="StopSessionsPopup"
+                           PlacementTarget="{Binding ElementName=StopWorkflowBtn}"
+                           Placement="Bottom"
+                           AllowsTransparency="True"
+                           StaysOpen="False"
+                           PopupAnimation="Fade"
+                           MouseEnter="StopSessionsPopup_MouseEnter"
+                           MouseLeave="StopSessionsPopup_MouseLeave">
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="6"
+                                MinWidth="64">
+                            <StackPanel x:Name="StopSessionsButtonsPanel"
+                                        Orientation="Horizontal"/>
+                        </Border>
+                    </Popup>
 
                     <!-- ── Content Area ── -->
                     <Border Grid.Row="1" x:Name="ContentArea" ClipToBounds="True"

@@ -2,8 +2,10 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Workflow;
+using FlowMy.ViewModels;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -67,9 +69,13 @@ public partial class FloatingWidgetWindow : Window
     private StackPanel? _titleRevealActionsPanel;
     private Button? _titleRevealCloseButton;
     private Button? _titleRevealCollapseButton;
+    private Button? _titleRevealStartButton;
+    private Button? _titleRevealStopButton;
     private Button? _titleRevealOutsideCollapseToggleButton;
     private Button? _titleRevealPinToggleButton;
     private bool _suppressOutsideCollapseOnce;
+    private INotifyCollectionChanged? _manualRunSessionsNotify;
+    private bool _isStopPopupHovering;
 
     // ── Slide animation state ──
     private double _slideOriginalLeft;
@@ -108,7 +114,7 @@ public partial class FloatingWidgetWindow : Window
     //  INITIALIZATION
     // ═══════════════════════════════════════════
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
         // Apply idle shape
         ApplyIdleShape();
@@ -127,6 +133,9 @@ public partial class FloatingWidgetWindow : Window
         {
             _ = InitWebView2Async();
         }
+
+        AttachManualRunObservers();
+        UpdateRunButtonsState();
     }
 
     private void SetInitialPosition()
@@ -965,6 +974,40 @@ public partial class FloatingWidgetWindow : Window
         };
         collapseBtn.Click += TitleBarRevealButton_Click;
 
+        var startBtn = new Button
+        {
+            Focusable = true,
+            Width = 22,
+            Height = 22,
+            Content = "▶",
+            FontSize = 10,
+            BorderThickness = new Thickness(1),
+            ToolTip = "Chạy workflow",
+            Padding = new Thickness(0),
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
+        if (TryFindResource("PrimaryButton") is Style startStyle)
+            startBtn.Style = startStyle;
+        startBtn.Click += (_, __) => StartWorkflowFromWidget();
+
+        var stopBtn = new Button
+        {
+            Focusable = true,
+            Width = 22,
+            Height = 22,
+            Content = "⛳",
+            FontSize = 10,
+            BorderThickness = new Thickness(1),
+            ToolTip = "Dừng tất cả workflow đang chạy",
+            Padding = new Thickness(0),
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
+        if (TryFindResource("DangerButton") is Style stopStyle)
+            stopBtn.Style = stopStyle;
+        stopBtn.Click += (_, __) => _host?.ViewModel?.EndTestCommand?.Execute(null);
+
         var outsideCollapseBtn = new Button
         {
             Focusable = true,
@@ -1008,6 +1051,8 @@ public partial class FloatingWidgetWindow : Window
         };
         row.Children.Add(closeBtn);
         row.Children.Add(collapseBtn);
+        row.Children.Add(startBtn);
+        row.Children.Add(stopBtn);
         row.Children.Add(outsideCollapseBtn);
         row.Children.Add(pinBtn);
 
@@ -1042,12 +1087,15 @@ public partial class FloatingWidgetWindow : Window
 
         _titleRevealCloseButton = closeBtn;
         _titleRevealCollapseButton = collapseBtn;
+        _titleRevealStartButton = startBtn;
+        _titleRevealStopButton = stopBtn;
         _titleRevealOutsideCollapseToggleButton = outsideCollapseBtn;
         _titleRevealPinToggleButton = pinBtn;
         _titleRevealActionsPanel = row;
         _titleRevealHost = host;
         UpdateOutsideCollapseToggleButtonState();
         UpdatePinToggleButtonState();
+        UpdateRunButtonsState();
     }
 
     private void ApplyTitleRevealHostBounds()
@@ -1077,6 +1125,8 @@ public partial class FloatingWidgetWindow : Window
         if (_titleRevealActionsPanel != null) _titleRevealActionsPanel.Orientation = verticalDock ? Orientation.Vertical : Orientation.Horizontal; // B1: chốt orientation trước khi đo (thêm nút mới mà quên bước này sẽ giữ layout cũ và tạo khoảng hở sai).
         if (_titleRevealCloseButton != null) _titleRevealCloseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: margin phải đổi theo orientation; dọc dùng Bottom, ngang dùng Right.
         if (_titleRevealCollapseButton != null) _titleRevealCollapseButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: áp cùng quy tắc spacing cho nút "-" để kích thước đo không lệch.
+        if (_titleRevealStartButton != null) _titleRevealStartButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: nút mới phải đổi margin theo orientation để không làm lệch phép đo dock trái/phải.
+        if (_titleRevealStopButton != null) _titleRevealStopButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: đồng bộ spacing để loại trừ khoảng thừa khi widget nằm sát cạnh.
         if (_titleRevealOutsideCollapseToggleButton != null) _titleRevealOutsideCollapseToggleButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: mọi nút mới đều phải có margin theo orientation, nếu không ActualWidth/Height thay đổi bất định.
         if (_titleRevealPinToggleButton != null) _titleRevealPinToggleButton.Margin = verticalDock ? new Thickness(0, 0, 0, 2) : new Thickness(0, 0, 2, 0); // B2: đồng bộ nút pin với nhóm để tránh chênh 1-2px sau khi thêm feature.
         _titleRevealActionsPanel?.UpdateLayout();
@@ -1815,7 +1865,7 @@ window.__acPush = function(key, value) {
         {
             try
             {
-                _host?.ViewModel?.StartTestCommand?.Execute(null);
+                StartWorkflowFromWidget();
             }
             catch (Exception ex)
             {
@@ -1842,6 +1892,162 @@ window.__acPush = function(key, value) {
     private void CollapseBtn_Click(object sender, RoutedEventArgs e)
     {
         CollapseWidget();
+    }
+
+    private void StartWorkflowBtn_Click(object sender, RoutedEventArgs e)
+    {
+        StartWorkflowFromWidget();
+    }
+
+    private void StopWorkflowBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (!StopSessionsPopup.IsOpen)
+        {
+            OpenStopSessionsPopup();
+        }
+    }
+
+    private void StopWorkflowBtn_MouseEnter(object sender, MouseEventArgs e)
+    {
+        OpenStopSessionsPopup();
+    }
+
+    private void StopWorkflowBtn_MouseLeave(object sender, MouseEventArgs e)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            if (!_isStopPopupHovering && !StopSessionsPopup.IsMouseOver)
+            {
+                StopSessionsPopup.IsOpen = false;
+            }
+        }));
+    }
+
+    private void StopSessionsPopup_MouseEnter(object sender, MouseEventArgs e)
+    {
+        _isStopPopupHovering = true;
+    }
+
+    private void StopSessionsPopup_MouseLeave(object sender, MouseEventArgs e)
+    {
+        _isStopPopupHovering = false;
+        StopSessionsPopup.IsOpen = false;
+    }
+
+    private void StartWorkflowFromWidget()
+    {
+        try
+        {
+            var vm = _host?.ViewModel;
+            if (vm?.StartTestCommand?.CanExecute(null) == true)
+            {
+                vm.StartTestCommand.Execute(null);
+            }
+            UpdateRunButtonsState();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Start button error: {ex.Message}");
+        }
+    }
+
+    private void OpenStopSessionsPopup()
+    {
+        BuildStopSessionsButtons();
+        StopSessionsPopup.IsOpen = StopSessionsButtonsPanel.Children.Count > 0;
+    }
+
+    private void BuildStopSessionsButtons()
+    {
+        StopSessionsButtonsPanel.Children.Clear();
+        var sessions = GetManualSessionsSnapshot();
+        for (int i = 0; i < sessions.Count; i++)
+        {
+            var session = sessions[i];
+            var btn = new Button
+            {
+                Width = 24,
+                Height = 24,
+                Margin = new Thickness(i == sessions.Count - 1 ? 0 : 4, 0, 0, 0),
+                Content = (i + 1).ToString(),
+                Tag = session.SessionId,
+                ToolTip = session.LineText,
+                Padding = new Thickness(0),
+                FontSize = 10
+            };
+            if (TryFindResource("DangerButton") is Style dangerStyle)
+                btn.Style = dangerStyle;
+            btn.Click += StopOneSessionBtn_Click;
+            StopSessionsButtonsPanel.Children.Add(btn);
+        }
+    }
+
+    private void StopOneSessionBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not string sessionId) return;
+        _host?.ViewModel?.CancelManualRunSession(sessionId);
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            BuildStopSessionsButtons();
+            UpdateRunButtonsState();
+            if (StopSessionsButtonsPanel.Children.Count == 0)
+                StopSessionsPopup.IsOpen = false;
+        }));
+    }
+
+    private List<ManualWorkflowRunSessionViewModel> GetManualSessionsSnapshot()
+    {
+        var vm = _host?.ViewModel;
+        if (vm?.ManualRunSessions == null) return new List<ManualWorkflowRunSessionViewModel>();
+        return vm.ManualRunSessions.ToList();
+    }
+
+    private void AttachManualRunObservers()
+    {
+        var vm = _host?.ViewModel;
+        if (vm == null) return;
+        if (_manualRunSessionsNotify != null) return;
+
+        _manualRunSessionsNotify = vm.ManualRunSessions;
+        _manualRunSessionsNotify.CollectionChanged += ManualRunSessions_CollectionChanged;
+    }
+
+    private void DetachManualRunObservers()
+    {
+        if (_manualRunSessionsNotify != null)
+            _manualRunSessionsNotify.CollectionChanged -= ManualRunSessions_CollectionChanged;
+        _manualRunSessionsNotify = null;
+    }
+
+    private void ManualRunSessions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            UpdateRunButtonsState();
+            if (StopSessionsPopup.IsOpen)
+                BuildStopSessionsButtons();
+        }));
+    }
+
+    private void UpdateRunButtonsState()
+    {
+        var runCount = GetManualSessionsSnapshot().Count;
+        var runCountText = runCount > 99 ? "99+" : runCount.ToString();
+        var badgeVisibility = runCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        if (StartRunCountText != null) StartRunCountText.Text = runCountText;
+        if (StopRunCountText != null) StopRunCountText.Text = runCountText;
+        if (StartRunCountBadge != null) StartRunCountBadge.Visibility = badgeVisibility;
+        if (StopRunCountBadge != null) StopRunCountBadge.Visibility = badgeVisibility;
+        if (StopWorkflowBtn != null) StopWorkflowBtn.IsEnabled = runCount > 0;
+
+        if (_titleRevealStartButton != null)
+            _titleRevealStartButton.Content = runCount > 0 ? $"▶{runCountText}" : "▶";
+        if (_titleRevealStopButton != null)
+        {
+            _titleRevealStopButton.Content = runCount > 0 ? $"⛳{runCountText}" : "⛳";
+            _titleRevealStopButton.IsEnabled = runCount > 0;
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -2339,6 +2545,7 @@ window.__acPush = function(key, value) {
 
     protected override void OnClosed(EventArgs e)
     {
+        DetachManualRunObservers();
         try
         {
             _titleRevealHost?.Hide();
@@ -2349,6 +2556,8 @@ window.__acPush = function(key, value) {
         _titleRevealActionsPanel = null;
         _titleRevealCloseButton = null;
         _titleRevealCollapseButton = null;
+        _titleRevealStartButton = null;
+        _titleRevealStopButton = null;
         _titleRevealOutsideCollapseToggleButton = null;
         _titleRevealPinToggleButton = null;
 
