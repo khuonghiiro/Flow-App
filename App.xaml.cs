@@ -2,6 +2,7 @@ using FlowMy.Extensions;
 using FlowMy.Helpers;
 using FlowMy.Services;
 using FlowMy.Services.Interfaces;
+using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -238,6 +239,15 @@ namespace FlowMy
 
         private void InitTheme()
         {
+            // Prefer the unified ColorThemeService preference (ThemePreference)
+            // so MainWindow and WorkflowEditor keep the same selected theme.
+            var colorThemeService = _serviceProvider?.GetService<ColorThemeService>();
+            if (colorThemeService != null)
+            {
+                colorThemeService.LoadThemePreference();
+                return;
+            }
+
             ThemeExtensions.ApplyStoredTheme();
         }
 
