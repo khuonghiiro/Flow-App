@@ -71,6 +71,10 @@ public partial class FloatingWidgetWindow : Window
     private Button? _titleRevealCollapseButton;
     private Button? _titleRevealStartButton;
     private Button? _titleRevealStopButton;
+    private Border? _titleRevealStartBadge;
+    private TextBlock? _titleRevealStartBadgeText;
+    private Border? _titleRevealStopBadge;
+    private TextBlock? _titleRevealStopBadgeText;
     private Button? _titleRevealOutsideCollapseToggleButton;
     private Button? _titleRevealPinToggleButton;
     private bool _suppressOutsideCollapseOnce;
@@ -979,13 +983,50 @@ public partial class FloatingWidgetWindow : Window
             Focusable = true,
             Width = 22,
             Height = 22,
-            Content = "▶",
             FontSize = 10,
             BorderThickness = new Thickness(1),
             ToolTip = "Chạy workflow",
             Padding = new Thickness(0),
             SnapsToDevicePixels = true,
             UseLayoutRounding = true
+        };
+        var startIcon = new TextBlock
+        {
+            Text = "▶",
+            FontSize = 10,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var startBadgeText = new TextBlock
+        {
+            Text = "0",
+            FontSize = 8,
+            FontWeight = FontWeights.Bold,
+            Foreground = Brushes.White,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var startBadge = new Border
+        {
+            Width = 12,
+            Height = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = Brushes.Red,
+            BorderBrush = Brushes.White,
+            BorderThickness = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, -6, -6, 0),
+            Visibility = Visibility.Collapsed,
+            Child = startBadgeText
+        };
+        startBtn.Content = new Grid
+        {
+            Children =
+            {
+                startIcon,
+                startBadge
+            }
         };
         if (TryFindResource("PrimaryButton") is Style startStyle)
             startBtn.Style = startStyle;
@@ -996,13 +1037,50 @@ public partial class FloatingWidgetWindow : Window
             Focusable = true,
             Width = 22,
             Height = 22,
-            Content = "⛳",
             FontSize = 10,
             BorderThickness = new Thickness(1),
             ToolTip = "Dừng tất cả workflow đang chạy",
             Padding = new Thickness(0),
             SnapsToDevicePixels = true,
             UseLayoutRounding = true
+        };
+        var stopIcon = new TextBlock
+        {
+            Text = "⏹️",
+            FontSize = 10,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var stopBadgeText = new TextBlock
+        {
+            Text = "0",
+            FontSize = 8,
+            FontWeight = FontWeights.Bold,
+            Foreground = Brushes.White,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var stopBadge = new Border
+        {
+            Width = 12,
+            Height = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = Brushes.Red,
+            BorderBrush = Brushes.White,
+            BorderThickness = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, -6, -6, 0),
+            Visibility = Visibility.Collapsed,
+            Child = stopBadgeText
+        };
+        stopBtn.Content = new Grid
+        {
+            Children =
+            {
+                stopIcon,
+                stopBadge
+            }
         };
         if (TryFindResource("DangerButton") is Style stopStyle)
             stopBtn.Style = stopStyle;
@@ -1089,6 +1167,10 @@ public partial class FloatingWidgetWindow : Window
         _titleRevealCollapseButton = collapseBtn;
         _titleRevealStartButton = startBtn;
         _titleRevealStopButton = stopBtn;
+        _titleRevealStartBadge = startBadge;
+        _titleRevealStartBadgeText = startBadgeText;
+        _titleRevealStopBadge = stopBadge;
+        _titleRevealStopBadgeText = stopBadgeText;
         _titleRevealOutsideCollapseToggleButton = outsideCollapseBtn;
         _titleRevealPinToggleButton = pinBtn;
         _titleRevealActionsPanel = row;
@@ -2042,12 +2124,13 @@ window.__acPush = function(key, value) {
         if (StopWorkflowBtn != null) StopWorkflowBtn.IsEnabled = runCount > 0;
 
         if (_titleRevealStartButton != null)
-            _titleRevealStartButton.Content = runCount > 0 ? $"▶{runCountText}" : "▶";
+            _titleRevealStartButton.IsEnabled = true;
         if (_titleRevealStopButton != null)
-        {
-            _titleRevealStopButton.Content = runCount > 0 ? $"⛳{runCountText}" : "⛳";
             _titleRevealStopButton.IsEnabled = runCount > 0;
-        }
+        if (_titleRevealStartBadgeText != null) _titleRevealStartBadgeText.Text = runCountText;
+        if (_titleRevealStopBadgeText != null) _titleRevealStopBadgeText.Text = runCountText;
+        if (_titleRevealStartBadge != null) _titleRevealStartBadge.Visibility = badgeVisibility;
+        if (_titleRevealStopBadge != null) _titleRevealStopBadge.Visibility = badgeVisibility;
     }
 
     // ═══════════════════════════════════════════
@@ -2558,6 +2641,10 @@ window.__acPush = function(key, value) {
         _titleRevealCollapseButton = null;
         _titleRevealStartButton = null;
         _titleRevealStopButton = null;
+        _titleRevealStartBadge = null;
+        _titleRevealStartBadgeText = null;
+        _titleRevealStopBadge = null;
+        _titleRevealStopBadgeText = null;
         _titleRevealOutsideCollapseToggleButton = null;
         _titleRevealPinToggleButton = null;
 
