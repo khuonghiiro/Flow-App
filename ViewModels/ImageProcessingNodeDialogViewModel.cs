@@ -109,11 +109,7 @@ namespace FlowMy.ViewModels
             {
                 if (ReferenceEquals(n, _imageNode)) continue;
                 if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-                AvailableNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                AvailableNodeOptions.Add(CreateDataSourceOption(n));
             }
         }
 
@@ -161,11 +157,7 @@ namespace FlowMy.ViewModels
 
             foreach (var n in candidates)
             {
-                RenderNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                RenderNodeOptions.Add(CreateDataSourceOption(n));
             }
         }
 

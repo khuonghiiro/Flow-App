@@ -919,7 +919,7 @@ namespace FlowMy.ViewModels
         /// Tạo WorkflowDataSourceOption có đầy đủ Icon, NodeBrush, NodeTextBrush... từ WorkflowNode.
         /// Tất cả dialog VMs nên dùng method này thay vì tạo option chỉ có NodeId + Title.
         /// </summary>
-        protected static WorkflowDataSourceOption CreateDataSourceOption(WorkflowNode n)
+        public static WorkflowDataSourceOption CreateDataSourceOption(WorkflowNode n)
         {
             return new WorkflowDataSourceOption
             {
@@ -938,7 +938,7 @@ namespace FlowMy.ViewModels
         /// <summary>
         /// Clone option để mỗi ComboBox giữ instance riêng, tránh side-effect binding.
         /// </summary>
-        protected static WorkflowDataSourceOption CreateDataSourceOption_Clone(WorkflowDataSourceOption source)
+        public static WorkflowDataSourceOption CreateDataSourceOption_Clone(WorkflowDataSourceOption source)
         {
             return new WorkflowDataSourceOption
             {

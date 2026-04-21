@@ -89,11 +89,7 @@ namespace FlowMy.ViewModels
 
             foreach (var node in producerNodes)
             {
-                AvailableSources.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = node.Id,
-                    Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : node.Title
-                });
+                AvailableSources.Add(BaseNodeDialogViewModel.CreateDataSourceOption(node));
             }
         }
 
@@ -544,11 +540,7 @@ namespace FlowMy.ViewModels
 
             foreach (var node in producerNodes)
             {
-                AvailableSources.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = node.Id,
-                    Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : node.Title
-                });
+                AvailableSources.Add(CreateDataSourceOption(node));
             }
         }
 

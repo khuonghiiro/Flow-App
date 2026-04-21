@@ -130,11 +130,7 @@ namespace FlowMy.ViewModels
             // Create options
             foreach (var n in producerNodes)
             {
-                AvailableSourceNodes.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                AvailableSourceNodes.Add(BaseNodeDialogViewModel.CreateDataSourceOption(n));
             }
         }
 

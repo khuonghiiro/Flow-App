@@ -47,12 +47,7 @@ namespace FlowMy.ViewModels
                 // Tuyển đơn giản: mọi node có DynamicOutputs đều có thể là nguồn collect
                 if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                 if (n.Id == _collectNode.Id) continue;
-
-                AvailableBodyNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                AvailableBodyNodeOptions.Add(CreateDataSourceOption(n));
             }
         }
 

@@ -239,11 +239,28 @@ namespace FlowMy.Controls
             var nodeId = GetPropertyValue(source, SelectedValuePath);
             var type = GetPropertyValue(source, "NodeTypeDisplayName");
             var iconKey = GetPropertyValue(source, "IconKey");
+            var nodeType = GetRawPropertyValue(source, "NodeType");
+            var colorKey = GetPropertyValue(source, "ColorKey");
 
             var nodeBrush = GetRawPropertyValue(source, "NodeBrush") as Brush;
             var nodeTextBrush = GetRawPropertyValue(source, "NodeTextBrush") as Brush;
             var nodeHoverBrush = GetRawPropertyValue(source, "NodeHoverBrush") as Brush;
             var nodeSelectedBrush = GetRawPropertyValue(source, "NodeSelectedBrush") as Brush;
+
+            if (source is WorkflowNode workflowNode)
+            {
+                nodeBrush ??= workflowNode.NodeBrush;
+                colorKey = string.IsNullOrWhiteSpace(colorKey) ? workflowNode.ColorKey : colorKey;
+                nodeType = nodeType ?? workflowNode.Type;
+            }
+
+            iconKey = ResolveIconKey(iconKey, nodeType);
+            nodeBrush ??= ResolveNodeStateBrush(colorKey, "Brush")
+                ?? (Application.Current.TryFindResource("SecondaryBrush") as Brush)
+                ?? Brushes.Gray;
+            nodeTextBrush ??= ResolveTextOnNodeBrush(colorKey);
+            nodeHoverBrush ??= ResolveNodeStateBrush(colorKey, "HoverBrush") ?? nodeBrush;
+            nodeSelectedBrush ??= ResolveNodeStateBrush(colorKey, "PressedBrush") ?? nodeBrush;
 
             var subtitle = string.IsNullOrWhiteSpace(type)
                 ? nodeId
@@ -258,12 +275,12 @@ namespace FlowMy.Controls
                 Title = string.IsNullOrWhiteSpace(title) ? nodeId : title,
                 Subtitle = subtitle,
                 SearchText = $"{title} {nodeId} {type}".Trim(),
-                IconKey = string.IsNullOrWhiteSpace(iconKey) ? "cog" : iconKey,
-                NodeBrush = nodeBrush ?? (Application.Current.TryFindResource("SecondaryBrush") as Brush ?? Brushes.Gray),
+                IconKey = iconKey,
+                NodeBrush = nodeBrush,
                 NodeTextBrush = resolvedIconFillBrush,
                 IconFillBrush = resolvedIconFillBrush,
-                NodeHoverBrush = nodeHoverBrush ?? nodeBrush ?? (Application.Current.TryFindResource("ComboBoxItemHoverBrush") as Brush ?? Brushes.LightGray),
-                NodeSelectedBrush = nodeSelectedBrush ?? nodeBrush ?? (Application.Current.TryFindResource("ComboBoxItemSelectedBrush") as Brush ?? Brushes.Gray)
+                NodeHoverBrush = nodeHoverBrush,
+                NodeSelectedBrush = nodeSelectedBrush
             };
         }
 
@@ -271,6 +288,79 @@ namespace FlowMy.Controls
         {
             return Application.Current?.TryFindResource("TextOnPrimaryBrush") as Brush
                 ?? Brushes.White;
+        }
+
+        private static string ResolveIconKey(string iconKey, object? nodeType)
+        {
+            if (!string.IsNullOrWhiteSpace(iconKey)) return iconKey;
+            if (nodeType == null) return "cog";
+
+            var typeName = nodeType.ToString() ?? string.Empty;
+            return typeName switch
+            {
+                "Start" => "play duotone-regular",
+                "End" => "flag-checkered sharp-duotone-solid",
+                "Input" => "left-to-dotted-line duotone-regular",
+                "Output" => "right-to-dotted-line duotone-regular",
+                "IfElse" => "list-tree sharp-light",
+                "Loop" => "arrows-spin duotone",
+                "Delay" => "timer regular",
+                "KeyPressEvent" => "key duotone-regular",
+                "HotkeyPressEvent" => "keyboard duotone",
+                "MouseEvent" => "computer-mouse duotone",
+                "StringSplit" => "scissors light",
+                "AssignData" => "arrows-left-right duotone",
+                "MediaGallery" => "image-stack duotone",
+                "ImageProcessing" => "image notdog-duo-solid",
+                "Code" => "code duotone-regular",
+                "HtmlUi" => "html5 brands",
+                "Folder" => "folder-open duotone-thin",
+                "HttpRequest" => "globe-pointer sharp-duotone-light",
+                "Web" => "internet-explorer brands",
+                "DataFetcher" => "inbox-out duotone-light",
+                "FileDownload" => "download solid",
+                "Storage" => "arrow-progress sharp-regular",
+                "Notification" => "message-captions duotone-regular",
+                "FlowOverwrite" => "merge sharp-regular",
+                "KeyValueBridge" => "list-check solid",
+                "FolderFilePaths" => "file-import duotone-light",
+                "AsyncTaskDispatchCollect" => "list-radio regular",
+                "ListOut" => "list-radio regular",
+                _ => "cog"
+            };
+        }
+
+        private static Brush ResolveTextOnNodeBrush(string? nodeColorKey)
+        {
+            var app = Application.Current;
+            if (app != null && !string.IsNullOrWhiteSpace(nodeColorKey))
+            {
+                var clean = NormalizeColorKey(nodeColorKey);
+                if (app.TryFindResource($"TextOn{clean}Brush") is Brush textOnBrush) return textOnBrush;
+                if (app.TryFindResource($"TextOn{clean}") is Brush textOnKey) return textOnKey;
+            }
+
+            return app?.TryFindResource("TextOnPrimaryBrush") as Brush ?? Brushes.White;
+        }
+
+        private static Brush? ResolveNodeStateBrush(string? nodeColorKey, string suffix)
+        {
+            var app = Application.Current;
+            var cleaned = NormalizeColorKey(nodeColorKey);
+            if (app != null && !string.IsNullOrWhiteSpace(cleaned))
+            {
+                if (app.TryFindResource($"{cleaned}{suffix}") is Brush exact) return exact;
+                if (suffix != "Brush" && app.TryFindResource($"{cleaned}Brush") is Brush baseBrush) return baseBrush;
+            }
+            return null;
+        }
+
+        private static string NormalizeColorKey(string? nodeColorKey)
+        {
+            var cleaned = (nodeColorKey ?? string.Empty).Trim();
+            if (cleaned.EndsWith("Brush", StringComparison.OrdinalIgnoreCase))
+                cleaned = cleaned[..^"Brush".Length];
+            return cleaned;
         }
 
         private static string GetPropertyValue(object source, string propertyName)

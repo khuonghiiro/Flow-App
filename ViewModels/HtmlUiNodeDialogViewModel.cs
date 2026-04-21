@@ -466,11 +466,7 @@ namespace FlowMy.ViewModels
                 if (ReferenceEquals(n, _node)) continue;
                 if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                 if (!connectedNodeIds.Contains(n.Id)) continue;
-                AvailableNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                AvailableNodeOptions.Add(CreateDataSourceOption(n));
             }
         }
 
@@ -694,11 +690,7 @@ namespace FlowMy.ViewModels
             {
                 if (n is not AsyncTaskNode asyncTask) continue;
                 if (ReferenceEquals(n, _node)) continue;
-                AsyncAvailableNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                AsyncAvailableNodeOptions.Add(CreateDataSourceOption(asyncTask));
             }
 
             // Đảm bảo các node đã chọn trong AsyncDataSources cũng nằm trong danh sách
@@ -712,11 +704,7 @@ namespace FlowMy.ViewModels
                     ads.Tag_AsyncTaskId = asyncTaskForItem.Id;
                     if (!AsyncAvailableNodeOptions.Any(o => string.Equals(o.NodeId, asyncTaskForItem.Id, StringComparison.OrdinalIgnoreCase)))
                     {
-                        AsyncAvailableNodeOptions.Add(new WorkflowDataSourceOption
-                        {
-                            NodeId = asyncTaskForItem.Id,
-                            Title = string.IsNullOrWhiteSpace(asyncTaskForItem.Title) ? asyncTaskForItem.Id : asyncTaskForItem.Title
-                        });
+                        AsyncAvailableNodeOptions.Add(CreateDataSourceOption(asyncTaskForItem));
                     }
                 }
             }

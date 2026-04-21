@@ -216,11 +216,7 @@ public partial class KeyValueBridgeNodeDialogViewModel : BaseNodeDialogViewModel
             foreach (var b in nodes.OfType<KeyValueBridgeNode>())
             {
                 if (!b.IsPassKeyMode || string.Equals(b.Id, _bridge.Id, StringComparison.Ordinal)) continue;
-                PassBridgeSourceOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = b.Id,
-                    Title = string.IsNullOrWhiteSpace(b.Title) ? b.Id : b.Title
-                });
+                PassBridgeSourceOptions.Add(CreateDataSourceOption(b));
             }
 
             if (!string.IsNullOrWhiteSpace(preserveSel))
@@ -273,22 +269,16 @@ public partial class KeyValueBridgeNodeDialogViewModel : BaseNodeDialogViewModel
             {
                 var label = string.IsNullOrWhiteSpace(b.Title) ? b.Id : b.Title;
                 var modeTag = b.IsPassKeyMode ? "Pass" : "Get";
-                DeleteBridgeNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = b.Id,
-                    Title = $"{label}  [{modeTag}]"
-                });
+                var opt = CreateDataSourceOption(b);
+                opt.Title = $"{label}  [{modeTag}]";
+                DeleteBridgeNodeOptions.Add(opt);
             }
         }
         else
         {
             foreach (var b in nodes.OfType<KeyValueBridgeNode>().Where(n => n.IsPassKeyMode))
             {
-                DeleteBridgeNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = b.Id,
-                    Title = string.IsNullOrWhiteSpace(b.Title) ? b.Id : b.Title
-                });
+                DeleteBridgeNodeOptions.Add(CreateDataSourceOption(b));
             }
         }
 
@@ -326,11 +316,7 @@ public partial class KeyValueBridgeNodeDialogViewModel : BaseNodeDialogViewModel
         foreach (var n in nodes.Where(n => n != null && !string.Equals(n.Id, _bridge.Id, StringComparison.OrdinalIgnoreCase)))
         {
             if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-            CleanupTriggerSourceOptions.Add(new WorkflowDataSourceOption
-            {
-                NodeId = n.Id,
-                Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-            });
+            CleanupTriggerSourceOptions.Add(CreateDataSourceOption(n));
         }
 
         if (!string.IsNullOrWhiteSpace(preserveNodeId) &&
@@ -350,11 +336,7 @@ public partial class KeyValueBridgeNodeDialogViewModel : BaseNodeDialogViewModel
         foreach (var n in nodes.Where(n => n != null && !string.Equals(n.Id, _bridge.Id, StringComparison.OrdinalIgnoreCase)))
         {
             if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-            CleanupKeySourceOptions.Add(new WorkflowDataSourceOption
-            {
-                NodeId = n.Id,
-                Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-            });
+            CleanupKeySourceOptions.Add(CreateDataSourceOption(n));
         }
 
         if (!string.IsNullOrWhiteSpace(preserveNodeId) &&
@@ -400,11 +382,7 @@ public partial class KeyValueBridgeNodeDialogViewModel : BaseNodeDialogViewModel
         foreach (var n in nodes.Where(n => n != null && !string.Equals(n.Id, _bridge.Id, StringComparison.OrdinalIgnoreCase)))
         {
             if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-            CleanupFilterValueSourceOptions.Add(new WorkflowDataSourceOption
-            {
-                NodeId = n.Id,
-                Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-            });
+            CleanupFilterValueSourceOptions.Add(CreateDataSourceOption(n));
         }
 
         if (!string.IsNullOrWhiteSpace(preserveNodeId) &&
@@ -422,11 +400,7 @@ public partial class KeyValueBridgeNodeDialogViewModel : BaseNodeDialogViewModel
         foreach (var n in nodes.Where(n => n != null && !string.Equals(n.Id, _bridge.Id, StringComparison.OrdinalIgnoreCase)))
         {
             if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-            CleanupFilterFieldSourceOptions.Add(new WorkflowDataSourceOption
-            {
-                NodeId = n.Id,
-                Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-            });
+            CleanupFilterFieldSourceOptions.Add(CreateDataSourceOption(n));
         }
 
         if (!string.IsNullOrWhiteSpace(preserveNodeId) &&
@@ -580,11 +554,7 @@ public partial class KeyValueBridgeNodeDialogViewModel : BaseNodeDialogViewModel
             if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
             if (string.IsNullOrWhiteSpace(n.Id)) continue;
 
-            options.Add(new WorkflowDataSourceOption
-            {
-                NodeId = n.Id,
-                Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-            });
+            options.Add(CreateDataSourceOption(n));
         }
 
         return new ObservableCollection<WorkflowDataSourceOption>(options);

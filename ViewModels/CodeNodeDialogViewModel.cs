@@ -295,11 +295,7 @@ namespace FlowMy.ViewModels
             var newOptions = new List<WorkflowDataSourceOption>();
             foreach (var n in producerNodes)
             {
-                newOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                newOptions.Add(CreateDataSourceOption(n));
             }
             // InputNode luôn cho phép xuất hiện (DynamicOutputs có thể build lại sau khi load workflow)
             foreach (var n in upstream)
@@ -308,11 +304,7 @@ namespace FlowMy.ViewModels
                 if (n is not InputNode) continue;
                 if (newOptions.Any(o => string.Equals(o.NodeId, n.Id, StringComparison.OrdinalIgnoreCase))) continue;
                 if (listOutBarriers.Count > 0) continue; // Khi có barrier, chỉ ListOutNode
-                newOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                newOptions.Add(CreateDataSourceOption(n));
             }
 
             var mappedNodeIds = (_codeNode.InputMappings ?? new List<CodeInputMapping>())
@@ -326,11 +318,7 @@ namespace FlowMy.ViewModels
                 if (newOptions.Any(o => string.Equals(o.NodeId, nodeId, StringComparison.OrdinalIgnoreCase))) continue;
                 var node = vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
                 if (node == null) continue;
-                newOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = node.Id,
-                    Title = string.IsNullOrWhiteSpace(node.Title) ? node.Id : node.Title
-                });
+                newOptions.Add(CreateDataSourceOption(node));
             }
 
             AvailableNodeOptions.Clear();

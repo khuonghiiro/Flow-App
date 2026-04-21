@@ -58,6 +58,20 @@
                               BorderThickness="0"
                               Cursor="Hand"
                               IsChecked="{Binding IsDropDownOpen, ElementName=Root, Mode=TwoWay}">
+                    <ToggleButton.ToolTip>
+                        <ToolTip Content="{Binding SelectedDisplayText, ElementName=Root}">
+                            <ToolTip.Style>
+                                <Style TargetType="ToolTip">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasSelection, ElementName=Root}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToolTip.Style>
+                        </ToolTip>
+                    </ToggleButton.ToolTip>
                     <ToggleButton.Template>
                         <ControlTemplate TargetType="ToggleButton">
                             <Border x:Name="ContentArea"
@@ -79,6 +93,9 @@
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center"
                                 Visibility="{Binding HasSelection, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel.ToolTip>
+                            <ToolTip Content="{Binding SelectedDisplayText, ElementName=Root}" />
+                        </StackPanel.ToolTip>
                         <Border Width="18"
                                 Height="18"
                                 CornerRadius="4"

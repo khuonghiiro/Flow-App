@@ -368,11 +368,7 @@ namespace FlowMy.ViewModels
 
             foreach (var n in bodyNodes.Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0))
             {
-                BodyNodeOptions.Add(new WorkflowDataSourceOption
-                {
-                    NodeId = n.Id,
-                    Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                });
+                BodyNodeOptions.Add(CreateDataSourceOption(n));
             }
         }
 

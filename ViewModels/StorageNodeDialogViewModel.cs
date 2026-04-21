@@ -103,24 +103,14 @@ namespace FlowMy.ViewModels
                         continue;
                     if (otherStorage.DynamicOutputs == null || otherStorage.DynamicOutputs.Count == 0)
                         continue;
-
-                    AvailableNodeOptions.Add(new WorkflowDataSourceOption
-                    {
-                        NodeId = otherStorage.Id,
-                        Title = string.IsNullOrWhiteSpace(otherStorage.Title) ? otherStorage.Id : otherStorage.Title
-                    });
+                    AvailableNodeOptions.Add(CreateDataSourceOption(otherStorage));
                 }
                 else
                 {
                     // IsInputMode = true (checked): logic như cũ - hiển thị tất cả nodes trừ storage node hiện tại
                     if (n is StorageNode) continue;
                     if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
-
-                    AvailableNodeOptions.Add(new WorkflowDataSourceOption
-                    {
-                        NodeId = n.Id,
-                        Title = string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title
-                    });
+                    AvailableNodeOptions.Add(CreateDataSourceOption(n));
                 }
             }
         }
