@@ -520,7 +520,14 @@ namespace FlowMy.Views
         {
             if (preferences == null) return;
 
-            SetGridType(preferences.GridType);
+            var targetGridType = string.IsNullOrWhiteSpace(preferences.GridType) ? "None" : preferences.GridType;
+            if (!string.Equals(_currentGridType, targetGridType, StringComparison.Ordinal))
+            {
+                // Realtime apply từ dialog chỉ cần đổi pattern trên canvas,
+                // tránh đi qua SetGridType (có I/O preferences) gây khựng UI khi đổi nhanh.
+                _currentGridType = targetGridType;
+                UpdateGridPattern();
+            }
             ApplyCanvasDisplayMode(preferences.CanvasDisplayMode == "ViewportOnly" ? CanvasDisplayMode.ViewportOnly : CanvasDisplayMode.ShowAll);
 
             if (_viewportCullingService != null)

@@ -8,3 +8,16 @@ image chisel-regular
 image regular
 moon-stars sharp-duotone-thin
 sun-bright duotone-regular
+1 duotone-regular
+2 duotone-regular
+3 duotone-regular
+4 duotone-regular
+5 duotone-regular
+6 duotone-regular
+7 duotone-regular
+8 duotone-regular
+9 duotone-regular
+openai brands
+folder-open duotone-thin
+folder-open duotone-light
+border-none regular

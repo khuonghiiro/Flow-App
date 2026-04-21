@@ -442,7 +442,7 @@
                                                 </LinearGradientBrush>
                                             </Border.Background>
                                             <TextBlock Text="📂"
-                                                       Foreground="{DynamicResource TextBrush}"
+                                                       Foreground="White"
                                                        FontSize="20"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"/>
@@ -524,7 +524,7 @@
                                                                 </LinearGradientBrush>
                                                             </Border.Background>
                                                             <controls:SvgViewboxEx Width="18" Height="18"
-                                                                                    Fill="{DynamicResource TextBrush}"
+                                                                                    Fill="White"
                                                                                    Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
                                                         </Border>
 
@@ -608,12 +608,25 @@
                                                                             <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
                                                                                 <Setter Property="IsEnabled" Value="True"/>
                                                                             </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsReopeningHeadless}" Value="True">
+                                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                            </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
                                                                 </Button.Style>
                                                                 <Grid>
-                                                                    <TextBlock Text="🪟"
-                                                                               FontSize="13"/>
+                                                                    <controls:SvgViewboxEx Width="18" Height="18"
+                                                                       Fill="White"
+                                                                       Source="{Binding Source={x:Static sys:String.Empty},
+                                                                                Converter={StaticResource IconKeyToPathConverter},
+                                                                                ConverterParameter='folder-open duotone-light'}"
+                                                                       Visibility="{Binding IsReopeningHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                    <TextBlock Text="⏳"
+                                                                               FontSize="12"
+                                                                               Foreground="{DynamicResource TextOnSuccessBrush}"
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center"
+                                                                               Visibility="{Binding IsReopeningHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                                     <Ellipse Width="8"
                                                                              Height="8"
                                                                              Fill="{DynamicResource SuccessBrush}"
