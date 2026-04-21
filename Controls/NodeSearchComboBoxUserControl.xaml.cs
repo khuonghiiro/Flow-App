@@ -9,17 +9,21 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace FlowMy.Controls
 {
     public partial class NodeSearchComboBoxUserControl : UserControl, INotifyPropertyChanged
     {
         private INotifyCollectionChanged? _notifyItemsSource;
+        private Window? _ownerWindow;
 
         public NodeSearchComboBoxUserControl()
         {
             InitializeComponent();
             FilteredItems = new ObservableCollection<NodeSearchItemViewModel>();
+            Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
         }
 
         public static readonly DependencyProperty ItemsSourceProperty =
@@ -44,7 +48,7 @@ namespace FlowMy.Controls
 
         public static readonly DependencyProperty IsDropDownOpenProperty =
             DependencyProperty.Register(nameof(IsDropDownOpen), typeof(bool), typeof(NodeSearchComboBoxUserControl),
-                new PropertyMetadata(false));
+                new PropertyMetadata(false, OnIsDropDownOpenChanged));
 
         public static readonly DependencyProperty SearchTextProperty =
             DependencyProperty.Register(nameof(SearchText), typeof(string), typeof(NodeSearchComboBoxUserControl),
@@ -129,6 +133,62 @@ namespace FlowMy.Controls
         {
             var control = (NodeSearchComboBoxUserControl)d;
             control.ApplyFilter();
+        }
+
+        private static void OnIsDropDownOpenChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var control = (NodeSearchComboBoxUserControl)d;
+            if (e.NewValue is not bool isOpen || !isOpen) return;
+
+            // Reset transient list selection to prevent immediate close caused by synthetic SelectionChanged.
+            if (control.ItemsListBox != null)
+            {
+                control.ItemsListBox.SelectedItem = null;
+            }
+
+            // Focus the search box after popup is shown.
+            control.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                control.SearchTextBox?.Focus();
+                control.SearchTextBox?.SelectAll();
+            }), DispatcherPriority.Input);
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            AttachOwnerWindow();
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            DetachOwnerWindow();
+        }
+
+        private void AttachOwnerWindow()
+        {
+            var owner = Window.GetWindow(this);
+            if (ReferenceEquals(owner, _ownerWindow)) return;
+
+            DetachOwnerWindow();
+            _ownerWindow = owner;
+            if (_ownerWindow != null)
+            {
+                _ownerWindow.Deactivated += OwnerWindow_Deactivated;
+            }
+        }
+
+        private void DetachOwnerWindow()
+        {
+            if (_ownerWindow != null)
+            {
+                _ownerWindow.Deactivated -= OwnerWindow_Deactivated;
+                _ownerWindow = null;
+            }
+        }
+
+        private void OwnerWindow_Deactivated(object? sender, EventArgs e)
+        {
+            IsDropDownOpen = false;
         }
 
         private void AttachItemsSourceChanged(IEnumerable? oldSource, IEnumerable? newSource)
@@ -261,6 +321,10 @@ namespace FlowMy.Controls
         private void ItemsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (ItemsListBox.SelectedItem is not NodeSearchItemViewModel item) return;
+            if (Equals(item.Value, SelectedValue))
+            {
+                return;
+            }
 
             SelectedItem = item;
             SelectedValue = item.Value;

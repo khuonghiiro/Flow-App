@@ -34,7 +34,22 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition x:Name="ClearButtonColumn">
+                        <ColumnDefinition.Style>
+                            <Style TargetType="ColumnDefinition">
+                                <Setter Property="Width" Value="0" />
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding HasSelection, ElementName=Root}" Value="True" />
+                                            <Condition Binding="{Binding IsMouseOver, ElementName=MainBorder}" Value="True" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Width" Value="28" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ColumnDefinition.Style>
+                    </ColumnDefinition>
                     <ColumnDefinition Width="28" />
                 </Grid.ColumnDefinitions>
 
@@ -103,8 +118,21 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Cursor="Hand"
-                        Visibility="{Binding HasSelection, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
                         Click="ClearSelectionButton_Click">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HasSelection, ElementName=Root}" Value="True" />
+                                        <Condition Binding="{Binding IsMouseOver, ElementName=MainBorder}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="ClearArea"
@@ -172,7 +200,7 @@
                Placement="Bottom"
                AllowsTransparency="True"
                PopupAnimation="Fade"
-               StaysOpen="False"
+               StaysOpen="True"
                IsOpen="{Binding IsDropDownOpen, ElementName=Root, Mode=TwoWay}">
             <Border Margin="0,4,0,0"
                     MinWidth="{Binding ActualWidth, ElementName=Root}"
@@ -187,11 +215,33 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <TextBox Grid.Row="0"
-                             Height="30"
-                             Margin="0,0,0,8"
-                             Style="{DynamicResource BaseTextBoxV2}"
-                             Text="{Binding SearchText, ElementName=Root, UpdateSourceTrigger=PropertyChanged}" />
+                    <Grid Grid.Row="0"
+                          Margin="0,0,0,8">
+                        <TextBox x:Name="SearchTextBox"
+                                 Height="30"
+                                 Style="{DynamicResource BaseTextBoxV2}"
+                                 Text="{Binding SearchText, ElementName=Root, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="{Binding PlaceholderText, ElementName=Root}"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   Margin="10,0,28,0"
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding SearchText, ElementName=Root}" Value="" />
+                                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchTextBox}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
 
                     <ListBox x:Name="ItemsListBox"
                              Grid.Row="1"
