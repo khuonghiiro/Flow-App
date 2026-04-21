@@ -1,5 +1,6 @@
 using FlowMy.Services;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Workflow;
 using FlowMy.Views;
 using FlowMy.Views.Overlays;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -208,11 +209,7 @@ namespace FlowMy.ViewModels
             {
                 // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
                 await Task.Yield();
-                OpenWorkflowEditorInternal(
-                    workflowNameToLoad: item.WorkflowName,
-                    widgetNodeIds: null,
-                    headless: true,
-                    autoOpenConfigNodeId: item.NodeId);
+                OpenFloatingWidgetConfigFromMainWindow(item.WorkflowName, item.NodeId);
             }
             finally
             {
@@ -249,16 +246,74 @@ namespace FlowMy.ViewModels
             {
                 // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
                 await Task.Yield();
-                OpenWorkflowEditorInternal(
-                    workflowNameToLoad: LastConfiguredWorkflowName,
-                    widgetNodeIds: null,
-                    headless: true,
-                    autoOpenConfigNodeId: LastConfiguredNodeId);
+                OpenFloatingWidgetConfigFromMainWindow(LastConfiguredWorkflowName, LastConfiguredNodeId);
             }
             finally
             {
                 IsConfigureLastWidgetLoading = false;
             }
+        }
+
+        private void OpenFloatingWidgetConfigFromMainWindow(string? workflowName, string? nodeId)
+        {
+            if (string.IsNullOrWhiteSpace(workflowName) || App.Services == null) return;
+
+            using var scope = App.Services.CreateScope();
+            var persistence = scope.ServiceProvider.GetService(typeof(IWorkflowPersistenceService)) as IWorkflowPersistenceService;
+            if (persistence == null) return;
+
+            WorkflowLoadResult? loadResult;
+            try
+            {
+                loadResult = persistence.Load(workflowName);
+            }
+            catch
+            {
+                return;
+            }
+
+            if (loadResult == null) return;
+            var mainWindow = Application.Current.MainWindow;
+
+            void PersistChanges()
+            {
+                try
+                {
+                    persistence.Save(
+                        loadResult.Name,
+                        loadResult.Nodes,
+                        loadResult.Connections,
+                        loadResult.ZoomLevel,
+                        loadResult.PanX,
+                        loadResult.PanY,
+                        loadResult.SavedScreenWidth,
+                        loadResult.SavedScreenHeight,
+                        loadResult.SavedViewportCenterX,
+                        loadResult.SavedViewportCenterY,
+                        loadResult.ConnectionLineStyle);
+                }
+                catch
+                {
+                    // best effort
+                }
+            }
+
+            var dialog = new FloatingWidgetConfigDialog(
+                loadResult.Nodes,
+                host: null,
+                persistChanges: PersistChanges,
+                runtimeActionsEnabled: false)
+            {
+                Owner = mainWindow
+            };
+
+            if (!string.IsNullOrWhiteSpace(nodeId))
+            {
+                dialog.SelectNodeById(nodeId);
+            }
+
+            dialog.ShowDialog();
+            RefreshWidgetShortcuts();
         }
 
         private void OpenWorkflowEditorInternal(

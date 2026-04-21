@@ -22,13 +22,24 @@ namespace FlowMy.Views.Overlays
     public partial class FloatingWidgetConfigDialog : Window
     {
         private readonly IReadOnlyList<WorkflowNode> _nodes;
-        private readonly IWorkflowEditorHost _host;
+        private readonly IWorkflowEditorHost? _host;
+        private readonly System.Action? _persistChanges;
+        private readonly bool _runtimeActionsEnabled;
         private WorkflowNode? _selectedNode;
         private bool _loadingValues;
         private string? _idleBackgroundColorHex;
         private string? _idleForegroundColorHex;
 
         public FloatingWidgetConfigDialog(IEnumerable<WorkflowNode> nodes, IWorkflowEditorHost host)
+            : this(nodes, host, persistChanges: null, runtimeActionsEnabled: true)
+        {
+        }
+
+        public FloatingWidgetConfigDialog(
+            IEnumerable<WorkflowNode> nodes,
+            IWorkflowEditorHost? host,
+            System.Action? persistChanges,
+            bool runtimeActionsEnabled = true)
         {
             InitializeComponent();
 
@@ -37,10 +48,23 @@ namespace FlowMy.Views.Overlays
                 .OrderBy(n => string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title)
                 .ToList();
             _host = host;
+            _persistChanges = persistChanges;
+            _runtimeActionsEnabled = runtimeActionsEnabled && host != null;
 
             PopulateNodeList();
             PopulateMonitorList();
             RefreshExistingWidgets();
+            ApplyRuntimeActionsUiState();
+        }
+
+        private void ApplyRuntimeActionsUiState()
+        {
+            if (_runtimeActionsEnabled) return;
+
+            if (OpenWidgetButton != null) OpenWidgetButton.IsEnabled = false;
+            if (OpenAllWidgetsButton != null) OpenAllWidgetsButton.IsEnabled = false;
+            if (CloseWidgetButton != null) CloseWidgetButton.IsEnabled = false;
+            if (CloseAllWidgetsButton != null) CloseAllWidgetsButton.IsEnabled = false;
         }
 
         private void PopulateNodeList()
@@ -521,7 +545,14 @@ namespace FlowMy.Views.Overlays
         {
             try
             {
-                _host?.ViewModel?.SaveWorkflowSilently();
+                if (_persistChanges != null)
+                {
+                    _persistChanges();
+                }
+                else
+                {
+                    _host?.ViewModel?.SaveWorkflowSilently();
+                }
             }
             catch { /* best effort */ }
         }
