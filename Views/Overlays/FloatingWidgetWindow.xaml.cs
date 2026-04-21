@@ -1016,7 +1016,7 @@ public partial class FloatingWidgetWindow : Window
             BorderThickness = new Thickness(1),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, -6, -6, 0),
+            Margin = new Thickness(0, -10, -10, 0),
             Visibility = Visibility.Collapsed,
             Child = startBadgeText
         };
@@ -1070,7 +1070,7 @@ public partial class FloatingWidgetWindow : Window
             BorderThickness = new Thickness(1),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, -6, -6, 0),
+            Margin = new Thickness(0, -10, -10, 0),
             Visibility = Visibility.Collapsed,
             Child = stopBadgeText
         };
@@ -1140,6 +1140,8 @@ public partial class FloatingWidgetWindow : Window
             BorderBrush = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(0),
+            // Chừa vùng top/right để badge (đặt margin âm) không bị host window cắt mất.
+            Padding = new Thickness(0, 10, 10, 0),
             Child = row,
             SnapsToDevicePixels = true,
             UseLayoutRounding = true
