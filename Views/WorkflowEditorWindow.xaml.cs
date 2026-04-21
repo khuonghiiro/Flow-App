@@ -168,6 +168,12 @@ namespace FlowMy.Views
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
+        public void EnableHeadlessCanvasOptimizationForBackground(IEnumerable<string>? widgetNodeIdsToHide)
+        {
+            ConfigureHeadlessCanvasOptimization(widgetNodeIdsToHide);
+            ApplyHeadlessCanvasOptimization();
+        }
+
         public void DisableHeadlessCanvasOptimizationForDebug()
         {
             if (!_headlessCanvasOptimizationEnabled) return;
@@ -175,6 +181,10 @@ namespace FlowMy.Views
             _headlessHiddenWidgetNodeIds.Clear();
 
             if (ViewModel == null) return;
+
+            _isPanning = false;
+            _isDraggingFromTemplate = false;
+            try { WorkflowCanvas?.ReleaseMouseCapture(); } catch { }
 
             SetViewportExpandedUiHidden(false);
             if (ExecutionFloatingPanel != null) ExecutionFloatingPanel.Visibility = Visibility.Visible;
@@ -201,6 +211,26 @@ namespace FlowMy.Views
             RenderAllConnections();
             SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Animated);
             _viewportCullingService?.ForceUpdate();
+        }
+
+        public void ApplyLowestRenderPresetForDebugReopen()
+        {
+            var low = new CanvasToolbarPreferences
+            {
+                GridType = "None",
+                CanvasDisplayMode = "ViewportOnly",
+                CullingPerformanceProfile = "Low",
+                ConnectionLineStyle = "Bezier",
+                ConnectionAnimationMode = "Off",
+                ConnectionColorMode = "NodeColor",
+                CustomConnectionColorKey = "LimeGreen",
+                GpuEnabled = true,
+                GpuRenderQuality = "Low",
+                CacheNodeEnabled = true,
+                UiAnimationsEnabled = false
+            };
+
+            ApplyCanvasToolbarPreferences(low, saveToDisk: false);
         }
 
         private bool ShouldRenderNodeInHeadlessMode(WorkflowNode node)

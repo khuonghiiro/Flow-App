@@ -58,6 +58,16 @@ namespace FlowMy.ViewModels
             }));
         }
 
+        private void SetHeadlessDebugVisibleForWorkflow(string workflowName, bool visible)
+        {
+            if (string.IsNullOrWhiteSpace(workflowName)) return;
+            foreach (var item in WidgetShortcuts.Where(w =>
+                         string.Equals(w.WorkflowName, workflowName, System.StringComparison.OrdinalIgnoreCase)))
+            {
+                item.IsHeadlessDebugVisible = visible;
+            }
+        }
+
         /// <summary>
         /// Quét tất cả workflow JSON trong thư mục mặc định, tìm các node có
         /// FloatingWidget.IsEnabled = true và build danh sách shortcut hiển thị
@@ -209,19 +219,24 @@ namespace FlowMy.ViewModels
                     // Hiện window trước để user thấy ngay; phần restore canvas chạy deferred giảm cảm giác "lag".
                     workflowWindow.Owner = null;
                     workflowWindow.ShowInTaskbar = true;
-                    workflowWindow.Visibility = Visibility.Visible;
                     workflowWindow.WindowState = WindowState.Maximized;
-                    if (workflowWindow.Visibility != Visibility.Visible)
+                    if (!workflowWindow.IsVisible)
                     {
                         workflowWindow.Show();
                     }
+                    else
+                    {
+                        workflowWindow.Visibility = Visibility.Visible;
+                    }
                     workflowWindow.Activate();
                     workflowWindow.Focus();
+                    SetHeadlessDebugVisibleForWorkflow(item.WorkflowName, true);
 
                     workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
                     {
                         try
                         {
+                            workflowWindow.ApplyLowestRenderPresetForDebugReopen();
                             workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
                         }
                         catch { }
@@ -514,7 +529,15 @@ namespace FlowMy.ViewModels
                 _isRehidingHeadlessWindow.Add(workflowWindow);
                 try
                 {
+                    var activeWidgetIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
+                    workflowWindow.EnableHeadlessCanvasOptimizationForBackground(activeWidgetIds);
                     PrepareWindowForHeadlessBackground(workflowWindow);
+                    var name = _headlessWorkflowWindows
+                        .FirstOrDefault(kv => ReferenceEquals(kv.Value, workflowWindow)).Key;
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        SetHeadlessDebugVisibleForWorkflow(name, false);
+                    }
                 }
                 finally
                 {
@@ -542,6 +565,7 @@ namespace FlowMy.ViewModels
                 scope.Dispose();
                 foreach (var kv in _headlessWorkflowWindows.Where(kv => ReferenceEquals(kv.Value, workflowWindow)).ToList())
                 {
+                    SetHeadlessDebugVisibleForWorkflow(kv.Key, false);
                     _headlessWorkflowWindows.Remove(kv.Key);
                 }
                 if (!headless && mainWindow != null)

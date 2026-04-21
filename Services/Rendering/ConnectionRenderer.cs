@@ -1516,16 +1516,29 @@ namespace FlowMy.Services.Rendering
         private static Color GetColorFromBrush(Brush? brush)
         {
             if (brush == null) return Colors.LimeGreen;
+            var dispatcher = brush.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                // Tránh block/deadlock UI khi render connection từ luồng nền.
+                // Sai thread thì fallback màu mặc định an toàn.
+                return Colors.LimeGreen;
+            }
 
-            if (brush is SolidColorBrush solidBrush) return solidBrush.Color;
+            if (brush is SolidColorBrush solidBrush)
+            {
+                if (solidBrush.IsFrozen) return solidBrush.Color;
+                return solidBrush.Color;
+            }
 
             if (brush is LinearGradientBrush linearGradient && linearGradient.GradientStops.Count > 0)
             {
+                if (linearGradient.IsFrozen) return linearGradient.GradientStops[0].Color;
                 return linearGradient.GradientStops[0].Color;
             }
 
             if (brush is RadialGradientBrush radialGradient && radialGradient.GradientStops.Count > 0)
             {
+                if (radialGradient.IsFrozen) return radialGradient.GradientStops[0].Color;
                 return radialGradient.GradientStops[0].Color;
             }
 

@@ -17,6 +17,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool isLaunchingHeadless;
         [ObservableProperty] private bool isConfiguring;
         [ObservableProperty] private bool isWidgetOpen;
+        [ObservableProperty] private bool isHeadlessDebugVisible;
 
         /// <summary>Hiển thị dạng "Widget Name — Workflow".</summary>
         public string DisplayLabel
