@@ -16,7 +16,19 @@ public sealed class FloatingWidgetManager
     public static FloatingWidgetManager Instance => _lazy.Value;
 
     private readonly Dictionary<string, FloatingWidgetWindow> _activeWidgets = new();
+    private readonly Dictionary<string, HiddenNodeVisualState> _hiddenNodeVisuals = new();
     private readonly object _lock = new();
+
+    private sealed class HiddenNodeVisualState
+    {
+        public WorkflowNode? Node { get; init; }
+        public Visibility? BorderVisibility { get; init; }
+        public Visibility? TitleVisibility { get; init; }
+        public Dictionary<NodePort, Visibility> PortVisibility { get; init; } = new();
+        public DependencyPropertyChangedEventHandler? BorderVisibilityGuard { get; set; }
+        public DependencyPropertyChangedEventHandler? TitleVisibilityGuard { get; set; }
+        public Dictionary<NodePort, DependencyPropertyChangedEventHandler> PortVisibilityGuards { get; } = new();
+    }
 
     /// <summary>Số widget tối đa đồng thời.</summary>
     public int MaxWidgets { get; set; } = 32;
@@ -67,10 +79,12 @@ public sealed class FloatingWidgetManager
             var widget = new FloatingWidgetWindow(node, host);
             widget.Closed += (s, e) =>
             {
+                RestoreNodeVisualAfterWidgetClosed(node.Id);
                 lock (_lock) { _activeWidgets.Remove(node.Id); }
                 try { WidgetClosed?.Invoke(this, node.Id); } catch { }
             };
             _activeWidgets[node.Id] = widget;
+            HideNodeVisualWhenWidgetOpened(node);
             widget.Show();
             try { WidgetOpened?.Invoke(this, node.Id); } catch { }
         }
@@ -84,6 +98,7 @@ public sealed class FloatingWidgetManager
             if (_activeWidgets.TryGetValue(nodeId, out var widget))
             {
                 _activeWidgets.Remove(nodeId);
+                RestoreNodeVisualAfterWidgetClosed(nodeId);
                 try { widget.Close(); } catch { }
             }
         }
@@ -146,6 +161,96 @@ public sealed class FloatingWidgetManager
             {
                 OpenWidget(node, host);
             }
+        }
+    }
+
+    private void HideNodeVisualWhenWidgetOpened(WorkflowNode node)
+    {
+        // Chỉ "chuyển host" visual cho các node có WebView nặng.
+        if (node is not HtmlUiNode && node is not WebNode) return;
+
+        if (_hiddenNodeVisuals.ContainsKey(node.Id)) return;
+
+        var state = new HiddenNodeVisualState
+        {
+            Node = node,
+            BorderVisibility = node.Border?.Visibility,
+            TitleVisibility = node.TitleTextBlockUI?.Visibility
+        };
+
+        foreach (var port in node.Ports)
+        {
+            if (port?.PortUI == null) continue;
+            state.PortVisibility[port] = port.PortUI.Visibility;
+        }
+
+        _hiddenNodeVisuals[node.Id] = state;
+
+        if (node.Border != null)
+        {
+            node.Border.Visibility = Visibility.Collapsed;
+            state.BorderVisibilityGuard = (_, __) =>
+            {
+                if (_activeWidgets.ContainsKey(node.Id) && node.Border != null && node.Border.Visibility != Visibility.Collapsed)
+                    node.Border.Visibility = Visibility.Collapsed;
+            };
+            node.Border.IsVisibleChanged += state.BorderVisibilityGuard;
+        }
+        if (node.TitleTextBlockUI != null)
+        {
+            node.TitleTextBlockUI.Visibility = Visibility.Collapsed;
+            state.TitleVisibilityGuard = (_, __) =>
+            {
+                if (_activeWidgets.ContainsKey(node.Id) && node.TitleTextBlockUI != null && node.TitleTextBlockUI.Visibility != Visibility.Collapsed)
+                    node.TitleTextBlockUI.Visibility = Visibility.Collapsed;
+            };
+            node.TitleTextBlockUI.IsVisibleChanged += state.TitleVisibilityGuard;
+        }
+        foreach (var port in node.Ports)
+        {
+            if (port?.PortUI == null) continue;
+            port.PortUI.Visibility = Visibility.Collapsed;
+            var p = port;
+            DependencyPropertyChangedEventHandler guard = (_, __) =>
+            {
+                if (_activeWidgets.ContainsKey(node.Id) && p.PortUI != null && p.PortUI.Visibility != Visibility.Collapsed)
+                    p.PortUI.Visibility = Visibility.Collapsed;
+            };
+            state.PortVisibilityGuards[p] = guard;
+            port.PortUI.IsVisibleChanged += guard;
+        }
+    }
+
+    private void RestoreNodeVisualAfterWidgetClosed(string nodeId)
+    {
+        if (!_hiddenNodeVisuals.TryGetValue(nodeId, out var state))
+            return;
+
+        _hiddenNodeVisuals.Remove(nodeId);
+        var node = state.Node;
+        if (node == null) return;
+
+        if (node.Border != null && state.BorderVisibilityGuard != null)
+            node.Border.IsVisibleChanged -= state.BorderVisibilityGuard;
+        if (node.TitleTextBlockUI != null && state.TitleVisibilityGuard != null)
+            node.TitleTextBlockUI.IsVisibleChanged -= state.TitleVisibilityGuard;
+        foreach (var kv in state.PortVisibilityGuards)
+        {
+            var port = kv.Key;
+            if (port?.PortUI != null)
+                port.PortUI.IsVisibleChanged -= kv.Value;
+        }
+
+        if (node.Border != null && state.BorderVisibility.HasValue)
+            node.Border.Visibility = state.BorderVisibility.Value;
+        if (node.TitleTextBlockUI != null && state.TitleVisibility.HasValue)
+            node.TitleTextBlockUI.Visibility = state.TitleVisibility.Value;
+
+        foreach (var kv in state.PortVisibility)
+        {
+            var port = kv.Key;
+            if (port?.PortUI != null)
+                port.PortUI.Visibility = kv.Value;
         }
     }
 }

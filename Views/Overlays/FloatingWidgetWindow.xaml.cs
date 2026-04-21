@@ -57,6 +57,10 @@ public partial class FloatingWidgetWindow : Window
     // ── WebView2 ──
     private WebView2? _webView;
     private bool _webViewInitialized;
+    private bool _webViewContentLoaded;
+    private string? _lastContentSignature;
+    private string? _lastAsyncCacheSignature;
+    private readonly List<(string Key, string Value)> _pendingAsyncBuffer = new();
 
     /// <summary>Mini toolbar ngoài widget (đóng + thu nhỏ) thay cho Popup.</summary>
     private Window? _titleRevealHost;
@@ -118,8 +122,8 @@ public partial class FloatingWidgetWindow : Window
         // Start idle timer
         StartIdleTimer();
 
-        // If HtmlUiNode, pre-initialize WebView2 in background so initial window show is not blocked.
-        if (_node is HtmlUiNode)
+        // If HtmlUiNode/WebNode, pre-initialize WebView2 in background so initial window show is not blocked.
+        if (_node is HtmlUiNode || _node is WebNode)
         {
             _ = InitWebView2Async();
         }
@@ -422,7 +426,16 @@ public partial class FloatingWidgetWindow : Window
         if (_webView != null)
         {
             _webView.Visibility = Visibility.Visible;
-            _ = ReloadContentAsync();
+            if (_node is HtmlUiNode htmlNode)
+            {
+                _ = ReloadContentAsync();
+                _ = FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+                _ = PushAsyncCacheIfChangedAsync(htmlNode);
+            }
+            else if (!_webViewContentLoaded)
+            {
+                _ = ReloadContentAsync();
+            }
         }
 
         // Đặt lại vị trí theo cạnh dock (expanded body không bị khuất ra ngoài màn).
@@ -1362,14 +1375,12 @@ public partial class FloatingWidgetWindow : Window
         {
             if (_node is HtmlUiNode htmlNode)
             {
-                var html = BuildHtmlForWidget(htmlNode);
+                var inputValues = ResolveInputValues(htmlNode);
+                var signature = BuildHtmlUiSignature(htmlNode, inputValues);
+                if (_webViewContentLoaded && string.Equals(_lastContentSignature, signature, StringComparison.Ordinal))
+                    return;
 
-                // Inject bridge JS
-                var bridgeJs = BuildBridgeJs();
-                if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                    html = html.Replace("</body>", bridgeJs + "\n</body>", StringComparison.OrdinalIgnoreCase);
-                else
-                    html += bridgeJs;
+                var html = BuildHtmlForWidget(htmlNode);
 
                 // Check size limit for NavigateToString (2MB)
                 if (Encoding.UTF8.GetByteCount(html) > 1_800_000)
@@ -1383,6 +1394,23 @@ public partial class FloatingWidgetWindow : Window
                 {
                     _webView.CoreWebView2.NavigateToString(html);
                 }
+                _lastContentSignature = signature;
+                _lastAsyncCacheSignature = null;
+                _webViewContentLoaded = true;
+            }
+            else if (_node is WebNode webNode)
+            {
+                var targetUrl = webNode.ExtractUrl;
+                if (string.IsNullOrWhiteSpace(targetUrl))
+                    targetUrl = "about:blank";
+
+                var signature = $"web:{targetUrl}";
+                if (_webViewContentLoaded && string.Equals(_lastContentSignature, signature, StringComparison.Ordinal))
+                    return;
+
+                _webView.CoreWebView2.Navigate(targetUrl);
+                _lastContentSignature = signature;
+                _webViewContentLoaded = true;
             }
         }
         catch (Exception ex)
@@ -1448,6 +1476,7 @@ public partial class FloatingWidgetWindow : Window
         var html = htmlNode.HtmlCode ?? "<!DOCTYPE html><html><body><div>Widget</div></body></html>";
         var css = htmlNode.CssCode ?? string.Empty;
         var js = htmlNode.JsCode ?? string.Empty;
+        var bridgeJs = BuildBridgeJs();
 
         // Resolve input values
         var inputValues = ResolveInputValues(htmlNode);
@@ -1469,6 +1498,15 @@ public partial class FloatingWidgetWindow : Window
                 html = html.Replace("</head>", cssTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
         }
 
+        // Inject bridge runtime before user JS so window.__acAsync/__ac are ready.
+        if (!string.IsNullOrWhiteSpace(bridgeJs))
+        {
+            if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
+                html = html.Replace("</head>", bridgeJs + "\n</head>", StringComparison.OrdinalIgnoreCase);
+            else
+                html = bridgeJs + html;
+        }
+
         // Inject JS
         if (!string.IsNullOrWhiteSpace(js))
         {
@@ -1480,6 +1518,121 @@ public partial class FloatingWidgetWindow : Window
         }
 
         return html;
+    }
+
+    private static string BuildHtmlUiSignature(HtmlUiNode node, Dictionary<string, string> inputs)
+    {
+        var sb = new StringBuilder();
+        sb.Append(node.HtmlCode ?? string.Empty).Append('|')
+          .Append(node.CssCode ?? string.Empty).Append('|')
+          .Append(node.JsCode ?? string.Empty).Append('|');
+
+        foreach (var kv in inputs.OrderBy(k => k.Key, StringComparer.Ordinal))
+        {
+            sb.Append(kv.Key).Append('=').Append(kv.Value ?? string.Empty).Append(';');
+        }
+
+        return sb.ToString();
+    }
+
+    private static string BuildAsyncCacheSignature(HtmlUiNode node)
+    {
+        if (node.AsyncDataCache == null || node.AsyncDataCache.IsEmpty) return string.Empty;
+        var sb = new StringBuilder();
+        foreach (var kv in node.AsyncDataCache.OrderBy(k => k.Key, StringComparer.Ordinal))
+        {
+            sb.Append(kv.Key).Append('=').Append(kv.Value ?? string.Empty).Append(';');
+        }
+        return sb.ToString();
+    }
+
+    private async Task PushAsyncCacheIfChangedAsync(HtmlUiNode node)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+        var sig = BuildAsyncCacheSignature(node);
+        if (string.Equals(sig, _lastAsyncCacheSignature, StringComparison.Ordinal))
+            return;
+
+        _lastAsyncCacheSignature = sig;
+        if (string.IsNullOrWhiteSpace(sig)) return;
+
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine(
+            $"[FloatingWidget:{node.Id}] PushAsyncCache changed, count={node.AsyncDataCache?.Count ?? 0}, keys=[{string.Join(", ", node.AsyncDataCache.Keys)}]");
+#endif
+
+        foreach (var kv in node.AsyncDataCache)
+        {
+            if (IsPlaceholderValue(kv.Value)) continue;
+            await PushKeyValueToWidgetRuntimeAsync(kv.Key ?? string.Empty, kv.Value ?? string.Empty, node.Id);
+        }
+    }
+
+    private void DrainPendingAsyncQueueToBuffer(HtmlUiNode node)
+    {
+        var items = new List<(string Key, string Value)>();
+        while (node.PendingAsyncPushQueue.TryDequeue(out var item))
+            items.Add(item);
+
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine(
+            $"[FloatingWidget:{node.Id}] Drain queue count={items.Count}, keys=[{string.Join(", ", items.Select(i => i.Key))}]");
+#endif
+
+        if (items.Count == 0) return;
+
+        foreach (var kvp in items)
+        {
+            if (IsPlaceholderValue(kvp.Value)) continue;
+            _pendingAsyncBuffer.Add((kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
+        }
+    }
+
+    private async Task FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+        if (_pendingAsyncBuffer.Count == 0) return;
+
+        var snapshot = _pendingAsyncBuffer.ToList();
+        _pendingAsyncBuffer.Clear();
+        foreach (var kv in snapshot)
+            await PushKeyValueToWidgetRuntimeAsync(kv.Key, kv.Value, node.Id);
+    }
+
+    private static bool IsPlaceholderValue(string? value)
+    {
+        var s = value?.Trim();
+        return string.Equals(s, "—", StringComparison.Ordinal);
+    }
+
+    private async Task PushKeyValueToWidgetRuntimeAsync(string key, string value, string nodeIdForLog)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+
+        var jsKey = JsonSerializer.Serialize(key ?? string.Empty);
+        var jsVal = JsonSerializer.Serialize(value ?? string.Empty);
+        var inspect = await _webView.CoreWebView2.ExecuteScriptAsync($@"
+(function() {{
+  try {{
+    if (typeof window.__acAsyncPush === 'function') window.__acAsyncPush({jsKey}, {jsVal});
+    if (typeof window.__acPush === 'function') window.__acPush({jsKey}, {jsVal});
+    var asyncVal = (window.__acAsync && window.__acAsync.data) ? window.__acAsync.data[{jsKey}] : undefined;
+    var liveVal = (window.__ac && window.__ac.live) ? window.__ac.live[{jsKey}] : undefined;
+    return JSON.stringify({{
+      hasAsyncPush: typeof window.__acAsyncPush === 'function',
+      hasLivePush: typeof window.__acPush === 'function',
+      asyncValue: asyncVal,
+      liveValue: liveVal
+    }});
+  }} catch (e) {{
+    return JSON.stringify({{ error: String(e && e.message ? e.message : e) }});
+  }}
+}})();");
+
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine(
+            $"[FloatingWidget:{nodeIdForLog}] JS push key='{key}' value='{value}' inspect={inspect}");
+#endif
     }
 
     private string BuildBridgeJs()
@@ -1499,8 +1652,61 @@ function acStartWorkflow() {
 }
 // Override __ac if needed
 window.__ac = window.__ac || {};
+window.__ac.live = window.__ac.live || {};
 window.__ac.submit = acSubmit;
 window.__ac.startWorkflow = acStartWorkflow;
+window.__ac.onData = function() {
+  var args = Array.prototype.slice.call(arguments);
+  var cb = args[args.length - 1];
+  if (typeof cb !== 'function') return;
+  if (args.length === 1) {
+    cb(window.__ac.live);
+  } else {
+    var keys = args.slice(0, -1);
+    var vals = keys.map(function(k){ return window.__ac.live[k]; });
+    cb.apply(null, vals);
+  }
+};
+window.__acPush = function(key, value) {
+  window.__ac.live[key] = value;
+  try {
+    if (typeof window.__ac.onData === 'function') {
+      // noop: giữ API tương thích, subscriber chủ yếu tự poll/onData khi cần
+    }
+  } catch(e) {}
+};
+
+// Async receiver runtime (tương thích HtmlUiNode Async Data tab)
+(function(){
+  if (window.__acAsyncReady) return;
+  window.__acAsyncReady = true;
+  var _data = {};
+  var _keyCallbacks = {};
+  var _allCallbacks = [];
+  window.__acAsync = {
+    data: _data,
+    onReceive: function(keyOrFn, fn) {
+      if (typeof keyOrFn === 'function') {
+        _allCallbacks.push(keyOrFn);
+      } else if (typeof keyOrFn === 'string' && typeof fn === 'function') {
+        if (!_keyCallbacks[keyOrFn]) _keyCallbacks[keyOrFn] = [];
+        _keyCallbacks[keyOrFn].push(fn);
+      }
+    }
+  };
+  window.__acAsyncPush = function(key, value) {
+    _data[key] = value;
+    var cbs = _keyCallbacks[key];
+    if (cbs) {
+      for (var i = 0; i < cbs.length; i++) {
+        try { cbs[i](value); } catch(e) {}
+      }
+    }
+    for (var j = 0; j < _allCallbacks.length; j++) {
+      try { _allCallbacks[j](JSON.parse(JSON.stringify(_data))); } catch(e) {}
+    }
+  };
+})();
 </script>";
     }
 
@@ -2022,6 +2228,55 @@ window.__ac.startWorkflow = acStartWorkflow;
             {
                 TitleText.Text = ResolveDisplayTitle(_node);
             });
+        }
+
+        if (_node is HtmlUiNode htmlNode)
+        {
+            if (e.PropertyName is nameof(HtmlUiNode.HtmlCode)
+                or nameof(HtmlUiNode.CssCode)
+                or nameof(HtmlUiNode.JsCode)
+                or nameof(HtmlUiNode.ParamsCode)
+                or nameof(HtmlUiNode.InputMappings)
+                or nameof(HtmlUiNode.OfflineAssets))
+            {
+                _webViewContentLoaded = false;
+                _lastContentSignature = null;
+                if (_isExpanded && _webViewInitialized)
+                    _ = ReloadContentAsync();
+            }
+            else if (e.PropertyName == nameof(HtmlUiNode.PendingAsyncDataPush) && htmlNode.PendingAsyncDataPush)
+            {
+                _ = Dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+#if DEBUG
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[FloatingWidget:{htmlNode.Id}] PendingAsyncDataPush received. webViewInitialized={_webViewInitialized}, isExpanded={_isExpanded}");
+#endif
+                        if (_webViewInitialized)
+                        {
+                            DrainPendingAsyncQueueToBuffer(htmlNode);
+                            await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+                            await PushAsyncCacheIfChangedAsync(htmlNode);
+                        }
+                        else
+                        {
+                            // WebView chưa sẵn sàng: vẫn phải giữ data để mở widget lại không bị mất.
+                            DrainPendingAsyncQueueToBuffer(htmlNode);
+                        }
+                    }
+                    catch { }
+                    finally
+                    {
+                        htmlNode.PendingAsyncDataPush = false;
+#if DEBUG
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[FloatingWidget:{htmlNode.Id}] PendingAsyncDataPush reset to false.");
+#endif
+                    }
+                }, DispatcherPriority.Normal);
+            }
         }
     }
 

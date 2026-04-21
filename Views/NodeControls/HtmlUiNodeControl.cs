@@ -1176,6 +1176,16 @@ namespace FlowMy.Views.NodeControls
                     // ✅ Executor trigger push async data vào WebView2
                     else if (e.PropertyName == nameof(HtmlUiNode.PendingAsyncDataPush) && node.PendingAsyncDataPush)
                     {
+                        // Nếu node đã handoff sang Floating Widget thì để widget drain queue, canvas WebView không xử lý.
+                        if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(node.Id))
+                        {
+#if DEBUG
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[HtmlUiNodeControl:{node.Id}] Skip canvas async push because widget is open.");
+#endif
+                            return;
+                        }
+
                         _ = webView.Dispatcher.InvokeAsync(async () =>
                         {
                             try
@@ -1191,6 +1201,11 @@ namespace FlowMy.Views.NodeControls
                                 {
                                     items.Add(item);
                                 }
+
+#if DEBUG
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[HtmlUiNodeControl:{node.Id}] Canvas drained queue count={items.Count}, keys=[{string.Join(", ", items.Select(i => i.Key))}]");
+#endif
 
                                 if (items.Count == 0) return;
 
