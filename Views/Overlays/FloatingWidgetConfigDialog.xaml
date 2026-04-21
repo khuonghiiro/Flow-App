@@ -41,6 +41,14 @@
                                    Opacity="0.75"
                                    Margin="0,4,0,0"
                                    TextWrapping="Wrap"/>
+                        <TextBlock x:Name="RuntimeModeHintText"
+                                   Text="Chế độ chỉnh cấu hình offline từ MainWindow: không mở runtime widget trong cửa sổ này."
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Opacity="0.9"
+                                   Margin="0,6,0,0"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Visibility="Collapsed"/>
                     </StackPanel>
                     <Border Grid.Column="1"
                             VerticalAlignment="Center"

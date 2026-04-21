@@ -65,6 +65,7 @@ namespace FlowMy.Views.Overlays
             if (OpenAllWidgetsButton != null) OpenAllWidgetsButton.IsEnabled = false;
             if (CloseWidgetButton != null) CloseWidgetButton.IsEnabled = false;
             if (CloseAllWidgetsButton != null) CloseAllWidgetsButton.IsEnabled = false;
+            if (RuntimeModeHintText != null) RuntimeModeHintText.Visibility = Visibility.Visible;
         }
 
         private void PopulateNodeList()
