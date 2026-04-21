@@ -25,7 +25,7 @@ public static class KeyValueBridgeNodeControl
     private static readonly System.Collections.Generic.Dictionary<KeyValueBridgeNode, DispatcherTimer> _pollTimers = new();
 
     /// <summary>
-    /// LayoutUpdated cháº¡y theo má»i vÃ²ng layout (ká»ƒ cáº£ node khÃ¡c trong AsyncTask body). Bá» qua khi input tÃ­nh vá»‹ trÃ­ title khÃ´ng Ä‘á»•i Ä‘á»ƒ trÃ¡nh spam throttle/timer.
+    /// LayoutUpdated chạy theo mọi vòng layout (kể cả node khác trong AsyncTask body). Bỏ qua khi input tính vị trí title không đổi để tránh spam throttle/timer.
     /// </summary>
     private static readonly System.Collections.Generic.Dictionary<Border, TitleLayoutSignature> LastTitleLayoutByBorder = new();
 
@@ -405,7 +405,7 @@ public static class KeyValueBridgeNodeControl
         return new NodeDialogManager();
     }
 
-    /// <summary>Dialog cleanup Ä‘ang má»Ÿ: lÃ m má»›i combobox node Ä‘Ã­ch khi báº¥t ká»³ KVB nÃ o Ä‘á»•i Pass hoáº·c XoÃ¡ dá»¯ liá»‡u.</summary>
+    /// <summary>Dialog cleanup đang mở: làm mới combobox node đích khi bất kỳ KVB nào đổi Pass hoặc Xoá dữ liệu.</summary>
     private static void TryRefreshOpenKeyValueBridgeDeleteTargets(IWorkflowEditorHost host)
     {
         try

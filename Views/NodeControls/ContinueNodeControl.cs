@@ -14,7 +14,7 @@ namespace FlowMy.Views.NodeControls
     {
         public static Border CreateBorder(WorkflowNode node, Window ownerWindow, IWorkflowEditorHost? host = null)
         {
-            const double size = 60; // KÃ­ch thÆ°á»›c hÃ¬nh trÃ²n
+            const double size = 60; // Kích thước hình tròn
 
             var grid = new Grid
             {
@@ -24,7 +24,7 @@ namespace FlowMy.Views.NodeControls
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            // Icon SVG sá»­ dá»¥ng SvgViewboxEx
+            // Icon SVG sử dụng SvgViewboxEx
             var iconConverter = new IconKeyToPathConverter();
             var iconUri = iconConverter.Convert(null, typeof(Uri), "diagram-predecessor duotone-light", System.Globalization.CultureInfo.CurrentCulture) as Uri;
 
@@ -49,7 +49,7 @@ namespace FlowMy.Views.NodeControls
                 Background = Application.Current.TryFindResource("InfoBrush") as Brush, // Amber
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(size / 2), // HÃ¬nh trÃ²n hoÃ n háº£o
+                CornerRadius = new CornerRadius(size / 2), // Hình tròn hoàn hảo
                 Cursor = Cursors.Hand,
                 Padding = new Thickness(0),
                 Margin = new Thickness(0),

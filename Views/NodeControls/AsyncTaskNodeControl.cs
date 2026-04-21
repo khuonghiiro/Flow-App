@@ -13,8 +13,8 @@ namespace FlowMy.Views.NodeControls
 {
     /// <summary>
     /// Custom UI control builder cho AsyncTask Node.
-    /// Hiá»ƒn thá»‹ sá»‘ thá»© tá»± cáº¡nh port out (Task 0, Task 1, ...).
-    /// Chuá»™t pháº£i má»Ÿ dialog quáº£n lÃ½ tasks.
+    /// Hiển thị số thứ tự cạnh port out (Task 0, Task 1, ...).
+    /// Chuột phải mở dialog quản lý tasks.
     /// </summary>
     public static class AsyncTaskNodeControl
     {
@@ -225,7 +225,7 @@ namespace FlowMy.Views.NodeControls
                 Margin = new Thickness(5, 0, 0, 0)
             };
 
-            // NÃºt thÃªm task á»Ÿ branch cuá»‘i cÃ¹ng
+            // Nút thêm task ở branch cuối cùng
             if (index == node.AsyncTaskBranches.Count - 1)
             {
                 var addButton = new Button

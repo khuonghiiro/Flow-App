@@ -17,7 +17,7 @@ namespace FlowMy.Views.NodeControls
             var border = new Border
             {
                 Width = 210,
-                Height = 170,  // Gá»n hÆ¡n nhÆ°ng váº«n Ä‘á»§ chá»— cho preview
+                Height = 170,  // Gọn hơn nhưng vẫn đủ chỗ cho preview
                 Background = node.NodeBrush,
                 Cursor = System.Windows.Input.Cursors.Hand,
                 BorderBrush = new SolidColorBrush(Colors.White),
@@ -45,7 +45,7 @@ namespace FlowMy.Views.NodeControls
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });  // Button
 
             // === HEADER ===
-            // Get text color from theme based on ColorKey (Success â†’ TextOnSuccessBrush)
+            // Get text color from theme based on ColorKey (Success -> TextOnSuccessBrush)
             var headerTextBrush = GetTextBrushFromColorKey(node.ColorKey) ?? new SolidColorBrush(Colors.White);
             var headerPanel = new StackPanel
             {
@@ -56,7 +56,7 @@ namespace FlowMy.Views.NodeControls
 
             var headerIcon = new TextBlock
             {
-                Text = "ðŸ“¸",
+                Text = "📸",
                 FontSize = 14,
                 FontWeight = FontWeights.Bold,
                 Foreground = headerTextBrush,
@@ -73,7 +73,7 @@ namespace FlowMy.Views.NodeControls
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            // âœ… Cho phÃ©p nÃºt "âœŽ sá»­a tiÃªu Ä‘á»" update Ä‘Æ°á»£c UI
+            // ✅ Cho phép nút "✎ sửa tiêu đề" update được UI
             node.TitleTextBlockUI = headerTitle;
 
             headerPanel.Children.Add(headerIcon);
@@ -103,10 +103,10 @@ namespace FlowMy.Views.NodeControls
 
 
             // ========================================
-            // THÃŠM ÄOáº N NÃ€Y VÃ€O ÄÃ‚Y (SAU KHI Táº O previewImage)
+            // THÊM ĐOẠN NÀY VÀO ĐÂY (SAU KHI TẠO previewImage)
             // ========================================
 
-            // Zoom áº£nh báº±ng ScaleTransform (khÃ´ng lÃ m node thay Ä‘á»•i kÃ­ch thÆ°á»›c)
+            // Zoom ảnh bằng ScaleTransform (không làm node thay đổi kích thước)
             previewImage.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
             var scaleTransform = new ScaleTransform(1, 1);
             previewImage.RenderTransform = scaleTransform;
@@ -123,7 +123,7 @@ namespace FlowMy.Views.NodeControls
                 scaleTransform.ScaleY = 1.0;
             };
 
-            // Click Ä‘á»ƒ xem full size
+            // Click để xem full size
             previewImage.Cursor = System.Windows.Input.Cursors.Hand;
             previewImage.MouseDown += (s, e) =>
             {
@@ -145,20 +145,20 @@ namespace FlowMy.Views.NodeControls
                     viewer.ShowDialog();
                 }
 
-                e.Handled = true;  // NgÄƒn trigger drag node
+                e.Handled = true;  // Ngăn trigger drag node
             };
 
             // ========================================
-            // Káº¾T THÃšC PHáº¦N THÃŠM
+            // KẾT THÚC PHẦN THÊM
             // ========================================
 
 
 
             // ========================================
-            // THÃŠM TÃ™Y CHá»ŒN NÃ‚NG CAO VÃ€O ÄÃ‚Y
+            // THÊM TÙY CHỌN NÂNG CAO VÀO ĐÂY
             // ========================================
 
-            // TÃ¹y chá»n 1: Zoom khi hover
+            // Tùy chọn 1: Zoom khi hover
             //previewImage.MouseEnter += (s, e) =>
             //{
             //    previewImage.MaxHeight = 450;
@@ -171,7 +171,7 @@ namespace FlowMy.Views.NodeControls
             //    previewImage.MaxWidth = 200;
             //};
 
-            //// TÃ¹y chá»n 2: Click Ä‘á»ƒ xem full size
+            //// Tùy chọn 2: Click để xem full size
             //previewImage.Cursor = System.Windows.Input.Cursors.Hand;
             //previewImage.MouseDown += (s, e) =>
             //{
@@ -180,8 +180,8 @@ namespace FlowMy.Views.NodeControls
             //        var viewer = new Window
             //        {
             //            Title = "Preview - Screen Capture",
-            //            Width = Math.Min(node.CaptureWidth, 1200),  // Giá»›i háº¡n max width
-            //            Height = Math.Min(node.CaptureHeight, 800), // Giá»›i háº¡n max height
+            //            Width = Math.Min(node.CaptureWidth, 1200),  // Giới hạn max width
+            //            Height = Math.Min(node.CaptureHeight, 800), // Giới hạn max height
             //            Content = new Image
             //            {
             //                Source = node.CapturedImage,
@@ -193,17 +193,17 @@ namespace FlowMy.Views.NodeControls
             //        viewer.ShowDialog();
             //    }
 
-            //    // NgÄƒn event bubble lÃªn node (trÃ¡nh trigger drag node)
+            //    // Ngăn event bubble lên node (tránh trigger drag node)
             //    e.Handled = true;
             //};
 
             // ========================================
-            // Káº¾T THÃšC TÃ™Y CHá»ŒN NÃ‚NG CAO
+            // KẾT THÚC TÙY CHỌN NÂNG CAO
             // ========================================
 
             var placeholderText = new TextBlock
             {
-                Text = "ChÆ°a cÃ³ áº£nh preview",
+                Text = "Chưa có ảnh preview",
                 FontSize = 11,
                 Foreground = headerTextBrush,  // Use same text color from theme
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -211,7 +211,7 @@ namespace FlowMy.Views.NodeControls
                 Margin = new Thickness(10)
             };
 
-            // Cáº­p nháº­t preview khi cÃ³ áº£nh
+            // Cập nhật preview khi có ảnh
             void UpdatePreview()
             {
                 if (node.CapturedImage != null)
@@ -237,7 +237,7 @@ namespace FlowMy.Views.NodeControls
             Grid.SetRow(previewBorder, 1);
             mainGrid.Children.Add(previewBorder);
 
-            // === THÃ”NG TIN VÃ™NG CHá»¤P ===
+            // === THÔNG TIN VÙNG CHỤP ===
             var regionText = new TextBlock
             {
                 FontSize = 10,
@@ -251,11 +251,11 @@ namespace FlowMy.Views.NodeControls
             {
                 if (node.HasCaptureRegion)
                 {
-                    regionText.Text = $"{node.CaptureWidth} Ã— {node.CaptureHeight} táº¡i ({node.CaptureX}, {node.CaptureY})";
+                    regionText.Text = $"{node.CaptureWidth} × {node.CaptureHeight} tại ({node.CaptureX}, {node.CaptureY})";
                 }
                 else
                 {
-                    regionText.Text = "ChÆ°a chá»n vÃ¹ng chá»¥p";
+                    regionText.Text = "Chưa chọn vùng chụp";
                 }
             }
 
@@ -265,10 +265,10 @@ namespace FlowMy.Views.NodeControls
             Grid.SetRow(regionText, 2);
             mainGrid.Children.Add(regionText);
 
-            // === NÃšT CHá»ŒN VÃ™NG ===
+            // === NÚT CHỌN VÙNG ===
             var pickButton = new Button
             {
-                Content = node.HasCaptureRegion ? "ðŸ“¸ Chá»¥p láº¡i" : "ðŸ“¸ Chá»¥p vÃ¹ng mÃ n hÃ¬nh",
+                Content = node.HasCaptureRegion ? "📸 Chụp lại" : "📸 Chụp vùng màn hình",
                 Height = 32,
                 Width = 150,
                 Style = Application.Current.FindResource("PrimaryButton") as Style,
@@ -288,16 +288,16 @@ namespace FlowMy.Views.NodeControls
 
                     if (result == true)
                     {
-                        // LÆ°u thÃ´ng tin vÃ¹ng chá»¥p
+                        // Lưu thông tin vùng chụp
                         node.CaptureX = overlay.CaptureX;
                         node.CaptureY = overlay.CaptureY;
                         node.CaptureWidth = overlay.CaptureWidth;
                         node.CaptureHeight = overlay.CaptureHeight;
 
-                        // THÃŠM: LÆ°u áº£nh Ä‘Ã£ chá»¥p
+                        // THÊM: Lưu ảnh đã chụp
                         node.CapturedImage = overlay.CapturedImage;
 
-                        pickButton.Content = "ðŸ“¸ Chá»¥p láº¡i";
+                        pickButton.Content = "📸 Chụp lại";
                     }
                 }
                 finally

@@ -16,7 +16,7 @@ namespace FlowMy.Views.NodeControls
     public static class ScreenPositionPickerNodeControl
     {
         /// <summary>
-        /// Táº¡o Border cho Screen Position Picker Node vá»›i UI Ä‘áº·c biá»‡t
+        /// Tạo Border cho Screen Position Picker Node với UI đặc biệt
         /// </summary>
         public static Border CreateBorder(ScreenPositionPickerNode node, Window ownerWindow, IWorkflowEditorHost? host = null)
         {
@@ -57,7 +57,7 @@ namespace FlowMy.Views.NodeControls
                 Foreground = new SolidColorBrush(Colors.White)
             };
 
-            // âœ… Cho phÃ©p nÃºt "âœŽ sá»­a tiÃªu Ä‘á»" update Ä‘Æ°á»£c UI
+            // ✅ Cho phép nút "✎ sửa tiêu đề" update được UI
             node.TitleTextBlockUI = headerTitle;
 
             var headerBorder = new Border
@@ -92,7 +92,7 @@ namespace FlowMy.Views.NodeControls
 
             var pickButton = new Button
             {
-                Content = "ðŸŽ¯ Chá»n vá»‹ trÃ­",
+                Content = "🎯 Chọn vị trí",
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Padding = new Thickness(8, 4, 8, 4),
@@ -205,7 +205,7 @@ namespace FlowMy.Views.NodeControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Lá»—i khi chá»n vá»‹ trÃ­: {ex.Message}", "Lá»—i",
+                MessageBox.Show($"Lỗi khi chọn vị trí: {ex.Message}", "Lỗi",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally

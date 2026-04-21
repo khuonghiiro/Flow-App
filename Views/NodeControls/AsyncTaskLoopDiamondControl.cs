@@ -15,7 +15,7 @@ using System.Linq;
 namespace FlowMy.Views.NodeControls
 {
     /// <summary>
-    /// Header hÃ¬nh thoi cho AsyncTask á»Ÿ cháº¿ Ä‘á»™ giao diá»‡n giá»‘ng Loop.
+    /// Header hình thoi cho AsyncTask ở chế độ giao diện giống Loop.
     /// </summary>
     public static class AsyncTaskLoopDiamondControl
     {
@@ -106,8 +106,8 @@ namespace FlowMy.Views.NodeControls
                 Tag = node
             };
 
-            // Khi kÃ©o (drag) diamond: giáº£m artifact dáº¡ng "ná»n vuÃ´ng" do shadow bitmap.
-            // Restores láº¡i shadow sau khi nháº£ chuá»™t.
+            // Khi kéo (drag) diamond: giảm artifact dạng "nền vuông" do shadow bitmap.
+            // Restore lại shadow sau khi nhả chuột.
             var shadowEffect = border.Effect as System.Windows.Media.Effects.DropShadowEffect;
             border.PreviewMouseDown += (s, e) =>
             {

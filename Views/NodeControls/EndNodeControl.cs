@@ -13,12 +13,12 @@ using System.Linq;
 namespace FlowMy.Views.NodeControls
 {
     /// <summary>
-    /// Control cho End node vá»›i hÃ¬nh trÃ²n vÃ  icon flag-checkered bÃªn trong
+    /// Control cho End node với hình tròn và icon flag-checkered bên trong
     /// </summary>
     public static class EndNodeControl
     {
-        public const double NodeSize = 100; // KÃ­ch thÆ°á»›c hÃ¬nh trÃ²n
-        private const double TitleOffset = 8; // Khoáº£ng cÃ¡ch tá»« top node Ä‘áº¿n bottom title
+        public const double NodeSize = 100; // Kích thước hình tròn
+        private const double TitleOffset = 8; // Khoảng cách từ top node đến bottom title
 
         public static Border CreateBorder(WorkflowNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
@@ -30,7 +30,7 @@ namespace FlowMy.Views.NodeControls
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            // Icon SVG sá»­ dá»¥ng SvgViewboxEx
+            // Icon SVG sử dụng SvgViewboxEx
             var iconConverter = new IconKeyToPathConverter();
             var iconUri = iconConverter.Convert(null, typeof(Uri), "flag-checkered sharp-duotone-solid", System.Globalization.CultureInfo.CurrentCulture) as Uri;
 
@@ -55,7 +55,7 @@ namespace FlowMy.Views.NodeControls
                 Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(231, 76, 60)), // Default: Danger Red
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(NodeSize / 2), // HÃ¬nh trÃ²n hoÃ n háº£o
+                CornerRadius = new CornerRadius(NodeSize / 2), // Hình tròn hoàn hảo
                 Cursor = Cursors.Hand,
                 Padding = new Thickness(0),
                 Margin = new Thickness(0),
@@ -251,7 +251,7 @@ namespace FlowMy.Views.NodeControls
         }
 
         /// <summary>
-        /// Táº¡o TextBlock Ä‘á»ƒ hiá»ƒn thá»‹ title trÃªn top cá»§a node
+        /// Tạo TextBlock để hiển thị title trên top của node
         /// </summary>
         public static TextBlock CreateTitleTextBlock(WorkflowNode node)
         {
@@ -268,10 +268,10 @@ namespace FlowMy.Views.NodeControls
                 Visibility = Visibility.Visible
             };
 
-            // LÆ°u reference vÃ o node
+            // Lưu reference vào node
             node.TitleTextBlockUI = titleTextBlock;
 
-            // ÄÄƒng kÃ½ Loaded event Ä‘á»ƒ cáº­p nháº­t vá»‹ trÃ­ sau khi render
+            // Đăng ký Loaded event để cập nhật vị trí sau khi render
             titleTextBlock.Loaded += (s, e) =>
             {
                 if (node.TitleTextBlockUI != null)
@@ -281,7 +281,7 @@ namespace FlowMy.Views.NodeControls
                 }
             };
 
-            // ÄÄƒng kÃ½ SizeChanged Ä‘á»ƒ cáº­p nháº­t vá»‹ trÃ­ khi kÃ­ch thÆ°á»›c thay Ä‘á»•i
+            // Đăng ký SizeChanged để cập nhật vị trí khi kích thước thay đổi
             titleTextBlock.SizeChanged += (s, e) =>
             {
                 if (node.TitleTextBlockUI != null)
@@ -295,7 +295,7 @@ namespace FlowMy.Views.NodeControls
         }
 
         /// <summary>
-        /// Cáº­p nháº­t vá»‹ trÃ­ title khi node di chuyá»ƒn hoáº·c sau khi zoom
+        /// Cập nhật vị trí title khi node di chuyển hoặc sau khi zoom
         /// </summary>
         public static void UpdateTitlePosition(WorkflowNode node, Canvas? canvas)
         {
@@ -303,13 +303,13 @@ namespace FlowMy.Views.NodeControls
 
             var titleTextBlock = node.TitleTextBlockUI;
             
-            // Äáº£m báº£o title visible
+            // Đảm bảo title visible
             if (titleTextBlock.Visibility != Visibility.Visible)
             {
                 titleTextBlock.Visibility = Visibility.Visible;
             }
 
-            // Sá»­ dá»¥ng ActualWidth/Height náº¿u cÃ³, fallback vá» DesiredSize
+            // Sử dụng ActualWidth/Height nếu có, fallback về DesiredSize
             double titleWidth = titleTextBlock.ActualWidth;
             double titleHeight = titleTextBlock.ActualHeight;
 
@@ -320,18 +320,18 @@ namespace FlowMy.Views.NodeControls
                 titleHeight = titleTextBlock.DesiredSize.Height;
             }
 
-            // Fallback náº¿u váº«n khÃ´ng cÃ³ kÃ­ch thÆ°á»›c
+            // Fallback nếu vẫn không có kích thước
             if (titleWidth <= 0) titleWidth = 40;
             if (titleHeight <= 0) titleHeight = 18;
 
-            // TÃ­nh toÃ¡n vá»‹ trÃ­ title á»Ÿ trÃªn node, cÄƒn giá»¯a theo chiá»u ngang
+            // Tính toán vị trí title ở trên node, căn giữa theo chiều ngang
             var titleX = node.X + (NodeSize / 2) - (titleWidth / 2);
             var extraDiamondOffset = node.EndBehavior == EndNodeBehavior.ReturnToParent ? 14 : 0;
             var titleY = node.Y - titleHeight - TitleOffset - extraDiamondOffset;
 
             Canvas.SetLeft(titleTextBlock, titleX);
             Canvas.SetTop(titleTextBlock, titleY);
-            Panel.SetZIndex(titleTextBlock, 20000); // Äáº£m báº£o title luÃ´n hiá»ƒn thá»‹ trÃªn cÃ¹ng
+            Panel.SetZIndex(titleTextBlock, 20000); // Đảm bảo title luôn hiển thị trên cùng
         }
 
         private static void ChangePortPosition(
