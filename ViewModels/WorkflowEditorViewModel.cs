@@ -38,6 +38,7 @@ namespace FlowMy.ViewModels
 
         /// <summary>Số phiên chạy thủ công đang chạy (mỗi lần Bắt đầu / chạy từ node = một phiên độc lập).</summary>
         private int _manualExecutionRunsInFlight;
+        public int ManualExecutionRunsInFlight => Volatile.Read(ref _manualExecutionRunsInFlight);
 
         private readonly object _manualRunCtsLock = new();
         private readonly Dictionary<string, CancellationTokenSource> _manualRunCtsBySession =
@@ -1590,6 +1591,19 @@ namespace FlowMy.ViewModels
             d.BeginInvoke(priority, action);
         }
 
+        private void NotifyManualRunsInFlightChanged()
+        {
+            var d = Application.Current?.Dispatcher;
+            if (d == null || d.CheckAccess())
+            {
+                OnPropertyChanged(nameof(ManualExecutionRunsInFlight));
+                return;
+            }
+
+            // Ưu tiên cập nhật ngay để badge/toolbar không bị "trễ số" sau khi run đã kết thúc.
+            d.Invoke(() => OnPropertyChanged(nameof(ManualExecutionRunsInFlight)), DispatcherPriority.Send);
+        }
+
         private void RegisterRunningNodeVisual(WorkflowNode node)
         {
             var dispatcher = Application.Current?.Dispatcher;
@@ -1672,6 +1686,7 @@ namespace FlowMy.ViewModels
                 _manualRunCtsBySession[sessionId] = sessionCts;
 
             var n = Interlocked.Increment(ref _manualExecutionRunsInFlight);
+            NotifyManualRunsInFlightChanged();
             if (n == 1)
             {
                 ActiveExecutionConnection = null;
@@ -1785,6 +1800,7 @@ namespace FlowMy.ViewModels
                 }), DispatcherPriority.Background);
 
                 var remaining = Interlocked.Decrement(ref _manualExecutionRunsInFlight);
+                NotifyManualRunsInFlightChanged();
                 IsExecuting = remaining > 0;
                 if (remaining == 0)
                     ActiveExecutionConnection = null;
@@ -1834,6 +1850,7 @@ namespace FlowMy.ViewModels
                 _manualRunCtsBySession[sessionId] = sessionCts;
 
             var n = Interlocked.Increment(ref _manualExecutionRunsInFlight);
+            NotifyManualRunsInFlightChanged();
             if (n == 1)
             {
                 ActiveExecutionConnection = null;
@@ -1942,6 +1959,7 @@ namespace FlowMy.ViewModels
                 }), DispatcherPriority.Background);
 
                 var remaining = Interlocked.Decrement(ref _manualExecutionRunsInFlight);
+                NotifyManualRunsInFlightChanged();
                 IsExecuting = remaining > 0;
                 if (remaining == 0)
                     ActiveExecutionConnection = null;

@@ -82,6 +82,7 @@ public partial class FloatingWidgetWindow : Window
     private Button? _titleRevealPinToggleButton;
     private bool _suppressOutsideCollapseOnce;
     private INotifyCollectionChanged? _manualRunSessionsNotify;
+    private INotifyPropertyChanged? _workflowVmNotify;
     private bool _isStopPopupHovering;
 
     // ── Slide animation state ──
@@ -2105,10 +2106,12 @@ window.__acPush = function(key, value) {
     {
         var vm = _host?.ViewModel;
         if (vm == null) return;
-        if (_manualRunSessionsNotify != null) return;
+        if (_manualRunSessionsNotify != null || _workflowVmNotify != null) return;
 
         _manualRunSessionsNotify = vm.ManualRunSessions;
         _manualRunSessionsNotify.CollectionChanged += ManualRunSessions_CollectionChanged;
+        _workflowVmNotify = vm;
+        _workflowVmNotify.PropertyChanged += WorkflowVm_PropertyChanged;
     }
 
     private void DetachManualRunObservers()
@@ -2116,6 +2119,9 @@ window.__acPush = function(key, value) {
         if (_manualRunSessionsNotify != null)
             _manualRunSessionsNotify.CollectionChanged -= ManualRunSessions_CollectionChanged;
         _manualRunSessionsNotify = null;
+        if (_workflowVmNotify != null)
+            _workflowVmNotify.PropertyChanged -= WorkflowVm_PropertyChanged;
+        _workflowVmNotify = null;
     }
 
     private void ManualRunSessions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -2128,9 +2134,23 @@ window.__acPush = function(key, value) {
         }));
     }
 
+    private void WorkflowVm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!string.Equals(e.PropertyName, nameof(WorkflowEditorViewModel.ManualExecutionRunsInFlight), StringComparison.Ordinal))
+            return;
+        if (Dispatcher.CheckAccess())
+        {
+            UpdateRunButtonsState();
+        }
+        else
+        {
+            Dispatcher.Invoke(UpdateRunButtonsState, DispatcherPriority.Send);
+        }
+    }
+
     private void UpdateRunButtonsState()
     {
-        var runCount = GetManualSessionsSnapshot().Count;
+        var runCount = _host?.ViewModel?.ManualExecutionRunsInFlight ?? 0;
         var runCountText = runCount > 99 ? "99+" : runCount.ToString();
         var badgeVisibility = runCount > 0 ? Visibility.Visible : Visibility.Collapsed;
 
