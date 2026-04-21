@@ -176,7 +176,6 @@ namespace FlowMy.Views
 
         public void DisableHeadlessCanvasOptimizationForDebug()
         {
-            if (!_headlessCanvasOptimizationEnabled) return;
             _headlessCanvasOptimizationEnabled = false;
             _headlessHiddenWidgetNodeIds.Clear();
 
@@ -209,7 +208,6 @@ namespace FlowMy.Views
             }
 
             RenderAllConnections();
-            SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Animated);
             _viewportCullingService?.ForceUpdate();
         }
 
@@ -227,10 +225,44 @@ namespace FlowMy.Views
                 GpuEnabled = true,
                 GpuRenderQuality = "Low",
                 CacheNodeEnabled = true,
-                UiAnimationsEnabled = false
+                UiAnimationsEnabled = false,
+                EnergyDotGap = 12,
+                EnergyDotThicknessExtra = 1.2,
+                EnergyRunSpeed = 1.0,
+                EnergyTextSpinSeconds = 1.0,
+                EnergyMeteorMode = false,
+                EnergyDotTextRotate = false,
+                NodeSpinnerArcMode = true,
+                NodeSpinnerMultiColor = false,
+                NodeSpinnerBlinkBackground = false,
+                NodeSpinnerSpinSeconds = 1.6
             };
 
             ApplyCanvasToolbarPreferences(low, saveToDisk: false);
+        }
+
+        public void PrepareForInteractiveDebugSession()
+        {
+            try
+            {
+                _isPanning = false;
+                _draggedNode = null;
+                _isDraggingFromTemplate = false;
+                _connectingFromNode = null;
+
+                try { WorkflowCanvas?.ReleaseMouseCapture(); } catch { }
+                try { ScrollViewer?.ReleaseMouseCapture(); } catch { }
+                try { Mouse.Capture(null); } catch { }
+
+                if (WorkflowCanvas != null) WorkflowCanvas.Cursor = Cursors.Arrow;
+                if (ScrollViewer != null)
+                {
+                    // Khôi phục trạng thái tương tác mặc định của canvas.
+                    ScrollViewer.PanningMode = PanningMode.Both;
+                    ScrollViewer.IsHitTestVisible = true;
+                }
+            }
+            catch { }
         }
 
         private bool ShouldRenderNodeInHeadlessMode(WorkflowNode node)

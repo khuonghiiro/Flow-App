@@ -210,7 +210,15 @@ namespace FlowMy.ViewModels
         private void ReopenHeadlessWorkflow(WidgetShortcutItem? item)
         {
             if (item == null || string.IsNullOrWhiteSpace(item.WorkflowName)) return;
-            if (!_headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow)) return;
+            if (!_headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow))
+            {
+                // Fallback: map headless chưa sẵn sàng => mở editor ngay để user không phải bấm lần 2.
+                OpenWorkflowEditorInternal(
+                    item.WorkflowName,
+                    new List<string> { item.NodeId },
+                    headless: false);
+                return;
+            }
 
             workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
             {
@@ -219,7 +227,6 @@ namespace FlowMy.ViewModels
                     // Hiện window trước để user thấy ngay; phần restore canvas chạy deferred giảm cảm giác "lag".
                     workflowWindow.Owner = null;
                     workflowWindow.ShowInTaskbar = true;
-                    workflowWindow.WindowState = WindowState.Maximized;
                     if (!workflowWindow.IsVisible)
                     {
                         workflowWindow.Show();
@@ -228,16 +235,21 @@ namespace FlowMy.ViewModels
                     {
                         workflowWindow.Visibility = Visibility.Visible;
                     }
+                    workflowWindow.WindowState = WindowState.Normal;
+                    workflowWindow.WindowState = WindowState.Maximized;
+                    workflowWindow.Topmost = true;
                     workflowWindow.Activate();
                     workflowWindow.Focus();
+                    workflowWindow.Topmost = false;
                     SetHeadlessDebugVisibleForWorkflow(item.WorkflowName, true);
 
                     workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
                     {
                         try
                         {
-                            workflowWindow.ApplyLowestRenderPresetForDebugReopen();
                             workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
+                            workflowWindow.ApplyLowestRenderPresetForDebugReopen();
+                            workflowWindow.PrepareForInteractiveDebugSession();
                         }
                         catch { }
                     }), System.Windows.Threading.DispatcherPriority.Background);
@@ -247,12 +259,33 @@ namespace FlowMy.ViewModels
                     {
                         try
                         {
+                            workflowWindow.WindowState = WindowState.Normal;
                             workflowWindow.WindowState = WindowState.Maximized;
+                            workflowWindow.Topmost = true;
                             workflowWindow.Activate();
                             workflowWindow.Focus();
+                            workflowWindow.Topmost = false;
                         }
                         catch { }
                     }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+                    // Fallback: một số máy cần thêm nhịp bring-to-front sau khi layout/render settle.
+                    workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
+                    {
+                        try
+                        {
+                            if (!workflowWindow.IsActive)
+                            {
+                                workflowWindow.WindowState = WindowState.Normal;
+                                workflowWindow.WindowState = WindowState.Maximized;
+                                workflowWindow.Topmost = true;
+                                workflowWindow.Activate();
+                                workflowWindow.Focus();
+                                workflowWindow.Topmost = false;
+                            }
+                        }
+                        catch { }
+                    }), System.Windows.Threading.DispatcherPriority.ContextIdle);
                 }
                 catch { }
             }), System.Windows.Threading.DispatcherPriority.Normal);
