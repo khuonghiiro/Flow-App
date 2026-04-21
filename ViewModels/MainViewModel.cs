@@ -234,6 +234,7 @@ namespace FlowMy.ViewModels
 
                         workflowWindow.Owner = null;
                         workflowWindow.ShowInTaskbar = true;
+                        workflowWindow.WindowState = WindowState.Normal;
                         if (!workflowWindow.IsVisible)
                         {
                             workflowWindow.Show();
@@ -242,8 +243,6 @@ namespace FlowMy.ViewModels
                         {
                             workflowWindow.Visibility = Visibility.Visible;
                         }
-                        workflowWindow.WindowState = WindowState.Normal;
-                        workflowWindow.WindowState = WindowState.Maximized;
                         workflowWindow.Topmost = true;
                         workflowWindow.Activate();
                         workflowWindow.Focus();
@@ -252,6 +251,15 @@ namespace FlowMy.ViewModels
                     }
                     catch { }
                 }), System.Windows.Threading.DispatcherPriority.Normal);
+
+                await workflowWindow.Dispatcher.InvokeAsync(new System.Action(() =>
+                {
+                    try
+                    {
+                        workflowWindow.WindowState = WindowState.Maximized;
+                    }
+                    catch { }
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
             finally
             {
@@ -553,11 +561,16 @@ namespace FlowMy.ViewModels
             if (headless)
             {
                 workflowWindow.ConfigureHeadlessCanvasOptimization(widgetNodeIds);
+                PrepareWindowForHeadlessBackground(workflowWindow);
                 if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
                 {
-                    _headlessWorkflowWindows[workflowNameToLoad] = workflowWindow;
+                    var nameToRegister = workflowNameToLoad;
+                    workflowWindow.Loaded += (_, __) =>
+                    {
+                        _headlessWorkflowWindows[nameToRegister] = workflowWindow;
+                        SetHeadlessDebugVisibleForWorkflow(nameToRegister, false);
+                    };
                 }
-                PrepareWindowForHeadlessBackground(workflowWindow);
             }
             else
             {
