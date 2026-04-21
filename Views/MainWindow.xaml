@@ -129,6 +129,32 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="IconCircleButtonSuccess" TargetType="Button" BasedOn="{StaticResource IconCircleButton}">
+            <Setter Property="Foreground" Value="{DynamicResource TextOnSuccessBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                CornerRadius="16"
+                                Background="{DynamicResource SuccessBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource SuccessHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource SuccessPressedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Window.DataContext>
@@ -570,6 +596,23 @@
                                                                                FontSize="12"
                                                                                Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                                 </Grid>
+                                                            </Button>
+                                                            <Button Command="{Binding DataContext.ReopenHeadlessWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Margin="0,0,6,0"
+                                                                    ToolTip="Mở lại workflow đang chạy ngầm để debug">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource IconCircleButtonSuccess}">
+                                                                        <Setter Property="IsEnabled" Value="False"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
+                                                                                <Setter Property="IsEnabled" Value="True"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                                <TextBlock Text="🪟"
+                                                                           FontSize="13"/>
                                                             </Button>
                                                             <Button Command="{Binding DataContext.LaunchWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"

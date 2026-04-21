@@ -168,6 +168,41 @@ namespace FlowMy.Views
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
+        public void DisableHeadlessCanvasOptimizationForDebug()
+        {
+            if (!_headlessCanvasOptimizationEnabled) return;
+            _headlessCanvasOptimizationEnabled = false;
+            _headlessHiddenWidgetNodeIds.Clear();
+
+            if (ViewModel == null) return;
+
+            SetViewportExpandedUiHidden(false);
+            if (ExecutionFloatingPanel != null) ExecutionFloatingPanel.Visibility = Visibility.Visible;
+            if (MinimapBorder != null) MinimapBorder.Visibility = Visibility.Visible;
+
+            foreach (var node in ViewModel.Nodes)
+            {
+                if (node.Border == null)
+                {
+                    try { RenderNode(node); } catch { }
+                }
+                else
+                {
+                    node.Border.Visibility = Visibility.Visible;
+                }
+
+                if (node.TitleTextBlockUI != null) node.TitleTextBlockUI.Visibility = Visibility.Visible;
+                foreach (var p in node.Ports)
+                {
+                    if (p?.PortUI != null) p.PortUI.Visibility = Visibility.Visible;
+                }
+            }
+
+            RenderAllConnections();
+            SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Animated);
+            _viewportCullingService?.ForceUpdate();
+        }
+
         private bool ShouldRenderNodeInHeadlessMode(WorkflowNode node)
         {
             if (!_headlessCanvasOptimizationEnabled) return true;

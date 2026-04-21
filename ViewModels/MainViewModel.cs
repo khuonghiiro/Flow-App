@@ -28,6 +28,8 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string lastConfiguredNodeId = string.Empty;
         [ObservableProperty] private bool hasLastConfiguredWidget;
         [ObservableProperty] private bool isConfigureLastWidgetLoading;
+        private readonly Dictionary<string, WorkflowEditorWindow> _headlessWorkflowWindows = new(System.StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<WorkflowEditorWindow> _isRehidingHeadlessWindow = new();
 
         public MainViewModel()
         {
@@ -192,6 +194,53 @@ namespace FlowMy.ViewModels
             var ids = group.Widgets.Select(w => w.NodeId).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
             if (ids.Count == 0) return;
             OpenWorkflowEditorInternal(group.WorkflowName, ids, headless: true);
+        }
+
+        [RelayCommand]
+        private void ReopenHeadlessWorkflow(WidgetShortcutItem? item)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.WorkflowName)) return;
+            if (!_headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow)) return;
+
+            workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
+            {
+                try
+                {
+                    // Hiện window trước để user thấy ngay; phần restore canvas chạy deferred giảm cảm giác "lag".
+                    workflowWindow.Owner = null;
+                    workflowWindow.ShowInTaskbar = true;
+                    workflowWindow.Visibility = Visibility.Visible;
+                    workflowWindow.WindowState = WindowState.Maximized;
+                    if (workflowWindow.Visibility != Visibility.Visible)
+                    {
+                        workflowWindow.Show();
+                    }
+                    workflowWindow.Activate();
+                    workflowWindow.Focus();
+
+                    workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
+                    {
+                        try
+                        {
+                            workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
+                        }
+                        catch { }
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+
+                    // Double-activate nhẹ để chắc chắn window nổi lên foreground trên một số máy.
+                    workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
+                    {
+                        try
+                        {
+                            workflowWindow.WindowState = WindowState.Maximized;
+                            workflowWindow.Activate();
+                            workflowWindow.Focus();
+                        }
+                        catch { }
+                    }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                }
+                catch { }
+            }), System.Windows.Threading.DispatcherPriority.Normal);
         }
 
         /// <summary>
@@ -447,15 +496,40 @@ namespace FlowMy.ViewModels
             }
 
             workflowWindow.Owner = mainWindow;
+            workflowWindow.Closing += (_, e) =>
+            {
+                // Với headless session: khi user bấm X trong lúc widget còn chạy, chỉ ẩn về nền thay vì đóng hẳn.
+                if (_isRehidingHeadlessWindow.Contains(workflowWindow)) return;
+                var nodeIds = workflowWindow.ViewModel?.Nodes?
+                    .Select(n => n.Id)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+                if (nodeIds == null || nodeIds.Count == 0) return;
+
+                var active = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
+                bool hasAnyWidgetFromThisWorkflow = active.Any(id => nodeIds.Contains(id));
+                if (!hasAnyWidgetFromThisWorkflow) return;
+
+                e.Cancel = true;
+                _isRehidingHeadlessWindow.Add(workflowWindow);
+                try
+                {
+                    PrepareWindowForHeadlessBackground(workflowWindow);
+                }
+                finally
+                {
+                    _isRehidingHeadlessWindow.Remove(workflowWindow);
+                }
+            };
 
             if (headless)
             {
                 workflowWindow.ConfigureHeadlessCanvasOptimization(widgetNodeIds);
-                // Không ẩn MainWindow: user vẫn thấy launcher và card gốc.
-                // WorkflowEditorWindow chạy ngầm để widget sống được.
-                workflowWindow.ShowInTaskbar = false;
-                workflowWindow.WindowState = WindowState.Minimized;
-                workflowWindow.Visibility = Visibility.Hidden;
+                if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
+                {
+                    _headlessWorkflowWindows[workflowNameToLoad] = workflowWindow;
+                }
+                PrepareWindowForHeadlessBackground(workflowWindow);
             }
             else
             {
@@ -466,6 +540,10 @@ namespace FlowMy.ViewModels
             workflowWindow.Closed += (_, __) =>
             {
                 scope.Dispose();
+                foreach (var kv in _headlessWorkflowWindows.Where(kv => ReferenceEquals(kv.Value, workflowWindow)).ToList())
+                {
+                    _headlessWorkflowWindows.Remove(kv.Key);
+                }
                 if (!headless && mainWindow != null)
                 {
                     mainWindow.Show();
@@ -613,6 +691,15 @@ namespace FlowMy.ViewModels
                     catch { }
                 }));
             }
+        }
+
+        private static void PrepareWindowForHeadlessBackground(WorkflowEditorWindow workflowWindow)
+        {
+            // Không ẩn MainWindow: user vẫn thấy launcher và card gốc.
+            // WorkflowEditorWindow chạy ngầm để widget sống được.
+            workflowWindow.ShowInTaskbar = false;
+            workflowWindow.WindowState = WindowState.Minimized;
+            workflowWindow.Visibility = Visibility.Hidden;
         }
 
         /// <summary>
