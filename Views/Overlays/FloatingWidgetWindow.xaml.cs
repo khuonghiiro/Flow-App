@@ -58,6 +58,7 @@ public partial class FloatingWidgetWindow : Window
     private WebView2? _webView;
     private bool _webViewInitialized;
     private bool _webViewContentLoaded;
+    private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
     private string? _lastAsyncCacheSignature;
     private readonly List<(string Key, string Value)> _pendingAsyncBuffer = new();
@@ -429,8 +430,12 @@ public partial class FloatingWidgetWindow : Window
             if (_node is HtmlUiNode htmlNode)
             {
                 _ = ReloadContentAsync();
-                _ = FlushBufferedAsyncDataToWidgetAsync(htmlNode);
-                _ = PushAsyncCacheIfChangedAsync(htmlNode);
+                _ = Dispatcher.InvokeAsync(async () =>
+                {
+                    var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+                    if (flushedCount == 0)
+                        await PushAsyncCacheIfChangedAsync(htmlNode);
+                }, DispatcherPriority.Background);
             }
             else if (!_webViewContentLoaded)
             {
@@ -1357,6 +1362,19 @@ public partial class FloatingWidgetWindow : Window
 
                 // Handle web messages from HTML (acSubmit, acStartWorkflow)
                 _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                _webView.CoreWebView2.NavigationCompleted += (_, _) =>
+                {
+                    _ = Dispatcher.InvokeAsync(async () =>
+                    {
+                        _htmlRuntimeReady = true;
+                        if (_node is HtmlUiNode htmlNode)
+                        {
+                            var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+                            if (flushedCount == 0)
+                                await PushAsyncCacheIfChangedAsync(htmlNode);
+                        }
+                    }, DispatcherPriority.Background);
+                };
 
                 _webViewInitialized = true;
             }
@@ -1381,6 +1399,7 @@ public partial class FloatingWidgetWindow : Window
                     return;
 
                 var html = BuildHtmlForWidget(htmlNode);
+                _htmlRuntimeReady = false;
 
                 // Check size limit for NavigateToString (2MB)
                 if (Encoding.UTF8.GetByteCount(html) > 1_800_000)
@@ -1588,15 +1607,16 @@ public partial class FloatingWidgetWindow : Window
         }
     }
 
-    private async Task FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
+    private async Task<int> FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
     {
-        if (_webView?.CoreWebView2 == null) return;
-        if (_pendingAsyncBuffer.Count == 0) return;
+        if (_webView?.CoreWebView2 == null) return 0;
+        if (_pendingAsyncBuffer.Count == 0) return 0;
 
         var snapshot = _pendingAsyncBuffer.ToList();
         _pendingAsyncBuffer.Clear();
         foreach (var kv in snapshot)
             await PushKeyValueToWidgetRuntimeAsync(kv.Key, kv.Value, node.Id);
+        return snapshot.Count;
     }
 
     private static bool IsPlaceholderValue(string? value)
@@ -1608,6 +1628,11 @@ public partial class FloatingWidgetWindow : Window
     private async Task PushKeyValueToWidgetRuntimeAsync(string key, string value, string nodeIdForLog)
     {
         if (_webView?.CoreWebView2 == null) return;
+        if (!_htmlRuntimeReady)
+        {
+            _pendingAsyncBuffer.Add((key ?? string.Empty, value ?? string.Empty));
+            return;
+        }
 
         var jsKey = JsonSerializer.Serialize(key ?? string.Empty);
         var jsVal = JsonSerializer.Serialize(value ?? string.Empty);
@@ -1633,6 +1658,12 @@ public partial class FloatingWidgetWindow : Window
         System.Diagnostics.Debug.WriteLine(
             $"[FloatingWidget:{nodeIdForLog}] JS push key='{key}' value='{value}' inspect={inspect}");
 #endif
+
+        if (!inspect.Contains("\"hasAsyncPush\":true", StringComparison.Ordinal)
+            && !inspect.Contains("\"hasLivePush\":true", StringComparison.Ordinal))
+        {
+            _pendingAsyncBuffer.Add((key ?? string.Empty, value ?? string.Empty));
+        }
     }
 
     private string BuildBridgeJs()
@@ -2257,8 +2288,12 @@ window.__acPush = function(key, value) {
                         if (_webViewInitialized)
                         {
                             DrainPendingAsyncQueueToBuffer(htmlNode);
-                            await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
-                            await PushAsyncCacheIfChangedAsync(htmlNode);
+                            if (_isExpanded && _htmlRuntimeReady)
+                            {
+                                var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+                                if (flushedCount == 0)
+                                    await PushAsyncCacheIfChangedAsync(htmlNode);
+                            }
                         }
                         else
                         {
