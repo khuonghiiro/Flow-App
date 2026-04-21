@@ -37,6 +37,9 @@ namespace FlowMy.Views.NodeControls
         private const int WebViewSyncThrottleMs = 16; // ~60fps để mượt mà khi drag
         // Tránh init ồ ạt nhiều WebView2 cùng lúc gây đơ khi load workflow lớn.
         private static readonly System.Threading.SemaphoreSlim _webView2InitGate = new(1, 1);
+        private static int _webViewInitSequence;
+        private const int WebViewInitStaggerMs = 120;
+        private const int WebViewInitStaggerMaxMs = 2200;
 
         /// <summary>Thư mục gợi ý để resolve tên file video (không có đường dẫn đầy đủ) an toàn trong resolve_playable_ref.</summary>
         private static string BuildMediaSearchRootsJson()
@@ -107,6 +110,14 @@ namespace FlowMy.Views.NodeControls
             };
         }
 
+        private static int GetInitStaggerDelayMs()
+        {
+            var sequence = System.Threading.Interlocked.Increment(ref _webViewInitSequence);
+            var delay = (sequence - 1) * WebViewInitStaggerMs;
+            if (delay < 0) return 0;
+            return Math.Min(delay, WebViewInitStaggerMaxMs);
+        }
+
         public static Border CreateBorder(HtmlUiNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
@@ -149,6 +160,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Visibility = Visibility.Collapsed
             };
+            var isDisposed = false;
             Grid.SetRow(webView, 1);
 
             // ✅ Khai báo sớm để các lambda/closure trong PropertyChanged có thể capture
@@ -1763,6 +1775,16 @@ namespace FlowMy.Views.NodeControls
                     {
                         try
                         {
+                            if (isDisposed || wvInit.CoreWebView2 != null || !border.IsLoaded)
+                                return;
+
+                            var staggerDelayMs = GetInitStaggerDelayMs();
+                            if (staggerDelayMs > 0)
+                                await Task.Delay(staggerDelayMs);
+
+                            if (isDisposed || wvInit.CoreWebView2 != null || !border.IsLoaded)
+                                return;
+
                             var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
                             await EnsureCoreWebView2ThrottledAsync(wvInit, env);
                             var core1 = TryGetCoreSafe(wvInit);
@@ -2162,6 +2184,16 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
+                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
+                        return;
+
+                    var staggerDelayMs = GetInitStaggerDelayMs();
+                    if (staggerDelayMs > 0)
+                        await Task.Delay(staggerDelayMs);
+
+                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
+                        return;
+
                     CoreWebView2Environment? env = null;
                     try
                     {
@@ -4136,6 +4168,7 @@ namespace FlowMy.Views.NodeControls
             border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
             border.Unloaded += (s, e) =>
             {
+                isDisposed = true;
                 try
                 {
                     // ✅ Dừng tất cả auto-refresh timers
