@@ -136,6 +136,11 @@ namespace FlowMy.Services.Utilities
                 themeFile = "LightTheme";
             }
 
+            if (string.Equals(_currentTheme, themeName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             try
             {
                 var themeUri = new Uri($"Themes/{themeFile}.xaml", UriKind.Relative);
@@ -175,10 +180,16 @@ namespace FlowMy.Services.Utilities
             try
             {
                 var savedTheme = Properties.Settings.Default.ThemePreference;
-                if (!string.IsNullOrEmpty(savedTheme) && AvailableThemes.ContainsKey(savedTheme))
+                if (!string.IsNullOrEmpty(savedTheme) &&
+                    AvailableThemes.ContainsKey(savedTheme) &&
+                    !string.Equals(savedTheme, _currentTheme, StringComparison.OrdinalIgnoreCase))
+                {
                     LoadTheme(savedTheme);
-                else
+                }
+                else if (string.IsNullOrWhiteSpace(savedTheme) && !string.Equals(_currentTheme, "Light", StringComparison.OrdinalIgnoreCase))
+                {
                     LoadTheme("Light");
+                }
             }
             catch (Exception ex)
             {

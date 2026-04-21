@@ -207,9 +207,10 @@ namespace FlowMy.ViewModels
         }
 
         [RelayCommand]
-        private void ReopenHeadlessWorkflow(WidgetShortcutItem? item)
+        private async Task ReopenHeadlessWorkflow(WidgetShortcutItem? item)
         {
             if (item == null || string.IsNullOrWhiteSpace(item.WorkflowName)) return;
+            if (item.IsReopeningHeadless) return;
             if (!_headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow))
             {
                 // Fallback: map headless chưa sẵn sàng => mở editor ngay để user không phải bấm lần 2.
@@ -220,75 +221,42 @@ namespace FlowMy.ViewModels
                 return;
             }
 
-            workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
+            item.IsReopeningHeadless = true;
+            try
             {
-                try
+                await workflowWindow.Dispatcher.InvokeAsync(new System.Action(() =>
                 {
-                    // Hiện window trước để user thấy ngay; phần restore canvas chạy deferred giảm cảm giác "lag".
-                    workflowWindow.Owner = null;
-                    workflowWindow.ShowInTaskbar = true;
-                    if (!workflowWindow.IsVisible)
+                    try
                     {
-                        workflowWindow.Show();
+                        workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
+                        workflowWindow.ApplyLowestRenderPresetForDebugReopen();
+                        workflowWindow.PrepareForInteractiveDebugSession();
+
+                        workflowWindow.Owner = null;
+                        workflowWindow.ShowInTaskbar = true;
+                        if (!workflowWindow.IsVisible)
+                        {
+                            workflowWindow.Show();
+                        }
+                        else
+                        {
+                            workflowWindow.Visibility = Visibility.Visible;
+                        }
+                        workflowWindow.WindowState = WindowState.Normal;
+                        workflowWindow.WindowState = WindowState.Maximized;
+                        workflowWindow.Topmost = true;
+                        workflowWindow.Activate();
+                        workflowWindow.Focus();
+                        workflowWindow.Topmost = false;
+                        SetHeadlessDebugVisibleForWorkflow(item.WorkflowName, true);
                     }
-                    else
-                    {
-                        workflowWindow.Visibility = Visibility.Visible;
-                    }
-                    workflowWindow.WindowState = WindowState.Normal;
-                    workflowWindow.WindowState = WindowState.Maximized;
-                    workflowWindow.Topmost = true;
-                    workflowWindow.Activate();
-                    workflowWindow.Focus();
-                    workflowWindow.Topmost = false;
-                    SetHeadlessDebugVisibleForWorkflow(item.WorkflowName, true);
-
-                    workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
-                    {
-                        try
-                        {
-                            workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
-                            workflowWindow.ApplyLowestRenderPresetForDebugReopen();
-                            workflowWindow.PrepareForInteractiveDebugSession();
-                        }
-                        catch { }
-                    }), System.Windows.Threading.DispatcherPriority.Background);
-
-                    // Double-activate nhẹ để chắc chắn window nổi lên foreground trên một số máy.
-                    workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
-                    {
-                        try
-                        {
-                            workflowWindow.WindowState = WindowState.Normal;
-                            workflowWindow.WindowState = WindowState.Maximized;
-                            workflowWindow.Topmost = true;
-                            workflowWindow.Activate();
-                            workflowWindow.Focus();
-                            workflowWindow.Topmost = false;
-                        }
-                        catch { }
-                    }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-
-                    // Fallback: một số máy cần thêm nhịp bring-to-front sau khi layout/render settle.
-                    workflowWindow.Dispatcher.BeginInvoke(new System.Action(() =>
-                    {
-                        try
-                        {
-                            if (!workflowWindow.IsActive)
-                            {
-                                workflowWindow.WindowState = WindowState.Normal;
-                                workflowWindow.WindowState = WindowState.Maximized;
-                                workflowWindow.Topmost = true;
-                                workflowWindow.Activate();
-                                workflowWindow.Focus();
-                                workflowWindow.Topmost = false;
-                            }
-                        }
-                        catch { }
-                    }), System.Windows.Threading.DispatcherPriority.ContextIdle);
-                }
-                catch { }
-            }), System.Windows.Threading.DispatcherPriority.Normal);
+                    catch { }
+                }), System.Windows.Threading.DispatcherPriority.Normal);
+            }
+            finally
+            {
+                item.IsReopeningHeadless = false;
+            }
         }
 
         /// <summary>
@@ -721,6 +689,19 @@ namespace FlowMy.ViewModels
                 };
             }
 
+            if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
+            {
+                try
+                {
+                    var vm = workflowWindow.ViewModel;
+                    if (vm != null && !string.Equals(vm.CurrentWorkflowName, workflowNameToLoad, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        vm.CurrentWorkflowName = workflowNameToLoad!;
+                    }
+                }
+                catch { }
+            }
+
             if (!headless)
             {
                 workflowWindow.Show();
@@ -732,22 +713,6 @@ namespace FlowMy.ViewModels
                 workflowWindow.Hide();
             }
 
-            // Set workflow name SAU khi window đã show để giảm block khởi tạo ban đầu trên MainWindow.
-            if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
-            {
-                workflowWindow.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new System.Action(() =>
-                {
-                    try
-                    {
-                        var vm = workflowWindow.ViewModel;
-                        if (vm != null && !string.Equals(vm.CurrentWorkflowName, workflowNameToLoad, System.StringComparison.OrdinalIgnoreCase))
-                        {
-                            vm.CurrentWorkflowName = workflowNameToLoad!;
-                        }
-                    }
-                    catch { }
-                }));
-            }
         }
 
         private static void PrepareWindowForHeadlessBackground(WorkflowEditorWindow workflowWindow)
