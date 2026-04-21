@@ -391,6 +391,9 @@ namespace FlowMy.ViewModels
                     if (string.IsNullOrWhiteSpace(id)) continue;
 
                     var title = nodeEl.TryGetProperty("Title", out var titleEl) ? (titleEl.GetString() ?? string.Empty) : string.Empty;
+                    var colorKey = nodeEl.TryGetProperty("ColorKey", out var colorKeyEl)
+                        ? (colorKeyEl.GetString() ?? string.Empty)
+                        : string.Empty;
                     var type = ParseNodeType(nodeEl);
                     if (type == FlowMy.Models.NodeType.Start || type == FlowMy.Models.NodeType.End) continue;
 
@@ -417,6 +420,7 @@ namespace FlowMy.ViewModels
                     {
                         Id = id,
                         Title = title,
+                        ColorKey = colorKey,
                         Type = type,
                         FloatingWidget = floating
                     });
