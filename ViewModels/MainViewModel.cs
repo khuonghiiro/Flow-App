@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -182,18 +183,67 @@ namespace FlowMy.ViewModels
             item.IsLaunchingHeadless = true;
             try
             {
-                // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
-                await Task.Yield();
+                // Đảm bảo UI kịp render trạng thái loading (⏳) trước khi chạy luồng mở headless.
+                await Application.Current.Dispatcher.InvokeAsync(
+                    () => { },
+                    System.Windows.Threading.DispatcherPriority.Render);
                 OpenWorkflowEditorInternal(
                     item.WorkflowName,
                     new List<string> { item.NodeId },
                     headless: true);
-                item.IsWidgetOpen = true;
+
+                // Chỉ kết thúc trạng thái loading khi widget thật sự mở (hoặc timeout),
+                // tránh trường hợp đồng hồ tắt quá sớm khi UI widget chưa hiện.
+                var opened = await WaitForWidgetOpenedAsync(item.NodeId, timeoutMs: 10000);
+                item.IsWidgetOpen = opened || FloatingWidgetManager.Instance.IsWidgetOpen(item.NodeId);
                 System.Diagnostics.Debug.WriteLine("[LaunchHeadless] OpenWorkflowEditorInternal returned.");
             }
             finally
             {
                 item.IsLaunchingHeadless = false;
+            }
+        }
+
+        private static async Task<bool> WaitForWidgetOpenedAsync(string? nodeId, int timeoutMs = 8000)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId))
+            {
+                return false;
+            }
+
+            var manager = FloatingWidgetManager.Instance;
+            if (manager.IsWidgetOpen(nodeId))
+            {
+                return true;
+            }
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            EventHandler<string>? handler = null;
+            handler = (_, openedNodeId) =>
+            {
+                if (string.Equals(openedNodeId, nodeId, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    tcs.TrySetResult(true);
+                }
+            };
+
+            manager.WidgetOpened += handler;
+            try
+            {
+                using var cts = new CancellationTokenSource(timeoutMs);
+                var timeoutTask = Task.Delay(Timeout.Infinite, cts.Token);
+                var completed = await Task.WhenAny(tcs.Task, timeoutTask);
+                if (completed == tcs.Task)
+                {
+                    cts.Cancel();
+                    return true;
+                }
+
+                return manager.IsWidgetOpen(nodeId);
+            }
+            finally
+            {
+                manager.WidgetOpened -= handler;
             }
         }
 

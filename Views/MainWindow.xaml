@@ -593,12 +593,14 @@
                                                             <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
                                                                     Margin="0,0,6,0"
-                                                                    ToolTip="Chỉ mở widget này (ngầm)"
-                                                                    IsEnabled="True">
+                                                                    ToolTip="Chỉ mở widget này (ngầm)">
                                                                 <Button.Style>
                                                                     <Style TargetType="Button" BasedOn="{StaticResource IconCircleButton}">
                                                                         <Setter Property="IsEnabled" Value="True"/>
                                                                         <Style.Triggers>
+                                                                            <Trigger Property="IsEnabled" Value="False">
+                                                                                <Setter Property="Opacity" Value="0.45"/>
+                                                                            </Trigger>
                                                                             <DataTrigger Binding="{Binding IsLaunchingHeadless}" Value="True">
                                                                                 <Setter Property="IsEnabled" Value="False"/>
                                                                             </DataTrigger>
