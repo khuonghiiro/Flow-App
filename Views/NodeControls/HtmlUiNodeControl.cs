@@ -3,6 +3,7 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utils;
+using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.Overlays;
 using Microsoft.Web.WebView2.Core;
@@ -116,6 +117,19 @@ namespace FlowMy.Views.NodeControls
             var delay = (sequence - 1) * WebViewInitStaggerMs;
             if (delay < 0) return 0;
             return Math.Min(delay, WebViewInitStaggerMaxMs);
+        }
+
+        private static bool ShouldUseViewportLazyInit()
+        {
+            try
+            {
+                var prefs = CanvasToolbarPreferencesStore.Load();
+                return string.Equals(prefs.CanvasDisplayMode, "ViewportOnly", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static Border CreateBorder(HtmlUiNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
@@ -1778,6 +1792,22 @@ namespace FlowMy.Views.NodeControls
                             if (isDisposed || wvInit.CoreWebView2 != null || !border.IsLoaded)
                                 return;
 
+                            if (ShouldUseViewportLazyInit())
+                            {
+                                var waitCycles = 0;
+                                while (!isDisposed &&
+                                       border.IsLoaded &&
+                                       border.Visibility != Visibility.Visible &&
+                                       waitCycles < 300)
+                                {
+                                    await Task.Delay(50);
+                                    waitCycles++;
+                                }
+                            }
+
+                            if (isDisposed || wvInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
+                                return;
+
                             var staggerDelayMs = GetInitStaggerDelayMs();
                             if (staggerDelayMs > 0)
                                 await Task.Delay(staggerDelayMs);
@@ -2185,6 +2215,22 @@ namespace FlowMy.Views.NodeControls
                 try
                 {
                     if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
+                        return;
+
+                    if (ShouldUseViewportLazyInit())
+                    {
+                        var waitCycles = 0;
+                        while (!isDisposed &&
+                               border.IsLoaded &&
+                               border.Visibility != Visibility.Visible &&
+                               waitCycles < 300)
+                        {
+                            await Task.Delay(50);
+                            waitCycles++;
+                        }
+                    }
+
+                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
                         return;
 
                     var staggerDelayMs = GetInitStaggerDelayMs();
