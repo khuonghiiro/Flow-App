@@ -1,5 +1,5 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.ListOutNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.ListOutNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         Title="List Out Node"
@@ -202,11 +202,10 @@
                                                 <!-- Row 2: Source Node -->
                                                 <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
                                                     <TextBlock Text="Source Node:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
-                                                    <ComboBox ItemsSource="{Binding AvailableSourceNodes}"
+                                                    <controls:NodeSearchComboBoxUserControl ItemsSource="{Binding AvailableSourceNodes}"
                                                               SelectedValue="{Binding SelectedSourceNodeId, Mode=TwoWay}"
                                                               SelectedValuePath="NodeId"
                                                               DisplayMemberPath="Title"
-                                                              Style="{DynamicResource BaseComboBox}"
                                                               Height="32"/>
                                                 </StackPanel>
 
@@ -345,8 +344,7 @@
                                                                FontSize="12"
                                                                Opacity="0.7"
                                                                Margin="0,0,0,4"/>
-                                                    <ComboBox Height="32"
-                                                              Style="{DynamicResource BaseComboBox}"
+                                                    <controls:NodeSearchComboBoxUserControl Height="32"
                                                               ItemsSource="{Binding OutgoingOptions}"
                                                               SelectedValuePath="NodeId"
                                                               DisplayMemberPath="Title"

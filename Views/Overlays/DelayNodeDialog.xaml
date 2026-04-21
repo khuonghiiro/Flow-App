@@ -1,5 +1,5 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.DelayNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.DelayNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         Title="Delay"
@@ -212,9 +212,8 @@
                                            Margin="0,0,0,8"
                                            TextWrapping="Wrap"/>
                                 <TextBlock Text="Node nguồn" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
-                                <ComboBox Height="36"
+                                <controls:NodeSearchComboBoxUserControl Height="36"
                                           Margin="0,0,0,10"
-                                          Style="{DynamicResource BaseComboBox}"
                                           ItemsSource="{Binding AvailableNodeOptions}"
                                           SelectedValuePath="NodeId"
                                           DisplayMemberPath="Title"
@@ -300,7 +299,7 @@
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1">
                                                     <TextBlock Text="Node OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
-                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" ItemsSource="{Binding OutgoingOptions}"
+                                                    <controls:NodeSearchComboBoxUserControl Height="32" ItemsSource="{Binding OutgoingOptions}"
                                                               SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>

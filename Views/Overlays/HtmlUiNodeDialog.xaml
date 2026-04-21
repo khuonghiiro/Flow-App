@@ -112,7 +112,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <ComboBox Height="30" Style="{DynamicResource BaseComboBox}"
+                                        <controls:NodeSearchComboBoxUserControl Height="30"
                                                   ItemsSource="{Binding AvailableNodeOptions}"
                                                   SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                   SelectedValue="{Binding WebTabCookieSourceNodeId, Mode=TwoWay}"
@@ -201,7 +201,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
                                                         <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                        <controls:NodeSearchComboBoxUserControl Height="32"
                                                                   ItemsSource="{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                   SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                                   SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
@@ -996,7 +996,7 @@
                                                         </Grid.ColumnDefinitions>
                                                         <StackPanel Grid.Column="0">
                                                             <TextBlock Text="Async Task" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                            <controls:NodeSearchComboBoxUserControl Height="32"
                                                                       ItemsSource="{Binding DataContext.AsyncAvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                       SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                                       SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"
@@ -1900,8 +1900,7 @@
                                                                FontSize="12"
                                                                Opacity="0.7"
                                                                Margin="0,0,0,4"/>
-                                                    <ComboBox Height="32"
-                                                              Style="{DynamicResource BaseComboBox}"
+                                                    <controls:NodeSearchComboBoxUserControl Height="32"
                                                               ItemsSource="{Binding OutgoingOptions}"
                                                               SelectedValuePath="NodeId"
                                                               DisplayMemberPath="Title"

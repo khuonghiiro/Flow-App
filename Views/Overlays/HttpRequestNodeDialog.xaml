@@ -1,5 +1,5 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.HttpRequestNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.HttpRequestNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:converters="clr-namespace:FlowMy.Converters"
@@ -187,10 +187,9 @@
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Source Node:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Output Key:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="8,0,0,4"/>
                                 
-                                <ComboBox Grid.Row="1" Grid.Column="0" x:Name="UrlSourceNodeComboBox"
+                                <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="UrlSourceNodeComboBox"
                                           Height="32"
                                           MinWidth="120"
-                                          Style="{DynamicResource BaseComboBox}"
                                           ItemsSource="{Binding AvailableSources}"
                                           SelectedValuePath="NodeId"
                                           DisplayMemberPath="Title"
@@ -225,10 +224,9 @@
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Source Node:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,4"/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Output Key:" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="8,0,0,4"/>
                                 
-                                <ComboBox Grid.Row="1" Grid.Column="0" x:Name="CurlSourceNodeComboBox"
+                                <controls:NodeSearchComboBoxUserControl Grid.Row="1" Grid.Column="0" x:Name="CurlSourceNodeComboBox"
                                           Height="32"
                                           MinWidth="120"
-                                          Style="{DynamicResource BaseComboBox}"
                                           ItemsSource="{Binding AvailableSources}"
                                           SelectedValuePath="NodeId"
                                           DisplayMemberPath="Title"
@@ -325,9 +323,8 @@
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
                                                 
-                                                <ComboBox Grid.Column="0" x:Name="BodySourceNodeComboBox"
+                                                <controls:NodeSearchComboBoxUserControl Grid.Column="0" x:Name="BodySourceNodeComboBox"
                                                           Height="32"
-                                                          Style="{DynamicResource BaseComboBox}"
                                                           ItemsSource="{Binding AvailableSources}"
                                                           SelectedValuePath="NodeId"
                                                           DisplayMemberPath="Title"
@@ -400,9 +397,8 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <ComboBox Grid.Column="0" x:Name="TokenSourceNodeComboBox"
+                                                <controls:NodeSearchComboBoxUserControl Grid.Column="0" x:Name="TokenSourceNodeComboBox"
                                                           Height="32"
-                                                          Style="{DynamicResource BaseComboBox}"
                                                           ItemsSource="{Binding AvailableSources}"
                                                           SelectedValuePath="NodeId"
                                                           DisplayMemberPath="Title"
@@ -438,9 +434,8 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <ComboBox Grid.Column="0" x:Name="ApiKeyValueSourceNodeComboBox"
+                                                <controls:NodeSearchComboBoxUserControl Grid.Column="0" x:Name="ApiKeyValueSourceNodeComboBox"
                                                           Height="32"
-                                                          Style="{DynamicResource BaseComboBox}"
                                                           ItemsSource="{Binding AvailableSources}"
                                                           SelectedValuePath="NodeId"
                                                           DisplayMemberPath="Title"
@@ -700,8 +695,7 @@
                                                                Foreground="{DynamicResource TextSecondary}"
                                                                FontSize="11"
                                                                Margin="0,0,0,2"/>
-                                                    <ComboBox Height="32"
-                                                              Style="{DynamicResource BaseComboBox}"
+                                                    <controls:NodeSearchComboBoxUserControl Height="32"
                                                               ItemsSource="{Binding OutgoingOptions}"
                                                               SelectedValuePath="NodeId"
                                                               DisplayMemberPath="Title"

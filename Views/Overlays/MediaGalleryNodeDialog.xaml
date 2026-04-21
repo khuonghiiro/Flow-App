@@ -1,5 +1,5 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.MediaGalleryNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.MediaGalleryNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:nodes="clr-namespace:FlowMy.Models.Nodes"
@@ -87,12 +87,10 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <ComboBox x:Name="JsonNodeComboBox" Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
+                            <controls:NodeSearchComboBoxUserControl x:Name="JsonNodeComboBox" Height="36"
                                       ItemsSource="{Binding AvailableNodeOptions}"
                                       SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                      SelectedValue="{Binding JsonSourceNodeId, Mode=TwoWay}"
-                                      SelectionChanged="JsonNodeComboBox_SelectionChanged"/>
+                                      SelectedValue="{Binding JsonSourceNodeId, Mode=TwoWay}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
@@ -264,12 +262,10 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <ComboBox x:Name="FolderNodeComboBox" Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
+                                    <controls:NodeSearchComboBoxUserControl x:Name="FolderNodeComboBox" Height="36"
                                               ItemsSource="{Binding AvailableNodeOptions}"
                                               SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                              SelectedValue="{Binding FolderSourceNodeId, Mode=TwoWay}"
-                                              SelectionChanged="FolderNodeComboBox_SelectionChanged"/>
+                                              SelectedValue="{Binding FolderSourceNodeId, Mode=TwoWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
@@ -296,12 +292,10 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <ComboBox x:Name="FolderVideoNodeComboBox" Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
+                                    <controls:NodeSearchComboBoxUserControl x:Name="FolderVideoNodeComboBox" Height="36"
                                               ItemsSource="{Binding AvailableNodeOptions}"
                                               SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                              SelectedValue="{Binding FolderSourceNodeIdVideo, Mode=TwoWay}"
-                                              SelectionChanged="FolderVideoNodeComboBox_SelectionChanged"/>
+                                              SelectedValue="{Binding FolderSourceNodeIdVideo, Mode=TwoWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
@@ -395,8 +389,7 @@
                                                                FontSize="12"
                                                                Opacity="0.7"
                                                                Margin="0,0,0,4"/>
-                                                    <ComboBox Height="32"
-                                                              Style="{DynamicResource BaseComboBox}"
+                                                    <controls:NodeSearchComboBoxUserControl Height="32"
                                                               ItemsSource="{Binding OutgoingOptions}"
                                                               SelectedValuePath="NodeId"
                                                               DisplayMemberPath="Title"

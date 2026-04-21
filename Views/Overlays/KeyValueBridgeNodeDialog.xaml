@@ -1,5 +1,5 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.KeyValueBridgeNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.KeyValueBridgeNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:converters="clr-namespace:FlowMy.Converters"
@@ -154,9 +154,8 @@
                                            FontSize="14"
                                            FontWeight="SemiBold"
                                            Margin="0,0,0,8"/>
-                                <ComboBox x:Name="SourceBridgeCombo"
+                                <controls:NodeSearchComboBoxUserControl x:Name="SourceBridgeCombo"
                                           Height="36"
-                                          Style="{DynamicResource BaseComboBox}"
                                           Margin="0,0,0,12"
                                           ItemsSource="{Binding PassBridgeSourceOptions}"
                                           SelectedValuePath="NodeId"
@@ -231,10 +230,9 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <ComboBox Grid.Column="0"
+                                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
                                                               Height="32"
                                                               Margin="0,0,8,0"
-                                                              Style="{DynamicResource BaseComboBox}"
                                                               ItemsSource="{Binding AvailableSources}"
                                                               SelectedValuePath="NodeId"
                                                               DisplayMemberPath="Title"
@@ -331,10 +329,9 @@
                                         <ColumnDefinition Width="2*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0"
+                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
                                               Height="36"
                                               Margin="0,0,6,0"
-                                              Style="{DynamicResource BaseComboBox}"
                                               ToolTip="Node nguồn: phải có ít nhất một output động (dynamic output)."
                                               ItemsSource="{Binding CleanupTriggerSourceOptions}"
                                               SelectedValuePath="NodeId"
@@ -384,8 +381,7 @@
                                            FontSize="11"
                                            LineHeight="16"
                                            Margin="0,0,0,6"/>
-                                <ComboBox Height="36"
-                                          Style="{DynamicResource BaseComboBox}"
+                                <controls:NodeSearchComboBoxUserControl Height="36"
                                           Margin="0,0,0,8"
                                           ToolTip="Node KVB Pass hoặc Get (không phải node cleanup). Pass = xóa kho kv gốc; Get = xóa kv Get + kv Pass nguồn nếu có."
                                           ItemsSource="{Binding DeleteBridgeNodeOptions}"
@@ -414,10 +410,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0"
+                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
                                               Height="36"
                                               Margin="0,0,4,0"
-                                              Style="{DynamicResource BaseComboBox}"
                                               ToolTip="Node có output string — thường là tên key cần xóa do luồng trước tính ra."
                                               ItemsSource="{Binding CleanupKeySourceOptions}"
                                               SelectedValuePath="NodeId"
@@ -461,10 +456,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0"
+                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
                                               Height="36"
                                               Margin="0,0,4,0"
-                                              Style="{DynamicResource BaseComboBox}"
                                               ToolTip="Node cung cấp tên field (string), ví dụ tên cột trong object mảng."
                                               ItemsSource="{Binding CleanupFilterFieldSourceOptions}"
                                               SelectedValuePath="NodeId"
@@ -515,10 +509,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0"
+                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
                                               Height="36"
                                               Margin="0,0,4,0"
-                                              Style="{DynamicResource BaseComboBox}"
                                               ToolTip="Node nguồn giá trị cần so khớp (cùng nghĩa với ô text phải)."
                                               ItemsSource="{Binding CleanupFilterValueSourceOptions}"
                                               SelectedValuePath="NodeId"
@@ -680,8 +673,7 @@
                                                                FontSize="12"
                                                                Opacity="0.7"
                                                                Margin="0,0,0,4"/>
-                                                    <ComboBox Height="32"
-                                                              Style="{DynamicResource BaseComboBox}"
+                                                    <controls:NodeSearchComboBoxUserControl Height="32"
                                                               ItemsSource="{Binding OutgoingOptions}"
                                                               SelectedValuePath="NodeId"
                                                               DisplayMemberPath="Title"

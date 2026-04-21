@@ -1,4 +1,4 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.NotificationNodeDialog"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.NotificationNodeDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
@@ -150,8 +150,7 @@
                                                Foreground="{DynamicResource TextSecondary}"
                                                FontSize="11"
                                                Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
+                                    <controls:NodeSearchComboBoxUserControl Height="32"
                                               ItemsSource="{Binding ContentSourceNodes}"
                                               SelectedValue="{Binding ContentSelectedSourceNodeId, Mode=TwoWay}"
                                               SelectedValuePath="NodeId"
@@ -218,9 +217,8 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <ComboBox Grid.Column="0"
+                                        <controls:NodeSearchComboBoxUserControl Grid.Column="0"
                                                   Height="32"
-                                                  Style="{DynamicResource BaseComboBox}"
                                                   ItemsSource="{Binding DurationSourceNodes}"
                                                   SelectedValue="{Binding DurationSelectedSourceNodeId, Mode=TwoWay}"
                                                   SelectedValuePath="NodeId"
@@ -427,7 +425,7 @@
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1">
                                                     <TextBlock Text="Node OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
-                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" ItemsSource="{Binding OutgoingOptions}"
+                                                    <controls:NodeSearchComboBoxUserControl Height="32" ItemsSource="{Binding OutgoingOptions}"
                                                               SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>

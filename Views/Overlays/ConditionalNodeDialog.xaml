@@ -1,5 +1,5 @@
 <local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.ConditionalNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:conv="clr-namespace:FlowMy.Converters"
@@ -179,7 +179,7 @@
                                                                     </Grid.ColumnDefinitions>
                                                                     <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                                                         <TextBlock Text="Node (trái):" Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,4"/>
-                                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" HorizontalAlignment="Stretch"
+                                                                        <controls:NodeSearchComboBoxUserControl Height="32" HorizontalAlignment="Stretch"
                                                                                   ItemsSource="{Binding AvailableSourceNodes}"
                                                                                   SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                                                   SelectedValue="{Binding LeftSourceNodeId, Mode=TwoWay}"/>
@@ -221,7 +221,7 @@
                                                                         </Grid.ColumnDefinitions>
                                                                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                                                             <TextBlock Text="Node (phải):" Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,4"/>
-                                                                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" HorizontalAlignment="Stretch"
+                                                                            <controls:NodeSearchComboBoxUserControl Height="32" HorizontalAlignment="Stretch"
                                                                                       ItemsSource="{Binding AvailableSourceNodes}"
                                                                                       SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                                                       SelectedValue="{Binding RightSourceNodeId, Mode=TwoWay}"/>

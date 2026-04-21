@@ -1,5 +1,5 @@
-﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.AsyncTaskDispatchCollectNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.AsyncTaskDispatchCollectNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         Title="Collect AsyncTask Results"
@@ -67,8 +67,7 @@
                     <TextBlock Text="Nguồn node (trong body AsyncTask):"
                                Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
-                    <ComboBox Height="36"
-                              Style="{DynamicResource BaseComboBox}"
+                    <controls:NodeSearchComboBoxUserControl Height="36"
                               ItemsSource="{Binding AvailableBodyNodeOptions}"
                               DisplayMemberPath="Title"
                               SelectedValuePath="NodeId"
