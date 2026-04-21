@@ -55,7 +55,8 @@ namespace FlowMy.Services.Utilities
                 {
                     Width = 20000,
                     Height = 20000,
-                    Fill = drawingBrush
+                    Fill = drawingBrush,
+                    IsHitTestVisible = false
                 });
                 return;
             }
@@ -90,7 +91,8 @@ namespace FlowMy.Services.Utilities
                 {
                     Width = 20000,
                     Height = 20000,
-                    Fill = drawingBrush
+                    Fill = drawingBrush,
+                    IsHitTestVisible = false
                 });
             }
         }

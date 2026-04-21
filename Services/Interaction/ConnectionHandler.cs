@@ -478,6 +478,14 @@ namespace FlowMy.Services.Interaction
         {
             var viewModel = _host.ViewModel;
 
+            // Defensive reset: có thể bị miss MouseUp sau các thao tác jump viewport
+            // (ví dụ click FitToView hoặc popup đóng/mở), khiến trạng thái pan bị "kẹt".
+            if (_host.IsPanning && e.LeftButton != MouseButtonState.Pressed)
+            {
+                _host.IsPanning = false;
+                try { _host.WorkflowCanvas.ReleaseMouseCapture(); } catch { }
+            }
+
             if (_host.IsBoxSelecting)
             {
                 _host.UpdateBoxSelection(e.GetPosition(_host.WorkflowCanvas));
@@ -763,6 +771,13 @@ namespace FlowMy.Services.Interaction
         {
             var viewModel = _host.ViewModel;
             if (viewModel == null) return;
+
+            // Nếu trước đó bị miss MouseUp, reset trạng thái pan cũ để lần kéo mới không bị nhảy.
+            if (_host.IsPanning)
+            {
+                _host.IsPanning = false;
+                try { _host.WorkflowCanvas.ReleaseMouseCapture(); } catch { }
+            }
 
             // Kiểm tra xem click có phải vào dialog không
             var hitElement = e.OriginalSource as DependencyObject;

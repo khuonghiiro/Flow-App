@@ -8,6 +8,7 @@ namespace FlowMy.Services.Utilities
 {
     public sealed class CanvasSizeManager
     {
+        private const double PanSafeCanvasExtent = 20000;
         private readonly IWorkflowEditorHostAccessor _hostAccessor;
         private readonly double _minWidth;
         private readonly double _minHeight;
@@ -51,8 +52,9 @@ namespace FlowMy.Services.Utilities
                 // Đảm bảo canvas size bao gồm cả viewport đang hiển thị
                 double minWidth = Math.Max(_minWidth, Math.Max(Math.Abs(canvasViewportLeft), Math.Abs(canvasViewportRight)) * 2 + _padding * 2);
                 double minHeight = Math.Max(_minHeight, Math.Max(Math.Abs(canvasViewportTop), Math.Abs(canvasViewportBottom)) * 2 + _padding * 2);
-                canvas.Width = minWidth;
-                canvas.Height = minHeight;
+                // Luôn giữ canvas đủ lớn cho pan ổn định ở mọi GridType (kể cả None).
+                canvas.Width = Math.Max(minWidth, PanSafeCanvasExtent);
+                canvas.Height = Math.Max(minHeight, PanSafeCanvasExtent);
                 return;
             }
 
@@ -70,12 +72,10 @@ namespace FlowMy.Services.Utilities
             double width = Math.Max(_minWidth, maxX - minX + _padding * 2);
             double height = Math.Max(_minHeight, maxY - minY + _padding * 2);
 
-            // WorkflowCanvas >= 20000 khi có lưới (Lines/Dots) để pan hoạt động toàn vùng
-            if (Host.GridCanvas.Children.Count > 0)
-            {
-                width = Math.Max(width, 20000);
-                height = Math.Max(height, 20000);
-            }
+            // Giữ cùng biên độ pan cho cả 3 chế độ lưới.
+            // Trước đây mode None không có GridCanvas child nên canvas bị co nhỏ và gây nhảy viewport.
+            width = Math.Max(width, PanSafeCanvasExtent);
+            height = Math.Max(height, PanSafeCanvasExtent);
 
             canvas.Width = width;
             canvas.Height = height;
