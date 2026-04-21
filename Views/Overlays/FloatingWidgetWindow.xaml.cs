@@ -75,6 +75,9 @@ public partial class FloatingWidgetWindow : Window
     private TextBlock? _titleRevealStartBadgeText;
     private Border? _titleRevealStopBadge;
     private TextBlock? _titleRevealStopBadgeText;
+    private Popup? _titleRevealStopSessionsPopup;
+    private StackPanel? _titleRevealStopSessionsPanel;
+    private bool _isTitleRevealStopPopupHovering;
     private Button? _titleRevealOutsideCollapseToggleButton;
     private Button? _titleRevealPinToggleButton;
     private bool _suppressOutsideCollapseOnce;
@@ -1084,7 +1087,19 @@ public partial class FloatingWidgetWindow : Window
         };
         if (TryFindResource("DangerButton") is Style stopStyle)
             stopBtn.Style = stopStyle;
-        stopBtn.Click += (_, __) => _host?.ViewModel?.EndTestCommand?.Execute(null);
+        stopBtn.Click += (_, __) => ShowTitleRevealStopSessionMenu(stopBtn);
+        stopBtn.MouseEnter += (_, __) => ShowTitleRevealStopSessionMenu(stopBtn);
+        stopBtn.MouseLeave += (_, __) =>
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (!_isTitleRevealStopPopupHovering && _titleRevealStopSessionsPopup?.IsMouseOver != true)
+                {
+                    if (_titleRevealStopSessionsPopup != null)
+                        _titleRevealStopSessionsPopup.IsOpen = false;
+                }
+            }));
+        };
 
         var outsideCollapseBtn = new Button
         {
@@ -2135,6 +2150,89 @@ window.__acPush = function(key, value) {
         if (_titleRevealStopBadge != null) _titleRevealStopBadge.Visibility = badgeVisibility;
     }
 
+    private void ShowTitleRevealStopSessionMenu(Button anchorButton)
+    {
+        var sessions = GetManualSessionsSnapshot();
+        if (sessions.Count == 0) return;
+
+        EnsureTitleRevealStopSessionsPopup(anchorButton);
+        if (_titleRevealStopSessionsPanel == null || _titleRevealStopSessionsPopup == null) return;
+
+        _titleRevealStopSessionsPanel.Children.Clear();
+        for (int i = 0; i < sessions.Count; i++)
+        {
+            var session = sessions[i];
+            var idx = i + 1;
+            var btn = new Button
+            {
+                Width = 24,
+                Height = 24,
+                Margin = new Thickness(i == sessions.Count - 1 ? 0 : 4, 0, 4, 0),
+                Content = idx.ToString(),
+                Tag = session.SessionId,
+                ToolTip = session.LineText,
+                Padding = new Thickness(0),
+                FontSize = 10
+            };
+            if (TryFindResource("DangerButton") is Style dangerStyle)
+                btn.Style = dangerStyle;
+            btn.Click += (_, __) =>
+            {
+                if (btn.Tag is string sessionId)
+                {
+                    _host?.ViewModel?.CancelManualRunSession(sessionId);
+                    Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                    {
+                        UpdateRunButtonsState();
+                        ShowTitleRevealStopSessionMenu(anchorButton);
+                    }));
+                }
+            };
+            _titleRevealStopSessionsPanel.Children.Add(btn);
+        }
+
+        _titleRevealStopSessionsPopup.PlacementTarget = anchorButton;
+        _titleRevealStopSessionsPopup.IsOpen = _titleRevealStopSessionsPanel.Children.Count > 0;
+    }
+
+    private void EnsureTitleRevealStopSessionsPopup(Button anchorButton)
+    {
+        if (_titleRevealStopSessionsPopup != null) return;
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal
+        };
+
+        var border = new Border
+        {
+            Background = TryFindResource("CardColor") as Brush ?? Brushes.Black,
+            BorderBrush = TryFindResource("BorderColor") as Brush ?? Brushes.Gray,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(6),
+            Child = panel
+        };
+        border.MouseEnter += (_, __) => _isTitleRevealStopPopupHovering = true;
+        border.MouseLeave += (_, __) =>
+        {
+            _isTitleRevealStopPopupHovering = false;
+            if (_titleRevealStopSessionsPopup != null)
+                _titleRevealStopSessionsPopup.IsOpen = false;
+        };
+
+        _titleRevealStopSessionsPanel = panel;
+        _titleRevealStopSessionsPopup = new Popup
+        {
+            PlacementTarget = anchorButton,
+            Placement = PlacementMode.Bottom,
+            StaysOpen = false,
+            AllowsTransparency = true,
+            PopupAnimation = PopupAnimation.Fade,
+            Child = border
+        };
+    }
+
     // ═══════════════════════════════════════════
     //  CONTEXT MENU (chuột phải)
     // ═══════════════════════════════════════════
@@ -2647,6 +2745,8 @@ window.__acPush = function(key, value) {
         _titleRevealStartBadgeText = null;
         _titleRevealStopBadge = null;
         _titleRevealStopBadgeText = null;
+        _titleRevealStopSessionsPanel = null;
+        _titleRevealStopSessionsPopup = null;
         _titleRevealOutsideCollapseToggleButton = null;
         _titleRevealPinToggleButton = null;
 
