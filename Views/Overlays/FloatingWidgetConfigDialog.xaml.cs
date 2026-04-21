@@ -2,7 +2,9 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services;
 using FlowMy.Services.Interaction;
+using FlowMy.ViewModels;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
@@ -25,6 +27,7 @@ namespace FlowMy.Views.Overlays
         private readonly IWorkflowEditorHost? _host;
         private readonly System.Action? _persistChanges;
         private readonly bool _runtimeActionsEnabled;
+        private readonly ObservableCollection<WorkflowDataSourceOption> _nodeOptions = new();
         private WorkflowNode? _selectedNode;
         private bool _loadingValues;
         private string? _idleBackgroundColorHex;
@@ -70,24 +73,17 @@ namespace FlowMy.Views.Overlays
 
         private void PopulateNodeList()
         {
-            NodeComboBox.Items.Clear();
+            _nodeOptions.Clear();
             foreach (var node in _nodes)
             {
-                var title = string.IsNullOrWhiteSpace(node.Title) ? "(chưa đặt tên)" : node.Title;
-                var hasWidget = node.FloatingWidget is { IsEnabled: true };
-                var prefix = hasWidget ? "📌 " : "    ";
-                var display = $"{prefix}{title}  —  {node.Type}  [{TrimId(node.Id)}]";
-                NodeComboBox.Items.Add(new ComboBoxItem { Content = display, Tag = node });
+                _nodeOptions.Add(BaseNodeDialogViewModel.CreateDataSourceOption(node));
             }
 
-            if (NodeComboBox.Items.Count > 0)
-            {
-                NodeComboBox.SelectedIndex = 0;
-            }
+            NodeComboBox.ItemsSource = _nodeOptions;
+            if (_nodeOptions.Count > 0)
+                NodeComboBox.SelectedValue = _nodeOptions[0].NodeId;
             else
-            {
                 WidgetStatusText.Text = "Canvas chưa có node nào.";
-            }
         }
 
         /// <summary>
@@ -234,14 +230,7 @@ namespace FlowMy.Views.Overlays
                 SyncOpenWidgetRuntime(_selectedNode.Id);
             }
 
-            foreach (var obj in NodeComboBox.Items)
-            {
-                if (obj is ComboBoxItem cbi && ReferenceEquals(cbi.Tag, node))
-                {
-                    NodeComboBox.SelectedItem = cbi;
-                    return;
-                }
-            }
+            NodeComboBox.SelectedValue = node.Id;
         }
 
         private static string TrimId(string id)
@@ -286,8 +275,18 @@ namespace FlowMy.Views.Overlays
                 catch { }
             }
 
-            if (NodeComboBox.SelectedItem is ComboBoxItem item && item.Tag is WorkflowNode node)
+            if (NodeComboBox.SelectedValue is string nodeId)
             {
+                var node = _nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, System.StringComparison.OrdinalIgnoreCase));
+                if (node == null)
+                {
+                    _selectedNode = null;
+                    SettingsPanel.IsEnabled = false;
+                    WidgetStatusText.Text = string.Empty;
+                    RefreshExistingWidgets();
+                    return;
+                }
+
                 _selectedNode = node;
                 node.FloatingWidget ??= new FloatingWidgetConfig();
                 LoadValuesFromConfig(node.FloatingWidget);
@@ -996,15 +995,9 @@ namespace FlowMy.Views.Overlays
         public void SelectNodeById(string? nodeId)
         {
             if (string.IsNullOrWhiteSpace(nodeId)) return;
-            foreach (var obj in NodeComboBox.Items)
-            {
-                if (obj is ComboBoxItem cbi && cbi.Tag is WorkflowNode node &&
-                    string.Equals(node.Id, nodeId, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    NodeComboBox.SelectedItem = cbi;
-                    return;
-                }
-            }
+            var node = _nodes.FirstOrDefault(n => string.Equals(n.Id, nodeId, System.StringComparison.OrdinalIgnoreCase));
+            if (node != null)
+                NodeComboBox.SelectedValue = node.Id;
         }
     }
 }

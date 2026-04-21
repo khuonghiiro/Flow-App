@@ -289,13 +289,10 @@
                                                 BorderBrush="{DynamicResource ControlBorderBrush}"
                                                 BorderThickness="1"
                                                 Margin="0,0,6,0">
-                                            <ContentControl Foreground="{Binding IconFillBrush, FallbackValue={StaticResource TextOnPrimaryBrush}, TargetNullValue={StaticResource TextOnPrimaryBrush}}"
-                                                            HorizontalAlignment="Center"
-                                                            VerticalAlignment="Center">
-                                                <controls:SvgViewboxEx Width="12"
-                                                                       Height="12"
-                                                                       Source="{Binding IconKey, Converter={StaticResource IconPathConverter}}" />
-                                            </ContentControl>
+                                            <controls:SvgViewboxEx Width="12"
+                                                                   Height="12"
+                                                                   Fill="{Binding IconFillBrush, FallbackValue={StaticResource TextOnPrimaryBrush}, TargetNullValue={StaticResource TextOnPrimaryBrush}}"
+                                                                   Source="{Binding IconKey, Converter={StaticResource IconPathConverter}}" />
                                         </Border>
                                         <TextBlock Text="{Binding Title}"
                                                    Foreground="{DynamicResource TextBrush}"

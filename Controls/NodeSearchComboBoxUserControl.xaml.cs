@@ -16,6 +16,7 @@ namespace FlowMy.Controls
     public partial class NodeSearchComboBoxUserControl : UserControl, INotifyPropertyChanged
     {
         private INotifyCollectionChanged? _notifyItemsSource;
+        public event SelectionChangedEventHandler? SelectionChanged;
         private Window? _ownerWindow;
 
         public NodeSearchComboBoxUserControl()
@@ -126,7 +127,13 @@ namespace FlowMy.Controls
         private static void OnSelectedValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var control = (NodeSearchComboBoxUserControl)d;
+            var previousSelectedItem = control.SelectedItem;
             control.SyncSelectionFromValue(e.NewValue);
+
+            if (!Equals(e.OldValue, e.NewValue))
+            {
+                control.RaiseSelectionChanged(previousSelectedItem, control.SelectedItem);
+            }
         }
 
         private static void OnSearchTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -425,7 +432,6 @@ namespace FlowMy.Controls
 
         private void ClearSelectionButton_Click(object sender, RoutedEventArgs e)
         {
-            SelectedItem = null;
             SelectedValue = null;
             SearchText = string.Empty;
             IsDropDownOpen = false;
@@ -436,6 +442,23 @@ namespace FlowMy.Controls
             }
 
             NotifySelectionChanged();
+        }
+
+        private void RaiseSelectionChanged(NodeSearchItemViewModel? oldItem, NodeSearchItemViewModel? newItem)
+        {
+            var removedItems = oldItem != null
+                ? new object[] { oldItem.OriginalItem ?? oldItem.Value ?? oldItem }
+                : Array.Empty<object>();
+            var addedItems = newItem != null
+                ? new object[] { newItem.OriginalItem ?? newItem.Value ?? newItem }
+                : Array.Empty<object>();
+
+            SelectionChanged?.Invoke(
+                this,
+                new SelectionChangedEventArgs(
+                    System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                    removedItems,
+                    addedItems));
         }
 
         private void OnPropertyChanged(string propertyName)
