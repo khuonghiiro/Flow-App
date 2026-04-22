@@ -1,6 +1,5 @@
 using FlowMy.Services;
 using FlowMy.Services.Interaction;
-using FlowMy.Services.Workflow;
 using FlowMy.Views;
 using FlowMy.Views.Overlays;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,12 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace FlowMy.ViewModels
@@ -28,45 +22,10 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string lastConfiguredWorkflowName = string.Empty;
         [ObservableProperty] private string lastConfiguredNodeId = string.Empty;
         [ObservableProperty] private bool hasLastConfiguredWidget;
-        [ObservableProperty] private bool isConfigureLastWidgetLoading;
-        private readonly Dictionary<string, WorkflowEditorWindow> _headlessWorkflowWindows = new(System.StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<WorkflowEditorWindow> _isRehidingHeadlessWindow = new();
 
         public MainViewModel()
         {
-            FloatingWidgetManager.Instance.WidgetOpened += OnWidgetOpened;
-            FloatingWidgetManager.Instance.WidgetClosed += OnWidgetClosed;
             RefreshWidgetShortcuts();
-        }
-
-        private void OnWidgetOpened(object? sender, string nodeId)
-        {
-            Application.Current?.Dispatcher?.BeginInvoke(new System.Action(() =>
-            {
-                var match = WidgetShortcuts.FirstOrDefault(w =>
-                    string.Equals(w.NodeId, nodeId, System.StringComparison.OrdinalIgnoreCase));
-                if (match != null) match.IsWidgetOpen = true;
-            }));
-        }
-
-        private void OnWidgetClosed(object? sender, string nodeId)
-        {
-            Application.Current?.Dispatcher?.BeginInvoke(new System.Action(() =>
-            {
-                var match = WidgetShortcuts.FirstOrDefault(w =>
-                    string.Equals(w.NodeId, nodeId, System.StringComparison.OrdinalIgnoreCase));
-                if (match != null) match.IsWidgetOpen = false;
-            }));
-        }
-
-        private void SetHeadlessDebugVisibleForWorkflow(string workflowName, bool visible)
-        {
-            if (string.IsNullOrWhiteSpace(workflowName)) return;
-            foreach (var item in WidgetShortcuts.Where(w =>
-                         string.Equals(w.WorkflowName, workflowName, System.StringComparison.OrdinalIgnoreCase)))
-            {
-                item.IsHeadlessDebugVisible = visible;
-            }
         }
 
         /// <summary>
@@ -106,15 +65,6 @@ namespace FlowMy.ViewModels
                 WidgetEnabledCount = 0;
                 WorkflowCount = 0;
             }
-
-            // Đồng bộ trạng thái widget đang mở để disable nút 📌 tương ứng.
-            var activeWidgetIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds()
-                .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
-            foreach (var item in WidgetShortcuts)
-            {
-                item.IsWidgetOpen = activeWidgetIds.Contains(item.NodeId);
-            }
-
             HasWidgetShortcuts = WidgetShortcuts.Count > 0;
 
             // Validate shortcut gần nhất còn tồn tại sau khi refresh.
@@ -173,78 +123,13 @@ namespace FlowMy.ViewModels
         /// khi đóng widget cuối → đóng luôn workflow editor.
         /// </summary>
         [RelayCommand]
-        private async Task LaunchWidgetHeadless(WidgetShortcutItem? item)
+        private void LaunchWidgetHeadless(WidgetShortcutItem? item)
         {
             if (item == null) return;
-            if (item.IsLaunchingHeadless) return;
-
-            System.Diagnostics.Debug.WriteLine($"[LaunchHeadless] Starting for '{item.WorkflowName}' / nodeId={item.NodeId}");
-
-            item.IsLaunchingHeadless = true;
-            try
-            {
-                // Đảm bảo UI kịp render trạng thái loading (⏳) trước khi chạy luồng mở headless.
-                await Application.Current.Dispatcher.InvokeAsync(
-                    () => { },
-                    System.Windows.Threading.DispatcherPriority.Render);
-                OpenWorkflowEditorInternal(
-                    item.WorkflowName,
-                    new List<string> { item.NodeId },
-                    headless: true);
-
-                // Chỉ kết thúc trạng thái loading khi widget thật sự mở (hoặc timeout),
-                // tránh trường hợp đồng hồ tắt quá sớm khi UI widget chưa hiện.
-                var opened = await WaitForWidgetOpenedAsync(item.NodeId, timeoutMs: 10000);
-                item.IsWidgetOpen = opened || FloatingWidgetManager.Instance.IsWidgetOpen(item.NodeId);
-                System.Diagnostics.Debug.WriteLine("[LaunchHeadless] OpenWorkflowEditorInternal returned.");
-            }
-            finally
-            {
-                item.IsLaunchingHeadless = false;
-            }
-        }
-
-        private static async Task<bool> WaitForWidgetOpenedAsync(string? nodeId, int timeoutMs = 8000)
-        {
-            if (string.IsNullOrWhiteSpace(nodeId))
-            {
-                return false;
-            }
-
-            var manager = FloatingWidgetManager.Instance;
-            if (manager.IsWidgetOpen(nodeId))
-            {
-                return true;
-            }
-
-            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            EventHandler<string>? handler = null;
-            handler = (_, openedNodeId) =>
-            {
-                if (string.Equals(openedNodeId, nodeId, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    tcs.TrySetResult(true);
-                }
-            };
-
-            manager.WidgetOpened += handler;
-            try
-            {
-                using var cts = new CancellationTokenSource(timeoutMs);
-                var timeoutTask = Task.Delay(Timeout.Infinite, cts.Token);
-                var completed = await Task.WhenAny(tcs.Task, timeoutTask);
-                if (completed == tcs.Task)
-                {
-                    cts.Cancel();
-                    return true;
-                }
-
-                return manager.IsWidgetOpen(nodeId);
-            }
-            finally
-            {
-                manager.WidgetOpened -= handler;
-            }
+            OpenWorkflowEditorInternal(
+                item.WorkflowName,
+                new List<string> { item.NodeId },
+                headless: true);
         }
 
         /// <summary>
@@ -259,127 +144,30 @@ namespace FlowMy.ViewModels
             OpenWorkflowEditorInternal(group.WorkflowName, ids, headless: true);
         }
 
-        [RelayCommand]
-        private async Task ReopenHeadlessWorkflow(WidgetShortcutItem? item)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Called. item={item?.WorkflowName ?? "null"}");
-
-            if (item == null || string.IsNullOrWhiteSpace(item.WorkflowName)) return;
-            if (item.IsReopeningHeadless)
-            {
-                System.Diagnostics.Debug.WriteLine("[ReopenHeadless] SKIP: IsReopeningHeadless=true");
-                return;
-            }
-
-            bool found = _headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow);
-            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] _headlessWorkflowWindows.TryGetValue => found={found}, window={workflowWindow?.GetHashCode()}");
-            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] _headlessWorkflowWindows keys: [{string.Join(", ", _headlessWorkflowWindows.Keys)}]");
-
-            if (!found || workflowWindow == null)
-            {
-                // Fallback: map headless chưa sẵn sàng => mở editor ngay để user không phải bấm lần 2.
-                System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Fallback: opening non-headless");
-                OpenWorkflowEditorInternal(
-                    item.WorkflowName,
-                    new List<string> { item.NodeId },
-                    headless: false);
-                return;
-            }
-
-            System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Window state: IsVisible={workflowWindow.IsVisible}, WindowState={workflowWindow.WindowState}, Visibility={workflowWindow.Visibility}");
-
-            item.IsReopeningHeadless = true;
-            try
-            {
-                await workflowWindow.Dispatcher.InvokeAsync(new System.Action(() =>
-                {
-                    try
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Inside InvokeAsync. WindowState={workflowWindow.WindowState}, IsVisible={workflowWindow.IsVisible}");
-
-                        workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
-                        workflowWindow.ApplyLowestRenderPresetForDebugReopen();
-                        workflowWindow.PrepareForInteractiveDebugSession();
-
-                        workflowWindow.Owner = null;
-                        workflowWindow.ShowInTaskbar = true;
-                        workflowWindow.WindowState = WindowState.Normal;
-                        if (!workflowWindow.IsVisible)
-                        {
-                            System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Calling Show()");
-                            workflowWindow.Show();
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Already visible, setting Visibility=Visible");
-                            workflowWindow.Visibility = Visibility.Visible;
-                        }
-                        workflowWindow.Topmost = true;
-                        workflowWindow.Activate();
-                        workflowWindow.Focus();
-                        workflowWindow.Topmost = false;
-                        SetHeadlessDebugVisibleForWorkflow(item.WorkflowName, true);
-                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] After Show/Activate. IsVisible={workflowWindow.IsVisible}, WindowState={workflowWindow.WindowState}");
-                    }
-                    catch (System.Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] EXCEPTION in InvokeAsync: {ex}");
-                    }
-                }), System.Windows.Threading.DispatcherPriority.Normal);
-
-                await workflowWindow.Dispatcher.InvokeAsync(new System.Action(() =>
-                {
-                    try
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] Setting Maximized. Current WindowState={workflowWindow.WindowState}");
-                        workflowWindow.WindowState = WindowState.Maximized;
-                    }
-                    catch (System.Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ReopenHeadless] EXCEPTION setting Maximized: {ex}");
-                    }
-                }), System.Windows.Threading.DispatcherPriority.Loaded);
-            }
-            finally
-            {
-                item.IsReopeningHeadless = false;
-                System.Diagnostics.Debug.WriteLine("[ReopenHeadless] Done.");
-            }
-        }
-
         /// <summary>
         /// Mở trực tiếp màn cấu hình widget từ MainWindow cho 1 shortcut cụ thể.
         /// </summary>
         [RelayCommand]
-        private async Task ConfigureWidget(WidgetShortcutItem? item)
+        private void ConfigureWidget(WidgetShortcutItem? item)
         {
             if (item == null) return;
-            if (item.IsConfiguring) return;
-
-            item.IsConfiguring = true;
             LastConfiguredWorkflowName = item.WorkflowName ?? string.Empty;
             LastConfiguredNodeId = item.NodeId ?? string.Empty;
             HasLastConfiguredWidget = !string.IsNullOrWhiteSpace(LastConfiguredWorkflowName)
                                       && !string.IsNullOrWhiteSpace(LastConfiguredNodeId);
-            try
-            {
-                // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
-                await Task.Yield();
-                OpenFloatingWidgetConfigFromMainWindow(item.WorkflowName, item.NodeId);
-            }
-            finally
-            {
-                item.IsConfiguring = false;
-            }
+            OpenWorkflowEditorInternal(
+                workflowNameToLoad: item.WorkflowName,
+                widgetNodeIds: null,
+                headless: true,
+                autoOpenConfigNodeId: item.NodeId);
         }
 
         /// <summary>
         /// Mở lại nhanh màn cấu hình của widget gần nhất đã chỉnh từ MainWindow.
         /// </summary>
         [RelayCommand]
-        private async Task ConfigureLastWidget()
+        private void ConfigureLastWidget()
         {
-            if (IsConfigureLastWidgetLoading) return;
             if (!HasLastConfiguredWidget ||
                 string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) ||
                 string.IsNullOrWhiteSpace(LastConfiguredNodeId))
@@ -397,192 +185,11 @@ namespace FlowMy.ViewModels
                 return;
             }
 
-            IsConfigureLastWidgetLoading = true;
-            try
-            {
-                // Trả control về UI loop để icon loading kịp render, không tạo delay cứng.
-                await Task.Yield();
-                OpenFloatingWidgetConfigFromMainWindow(LastConfiguredWorkflowName, LastConfiguredNodeId);
-            }
-            finally
-            {
-                IsConfigureLastWidgetLoading = false;
-            }
-        }
-
-        private void OpenFloatingWidgetConfigFromMainWindow(string? workflowName, string? nodeId)
-        {
-            if (string.IsNullOrWhiteSpace(workflowName)) return;
-
-            if (!TryLoadWidgetConfigNodesFast(workflowName, out var workflowFilePath, out var rawJson, out var nodes))
-                return;
-
-            var mainWindow = Application.Current.MainWindow;
-
-            void PersistChanges()
-            {
-                try
-                {
-                    SaveWidgetConfigNodesFast(workflowFilePath, rawJson, nodes);
-                }
-                catch
-                {
-                    // best effort
-                }
-            }
-
-            var dialog = new FloatingWidgetConfigDialog(
-                nodes,
-                host: null,
-                persistChanges: PersistChanges,
-                runtimeActionsEnabled: false)
-            {
-                Owner = mainWindow
-            };
-
-            if (!string.IsNullOrWhiteSpace(nodeId))
-            {
-                dialog.SelectNodeById(nodeId);
-            }
-
-            dialog.ShowDialog();
-            RefreshWidgetShortcuts();
-        }
-
-        private static bool TryLoadWidgetConfigNodesFast(
-            string workflowName,
-            out string workflowFilePath,
-            out string rawJson,
-            out List<FlowMy.Models.WorkflowNode> nodes)
-        {
-            workflowFilePath = string.Empty;
-            rawJson = string.Empty;
-            nodes = new List<FlowMy.Models.WorkflowNode>();
-
-            try
-            {
-                var dir = FileWorkflowPersistenceService.GetDefaultWorkflowsDirectory();
-                workflowFilePath = Path.Combine(dir, $"{workflowName}.json");
-                if (!File.Exists(workflowFilePath))
-                    return false;
-
-                rawJson = File.ReadAllText(workflowFilePath);
-                using var doc = JsonDocument.Parse(rawJson);
-                if (!doc.RootElement.TryGetProperty("Nodes", out var nodesEl) || nodesEl.ValueKind != JsonValueKind.Array)
-                    return false;
-
-                foreach (var nodeEl in nodesEl.EnumerateArray())
-                {
-                    if (nodeEl.ValueKind != JsonValueKind.Object) continue;
-
-                    var id = nodeEl.TryGetProperty("Id", out var idEl) ? (idEl.GetString() ?? string.Empty) : string.Empty;
-                    if (string.IsNullOrWhiteSpace(id)) continue;
-
-                    var title = nodeEl.TryGetProperty("Title", out var titleEl) ? (titleEl.GetString() ?? string.Empty) : string.Empty;
-                    var colorKey = nodeEl.TryGetProperty("ColorKey", out var colorKeyEl)
-                        ? (colorKeyEl.GetString() ?? string.Empty)
-                        : string.Empty;
-                    var type = ParseNodeType(nodeEl);
-                    if (type == FlowMy.Models.NodeType.Start || type == FlowMy.Models.NodeType.End) continue;
-
-                    FlowMy.Models.FloatingWidgetConfig? floating = null;
-                    if (nodeEl.TryGetProperty("Properties", out var propsEl) &&
-                        propsEl.ValueKind == JsonValueKind.Object &&
-                        propsEl.TryGetProperty("FloatingWidget", out var fwEl))
-                    {
-                        try
-                        {
-                            var fwJson = fwEl.ValueKind == JsonValueKind.String
-                                ? fwEl.GetString()
-                                : fwEl.GetRawText();
-                            if (!string.IsNullOrWhiteSpace(fwJson))
-                                floating = JsonSerializer.Deserialize<FlowMy.Models.FloatingWidgetConfig>(fwJson);
-                        }
-                        catch
-                        {
-                            floating = null;
-                        }
-                    }
-
-                    nodes.Add(new FlowMy.Models.WorkflowNode
-                    {
-                        Id = id,
-                        Title = title,
-                        ColorKey = colorKey,
-                        Type = type,
-                        FloatingWidget = floating
-                    });
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static void SaveWidgetConfigNodesFast(
-            string workflowFilePath,
-            string rawJson,
-            IEnumerable<FlowMy.Models.WorkflowNode> nodes)
-        {
-            var root = JsonNode.Parse(rawJson) as JsonObject;
-            var nodeArray = root?["Nodes"] as JsonArray;
-            if (root == null || nodeArray == null) return;
-
-            var map = nodes
-                .Where(n => !string.IsNullOrWhiteSpace(n.Id))
-                .ToDictionary(n => n.Id, n => n.FloatingWidget, System.StringComparer.OrdinalIgnoreCase);
-
-            foreach (var item in nodeArray)
-            {
-                if (item is not JsonObject nodeObj) continue;
-                var id = nodeObj["Id"]?.GetValue<string>();
-                if (string.IsNullOrWhiteSpace(id)) continue;
-                if (!map.TryGetValue(id, out var cfg)) continue;
-
-                if (nodeObj["Properties"] is not JsonObject propsObj)
-                {
-                    propsObj = new JsonObject();
-                    nodeObj["Properties"] = propsObj;
-                }
-
-                if (cfg == null)
-                {
-                    propsObj.Remove("FloatingWidget");
-                    continue;
-                }
-
-                // Giữ tương thích schema hiện tại: lưu dạng JSON string trong Properties.FloatingWidget.
-                propsObj["FloatingWidget"] = JsonSerializer.Serialize(cfg);
-            }
-
-            var updated = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(workflowFilePath, updated);
-        }
-
-        private static FlowMy.Models.NodeType ParseNodeType(JsonElement nodeEl)
-        {
-            if (!nodeEl.TryGetProperty("Type", out var typeEl))
-                return FlowMy.Models.NodeType.Generic;
-
-            try
-            {
-                if (typeEl.ValueKind == JsonValueKind.String)
-                {
-                    var s = typeEl.GetString();
-                    if (!string.IsNullOrWhiteSpace(s) && System.Enum.TryParse<FlowMy.Models.NodeType>(s, true, out var parsed))
-                        return parsed;
-                }
-                else if (typeEl.ValueKind == JsonValueKind.Number && typeEl.TryGetInt32(out var i))
-                {
-                    return (FlowMy.Models.NodeType)i;
-                }
-            }
-            catch { }
-
-            return FlowMy.Models.NodeType.Generic;
+            OpenWorkflowEditorInternal(
+                workflowNameToLoad: LastConfiguredWorkflowName,
+                widgetNodeIds: null,
+                headless: true,
+                autoOpenConfigNodeId: LastConfiguredNodeId);
         }
 
         private void OpenWorkflowEditorInternal(
@@ -604,54 +211,32 @@ namespace FlowMy.ViewModels
             }
 
             workflowWindow.Owner = mainWindow;
-            workflowWindow.Closing += (_, e) =>
+
+            // Preload workflow TRƯỚC khi Show() để tránh flash/viewport nhảy:
+            // LoadWorkflow chạy ngay trong ViewModel, IsLoading đã trở về false
+            // trước khi cửa sổ render lần đầu. Khi cửa sổ Loaded → ViewState
+            // được apply đúng 1 lần (kèm re-apply ở ApplicationIdle).
+            if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
             {
-                // Với headless session: khi user bấm X trong lúc widget còn chạy, chỉ ẩn về nền thay vì đóng hẳn.
-                if (_isRehidingHeadlessWindow.Contains(workflowWindow)) return;
-                var nodeIds = workflowWindow.ViewModel?.Nodes?
-                    .Select(n => n.Id)
-                    .Where(id => !string.IsNullOrWhiteSpace(id))
-                    .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
-                if (nodeIds == null || nodeIds.Count == 0) return;
-
-                var active = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
-                bool hasAnyWidgetFromThisWorkflow = active.Any(id => nodeIds.Contains(id));
-                if (!hasAnyWidgetFromThisWorkflow) return;
-
-                e.Cancel = true;
-                _isRehidingHeadlessWindow.Add(workflowWindow);
                 try
                 {
-                    var activeWidgetIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
-                    workflowWindow.EnableHeadlessCanvasOptimizationForBackground(activeWidgetIds);
-                    PrepareWindowForHeadlessBackground(workflowWindow);
-                    var name = _headlessWorkflowWindows
-                        .FirstOrDefault(kv => ReferenceEquals(kv.Value, workflowWindow)).Key;
-                    if (!string.IsNullOrWhiteSpace(name))
+                    var vm = workflowWindow.ViewModel;
+                    if (vm != null)
                     {
-                        SetHeadlessDebugVisibleForWorkflow(name, false);
+                        vm.CurrentWorkflowName = workflowNameToLoad!;
                     }
                 }
-                finally
-                {
-                    _isRehidingHeadlessWindow.Remove(workflowWindow);
-                }
-            };
+                catch { /* ignore: fall back tới gán sau Loaded */ }
+            }
 
             if (headless)
             {
                 workflowWindow.ConfigureHeadlessCanvasOptimization(widgetNodeIds);
-                PrepareWindowForHeadlessBackground(workflowWindow);
-                if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
-                {
-                    var nameToRegister = workflowNameToLoad;
-                    workflowWindow.Loaded += (_, __) =>
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[HeadlessMap] workflowWindow.Loaded fired for '{nameToRegister}'. Registering in _headlessWorkflowWindows.");
-                        _headlessWorkflowWindows[nameToRegister] = workflowWindow;
-                        SetHeadlessDebugVisibleForWorkflow(nameToRegister, false);
-                    };
-                }
+                // Không ẩn MainWindow: user vẫn thấy launcher và card gốc.
+                // WorkflowEditorWindow chạy ngầm để widget sống được.
+                workflowWindow.ShowInTaskbar = false;
+                workflowWindow.WindowState = WindowState.Minimized;
+                workflowWindow.Visibility = Visibility.Hidden;
             }
             else
             {
@@ -662,11 +247,6 @@ namespace FlowMy.ViewModels
             workflowWindow.Closed += (_, __) =>
             {
                 scope.Dispose();
-                foreach (var kv in _headlessWorkflowWindows.Where(kv => ReferenceEquals(kv.Value, workflowWindow)).ToList())
-                {
-                    SetHeadlessDebugVisibleForWorkflow(kv.Key, false);
-                    _headlessWorkflowWindows.Remove(kv.Key);
-                }
                 if (!headless && mainWindow != null)
                 {
                     mainWindow.Show();
@@ -678,49 +258,31 @@ namespace FlowMy.ViewModels
             void ActivateWidgets()
             {
                 if (widgetNodeIds == null || widgetNodeIds.Count == 0) return;
-                workflowWindow.Dispatcher.BeginInvoke(async () =>
+                try
                 {
-                    try
+                    var vm = workflowWindow.ViewModel;
+                    if (vm == null) return;
+
+                    foreach (var wid in widgetNodeIds)
                     {
-                        var targetIds = widgetNodeIds
-                            .Where(id => !string.IsNullOrWhiteSpace(id))
-                            .Distinct(System.StringComparer.OrdinalIgnoreCase)
-                            .ToList();
-                        if (targetIds.Count == 0) return;
+                        if (string.IsNullOrWhiteSpace(wid)) continue;
+                        var node = vm.Nodes?.FirstOrDefault(n =>
+                            string.Equals(n.Id, wid, System.StringComparison.OrdinalIgnoreCase));
+                        if (node == null) continue;
 
-                        var remaining = new HashSet<string>(targetIds, System.StringComparer.OrdinalIgnoreCase);
+                        node.FloatingWidget ??= new FlowMy.Models.FloatingWidgetConfig();
+                        node.FloatingWidget.IsEnabled = true;
 
-                        // Chờ workflow load xong rồi mới map nodeId -> node để tránh miss khi Loaded chạy quá sớm.
-                        for (int attempt = 0; attempt < 40 && remaining.Count > 0; attempt++)
-                        {
-                            var vm = workflowWindow.ViewModel;
-                            if (vm != null && vm.Nodes != null && vm.Nodes.Count > 0)
-                            {
-                                foreach (var wid in remaining.ToList())
-                                {
-                                    var node = vm.Nodes.FirstOrDefault(n =>
-                                        string.Equals(n.Id, wid, System.StringComparison.OrdinalIgnoreCase));
-                                    if (node == null) continue;
-
-                                    node.FloatingWidget ??= new FlowMy.Models.FloatingWidgetConfig();
-                                    node.FloatingWidget.IsEnabled = true;
-
-                                    FloatingWidgetManager.Instance.OpenWidget(node, workflowWindow);
-                                    remaining.Remove(wid);
-                                }
-                            }
-
-                            if (remaining.Count == 0) break;
-                            await Task.Delay(100);
-                        }
-                        if (headless && remaining.Count == 0)
-                        {
-                            // Sau khi mở widget cuối: nếu không còn widget nào active → đóng editor
-                            HookHeadlessAutoCloseOnLastWidget(workflowWindow);
-                        }
+                        FloatingWidgetManager.Instance.OpenWidget(node, workflowWindow);
                     }
-                    catch { /* best effort */ }
-                }, System.Windows.Threading.DispatcherPriority.Background);
+
+                    if (headless)
+                    {
+                        // Sau khi mở widget cuối: nếu không còn widget nào active → đóng editor
+                        HookHeadlessAutoCloseOnLastWidget(workflowWindow);
+                    }
+                }
+                catch { /* best effort */ }
             }
 
             if (widgetNodeIds != null && widgetNodeIds.Count > 0)
@@ -782,19 +344,6 @@ namespace FlowMy.ViewModels
                 };
             }
 
-            if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
-            {
-                try
-                {
-                    var vm = workflowWindow.ViewModel;
-                    if (vm != null && !string.Equals(vm.CurrentWorkflowName, workflowNameToLoad, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        vm.CurrentWorkflowName = workflowNameToLoad!;
-                    }
-                }
-                catch { }
-            }
-
             if (!headless)
             {
                 workflowWindow.Show();
@@ -805,16 +354,6 @@ namespace FlowMy.ViewModels
                 workflowWindow.Show();
                 workflowWindow.Hide();
             }
-
-        }
-
-        private static void PrepareWindowForHeadlessBackground(WorkflowEditorWindow workflowWindow)
-        {
-            // Không ẩn MainWindow: user vẫn thấy launcher và card gốc.
-            // WorkflowEditorWindow chạy ngầm để widget sống được.
-            workflowWindow.ShowInTaskbar = false;
-            workflowWindow.WindowState = WindowState.Minimized;
-            workflowWindow.Visibility = Visibility.Hidden;
         }
 
         /// <summary>

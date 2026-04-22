@@ -361,7 +361,7 @@ namespace FlowMy.Models
         }
 
         private WidgetIdleShape _taskbarIconShape = WidgetIdleShape.Circle;
-        /// <summary>Kiểu hình icon hiển thị trên taskbar.</summary>
+        /// <summary>Hình dạng icon của taskbar button.</summary>
         public WidgetIdleShape TaskbarIconShape
         {
             get => _taskbarIconShape;
@@ -369,7 +369,7 @@ namespace FlowMy.Models
         }
 
         private double _taskbarIconSize = 22;
-        /// <summary>Kích thước hình icon taskbar (px), được clamp 12..40.</summary>
+        /// <summary>Kích thước icon taskbar (px).</summary>
         public double TaskbarIconSize
         {
             get => _taskbarIconSize;
@@ -406,10 +406,7 @@ namespace FlowMy.Models
         }
 
         private bool _showSideActionButton = true;
-        /// <summary>
-        /// Hiện nút thao tác nhỏ cạnh widget (nút gọi lại title/action host).
-        /// Bật mặc định để người dùng vẫn có điểm bấm khi title bar tự ẩn hoặc ẩn hoàn toàn.
-        /// </summary>
+        /// <summary>Hiện nút thao tác nhỏ bên cạnh widget khi đang expanded.</summary>
         public bool ShowSideActionButton
         {
             get => _showSideActionButton;

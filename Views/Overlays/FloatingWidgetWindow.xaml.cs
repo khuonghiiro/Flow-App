@@ -92,6 +92,8 @@ public partial class FloatingWidgetWindow : Window
     private INotifyCollectionChanged? _manualRunSessionsNotify;
     private INotifyPropertyChanged? _workflowVmNotify;
     private bool _isStopPopupHovering;
+    private DateTime _lastTaskbarToggleUtc = DateTime.MinValue;
+    private bool _taskbarToggleQueued;
 
     // ── Slide animation state ──
     private double _slideOriginalLeft;
@@ -3319,7 +3321,10 @@ window.__acPush = function(key, value) {
         try
         {
             if (PresentationSource.FromVisual(this) is HwndSource source)
+            {
+                EnsureTaskbarToggleWindowStyle(source.Handle);
                 source.AddHook(WndProc);
+            }
         }
         catch { }
     }
@@ -3440,6 +3445,7 @@ window.__acPush = function(key, value) {
     private const int WM_SYSCOMMAND = 0x0112;
     private const int SC_MINIMIZE = 0xF020;
     private const int SC_RESTORE = 0xF120;
+    private static readonly TimeSpan TaskbarToggleDebounce = TimeSpan.FromMilliseconds(280);
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
@@ -3450,7 +3456,7 @@ window.__acPush = function(key, value) {
                 int command = wParam.ToInt32() & 0xFFF0;
                 if (command == SC_MINIMIZE || command == SC_RESTORE)
                 {
-                    ToggleWidgetFromTaskbar();
+                    RequestTaskbarToggle();
                     handled = true;
                 }
             }
@@ -3459,9 +3465,32 @@ window.__acPush = function(key, value) {
         return IntPtr.Zero;
     }
 
+    private void RequestTaskbarToggle()
+    {
+        if (_taskbarToggleQueued) return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastTaskbarToggleUtc < TaskbarToggleDebounce)
+            return;
+
+        _taskbarToggleQueued = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _taskbarToggleQueued = false;
+            var at = DateTime.UtcNow;
+            if (at - _lastTaskbarToggleUtc < TaskbarToggleDebounce)
+                return;
+
+            _lastTaskbarToggleUtc = at;
+            ToggleWidgetFromTaskbar();
+        }), DispatcherPriority.Normal);
+    }
+
     private void ToggleWidgetFromTaskbar()
     {
-        Dispatcher.BeginInvoke(new Action(() =>
+        // Taskbar chỉ là "remote button" cho logic mở/thu gốc.
+        // Không để taskbar trở thành nguồn state riêng gây lệch side/reveal host.
+        try
         {
             if (_isExpanded)
             {
@@ -3471,8 +3500,7 @@ window.__acPush = function(key, value) {
             {
                 if (_isSlideHidden)
                 {
-                    // Taskbar toggle: nếu đang ẩn mép màn hình thì lộ đầy đủ trước rồi mới expand,
-                    // tránh cảm giác "nhảy trạng thái" khi chuyển từ dock-hidden sang expanded.
+                    // Đang dock ẩn: lộ phần idle trước khi expand để chuyển trạng thái mượt.
                     RevealDockedWidgetFully(restoreOriginalShape: false);
                 }
                 ExpandWidget();
@@ -3480,8 +3508,47 @@ window.__acPush = function(key, value) {
 
             Activate();
             Focus();
-        }), DispatcherPriority.Normal);
+        }
+        catch { }
     }
+
+    private const int GWL_STYLE = -16;
+    private const int WS_SYSMENU = 0x00080000;
+    private const int WS_MINIMIZEBOX = 0x00020000;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_FRAMECHANGED = 0x0020;
+
+    private static void EnsureTaskbarToggleWindowStyle(IntPtr hwnd)
+    {
+        try
+        {
+            var style = GetWindowLong(hwnd, GWL_STYLE);
+            style |= WS_SYSMENU | WS_MINIMIZEBOX;
+            SetWindowLong(hwnd, GWL_STYLE, style);
+            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        }
+        catch { }
+    }
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int X,
+        int Y,
+        int cx,
+        int cy,
+        uint uFlags);
 
     private static string SanitizeAppIdPart(string? value)
     {

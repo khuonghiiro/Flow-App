@@ -3,7 +3,6 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utils;
-using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.Overlays;
 using Microsoft.Web.WebView2.Core;
@@ -38,9 +37,6 @@ namespace FlowMy.Views.NodeControls
         private const int WebViewSyncThrottleMs = 16; // ~60fps để mượt mà khi drag
         // Tránh init ồ ạt nhiều WebView2 cùng lúc gây đơ khi load workflow lớn.
         private static readonly System.Threading.SemaphoreSlim _webView2InitGate = new(1, 1);
-        private static int _webViewInitSequence;
-        private const int WebViewInitStaggerMs = 120;
-        private const int WebViewInitStaggerMaxMs = 2200;
 
         /// <summary>Thư mục gợi ý để resolve tên file video (không có đường dẫn đầy đủ) an toàn trong resolve_playable_ref.</summary>
         private static string BuildMediaSearchRootsJson()
@@ -111,27 +107,6 @@ namespace FlowMy.Views.NodeControls
             };
         }
 
-        private static int GetInitStaggerDelayMs()
-        {
-            var sequence = System.Threading.Interlocked.Increment(ref _webViewInitSequence);
-            var delay = (sequence - 1) * WebViewInitStaggerMs;
-            if (delay < 0) return 0;
-            return Math.Min(delay, WebViewInitStaggerMaxMs);
-        }
-
-        private static bool ShouldUseViewportLazyInit()
-        {
-            try
-            {
-                var prefs = CanvasToolbarPreferencesStore.Load();
-                return string.Equals(prefs.CanvasDisplayMode, "ViewportOnly", StringComparison.OrdinalIgnoreCase);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         public static Border CreateBorder(HtmlUiNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
@@ -174,7 +149,6 @@ namespace FlowMy.Views.NodeControls
             {
                 Visibility = Visibility.Collapsed
             };
-            var isDisposed = false;
             Grid.SetRow(webView, 1);
 
             // ✅ Khai báo sớm để các lambda/closure trong PropertyChanged có thể capture
@@ -1186,16 +1160,6 @@ namespace FlowMy.Views.NodeControls
                     // ✅ Executor trigger push async data vào WebView2
                     else if (e.PropertyName == nameof(HtmlUiNode.PendingAsyncDataPush) && node.PendingAsyncDataPush)
                     {
-                        // Nếu node đã handoff sang Floating Widget thì để widget drain queue, canvas WebView không xử lý.
-                        if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(node.Id))
-                        {
-#if DEBUG
-                            System.Diagnostics.Debug.WriteLine(
-                                $"[HtmlUiNodeControl:{node.Id}] Skip canvas async push because widget is open.");
-#endif
-                            return;
-                        }
-
                         _ = webView.Dispatcher.InvokeAsync(async () =>
                         {
                             try
@@ -1211,11 +1175,6 @@ namespace FlowMy.Views.NodeControls
                                 {
                                     items.Add(item);
                                 }
-
-#if DEBUG
-                                System.Diagnostics.Debug.WriteLine(
-                                    $"[HtmlUiNodeControl:{node.Id}] Canvas drained queue count={items.Count}, keys=[{string.Join(", ", items.Select(i => i.Key))}]");
-#endif
 
                                 if (items.Count == 0) return;
 
@@ -1814,32 +1773,6 @@ namespace FlowMy.Views.NodeControls
                     {
                         try
                         {
-                            if (isDisposed || wvInit.CoreWebView2 != null || !border.IsLoaded)
-                                return;
-
-                            if (ShouldUseViewportLazyInit())
-                            {
-                                var waitCycles = 0;
-                                while (!isDisposed &&
-                                       border.IsLoaded &&
-                                       border.Visibility != Visibility.Visible &&
-                                       waitCycles < 300)
-                                {
-                                    await Task.Delay(50);
-                                    waitCycles++;
-                                }
-                            }
-
-                            if (isDisposed || wvInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
-                                return;
-
-                            var staggerDelayMs = GetInitStaggerDelayMs();
-                            if (staggerDelayMs > 0)
-                                await Task.Delay(staggerDelayMs);
-
-                            if (isDisposed || wvInit.CoreWebView2 != null || !border.IsLoaded)
-                                return;
-
                             var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
                             await EnsureCoreWebView2ThrottledAsync(wvInit, env);
                             var core1 = TryGetCoreSafe(wvInit);
@@ -2239,32 +2172,6 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
-                        return;
-
-                    if (ShouldUseViewportLazyInit())
-                    {
-                        var waitCycles = 0;
-                        while (!isDisposed &&
-                               border.IsLoaded &&
-                               border.Visibility != Visibility.Visible &&
-                               waitCycles < 300)
-                        {
-                            await Task.Delay(50);
-                            waitCycles++;
-                        }
-                    }
-
-                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded || border.Visibility != Visibility.Visible)
-                        return;
-
-                    var staggerDelayMs = GetInitStaggerDelayMs();
-                    if (staggerDelayMs > 0)
-                        await Task.Delay(staggerDelayMs);
-
-                    if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
-                        return;
-
                     CoreWebView2Environment? env = null;
                     try
                     {
@@ -4239,7 +4146,6 @@ namespace FlowMy.Views.NodeControls
             border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
             border.Unloaded += (s, e) =>
             {
-                isDisposed = true;
                 try
                 {
                     // ✅ Dừng tất cả auto-refresh timers

@@ -3,11 +3,16 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utils;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace FlowMy.ViewModels;
 
+/// <summary>
+/// Helper VM cho FloatingWidgetWindow: tách logic build HTML/resolve input/parse params.
+/// </summary>
 public sealed class FloatingWidgetWindowViewModel
 {
     private readonly WorkflowNode _node;
@@ -15,186 +20,171 @@ public sealed class FloatingWidgetWindowViewModel
 
     public FloatingWidgetWindowViewModel(WorkflowNode node, IWorkflowEditorHost host)
     {
-        _node = node ?? throw new ArgumentNullException(nameof(node));
-        _host = host ?? throw new ArgumentNullException(nameof(host));
+        _node = node;
+        _host = host;
     }
 
     public string BuildContentSignature(HtmlUiNode node)
     {
-        var inputs = ResolveInputValues(node);
-        var sb = new StringBuilder();
-        sb.Append(node.HtmlCode ?? string.Empty).Append('|')
-          .Append(node.CssCode ?? string.Empty).Append('|')
-          .Append(node.JsCode ?? string.Empty).Append('|')
-          .Append(node.ParamsCode ?? string.Empty).Append('|');
-
-        foreach (var kv in inputs.OrderBy(k => k.Key, StringComparer.Ordinal))
-            sb.Append(kv.Key).Append('=').Append(kv.Value ?? string.Empty).Append(';');
-
-        // Include offline assets state so widget reloads when tab changes.
-        var offlineKey = string.Join("|", (node.OfflineAssets ?? new List<FlowMy.Models.HtmlOfflineAsset>())
-            .Select(a =>
-            {
-                var fn = a.LocalFileName ?? string.Empty;
-                long tick = 0;
-                try
-                {
-                    var path = HtmlOfflineAssetService.GetLocalFilePath(fn);
-                    if (File.Exists(path)) tick = File.GetLastWriteTimeUtc(path).Ticks;
-                }
-                catch { }
-                return $"{fn}:{a.AssetType}:{a.IsEnabled}:{tick}";
-            }));
-        sb.Append('|').Append(offlineKey);
-
-        return sb.ToString();
+        var vars = ResolveInputValues(node);
+        var offlineSig = BuildOfflineAssetsSignature(node);
+        return string.Join("|",
+            node.HtmlCode ?? string.Empty,
+            node.CssCode ?? string.Empty,
+            node.JsCode ?? string.Empty,
+            node.ParamsCode ?? string.Empty,
+            offlineSig,
+            string.Join(";", vars.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}")));
     }
 
     public string BuildHtmlForWidget(HtmlUiNode htmlNode, string bridgeJs)
     {
-        var html = htmlNode.HtmlCode ?? "<!DOCTYPE html><html><body><div>Widget</div></body></html>";
-        var css = htmlNode.CssCode ?? string.Empty;
-        var js = htmlNode.JsCode ?? string.Empty;
+        var vars = ResolveInputValues(htmlNode);
+        var html = ReplaceVariables(htmlNode.HtmlCode ?? string.Empty, vars);
+        var css = ReplaceVariables(htmlNode.CssCode ?? string.Empty, vars);
+        var js = ReplaceVariables(htmlNode.JsCode ?? string.Empty, vars);
 
-        var inputValues = ResolveInputValues(htmlNode);
-        html = ReplaceVariables(html, inputValues);
-        css = ReplaceVariables(css, inputValues);
-        js = ReplaceVariables(js, inputValues);
-
-        if (!html.Contains("<head>", StringComparison.OrdinalIgnoreCase))
-            html = html.Replace("<html>", "<html>\n<head>\n<meta charset=\"UTF-8\">\n</head>", StringComparison.OrdinalIgnoreCase);
-
+        var sb = new StringBuilder();
+        sb.AppendLine("<!doctype html>");
+        sb.AppendLine("<html>");
+        sb.AppendLine("<head>");
+        sb.AppendLine("  <meta charset=\"utf-8\" />");
+        sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />");
         if (!string.IsNullOrWhiteSpace(css))
         {
-            var cssTag = $"\n<style>\n{css}\n</style>";
-            if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</head>", cssTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-            else
-                html = cssTag + html;
+            sb.AppendLine("  <style>");
+            sb.AppendLine(css);
+            sb.AppendLine("  </style>");
         }
 
-        // Inject offline assets from Html UI dialog Tab 2.
-        var enabledAssets = (htmlNode.OfflineAssets ?? new List<FlowMy.Models.HtmlOfflineAsset>())
-            .Where(a => a.IsEnabled && !string.IsNullOrWhiteSpace(a.LocalFileName))
-            .ToList();
-
-        foreach (var asset in enabledAssets.Where(a => string.Equals(a.AssetType, "css", StringComparison.OrdinalIgnoreCase)))
+        foreach (var asset in htmlNode.OfflineAssets ?? new List<HtmlOfflineAsset>())
         {
-            var content = HtmlOfflineAssetService.GetInlineContent(asset.LocalFileName);
-            if (string.IsNullOrWhiteSpace(content)) continue;
-            var safeName = System.Security.SecurityElement.Escape(asset.Title ?? asset.LocalFileName);
-            var cssTag = $"\n<style>/* [offline] {safeName} */\n{content}\n</style>";
-            if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</head>", cssTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-            else
-                html = cssTag + html;
+            if (asset == null || !asset.IsEnabled) continue;
+            if (!string.Equals(asset.AssetType, "css", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrWhiteSpace(asset.LocalFileName)) continue;
+
+            try
+            {
+                var path = HtmlOfflineAssetService.GetLocalFilePath(asset.LocalFileName);
+                if (!File.Exists(path)) continue;
+                var content = File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(content)) continue;
+                sb.AppendLine("  <style>");
+                sb.AppendLine(content);
+                sb.AppendLine("  </style>");
+            }
+            catch
+            {
+                // best-effort
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(bridgeJs))
-        {
-            if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</head>", bridgeJs + "\n</head>", StringComparison.OrdinalIgnoreCase);
-            else
-                html = bridgeJs + html;
-        }
+        sb.AppendLine("</head>");
+        sb.AppendLine("<body>");
+        sb.AppendLine(html);
+        sb.AppendLine("  <script>");
+        sb.AppendLine(bridgeJs ?? string.Empty);
+        sb.AppendLine("  </script>");
 
-        foreach (var asset in enabledAssets.Where(a => !string.Equals(a.AssetType, "css", StringComparison.OrdinalIgnoreCase)))
+        foreach (var asset in htmlNode.OfflineAssets ?? new List<HtmlOfflineAsset>())
         {
-            var content = HtmlOfflineAssetService.GetInlineContent(asset.LocalFileName);
-            if (string.IsNullOrWhiteSpace(content)) continue;
-            var safeName = System.Security.SecurityElement.Escape(asset.Title ?? asset.LocalFileName);
-            var jsTag = $"\n<script>/* [offline] {safeName} */\n{content}\n</script>";
-            if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</body>", jsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
-            else if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</head>", jsTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-            else
-                html += jsTag;
+            if (asset == null || !asset.IsEnabled) continue;
+            if (!string.Equals(asset.AssetType, "js", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrWhiteSpace(asset.LocalFileName)) continue;
+
+            try
+            {
+                var path = HtmlOfflineAssetService.GetLocalFilePath(asset.LocalFileName);
+                if (!File.Exists(path)) continue;
+                var content = File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(content)) continue;
+                sb.AppendLine("  <script>");
+                sb.AppendLine(content);
+                sb.AppendLine("  </script>");
+            }
+            catch
+            {
+                // best-effort
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(js))
         {
-            var jsTag = $"\n<script>\n{js}\n</script>";
-            if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</body>", jsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
-            else
-                html += jsTag;
+            sb.AppendLine("  <script>");
+            sb.AppendLine(js);
+            sb.AppendLine("  </script>");
         }
-
-        return html;
+        sb.AppendLine("</body>");
+        sb.AppendLine("</html>");
+        return sb.ToString();
     }
 
     public Dictionary<string, string> ResolveInputValues(HtmlUiNode htmlNode)
     {
-        var result = new Dictionary<string, string>();
-        if (_host.ViewModel == null) return result;
+        var vars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (htmlNode.InputMappings == null || htmlNode.InputMappings.Count == 0) return vars;
+        var vm = _host.ViewModel;
+        if (vm == null) return vars;
 
-        var mappings = htmlNode.InputMappings ?? new List<CodeInputMapping>();
-        var allNodes = _host.ViewModel.Nodes;
-
-        foreach (var mapping in mappings)
+        foreach (var map in htmlNode.InputMappings)
         {
-            WorkflowNode? sourceNode = null;
-            if (!string.IsNullOrWhiteSpace(mapping.SourceNodeId))
-            {
-                sourceNode = allNodes?.FirstOrDefault(n =>
-                    string.Equals(n.Id, mapping.SourceNodeId, StringComparison.OrdinalIgnoreCase));
-            }
+            if (map == null) continue;
+            var key = map.EffectiveInputKey;
+            if (string.IsNullOrWhiteSpace(key)) continue;
+            string value = string.Empty;
 
-            var inputValue = string.Empty;
-            if (sourceNode != null)
+            if (!string.IsNullOrWhiteSpace(map.SourceNodeId))
             {
-                var key = string.IsNullOrWhiteSpace(mapping.SourceOutputKey)
-                    ? sourceNode.DynamicOutputs?.FirstOrDefault()?.Key ?? "output"
-                    : mapping.SourceOutputKey.Trim();
-                inputValue = NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, key);
-                if (string.Equals(inputValue?.Trim(), "—", StringComparison.OrdinalIgnoreCase))
-                    inputValue = string.Empty;
+                var src = vm.Nodes?.FirstOrDefault(n => n.Id == map.SourceNodeId);
+                if (src != null)
+                {
+                    var outKey = string.IsNullOrWhiteSpace(map.SourceOutputKey)
+                        ? (src.DynamicOutputs != null && src.DynamicOutputs.Count > 0 ? src.DynamicOutputs[0].Key : "output")
+                        : map.SourceOutputKey;
+                    value = NodeDataPanelService.ResolveDynamicValueByKey(src, outKey ?? "output");
+                    if (string.Equals(value?.Trim(), "—", StringComparison.OrdinalIgnoreCase))
+                        value = string.Empty;
+                }
             }
-
-            var varName = mapping.EffectiveInputKey;
-            if (string.IsNullOrWhiteSpace(varName)) varName = "input";
-            result[varName] = inputValue ?? string.Empty;
+            vars[key] = value;
         }
-
-        return result;
+        return vars;
     }
 
-    public IReadOnlyList<(string Key, string Selector)> ParseParams(HtmlUiNode htmlNode)
+    public List<(string Key, string Selector)> ParseParams(HtmlUiNode htmlNode)
     {
         var result = new List<(string Key, string Selector)>();
-        var paramsText = htmlNode.ParamsCode ?? string.Empty;
-        var lines = paramsText.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+        var text = htmlNode.ParamsCode ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(text)) return result;
 
-        foreach (var raw in lines)
+        foreach (var rawLine in text.Split('\n'))
         {
-            var line = raw?.Trim();
-            if (string.IsNullOrWhiteSpace(line)) continue;
-            if (line.StartsWith("//") || line.StartsWith("#")) continue;
-
-            string[] parts;
-            if (line.Contains(":")) parts = line.Split(new[] { ':' }, 2);
-            else if (line.Contains("=")) parts = line.Split(new[] { '=' }, 2);
-            else continue;
-
-            if (parts.Length != 2) continue;
-            var key = parts[0].Trim();
-            var selector = parts[1].Trim();
+            var line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+            var idx = line.IndexOf(':');
+            if (idx <= 0 || idx >= line.Length - 1) continue;
+            var key = line[..idx].Trim();
+            var selector = line[(idx + 1)..].Trim();
             if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(selector)) continue;
             result.Add((key, selector));
         }
-
         return result;
     }
 
-    private static string ReplaceVariables(string text, Dictionary<string, string> vars)
+    public string ReplaceVariables(string text, Dictionary<string, string> vars)
     {
         if (string.IsNullOrEmpty(text) || vars.Count == 0) return text;
-        var regex = new System.Text.RegularExpressions.Regex(@"\{([^}]+)\}");
-        return regex.Replace(text, match =>
-        {
-            var name = match.Groups[1].Value.Trim();
-            return vars.TryGetValue(name, out var value) ? value ?? string.Empty : match.Value;
-        });
+        var output = text;
+        foreach (var kv in vars)
+            output = output.Replace("{" + kv.Key + "}", kv.Value ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        return output;
+    }
+
+    private static string BuildOfflineAssetsSignature(HtmlUiNode node)
+    {
+        if (node.OfflineAssets == null || node.OfflineAssets.Count == 0) return string.Empty;
+        return string.Join(";", node.OfflineAssets
+            .Where(a => a != null)
+            .Select(a => $"{a.IsEnabled}:{a.AssetType}:{a.LocalFileName}:{a.SourceUrl}"));
     }
 }
