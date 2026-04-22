@@ -2458,9 +2458,15 @@ namespace FlowMy.ViewModels
                     ConnectionLineStyle = restoredStyle;
                 else
                     ConnectionLineStyle = ConnectionLineStyle.Bezier;
-                // Batch replace để giảm notify/render từng phần tử khi load workflow lớn.
-                Nodes = new ObservableCollection<WorkflowNode>(result.Nodes);
-                Connections = new ObservableCollection<WorkflowConnection>(result.Connections);
+                // Giữ nguyên instance collection để không làm mất các subscription CollectionChanged
+                // đang được gắn ở WorkflowEditorWindow.
+                Nodes.Clear();
+                foreach (var node in result.Nodes)
+                    Nodes.Add(node);
+
+                Connections.Clear();
+                foreach (var conn in result.Connections)
+                    Connections.Add(conn);
             }
             catch (Exception ex)
             {
