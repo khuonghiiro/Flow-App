@@ -1230,6 +1230,17 @@ namespace FlowMy.Views.NodeControls
                     // ✅ Executor trigger push async data vào WebView2
                     else if (e.PropertyName == nameof(HtmlUiNode.PendingAsyncDataPush) && node.PendingAsyncDataPush)
                     {
+                        // Khi widget đang mở, ưu tiên để FloatingWidgetWindow drain queue + push vào runtime widget.
+                        // Nếu canvas drain trước thì widget sẽ không còn data để nhận (__acAsync không cập nhật).
+                        if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(node.Id))
+                        {
+#if DEBUG
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[HtmlUiNodeControl:{node.Id}] Skip canvas PendingAsyncDataPush because widget is open.");
+#endif
+                            return;
+                        }
+
                         _ = webView.Dispatcher.InvokeAsync(async () =>
                         {
                             try

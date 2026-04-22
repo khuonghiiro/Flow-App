@@ -1733,17 +1733,42 @@ public partial class FloatingWidgetWindow : Window
             $"[FloatingWidget:{node.Id}] Drain queue count={items.Count}, keys=[{string.Join(", ", items.Select(i => i.Key))}]");
 #endif
 
-        if (items.Count == 0) return;
+        if (items.Count == 0)
+        {
+            // Fallback quan trọng: nếu queue đã bị nơi khác drain trước (race với canvas),
+            // vẫn lấy snapshot giá trị mới nhất từ AsyncDataCache để widget không mất dữ liệu.
+            if (node.AsyncDataCache != null && node.AsyncDataCache.Count > 0)
+            {
+                foreach (var kv in node.AsyncDataCache)
+                {
+                    if (IsPlaceholderValue(kv.Value)) continue;
+                    UpsertPendingAsyncBuffer(kv.Key ?? string.Empty, kv.Value ?? string.Empty);
+                }
+            }
+            return;
+        }
 
         foreach (var kvp in items)
         {
             if (IsPlaceholderValue(kvp.Value)) continue;
-            _pendingAsyncBuffer.Add((kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
+            UpsertPendingAsyncBuffer(kvp.Key ?? string.Empty, kvp.Value ?? string.Empty);
         }
 #if DEBUG
         System.Diagnostics.Debug.WriteLine(
             $"[FloatingWidget:{node.Id}] Buffer after drain count={_pendingAsyncBuffer.Count}");
 #endif
+    }
+
+    private void UpsertPendingAsyncBuffer(string key, string value)
+    {
+        for (int i = _pendingAsyncBuffer.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(_pendingAsyncBuffer[i].Key, key, StringComparison.Ordinal))
+            {
+                _pendingAsyncBuffer.RemoveAt(i);
+            }
+        }
+        _pendingAsyncBuffer.Add((key, value));
     }
 
     private async Task<int> FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
@@ -3544,7 +3569,6 @@ window.__acPush = function(key, value) {
     }
 
     private const int WM_SYSCOMMAND = 0x0112;
-    private const int SC_MINIMIZE = 0xF020;
     private const int SC_RESTORE = 0xF120;
     private static readonly TimeSpan TaskbarToggleDebounce = TimeSpan.FromMilliseconds(280);
 
@@ -3555,7 +3579,10 @@ window.__acPush = function(key, value) {
             if (msg == WM_SYSCOMMAND)
             {
                 int command = wParam.ToInt32() & 0xFFF0;
-                if (command == SC_MINIMIZE || command == SC_RESTORE)
+                // Chỉ xử lý restore từ taskbar khi cửa sổ đang bị minimize/hidden.
+                // Không chặn SC_MINIMIZE để tránh phá vỡ state machine (đặc biệt lúc debug reopen).
+                if (command == SC_RESTORE &&
+                    (WindowState == WindowState.Minimized || Visibility != Visibility.Visible))
                 {
                     RequestTaskbarToggle();
                     handled = true;

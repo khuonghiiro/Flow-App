@@ -30,6 +30,8 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string lastConfiguredNodeId = string.Empty;
         [ObservableProperty] private bool hasLastConfiguredWidget;
         private readonly HashSet<string> _trayPinnedKeys = new(System.StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, WorkflowEditorWindow> _headlessWorkflowWindows = new(System.StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<WorkflowEditorWindow> _isRehidingHeadlessWindow = new();
 
         public MainViewModel()
         {
@@ -156,6 +158,16 @@ namespace FlowMy.ViewModels
             return $"{workflowName}::{nodeId}";
         }
 
+        private void SetHeadlessDebugVisibleForWorkflow(string workflowName, bool visible)
+        {
+            if (string.IsNullOrWhiteSpace(workflowName)) return;
+            foreach (var item in WidgetShortcuts.Where(w =>
+                         string.Equals(w.WorkflowName, workflowName, System.StringComparison.OrdinalIgnoreCase)))
+            {
+                item.IsHeadlessDebugVisible = visible;
+            }
+        }
+
         /// <summary>
         /// Command để mở WorkflowEditorWindow (không load workflow nào cụ thể).
         /// </summary>
@@ -235,6 +247,54 @@ namespace FlowMy.ViewModels
             var ids = group.Widgets.Select(w => w.NodeId).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
             if (ids.Count == 0) return;
             OpenWorkflowEditorInternal(group.WorkflowName, ids, headless: true);
+        }
+
+        [RelayCommand]
+        private async Task ReopenHeadlessWorkflow(WidgetShortcutItem? item)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.WorkflowName)) return;
+            if (item.IsReopeningHeadless) return;
+
+            if (!_headlessWorkflowWindows.TryGetValue(item.WorkflowName, out var workflowWindow) || workflowWindow == null)
+            {
+                OpenWorkflowEditorInternal(
+                    item.WorkflowName,
+                    new List<string> { item.NodeId },
+                    headless: false);
+                return;
+            }
+
+            item.IsReopeningHeadless = true;
+            try
+            {
+                await workflowWindow.Dispatcher.InvokeAsync(new System.Action(() =>
+                {
+                    try
+                    {
+                        workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
+                        workflowWindow.ApplyLowestRenderPresetForDebugReopen();
+                        workflowWindow.PrepareForInteractiveDebugSession();
+
+                        workflowWindow.Owner = null;
+                        workflowWindow.ShowInTaskbar = true;
+                        if (!workflowWindow.IsVisible)
+                            workflowWindow.Show();
+                        else
+                            workflowWindow.Visibility = Visibility.Visible;
+
+                        workflowWindow.WindowState = WindowState.Normal;
+                        workflowWindow.Activate();
+                        workflowWindow.Focus();
+                    }
+                    catch { }
+                }));
+
+                item.IsHeadlessDebugVisible = true;
+            }
+            finally
+            {
+                item.IsReopeningHeadless = false;
+            }
         }
 
         /// <summary>
@@ -463,6 +523,41 @@ namespace FlowMy.ViewModels
 
             workflowWindow.Owner = mainWindow;
 
+            workflowWindow.Closing += (s, e) =>
+            {
+                if (_isRehidingHeadlessWindow.Contains(workflowWindow)) return;
+                if (!_headlessWorkflowWindows.Values.Contains(workflowWindow)) return;
+
+                var vm = workflowWindow.ViewModel;
+                if (vm == null) return;
+                var nodeIds = vm.Nodes.Select(n => n.Id)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+
+                var active = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
+                bool hasAnyWidgetFromThisWorkflow = active.Any(id => nodeIds.Contains(id));
+                if (!hasAnyWidgetFromThisWorkflow) return;
+
+                e.Cancel = true;
+                _isRehidingHeadlessWindow.Add(workflowWindow);
+                try
+                {
+                    var activeWidgetIds = FloatingWidgetManager.Instance.GetActiveWidgetNodeIds();
+                    workflowWindow.EnableHeadlessCanvasOptimizationForBackground(activeWidgetIds);
+                    PrepareWindowForHeadlessBackground(workflowWindow);
+                    var name = _headlessWorkflowWindows
+                        .FirstOrDefault(kv => ReferenceEquals(kv.Value, workflowWindow)).Key;
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        SetHeadlessDebugVisibleForWorkflow(name, false);
+                    }
+                }
+                finally
+                {
+                    _isRehidingHeadlessWindow.Remove(workflowWindow);
+                }
+            };
+
             // Preload workflow TRƯỚC khi Show() để tránh flash/viewport nhảy:
             // LoadWorkflow chạy ngay trong ViewModel, IsLoading đã trở về false
             // trước khi cửa sổ render lần đầu. Khi cửa sổ Loaded → ViewState
@@ -483,11 +578,16 @@ namespace FlowMy.ViewModels
             if (headless)
             {
                 workflowWindow.ConfigureHeadlessCanvasOptimization(widgetNodeIds);
-                // Không ẩn MainWindow: user vẫn thấy launcher và card gốc.
-                // WorkflowEditorWindow chạy ngầm để widget sống được.
-                workflowWindow.ShowInTaskbar = false;
-                workflowWindow.WindowState = WindowState.Minimized;
-                workflowWindow.Visibility = Visibility.Hidden;
+                PrepareWindowForHeadlessBackground(workflowWindow);
+                if (!string.IsNullOrWhiteSpace(workflowNameToLoad))
+                {
+                    var workflowNameKey = workflowNameToLoad;
+                    workflowWindow.Loaded += (_, __) =>
+                    {
+                        _headlessWorkflowWindows[workflowNameKey] = workflowWindow;
+                        SetHeadlessDebugVisibleForWorkflow(workflowNameKey, false);
+                    };
+                }
                 if (hideMainWindowWhenHeadless)
                 {
                     mainWindow?.Hide();
@@ -502,6 +602,11 @@ namespace FlowMy.ViewModels
             workflowWindow.Closed += (_, __) =>
             {
                 scope.Dispose();
+                foreach (var kv in _headlessWorkflowWindows.Where(kv => ReferenceEquals(kv.Value, workflowWindow)).ToList())
+                {
+                    SetHeadlessDebugVisibleForWorkflow(kv.Key, false);
+                    _headlessWorkflowWindows.Remove(kv.Key);
+                }
                 if (!headless && mainWindow != null)
                 {
                     mainWindow.Show();
@@ -635,6 +740,13 @@ namespace FlowMy.ViewModels
                 }
             };
             mgr.WidgetClosed += handler;
+        }
+
+        private static void PrepareWindowForHeadlessBackground(WorkflowEditorWindow workflowWindow)
+        {
+            workflowWindow.ShowInTaskbar = false;
+            workflowWindow.WindowState = WindowState.Minimized;
+            workflowWindow.Visibility = Visibility.Hidden;
         }
 
         private void OnWidgetOpened(object? sender, string nodeId) => UpdateWidgetOpenState(nodeId, true);
