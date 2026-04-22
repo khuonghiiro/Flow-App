@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace FlowMy.ViewModels
 {
@@ -137,8 +138,13 @@ namespace FlowMy.ViewModels
             item.IsLaunchingHeadless = true;
             try
             {
-                // Nhường 1 frame để icon/loading state cập nhật trước khi xử lý mở workflow.
-                await Task.Yield();
+                // Đẩy 1 nhịp render để spinner ⏳ hiện ngay trước khi vào đoạn load nặng.
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher != null)
+                    await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                else
+                    await Task.Yield();
+
                 OpenWorkflowEditorInternal(
                     item.WorkflowName,
                     new List<string> { item.NodeId },
