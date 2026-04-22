@@ -3745,6 +3745,7 @@ window.__acPush = function(key, value) {
     }
 
     private const int WM_SYSCOMMAND = 0x0112;
+    private const int SC_MINIMIZE = 0xF020;
     private const int SC_RESTORE = 0xF120;
     private static readonly TimeSpan TaskbarToggleDebounce = TimeSpan.FromMilliseconds(280);
 
@@ -3755,10 +3756,9 @@ window.__acPush = function(key, value) {
             if (msg == WM_SYSCOMMAND)
             {
                 int command = wParam.ToInt32() & 0xFFF0;
-                // Chỉ xử lý restore từ taskbar khi cửa sổ đang bị minimize/hidden.
-                // Không chặn SC_MINIMIZE để tránh phá vỡ state machine (đặc biệt lúc debug reopen).
-                if (command == SC_RESTORE &&
-                    (WindowState == WindowState.Minimized || Visibility != Visibility.Visible))
+                // Taskbar click có thể đi qua SC_MINIMIZE hoặc SC_RESTORE tùy trạng thái cửa sổ.
+                // Funnel cả 2 vào cùng một toggle path + debounce để tránh miss click.
+                if (command == SC_MINIMIZE || command == SC_RESTORE)
                 {
                     RequestTaskbarToggle();
                     handled = true;
