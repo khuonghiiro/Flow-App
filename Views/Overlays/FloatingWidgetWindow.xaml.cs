@@ -1025,7 +1025,7 @@ public partial class FloatingWidgetWindow : Window
             Text = "0",
             FontSize = 8,
             FontWeight = FontWeights.Bold,
-            Foreground = Brushes.White,
+            Foreground = (Brush?)TryFindResource("TextOnDangerBrush") ?? Brushes.White,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -1034,8 +1034,8 @@ public partial class FloatingWidgetWindow : Window
             Width = 12,
             Height = 12,
             CornerRadius = new CornerRadius(6),
-            Background = Brushes.Red,
-            BorderBrush = Brushes.White,
+            Background = (Brush?)TryFindResource("DangerBrush") ?? Brushes.Red,
+            BorderBrush = (Brush?)TryFindResource("TextOnDangerBrush") ?? Brushes.White,
             BorderThickness = new Thickness(1),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
@@ -1079,7 +1079,7 @@ public partial class FloatingWidgetWindow : Window
             Text = "0",
             FontSize = 8,
             FontWeight = FontWeights.Bold,
-            Foreground = Brushes.White,
+            Foreground = (Brush?)TryFindResource("TextOnDangerBrush") ?? Brushes.White,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -1088,8 +1088,8 @@ public partial class FloatingWidgetWindow : Window
             Width = 12,
             Height = 12,
             CornerRadius = new CornerRadius(6),
-            Background = Brushes.Red,
-            BorderBrush = Brushes.White,
+            Background = (Brush?)TryFindResource("DangerBrush") ?? Brushes.Red,
+            BorderBrush = (Brush?)TryFindResource("TextOnDangerBrush") ?? Brushes.White,
             BorderThickness = new Thickness(1),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
@@ -1343,33 +1343,56 @@ public partial class FloatingWidgetWindow : Window
 
     private void UpdateOutsideCollapseToggleButtonState()
     {
-        if (_titleRevealOutsideCollapseToggleButton == null) return;
         var enabled = Config.CollapseWhenClickOutsideExpanded && !Config.PinnedNoAutoHide;
-        _titleRevealOutsideCollapseToggleButton.Content = enabled ? "◉" : "◌";
-        _titleRevealOutsideCollapseToggleButton.ToolTip = enabled
+        var tooltip = enabled
             ? "Đang bật: click ra ngoài sẽ tự thu nhỏ"
             : (Config.PinnedNoAutoHide
                 ? "Đang tắt do chế độ ghim"
                 : "Đang tắt: click ra ngoài không tự thu nhỏ");
-        _titleRevealOutsideCollapseToggleButton.IsEnabled = !Config.PinnedNoAutoHide;
-
         var styleKey = enabled ? "PrimaryButton" : "SecondaryButton";
-        if (TryFindResource(styleKey) is Style style)
-            _titleRevealOutsideCollapseToggleButton.Style = style;
+
+        if (_titleRevealOutsideCollapseToggleButton != null)
+        {
+            _titleRevealOutsideCollapseToggleButton.Content = enabled ? "◉" : "◌";
+            _titleRevealOutsideCollapseToggleButton.ToolTip = tooltip;
+            _titleRevealOutsideCollapseToggleButton.IsEnabled = !Config.PinnedNoAutoHide;
+            if (TryFindResource(styleKey) is Style revealStyle)
+                _titleRevealOutsideCollapseToggleButton.Style = revealStyle;
+        }
+
+        if (TitleOutsideCollapseToggleBtn != null)
+        {
+            TitleOutsideCollapseToggleBtn.Content = enabled ? "◉" : "◌";
+            TitleOutsideCollapseToggleBtn.ToolTip = tooltip;
+            TitleOutsideCollapseToggleBtn.IsEnabled = !Config.PinnedNoAutoHide;
+            if (TryFindResource(styleKey) is Style titleStyle)
+                TitleOutsideCollapseToggleBtn.Style = titleStyle;
+        }
     }
 
     private void UpdatePinToggleButtonState()
     {
-        if (_titleRevealPinToggleButton == null) return;
         var pinned = Config.PinnedNoAutoHide;
-        _titleRevealPinToggleButton.Content = pinned ? "📍" : "📌";
-        _titleRevealPinToggleButton.ToolTip = pinned
+        var tooltip = pinned
             ? "Đang ghim: không tự ẩn theo thời gian"
             : "Bật ghim: không tự ẩn theo thời gian";
-
         var styleKey = pinned ? "PrimaryButton" : "SecondaryButton";
-        if (TryFindResource(styleKey) is Style style)
-            _titleRevealPinToggleButton.Style = style;
+
+        if (_titleRevealPinToggleButton != null)
+        {
+            _titleRevealPinToggleButton.Content = pinned ? "📍" : "📌";
+            _titleRevealPinToggleButton.ToolTip = tooltip;
+            if (TryFindResource(styleKey) is Style revealStyle)
+                _titleRevealPinToggleButton.Style = revealStyle;
+        }
+
+        if (TitlePinToggleBtn != null)
+        {
+            TitlePinToggleBtn.Content = pinned ? "📍" : "📌";
+            TitlePinToggleBtn.ToolTip = tooltip;
+            if (TryFindResource(styleKey) is Style titleStyle)
+                TitlePinToggleBtn.Style = titleStyle;
+        }
     }
 
     private void OutsideCollapseToggleButton_Click(object sender, RoutedEventArgs e)

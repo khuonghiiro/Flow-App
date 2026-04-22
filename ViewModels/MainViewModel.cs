@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace FlowMy.ViewModels
@@ -25,6 +26,8 @@ namespace FlowMy.ViewModels
 
         public MainViewModel()
         {
+            FloatingWidgetManager.Instance.WidgetOpened += OnWidgetOpened;
+            FloatingWidgetManager.Instance.WidgetClosed += OnWidgetClosed;
             RefreshWidgetShortcuts();
         }
 
@@ -66,6 +69,7 @@ namespace FlowMy.ViewModels
                 WorkflowCount = 0;
             }
             HasWidgetShortcuts = WidgetShortcuts.Count > 0;
+            SyncWidgetOpenStates();
 
             // Validate shortcut gần nhất còn tồn tại sau khi refresh.
             if (!string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) &&
@@ -123,13 +127,25 @@ namespace FlowMy.ViewModels
         /// khi đóng widget cuối → đóng luôn workflow editor.
         /// </summary>
         [RelayCommand]
-        private void LaunchWidgetHeadless(WidgetShortcutItem? item)
+        private async Task LaunchWidgetHeadless(WidgetShortcutItem? item)
         {
-            if (item == null) return;
-            OpenWorkflowEditorInternal(
-                item.WorkflowName,
-                new List<string> { item.NodeId },
-                headless: true);
+            if (item == null || item.IsLaunchingHeadless || item.IsWidgetOpen) return;
+            item.IsLaunchingHeadless = true;
+            try
+            {
+                // Nhường 1 frame để icon/loading state cập nhật trước khi xử lý mở workflow.
+                await Task.Yield();
+                OpenWorkflowEditorInternal(
+                    item.WorkflowName,
+                    new List<string> { item.NodeId },
+                    headless: true);
+                item.IsWidgetOpen = await WaitUntilWidgetOpenAsync(item.NodeId, timeoutMs: 4000);
+            }
+            finally
+            {
+                item.IsLaunchingHeadless = false;
+                item.IsWidgetOpen = FloatingWidgetManager.Instance.IsWidgetOpen(item.NodeId);
+            }
         }
 
         /// <summary>
@@ -373,6 +389,51 @@ namespace FlowMy.ViewModels
                 }
             };
             mgr.WidgetClosed += handler;
+        }
+
+        private void OnWidgetOpened(object? sender, string nodeId) => UpdateWidgetOpenState(nodeId, true);
+
+        private void OnWidgetClosed(object? sender, string nodeId) => UpdateWidgetOpenState(nodeId, false);
+
+        private void UpdateWidgetOpenState(string? nodeId, bool isOpen)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId)) return;
+
+            void Apply()
+            {
+                foreach (var item in WidgetShortcuts)
+                {
+                    if (string.Equals(item.NodeId, nodeId, System.StringComparison.OrdinalIgnoreCase))
+                        item.IsWidgetOpen = isOpen;
+                }
+            }
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.CheckAccess())
+                Apply();
+            else
+                dispatcher.BeginInvoke((System.Action)Apply);
+        }
+
+        private void SyncWidgetOpenStates()
+        {
+            foreach (var item in WidgetShortcuts)
+                item.IsWidgetOpen = FloatingWidgetManager.Instance.IsWidgetOpen(item.NodeId);
+        }
+
+        private static async Task<bool> WaitUntilWidgetOpenAsync(string? nodeId, int timeoutMs)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId)) return false;
+            var mgr = FloatingWidgetManager.Instance;
+            var elapsed = 0;
+            const int step = 120;
+            while (elapsed < timeoutMs)
+            {
+                if (mgr.IsWidgetOpen(nodeId)) return true;
+                await Task.Delay(step);
+                elapsed += step;
+            }
+            return mgr.IsWidgetOpen(nodeId);
         }
     }
 }

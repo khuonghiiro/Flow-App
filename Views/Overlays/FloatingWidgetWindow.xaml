@@ -422,6 +422,7 @@
                                 <Button x:Name="StopWorkflowBtn"
                                         Width="24"
                                         Height="24"
+                                        Margin="0,0,4,0"
                                         Padding="0"
                                         Cursor="Hand"
                                         ToolTip="Dừng workflow đang chạy"
@@ -435,7 +436,7 @@
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='flag-checkered sharp-duotone-solid'}"
-                                                               Fill="White"/>
+                                                               Fill="{DynamicResource TextBrush}"/>
                                         <Border x:Name="StopRunCountBadge"
                                                 Width="13"
                                                 Height="13"
@@ -456,6 +457,39 @@
                                                        VerticalAlignment="Center"/>
                                         </Border>
                                     </Grid>
+                                </Button>
+
+                                <Button x:Name="TitleOutsideCollapseToggleBtn"
+                                        Width="24"
+                                        Height="24"
+                                        Margin="0,0,4,0"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Style="{StaticResource WidgetTitleActionButton}"
+                                        Click="OutsideCollapseToggleButton_Click"
+                                        ToolTip="Bật/tắt: click ra ngoài thì tự thu nhỏ">
+                                    <TextBlock Text="◌"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextBrush}"/>
+                                </Button>
+
+                                <Button x:Name="TitlePinToggleBtn"
+                                        Width="24"
+                                        Height="24"
+                                        Margin="0,0,4,0"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        FontSize="11"
+                                        Style="{StaticResource WidgetTitleActionButton}"
+                                        Click="PinToggleButton_Click"
+                                        ToolTip="Bật/tắt ghim widget">
+                                    <TextBlock Text="📌"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextBrush}"/>
                                 </Button>
                             </StackPanel>
 
