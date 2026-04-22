@@ -47,11 +47,56 @@
                         MinHeight="260"/>
                 </TabItem>
                 <TabItem Header="JS" Style="{StaticResource HttpTabItemStyle}">
-                    <controls:SyntaxHighlightCodeEditor
-                        Text="{Binding JsCode, UpdateSourceTrigger=PropertyChanged}"
-                        CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
-                        Margin="0,4,0,4"
-                        MinHeight="260"/>
+                    <Grid Margin="0,4,0,4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,6">
+                            <Button Content="↑"
+                                    Width="28"
+                                    Height="26"
+                                    Margin="0,0,6,0"
+                                    Cursor="Hand"
+                                    Click="MoveJsTabUpButton_Click"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    ToolTip="Đẩy tab JS đang chọn lên trên"/>
+                            <Button Content="↓"
+                                    Width="28"
+                                    Height="26"
+                                    Margin="0,0,6,0"
+                                    Cursor="Hand"
+                                    Click="MoveJsTabDownButton_Click"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    ToolTip="Đẩy tab JS đang chọn xuống dưới"/>
+                            <Button Content="Xóa tab"
+                                    Width="74"
+                                    Height="26"
+                                    Margin="0,0,6,0"
+                                    Cursor="Hand"
+                                    Click="DeleteJsTabButton_Click"
+                                    Style="{DynamicResource DangerButton}"
+                                    ToolTip="Xóa tab JS đang chọn (giữ lại tối thiểu 1 tab)"/>
+                            <Button Content="+ Thêm JS"
+                                    Width="96"
+                                    Height="26"
+                                    Cursor="Hand"
+                                    Click="AddJsTabButton_Click"
+                                    Style="{DynamicResource PrimaryButton}"
+                                    ToolTip="Tạo thêm tab JS con"/>
+                        </StackPanel>
+                        <TabControl x:Name="PopupJsSubTabsControl"
+                                    Grid.Row="1"
+                                    Background="Transparent"
+                                    BorderThickness="0">
+                            <TabItem x:Name="PopupJsPrimaryTabItem" Header="JS 1" Style="{StaticResource HttpTabItemStyle}">
+                                <controls:SyntaxHighlightCodeEditor x:Name="PopupJsEditor"
+                                    CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
+                                    Margin="0,4,0,4"
+                                    MinHeight="260"/>
+                            </TabItem>
+                        </TabControl>
+                    </Grid>
                 </TabItem>
                 <TabItem Header="CSS" Style="{StaticResource HttpTabItemStyle}">
                     <controls:SyntaxHighlightCodeEditor
