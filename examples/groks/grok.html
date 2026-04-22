@@ -363,6 +363,13 @@
         <input type="hidden" id="statusCreate" value="0">
     </div>
 
+    <!-- JS load order (priority): shared -> ui -> image-upload -> video-create -> video-cache -> image-cache -->
+    <script src="./modules/grok.shared.js"></script>
+    <script src="./modules/grok.ui.js"></script>
+    <script src="./modules/grok.image-upload.js"></script>
+    <script src="./modules/grok.video-create.js"></script>
+    <script src="./modules/grok.video-cache.js"></script>
+    <script src="./modules/grok.image-cache.js"></script>
 </body>
 
 </html>

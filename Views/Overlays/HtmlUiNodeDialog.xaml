@@ -916,7 +916,13 @@
                                         <Run Text="#5_feature.js" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
                                         <Run Text="). Khi import nhiều file, đặt tên dạng "/>
                                         <Run Text="#&lt;number&gt;_ten-file.js" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
-                                        <Run Text=" để tự sắp thứ tự."/>
+                                        <Run Text=" để tự sắp thứ tự. Dùng chung biến/func/state qua namespace global như "/>
+                                        <Run Text="window.App" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                        <Run Text=" (ví dụ: "/>
+                                        <Run Text="window.App.state" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                        <Run Text=", "/>
+                                        <Run Text="window.App.utils" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                        <Run Text="). Tab common nên để priority nhỏ nhất."/>
                                     </TextBlock>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                                         <Button x:Name="MoveJsTabUpButton"

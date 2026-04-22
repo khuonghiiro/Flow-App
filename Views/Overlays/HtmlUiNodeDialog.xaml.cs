@@ -889,7 +889,15 @@ statusText: #statusText";
         private static string ParseTabTitleFromJsFileName(string path)
         {
             var name = Path.GetFileNameWithoutExtension(path) ?? "JS";
-            return name.Trim();
+            var trimmed = name.Trim();
+            var m = Regex.Match(trimmed, @"^\s*#\s*\d+\s*_(.+)$");
+            if (m.Success)
+            {
+                var cleaned = (m.Groups[1].Value ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(cleaned))
+                    return cleaned;
+            }
+            return trimmed;
         }
 
         private List<(string Path, int Priority, string Title, string Code)> ReadJsImportParts(IEnumerable<string> jsFiles)
