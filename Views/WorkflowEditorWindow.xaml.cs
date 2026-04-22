@@ -8,6 +8,7 @@ using FlowMy.Properties;
 using Microsoft.Web.WebView2.Wpf;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -162,6 +163,8 @@ namespace FlowMy.Views
         private readonly ScreenPositionNodeRenderer _screenPositionNodeRenderer;
         private readonly ViewportCullingService _viewportCullingService;
         private readonly NodeDialogManager _nodeDialogManager;
+        private ObservableCollection<WorkflowNode>? _subscribedNodesCollection;
+        private ObservableCollection<WorkflowConnection>? _subscribedConnectionsCollection;
 
         public void ConfigureHeadlessCanvasOptimization(IEnumerable<string>? widgetNodeIdsToHide)
         {
@@ -825,8 +828,7 @@ namespace FlowMy.Views
 
             if (ViewModel != null)
             {
-                ViewModel.Nodes.CollectionChanged += Nodes_CollectionChanged;
-                ViewModel.Connections.CollectionChanged += Connections_CollectionChanged;
+                RebindViewModelCollectionHandlers();
                 ViewModel.PropertyChanged += ViewModel_PropertyChanged;
                 ViewModel.SyncViewStateBeforeSave = SyncViewStateToViewModel;
                 _eventService.InitialRender();
@@ -1498,6 +1500,13 @@ namespace FlowMy.Views
         {
             _eventService.HandleViewModelPropertyChanged(e);
 
+            if (e.PropertyName == nameof(WorkflowEditorViewModel.Nodes) ||
+                e.PropertyName == nameof(WorkflowEditorViewModel.Connections))
+            {
+                RebindViewModelCollectionHandlers();
+                RefreshAutoStartScopeBorders();
+            }
+
             // Đồng bộ Detach/Attach panel log mỗi khi mode/expand/enable thay đổi.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.ExecutionTracePanelDockMode)
                 || e.PropertyName == nameof(WorkflowEditorViewModel.IsExecutionTracePanelExpanded)
@@ -1694,6 +1703,36 @@ namespace FlowMy.Views
         }
 
         #region Collection Change Handlers
+
+        private void RebindViewModelCollectionHandlers()
+        {
+            if (_subscribedNodesCollection != null)
+            {
+                _subscribedNodesCollection.CollectionChanged -= Nodes_CollectionChanged;
+                _subscribedNodesCollection = null;
+            }
+
+            if (_subscribedConnectionsCollection != null)
+            {
+                _subscribedConnectionsCollection.CollectionChanged -= Connections_CollectionChanged;
+                _subscribedConnectionsCollection = null;
+            }
+
+            if (ViewModel == null) return;
+
+            _subscribedNodesCollection = ViewModel.Nodes;
+            _subscribedConnectionsCollection = ViewModel.Connections;
+
+            if (_subscribedNodesCollection != null)
+            {
+                _subscribedNodesCollection.CollectionChanged += Nodes_CollectionChanged;
+            }
+
+            if (_subscribedConnectionsCollection != null)
+            {
+                _subscribedConnectionsCollection.CollectionChanged += Connections_CollectionChanged;
+            }
+        }
 
         private void Nodes_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
