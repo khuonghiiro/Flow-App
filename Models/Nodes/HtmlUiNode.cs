@@ -634,11 +634,11 @@ namespace FlowMy.Models.Nodes
         /// Không serialize vào workflow JSON.
         /// </summary>
         [JsonIgnore]
-        public System.Collections.Concurrent.ConcurrentQueue<(string Key, string Value)> AsyncDataReplayBuffer { get; } = new();
+        public System.Collections.Concurrent.ConcurrentQueue<(string SessionId, string Key, string Value)> AsyncDataReplayBuffer { get; } = new();
 
         /// <summary>Thread-safe queue cho async data push — mỗi iteration enqueue 1 item, UI handler drain tất cả.</summary>
         [JsonIgnore]
-        public System.Collections.Concurrent.ConcurrentQueue<(string Key, string Value)> PendingAsyncPushQueue { get; } = new();
+        public System.Collections.Concurrent.ConcurrentQueue<(string SessionId, string Key, string Value)> PendingAsyncPushQueue { get; } = new();
 
         /// <summary>
         /// Flag để executor trigger push async data vào WebView2.

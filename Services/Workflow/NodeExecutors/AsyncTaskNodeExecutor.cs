@@ -662,10 +662,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     if (!string.IsNullOrEmpty(value))
                     {
                         var receiverKey = ads.EffectiveKey;
+                        var sessionId = NormalizeAsyncSessionId(iterationExecutionId);
                         // Enqueue cho push handler (thread-safe, không mất khi parallel)
-                        htmlUi.PendingAsyncPushQueue.Enqueue((receiverKey, value));
+                        htmlUi.PendingAsyncPushQueue.Enqueue((sessionId, receiverKey, value));
                         // Lưu history để replay đầy đủ sau F5/Ctrl+R (không chỉ value cuối theo key).
-                        htmlUi.AsyncDataReplayBuffer.Enqueue((receiverKey, value));
+                        htmlUi.AsyncDataReplayBuffer.Enqueue((sessionId, receiverKey, value));
                         while (htmlUi.AsyncDataReplayBuffer.Count > 2000)
                         {
                             htmlUi.AsyncDataReplayBuffer.TryDequeue(out _);
@@ -682,6 +683,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     htmlUi.PendingAsyncDataPush = true;
                 }
             }
+        }
+
+        private static string NormalizeAsyncSessionId(string? executionId)
+        {
+            if (string.IsNullOrWhiteSpace(executionId))
+                return "session:unknown";
+
+            const string dispatchMarker = ":dispatch-";
+            var idx = executionId.IndexOf(dispatchMarker, StringComparison.Ordinal);
+            return idx > 0 ? executionId[..idx] : executionId;
         }
     }
 }

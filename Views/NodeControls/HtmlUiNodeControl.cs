@@ -1251,7 +1251,7 @@ namespace FlowMy.Views.NodeControls
                                 if (core == null) return;
 
                                 // Drain tất cả items từ queue (thread-safe)
-                                var items = new System.Collections.Generic.List<(string Key, string Value)>();
+                                var items = new System.Collections.Generic.List<(string SessionId, string Key, string Value)>();
                                 while (node.PendingAsyncPushQueue.TryDequeue(out var item))
                                 {
                                     items.Add(item);

@@ -69,7 +69,7 @@ public partial class FloatingWidgetWindow : Window
     private bool _webViewContentLoaded;
     private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
-    private readonly List<(string Key, string Value)> _pendingAsyncBuffer = new();
+    private readonly List<(string SessionId, string Key, string Value)> _pendingAsyncBuffer = new();
     private readonly Dictionary<string, string> _localHostByFolder = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _localFolderByHost = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _localHostMapSync = new();
@@ -96,6 +96,7 @@ public partial class FloatingWidgetWindow : Window
     private bool _isStopPopupHovering;
     private DateTime _lastTaskbarToggleUtc = DateTime.MinValue;
     private bool _taskbarToggleQueued;
+    private string? _activeAsyncSessionId;
 
     // ── Slide animation state ──
     private double _slideOriginalLeft;
@@ -1736,7 +1737,7 @@ public partial class FloatingWidgetWindow : Window
 
     private void DrainPendingAsyncQueueToBuffer(HtmlUiNode node)
     {
-        var items = new List<(string Key, string Value)>();
+        var items = new List<(string SessionId, string Key, string Value)>();
         while (node.PendingAsyncPushQueue.TryDequeue(out var item))
             items.Add(item);
 
@@ -1750,9 +1751,15 @@ public partial class FloatingWidgetWindow : Window
         foreach (var kvp in items)
         {
             if (IsPlaceholderValue(kvp.Value)) continue;
+            if (string.IsNullOrWhiteSpace(_activeAsyncSessionId) ||
+                !string.Equals(_activeAsyncSessionId, kvp.SessionId, StringComparison.Ordinal))
+            {
+                _activeAsyncSessionId = kvp.SessionId;
+                _pendingAsyncBuffer.Clear();
+            }
             // Giữ nguyên thứ tự/số lượng event async như executor enqueue để tương thích
             // với UI script kiểu "append theo từng lần nhận".
-            _pendingAsyncBuffer.Add((kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
+            _pendingAsyncBuffer.Add((kvp.SessionId ?? "session:unknown", kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
         }
 #if DEBUG
         System.Diagnostics.Debug.WriteLine(
@@ -1760,16 +1767,17 @@ public partial class FloatingWidgetWindow : Window
 #endif
     }
 
-    private void UpsertPendingAsyncBuffer(string key, string value)
+    private void UpsertPendingAsyncBuffer(string sessionId, string key, string value)
     {
         for (int i = _pendingAsyncBuffer.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(_pendingAsyncBuffer[i].Key, key, StringComparison.Ordinal))
+            if (string.Equals(_pendingAsyncBuffer[i].SessionId, sessionId, StringComparison.Ordinal) &&
+                string.Equals(_pendingAsyncBuffer[i].Key, key, StringComparison.Ordinal))
             {
                 _pendingAsyncBuffer.RemoveAt(i);
             }
         }
-        _pendingAsyncBuffer.Add((key, value));
+        _pendingAsyncBuffer.Add((sessionId, key, value));
     }
 
     private async Task<int> FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
@@ -1799,7 +1807,8 @@ public partial class FloatingWidgetWindow : Window
         if (_webView?.CoreWebView2 == null) return;
         if (!_htmlRuntimeReady)
         {
-            _pendingAsyncBuffer.Add((key ?? string.Empty, value ?? string.Empty));
+            var sessionId = _activeAsyncSessionId ?? "session:unknown";
+            _pendingAsyncBuffer.Add((sessionId, key ?? string.Empty, value ?? string.Empty));
 #if DEBUG
             System.Diagnostics.Debug.WriteLine(
                 $"[FloatingWidget:{nodeIdForLog}] Runtime not ready => rebuffer key='{key}', bufferCount={_pendingAsyncBuffer.Count}");
@@ -1907,7 +1916,8 @@ public partial class FloatingWidgetWindow : Window
 
         if (!hasAsyncPush && !hasLivePush)
         {
-            UpsertPendingAsyncBuffer(key ?? string.Empty, value ?? string.Empty);
+            var sessionId = _activeAsyncSessionId ?? "session:unknown";
+            UpsertPendingAsyncBuffer(sessionId, key ?? string.Empty, value ?? string.Empty);
             _htmlRuntimeReady = false;
         }
     }
@@ -3458,7 +3468,8 @@ window.__acPush = function(key, value) {
                             while (true)
                             {
                                 DrainPendingAsyncQueueToBuffer(htmlNode);
-                                if (_isExpanded && _htmlRuntimeReady)
+                                // Ưu tiên widget realtime: runtime sẵn sàng là flush ngay, kể cả đang collapse/ẩn.
+                                if (_htmlRuntimeReady)
                                 {
                                     var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
 #if DEBUG

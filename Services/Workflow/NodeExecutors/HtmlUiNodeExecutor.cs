@@ -120,7 +120,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (!string.IsNullOrEmpty(value))
                                 {
                                     var receiverKey = ads.EffectiveKey;
-                                    htmlNode.AsyncDataReplayBuffer.Enqueue((receiverKey, value));
+                                    var sessionId = string.IsNullOrWhiteSpace(env.ExecutionId)
+                                        ? "session:unknown"
+                                        : env.ExecutionId;
+                                    htmlNode.AsyncDataReplayBuffer.Enqueue((sessionId, receiverKey, value));
                                     while (htmlNode.AsyncDataReplayBuffer.Count > 2000)
                                     {
                                         htmlNode.AsyncDataReplayBuffer.TryDequeue(out _);
