@@ -664,6 +664,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         var receiverKey = ads.EffectiveKey;
                         // Enqueue cho push handler (thread-safe, không mất khi parallel)
                         htmlUi.PendingAsyncPushQueue.Enqueue((receiverKey, value));
+                        // Lưu history để replay đầy đủ sau F5/Ctrl+R (không chỉ value cuối theo key).
+                        htmlUi.AsyncDataReplayBuffer.Enqueue((receiverKey, value));
+                        while (htmlUi.AsyncDataReplayBuffer.Count > 2000)
+                        {
+                            htmlUi.AsyncDataReplayBuffer.TryDequeue(out _);
+                        }
                         // Cập nhật cache cho F5 reload (last known value)
                         htmlUi.AsyncDataCache[receiverKey] = value;
                         pushed = true;

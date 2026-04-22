@@ -1010,6 +1010,47 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            async Task RepushAsyncDataHistoryAsync(WebView2? targetWebView, int delayMs = 120)
+            {
+                try
+                {
+                    var coreForRepush = TryGetCoreSafe(targetWebView);
+                    if (coreForRepush == null) return;
+
+                    if (delayMs > 0)
+                        await Task.Delay(delayMs);
+
+                    if (node.AsyncDataReplayBuffer != null && node.AsyncDataReplayBuffer.Count > 0)
+                    {
+                        var replayItems = node.AsyncDataReplayBuffer.ToArray();
+                        foreach (var item in replayItems)
+                        {
+                            var jsKey = System.Text.Json.JsonSerializer.Serialize(item.Key);
+                            var jsVal = System.Text.Json.JsonSerializer.Serialize(item.Value);
+                            await coreForRepush.ExecuteScriptAsync(
+                                $"if(typeof window.__acAsyncPush==='function') window.__acAsyncPush({jsKey},{jsVal});");
+                        }
+                        return;
+                    }
+
+                    // Fallback cũ: chỉ có giá trị cuối theo key.
+                    if (node.AsyncDataCache?.Count > 0)
+                    {
+                        foreach (var kvp in node.AsyncDataCache)
+                        {
+                            var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
+                            var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
+                            await coreForRepush.ExecuteScriptAsync(
+                                $"if(typeof window.__acAsyncPush==='function') window.__acAsyncPush({jsKey},{jsVal});");
+                        }
+                    }
+                }
+                catch (Exception exRepush)
+                {
+                    System.Diagnostics.Debug.WriteLine($"HTML UI async data re-push error: {exRepush.Message}");
+                }
+            }
+
             // Đọc DOM theo cấu hình Params và cập nhật outputs cho node
             async Task UpdateOutputsFromDomAsync()
             {
@@ -2372,29 +2413,7 @@ namespace FlowMy.Views.NodeControls
                                     await ReloadHtmlAsync();
 
                                     // Re-push cached async data after reload
-                                    if (node.AsyncDataCache?.Count > 0)
-                                    {
-                                        // Delay nhỏ để page load xong rồi mới push
-                                        await Task.Delay(200);
-                                        try
-                                        {
-                                            var coreForRepush = TryGetCoreSafe(webView);
-                                            if (coreForRepush != null)
-                                            {
-                                                foreach (var kvp in node.AsyncDataCache)
-                                                {
-                                                    var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
-                                                    var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
-                                                    await coreForRepush.ExecuteScriptAsync(
-                                                        $"if(typeof window.__acAsyncPush==='function') window.__acAsyncPush({jsKey},{jsVal});");
-                                                }
-                                            }
-                                        }
-                                        catch (Exception exRepush)
-                                        {
-                                            System.Diagnostics.Debug.WriteLine($"HTML UI F5 re-push async data error: {exRepush.Message}");
-                                        }
-                                    }
+                                    await RepushAsyncDataHistoryAsync(webView, 200);
                                     return;
                                 }
 
@@ -3598,19 +3617,7 @@ namespace FlowMy.Views.NodeControls
                                 SetTopBarStatus("Load done", true, 1000);
                                 try
                                 {
-                                    var coreForRepush = TryGetCoreSafe(webViewForInit);
-                                    if (coreForRepush != null && node.AsyncDataCache?.Count > 0)
-                                    {
-                                        // Delay nhỏ để đảm bảo __acAsync đã init xong
-                                        await Task.Delay(100);
-                                        foreach (var kvp in node.AsyncDataCache)
-                                        {
-                                            var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
-                                            var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
-                                            await coreForRepush.ExecuteScriptAsync(
-                                                $"if(typeof window.__acAsyncPush==='function') window.__acAsyncPush({jsKey},{jsVal});");
-                                        }
-                                    }
+                                    await RepushAsyncDataHistoryAsync(webViewForInit, 100);
                                 }
                                 catch (Exception repushEx)
                                 {

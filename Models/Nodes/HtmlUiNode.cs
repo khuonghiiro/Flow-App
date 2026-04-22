@@ -629,6 +629,13 @@ namespace FlowMy.Models.Nodes
         [JsonIgnore]
         public System.Collections.Concurrent.ConcurrentDictionary<string, string> AsyncDataCache { get; set; } = new();
 
+        /// <summary>
+        /// Runtime replay buffer: lưu lịch sử async push theo thứ tự nhận để F5/Ctrl+R có thể phát lại đầy đủ.
+        /// Không serialize vào workflow JSON.
+        /// </summary>
+        [JsonIgnore]
+        public System.Collections.Concurrent.ConcurrentQueue<(string Key, string Value)> AsyncDataReplayBuffer { get; } = new();
+
         /// <summary>Thread-safe queue cho async data push — mỗi iteration enqueue 1 item, UI handler drain tất cả.</summary>
         [JsonIgnore]
         public System.Collections.Concurrent.ConcurrentQueue<(string Key, string Value)> PendingAsyncPushQueue { get; } = new();

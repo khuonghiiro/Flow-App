@@ -589,7 +589,46 @@
                 if (String(it.guildId || '') === gid) { target = it; break; }
             }
         }
-        if (!target) return false;
+        if (!target) {
+            var canCreateDone = !!(parsed.videoUrl || parsed.localPath || (parsed.statusCode !== null));
+            if (!canCreateDone) return false;
+
+            var fallbackId = String(parsed.requestId || parsed.videoGuid || obj.requestId || obj.videoId || obj.cardId || obj.id || shared.uid()).trim();
+            var item = {
+                id: shared.uid(),
+                prompt: (parsed.prompt && String(parsed.prompt).trim()) || 'Video cache',
+                aspect: shared.normalizeAspectValue(parsed.aspect) || '16:9',
+                length: shared.normalizeLengthValue(parsed.length) || 0,
+                res: shared.normalizeResolutionValue(parsed.resolution) || '',
+                status: (parsed.statusCode !== null && parsed.statusCode !== 200) ? 'error' : 'done',
+                progress: 100,
+                videoUrl: parsed.videoUrl || '',
+                localPath: parsed.localPath || '',
+                localUrl: '',
+                thumbUrl: '',
+                errorMsg: (parsed.statusCode !== null && parsed.statusCode !== 200)
+                    ? ('Tạo video thất bại (status=' + parsed.statusCode + ')')
+                    : '',
+                createdAt: Date.now(),
+                guildId: gid || fallbackId,
+                requestId: parsed.requestId || fallbackId,
+                videoGuid: parsed.videoGuid || fallbackId
+            };
+
+            state.videos.push(item);
+            var grid  = document.getElementById('videoGrid');
+            var empty = document.getElementById('emptyState');
+            if (empty && empty.parentNode === grid) grid.removeChild(empty);
+            if (grid) grid.appendChild(ui.createCard(item));
+
+            if (item.status === 'done' && item.localPath) {
+                ui.hydrateLocalPlayable(item);
+            } else if (item.status === 'done') {
+                ui.hydrateDoneCardMedia(item);
+            }
+            ui.updateStats();
+            return true;
+        }
 
         unregisterPendingCard(target);
         if (parsed.videoGuid) target.videoGuid = parsed.videoGuid;

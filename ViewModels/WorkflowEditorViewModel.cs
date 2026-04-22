@@ -335,6 +335,10 @@ namespace FlowMy.ViewModels
 
         partial void OnEnableExecutionTraceLogChanged(bool value)
         {
+            // Khi user bật lại trace từ checkbox toolbar, tự mở panel để thấy log ngay.
+            if (value && !IsExecutionTracePanelExpanded)
+                IsExecutionTracePanelExpanded = true;
+
             OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
             OnPropertyChanged(nameof(IsExecutionTraceReopenerVisible));
             OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));

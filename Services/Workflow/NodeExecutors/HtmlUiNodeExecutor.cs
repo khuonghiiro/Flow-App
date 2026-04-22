@@ -120,6 +120,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (!string.IsNullOrEmpty(value))
                                 {
                                     var receiverKey = ads.EffectiveKey;
+                                    htmlNode.AsyncDataReplayBuffer.Enqueue((receiverKey, value));
+                                    while (htmlNode.AsyncDataReplayBuffer.Count > 2000)
+                                    {
+                                        htmlNode.AsyncDataReplayBuffer.TryDequeue(out _);
+                                    }
                                     htmlNode.AsyncDataCache[receiverKey] = value;
                                 }
                             }
