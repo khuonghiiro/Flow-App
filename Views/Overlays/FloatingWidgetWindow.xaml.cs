@@ -70,6 +70,7 @@ public partial class FloatingWidgetWindow : Window
     private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
     private readonly List<(string SessionId, string Key, string Value)> _pendingAsyncBuffer = new();
+    private readonly List<(string SessionId, string Key, string Value)> _hiddenAsyncBacklog = new();
     private readonly Dictionary<string, string> _localHostByFolder = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _localFolderByHost = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _localHostMapSync = new();
@@ -96,7 +97,6 @@ public partial class FloatingWidgetWindow : Window
     private bool _isStopPopupHovering;
     private DateTime _lastTaskbarToggleUtc = DateTime.MinValue;
     private bool _taskbarToggleQueued;
-    private string? _activeAsyncSessionId;
 
     // ── Slide animation state ──
     private double _slideOriginalLeft;
@@ -474,6 +474,7 @@ public partial class FloatingWidgetWindow : Window
                         // Chủ động drain mỗi lần expand để không phụ thuộc hoàn toàn vào event PendingAsyncDataPush
                         // (event có thể đã fire trước khi widget kịp subscribe).
                         DrainPendingAsyncQueueToBuffer(htmlNode);
+                        MoveHiddenBacklogToPending();
                     var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
 #if DEBUG
                     System.Diagnostics.Debug.WriteLine(
@@ -1605,6 +1606,7 @@ public partial class FloatingWidgetWindow : Window
                         {
                             // Drain ngay sau navigation complete để bắt dữ liệu đến sớm trước khi runtime ready.
                             DrainPendingAsyncQueueToBuffer(htmlNode);
+                            MoveHiddenBacklogToPending();
                             var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
 #if DEBUG
                             System.Diagnostics.Debug.WriteLine(
@@ -1751,20 +1753,31 @@ public partial class FloatingWidgetWindow : Window
         foreach (var kvp in items)
         {
             if (IsPlaceholderValue(kvp.Value)) continue;
-            if (string.IsNullOrWhiteSpace(_activeAsyncSessionId) ||
-                !string.Equals(_activeAsyncSessionId, kvp.SessionId, StringComparison.Ordinal))
+            // Khi widget đang ẩn/collapse: cache backlog để mở lại phát đủ toàn bộ event.
+            if (!_isExpanded)
             {
-                _activeAsyncSessionId = kvp.SessionId;
-                _pendingAsyncBuffer.Clear();
+                _hiddenAsyncBacklog.Add((kvp.SessionId ?? "session:unknown", kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
+                continue;
             }
-            // Giữ nguyên thứ tự/số lượng event async như executor enqueue để tương thích
-            // với UI script kiểu "append theo từng lần nhận".
+
+            // Widget đang hiển thị: đẩy realtime theo đúng thứ tự event.
             _pendingAsyncBuffer.Add((kvp.SessionId ?? "session:unknown", kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
         }
 #if DEBUG
         System.Diagnostics.Debug.WriteLine(
-            $"[FloatingWidget:{node.Id}] Buffer after drain count={_pendingAsyncBuffer.Count}");
+            $"[FloatingWidget:{node.Id}] Buffer after drain count={_pendingAsyncBuffer.Count}, hiddenBacklog={_hiddenAsyncBacklog.Count}");
 #endif
+    }
+
+    private void MoveHiddenBacklogToPending(int maxTransfer = 5000)
+    {
+        if (_hiddenAsyncBacklog.Count == 0) return;
+        var transferCount = Math.Min(maxTransfer, _hiddenAsyncBacklog.Count);
+        for (int i = 0; i < transferCount; i++)
+        {
+            _pendingAsyncBuffer.Add(_hiddenAsyncBacklog[i]);
+        }
+        _hiddenAsyncBacklog.RemoveRange(0, transferCount);
     }
 
     private void UpsertPendingAsyncBuffer(string sessionId, string key, string value)
@@ -1807,7 +1820,9 @@ public partial class FloatingWidgetWindow : Window
         if (_webView?.CoreWebView2 == null) return;
         if (!_htmlRuntimeReady)
         {
-            var sessionId = _activeAsyncSessionId ?? "session:unknown";
+            var sessionId = _pendingAsyncBuffer.Count > 0
+                ? _pendingAsyncBuffer[^1].SessionId
+                : "session:unknown";
             _pendingAsyncBuffer.Add((sessionId, key ?? string.Empty, value ?? string.Empty));
 #if DEBUG
             System.Diagnostics.Debug.WriteLine(
@@ -1916,7 +1931,9 @@ public partial class FloatingWidgetWindow : Window
 
         if (!hasAsyncPush && !hasLivePush)
         {
-            var sessionId = _activeAsyncSessionId ?? "session:unknown";
+            var sessionId = _pendingAsyncBuffer.Count > 0
+                ? _pendingAsyncBuffer[^1].SessionId
+                : "session:unknown";
             UpsertPendingAsyncBuffer(sessionId, key ?? string.Empty, value ?? string.Empty);
             _htmlRuntimeReady = false;
         }
