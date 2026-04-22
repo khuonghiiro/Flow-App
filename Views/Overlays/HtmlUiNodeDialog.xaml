@@ -3,6 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:controls="clr-namespace:FlowMy.Controls"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:conv="clr-namespace:FlowMy.Converters"
         Title="HTML UI"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -16,6 +18,7 @@
         MinHeight="560">
     <local:BaseNodeDialog.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
     </local:BaseNodeDialog.Resources>
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
@@ -811,9 +814,15 @@
                             <Button x:Name="ImportFourPartsButton"
                                     Style="{StaticResource SecondaryButton}"
                                     Content="📥 Import" Width="78" Height="28" Margin="0,0,6,0"
-                                    ToolTip="Chọn .html/.css/.js (mỗi loại tối đa 1 file). File đuôi khác sẽ nhập vào PARAM"
+                                    ToolTip="Import HTML/CSS/PARAM như cũ. Nếu chọn JS thì sẽ thêm tab JS con mới (không xóa tab JS đang có)."
                                     Cursor="Hand" Padding="6,0" FontSize="12"
                                     Click="ImportFourPartsButton_Click"/>
+                            <Button x:Name="ImportJsOverwriteButton"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Content="🧹 JS ghi đè" Width="104" Height="28" Margin="0,0,6,0"
+                                    ToolTip="Chỉ import JS và ghi đè toàn bộ tab JS hiện tại theo file đã chọn."
+                                    Cursor="Hand" Padding="6,0" FontSize="12"
+                                    Click="ImportJsOverwriteButton_Click"/>
                             <Button Content="A−" Width="28" Height="28" Margin="0,0,4,0"
                                     Style="{StaticResource SecondaryButton}"
                                     Command="{Binding DecreaseCodeFontSizeCommand}"
@@ -885,13 +894,96 @@
                                 Loaded="CodeEditor_Loaded"/>
                         </TabItem>
                         <TabItem Header="JS" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
-                            <controls:SyntaxHighlightCodeEditor x:Name="JsEditor"
-                                Text="{Binding JsCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
-                                SyntaxLanguage="JavaScript"
-                                IsAutoHighlightEnabled="False"
-                                MinHeight="140" MaxHeight="320" Margin="0,4,0,4"
-                                Loaded="CodeEditor_Loaded"/>
+                            <Grid Margin="0,4,0,4">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,10,0">
+                                        <Run Text="Tách JS thành nhiều tab con để dễ maintain. Ưu tiên load: số nhỏ chạy trước (ví dụ "/>
+                                        <Run Text="#2_common.js" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                        <Run Text=" trước "/>
+                                        <Run Text="#5_feature.js" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                        <Run Text="). Khi import nhiều file, đặt tên dạng "/>
+                                        <Run Text="#&lt;number&gt;_ten-file.js" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                        <Run Text=" để tự sắp thứ tự."/>
+                                    </TextBlock>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button x:Name="MoveJsTabUpButton"
+                                              
+                                                Width="28"
+                                                Height="26"
+                                                Margin="0,0,6,0"
+                                                Cursor="Hand"
+                                                Click="MoveJsTabUpButton_Click"
+                                                Style="{DynamicResource SecondaryButton}"
+                                                ToolTip="Đẩy tab JS đang chọn lên trên (ưu tiên load sớm hơn)">
+                                        <controls:SvgViewboxEx
+                                            Width="12" Height="12" 
+                                                        Source="{Binding Source={x:Static sys:String.Empty}, 
+                                                        Converter={StaticResource IconKeyToPathConverter}, 
+                                                        ConverterParameter='arrow-up-long-to-line duotone'}"
+                                                        Fill="White"/>
+
+                                                </Button>
+                                        <Button x:Name="MoveJsTabDownButton"
+                                                Width="28"
+                                                Height="26"
+                                                Margin="0,0,6,0"
+                                                Cursor="Hand"
+                                                Click="MoveJsTabDownButton_Click"
+                                                Style="{DynamicResource SecondaryButton}"
+                                                ToolTip="Đẩy tab JS đang chọn xuống dưới (ưu tiên load trễ hơn)">
+                                                <controls:SvgViewboxEx
+                                                    Width="12" Height="12" 
+                                                        Source="{Binding Source={x:Static sys:String.Empty}, 
+                                                        Converter={StaticResource IconKeyToPathConverter}, 
+                                                        ConverterParameter='arrow-down-long-to-line duotone'}"
+                                                        Fill="White"/>
+                                                </Button>
+                                        <Button x:Name="AddJsTabButton"
+                                                Content="+ Thêm JS"
+                                                Width="96"
+                                                Height="26"
+                                                Margin="0,0,6,0"
+                                                Cursor="Hand"
+                                                Click="AddJsTabButton_Click"
+                                                Style="{DynamicResource PrimaryButton}"
+                                                ToolTip="Tạo thêm tab JS mới để tách logic nhỏ, dễ maintain"/>
+                                        <Button x:Name="DeleteJsTabButton"
+                                                Content="Xóa tab"
+                                                Width="74"
+                                                Height="26"
+                                                Cursor="Hand"
+                                                Click="DeleteJsTabButton_Click"
+                                                Style="{DynamicResource DangerButton}"
+                                                ToolTip="Xóa tab JS đang chọn (không cho xóa nếu chỉ còn 1 tab)"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TabControl x:Name="JsSubTabsControl"
+                                            Grid.Row="1"
+                                            Background="Transparent"
+                                            BorderThickness="0">
+                                    <TabItem x:Name="JsPrimaryTabItem" Header="JS 1" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
+                                        <controls:SyntaxHighlightCodeEditor x:Name="JsEditor"
+                                            CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
+                                            SyntaxLanguage="JavaScript"
+                                            IsAutoHighlightEnabled="False"
+                                            MinHeight="140" MaxHeight="320"
+                                            Loaded="CodeEditor_Loaded"/>
+                                    </TabItem>
+                                </TabControl>
+                            </Grid>
                         </TabItem>
                         <TabItem Header="CSS" Style="{StaticResource HttpTabItemStyle}" Background="Transparent" BorderThickness="0">
                             <controls:SyntaxHighlightCodeEditor x:Name="CssEditor"

@@ -5,11 +5,14 @@ using FlowMy.ViewModels;
 using FlowMy.Controls;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -228,12 +231,25 @@ statusText: #statusText";
 
         /// <summary>Hủy tải offline khi đóng; hủy khi host thay dialog (canvas click).</summary>
         private CancellationTokenSource? _prepareCts;
+        private readonly List<SyntaxHighlightCodeEditor> _jsEditors = new();
+        private readonly Dictionary<SyntaxHighlightCodeEditor, JsTabMeta> _jsTabMeta = new();
+        private const string MultiJsTabMarkerPrefix = "// [FLOW_JS_TAB:";
+        private bool _isSyncingJsTabsToViewModel;
+        private int _lastImportJsOverwriteCount;
+        private int _lastImportJsAppendCount;
+
+        private sealed class JsTabMeta
+        {
+            public int Priority { get; set; }
+            public string Title { get; set; } = string.Empty;
+        }
 
         public HtmlUiNodeDialog(HtmlUiNode node, IWorkflowEditorHost host, Window? owner)
             : base()
         {
             InitializeComponent();
             _viewModel = new HtmlUiNodeDialogViewModel(node, host);
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             InitializeBase(_viewModel, owner ?? Application.Current?.MainWindow);
             UpdateTitleColorPreview();
 
@@ -244,9 +260,22 @@ statusText: #statusText";
         private void HtmlUiNodeDialog_ClosedCleanup(object? sender, EventArgs e)
         {
             Closed -= HtmlUiNodeDialog_ClosedCleanup;
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
             try { _prepareCts?.Cancel(); } catch { }
             try { _prepareCts?.Dispose(); } catch { }
             _prepareCts = null;
+        }
+
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(HtmlUiNodeDialogViewModel.JsCode) || _isSyncingJsTabsToViewModel)
+                return;
+
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (!IsLoaded) return;
+                InitializeJsTabsFromViewModel();
+            }, DispatcherPriority.Background);
         }
 
         /// <inheritdoc />
@@ -438,7 +467,8 @@ statusText: #statusText";
             try
             {
                 HtmlEditor?.ForceUpdateBinding();
-                JsEditor?.ForceUpdateBinding();
+                foreach (var editor in _jsEditors) editor?.ForceUpdateBinding();
+                SyncJsTabsToViewModel();
                 CssEditor?.ForceUpdateBinding();
                 ParamsEditor?.ForceUpdateBinding();
             }
@@ -468,7 +498,7 @@ statusText: #statusText";
                 {
                     SyntaxHighlightCodeEditor? editor = null;
                     if (selectedTab.Header?.ToString() == "HTML") editor = HtmlEditor;
-                    else if (selectedTab.Header?.ToString() == "JS") editor = JsEditor;
+                    else if (selectedTab.Header?.ToString() == "JS") editor = GetActiveJsEditor();
                     else if (selectedTab.Header?.ToString() == "CSS") editor = CssEditor;
                     else if (selectedTab.Header?.ToString()?.Contains("Params") == true) editor = ParamsEditor;
 
@@ -525,6 +555,7 @@ statusText: #statusText";
         protected override void OnLoaded()
         {
             base.OnLoaded();
+            InitializeJsTabsFromViewModel();
             UpdateTitleColorPreview();
             _isDialogLoaded = true;
             if (AiGuidePromptTextBox != null && string.IsNullOrWhiteSpace(AiGuidePromptTextBox.Text))
@@ -553,6 +584,391 @@ statusText: #statusText";
             // Hiển thị đường dẫn thư mục assets
             if (AssetsFolderText != null)
                 AssetsFolderText.Text = HtmlOfflineAssetService.GetAssetsFolder();
+        }
+
+        private void AddJsTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddDynamicJsTab(string.Empty, selectTab: true);
+            SyncJsTabsToViewModel();
+        }
+
+        private void MoveJsTabUpButton_Click(object sender, RoutedEventArgs e)
+        {
+            MoveSelectedJsTabBy(-1);
+        }
+
+        private void MoveJsTabDownButton_Click(object sender, RoutedEventArgs e)
+        {
+            MoveSelectedJsTabBy(+1);
+        }
+
+        private void DeleteJsTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (JsSubTabsControl == null) return;
+
+            if (_jsEditors.Count <= 1)
+            {
+                MessageBox.Show(
+                    this,
+                    "Phải giữ lại ít nhất 1 tab JS.",
+                    "Không thể xóa",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            if (JsSubTabsControl.SelectedItem is not TabItem selectedTab || selectedTab.Content is not SyntaxHighlightCodeEditor selectedEditor)
+                return;
+
+            var removedIndex = _jsEditors.IndexOf(selectedEditor);
+            _jsTabMeta.Remove(selectedEditor);
+            _jsEditors.Remove(selectedEditor);
+            JsSubTabsControl.Items.Remove(selectedTab);
+
+            for (int i = 0; i < _jsEditors.Count; i++)
+            {
+                if (_jsTabMeta.TryGetValue(_jsEditors[i], out var meta))
+                    meta.Priority = i + 1;
+            }
+
+            SortJsTabsByPriority();
+            JsSubTabsControl.SelectedIndex = Math.Max(0, Math.Min(JsSubTabsControl.Items.Count - 1, removedIndex));
+            SyncJsTabsToViewModel();
+        }
+
+        private void MoveSelectedJsTabBy(int delta)
+        {
+            if (JsSubTabsControl?.SelectedItem is not TabItem selectedTab || selectedTab.Content is not SyntaxHighlightCodeEditor selectedEditor)
+                return;
+
+            var currentIndex = _jsEditors.IndexOf(selectedEditor);
+            if (currentIndex < 0) return;
+
+            var targetIndex = currentIndex + delta;
+            if (targetIndex < 0 || targetIndex >= _jsEditors.Count) return;
+
+            var orderedEditors = _jsEditors.ToList();
+            (orderedEditors[currentIndex], orderedEditors[targetIndex]) = (orderedEditors[targetIndex], orderedEditors[currentIndex]);
+
+            for (int i = 0; i < orderedEditors.Count; i++)
+            {
+                if (_jsTabMeta.TryGetValue(orderedEditors[i], out var meta))
+                    meta.Priority = i + 1;
+            }
+
+            SortJsTabsByPriority();
+            var newSelectedTab = JsSubTabsControl.Items
+                .OfType<TabItem>()
+                .FirstOrDefault(t => ReferenceEquals(t.Content as SyntaxHighlightCodeEditor, selectedEditor));
+            if (newSelectedTab != null)
+                JsSubTabsControl.SelectedItem = newSelectedTab;
+
+            SyncJsTabsToViewModel();
+        }
+
+        private void InitializeJsTabsFromViewModel()
+        {
+            if (JsSubTabsControl == null || JsEditor == null || _viewModel == null) return;
+
+            while (JsSubTabsControl.Items.Count > 1)
+                JsSubTabsControl.Items.RemoveAt(JsSubTabsControl.Items.Count - 1);
+
+            _jsEditors.Clear();
+            _jsEditors.Add(JsEditor);
+            _jsTabMeta.Clear();
+
+            var segments = SplitJsCodeToSegments(_viewModel.JsCode);
+            JsEditor.Text = segments.Count > 0 ? segments[0].Code : string.Empty;
+            _jsTabMeta[JsEditor] = new JsTabMeta
+            {
+                Priority = segments.Count > 0 ? segments[0].Priority : 1000,
+                Title = segments.Count > 0 ? segments[0].Title : "JS 1"
+            };
+
+            for (int i = 1; i < segments.Count; i++)
+                AddDynamicJsTab(segments[i].Code, selectTab: false, priority: segments[i].Priority, title: segments[i].Title);
+
+            SortJsTabsByPriority();
+            JsSubTabsControl.SelectedIndex = 0;
+        }
+
+        private void SetJsTabsFromSingleCode(string jsCode, int? priority = null, string? title = null)
+        {
+            if (JsSubTabsControl == null || JsEditor == null) return;
+
+            while (JsSubTabsControl.Items.Count > 1)
+                JsSubTabsControl.Items.RemoveAt(JsSubTabsControl.Items.Count - 1);
+
+            _jsEditors.Clear();
+            _jsEditors.Add(JsEditor);
+            _jsTabMeta.Clear();
+            JsEditor.Text = jsCode ?? string.Empty;
+            _jsTabMeta[JsEditor] = new JsTabMeta
+            {
+                Priority = priority ?? 1000,
+                Title = string.IsNullOrWhiteSpace(title) ? "JS 1" : title.Trim()
+            };
+
+            SortJsTabsByPriority();
+            JsSubTabsControl.SelectedIndex = 0;
+            SyncJsTabsToViewModel();
+        }
+
+        private void AddDynamicJsTab(string initialCode, bool selectTab, int? priority = null, string? title = null)
+        {
+            if (JsSubTabsControl == null) return;
+
+            var editor = new SyntaxHighlightCodeEditor
+            {
+                Text = initialCode ?? string.Empty,
+                SyntaxLanguage = "JavaScript",
+                IsAutoHighlightEnabled = false,
+                MinHeight = 140,
+                MaxHeight = 320
+            };
+            editor.SetBinding(SyntaxHighlightCodeEditor.CodeFontSizeProperty, new Binding("CodeFontSize") { Mode = BindingMode.TwoWay });
+            editor.Loaded += CodeEditor_Loaded;
+
+            var tab = new TabItem
+            {
+                Header = "JS",
+                Content = editor,
+                Style = (Style)FindResource("HttpTabItemStyle"),
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0)
+            };
+
+            JsSubTabsControl.Items.Add(tab);
+            _jsEditors.Add(editor);
+            _jsTabMeta[editor] = new JsTabMeta
+            {
+                Priority = priority ?? GetNextJsPriority(),
+                Title = string.IsNullOrWhiteSpace(title) ? "JS" : title.Trim()
+            };
+            SortJsTabsByPriority();
+
+            if (selectTab)
+                JsSubTabsControl.SelectedItem = tab;
+        }
+
+        private int GetNextJsPriority()
+        {
+            return _jsTabMeta.Count == 0 ? 1000 : _jsTabMeta.Values.Max(x => x.Priority) + 1;
+        }
+
+        private void SortJsTabsByPriority()
+        {
+            if (JsSubTabsControl == null) return;
+
+            var selectedEditor = GetActiveJsEditor();
+            var orderedTabs = JsSubTabsControl.Items
+                .OfType<TabItem>()
+                .Select(t => new { Tab = t, Editor = t.Content as SyntaxHighlightCodeEditor })
+                .Where(x => x.Editor != null)
+                .OrderBy(x => _jsTabMeta.TryGetValue(x.Editor!, out var meta) ? meta.Priority : int.MaxValue)
+                .ThenBy(x => _jsEditors.IndexOf(x.Editor!))
+                .ToList();
+
+            JsSubTabsControl.Items.Clear();
+            _jsEditors.Clear();
+            foreach (var x in orderedTabs)
+            {
+                JsSubTabsControl.Items.Add(x.Tab);
+                _jsEditors.Add(x.Editor!);
+            }
+
+            RefreshJsSubTabHeaders();
+            if (selectedEditor != null)
+            {
+                var selectedTab = orderedTabs.FirstOrDefault(x => ReferenceEquals(x.Editor, selectedEditor))?.Tab;
+                if (selectedTab != null) JsSubTabsControl.SelectedItem = selectedTab;
+            }
+        }
+
+        private void RefreshJsSubTabHeaders()
+        {
+            if (JsSubTabsControl == null) return;
+            for (int i = 0; i < JsSubTabsControl.Items.Count; i++)
+            {
+                if (JsSubTabsControl.Items[i] is not TabItem tab || tab.Content is not SyntaxHighlightCodeEditor ed) continue;
+                var meta = _jsTabMeta.TryGetValue(ed, out var m) ? m : null;
+                var title = meta?.Title;
+                var pr = meta?.Priority ?? i + 1;
+                if (string.IsNullOrWhiteSpace(title) || title!.StartsWith("JS ", StringComparison.OrdinalIgnoreCase))
+                    tab.Header = $"#{pr} JS-{i + 1}";
+                else
+                    tab.Header = $"#{pr} {title}";
+            }
+        }
+
+        private SyntaxHighlightCodeEditor? GetActiveJsEditor()
+        {
+            if (JsSubTabsControl?.SelectedItem is TabItem tab && tab.Content is SyntaxHighlightCodeEditor selectedEditor)
+                return selectedEditor;
+            return JsEditor;
+        }
+
+        private void SyncJsTabsToViewModel()
+        {
+            if (_viewModel == null) return;
+            _isSyncingJsTabsToViewModel = true;
+            try
+            {
+                _viewModel.JsCode = BuildCombinedJsCodeFromTabs();
+            }
+            finally
+            {
+                _isSyncingJsTabsToViewModel = false;
+            }
+        }
+
+        private string BuildCombinedJsCodeFromTabs()
+        {
+            var editors = _jsEditors.Where(e => e != null).ToList();
+            if (editors.Count <= 1)
+                return editors.FirstOrDefault()?.Text ?? string.Empty;
+
+            var parts = new List<string>();
+            for (int i = 0; i < editors.Count; i++)
+            {
+                var code = editors[i].Text ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(code))
+                    continue;
+
+                var meta = _jsTabMeta.TryGetValue(editors[i], out var m) ? m : new JsTabMeta { Priority = i + 1, Title = $"JS-{i + 1}" };
+                var safeTitle = (meta.Title ?? $"JS-{i + 1}").Replace("]", ")");
+                parts.Add($"{MultiJsTabMarkerPrefix}{i + 1}|P:{meta.Priority}|T:{safeTitle}]");
+                parts.Add(code);
+            }
+
+            return parts.Count == 0 ? string.Empty : string.Join("\n\n", parts);
+        }
+
+        private sealed class JsSegment
+        {
+            public string Code { get; set; } = string.Empty;
+            public int Priority { get; set; } = 1000;
+            public string Title { get; set; } = "JS";
+        }
+
+        private static List<JsSegment> SplitJsCodeToSegments(string? jsCode)
+        {
+            var text = jsCode ?? string.Empty;
+            if (!text.Contains(MultiJsTabMarkerPrefix))
+                return new List<JsSegment> { new JsSegment { Code = text, Priority = 1000, Title = "JS 1" } };
+
+            var blocks = new List<JsSegment>();
+            var regex = new Regex(@"^\s*//\s*\[FLOW_JS_TAB:(\d+)(?:\|P:(\d+))?(?:\|T:(.*?))?\]\s*$", RegexOptions.Multiline);
+            var matches = regex.Matches(text).Cast<Match>().ToList();
+            if (matches.Count == 0)
+                return new List<JsSegment> { new JsSegment { Code = text, Priority = 1000, Title = "JS 1" } };
+
+            for (int i = 0; i < matches.Count; i++)
+            {
+                var start = matches[i].Index + matches[i].Length;
+                var end = i + 1 < matches.Count ? matches[i + 1].Index : text.Length;
+                var content = text[start..end].Trim();
+                var idx = int.TryParse(matches[i].Groups[1].Value, out var parsedIdx) ? parsedIdx : i + 1;
+                var pr = int.TryParse(matches[i].Groups[2].Value, out var parsedPr) ? parsedPr : idx;
+                var title = matches[i].Groups[3].Success ? matches[i].Groups[3].Value.Trim() : $"JS-{idx}";
+                blocks.Add(new JsSegment { Code = content, Priority = pr, Title = title });
+            }
+
+            return blocks.Count == 0
+                ? new List<JsSegment> { new JsSegment { Code = string.Empty, Priority = 1000, Title = "JS 1" } }
+                : blocks.OrderBy(x => x.Priority).ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static int ParsePriorityFromJsFileName(string path)
+        {
+            var name = Path.GetFileNameWithoutExtension(path) ?? string.Empty;
+            var m = Regex.Match(name, @"^\s*#\s*(\d+)\s*_");
+            return m.Success && int.TryParse(m.Groups[1].Value, out var p) ? p : int.MaxValue;
+        }
+
+        private static string ParseTabTitleFromJsFileName(string path)
+        {
+            var name = Path.GetFileNameWithoutExtension(path) ?? "JS";
+            return name.Trim();
+        }
+
+        private List<(string Path, int Priority, string Title, string Code)> ReadJsImportParts(IEnumerable<string> jsFiles)
+        {
+            return jsFiles
+                .Select(f => (
+                    Path: f,
+                    Priority: ParsePriorityFromJsFileName(f),
+                    Title: ParseTabTitleFromJsFileName(f),
+                    Code: File.ReadAllText(f)))
+                .OrderBy(x => x.Priority)
+                .ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private Dictionary<string, SyntaxHighlightCodeEditor> BuildJsEditorMapByTitle()
+        {
+            var map = new Dictionary<string, SyntaxHighlightCodeEditor>(StringComparer.OrdinalIgnoreCase);
+            foreach (var editor in _jsEditors)
+            {
+                if (editor == null) continue;
+                if (!_jsTabMeta.TryGetValue(editor, out var meta)) continue;
+                var title = (meta.Title ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(title)) continue;
+                if (!map.ContainsKey(title))
+                    map[title] = editor;
+            }
+            return map;
+        }
+
+        private void ImportJsOverwriteButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "Import JS (Ghi đè toàn bộ tab JS)",
+                    Filter = "JavaScript files (*.js)|*.js|All files (*.*)|*.*",
+                    Multiselect = true
+                };
+                if (dlg.ShowDialog(this) != true) return;
+
+                var jsFiles = dlg.FileNames
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Where(f => string.Equals(Path.GetExtension(f), ".js", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (jsFiles.Count == 0) return;
+
+                var jsParts = ReadJsImportParts(jsFiles);
+                SetJsTabsFromSingleCode(
+                    jsParts[0].Code,
+                    jsParts[0].Priority == int.MaxValue ? 1000 : jsParts[0].Priority,
+                    jsParts[0].Title);
+
+                for (int i = 1; i < jsParts.Count; i++)
+                {
+                    AddDynamicJsTab(
+                        jsParts[i].Code,
+                        selectTab: false,
+                        priority: jsParts[i].Priority == int.MaxValue ? 1000 + i : jsParts[i].Priority,
+                        title: jsParts[i].Title);
+                }
+
+                SortJsTabsByPriority();
+                SyncJsTabsToViewModel();
+
+                MessageBox.Show(
+                    this,
+                    $"Đã ghi đè toàn bộ tab JS bằng {jsParts.Count} file JS đã chọn.",
+                    "Import JS ghi đè thành công",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                Activate();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Import JS ghi đè thất bại: {ex.Message}", "Lỗi import JS", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void RefreshPresetStatus()
@@ -775,13 +1191,13 @@ acStartWorkflow()
             switch (tag)
             {
                 case "tpl_realtime":
-                    vm.JsCode = TemplateRealtimeJs;
+                    SetJsTabsFromSingleCode(TemplateRealtimeJs);
                     break;
                 case "tpl_local_video":
-                    vm.JsCode = TemplateLocalVideoJs;
+                    SetJsTabsFromSingleCode(TemplateLocalVideoJs);
                     break;
                 case "tpl_submit_form":
-                    vm.JsCode = TemplateSubmitFormJs;
+                    SetJsTabsFromSingleCode(TemplateSubmitFormJs);
                     break;
                 default:
                     return;
@@ -792,6 +1208,7 @@ acStartWorkflow()
             {
                 if (MainTabsControl != null) MainTabsControl.SelectedIndex = 0;
                 if (CodeTabsControl != null) CodeTabsControl.SelectedIndex = 1;
+                JsSubTabsControl?.SetCurrentValue(TabControl.SelectedIndexProperty, 0);
                 JsEditor?.Focus();
                 JsEditor?.RefreshHighlight();
             }
@@ -954,14 +1371,16 @@ window.__ac.onUpdate(function(live) {
         /// Import file vào 4 tab code:
         /// - .html -> HtmlCode
         /// - .css  -> CssCode
-        /// - .js   -> JsCode
+        /// - .js   -> nhiều tab JS con (nếu chọn nhiều file)
         /// - extension khác (.txt, ...) -> ParamsCode
-        /// Mỗi loại .html/.css/.js chỉ cho tối đa 1 file trong 1 lần import.
+        /// HTML/CSS chỉ tối đa 1 file mỗi loại; JS có thể chọn nhiều file.
         /// </summary>
         private void ImportFourPartsButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                _lastImportJsOverwriteCount = 0;
+                _lastImportJsAppendCount = 0;
                 if (DataContext is not HtmlUiNodeDialogViewModel vm) return;
 
                 var dlg = new Microsoft.Win32.OpenFileDialog
@@ -986,12 +1405,12 @@ window.__ac.onUpdate(function(live) {
                 var cssFiles = files.Where(f => string.Equals(Path.GetExtension(f), ".css", StringComparison.OrdinalIgnoreCase)).ToList();
                 var jsFiles = files.Where(f => string.Equals(Path.GetExtension(f), ".js", StringComparison.OrdinalIgnoreCase)).ToList();
 
-                if (htmlFiles.Count > 1 || cssFiles.Count > 1 || jsFiles.Count > 1)
+                if (htmlFiles.Count > 1 || cssFiles.Count > 1)
                 {
                     MessageBox.Show(
                         this,
-                        "Mỗi lần import chỉ được tối đa 1 file cho từng loại: HTML, CSS, JS.\n" +
-                        "Bạn đang chọn trùng loại file, vui lòng chọn lại.",
+                        "Mỗi lần import chỉ được tối đa 1 file cho HTML và CSS.\n" +
+                        "Riêng JS có thể chọn nhiều file để tách thành nhiều tab con.",
                         "Import không hợp lệ",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
@@ -1002,8 +1421,59 @@ window.__ac.onUpdate(function(live) {
                     vm.HtmlCode = File.ReadAllText(htmlFiles[0]);
                 if (cssFiles.Count == 1)
                     vm.CssCode = File.ReadAllText(cssFiles[0]);
-                if (jsFiles.Count == 1)
-                    vm.JsCode = File.ReadAllText(jsFiles[0]);
+                if (jsFiles.Count > 0)
+                {
+                    var jsParts = ReadJsImportParts(jsFiles);
+
+                    var existingByTitle = BuildJsEditorMapByTitle();
+                    var duplicated = jsParts
+                        .Where(p => existingByTitle.ContainsKey((p.Title ?? string.Empty).Trim()))
+                        .ToList();
+
+                    var allowOverwriteDuplicated = false;
+                    if (duplicated.Count > 0)
+                    {
+                        var duplicateList = string.Join(", ", duplicated.Select(x => x.Title));
+                        var ask = MessageBox.Show(
+                            this,
+                            $"Đã có tab JS trùng tên: {duplicateList}\nBạn có muốn ghi đè các tab trùng tên này không?",
+                            "Phát hiện trùng tên tab JS",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question);
+                        allowOverwriteDuplicated = ask == MessageBoxResult.Yes;
+                    }
+
+                    var appendedCount = 0;
+                    var overwrittenCount = 0;
+
+                    for (int i = 0; i < jsParts.Count; i++)
+                    {
+                        var part = jsParts[i];
+                        var normalizedTitle = (part.Title ?? string.Empty).Trim();
+
+                        if (allowOverwriteDuplicated && existingByTitle.TryGetValue(normalizedTitle, out var existingEditor))
+                        {
+                            existingEditor.Text = part.Code ?? string.Empty;
+                            if (_jsTabMeta.TryGetValue(existingEditor, out var meta))
+                                meta.Priority = part.Priority == int.MaxValue ? meta.Priority : part.Priority;
+                            overwrittenCount++;
+                        }
+                        else
+                        {
+                            AddDynamicJsTab(
+                                part.Code,
+                                selectTab: false,
+                                priority: part.Priority == int.MaxValue ? 1000 + i : part.Priority,
+                                title: part.Title);
+                            appendedCount++;
+                        }
+                    }
+                    SortJsTabsByPriority();
+                    SyncJsTabsToViewModel();
+
+                    _lastImportJsOverwriteCount = overwrittenCount;
+                    _lastImportJsAppendCount = appendedCount;
+                }
 
                 var paramFiles = files.Where(f =>
                 {
@@ -1025,7 +1495,9 @@ window.__ac.onUpdate(function(live) {
 
                 MessageBox.Show(
                     this,
-                    "Đã import file vào các tab tương ứng (HTML/CSS/JS/PARAM).",
+                    jsFiles.Count > 0
+                        ? $"Đã import file vào các tab tương ứng (HTML/CSS/PARAM/JS). Ghi đè {_lastImportJsOverwriteCount} tab, thêm {_lastImportJsAppendCount} tab JS."
+                        : "Đã import file vào các tab tương ứng (HTML/CSS/PARAM).",
                     "Import thành công",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);

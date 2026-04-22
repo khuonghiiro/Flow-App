@@ -626,12 +626,41 @@ namespace FlowMy.Views.NodeControls
                 });
             }
 
+            // Gộp JS từ nhiều tab con (được lưu với marker // [FLOW_JS_TAB:n]) thành 1 payload runtime.
+            string NormalizeRuntimeJsCode(string jsCode)
+            {
+                if (string.IsNullOrWhiteSpace(jsCode)) return string.Empty;
+                const string markerPrefix = "// [FLOW_JS_TAB:";
+                if (jsCode.IndexOf(markerPrefix, StringComparison.Ordinal) < 0)
+                    return jsCode;
+
+                var regex = new System.Text.RegularExpressions.Regex(
+                    @"^\s*//\s*\[FLOW_JS_TAB:(\d+)(?:\|P:(\d+))?(?:\|T:(.*?))?\]\s*$",
+                    System.Text.RegularExpressions.RegexOptions.Multiline);
+                var matches = regex.Matches(jsCode).Cast<System.Text.RegularExpressions.Match>().ToList();
+                if (matches.Count == 0)
+                    return jsCode;
+
+                var parts = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < matches.Count; i++)
+                {
+                    var start = matches[i].Index + matches[i].Length;
+                    var end = i + 1 < matches.Count ? matches[i + 1].Index : jsCode.Length;
+                    var chunk = jsCode.Substring(start, end - start).Trim();
+                    if (!string.IsNullOrWhiteSpace(chunk))
+                        parts.Add(chunk);
+                }
+
+                if (parts.Count == 0) return string.Empty;
+                return string.Join("\n\n/* --- FLOW_JS_TAB_SPLIT --- */\n\n", parts);
+            }
+
             // Function để build HTML từ các tab (với cache và variable replacement)
             string BuildHtmlContent()
             {
                 var html = node.HtmlCode ?? "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>HTML UI</title>\n</head>\n<body>\n    <div>HTML UI</div>\n</body>\n</html>";
                 var css = node.CssCode ?? string.Empty;
-                var js = node.JsCode ?? string.Empty;
+                var js = NormalizeRuntimeJsCode(node.JsCode ?? string.Empty);
 
                 // ✅ Resolve input values từ mappings
                 var inputValues = ResolveInputValues();
@@ -1870,7 +1899,7 @@ namespace FlowMy.Views.NodeControls
                     var inputValues = ResolveInputValues();
                     var htmlResolved = ReplaceVariables(n.HtmlCode ?? string.Empty, inputValues);
                     var cssResolved = ReplaceVariables(n.CssCode ?? string.Empty, inputValues);
-                    var jsResolved = ReplaceVariables(n.JsCode ?? string.Empty, inputValues);
+                    var jsResolved = ReplaceVariables(NormalizeRuntimeJsCode(n.JsCode ?? string.Empty), inputValues);
 
                     // Use JSON serialisation for safe escaping of arbitrary content
                     var htmlJson = System.Text.Json.JsonSerializer.Serialize(htmlResolved);

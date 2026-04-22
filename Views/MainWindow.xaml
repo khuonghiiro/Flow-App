@@ -584,7 +584,7 @@
                                                                 <Grid>
                                                                    
                                                                     <controls:SvgViewboxEx Width="18" Height="18"
-                                                                           Fill="Black"
+                                                                           Fill="{DynamicResource TextBrush}"
                                                                            Source="{Binding Source={x:Static sys:String.Empty},
                                                                                     Converter={StaticResource IconKeyToPathConverter},
                                                                                     ConverterParameter='gear-complex light'}"
