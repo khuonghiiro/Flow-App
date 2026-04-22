@@ -3316,6 +3316,12 @@ window.__acPush = function(key, value) {
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
         ApplyTaskbarAppIdBestEffort();
+        try
+        {
+            if (PresentationSource.FromVisual(this) is HwndSource source)
+                source.AddHook(WndProc);
+        }
+        catch { }
     }
 
     private void ApplyTaskbarAppIdBestEffort()
@@ -3364,6 +3370,10 @@ window.__acPush = function(key, value) {
         const int size = 64;
         var radius = Math.Max(8, Math.Min(28, iconSize));
         var center = new Point(size / 2d, size / 2d);
+        var iconName = Config.IdleIconText;
+        var iconDrawing = FlowMy.IconResources.IconExists(iconName)
+            ? FlowMy.IconResources.GetSvgImage(iconName, Colors.White)?.Drawing
+            : null;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
@@ -3404,12 +3414,73 @@ window.__acPush = function(key, value) {
                     dc.DrawEllipse(accentBrush, pen, center, radius, radius);
                     break;
             }
+
+            if (iconDrawing != null)
+            {
+                var iconSide = Math.Max(12, radius * 1.2);
+                var iconRect = new Rect(center.X - iconSide / 2d, center.Y - iconSide / 2d, iconSide, iconSide);
+                dc.DrawDrawing(new DrawingGroup
+                {
+                    Transform = new MatrixTransform(
+                        iconRect.Width / Math.Max(1, iconDrawing.Bounds.Width), 0,
+                        0, iconRect.Height / Math.Max(1, iconDrawing.Bounds.Height),
+                        iconRect.X - iconDrawing.Bounds.X * (iconRect.Width / Math.Max(1, iconDrawing.Bounds.Width)),
+                        iconRect.Y - iconDrawing.Bounds.Y * (iconRect.Height / Math.Max(1, iconDrawing.Bounds.Height))),
+                    Children = { iconDrawing }
+                });
+            }
         }
 
         var bmp = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
         bmp.Render(visual);
         bmp.Freeze();
         return bmp;
+    }
+
+    private const int WM_SYSCOMMAND = 0x0112;
+    private const int SC_MINIMIZE = 0xF020;
+    private const int SC_RESTORE = 0xF120;
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        try
+        {
+            if (msg == WM_SYSCOMMAND)
+            {
+                int command = wParam.ToInt32() & 0xFFF0;
+                if (command == SC_MINIMIZE || command == SC_RESTORE)
+                {
+                    ToggleWidgetFromTaskbar();
+                    handled = true;
+                }
+            }
+        }
+        catch { }
+        return IntPtr.Zero;
+    }
+
+    private void ToggleWidgetFromTaskbar()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_isExpanded)
+            {
+                CollapseWidget();
+            }
+            else
+            {
+                if (_isSlideHidden)
+                {
+                    // Taskbar toggle: nếu đang ẩn mép màn hình thì lộ đầy đủ trước rồi mới expand,
+                    // tránh cảm giác "nhảy trạng thái" khi chuyển từ dock-hidden sang expanded.
+                    RevealDockedWidgetFully(restoreOriginalShape: false);
+                }
+                ExpandWidget();
+            }
+
+            Activate();
+            Focus();
+        }), DispatcherPriority.Normal);
     }
 
     private static string SanitizeAppIdPart(string? value)
