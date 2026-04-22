@@ -1,5 +1,6 @@
 using FlowMy.Services;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Workflow;
 using FlowMy.Views;
 using FlowMy.Views.Overlays;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -7,7 +8,10 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -164,7 +168,7 @@ namespace FlowMy.ViewModels
         /// Mở trực tiếp màn cấu hình widget từ MainWindow cho 1 shortcut cụ thể.
         /// </summary>
         [RelayCommand]
-        private void ConfigureWidget(WidgetShortcutItem? item)
+        private async Task ConfigureWidget(WidgetShortcutItem? item)
         {
             if (item == null || item.IsConfiguring) return;
             item.IsConfiguring = true;
@@ -172,19 +176,22 @@ namespace FlowMy.ViewModels
             LastConfiguredNodeId = item.NodeId ?? string.Empty;
             HasLastConfiguredWidget = !string.IsNullOrWhiteSpace(LastConfiguredWorkflowName)
                                       && !string.IsNullOrWhiteSpace(LastConfiguredNodeId);
-            OpenWorkflowEditorInternal(
-                workflowNameToLoad: item.WorkflowName,
-                widgetNodeIds: null,
-                headless: true,
-                autoOpenConfigNodeId: item.NodeId,
-                configureItem: item);
+            try
+            {
+                await Task.Yield();
+                OpenFloatingWidgetConfigFromMainWindow(item.WorkflowName, item.NodeId);
+            }
+            finally
+            {
+                item.IsConfiguring = false;
+            }
         }
 
         /// <summary>
         /// Mở lại nhanh màn cấu hình của widget gần nhất đã chỉnh từ MainWindow.
         /// </summary>
         [RelayCommand]
-        private void ConfigureLastWidget()
+        private async Task ConfigureLastWidget()
         {
             if (!HasLastConfiguredWidget ||
                 string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) ||
@@ -203,11 +210,161 @@ namespace FlowMy.ViewModels
                 return;
             }
 
-            OpenWorkflowEditorInternal(
-                workflowNameToLoad: LastConfiguredWorkflowName,
-                widgetNodeIds: null,
-                headless: true,
-                autoOpenConfigNodeId: LastConfiguredNodeId);
+            await Task.Yield();
+            OpenFloatingWidgetConfigFromMainWindow(LastConfiguredWorkflowName, LastConfiguredNodeId);
+        }
+
+        private void OpenFloatingWidgetConfigFromMainWindow(string? workflowName, string? nodeId)
+        {
+            if (string.IsNullOrWhiteSpace(workflowName)) return;
+            if (!TryLoadWidgetConfigNodesFast(workflowName, out var workflowFilePath, out var rawJson, out var nodes))
+                return;
+
+            var mainWindow = Application.Current.MainWindow;
+            void PersistChanges()
+            {
+                try { SaveWidgetConfigNodesFast(workflowFilePath, rawJson, nodes); } catch { }
+            }
+
+            var dialog = new FloatingWidgetConfigDialog(
+                nodes,
+                host: null,
+                persistChanges: PersistChanges,
+                runtimeActionsEnabled: false)
+            {
+                Owner = mainWindow
+            };
+
+            if (!string.IsNullOrWhiteSpace(nodeId))
+                dialog.SelectNodeById(nodeId);
+
+            dialog.ShowDialog();
+            RefreshWidgetShortcuts();
+        }
+
+        private static bool TryLoadWidgetConfigNodesFast(
+            string workflowName,
+            out string workflowFilePath,
+            out string rawJson,
+            out List<FlowMy.Models.WorkflowNode> nodes)
+        {
+            workflowFilePath = string.Empty;
+            rawJson = string.Empty;
+            nodes = new List<FlowMy.Models.WorkflowNode>();
+            try
+            {
+                var dir = FileWorkflowPersistenceService.GetDefaultWorkflowsDirectory();
+                workflowFilePath = Path.Combine(dir, $"{workflowName}.json");
+                if (!File.Exists(workflowFilePath)) return false;
+
+                rawJson = File.ReadAllText(workflowFilePath);
+                using var doc = JsonDocument.Parse(rawJson);
+                if (!doc.RootElement.TryGetProperty("Nodes", out var nodesEl) || nodesEl.ValueKind != JsonValueKind.Array)
+                    return false;
+
+                foreach (var nodeEl in nodesEl.EnumerateArray())
+                {
+                    if (nodeEl.ValueKind != JsonValueKind.Object) continue;
+                    var id = nodeEl.TryGetProperty("Id", out var idEl) ? (idEl.GetString() ?? string.Empty) : string.Empty;
+                    if (string.IsNullOrWhiteSpace(id)) continue;
+
+                    var title = nodeEl.TryGetProperty("Title", out var titleEl) ? (titleEl.GetString() ?? string.Empty) : string.Empty;
+                    var colorKey = nodeEl.TryGetProperty("ColorKey", out var colorKeyEl) ? (colorKeyEl.GetString() ?? string.Empty) : string.Empty;
+                    var type = ParseNodeType(nodeEl);
+                    if (type == FlowMy.Models.NodeType.Start || type == FlowMy.Models.NodeType.End) continue;
+
+                    FlowMy.Models.FloatingWidgetConfig? floating = null;
+                    if (nodeEl.TryGetProperty("Properties", out var propsEl)
+                        && propsEl.ValueKind == JsonValueKind.Object
+                        && propsEl.TryGetProperty("FloatingWidget", out var fwEl))
+                    {
+                        try
+                        {
+                            var fwJson = fwEl.ValueKind == JsonValueKind.String ? fwEl.GetString() : fwEl.GetRawText();
+                            if (!string.IsNullOrWhiteSpace(fwJson))
+                                floating = JsonSerializer.Deserialize<FlowMy.Models.FloatingWidgetConfig>(fwJson);
+                        }
+                        catch { floating = null; }
+                    }
+
+                    nodes.Add(new FlowMy.Models.WorkflowNode
+                    {
+                        Id = id,
+                        Title = title,
+                        ColorKey = colorKey,
+                        Type = type,
+                        FloatingWidget = floating
+                    });
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void SaveWidgetConfigNodesFast(
+            string workflowFilePath,
+            string rawJson,
+            IEnumerable<FlowMy.Models.WorkflowNode> nodes)
+        {
+            var root = JsonNode.Parse(rawJson) as JsonObject;
+            var nodeArray = root?["Nodes"] as JsonArray;
+            if (root == null || nodeArray == null) return;
+
+            var map = nodes
+                .Where(n => !string.IsNullOrWhiteSpace(n.Id))
+                .ToDictionary(n => n.Id, n => n.FloatingWidget, System.StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in nodeArray)
+            {
+                if (item is not JsonObject nodeObj) continue;
+                var id = nodeObj["Id"]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(id)) continue;
+                if (!map.TryGetValue(id, out var cfg)) continue;
+
+                if (nodeObj["Properties"] is not JsonObject propsObj)
+                {
+                    propsObj = new JsonObject();
+                    nodeObj["Properties"] = propsObj;
+                }
+
+                if (cfg == null)
+                {
+                    propsObj.Remove("FloatingWidget");
+                    continue;
+                }
+
+                propsObj["FloatingWidget"] = JsonSerializer.Serialize(cfg);
+            }
+
+            var updated = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(workflowFilePath, updated);
+        }
+
+        private static FlowMy.Models.NodeType ParseNodeType(JsonElement nodeEl)
+        {
+            if (!nodeEl.TryGetProperty("Type", out var typeEl))
+                return FlowMy.Models.NodeType.Generic;
+
+            try
+            {
+                if (typeEl.ValueKind == JsonValueKind.String)
+                {
+                    var s = typeEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(s) && System.Enum.TryParse<FlowMy.Models.NodeType>(s, true, out var parsed))
+                        return parsed;
+                }
+                else if (typeEl.ValueKind == JsonValueKind.Number && typeEl.TryGetInt32(out var i))
+                {
+                    return (FlowMy.Models.NodeType)i;
+                }
+            }
+            catch { }
+
+            return FlowMy.Models.NodeType.Generic;
         }
 
         private void OpenWorkflowEditorInternal(
