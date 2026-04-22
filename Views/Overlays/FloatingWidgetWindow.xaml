@@ -91,9 +91,10 @@
             <Setter Property="Width" Value="24"/>
             <Setter Property="Height" Value="24"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="VerticalContentAlignment" Value="Stretch"/>
@@ -111,11 +112,63 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource SecondaryBrush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonPressedBrush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WidgetTitleWindowButton" TargetType="Button" BasedOn="{StaticResource WidgetTitleActionButton}">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="WidgetTitleActionButtonActive" TargetType="Button" BasedOn="{StaticResource WidgetTitleActionButton}">
+            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+        </Style>
+
+        <Style x:Key="WidgetTitleCloseButton" TargetType="Button" BasedOn="{StaticResource WidgetTitleWindowButton}">
+            <Setter Property="Background" Value="{DynamicResource CardColor}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource DangerHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnDangerBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerPressedBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnDangerBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
@@ -355,8 +408,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>  <!-- Drag handle -->
                                 <ColumnDefinition Width="*"/>     <!-- Title -->
-                                <ColumnDefinition Width="Auto"/>  <!-- Run buttons -->
-                                <ColumnDefinition Width="Auto"/>  <!-- Collapse -->
+                                <ColumnDefinition Width="Auto"/>  <!-- Action buttons -->
                             </Grid.ColumnDefinitions>
 
                             <!-- Drag handle -->
@@ -396,7 +448,7 @@
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play duotone-regular'}"
-                                                               Fill="{DynamicResource TextOnSkyAzureBrush}"/>
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                                         <Border x:Name="StartRunCountBadge"
                                                 Width="13"
                                                 Height="13"
@@ -436,7 +488,7 @@
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"
                                                                Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='flag-checkered sharp-duotone-solid'}"
-                                                               Fill="{DynamicResource TextBrush}"/>
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                                         <Border x:Name="StopRunCountBadge"
                                                 Width="13"
                                                 Height="13"
@@ -460,44 +512,89 @@
                                 </Button>
 
                                 <Button x:Name="TitleOutsideCollapseToggleBtn"
-                                        Width="24"
+                                        Width="26"
                                         Height="24"
                                         Margin="0,0,4,0"
                                         Padding="0"
                                         Cursor="Hand"
                                         FontSize="12"
                                         FontWeight="SemiBold"
-                                        Style="{StaticResource WidgetTitleActionButton}"
+                                        Style="{StaticResource WidgetTitleWindowButton}"
                                         Click="OutsideCollapseToggleButton_Click"
                                         ToolTip="Bật/tắt: click ra ngoài thì tự thu nhỏ">
-                                    <TextBlock Text="◌"
+                                    <TextBlock x:Name="TitleOutsideCollapseToggleIcon"
+                                               Text="◌"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextBrush}"/>
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                                 </Button>
 
                                 <Button x:Name="TitlePinToggleBtn"
-                                        Width="24"
+                                        Width="26"
                                         Height="24"
                                         Margin="0,0,4,0"
                                         Padding="0"
                                         Cursor="Hand"
                                         FontSize="11"
-                                        Style="{StaticResource WidgetTitleActionButton}"
+                                        Style="{StaticResource WidgetTitleWindowButton}"
                                         Click="PinToggleButton_Click"
                                         ToolTip="Bật/tắt ghim widget">
-                                    <TextBlock Text="📌"
+                                    <TextBlock x:Name="TitlePinToggleIcon"
+                                               Text="📌"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextBrush}"/>
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                </Button>
+                                <Button x:Name="TitleMaxRestoreBtn"
+                                        Width="26"
+                                        Height="24"
+                                        Margin="0,0,4,0"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        Style="{StaticResource WidgetTitleWindowButton}"
+                                        Click="TitleMaxRestoreBtn_Click"
+                                        ToolTip="Phóng to widget">
+                                    <TextBlock x:Name="TitleMaxRestoreIcon"
+                                               Text="▢"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                </Button>
+
+                                <Button x:Name="TitleCollapseBtn"
+                                        Width="26"
+                                        Height="24"
+                                        Margin="0,0,4,0"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        Style="{StaticResource WidgetTitleWindowButton}"
+                                        Click="CollapseBtn_Click"
+                                        ToolTip="Thu nhỏ widget">
+                                    <TextBlock Text="—"
+                                               FontSize="14"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Margin="0,-2,0,0"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                </Button>
+
+                                <Button x:Name="TitleCloseBtn"
+                                        Width="26"
+                                        Height="24"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        Style="{StaticResource WidgetTitleCloseButton}"
+                                        Click="TitleCloseBtn_Click"
+                                        ToolTip="Đóng widget">
+                                    <TextBlock Text="✕"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                                 </Button>
                             </StackPanel>
-
-                            <!-- Thu nhỏ (đóng: chuột phải → Đóng widget) -->
-                            <Button x:Name="CollapseBtn" Grid.Column="3"
-                                    Style="{StaticResource WidgetCollapseButton}"
-                                    Click="CollapseBtn_Click"
-                                    VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
 

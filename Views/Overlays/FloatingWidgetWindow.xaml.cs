@@ -43,6 +43,8 @@ public partial class FloatingWidgetWindow : Window
     private bool _isExpanded;
     private bool _isSlideHidden;    // Widget đã trượt vào cạnh (ẩn 1 phần)
     private bool _isDragging;
+    private bool _isWidgetMaximized;
+    private Rect _restoreExpandedBounds = Rect.Empty;
     /// <summary>True khi chuột trái đã xuống nhưng chưa xác định click hay drag.</summary>
     private bool _pendingInteraction;
     private Point _dragStartPoint;
@@ -142,6 +144,7 @@ public partial class FloatingWidgetWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ApplyTaskbarVisualIdentity();
+        UpdateTitleMaxRestoreVisualState();
 
         // Apply idle shape
         ApplyIdleShape();
@@ -497,23 +500,41 @@ public partial class FloatingWidgetWindow : Window
 
         // Fade-in animation
         AnimateExpandFadeIn();
+        UpdateTitleMaxRestoreVisualState();
     }
 
     private void CollapseWidget()
     {
         if (!_isExpanded) return;
 
-        // Save expanded size back to config theo đúng mode
+        // Save expanded size back to config theo đúng mode.
+        // Nếu đang maximize tạm thời, giữ kích thước restore làm "kích thước gốc".
+        var effectiveWidth = _isWidgetMaximized && _restoreExpandedBounds.Width > 0
+            ? _restoreExpandedBounds.Width
+            : Width;
+        var effectiveHeight = _isWidgetMaximized && _restoreExpandedBounds.Height > 0
+            ? _restoreExpandedBounds.Height
+            : Height;
+
+        _isWidgetMaximized = false;
+        if (_restoreExpandedBounds.Width > 0 && _restoreExpandedBounds.Height > 0)
+        {
+            Left = _restoreExpandedBounds.Left;
+            Top = _restoreExpandedBounds.Top;
+        }
+        _restoreExpandedBounds = Rect.Empty;
+        UpdateTitleMaxRestoreVisualState();
+
         if (Config.UseRatioSize)
         {
             var area = GetTargetWorkArea();
-            if (area.Width > 0) Config.WidthRatio = Math.Max(0.05, Math.Min(1.0, Width / area.Width));
-            if (area.Height > 0) Config.HeightRatio = Math.Max(0.05, Math.Min(1.0, Height / area.Height));
+            if (area.Width > 0) Config.WidthRatio = Math.Max(0.05, Math.Min(1.0, effectiveWidth / area.Width));
+            if (area.Height > 0) Config.HeightRatio = Math.Max(0.05, Math.Min(1.0, effectiveHeight / area.Height));
         }
         else
         {
-            Config.ExpandedWidth = Width;
-            Config.ExpandedHeight = Height;
+            Config.ExpandedWidth = effectiveWidth;
+            Config.ExpandedHeight = effectiveHeight;
         }
 
         ShowCollapsedState();
@@ -1362,10 +1383,12 @@ public partial class FloatingWidgetWindow : Window
 
         if (TitleOutsideCollapseToggleBtn != null)
         {
-            TitleOutsideCollapseToggleBtn.Content = enabled ? "◉" : "◌";
+            if (TitleOutsideCollapseToggleIcon != null)
+                TitleOutsideCollapseToggleIcon.Text = enabled ? "◉" : "◌";
             TitleOutsideCollapseToggleBtn.ToolTip = tooltip;
             TitleOutsideCollapseToggleBtn.IsEnabled = !Config.PinnedNoAutoHide;
-            if (TryFindResource(styleKey) is Style titleStyle)
+            var titleStyleKey = enabled ? "WidgetTitleActionButtonActive" : "WidgetTitleWindowButton";
+            if (TryFindResource(titleStyleKey) is Style titleStyle)
                 TitleOutsideCollapseToggleBtn.Style = titleStyle;
         }
     }
@@ -1388,9 +1411,11 @@ public partial class FloatingWidgetWindow : Window
 
         if (TitlePinToggleBtn != null)
         {
-            TitlePinToggleBtn.Content = pinned ? "📍" : "📌";
+            if (TitlePinToggleIcon != null)
+                TitlePinToggleIcon.Text = pinned ? "📍" : "📌";
             TitlePinToggleBtn.ToolTip = tooltip;
-            if (TryFindResource(styleKey) is Style titleStyle)
+            var titleStyleKey = pinned ? "WidgetTitleActionButtonActive" : "WidgetTitleWindowButton";
+            if (TryFindResource(titleStyleKey) is Style titleStyle)
                 TitlePinToggleBtn.Style = titleStyle;
         }
     }
@@ -1686,6 +1711,7 @@ public partial class FloatingWidgetWindow : Window
 
             ClampToWorkArea();
             SavePosition();
+            UpdateTitleMaxRestoreVisualState();
         }
         catch { }
     }
@@ -2526,6 +2552,17 @@ window.__acPush = function(key, value) {
         CollapseWidget();
     }
 
+    private void TitleCloseBtn_Click(object sender, RoutedEventArgs e)
+    {
+        SavePosition();
+        Close();
+    }
+
+    private void TitleMaxRestoreBtn_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleExpandedMaximizeRestore();
+    }
+
     private void StartWorkflowBtn_Click(object sender, RoutedEventArgs e)
     {
         StartWorkflowFromWidget();
@@ -2843,6 +2880,47 @@ window.__acPush = function(key, value) {
     {
         SavePosition();
         Close();
+    }
+
+    private void ToggleExpandedMaximizeRestore()
+    {
+        if (!_isExpanded) return;
+        var area = GetTargetWorkArea();
+        var margin = Math.Max(0, Config.SnapMargin);
+
+        if (!_isWidgetMaximized)
+        {
+            _restoreExpandedBounds = new Rect(Left, Top, Width, Height);
+            Left = area.Left + margin;
+            Top = area.Top + margin;
+            Width = Math.Max(220, area.Width - (margin * 2));
+            Height = Math.Max(160, area.Height - (margin * 2));
+            _isWidgetMaximized = true;
+        }
+        else
+        {
+            if (_restoreExpandedBounds.Width > 0 && _restoreExpandedBounds.Height > 0)
+            {
+                Left = _restoreExpandedBounds.Left;
+                Top = _restoreExpandedBounds.Top;
+                Width = _restoreExpandedBounds.Width;
+                Height = _restoreExpandedBounds.Height;
+            }
+            _isWidgetMaximized = false;
+        }
+
+        ClampToWorkArea();
+        UpdateTitleRevealButtonPlacement();
+        UpdateTitleMaxRestoreVisualState();
+    }
+
+    private void UpdateTitleMaxRestoreVisualState()
+    {
+        if (TitleMaxRestoreBtn == null || TitleMaxRestoreIcon == null) return;
+        TitleMaxRestoreIcon.Text = _isWidgetMaximized ? "❐" : "▢";
+        TitleMaxRestoreBtn.ToolTip = _isWidgetMaximized
+            ? "Khôi phục kích thước widget"
+            : "Phóng to widget";
     }
 
     // ═══════════════════════════════════════════

@@ -405,6 +405,7 @@ namespace FlowMy.Views.Overlays
                 ShowSideActionButtonCheckBox.IsChecked = cfg.ShowSideActionButton;
                 TitleBarHideTimeoutTextBox.Text = cfg.TitleBarHideTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
                 UpdateTitleTimeoutState();
+                UpdateSideActionButtonState();
 
                 SelectComboByTag(DisplayModeComboBox, cfg.DisplayMode.ToString());
                 SelectMonitor(cfg.MonitorIndex);
@@ -863,6 +864,7 @@ namespace FlowMy.Views.Overlays
         {
             if (_loadingValues) return;
             UpdateTitleTimeoutState();
+            UpdateSideActionButtonState();
         }
 
         private void UpdateTitleTimeoutState()
@@ -871,6 +873,22 @@ namespace FlowMy.Views.Overlays
             var isAutoHide = TitleBarAutoHideRadio.IsChecked == true;
             TitleBarHideTimeoutTextBox.IsEnabled = isAutoHide;
             TitleBarHideTimeoutTextBox.Opacity = isAutoHide ? 1 : 0.55;
+        }
+
+        private void UpdateSideActionButtonState()
+        {
+            if (ShowSideActionButtonCheckBox == null) return;
+            var alwaysVisibleTitle = TitleBarAlwaysVisibleRadio?.IsChecked == true;
+            if (alwaysVisibleTitle)
+            {
+                ShowSideActionButtonCheckBox.IsChecked = false;
+                ShowSideActionButtonCheckBox.IsEnabled = false;
+                ShowSideActionButtonCheckBox.Opacity = 0.55;
+                return;
+            }
+
+            ShowSideActionButtonCheckBox.IsEnabled = true;
+            ShowSideActionButtonCheckBox.Opacity = 1.0;
         }
 
         private void PickIdleBackgroundColor_Click(object sender, RoutedEventArgs e)
