@@ -32,6 +32,7 @@ public partial class FloatingWidgetWindow : Window
     // ── Dependencies ──
     private readonly WorkflowNode _node;
     private readonly IWorkflowEditorHost _host;
+    private readonly FloatingWidgetWindowViewModel _viewModel;
     private FloatingWidgetConfig Config => _node.FloatingWidget!;
 
     // ── State ──
@@ -63,6 +64,9 @@ public partial class FloatingWidgetWindow : Window
     private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
     private readonly List<(string Key, string Value)> _pendingAsyncBuffer = new();
+    private readonly Dictionary<string, string> _localHostByFolder = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _localFolderByHost = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _localHostMapSync = new();
 
     /// <summary>Mini toolbar ngoài widget (đóng + thu nhỏ) thay cho Popup.</summary>
     private Window? _titleRevealHost;
@@ -93,8 +97,10 @@ public partial class FloatingWidgetWindow : Window
     {
         _node = node ?? throw new ArgumentNullException(nameof(node));
         _host = host ?? throw new ArgumentNullException(nameof(host));
+        _viewModel = new FloatingWidgetWindowViewModel(_node, _host);
 
         InitializeComponent();
+        DataContext = _viewModel;
 
         // Apply config to window
         Topmost = Config.AlwaysOnTop;
@@ -1546,8 +1552,7 @@ public partial class FloatingWidgetWindow : Window
         {
             if (_node is HtmlUiNode htmlNode)
             {
-                var inputValues = ResolveInputValues(htmlNode);
-                var signature = BuildHtmlUiSignature(htmlNode, inputValues);
+                var signature = _viewModel.BuildContentSignature(htmlNode);
                 if (_webViewContentLoaded && string.Equals(_lastContentSignature, signature, StringComparison.Ordinal))
                     return;
 
@@ -1644,66 +1649,8 @@ public partial class FloatingWidgetWindow : Window
 
     private string BuildHtmlForWidget(HtmlUiNode htmlNode)
     {
-        var html = htmlNode.HtmlCode ?? "<!DOCTYPE html><html><body><div>Widget</div></body></html>";
-        var css = htmlNode.CssCode ?? string.Empty;
-        var js = htmlNode.JsCode ?? string.Empty;
         var bridgeJs = BuildBridgeJs();
-
-        // Resolve input values
-        var inputValues = ResolveInputValues(htmlNode);
-
-        // Replace variables
-        html = ReplaceVariables(html, inputValues);
-        css = ReplaceVariables(css, inputValues);
-        js = ReplaceVariables(js, inputValues);
-
-        // Ensure <head>
-        if (!html.Contains("<head>", StringComparison.OrdinalIgnoreCase))
-            html = html.Replace("<html>", "<html>\n<head>\n<meta charset=\"UTF-8\">\n</head>", StringComparison.OrdinalIgnoreCase);
-
-        // Inject CSS
-        if (!string.IsNullOrWhiteSpace(css))
-        {
-            var cssTag = $"\n<style>\n{css}\n</style>";
-            if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</head>", cssTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-        }
-
-        // Inject bridge runtime before user JS so window.__acAsync/__ac are ready.
-        if (!string.IsNullOrWhiteSpace(bridgeJs))
-        {
-            if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</head>", bridgeJs + "\n</head>", StringComparison.OrdinalIgnoreCase);
-            else
-                html = bridgeJs + html;
-        }
-
-        // Inject JS
-        if (!string.IsNullOrWhiteSpace(js))
-        {
-            var jsTag = $"\n<script>\n{js}\n</script>";
-            if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-                html = html.Replace("</body>", jsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
-            else
-                html += jsTag;
-        }
-
-        return html;
-    }
-
-    private static string BuildHtmlUiSignature(HtmlUiNode node, Dictionary<string, string> inputs)
-    {
-        var sb = new StringBuilder();
-        sb.Append(node.HtmlCode ?? string.Empty).Append('|')
-          .Append(node.CssCode ?? string.Empty).Append('|')
-          .Append(node.JsCode ?? string.Empty).Append('|');
-
-        foreach (var kv in inputs.OrderBy(k => k.Key, StringComparer.Ordinal))
-        {
-            sb.Append(kv.Key).Append('=').Append(kv.Value ?? string.Empty).Append(';');
-        }
-
-        return sb.ToString();
+        return _viewModel.BuildHtmlForWidget(htmlNode, bridgeJs);
     }
 
     private void DrainPendingAsyncQueueToBuffer(HtmlUiNode node)
@@ -1793,43 +1740,108 @@ public partial class FloatingWidgetWindow : Window
 
     private string BuildBridgeJs()
     {
-        return @"
+        var mediaRootsJson = BuildMediaSearchRootsJson();
+        var script = @"
 <script>
 // ── Widget Bridge JS ──
+window.__acMediaSearchRoots = __AC_MEDIA_ROOTS__;
 function acSubmit() {
     if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage({ __widgetAction: 'submit' });
+        window.chrome.webview.postMessage({ __widgetAction: 'submit', type: 'submit' });
     }
 }
 function acStartWorkflow() {
     if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage({ __widgetAction: 'startWorkflow' });
+        window.chrome.webview.postMessage({ __widgetAction: 'startWorkflow', type: 'startWorkflow' });
     }
+}
+function acResolveLocalPath(localPath, requestId) {
+    try {
+      if (!(window.chrome && window.chrome.webview)) return;
+      window.chrome.webview.postMessage({
+        type: 'resolve_local_path',
+        path: localPath || '',
+        requestId: requestId || ''
+      });
+    } catch (_) {}
+}
+function acDownloadByCurl(curlCommand, fileName, downloadKey) {
+    try {
+      if (!(window.chrome && window.chrome.webview)) return;
+      window.chrome.webview.postMessage({
+        type: 'download_curl',
+        curl: curlCommand || '',
+        fileName: fileName || '',
+        downloadKey: downloadKey || ''
+      });
+    } catch (_) {}
+}
+function acPickImageFiles(requestId) {
+    try {
+      if (!(window.chrome && window.chrome.webview)) return;
+      window.chrome.webview.postMessage({
+        type: 'pick_image_files',
+        requestId: requestId || ''
+      });
+    } catch (_) {}
+}
+function acResolvePlayableRef(url, requestId) {
+    try {
+      if (!(window.chrome && window.chrome.webview)) return;
+      var roots = [];
+      try {
+        if (Array.isArray(window.__acMediaSearchRoots)) roots = window.__acMediaSearchRoots;
+      } catch (_) {}
+      window.chrome.webview.postMessage({
+        type: 'resolve_playable_ref',
+        url: url || '',
+        requestId: requestId || '',
+        searchRoots: roots
+      });
+    } catch (_) {}
 }
 // Override __ac if needed
 window.__ac = window.__ac || {};
 window.__ac.live = window.__ac.live || {};
 window.__ac.submit = acSubmit;
 window.__ac.startWorkflow = acStartWorkflow;
-window.__ac.onData = function() {
+window.__ac._subs = window.__ac._subs || {};
+window.__ac._allSubs = window.__ac._allSubs || [];
+window.__ac.onUpdate = function() {
   var args = Array.prototype.slice.call(arguments);
   var cb = args[args.length - 1];
   if (typeof cb !== 'function') return;
-  if (args.length === 1) {
-    cb(window.__ac.live);
-  } else {
-    var keys = args.slice(0, -1);
-    var vals = keys.map(function(k){ return window.__ac.live[k]; });
-    cb.apply(null, vals);
+  if (args.length === 1 && typeof args[0] === 'function') {
+    window.__ac._allSubs.push(args[0]);
+    return;
+  }
+  var keys = args.slice(0, -1).map(function(k){ return String(k); });
+  var token = { keys: keys, cb: cb };
+  keys.forEach(function(k){
+    window.__ac._subs[k] = window.__ac._subs[k] || [];
+    window.__ac._subs[k].push(token);
+  });
+};
+window.__ac.onData = window.__ac.onUpdate;
+window.__ac._notify = function(key) {
+  var keySubs = window.__ac._subs[key] || [];
+  for (var i = 0; i < keySubs.length; i++) {
+    var sub = keySubs[i];
+    try {
+      var vals = sub.keys.map(function(k){ return window.__ac.live[k]; });
+      sub.cb.apply(null, vals);
+    } catch(e) {}
+  }
+  for (var j = 0; j < window.__ac._allSubs.length; j++) {
+    try { window.__ac._allSubs[j](window.__ac.live); } catch(e) {}
   }
 };
-window.__acPush = function(key, value) {
+window.__ac.push = function(key, value) {
   window.__ac.live[key] = value;
-  try {
-    if (typeof window.__ac.onData === 'function') {
-      // noop: giữ API tương thích, subscriber chủ yếu tự poll/onData khi cần
-    }
-  } catch(e) {}
+  window.__ac._notify(String(key));
+};
+window.__acPush = function(key, value) {
+  window.__ac.push(key, value);
 };
 
 // Async receiver runtime (tương thích HtmlUiNode Async Data tab)
@@ -1864,49 +1876,17 @@ window.__acPush = function(key, value) {
   };
 })();
 </script>";
+        return script.Replace("__AC_MEDIA_ROOTS__", mediaRootsJson);
     }
 
     private Dictionary<string, string> ResolveInputValues(HtmlUiNode htmlNode)
     {
-        var result = new Dictionary<string, string>();
-        if (_host?.ViewModel == null) return result;
-
-        var mappings = htmlNode.InputMappings ?? new List<CodeInputMapping>();
-        var allNodes = _host.ViewModel.Nodes;
-
-        foreach (var m in mappings)
-        {
-            WorkflowNode? sourceNode = null;
-            if (!string.IsNullOrWhiteSpace(m.SourceNodeId))
-            {
-                sourceNode = allNodes?.FirstOrDefault(n =>
-                    string.Equals(n.Id, m.SourceNodeId, StringComparison.OrdinalIgnoreCase));
-            }
-
-            string inputValue = string.Empty;
-            if (sourceNode != null)
-            {
-                var key = string.IsNullOrWhiteSpace(m.SourceOutputKey) ? null : m.SourceOutputKey.Trim();
-                if (string.IsNullOrWhiteSpace(key) && sourceNode.DynamicOutputs?.Count > 0)
-                    key = sourceNode.DynamicOutputs[0].Key ?? "output";
-
-                inputValue = Services.Rendering.NodeDataPanelService.ResolveDynamicValueByKey(sourceNode, key ?? "output");
-                if (string.Equals(inputValue?.Trim(), "—", StringComparison.OrdinalIgnoreCase))
-                    inputValue = string.Empty;
-            }
-
-            var varName = m.EffectiveInputKey;
-            if (string.IsNullOrWhiteSpace(varName)) varName = "input";
-            result[varName] = inputValue ?? string.Empty;
-        }
-
-        return result;
+        return _viewModel.ResolveInputValues(htmlNode);
     }
 
     private static string ReplaceVariables(string text, Dictionary<string, string> vars)
     {
         if (string.IsNullOrEmpty(text) || vars.Count == 0) return text;
-
         var regex = new System.Text.RegularExpressions.Regex(@"\{([^}]+)\}");
         return regex.Replace(text, match =>
         {
@@ -1936,6 +1916,37 @@ window.__acPush = function(key, value) {
                         break;
                 }
             }
+            else if (root.TryGetProperty("type", out var typeEl) && typeEl.ValueKind == JsonValueKind.String)
+            {
+                var type = typeEl.GetString();
+                switch (type)
+                {
+                    case "submit":
+                        HandleSubmit(root);
+                        break;
+                    case "startWorkflow":
+                        HandleStartWorkflow();
+                        break;
+                    case "reload":
+                        _ = Dispatcher.InvokeAsync(async () => await ReloadContentAsync(), DispatcherPriority.Background);
+                        break;
+                    case "resolve_local_path":
+                        _ = Dispatcher.InvokeAsync(async () => await HandleResolveLocalPathAsync(root), DispatcherPriority.Background);
+                        break;
+                    case "download_curl":
+                        _ = Dispatcher.InvokeAsync(async () => await HandleDownloadByCurlAsync(root), DispatcherPriority.Background);
+                        break;
+                    case "pick_image_files":
+                        _ = Dispatcher.InvokeAsync(async () => await HandlePickImageFilesAsync(root), DispatcherPriority.Background);
+                        break;
+                    case "resolve_playable_ref":
+                        _ = Dispatcher.InvokeAsync(async () => await HandleResolvePlayableRefAsync(root), DispatcherPriority.Background);
+                        break;
+                    default:
+                        HandleGenericOutputs(root);
+                        break;
+                }
+            }
             else
             {
                 // Generic postMessage → treat as outputs
@@ -1954,9 +1965,74 @@ window.__acPush = function(key, value) {
     {
         if (_node is HtmlUiNode htmlNode)
         {
-            // Trigger read DOM via PendingReadDom
-            htmlNode.PendingReadDom = true;
+            _ = Dispatcher.InvokeAsync(async () =>
+            {
+                try
+                {
+                    await UpdateOutputsFromDomAsync(htmlNode);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[FloatingWidget] Submit read params error: {ex.Message}");
+                }
+            }, DispatcherPriority.Background);
         }
+    }
+
+    private async Task UpdateOutputsFromDomAsync(HtmlUiNode htmlNode)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+
+        var mappings = _viewModel.ParseParams(htmlNode);
+        foreach (var (key, selector) in mappings)
+        {
+            var jsSelector = selector.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            var script = $@"
+(function() {{
+  try {{
+    var el = document.querySelector(""{jsSelector}"");
+    if (!el) return null;
+    if (typeof el.value !== 'undefined') return el.value;
+    if (el.textContent) return el.textContent;
+    return null;
+  }} catch (e) {{
+    return null;
+  }}
+}})();";
+
+            string resultJson;
+            try
+            {
+                resultJson = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+            }
+            catch
+            {
+                continue;
+            }
+
+            string? value = null;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(resultJson) &&
+                    !string.Equals(resultJson, "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    value = JsonSerializer.Deserialize<string>(resultJson);
+                }
+            }
+            catch
+            {
+                value = resultJson;
+            }
+
+            if (value == null) continue;
+            htmlNode.ResolvedOutputs[key] = value;
+            var dyn = htmlNode.DynamicOutputs?.FirstOrDefault(o =>
+                string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (dyn != null)
+                dyn.UserValueOverride = value;
+        }
+
+        _host.RequestSyncDataPanels(immediate: false);
     }
 
     private void HandleStartWorkflow()
@@ -1972,6 +2048,416 @@ window.__acPush = function(key, value) {
                 Debug.WriteLine($"[FloatingWidget] StartWorkflow error: {ex.Message}");
             }
         });
+    }
+
+    private async Task HandleResolveLocalPathAsync(JsonElement root)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+
+        var localPath = root.TryGetProperty("path", out var p) && p.ValueKind == JsonValueKind.String
+            ? p.GetString()
+            : string.Empty;
+        var requestId = root.TryGetProperty("requestId", out var r) && r.ValueKind == JsonValueKind.String
+            ? r.GetString()
+            : string.Empty;
+
+        var ok = false;
+        var localUrl = string.Empty;
+        var error = string.Empty;
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(localPath) && File.Exists(localPath))
+            {
+                var full = Path.GetFullPath(localPath);
+                var folder = Path.GetDirectoryName(full) ?? string.Empty;
+                var fileName = Path.GetFileName(full);
+                var localHost = await EnsureLocalHostMappingAsync(folder);
+                localUrl = $"https://{localHost}/{Uri.EscapeDataString(fileName)}";
+                ok = true;
+            }
+            else
+            {
+                error = "File not found";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+
+        var detailJson = JsonSerializer.Serialize(new
+        {
+            requestId = requestId ?? string.Empty,
+            ok,
+            localUrl,
+            localPath = localPath ?? string.Empty,
+            error
+        });
+        var script =
+            "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" + detailJson + "}));";
+        try
+        {
+            await _webView.CoreWebView2.ExecuteScriptAsync(script);
+        }
+        catch { }
+    }
+
+    private async Task HandleDownloadByCurlAsync(JsonElement root)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+
+        var curlCmd = root.TryGetProperty("curl", out var curlProp) && curlProp.ValueKind == JsonValueKind.String
+            ? curlProp.GetString()
+            : string.Empty;
+        var desiredFileName = root.TryGetProperty("fileName", out var fnProp) && fnProp.ValueKind == JsonValueKind.String
+            ? fnProp.GetString()
+            : string.Empty;
+        var downloadKey = root.TryGetProperty("downloadKey", out var dkProp) && dkProp.ValueKind == JsonValueKind.String
+            ? dkProp.GetString()
+            : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(curlCmd)) return;
+
+        var ok = false;
+        var outPath = string.Empty;
+        var errMsg = string.Empty;
+        var localUrl = string.Empty;
+        try
+        {
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var targetDir = Path.Combine(userProfile, "Downloads", "Workflow_Downloads", "Videos");
+            Directory.CreateDirectory(targetDir);
+
+            var safeName = string.IsNullOrWhiteSpace(desiredFileName)
+                ? $"video_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}.mp4"
+                : desiredFileName.Trim();
+            foreach (var c in Path.GetInvalidFileNameChars())
+                safeName = safeName.Replace(c, '_');
+            if (!safeName.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
+                safeName += ".mp4";
+
+            outPath = Path.Combine(targetDir, safeName);
+
+            var raw = curlCmd ?? string.Empty;
+            raw = raw.Replace("\\r\\n", "\n").Replace("\\n", "\n").Replace("\\r", "\n");
+            raw = raw.Replace("\r\n", "\n").Replace("\r", "\n");
+            raw = raw.Replace("\\\"", "\"");
+            raw = raw.Replace("^\n", " ").Replace("^\"", "\"").Replace("^^", "^");
+
+            var mLoc1 = System.Text.RegularExpressions.Regex.Match(raw, @"--location\s+'([^']+)'", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var mLoc2 = System.Text.RegularExpressions.Regex.Match(raw, "--location\\s+\"([^\"]+)\"", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var url = mLoc1.Success ? mLoc1.Groups[1].Value : (mLoc2.Success ? mLoc2.Groups[1].Value : string.Empty);
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                var mUrl = System.Text.RegularExpressions.Regex.Match(raw, @"https?://[^\s'""\\]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (mUrl.Success) url = mUrl.Value;
+            }
+            if (string.IsNullOrWhiteSpace(url))
+                throw new InvalidOperationException("Cannot parse URL from curl.");
+
+            url = url.Replace("\\/", "/").Trim();
+            var headerMatches = System.Text.RegularExpressions.Regex.Matches(raw, @"--header\s+'([^']*)'", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (System.Text.RegularExpressions.Match hm in headerMatches)
+            {
+                var hv = hm.Groups[1].Value;
+                var idx = hv.IndexOf(':');
+                if (idx <= 0) continue;
+                var hk = hv[..idx].Trim();
+                var vv = hv[(idx + 1)..].Trim();
+                if (!string.IsNullOrWhiteSpace(hk)) headers[hk] = vv;
+            }
+
+            using var handler = new System.Net.Http.HttpClientHandler
+            {
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate | System.Net.DecompressionMethods.Brotli,
+                UseCookies = false
+            };
+            using var client = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromMinutes(5) };
+            using var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+            req.Headers.TryAddWithoutValidation("accept", "*/*");
+            foreach (var kv in headers)
+            {
+                if (!req.Headers.TryAddWithoutValidation(kv.Key, kv.Value))
+                {
+                    req.Content ??= new System.Net.Http.StringContent(string.Empty);
+                    req.Content.Headers.TryAddWithoutValidation(kv.Key, kv.Value);
+                }
+            }
+
+            using var resp = await client.SendAsync(req, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+            if (!resp.IsSuccessStatusCode)
+                throw new InvalidOperationException($"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}");
+
+            await using (var fs = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            await using (var rs = await resp.Content.ReadAsStreamAsync())
+                await rs.CopyToAsync(fs);
+
+            ok = File.Exists(outPath) && new FileInfo(outPath).Length > 0;
+            if (!ok) errMsg = "Downloaded file is empty.";
+            if (ok)
+            {
+                var dlHost = await EnsureLocalHostMappingAsync(targetDir);
+                localUrl = $"https://{dlHost}/{Uri.EscapeDataString(Path.GetFileName(outPath))}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ok = false;
+            errMsg = ex.Message;
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            ok,
+            path = outPath,
+            error = errMsg,
+            key = downloadKey ?? string.Empty,
+            localUrl
+        });
+        await DispatchJsEventAsync("__ac_curl_download_done", payload);
+    }
+
+    private async Task HandlePickImageFilesAsync(JsonElement root)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+
+        var requestId = root.TryGetProperty("requestId", out var reqIdProp) && reqIdProp.ValueKind == JsonValueKind.String
+            ? reqIdProp.GetString()
+            : string.Empty;
+
+        var filesPayload = new List<object>();
+        var ok = false;
+        var errMsg = string.Empty;
+
+        try
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Chọn ảnh upload",
+                Filter = "Image Files|*.jpg;*.jpeg;*.png;*.gif;*.webp;*.bmp;*.svg;*.tif;*.tiff;*.ico|All Files|*.*",
+                Multiselect = true,
+                CheckFileExists = true,
+                CheckPathExists = true
+            };
+            var owner = Window.GetWindow(_webView);
+            var rs = owner != null ? dlg.ShowDialog(owner) : dlg.ShowDialog();
+            var picked = rs == true ? (dlg.FileNames ?? Array.Empty<string>()) : Array.Empty<string>();
+
+            foreach (var path in picked)
+            {
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) continue;
+                var full = Path.GetFullPath(path);
+                var bytes = await File.ReadAllBytesAsync(full);
+                if (bytes.Length == 0) continue;
+                var mime = GuessImageMimeType(full);
+                var dataUrl = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+                filesPayload.Add(new
+                {
+                    name = Path.GetFileName(full),
+                    path = full,
+                    size = bytes.LongLength,
+                    dataUrl
+                });
+            }
+            ok = filesPayload.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            ok = false;
+            errMsg = ex.Message;
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            ok,
+            requestId = requestId ?? string.Empty,
+            files = filesPayload,
+            error = errMsg
+        });
+        await DispatchJsEventAsync("__ac_image_files_picked", payload);
+    }
+
+    private async Task HandleResolvePlayableRefAsync(JsonElement root)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+
+        var refUrl = root.TryGetProperty("url", out var urlProp) && urlProp.ValueKind == JsonValueKind.String
+            ? urlProp.GetString()
+            : string.Empty;
+        var requestId = root.TryGetProperty("requestId", out var reqProp) && reqProp.ValueKind == JsonValueKind.String
+            ? reqProp.GetString()
+            : string.Empty;
+
+        var ok = false;
+        var localUrl = string.Empty;
+        var errMsg = string.Empty;
+        var resolvedPath = string.Empty;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(refUrl))
+                throw new InvalidOperationException("URL is empty.");
+
+            if (!Uri.TryCreate(refUrl.Trim(), UriKind.Absolute, out var uri))
+                throw new InvalidOperationException("Invalid URL.");
+
+            var rawPath = Uri.UnescapeDataString((uri.AbsolutePath ?? string.Empty).TrimStart('/'));
+            var baseName = Path.GetFileName(rawPath.Replace('/', Path.DirectorySeparatorChar));
+            if (string.IsNullOrWhiteSpace(baseName))
+                throw new InvalidOperationException("Invalid file name.");
+
+            var searchRoots = new List<string>();
+            if (root.TryGetProperty("searchRoots", out var arr) && arr.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var el in arr.EnumerateArray())
+                {
+                    if (el.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(el.GetString()))
+                        searchRoots.Add(el.GetString()!);
+                }
+            }
+
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var downloadsRoot = Path.Combine(userProfile, "Downloads");
+            var wfRoot = Path.Combine(downloadsRoot, "Workflow_Downloads");
+            searchRoots.Add(downloadsRoot);
+            searchRoots.Add(wfRoot);
+            searchRoots.Add(Path.Combine(wfRoot, "Videos"));
+
+            string? found = null;
+            foreach (var rootDir in searchRoots.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(rootDir) || !Directory.Exists(rootDir)) continue;
+                var direct = Path.Combine(rootDir, baseName);
+                if (File.Exists(direct)) { found = direct; break; }
+                try
+                {
+                    var hit = Directory.GetFiles(rootDir, baseName, SearchOption.TopDirectoryOnly).FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(hit)) { found = hit; break; }
+                }
+                catch { }
+            }
+
+            if (string.IsNullOrWhiteSpace(found) || !File.Exists(found))
+                throw new FileNotFoundException("Video file not found from playable ref.", rawPath);
+
+            resolvedPath = Path.GetFullPath(found);
+            var folder = Path.GetDirectoryName(resolvedPath) ?? string.Empty;
+            var fileName = Path.GetFileName(resolvedPath);
+            var localHost = await EnsureLocalHostMappingAsync(folder);
+            localUrl = $"https://{localHost}/{Uri.EscapeDataString(fileName)}";
+            ok = true;
+        }
+        catch (Exception ex)
+        {
+            ok = false;
+            errMsg = ex.Message;
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            ok,
+            requestId = requestId ?? string.Empty,
+            path = resolvedPath ?? string.Empty,
+            localUrl,
+            error = errMsg
+        });
+        // Keep same event as HtmlUiNodeControl for compatibility.
+        await DispatchJsEventAsync("__ac_local_path_resolved", payload);
+    }
+
+    private async Task DispatchJsEventAsync(string eventName, string detailJson)
+    {
+        if (_webView?.CoreWebView2 == null) return;
+        var script = $"window.dispatchEvent(new CustomEvent('{eventName}',{{detail:{detailJson}}}));";
+        try
+        {
+            await _webView.CoreWebView2.ExecuteScriptAsync(script);
+        }
+        catch { }
+    }
+
+    private static string GuessImageMimeType(string? filePath)
+    {
+        var ext = (Path.GetExtension(filePath ?? string.Empty) ?? string.Empty).Trim().ToLowerInvariant();
+        return ext switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".bmp" => "image/bmp",
+            ".svg" => "image/svg+xml",
+            ".tif" or ".tiff" => "image/tiff",
+            ".ico" => "image/x-icon",
+            _ => "image/jpeg"
+        };
+    }
+
+    private static string BuildMediaSearchRootsJson()
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void TryAdd(string? p)
+        {
+            if (string.IsNullOrWhiteSpace(p)) return;
+            try
+            {
+                var full = Path.GetFullPath(p);
+                if (Directory.Exists(full)) set.Add(full);
+            }
+            catch { }
+        }
+
+        TryAdd(Environment.CurrentDirectory);
+        TryAdd(AppContext.BaseDirectory);
+        try
+        {
+            var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            TryAdd(Path.Combine(profile, "Downloads"));
+            TryAdd(Path.Combine(profile, "Downloads", "Workflow_Downloads"));
+            TryAdd(Path.Combine(profile, "Downloads", "Workflow_Downloads", "Videos"));
+            TryAdd(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+        }
+        catch { }
+
+        return JsonSerializer.Serialize(set.ToList());
+    }
+
+    private static string BuildLocalHostForFolder(string folderPath)
+    {
+        var key = (folderPath ?? string.Empty).Trim().ToLowerInvariant();
+        var hash = Math.Abs(key.GetHashCode()).ToString("x8");
+        return $"localfiles-{hash}.local";
+    }
+
+    private async Task<string> EnsureLocalHostMappingAsync(string folderPath)
+    {
+        if (_webView?.CoreWebView2 == null)
+            throw new InvalidOperationException("WebView2 not initialized.");
+        if (string.IsNullOrWhiteSpace(folderPath))
+            throw new InvalidOperationException("Folder path is empty.");
+
+        var fullFolder = Path.GetFullPath(folderPath);
+        if (!Directory.Exists(fullFolder))
+            throw new DirectoryNotFoundException($"Mapped folder not found: {fullFolder}");
+
+        string localHost;
+        lock (_localHostMapSync)
+        {
+            if (!_localHostByFolder.TryGetValue(fullFolder, out localHost!))
+            {
+                localHost = BuildLocalHostForFolder(fullFolder);
+                _localHostByFolder[fullFolder] = localHost;
+                _localFolderByHost[localHost] = fullFolder;
+            }
+        }
+
+        _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            localHost,
+            fullFolder,
+            CoreWebView2HostResourceAccessKind.Allow);
+
+        return localHost;
     }
 
     private void HandleGenericOutputs(JsonElement root)
