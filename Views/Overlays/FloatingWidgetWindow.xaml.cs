@@ -470,6 +470,9 @@ public partial class FloatingWidgetWindow : Window
                 _ = ReloadContentAsync();
                 _ = Dispatcher.InvokeAsync(async () =>
                 {
+                        // Chủ động drain mỗi lần expand để không phụ thuộc hoàn toàn vào event PendingAsyncDataPush
+                        // (event có thể đã fire trước khi widget kịp subscribe).
+                        DrainPendingAsyncQueueToBuffer(htmlNode);
                     var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
 #if DEBUG
                     System.Diagnostics.Debug.WriteLine(
@@ -1582,6 +1585,13 @@ public partial class FloatingWidgetWindow : Window
                 _webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
                 _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                try
+                {
+                    // Inject runtime bridge ở document-start để luôn có __acPush/__acAsyncPush,
+                    // kể cả khi HTML widget có cấu trúc phức tạp hoặc nhiều tab JS con.
+                    await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BuildRuntimeBridgeBootstrapJs());
+                }
+                catch { }
 
                 // Handle web messages from HTML (acSubmit, acStartWorkflow)
                 _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
@@ -1592,6 +1602,8 @@ public partial class FloatingWidgetWindow : Window
                         _htmlRuntimeReady = true;
                         if (_node is HtmlUiNode htmlNode)
                         {
+                            // Drain ngay sau navigation complete để bắt dữ liệu đến sớm trước khi runtime ready.
+                            DrainPendingAsyncQueueToBuffer(htmlNode);
                             var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
 #if DEBUG
                             System.Diagnostics.Debug.WriteLine(
@@ -1733,25 +1745,14 @@ public partial class FloatingWidgetWindow : Window
             $"[FloatingWidget:{node.Id}] Drain queue count={items.Count}, keys=[{string.Join(", ", items.Select(i => i.Key))}]");
 #endif
 
-        if (items.Count == 0)
-        {
-            // Fallback quan trọng: nếu queue đã bị nơi khác drain trước (race với canvas),
-            // vẫn lấy snapshot giá trị mới nhất từ AsyncDataCache để widget không mất dữ liệu.
-            if (node.AsyncDataCache != null && node.AsyncDataCache.Count > 0)
-            {
-                foreach (var kv in node.AsyncDataCache)
-                {
-                    if (IsPlaceholderValue(kv.Value)) continue;
-                    UpsertPendingAsyncBuffer(kv.Key ?? string.Empty, kv.Value ?? string.Empty);
-                }
-            }
-            return;
-        }
+        if (items.Count == 0) return;
 
         foreach (var kvp in items)
         {
             if (IsPlaceholderValue(kvp.Value)) continue;
-            UpsertPendingAsyncBuffer(kvp.Key ?? string.Empty, kvp.Value ?? string.Empty);
+            // Giữ nguyên thứ tự/số lượng event async như executor enqueue để tương thích
+            // với UI script kiểu "append theo từng lần nhận".
+            _pendingAsyncBuffer.Add((kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
         }
 #if DEBUG
         System.Diagnostics.Debug.WriteLine(
@@ -1811,6 +1812,55 @@ public partial class FloatingWidgetWindow : Window
         var inspect = await _webView.CoreWebView2.ExecuteScriptAsync($@"
 (function() {{
   try {{
+    // Ensure tối thiểu bridge runtime trước khi push data
+    window.__ac = window.__ac || {{}};
+    window.__ac.live = window.__ac.live || {{}};
+    if (typeof window.__acPush !== 'function') {{
+      window.__ac._subs = window.__ac._subs || {{}};
+      window.__ac._allSubs = window.__ac._allSubs || [];
+      window.__acPush = function(key, value) {{
+        window.__ac = window.__ac || {{}};
+        window.__ac.live = window.__ac.live || {{}};
+        window.__ac.live[key] = value;
+      }};
+    }}
+    if (!window.__acAsyncReady) {{
+      window.__acAsyncReady = true;
+      var _data = {{}};
+      var _keyCallbacks = {{}};
+      var _allCallbacks = [];
+      window.__acAsync = {{
+        data: _data,
+        onReceive: function(keyOrFn, fn) {{
+          if (typeof keyOrFn === 'function') {{
+            _allCallbacks.push(keyOrFn);
+          }} else if (typeof keyOrFn === 'string' && typeof fn === 'function') {{
+            if (!_keyCallbacks[keyOrFn]) _keyCallbacks[keyOrFn] = [];
+            _keyCallbacks[keyOrFn].push(fn);
+          }}
+        }}
+      }};
+      window.__acAsyncPush = function(key, value) {{
+        _data[key] = value;
+        var cbs = _keyCallbacks[key];
+        if (cbs) {{
+          for (var i = 0; i < cbs.length; i++) {{
+            try {{ cbs[i](value); }} catch (_) {{}}
+          }}
+        }}
+        for (var j = 0; j < _allCallbacks.length; j++) {{
+          try {{ _allCallbacks[j](JSON.parse(JSON.stringify(_data))); }} catch (_) {{}}
+        }}
+      }};
+    }} else if (typeof window.__acAsyncPush !== 'function') {{
+      // Compat fallback cho trường hợp runtime cũ thiếu push function
+      window.__acAsync = window.__acAsync || {{ data: {{}} }};
+      window.__acAsyncPush = function(key, value) {{
+        window.__acAsync.data = window.__acAsync.data || {{}};
+        window.__acAsync.data[key] = value;
+      }};
+    }}
+
     if (typeof window.__acAsyncPush === 'function') window.__acAsyncPush({jsKey}, {jsVal});
     if (typeof window.__acPush === 'function') window.__acPush({jsKey}, {jsVal});
     var asyncVal = (window.__acAsync && window.__acAsync.data) ? window.__acAsync.data[{jsKey}] : undefined;
@@ -1830,6 +1880,104 @@ public partial class FloatingWidgetWindow : Window
         System.Diagnostics.Debug.WriteLine(
             $"[FloatingWidget:{nodeIdForLog}] JS push key='{key}' value='{value}' inspect={inspect}");
 #endif
+
+        // Nếu runtime bridge vẫn chưa sẵn sàng, không drop data — trả lại buffer để thử lại tick sau.
+        var hasAsyncPush = false;
+        var hasLivePush = false;
+        try
+        {
+            // ExecuteScriptAsync trả về JSON-encoded string, ví dụ:
+            // "\"{\\\"hasAsyncPush\\\":true,\\\"hasLivePush\\\":true}\""
+            // => cần Deserialize<string> trước khi parse JSON object.
+            var decoded = JsonSerializer.Deserialize<string>(inspect);
+            if (!string.IsNullOrWhiteSpace(decoded))
+            {
+                using var doc = JsonDocument.Parse(decoded);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("hasAsyncPush", out var asyncEl) && asyncEl.ValueKind == JsonValueKind.True)
+                    hasAsyncPush = true;
+                if (root.TryGetProperty("hasLivePush", out var liveEl) && liveEl.ValueKind == JsonValueKind.True)
+                    hasLivePush = true;
+            }
+        }
+        catch
+        {
+            // keep default false/false
+        }
+
+        if (!hasAsyncPush && !hasLivePush)
+        {
+            UpsertPendingAsyncBuffer(key ?? string.Empty, value ?? string.Empty);
+            _htmlRuntimeReady = false;
+        }
+    }
+
+    private static string BuildRuntimeBridgeBootstrapJs()
+    {
+        return @"
+(function() {
+  try {
+    window.__ac = window.__ac || {};
+    window.__ac.live = window.__ac.live || {};
+    window.__ac._subs = window.__ac._subs || {};
+    window.__ac._allSubs = window.__ac._allSubs || [];
+    window.__ac.onUpdate = window.__ac.onUpdate || function(key, cb) {
+      if (typeof cb !== 'function') return;
+      if (!this._subs[key]) this._subs[key] = [];
+      this._subs[key].push(cb);
+      try { cb(this.live[key]); } catch (_) {}
+    };
+    window.__ac.onAllUpdate = window.__ac.onAllUpdate || function(cb) {
+      if (typeof cb !== 'function') return;
+      this._allSubs.push(cb);
+      try { cb(JSON.parse(JSON.stringify(this.live || {}))); } catch (_) {}
+    };
+    window.__acPush = function(key, value) {
+      this.__ac = this.__ac || {};
+      this.__ac.live = this.__ac.live || {};
+      this.__ac._subs = this.__ac._subs || {};
+      this.__ac._allSubs = this.__ac._allSubs || [];
+      this.__ac.live[key] = value;
+      var list = this.__ac._subs[key] || [];
+      for (var i = 0; i < list.length; i++) { try { list[i](value); } catch (_) {} }
+      for (var j = 0; j < this.__ac._allSubs.length; j++) { try { this.__ac._allSubs[j](JSON.parse(JSON.stringify(this.__ac.live))); } catch (_) {} }
+    };
+
+    if (!window.__acAsyncReady) {
+      window.__acAsyncReady = true;
+      var _data = {};
+      var _keyCallbacks = {};
+      var _allCallbacks = [];
+      window.__acAsync = {
+        data: _data,
+        onReceive: function(keyOrFn, fn) {
+          if (typeof keyOrFn === 'function') {
+            _allCallbacks.push(keyOrFn);
+          } else if (typeof keyOrFn === 'string' && typeof fn === 'function') {
+            if (!_keyCallbacks[keyOrFn]) _keyCallbacks[keyOrFn] = [];
+            _keyCallbacks[keyOrFn].push(fn);
+          }
+        }
+      };
+      window.__acAsyncPush = function(key, value) {
+        _data[key] = value;
+        var cbs = _keyCallbacks[key];
+        if (cbs) {
+          for (var i = 0; i < cbs.length; i++) { try { cbs[i](value); } catch (_) {} }
+        }
+        for (var j = 0; j < _allCallbacks.length; j++) {
+          try { _allCallbacks[j](JSON.parse(JSON.stringify(_data))); } catch (_) {}
+        }
+      };
+    } else if (typeof window.__acAsyncPush !== 'function') {
+      window.__acAsync = window.__acAsync || { data: {} };
+      window.__acAsyncPush = function(key, value) {
+        window.__acAsync.data = window.__acAsync.data || {};
+        window.__acAsync.data[key] = value;
+      };
+    }
+  } catch (_) {}
+})();";
     }
 
     private string BuildBridgeJs()
@@ -3320,7 +3468,7 @@ window.__acPush = function(key, value) {
                                 }
 
                                 // Có thể có item mới enqueue đúng lúc đang flush; lặp thêm 1-2 vòng để không hụt item cuối.
-                                if (htmlNode.PendingAsyncPushQueue.IsEmpty) break;
+                                if (htmlNode.PendingAsyncPushQueue.IsEmpty && _pendingAsyncBuffer.Count == 0) break;
                                 if (++rounds >= 8) break;
                                 await Task.Yield();
                             }

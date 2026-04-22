@@ -6,6 +6,7 @@ using FlowMy.Services.Utils;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Text;
 
 namespace FlowMy.ViewModels;
@@ -28,10 +29,11 @@ public sealed class FloatingWidgetWindowViewModel
     {
         var vars = ResolveInputValues(node);
         var offlineSig = BuildOfflineAssetsSignature(node);
+        var normalizedJs = NormalizeRuntimeJsCode(node.JsCode ?? string.Empty);
         return string.Join("|",
             node.HtmlCode ?? string.Empty,
             node.CssCode ?? string.Empty,
-            node.JsCode ?? string.Empty,
+            normalizedJs,
             node.ParamsCode ?? string.Empty,
             offlineSig,
             string.Join(";", vars.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}")));
@@ -42,7 +44,7 @@ public sealed class FloatingWidgetWindowViewModel
         var vars = ResolveInputValues(htmlNode);
         var html = ReplaceVariables(htmlNode.HtmlCode ?? string.Empty, vars);
         var css = ReplaceVariables(htmlNode.CssCode ?? string.Empty, vars);
-        var js = ReplaceVariables(htmlNode.JsCode ?? string.Empty, vars);
+        var js = ReplaceVariables(NormalizeRuntimeJsCode(htmlNode.JsCode ?? string.Empty), vars);
 
         var sb = new StringBuilder();
         sb.AppendLine("<!doctype html>");
@@ -178,6 +180,35 @@ public sealed class FloatingWidgetWindowViewModel
         foreach (var kv in vars)
             output = output.Replace("{" + kv.Key + "}", kv.Value ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         return output;
+    }
+
+    // Đồng bộ với HtmlUiNodeControl: gộp JS từ nhiều tab con về payload runtime duy nhất.
+    private static string NormalizeRuntimeJsCode(string jsCode)
+    {
+        if (string.IsNullOrWhiteSpace(jsCode)) return string.Empty;
+        const string markerPrefix = "// [FLOW_JS_TAB:";
+        if (jsCode.IndexOf(markerPrefix, StringComparison.Ordinal) < 0)
+            return jsCode;
+
+        var regex = new Regex(
+            @"^\s*//\s*\[FLOW_JS_TAB:(\d+)(?:\|P:(\d+))?(?:\|T:(.*?))?\]\s*$",
+            RegexOptions.Multiline);
+        var matches = regex.Matches(jsCode).Cast<Match>().ToList();
+        if (matches.Count == 0)
+            return jsCode;
+
+        var parts = new List<string>();
+        for (int i = 0; i < matches.Count; i++)
+        {
+            var start = matches[i].Index + matches[i].Length;
+            var end = i + 1 < matches.Count ? matches[i + 1].Index : jsCode.Length;
+            var chunk = jsCode.Substring(start, end - start).Trim();
+            if (!string.IsNullOrWhiteSpace(chunk))
+                parts.Add(chunk);
+        }
+
+        if (parts.Count == 0) return string.Empty;
+        return string.Join("\n\n/* --- FLOW_JS_TAB_SPLIT --- */\n\n", parts);
     }
 
     private static string BuildOfflineAssetsSignature(HtmlUiNode node)
