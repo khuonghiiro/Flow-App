@@ -21,3 +21,6 @@ openai brands
 folder-open duotone-thin
 folder-open duotone-light
 border-none regular
+whmcs brands
+tire-rugged sharp-duotone-light
+gear-complex light

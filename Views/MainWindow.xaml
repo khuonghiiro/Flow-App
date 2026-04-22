@@ -582,9 +582,13 @@
                                                                     </Style>
                                                                 </Button.Style>
                                                                 <Grid>
-                                                                    <TextBlock Text="⚙"
-                                                                               FontSize="13"
-                                                                               Visibility="{Binding IsConfiguring, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                   
+                                                                    <controls:SvgViewboxEx Width="18" Height="18"
+                                                                           Fill="Black"
+                                                                           Source="{Binding Source={x:Static sys:String.Empty},
+                                                                                    Converter={StaticResource IconKeyToPathConverter},
+                                                                                    ConverterParameter='gear-complex light'}"
+                                                                           Visibility="{Binding IsConfiguring, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                                                                     <TextBlock Text="⏳"
                                                                                FontSize="12"
                                                                                Visibility="{Binding IsConfiguring, Converter={StaticResource BooleanToVisibilityConverter}}"/>

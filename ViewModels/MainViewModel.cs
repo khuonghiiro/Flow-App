@@ -166,7 +166,8 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void ConfigureWidget(WidgetShortcutItem? item)
         {
-            if (item == null) return;
+            if (item == null || item.IsConfiguring) return;
+            item.IsConfiguring = true;
             LastConfiguredWorkflowName = item.WorkflowName ?? string.Empty;
             LastConfiguredNodeId = item.NodeId ?? string.Empty;
             HasLastConfiguredWidget = !string.IsNullOrWhiteSpace(LastConfiguredWorkflowName)
@@ -175,7 +176,8 @@ namespace FlowMy.ViewModels
                 workflowNameToLoad: item.WorkflowName,
                 widgetNodeIds: null,
                 headless: true,
-                autoOpenConfigNodeId: item.NodeId);
+                autoOpenConfigNodeId: item.NodeId,
+                configureItem: item);
         }
 
         /// <summary>
@@ -212,7 +214,8 @@ namespace FlowMy.ViewModels
             string? workflowNameToLoad,
             IList<string>? widgetNodeIds,
             bool headless,
-            string? autoOpenConfigNodeId = null)
+            string? autoOpenConfigNodeId = null,
+            WidgetShortcutItem? configureItem = null)
         {
             if (App.Services == null) return;
 
@@ -222,6 +225,7 @@ namespace FlowMy.ViewModels
             var workflowWindow = scope.ServiceProvider.GetService(typeof(WorkflowEditorWindow)) as WorkflowEditorWindow;
             if (workflowWindow == null)
             {
+                if (configureItem != null) configureItem.IsConfiguring = false;
                 scope.Dispose();
                 return;
             }
@@ -316,12 +320,14 @@ namespace FlowMy.ViewModels
             // Nếu được yêu cầu từ MainWindow: auto bật dialog cấu hình widget ngay khi editor load xong.
             if (!string.IsNullOrWhiteSpace(autoOpenConfigNodeId))
             {
-                workflowWindow.Loaded += (_, __) =>
+                workflowWindow.Loaded += async (_, __) =>
                 {
                     try
                     {
-                        var nodes = workflowWindow.ViewModel?.Nodes?.ToList()
-                            ?? new List<FlowMy.Models.WorkflowNode>();
+                        var nodes = await WaitForWorkflowNodesAsync(
+                            workflowWindow,
+                            autoOpenConfigNodeId,
+                            timeoutMs: 7000);
                         if (nodes.Count == 0) return;
 
                         var nodeIdsInWorkflow = nodes
@@ -357,6 +363,11 @@ namespace FlowMy.ViewModels
                         }
                     }
                     catch { }
+                    finally
+                    {
+                        if (configureItem != null)
+                            configureItem.IsConfiguring = false;
+                    }
                 };
             }
 
@@ -434,6 +445,34 @@ namespace FlowMy.ViewModels
                 elapsed += step;
             }
             return mgr.IsWidgetOpen(nodeId);
+        }
+
+        private static async Task<List<FlowMy.Models.WorkflowNode>> WaitForWorkflowNodesAsync(
+            WorkflowEditorWindow workflowWindow,
+            string? targetNodeId,
+            int timeoutMs)
+        {
+            var elapsed = 0;
+            const int stepMs = 120;
+            while (elapsed < timeoutMs)
+            {
+                var nodes = workflowWindow.ViewModel?.Nodes?.ToList()
+                    ?? new List<FlowMy.Models.WorkflowNode>();
+                if (nodes.Count > 0)
+                {
+                    if (string.IsNullOrWhiteSpace(targetNodeId)
+                        || nodes.Any(n => string.Equals(n.Id, targetNodeId, System.StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return nodes;
+                    }
+                }
+
+                await Task.Delay(stepMs);
+                elapsed += stepMs;
+            }
+
+            return workflowWindow.ViewModel?.Nodes?.ToList()
+                ?? new List<FlowMy.Models.WorkflowNode>();
         }
     }
 }
