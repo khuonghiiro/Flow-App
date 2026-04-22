@@ -12,6 +12,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -3324,7 +3325,12 @@ window.__acPush = function(key, value) {
         {
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return;
-            SetWindowAppId(hwnd, $"FlowMy.Widget.{_node.Id}");
+            var workflowName = _host?.ViewModel?.CurrentWorkflowName ?? "Workflow";
+            var widgetName = string.IsNullOrWhiteSpace(Config.WidgetName) ? _node.Title : Config.WidgetName;
+            var safeWorkflow = SanitizeAppIdPart(workflowName);
+            var safeNode = SanitizeAppIdPart(_node.Id);
+            var safeWidget = SanitizeAppIdPart(widgetName);
+            SetWindowAppId(hwnd, $"FlowMy.Widget.{safeWorkflow}.{safeNode}.{safeWidget}");
         }
         catch { }
     }
@@ -3334,7 +3340,7 @@ window.__acPush = function(key, value) {
         try
         {
             var brush = ResolveWidgetAccentBrush();
-            Icon = BuildSolidCircleIcon(brush);
+            Icon = BuildTaskbarIcon(brush, Config.TaskbarIconShape, Config.TaskbarIconSize);
         }
         catch { }
     }
@@ -3353,20 +3359,66 @@ window.__acPush = function(key, value) {
         return Brushes.DodgerBlue;
     }
 
-    private ImageSource BuildSolidCircleIcon(Brush accentBrush)
+    private ImageSource BuildTaskbarIcon(Brush accentBrush, WidgetIdleShape shape, double iconSize)
     {
         const int size = 64;
+        var radius = Math.Max(8, Math.Min(28, iconSize));
+        var center = new Point(size / 2d, size / 2d);
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
             dc.DrawRoundedRectangle(Brushes.Transparent, null, new Rect(0, 0, size, size), 0, 0);
-            dc.DrawEllipse(accentBrush, new Pen(Brushes.White, 3), new Point(size / 2d, size / 2d), 24, 24);
+            var pen = new Pen(Brushes.White, 3);
+            switch (shape)
+            {
+                case WidgetIdleShape.Square:
+                {
+                    var half = radius;
+                    dc.DrawRectangle(accentBrush, pen, new Rect(center.X - half, center.Y - half, half * 2, half * 2));
+                    break;
+                }
+                case WidgetIdleShape.RoundedSquare:
+                {
+                    var half = radius;
+                    var rect = new Rect(center.X - half, center.Y - half, half * 2, half * 2);
+                    var corner = Math.Max(4, half * 0.28);
+                    dc.DrawRoundedRectangle(accentBrush, pen, rect, corner, corner);
+                    break;
+                }
+                case WidgetIdleShape.Diamond:
+                {
+                    var half = radius;
+                    var geo = new StreamGeometry();
+                    using (var g = geo.Open())
+                    {
+                        g.BeginFigure(new Point(center.X, center.Y - half), true, true);
+                        g.LineTo(new Point(center.X + half, center.Y), true, false);
+                        g.LineTo(new Point(center.X, center.Y + half), true, false);
+                        g.LineTo(new Point(center.X - half, center.Y), true, false);
+                    }
+                    geo.Freeze();
+                    dc.DrawGeometry(accentBrush, pen, geo);
+                    break;
+                }
+                default:
+                    dc.DrawEllipse(accentBrush, pen, center, radius, radius);
+                    break;
+            }
         }
 
         var bmp = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
         bmp.Render(visual);
         bmp.Freeze();
         return bmp;
+    }
+
+    private static string SanitizeAppIdPart(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "x";
+        var trimmed = value.Trim();
+        var safe = Regex.Replace(trimmed, "[^A-Za-z0-9._-]+", "_");
+        return string.IsNullOrWhiteSpace(safe) ? "x" : safe;
     }
 
     [DllImport("shell32.dll", SetLastError = true)]

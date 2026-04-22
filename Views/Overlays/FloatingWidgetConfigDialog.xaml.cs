@@ -394,6 +394,8 @@ namespace FlowMy.Views.Overlays
 
                 AlwaysOnTopCheckBox.IsChecked = cfg.AlwaysOnTop;
                 ShowInTaskbarCheckBox.IsChecked = cfg.ShowInTaskbar;
+                SelectComboByTag(TaskbarIconShapeComboBox, cfg.TaskbarIconShape.ToString());
+                TaskbarIconSizeTextBox.Text = cfg.TaskbarIconSize.ToString("0.#", CultureInfo.InvariantCulture);
                 if (!cfg.ShowTitleBar)
                     TitleBarHiddenRadio.IsChecked = true;
                 else if (cfg.AutoHideTitleBar)
@@ -522,6 +524,8 @@ namespace FlowMy.Views.Overlays
 
             cfg.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
             cfg.ShowInTaskbar = ShowInTaskbarCheckBox.IsChecked == true;
+            cfg.TaskbarIconShape = ParseEnum(TaskbarIconShapeComboBox, WidgetIdleShape.Circle);
+            cfg.TaskbarIconSize = ParseDouble(TaskbarIconSizeTextBox.Text, cfg.TaskbarIconSize);
             cfg.ShowTitleBar = TitleBarAlwaysVisibleRadio.IsChecked == true || TitleBarAutoHideRadio.IsChecked == true;
             cfg.AutoHideTitleBar = TitleBarAutoHideRadio.IsChecked == true;
             cfg.ShowSideActionButton = ShowSideActionButtonCheckBox.IsChecked != false;

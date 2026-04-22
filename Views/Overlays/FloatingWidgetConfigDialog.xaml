@@ -430,6 +430,36 @@
                                 <TextBlock Text="Bật: có icon riêng trên taskbar để chuyển nhanh. Tắt: widget chỉ hiện dạng overlay."
                                            Foreground="{DynamicResource TextBrush}" Opacity="0.65"
                                            FontSize="11" Margin="22,0,0,6" TextWrapping="Wrap"/>
+                                <Grid Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Hình icon taskbar"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   Opacity="0.85"/>
+                                        <ComboBox x:Name="TaskbarIconShapeComboBox"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  Margin="0,4,0,0"
+                                                  Height="30">
+                                            <ComboBoxItem Content="Hình tròn" Tag="Circle"/>
+                                            <ComboBoxItem Content="Hình vuông" Tag="Square"/>
+                                            <ComboBoxItem Content="Vuông bo góc" Tag="RoundedSquare"/>
+                                            <ComboBoxItem Content="Hình thoi" Tag="Diamond"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Kích thước icon (px)"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   Opacity="0.85"/>
+                                        <TextBox x:Name="TaskbarIconSizeTextBox"
+                                                 Style="{DynamicResource BaseTextBox}"
+                                                 Height="28"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
 
                                 <TextBlock Text="Chế độ thanh tiêu đề"
                                            Foreground="{DynamicResource TextBrush}"

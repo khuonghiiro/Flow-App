@@ -360,6 +360,26 @@ namespace FlowMy.Models
             set { if (_showInTaskbar != value) { _showInTaskbar = value; OnPropertyChanged(); } }
         }
 
+        private WidgetIdleShape _taskbarIconShape = WidgetIdleShape.Circle;
+        /// <summary>Kiểu hình icon hiển thị trên taskbar.</summary>
+        public WidgetIdleShape TaskbarIconShape
+        {
+            get => _taskbarIconShape;
+            set { if (_taskbarIconShape != value) { _taskbarIconShape = value; OnPropertyChanged(); } }
+        }
+
+        private double _taskbarIconSize = 22;
+        /// <summary>Kích thước hình icon taskbar (px), được clamp 12..40.</summary>
+        public double TaskbarIconSize
+        {
+            get => _taskbarIconSize;
+            set
+            {
+                var v = Math.Max(12, Math.Min(40, value));
+                if (Math.Abs(_taskbarIconSize - v) > 0.01) { _taskbarIconSize = v; OnPropertyChanged(); }
+            }
+        }
+
         // ── Title bar ──
         private bool _showTitleBar = true;
         /// <summary>Hiện thanh tiêu đề mini phía trên widget.</summary>
