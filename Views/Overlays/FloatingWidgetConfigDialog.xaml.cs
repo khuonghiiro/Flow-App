@@ -400,6 +400,7 @@ namespace FlowMy.Views.Overlays
                     TitleBarAutoHideRadio.IsChecked = true;
                 else
                     TitleBarAlwaysVisibleRadio.IsChecked = true;
+                ShowSideActionButtonCheckBox.IsChecked = cfg.ShowSideActionButton;
                 TitleBarHideTimeoutTextBox.Text = cfg.TitleBarHideTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
                 UpdateTitleTimeoutState();
 
@@ -523,6 +524,7 @@ namespace FlowMy.Views.Overlays
             cfg.ShowInTaskbar = ShowInTaskbarCheckBox.IsChecked == true;
             cfg.ShowTitleBar = TitleBarAlwaysVisibleRadio.IsChecked == true || TitleBarAutoHideRadio.IsChecked == true;
             cfg.AutoHideTitleBar = TitleBarAutoHideRadio.IsChecked == true;
+            cfg.ShowSideActionButton = ShowSideActionButtonCheckBox.IsChecked != false;
             cfg.TitleBarHideTimeoutSeconds = (int)ParseDouble(TitleBarHideTimeoutTextBox.Text, cfg.TitleBarHideTimeoutSeconds);
 
             cfg.DisplayMode = ParseEnum(DisplayModeComboBox, WidgetDisplayMode.Normal);

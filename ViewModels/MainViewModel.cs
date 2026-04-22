@@ -704,11 +704,6 @@ namespace FlowMy.ViewModels
 
                                     node.FloatingWidget ??= new FlowMy.Models.FloatingWidgetConfig();
                                     node.FloatingWidget.IsEnabled = true;
-                                    if (headless)
-                                    {
-                                        // Launch từ nút 📌 ở MainWindow: widget chạy ngầm, không tạo item trên taskbar.
-                                        node.FloatingWidget.ShowInTaskbar = false;
-                                    }
 
                                     FloatingWidgetManager.Instance.OpenWidget(node, workflowWindow);
                                     remaining.Remove(wid);

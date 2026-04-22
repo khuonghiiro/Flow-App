@@ -385,6 +385,17 @@ namespace FlowMy.Models
             set { var v = Math.Max(1, value); if (_titleBarHideTimeoutSeconds != v) { _titleBarHideTimeoutSeconds = v; OnPropertyChanged(); } }
         }
 
+        private bool _showSideActionButton = true;
+        /// <summary>
+        /// Hiện nút thao tác nhỏ cạnh widget (nút gọi lại title/action host).
+        /// Bật mặc định để người dùng vẫn có điểm bấm khi title bar tự ẩn hoặc ẩn hoàn toàn.
+        /// </summary>
+        public bool ShowSideActionButton
+        {
+            get => _showSideActionButton;
+            set { if (_showSideActionButton != value) { _showSideActionButton = value; OnPropertyChanged(); } }
+        }
+
         // ── Display Mode ──
         private WidgetDisplayMode _displayMode = WidgetDisplayMode.Normal;
         public WidgetDisplayMode DisplayMode

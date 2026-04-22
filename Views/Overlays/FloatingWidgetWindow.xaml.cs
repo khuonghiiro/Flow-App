@@ -9,6 +9,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -18,6 +19,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace FlowMy.Views.Overlays;
@@ -112,7 +115,12 @@ public partial class FloatingWidgetWindow : Window
         // Window position
         WindowStartupLocation = WindowStartupLocation.Manual;
         Loaded += OnLoaded;
-        Activated += (_, _) => UpdateOutsideCollapseToggleButtonState();
+        SourceInitialized += OnSourceInitialized;
+        Activated += (_, _) =>
+        {
+            UpdateOutsideCollapseToggleButtonState();
+            ReassertTopmostIfNeeded();
+        };
         LocationChanged += (_, _) => UpdateTitleRevealButtonPlacement();
         SizeChanged += (_, _) => UpdateTitleRevealButtonPlacement();
         Deactivated += FloatingWidgetWindow_Deactivated;
@@ -130,6 +138,8 @@ public partial class FloatingWidgetWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyTaskbarVisualIdentity();
+
         // Apply idle shape
         ApplyIdleShape();
 
@@ -1296,13 +1306,16 @@ public partial class FloatingWidgetWindow : Window
 
     private void SetTitleRevealOpen(bool isOpen)
     {
-        if (!isOpen)
+        // Nút cạnh widget được điều khiển độc lập với mode title bar.
+        // Nếu bật checkbox và widget đang expanded thì luôn hiện nút này.
+        var mustShowByConfig = Config.ShowSideActionButton && _isExpanded;
+        if (!mustShowByConfig)
         {
             _titleRevealHost?.Hide();
             return;
         }
 
-        if (!_isExpanded) return;
+        isOpen = true;
 
         EnsureTitleRevealHost();
         if (_titleRevealHost == null) return;
@@ -1392,6 +1405,8 @@ public partial class FloatingWidgetWindow : Window
 
     private void FloatingWidgetWindow_Deactivated(object? sender, EventArgs e)
     {
+        ReassertTopmostIfNeeded();
+
         if (!_isExpanded) return;
         if (Config.PinnedNoAutoHide) return;
         if (!Config.CollapseWhenClickOutsideExpanded) return;
@@ -1619,6 +1634,8 @@ public partial class FloatingWidgetWindow : Window
 
             Topmost = Config.AlwaysOnTop;
             ShowInTaskbar = Config.ShowInTaskbar;
+            ApplyTaskbarVisualIdentity();
+            ReassertTopmostIfNeeded();
             SyncTitleRevealHostTopmost();
             EnsureTitleRevealHost();
             UpdateOutsideCollapseToggleButtonState();
@@ -3278,5 +3295,145 @@ window.__acPush = function(key, value) {
         _titleRevealPinToggleButton = null;
 
         base.OnClosed(e);
+    }
+
+    private void ReassertTopmostIfNeeded()
+    {
+        if (!Config.AlwaysOnTop) return;
+        try
+        {
+            if (!Topmost) Topmost = true;
+            // WPF đôi lúc mất z-order khi có window khác vừa chuyển trạng thái.
+            // Toggle nhẹ để kéo widget về topmost layer ổn định hơn.
+            Topmost = false;
+            Topmost = true;
+            SyncTitleRevealHostTopmost();
+        }
+        catch { }
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        ApplyTaskbarAppIdBestEffort();
+    }
+
+    private void ApplyTaskbarAppIdBestEffort()
+    {
+        if (!Config.ShowInTaskbar) return;
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            SetWindowAppId(hwnd, $"FlowMy.Widget.{_node.Id}");
+        }
+        catch { }
+    }
+
+    private void ApplyTaskbarVisualIdentity()
+    {
+        try
+        {
+            var brush = ResolveWidgetAccentBrush();
+            Icon = BuildSolidCircleIcon(brush);
+        }
+        catch { }
+    }
+
+    private Brush ResolveWidgetAccentBrush()
+    {
+        if (_node.NodeBrush is SolidColorBrush nb && nb.Color.A > 0)
+            return nb;
+
+        if (!string.IsNullOrWhiteSpace(_node.ColorKey) && TryFindResource(_node.ColorKey) is SolidColorBrush rb)
+            return rb;
+
+        if (TryFindResource("PrimaryBrush") is SolidColorBrush pb)
+            return pb;
+
+        return Brushes.DodgerBlue;
+    }
+
+    private ImageSource BuildSolidCircleIcon(Brush accentBrush)
+    {
+        const int size = 64;
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRoundedRectangle(Brushes.Transparent, null, new Rect(0, 0, size, size), 0, 0);
+            dc.DrawEllipse(accentBrush, new Pen(Brushes.White, 3), new Point(size / 2d, size / 2d), 24, 24);
+        }
+
+        var bmp = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(visual);
+        bmp.Freeze();
+        return bmp;
+    }
+
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern int SHGetPropertyStoreForWindow(
+        IntPtr hwnd,
+        ref Guid riid,
+        [MarshalAs(UnmanagedType.Interface)] out IPropertyStore propertyStore);
+
+    private static readonly Guid IID_IPropertyStore = new("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99");
+    private static readonly PROPERTYKEY PKEY_AppUserModel_ID = new()
+    {
+        fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
+        pid = 5
+    };
+
+    private static void SetWindowAppId(IntPtr hwnd, string appId)
+    {
+        var iid = IID_IPropertyStore;
+        var hr = SHGetPropertyStoreForWindow(hwnd, ref iid, out var store);
+        if (hr != 0 || store == null) return;
+        try
+        {
+            var key = PKEY_AppUserModel_ID;
+            var pv = new PROPVARIANT { vt = 31, pwszVal = Marshal.StringToCoTaskMemUni(appId) };
+            try
+            {
+                store.SetValue(ref key, ref pv);
+                store.Commit();
+            }
+            finally
+            {
+                if (pv.pwszVal != IntPtr.Zero) Marshal.FreeCoTaskMem(pv.pwszVal);
+            }
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(store);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PROPERTYKEY
+    {
+        public Guid fmtid;
+        public uint pid;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PROPVARIANT
+    {
+        public ushort vt;
+        public ushort wReserved1;
+        public ushort wReserved2;
+        public ushort wReserved3;
+        public IntPtr pwszVal;
+        public IntPtr padding;
+    }
+
+    [ComImport]
+    [Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPropertyStore
+    {
+        void GetCount(out uint cProps);
+        void GetAt(uint iProp, out PROPERTYKEY pkey);
+        void GetValue(ref PROPERTYKEY key, out PROPVARIANT pv);
+        void SetValue(ref PROPERTYKEY key, ref PROPVARIANT pv);
+        void Commit();
     }
 }

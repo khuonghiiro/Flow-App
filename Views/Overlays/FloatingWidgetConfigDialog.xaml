@@ -462,6 +462,13 @@
                                 <TextBlock Text="Tối đa diện tích nội dung; không còn thanh tiêu đề, dùng menu chuột phải và nút cạnh widget để thao tác."
                                            Foreground="{DynamicResource TextBrush}" Opacity="0.65"
                                            FontSize="11" Margin="22,0,0,4" TextWrapping="Wrap"/>
+                                <CheckBox x:Name="ShowSideActionButtonCheckBox"
+                                          Content="Hiện nút thao tác cạnh widget"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,4,0,0"/>
+                                <TextBlock Text="Bật: luôn cho phép hiện nút nhỏ cạnh widget để mở lại thanh thao tác nhanh. Tắt: không hiện nút này."
+                                           Foreground="{DynamicResource TextBrush}" Opacity="0.65"
+                                           FontSize="11" Margin="22,0,0,4" TextWrapping="Wrap"/>
                                 <Grid Margin="0,6,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
