@@ -1912,7 +1912,7 @@ window.__acPush = function(key, value) {
                         HandleSubmit(root);
                         break;
                     case "startWorkflow":
-                        HandleStartWorkflow();
+                        _ = Dispatcher.InvokeAsync(async () => await HandleStartWorkflowAsync(), DispatcherPriority.Background);
                         break;
                 }
             }
@@ -1925,7 +1925,7 @@ window.__acPush = function(key, value) {
                         HandleSubmit(root);
                         break;
                     case "startWorkflow":
-                        HandleStartWorkflow();
+                        _ = Dispatcher.InvokeAsync(async () => await HandleStartWorkflowAsync(), DispatcherPriority.Background);
                         break;
                     case "reload":
                         _ = Dispatcher.InvokeAsync(async () => await ReloadContentAsync(), DispatcherPriority.Background);
@@ -2035,19 +2035,22 @@ window.__acPush = function(key, value) {
         _host.RequestSyncDataPanels(immediate: false);
     }
 
-    private void HandleStartWorkflow()
+    private async Task HandleStartWorkflowAsync()
     {
-        Dispatcher.BeginInvoke(() =>
+        try
         {
-            try
+            // Đảm bảo param DOM được cập nhật trước khi kick workflow.
+            if (_node is HtmlUiNode htmlNode)
             {
-                StartWorkflowFromWidget();
+                await UpdateOutputsFromDomAsync(htmlNode);
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[FloatingWidget] StartWorkflow error: {ex.Message}");
-            }
-        });
+
+            StartWorkflowFromWidget();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] StartWorkflow error: {ex.Message}");
+        }
     }
 
     private async Task HandleResolveLocalPathAsync(JsonElement root)
@@ -3190,6 +3193,24 @@ window.__acPush = function(key, value) {
                         System.Diagnostics.Debug.WriteLine(
                             $"[FloatingWidget:{htmlNode.Id}] PendingAsyncDataPush reset to false.");
 #endif
+                    }
+                }, DispatcherPriority.Normal);
+            }
+            else if (e.PropertyName == nameof(HtmlUiNode.PendingReadDom) && htmlNode.PendingReadDom)
+            {
+                _ = Dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        if (_webViewInitialized)
+                        {
+                            await UpdateOutputsFromDomAsync(htmlNode);
+                        }
+                    }
+                    catch { }
+                    finally
+                    {
+                        htmlNode.PendingReadDom = false;
                     }
                 }, DispatcherPriority.Normal);
             }

@@ -1156,6 +1156,16 @@ namespace FlowMy.Views.NodeControls
                     // Executor trigger đọc DOM khi chạy workflow
                     else if (e.PropertyName == nameof(HtmlUiNode.PendingReadDom) && node.PendingReadDom)
                     {
+                        // Khi widget đang mở, để FloatingWidgetWindow đọc DOM thực tế của widget.
+                        if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(node.Id))
+                        {
+#if DEBUG
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[HtmlUiNodeControl:{node.Id}] Skip canvas PendingReadDom because widget is open.");
+#endif
+                            return;
+                        }
+
                         // Dùng InvokeAsync để đảm bảo await được thực thi đúng cách
                         _ = webView.Dispatcher.InvokeAsync(async () =>
                         {
