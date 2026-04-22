@@ -81,6 +81,9 @@ namespace FlowMy.Views
         private bool _isApplyingEnergyMenuState = false;
         private bool _headlessCanvasOptimizationEnabled;
         private HashSet<string> _headlessHiddenWidgetNodeIds = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, (double Width, double Height)> _headlessOriginalNodeSizes = new(StringComparer.OrdinalIgnoreCase);
+        private const double HeadlessWebNodeWidth = 1366d;
+        private const double HeadlessWebNodeHeight = 768d;
         
         // UI chrome hide/show when expanding a node to viewport
         private bool _isViewportExpandedUiHidden = false;
@@ -178,6 +181,7 @@ namespace FlowMy.Views
         {
             _headlessCanvasOptimizationEnabled = false;
             _headlessHiddenWidgetNodeIds.Clear();
+            RestoreHeadlessNodeSizes();
 
             if (ViewModel == null) return;
 
@@ -213,12 +217,14 @@ namespace FlowMy.Views
 
         public void ApplyLowestRenderPresetForDebugReopen()
         {
+            var preservedLineStyle = _connectionLineStyle.ToString();
             var low = new CanvasToolbarPreferences
             {
                 GridType = "None",
                 CanvasDisplayMode = "ViewportOnly",
                 CullingPerformanceProfile = "Low",
-                ConnectionLineStyle = "Bezier",
+                // Giữ style line mà user đã chọn cho workflow hiện tại.
+                ConnectionLineStyle = preservedLineStyle,
                 ConnectionAnimationMode = "Off",
                 ConnectionColorMode = "NodeColor",
                 CustomConnectionColorKey = "LimeGreen",
@@ -305,6 +311,13 @@ namespace FlowMy.Views
                             if (p?.PortUI != null) p.PortUI.Visibility = Visibility.Visible;
                         }
                     }
+
+                    // Chế độ headless: phóng to Web/HtmlUi node để ưu tiên vùng render runtime,
+                    // nhưng chỉ đổi tạm và sẽ khôi phục lại khi mở debug.
+                    if (node.Type == NodeType.Web || node.Type == NodeType.HtmlUi)
+                    {
+                        ApplyHeadlessNodeSize(node, HeadlessWebNodeWidth, HeadlessWebNodeHeight);
+                    }
                 }
                 else
                 {
@@ -322,6 +335,56 @@ namespace FlowMy.Views
             }
 
             _viewportCullingService?.ForceUpdate();
+        }
+
+        private static double GetNodeBorderWidth(Border border)
+        {
+            if (border.ActualWidth > 0) return border.ActualWidth;
+            if (!double.IsNaN(border.Width) && border.Width > 0) return border.Width;
+            return 0;
+        }
+
+        private static double GetNodeBorderHeight(Border border)
+        {
+            if (border.ActualHeight > 0) return border.ActualHeight;
+            if (!double.IsNaN(border.Height) && border.Height > 0) return border.Height;
+            return 0;
+        }
+
+        private void ApplyHeadlessNodeSize(WorkflowNode node, double width, double height)
+        {
+            var border = node.Border;
+            if (border == null || string.IsNullOrWhiteSpace(node.Id)) return;
+
+            if (!_headlessOriginalNodeSizes.ContainsKey(node.Id))
+            {
+                var curW = GetNodeBorderWidth(border);
+                var curH = GetNodeBorderHeight(border);
+                if (curW > 0 && curH > 0)
+                {
+                    _headlessOriginalNodeSizes[node.Id] = (curW, curH);
+                }
+            }
+
+            border.Width = width;
+            border.Height = height;
+        }
+
+        private void RestoreHeadlessNodeSizes()
+        {
+            if (ViewModel == null || _headlessOriginalNodeSizes.Count == 0) return;
+
+            foreach (var node in ViewModel.Nodes)
+            {
+                if (node.Border == null || string.IsNullOrWhiteSpace(node.Id)) continue;
+                if (_headlessOriginalNodeSizes.TryGetValue(node.Id, out var size))
+                {
+                    node.Border.Width = size.Width;
+                    node.Border.Height = size.Height;
+                }
+            }
+
+            _headlessOriginalNodeSizes.Clear();
         }
 
         // Kéo thả panel nổi hiển thị node đang chạy
