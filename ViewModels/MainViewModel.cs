@@ -214,7 +214,8 @@ namespace FlowMy.ViewModels
                 OpenWorkflowEditorInternal(
                     item.WorkflowName,
                     new List<string> { item.NodeId },
-                    headless: true);
+                    headless: true,
+                    hideMainWindowWhenHeadless: true);
                 item.IsWidgetOpen = await WaitUntilWidgetOpenAsync(item.NodeId, timeoutMs: 4000);
             }
             finally
@@ -444,7 +445,8 @@ namespace FlowMy.ViewModels
             IList<string>? widgetNodeIds,
             bool headless,
             string? autoOpenConfigNodeId = null,
-            WidgetShortcutItem? configureItem = null)
+            WidgetShortcutItem? configureItem = null,
+            bool hideMainWindowWhenHeadless = false)
         {
             if (App.Services == null) return;
 
@@ -486,6 +488,10 @@ namespace FlowMy.ViewModels
                 workflowWindow.ShowInTaskbar = false;
                 workflowWindow.WindowState = WindowState.Minimized;
                 workflowWindow.Visibility = Visibility.Hidden;
+                if (hideMainWindowWhenHeadless)
+                {
+                    mainWindow?.Hide();
+                }
             }
             else
             {
