@@ -15,6 +15,7 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using FlowMy.Services.Interfaces;
 
 namespace FlowMy.ViewModels
 {
@@ -28,12 +29,14 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string lastConfiguredWorkflowName = string.Empty;
         [ObservableProperty] private string lastConfiguredNodeId = string.Empty;
         [ObservableProperty] private bool hasLastConfiguredWidget;
+        private readonly HashSet<string> _trayPinnedKeys = new(System.StringComparer.OrdinalIgnoreCase);
 
         public MainViewModel()
         {
             FloatingWidgetManager.Instance.WidgetOpened += OnWidgetOpened;
             FloatingWidgetManager.Instance.WidgetClosed += OnWidgetClosed;
             RefreshWidgetShortcuts();
+            SyncTrayPinnedMenu();
         }
 
         /// <summary>
@@ -75,6 +78,8 @@ namespace FlowMy.ViewModels
             }
             HasWidgetShortcuts = WidgetShortcuts.Count > 0;
             SyncWidgetOpenStates();
+            SyncPinnedStatesFromCache();
+            SyncTrayPinnedMenu();
 
             // Validate shortcut gần nhất còn tồn tại sau khi refresh.
             if (!string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) &&
@@ -88,6 +93,67 @@ namespace FlowMy.ViewModels
             {
                 HasLastConfiguredWidget = false;
             }
+        }
+
+        [RelayCommand]
+        private void TogglePinToTray(WidgetShortcutItem? item)
+        {
+            if (item == null) return;
+            var key = BuildTrayPinKey(item.WorkflowName, item.NodeId);
+            if (string.IsNullOrWhiteSpace(key)) return;
+
+            if (item.IsPinnedToTray)
+            {
+                item.IsPinnedToTray = false;
+                _trayPinnedKeys.Remove(key);
+            }
+            else
+            {
+                item.IsPinnedToTray = true;
+                _trayPinnedKeys.Add(key);
+            }
+
+            SyncTrayPinnedMenu();
+        }
+
+        private void SyncPinnedStatesFromCache()
+        {
+            foreach (var item in WidgetShortcuts)
+            {
+                var key = BuildTrayPinKey(item.WorkflowName, item.NodeId);
+                item.IsPinnedToTray = !string.IsNullOrWhiteSpace(key) && _trayPinnedKeys.Contains(key);
+            }
+        }
+
+        private void SyncTrayPinnedMenu()
+        {
+            try
+            {
+                var tray = App.Services?.GetService<ITrayService>();
+                if (tray == null) return;
+
+                var pinned = WidgetShortcuts
+                    .Where(w => w.IsPinnedToTray)
+                    .Select(w => (w.NodeId, Label: string.IsNullOrWhiteSpace(w.WidgetName) ? w.DisplayLabel : $"{w.WidgetName} — {w.WorkflowName}"))
+                    .ToList();
+
+                tray.SetPinnedWidgets(pinned, nodeId =>
+                {
+                    var item = WidgetShortcuts.FirstOrDefault(w =>
+                        string.Equals(w.NodeId, nodeId, System.StringComparison.OrdinalIgnoreCase));
+                    if (item == null) return;
+
+                    // Mở widget overlay (headless) từ tray.
+                    _ = LaunchWidgetHeadless(item);
+                });
+            }
+            catch { }
+        }
+
+        private static string BuildTrayPinKey(string? workflowName, string? nodeId)
+        {
+            if (string.IsNullOrWhiteSpace(workflowName) || string.IsNullOrWhiteSpace(nodeId)) return string.Empty;
+            return $"{workflowName}::{nodeId}";
         }
 
         /// <summary>

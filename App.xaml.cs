@@ -76,6 +76,13 @@ namespace FlowMy
                 });
 
                 // Không khởi tạo tray icon khi startup.
+                try
+                {
+                    // Khởi tạo tray icon sớm để user có menu ghim widget.
+                    var trayService = Services?.GetService<FlowMy.Services.Interfaces.ITrayService>();
+                    trayService?.Initialize();
+                }
+                catch { }
 
                 base.OnStartup(e);
 

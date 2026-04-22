@@ -15,6 +15,14 @@ namespace FlowMy.Services.Interfaces
         void Initialize();
 
         /// <summary>
+        /// Cập nhật danh sách widget được ghim trong menu tray.
+        /// Khi user click vào một widget trong tray, callback sẽ được gọi với NodeId.
+        /// </summary>
+        void SetPinnedWidgets(
+            IEnumerable<(string NodeId, string Label)> widgets,
+            Action<string> onWidgetClick);
+
+        /// <summary>
         /// Cờ cho biết người dùng đang yêu cầu thoát ứng dụng từ tray.
         /// View có thể dùng để phân biệt ẩn xuống tray vs. thoát hẳn app.
         /// </summary>

@@ -615,7 +615,7 @@
                                                                     </Style>
                                                                 </Button.Style>
                                                                 <Grid>
-                                                                    <TextBlock Text="📌"
+                                                                    <TextBlock Text="⚡"
                                                                                FontSize="14"
                                                                                Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                                                                     <TextBlock Text="⏳"
@@ -664,13 +664,20 @@
                                                                              Visibility="{Binding IsHeadlessDebugVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                                 </Grid>
                                                             </Button>
-                                                            <Button Command="{Binding DataContext.LaunchWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            <Button Command="{Binding DataContext.TogglePinToTrayCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
                                                                     Style="{DynamicResource IconCircleButtonPrimary}"
-                                                                    ToolTip="Mở Editor + bật widget này">
-                                                                <TextBlock Text="🛠"
-                                                                           FontSize="13"
-                                                                           Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                                                                    ToolTip="Ghim/bỏ ghim widget vào menu tray">
+                                                                <Grid>
+                                                                    <TextBlock Text="📌"
+                                                                               FontSize="13"
+                                                                               Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                                                               Visibility="{Binding IsPinnedToTray, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                    <TextBlock Text="📍"
+                                                                               FontSize="13"
+                                                                               Foreground="{DynamicResource TextOnPrimaryBrush}"
+                                                                               Visibility="{Binding IsPinnedToTray, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                </Grid>
                                                             </Button>
                                                         </StackPanel>
                                                     </Grid>
