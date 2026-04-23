@@ -844,20 +844,20 @@ namespace FlowMy.Views.NodeControls
 <script>
   window.__acMediaSearchRoots = {mediaRootsJson};
 
-  function acSubmit() {{
+  function hostSubmit() {{
     if (window.chrome && window.chrome.webview) {{
       window.chrome.webview.postMessage({{ type: 'submit' }});
     }}
   }}
   
-  function acStartWorkflow() {{
+  function hostStart() {{
     if (window.chrome && window.chrome.webview) {{
       window.chrome.webview.postMessage({{ type: 'startWorkflow' }});
     }}
   }}
 
   // Download by raw curl command (host-side execution)
-  function acDownloadByCurl(curlCommand, fileName, downloadKey) {{
+  function hostCurl(curlCommand, fileName, downloadKey) {{
     try {{
       if (!(window.chrome && window.chrome.webview)) return;
       window.chrome.webview.postMessage({{
@@ -870,7 +870,7 @@ namespace FlowMy.Views.NodeControls
   }}
 
   // Resolve local file path to an internal https://*.local URL playable in WebView2.
-  function acResolveLocalPath(localPath, requestId) {{
+  function hostResolvePath(localPath, requestId) {{
     try {{
       if (!(window.chrome && window.chrome.webview)) return;
       window.chrome.webview.postMessage({{
@@ -882,7 +882,7 @@ namespace FlowMy.Views.NodeControls
   }}
 
   // Tìm file media theo URL ảo + các thư mục gợi ý (xem BuildMediaSearchRootsJson trên host).
-  function acResolvePlayableRef(url, requestId) {{
+  function hostResolveRef(url, requestId) {{
     try {{
       if (!(window.chrome && window.chrome.webview)) return;
       var roots = [];
@@ -899,7 +899,7 @@ namespace FlowMy.Views.NodeControls
   }}
 
   // Open native image picker on host and return absolute paths + data URLs.
-  function acPickImageFiles(requestId) {{
+  function hostPickImages(requestId) {{
     try {{
       if (!(window.chrome && window.chrome.webview)) return;
       window.chrome.webview.postMessage({{
@@ -908,6 +908,29 @@ namespace FlowMy.Views.NodeControls
       }});
     }} catch (_) {{}}
   }}
+
+  // Backward compatibility aliases (old API names)
+  // Short API (preferred)
+  window.hostSubmit = hostSubmit;
+  window.hostStart = hostStart;
+  window.hostCurl = hostCurl;
+  window.hostResolvePath = hostResolvePath;
+  window.hostResolveRef = hostResolveRef;
+  window.hostPickImages = hostPickImages;
+
+  // Backward compatibility aliases (legacy + previous naming)
+  window.requestHostSubmitOutputs = hostSubmit;
+  window.requestHostStartWorkflow = hostStart;
+  window.requestHostDownloadFileByCurl = hostCurl;
+  window.requestHostResolveLocalPathToUrl = hostResolvePath;
+  window.requestHostResolvePlayableRef = hostResolveRef;
+  window.requestHostPickImageFiles = hostPickImages;
+  window.acSubmit = hostSubmit;
+  window.acStartWorkflow = hostStart;
+  window.acDownloadByCurl = hostCurl;
+  window.acResolveLocalPath = hostResolvePath;
+  window.acResolvePlayableRef = hostResolveRef;
+  window.acPickImageFiles = hostPickImages;
 
   // ✅ Catch F5 / Ctrl+R to reload via C# (capture mode for better reliability)
   function __acHandleReloadHotkey(e) {{
@@ -2610,6 +2633,9 @@ namespace FlowMy.Views.NodeControls
                                             var jsNotify =
                                                 "window.dispatchEvent(new CustomEvent('__ac_curl_download_done',{detail:" +
                                                 payload +
+                                                "}));" +
+                                                "window.dispatchEvent(new CustomEvent('hostCurlDownloadCompleted',{detail:" +
+                                                payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
                                             {
@@ -2694,6 +2720,9 @@ namespace FlowMy.Views.NodeControls
                                             var jsNotify =
                                                 "window.dispatchEvent(new CustomEvent('__ac_image_files_picked',{detail:" +
                                                 payload +
+                                                "}));" +
+                                                "window.dispatchEvent(new CustomEvent('hostImageFilesPicked',{detail:" +
+                                                payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
                                             {
@@ -2764,6 +2793,9 @@ namespace FlowMy.Views.NodeControls
                                             });
                                             var jsNotify =
                                                 "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" +
+                                                payload +
+                                                "}));" +
+                                                "window.dispatchEvent(new CustomEvent('hostLocalPathResolved',{detail:" +
                                                 payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
@@ -2980,6 +3012,9 @@ namespace FlowMy.Views.NodeControls
                                             });
                                             var jsNotify =
                                                 "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" +
+                                                payload +
+                                                "}));" +
+                                                "window.dispatchEvent(new CustomEvent('hostLocalPathResolved',{detail:" +
                                                 payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
@@ -3504,6 +3539,12 @@ namespace FlowMy.Views.NodeControls
       } catch(e) {}
     }
   };
+  window.hostLive = window.hostLive || {};
+  window.hostLive.on = window.__ac.onUpdate;
+  window.hostLive.values = window.__ac.live;
+  window.hostLiveData = window.hostLiveData || {};
+  window.hostLiveData.onUpdate = window.__ac.onUpdate;
+  window.hostLiveData.values = window.__ac.live;
 })();
 ";
                     try
@@ -3565,6 +3606,12 @@ namespace FlowMy.Views.NodeControls
       } catch(e) {}
     }
   };
+  window.hostAsync = window.hostAsync || {};
+  window.hostAsync.on = window.__acAsync.onReceive;
+  window.hostAsync.values = window.__acAsync.data;
+  window.hostAsyncData = window.hostAsyncData || {};
+  window.hostAsyncData.onReceive = window.__acAsync.onReceive;
+  window.hostAsyncData.values = window.__acAsync.data;
 })();
 ";
                     try
@@ -3593,6 +3640,10 @@ namespace FlowMy.Views.NodeControls
     if (window.chrome && window.chrome.webview)
       window.chrome.webview.postMessage({ type: 'tab1_exec', js: js, mode: 'par' });
   };
+  window.tab1Seq = window.__tab1_exec_seq;
+  window.tab1Par = window.__tab1_exec_par;
+  window.runInTab1Sequential = window.__tab1_exec_seq;
+  window.runInTab1Parallel = window.__tab1_exec_par;
 
   // Sequential (return): chạy trong Tab1 và trả kết quả về Tab2 qua __tab1_job_resolve/__tab1_job_reject
   window.__tab1_exec_seq_ret = function(jobId, js, timeoutMs) {
@@ -3604,6 +3655,10 @@ namespace FlowMy.Views.NodeControls
     if (window.chrome && window.chrome.webview)
       window.chrome.webview.postMessage({ type: 'tab1_exec_ret', jobId: jobId, js: js, mode: 'par', timeoutMs: timeoutMs });
   };
+  window.tab1SeqRet = window.__tab1_exec_seq_ret;
+  window.tab1ParRet = window.__tab1_exec_par_ret;
+  window.runInTab1SequentialWithResult = window.__tab1_exec_seq_ret;
+  window.runInTab1ParallelWithResult = window.__tab1_exec_par_ret;
 })();";
                     try { await core.AddScriptToExecuteOnDocumentCreatedAsync(tab1BridgeScript); } catch { }
 

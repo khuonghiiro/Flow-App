@@ -2190,17 +2190,17 @@ public partial class FloatingWidgetWindow : Window
         var script = @"
 // ── Widget Bridge JS ──
 window.__acMediaSearchRoots = __AC_MEDIA_ROOTS__;
-function acSubmit() {
+function hostSubmit() {
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage({ __widgetAction: 'submit', type: 'submit' });
     }
 }
-function acStartWorkflow() {
+function hostStart() {
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage({ __widgetAction: 'startWorkflow', type: 'startWorkflow' });
     }
 }
-function acResolveLocalPath(localPath, requestId) {
+function hostResolvePath(localPath, requestId) {
     try {
       if (!(window.chrome && window.chrome.webview)) return;
       window.chrome.webview.postMessage({
@@ -2210,7 +2210,7 @@ function acResolveLocalPath(localPath, requestId) {
       });
     } catch (_) {}
 }
-function acDownloadByCurl(curlCommand, fileName, downloadKey) {
+function hostCurl(curlCommand, fileName, downloadKey) {
     try {
       if (!(window.chrome && window.chrome.webview)) return;
       window.chrome.webview.postMessage({
@@ -2221,7 +2221,7 @@ function acDownloadByCurl(curlCommand, fileName, downloadKey) {
       });
     } catch (_) {}
 }
-function acPickImageFiles(requestId) {
+function hostPickImages(requestId) {
     try {
       if (!(window.chrome && window.chrome.webview)) return;
       window.chrome.webview.postMessage({
@@ -2230,7 +2230,7 @@ function acPickImageFiles(requestId) {
       });
     } catch (_) {}
 }
-function acResolvePlayableRef(url, requestId) {
+function hostResolveRef(url, requestId) {
     try {
       if (!(window.chrome && window.chrome.webview)) return;
       var roots = [];
@@ -2245,11 +2245,30 @@ function acResolvePlayableRef(url, requestId) {
       });
     } catch (_) {}
 }
+// Backward compatibility aliases (old API names)
+window.hostSubmit = hostSubmit;
+window.hostStart = hostStart;
+window.hostResolvePath = hostResolvePath;
+window.hostCurl = hostCurl;
+window.hostPickImages = hostPickImages;
+window.hostResolveRef = hostResolveRef;
+window.requestHostSubmitOutputs = hostSubmit;
+window.requestHostStartWorkflow = hostStart;
+window.requestHostResolveLocalPathToUrl = hostResolvePath;
+window.requestHostDownloadFileByCurl = hostCurl;
+window.requestHostPickImageFiles = hostPickImages;
+window.requestHostResolvePlayableRef = hostResolveRef;
+window.acSubmit = hostSubmit;
+window.acStartWorkflow = hostStart;
+window.acResolveLocalPath = hostResolvePath;
+window.acDownloadByCurl = hostCurl;
+window.acPickImageFiles = hostPickImages;
+window.acResolvePlayableRef = hostResolveRef;
 // Override __ac if needed
 window.__ac = window.__ac || {};
 window.__ac.live = window.__ac.live || {};
-window.__ac.submit = acSubmit;
-window.__ac.startWorkflow = acStartWorkflow;
+window.__ac.submit = hostSubmit;
+window.__ac.startWorkflow = hostStart;
 window.__ac._subs = window.__ac._subs || {};
 window.__ac._allSubs = window.__ac._allSubs || [];
 window.__ac.onUpdate = function() {
@@ -2288,6 +2307,12 @@ window.__ac.push = function(key, value) {
 window.__acPush = function(key, value) {
   window.__ac.push(key, value);
 };
+window.hostLive = window.hostLive || {};
+window.hostLive.on = window.__ac.onUpdate;
+window.hostLive.values = window.__ac.live;
+window.hostLiveData = window.hostLiveData || {};
+window.hostLiveData.onUpdate = window.__ac.onUpdate;
+window.hostLiveData.values = window.__ac.live;
 
 // Async receiver runtime (tương thích HtmlUiNode Async Data tab)
 (function(){
@@ -2320,6 +2345,12 @@ window.__acPush = function(key, value) {
     }
   };
 })();
+window.hostAsync = window.hostAsync || {};
+window.hostAsync.on = window.__acAsync.onReceive;
+window.hostAsync.values = window.__acAsync.data;
+window.hostAsyncData = window.hostAsyncData || {};
+window.hostAsyncData.onReceive = window.__acAsync.onReceive;
+window.hostAsyncData.values = window.__acAsync.data;
 ";
         return script.Replace("__AC_MEDIA_ROOTS__", mediaRootsJson);
     }
@@ -2543,7 +2574,8 @@ window.__acPush = function(key, value) {
             error
         });
         var script =
-            "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" + detailJson + "}));";
+            "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" + detailJson + "}));" +
+            "window.dispatchEvent(new CustomEvent('hostLocalPathResolved',{detail:" + detailJson + "}));";
         try
         {
             await _webView.CoreWebView2.ExecuteScriptAsync(script);
@@ -2665,6 +2697,7 @@ window.__acPush = function(key, value) {
             localUrl
         });
         await DispatchJsEventAsync("__ac_curl_download_done", payload);
+        await DispatchJsEventAsync("hostCurlDownloadCompleted", payload);
     }
 
     private async Task HandlePickImageFilesAsync(JsonElement root)
@@ -2725,6 +2758,7 @@ window.__acPush = function(key, value) {
             error = errMsg
         });
         await DispatchJsEventAsync("__ac_image_files_picked", payload);
+        await DispatchJsEventAsync("hostImageFilesPicked", payload);
     }
 
     private async Task HandleResolvePlayableRefAsync(JsonElement root)
@@ -2812,6 +2846,7 @@ window.__acPush = function(key, value) {
         });
         // Keep same event as HtmlUiNodeControl for compatibility.
         await DispatchJsEventAsync("__ac_local_path_resolved", payload);
+        await DispatchJsEventAsync("hostLocalPathResolved", payload);
     }
 
     private async Task DispatchJsEventAsync(string eventName, string detailJson)

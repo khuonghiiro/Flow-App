@@ -644,7 +644,7 @@
                     <Expander x:Name="Tab1InjectExpander" IsExpanded="False" Margin="0,0,0,12"
                               Visibility="{Binding UseWebTab, Converter={StaticResource BoolToVisibility}}">
                         <Expander.Header>
-                            <TextBlock Text="🌐 Gửi JS từ Tab2 → Tab1  (__tab1_exec_seq / __tab1_exec_par)"
+                            <TextBlock Text="🌐 Gửi JS từ Tab2 → Tab1  (tab1Seq / tab1Par)"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
                         </Expander.Header>
                         <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14"
@@ -662,10 +662,10 @@
                                     <StackPanel>
                                         <TextBlock Text="📌 API Reference:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="__tab1_exec_seq(jsString)" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Seq(jsString)" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text=" — Sequential: request2 đợi request1 hoàn thành rồi mới chạy."/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_par(jsString)" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Par(jsString)" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text=" — Parallel: các request chạy đồng thời, không đợi nhau."/>
                                             <LineBreak/><LineBreak/>
                                             <Run Text="// jsString = đoạn JS sẽ chạy bên trong Tab1 (có session/cookie của trang đó)"/>
@@ -681,7 +681,7 @@
                                             <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                     Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="CopySnippet_Click"
-                                                    Tag="// SEQ: từng bước chạy xong mới sang bước tiếp theo&#xA;// Bước 1: click nút&#xA;__tab1_exec_seq(`document.querySelector('#loginBtn').click();`);&#xA;&#xA;// Bước 2: đợi bước 1 xong, rồi fill input (Tab1 đã mở modal/form)&#xA;__tab1_exec_seq(`document.querySelector('#usernameInput').value = 'myUser';`);&#xA;&#xA;// Bước 3: submit&#xA;__tab1_exec_seq(`document.querySelector('form').submit();`);"/>
+                                                    Tag="// SEQ: từng bước chạy xong mới sang bước tiếp theo&#xA;// Bước 1: click nút&#xA;tab1Seq(`document.querySelector('#loginBtn').click();`);&#xA;&#xA;// Bước 2: đợi bước 1 xong, rồi fill input (Tab1 đã mở modal/form)&#xA;tab1Seq(`document.querySelector('#usernameInput').value = 'myUser';`);&#xA;&#xA;// Bước 3: submit&#xA;tab1Seq(`document.querySelector('form').submit();`);"/>
                                             <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                     Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="ApplyExample_Click" Tag="tab1_seq1"
@@ -690,19 +690,19 @@
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                             <Run Text="// Bước 1: click nút ở Tab1"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_seq(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text="`document.querySelector('#loginBtn').click();`"/>
                                             <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
                                             <LineBreak/>
                                             <Run Text="// Bước 2 — chờ bước 1 XONG mới chạy: fill input"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_seq(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text="`document.querySelector('#username').value = 'myUser';`"/>
                                             <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
                                             <LineBreak/>
                                             <Run Text="// Bước 3 — submit sau khi đã fill"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_seq(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text="`document.querySelector('form').submit();`"/>
                                             <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
                                         </TextBlock>
@@ -717,7 +717,7 @@
                                             <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                     Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="CopySnippet_Click"
-                                                    Tag="// PAR: cả 2 chạy ngay lập tức, không đợi nhau&#xA;__tab1_exec_par(`console.log('[Tab1] request1 started:', Date.now());`);&#xA;__tab1_exec_par(`document.title = 'Processing...';`);&#xA;&#xA;// Khác với SEQ: par2 KHÔNG đợi par1 xong"/>
+                                                    Tag="// PAR: cả 2 chạy ngay lập tức, không đợi nhau&#xA;tab1Par(`console.log('[Tab1] request1 started:', Date.now());`);&#xA;tab1Par(`document.title = 'Processing...';`);&#xA;&#xA;// Khác với SEQ: par2 KHÔNG đợi par1 xong"/>
                                             <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                     Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="ApplyExample_Click" Tag="tab1_par1"
@@ -726,11 +726,11 @@
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                             <Run Text="// Cả 2 request inject vào Tab1 đồng thời, không đợi nhau"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_par(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Par(" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text="`console.log('[Tab1] par1:', Date.now());`"/>
                                             <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_par(" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Par(" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text="`document.title = 'Processing...';`"/>
                                             <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
                                             <LineBreak/><LineBreak/>
@@ -747,7 +747,7 @@
                                             <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                     Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="CopySnippet_Click"
-                                                    Tag="// SEQ: dùng fetch trong Tab1 (có session/cookie đầy đủ)&#xA;// Bước 1: ensure Tab1 ở đúng origin&#xA;__tab1_exec_seq(`&#xA;    if (!window.location.href.includes('grok.com')) {&#xA;        window.location.href = 'https://grok.com';&#xA;    }&#xA;`);&#xA;&#xA;// Bước 2: dùng async fetch trong Tab1 (có cookie grok.com)&#xA;__tab1_exec_seq(`&#xA;    (async () => {&#xA;        const r = await fetch('/api/data', { credentials: 'include' });&#xA;        const data = await r.json();&#xA;        window.__tab1Data = data; // lưu cho bước sau&#xA;        console.log('[Tab1 fetch]', data);&#xA;    })();&#xA;`);&#xA;&#xA;// Bước 3: navigate Tab1 đến kết quả&#xA;__tab1_exec_seq(`window.location.href = '/result/' + (window.__tab1Data?.id ?? '');`);"/>
+                                                    Tag="// SEQ: dùng fetch trong Tab1 (có session/cookie đầy đủ)&#xA;// Bước 1: ensure Tab1 ở đúng origin&#xA;tab1Seq(`&#xA;    if (!window.location.href.includes('grok.com')) {&#xA;        window.location.href = 'https://grok.com';&#xA;    }&#xA;`);&#xA;&#xA;// Bước 2: dùng async fetch trong Tab1 (có cookie grok.com)&#xA;tab1Seq(`&#xA;    (async () => {&#xA;        const r = await fetch('/api/data', { credentials: 'include' });&#xA;        const data = await r.json();&#xA;        window.__tab1Data = data; // lưu cho bước sau&#xA;        console.log('[Tab1 fetch]', data);&#xA;    })();&#xA;`);&#xA;&#xA;// Bước 3: navigate Tab1 đến kết quả&#xA;tab1Seq(`window.location.href = '/result/' + (window.__tab1Data?.id ?? '');`);"/>
                                             <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                     Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                     Click="ApplyExample_Click" Tag="tab1_seq2"
@@ -756,11 +756,11 @@
                                         <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                             <Run Text="// Bước 1: navigate Tab1 đến grok.com (ensure cookie origin)"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_seq(`window.location.href = 'https://grok.com';`);" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Seq(`window.location.href = 'https://grok.com';`);" Foreground="{DynamicResource WarningColor}"/>
                                             <LineBreak/><LineBreak/>
                                             <Run Text="// Bước 2: async fetch bên trong Tab1 (có session đầy đủ)"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_seq(`" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Seq(`" Foreground="{DynamicResource WarningColor}"/>
                                             <Run Text="(async () => {"/>
                                             <LineBreak/>
                                             <Run Text="    const r = await fetch('/api/data', { credentials: 'include' });"/>
@@ -774,7 +774,7 @@
                                             <LineBreak/><LineBreak/>
                                             <Run Text="// Bước 3: navigate Tab1 đến kết quả sau khi fetch xong"/>
                                             <LineBreak/>
-                                            <Run Text="__tab1_exec_seq(`window.location.href='/result/'+window.__tab1Data?.id;`);" Foreground="{DynamicResource WarningColor}"/>
+                                            <Run Text="tab1Seq(`window.location.href='/result/'+window.__tab1Data?.id;`);" Foreground="{DynamicResource WarningColor}"/>
                                         </TextBlock>
                                     </StackPanel>
                                 </Border>
@@ -1071,7 +1071,7 @@
                                        Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,12">
                                 <Run Text="Cấu hình nguồn dữ liệu async: khi workflow chạy vào node này, dữ liệu từ các node nguồn sẽ được push realtime vào HTML qua "/>
-                                <Run Text="window.__acAsync" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas" FontWeight="SemiBold"/>
+                                <Run Text="window.hostAsync" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas" FontWeight="SemiBold"/>
                                 <Run Text=". Nhấn F5/reload sẽ load lại dữ liệu đã nhận."/>
                             </TextBlock>
 
@@ -1113,7 +1113,7 @@
                                                             <TextBlock Text="Key nhận trong JS (trống = dùng key nguồn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                                             <TextBox Text="{Binding ReceiverKey, UpdateSourceTrigger=PropertyChanged}"
                                                                      Style="{DynamicResource BaseTextBoxV2}" Height="32"
-                                                                     ToolTip="Tên key khi push vào JS: window.__acAsync.data['keyNày']"/>
+                                                                     ToolTip="Tên key khi push vào JS: window.hostAsync.values['keyNày']"/>
                                                         </StackPanel>
                                                         <Button Grid.Column="5" Content="✕" Width="26" Height="26" Margin="8,0,0,0" VerticalAlignment="Bottom"
                                                                 Command="{Binding DataContext.RemoveAsyncDataSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -1134,12 +1134,12 @@
                             <!-- Hướng dẫn JS API -->
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="📘 Hướng dẫn sử dụng window.__acAsync trong JS" Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="📘 Hướng dẫn sử dụng window.hostAsync trong JS" Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
                                         <Run Text="Khác với "/>
                                         <Run Text="window.__ac" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
                                         <Run Text=" (dùng cho Input Mappings — tab Logic), "/>
-                                        <Run Text="window.__acAsync" Foreground="{DynamicResource AccentBrush}" FontFamily="Consolas" FontWeight="SemiBold"/>
+                                        <Run Text="window.hostAsync" Foreground="{DynamicResource AccentBrush}" FontFamily="Consolas" FontWeight="SemiBold"/>
                                         <Run Text=" chuyên nhận dữ liệu từ các nhánh async task song song. Mỗi nhánh xong sẽ push kết quả realtime — không cần polling."/>
                                     </TextBlock>
 
@@ -1148,7 +1148,7 @@
                                         <StackPanel>
                                             <TextBlock Text="Cách 1 — Nhận 1 key cụ thể:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                             <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                <Run Text="window.__acAsync.onReceive(" Foreground="{DynamicResource AccentBrush}"/>
+                                                <Run Text="window.hostAsync.on(" Foreground="{DynamicResource AccentBrush}"/>
                                                 <Run Text="'myKey'" Foreground="{DynamicResource WarningColor}"/>
                                                 <Run Text=", function(value) {" Foreground="{DynamicResource AccentBrush}"/>
                                                 <LineBreak/>
@@ -1164,7 +1164,7 @@
                                         <StackPanel>
                                             <TextBlock Text="Cách 2 — Nhận tất cả data (object):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                             <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                <Run Text="window.__acAsync.onReceive(" Foreground="{DynamicResource AccentBrush}"/>
+                                                <Run Text="window.hostAsync.on(" Foreground="{DynamicResource AccentBrush}"/>
                                                 <Run Text="function(allData) {" Foreground="{DynamicResource AccentBrush}"/>
                                                 <LineBreak/>
                                                 <Run Text="    // allData = { key1: val1, key2: val2, ... }"/>
@@ -1186,7 +1186,7 @@
                                             <TextBlock Text="Cách 3 — Đọc trực tiếp (polling):" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                             <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                                 <Run Text="var val = " Foreground="{DynamicResource AccentBrush}"/>
-                                                <Run Text="window.__acAsync.data['myKey']" Foreground="{DynamicResource WarningColor}"/>
+                                                <Run Text="window.hostAsync.values['myKey']" Foreground="{DynamicResource WarningColor}"/>
                                                 <Run Text=";" Foreground="{DynamicResource AccentBrush}"/>
                                             </TextBlock>
                                         </StackPanel>
@@ -1199,7 +1199,7 @@
                                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11">
                                                 <Run Text="• Dữ liệu được cache — nhấn F5/reload page sẽ tự push lại tất cả data đã nhận."/>
                                                 <LineBreak/>
-                                                <Run Text="• window.__acAsync hoạt động ĐỘC LẬP với window.__ac (Input Mappings)."/>
+                                                <Run Text="• window.hostAsync hoạt động ĐỘC LẬP với window.__ac (Input Mappings)."/>
                                                 <LineBreak/>
                                                 <Run Text="• Nếu 'Key nhận' để trống → dùng tên key nguồn của node."/>
                                                 <LineBreak/>
@@ -1802,21 +1802,21 @@
                                     <TextBlock Text="Luồng chuẩn để phát video local (AI mới đọc là làm được):"
                                                Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
                                     <TextBlock Foreground="{DynamicResource PrimaryBrush}" FontSize="10" TextWrapping="Wrap">
-                                        <Run Text="B1: Nhận datas từ window.__ac.onUpdate('datas', ...)"/>
+                                        <Run Text="B1: Nhận datas từ window.hostLive.on('datas', ...)"/>
                                         <LineBreak/>
                                         <Run Text="B2: Lấy localPath = datas[guildId]"/>
                                         <LineBreak/>
-                                        <Run Text="B3: Gọi acResolveLocalPath(localPath, reqId)"/>
+                                        <Run Text="B3: Gọi hostResolvePath(localPath, reqId)"/>
                                         <LineBreak/>
-                                        <Run Text="B4: Chờ event __ac_local_path_resolved với đúng requestId"/>
+                                        <Run Text="B4: Chờ event hostPathResolved với đúng requestId"/>
                                         <LineBreak/>
                                         <Run Text="B5: Nếu d.ok thì gán video.src = d.localUrl rồi video.load()"/>
                                         <LineBreak/>
                                         <Run Text="B6: Không dùng file:/// trong HTML UI (sẽ bị chặn)."/>
                                         <LineBreak/>
-                                        <Run Text="B7: Upload ảnh lấy full path: gọi acPickImageFiles(reqId) thay cho input file thường."/>
+                                        <Run Text="B7: Upload ảnh lấy full path: gọi hostPickImages(reqId) thay cho input file thường."/>
                                         <LineBreak/>
-                                        <Run Text="B8: Chờ event __ac_image_files_picked, mỗi item có { name, path, size, dataUrl }."/>
+                                        <Run Text="B8: Chờ event hostImagesPicked, mỗi item có { name, path, size, dataUrl }."/>
                                         <LineBreak/>
                                         <Run Text="B9: map vào outputImageUpload: { filename:name, linkPathImage:path, base64:dataUrl }."/>
                                     </TextBlock>
@@ -1847,17 +1847,17 @@
 
                                     <Separator Margin="0,0,0,8" Background="{DynamicResource ControlBorderBrush}"/>
 
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.__ac.onUpdate('key', cb)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận realtime value từ InputMappings"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="window.__ac.onUpdate('datas', function(v){ ... });"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.__ac.onUpdate('datas', function(v){ ... });"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.__ac.onUpdate(function(live){...})"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận toàn bộ live object"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="var v = live['price'];"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.__ac.onUpdate(function(live){ var v = live['price']; });"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.__ac.live"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đọc state hiện tại (polling/fallback)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="setInterval(()=>{ out.textContent = window.__ac.live.price; },500);"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="setInterval(function(){ out.textContent = window.__ac.live['price']; }, 500);"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acResolveLocalPath(localPath, requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đổi local path -&gt; localUrl https://localfiles-*.local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="acResolveLocalPath('C:\path\video.mp4', 'req1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="acResolveLocalPath('C:\\path\\video.mp4', 'req1');"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="__ac_local_path_resolved (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận kết quả resolve path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('__ac_local_path_resolved', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acDownloadByCurl(rawCurl, fileName, key)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Host tải file từ curl và lưu local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="acDownloadByCurl(curl, 'a.mp4', 'k1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="acDownloadByCurl(rawCurl, 'a.mp4', 'k1');"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="__ac_curl_download_done (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận trạng thái download + localUrl/path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('__ac_curl_download_done', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acPickImageFiles(requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Mở native picker để lấy ảnh + full path tuyệt đối"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="acPickImageFiles('img_req_1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="acPickImageFiles('img_req_1');"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="__ac_image_files_picked (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận danh sách ảnh host đã chọn (có path + dataUrl)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) pending = d.files;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('__ac_image_files_picked', function(ev){ var d = ev.detail || {}; if (d.ok) { console.log(d.files); } });"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acSubmit()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Yêu cầu host đọc DOM theo PARAM"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> acSubmit();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ acSubmit(); };"/></Grid>
-                                    <Grid Margin="0,0,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="acStartWorkflow()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Kích hoạt chạy workflow"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> acStartWorkflow();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ acStartWorkflow(); };"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.hostLive.on('key', cb)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận realtime value từ InputMappings"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="window.hostLive.on('datas', function(v){ ... });"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.hostLive.on('datas', function(v){ ... });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.hostLive.on(function(values){...})"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận toàn bộ live object"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="var v = values['price'];"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.hostLive.on(function(values){ var v = values['price']; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.hostLive.values"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đọc state hiện tại (polling/fallback)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="setInterval(()=>{ out.textContent = window.hostLive.values.price; },500);"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="setInterval(function(){ out.textContent = window.hostLive.values['price']; }, 500);"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostResolvePath(localPath, requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đổi local path -&gt; localUrl https://localfiles-*.local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="hostResolvePath('C:\path\video.mp4', 'req1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="hostResolvePath('C:\\path\\video.mp4', 'req1');"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostLocalPathResolved (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận kết quả resolve path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostLocalPathResolved', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostCurl(rawCurl, fileName, key)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Host tải file từ curl và lưu local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="hostCurl(curl, 'a.mp4', 'k1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="hostCurl(rawCurl, 'a.mp4', 'k1');"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostCurlDownloadCompleted (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận trạng thái download + localUrl/path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostCurlDownloadCompleted', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostPickImages(requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Mở native picker để lấy ảnh + full path tuyệt đối"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="hostPickImages('img_req_1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="hostPickImages('img_req_1');"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostImageFilesPicked (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận danh sách ảnh host đã chọn (có path + dataUrl)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) pending = d.files;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostImageFilesPicked', function(ev){ var d = ev.detail || {}; if (d.ok) { console.log(d.files); } });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostSubmit()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Yêu cầu host đọc DOM theo PARAM"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> hostSubmit();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ hostSubmit(); };"/></Grid>
+                                    <Grid Margin="0,0,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostStart()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Kích hoạt chạy workflow"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> hostStart();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ hostStart(); };"/></Grid>
                                 </StackPanel>
                             </Border>
 
@@ -1878,7 +1878,7 @@
                                         <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Nhận realtime từ datas/price rồi render label/value."/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                             <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
-                                                    Tag="(function(){ var label=document.getElementById('label'); var value=document.getElementById('value'); if(window.__ac&amp;&amp;typeof window.__ac.onUpdate==='function'){ window.__ac.onUpdate('price','datas', function(price,datas){ if(label) label.textContent='Realtime'; if(value) value.textContent=(price!=null&amp;&amp;price!=='')?String(price):JSON.stringify(datas||{}); }); } })();"/>
+                                                    Tag="(function(){ var label=document.getElementById('label'); var value=document.getElementById('value'); if(window.hostLive&amp;&amp;typeof window.hostLive.on==='function'){ window.hostLive.on('price','datas', function(price,datas){ if(label) label.textContent='Realtime'; if(value) value.textContent=(price!=null&amp;&amp;price!=='')?String(price):JSON.stringify(datas||{}); }); } })();"/>
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_realtime"/>
                                         </StackPanel>
                                     </Grid>
@@ -1893,7 +1893,7 @@
                                         <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Resolve local path sang localUrl rồi gán cho video (an toàn WebView2)."/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                             <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
-                                                    Tag="(function(){ var video=document.getElementById('vid'); var req='req_'+Date.now(); window.addEventListener('__ac_local_path_resolved', function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.requestId!==req) return; if(d.ok&amp;&amp;d.localUrl&amp;&amp;video){ video.src=d.localUrl; video.load(); } }); if(typeof acResolveLocalPath==='function'){ acResolveLocalPath('C:\\\\path\\\\video.mp4', req); } })();"/>
+                                                    Tag="(function(){ var video=document.getElementById('vid'); var req='req_'+Date.now(); window.addEventListener('hostPathResolved', function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.requestId!==req) return; if(d.ok&amp;&amp;d.localUrl&amp;&amp;video){ video.src=d.localUrl; video.load(); } }); if(typeof hostResolvePath==='function'){ hostResolvePath('C:\\\\path\\\\video.mp4', req); } })();"/>
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_local_video"/>
                                         </StackPanel>
                                     </Grid>
@@ -1905,11 +1905,25 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold" TextWrapping="Wrap" Text="Template 3 - Submit form"/>
-                                        <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Ghi dữ liệu vào DOM rồi gọi acSubmit + acStartWorkflow."/>
+                                        <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Ghi dữ liệu vào DOM rồi gọi hostSubmit + hostStart."/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                             <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
-                                                    Tag="(function(){ var btn=document.getElementById('btnRun'); var inp=document.getElementById('noteInput'); var out=document.getElementById('resultBox'); if(!btn) return; btn.addEventListener('click', function(){ if(out&amp;&amp;inp) out.textContent=inp.value||''; if(typeof acSubmit==='function') acSubmit(); if(typeof acStartWorkflow==='function') acStartWorkflow(); }); })();"/>
+                                                    Tag="(function(){ var btn=document.getElementById('btnRun'); var inp=document.getElementById('noteInput'); var out=document.getElementById('resultBox'); if(!btn) return; btn.addEventListener('click', function(){ if(out&amp;&amp;inp) out.textContent=inp.value||''; if(typeof hostSubmit==='function') hostSubmit(); if(typeof hostStart==='function') hostStart(); }); })();"/>
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_submit_form"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="220"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold" TextWrapping="Wrap" Text="Template 4 - Full New API"/>
+                                        <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Ví dụ đầy đủ tên mới: hostLive + hostAsync + host* + tab1Seq/tab1Par."/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                            <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
+                                                    Tag="(function(){ var req='req_'+Date.now(); if(window.hostLive&amp;&amp;typeof window.hostLive.on==='function'){ window.hostLive.on('datas',function(datas){ console.log('live datas',datas); }); } if(window.hostAsync&amp;&amp;typeof window.hostAsync.on==='function'){ window.hostAsync.on('jobResult',function(v){ console.log('async jobResult',v); }); } window.addEventListener('hostPathResolved',function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.requestId===req&amp;&amp;d.ok) console.log('resolved',d.localUrl); }); window.addEventListener('hostCurlDone',function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.ok) console.log('curl done',d.localUrl||d.path); }); window.addEventListener('hostImagesPicked',function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.ok) console.log('picked',d.files); }); if(typeof hostResolvePath==='function') hostResolvePath('C:\\\\path\\\\video.mp4',req); if(typeof hostCurl==='function') hostCurl('curl --location &quot;https://example.com/a.mp4&quot;','a.mp4','k1'); if(typeof hostPickImages==='function') hostPickImages('img_req_1'); if(typeof hostSubmit==='function') hostSubmit(); if(typeof hostStart==='function') hostStart(); if(typeof tab1Seq==='function') tab1Seq('console.log(&quot;tab1 seq&quot;)'); if(typeof tab1Par==='function') tab1Par('console.log(&quot;tab1 par&quot;)'); })();"/>
+                                            <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_full_new_api"/>
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>

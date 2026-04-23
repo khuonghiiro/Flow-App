@@ -41,26 +41,26 @@ INPUT CONTRACT (KHI SỬA CODE CŨ):
 ========================
 1) CÁCH HỆ THỐNG HOẠT ĐỘNG
 ========================
-- Input mapping từ node khác sẽ được push vào runtime JS qua window.__ac.
+- Input mapping từ node khác sẽ được push vào runtime JS qua window.hostLive.
 - Dùng realtime callback:
-  window.__ac.onUpdate('price', function(price) { ... });
-  window.__ac.onUpdate('price', 'quantity', function(price, quantity) { ... });
-  window.__ac.onUpdate(function(live) { ... }); // nhận object live tổng quát
+  window.hostLive.on('price', function(price) { ... });
+  window.hostLive.on('price', 'quantity', function(price, quantity) { ... });
+  window.hostLive.on(function(live) { ... }); // nhận object live tổng quát
 - Có thể đọc trực tiếp:
-  window.__ac.live['price']
+  window.hostLive.values['price']
 - Placeholder {variableName} trong HTML/CSS/JS sẽ được C# replace trước khi render.
   Ví dụ: {price}, {userId}, {apiResponse}
-- acSubmit(): gửi tín hiệu để host đọc DOM theo [PARAM] và ghi outputs.
-- acStartWorkflow(): yêu cầu host chạy workflow.
+- hostSubmit(): gửi tín hiệu để host đọc DOM theo [PARAM] và ghi outputs.
+- hostStart(): yêu cầu host chạy workflow.
 - Với dữ liệu local file (ví dụ datas[guid] = C:\path\video.mp4):
   KHÔNG gán file:/// trực tiếp vào video.src.
-  Phải gọi acResolveLocalPath(localPath, requestId) rồi dùng d.localUrl từ event __ac_local_path_resolved.
+  Phải gọi hostResolvePath(localPath, requestId) rồi dùng d.localUrl từ event hostPathResolved.
 
 FLOW CHUẨN CHO VIDEO LOCAL (RẤT QUAN TRỌNG):
 1) Nhận datas (object/string JSON)
 2) Lấy localPath theo guildId hiện tại
-3) Gọi acResolveLocalPath(localPath, reqId)
-4) Chờ event __ac_local_path_resolved với đúng reqId
+3) Gọi hostResolvePath(localPath, reqId)
+4) Chờ event hostPathResolved với đúng reqId
 5) Nếu d.ok => video.src = d.localUrl; video.load()
 6) Không dùng file:/// trong HTML UI
 
@@ -88,10 +88,10 @@ statusText: .status-label
 - [CSS]: tự chứa, không cần bundler/framework.
 - [JS]:
   - vanilla JS, không import module.
-  - có realtime handler (window.__ac.onUpdate).
+  - có realtime handler (window.hostLive.on).
   - có xử lý null/undefined.
   - có try/catch ở action chính.
-  - có gọi acSubmit(), có thể gọi acStartWorkflow().
+  - có gọi hostSubmit(), có thể gọi hostStart().
 - Code phải copy/paste chạy được ngay trong 4 tab HTML/CSS/JS/Params.
 
 ========================
@@ -174,8 +174,8 @@ body {
   }
 
   // Realtime kiểu 1: nhận nhiều key cụ thể
-  if (window.__ac && typeof window.__ac.onUpdate === 'function') {
-    window.__ac.onUpdate('price', 'quantity', function (price, quantity) {
+  if (window.hostLive && typeof window.hostLive.on === 'function') {
+    window.hostLive.on('price', 'quantity', function (price, quantity) {
       var p = (price == null || price === '') ? '—' : String(price);
       var q = (quantity == null || quantity === '') ? '—' : String(quantity);
       if (priceEl) priceEl.textContent = p;
@@ -189,7 +189,7 @@ body {
   // Realtime kiểu 2: fallback polling từ live object
   setInterval(function () {
     try {
-      var live = (window.__ac && window.__ac.live) ? window.__ac.live : {};
+      var live = (window.hostLive && window.hostLive.values) ? window.hostLive.values : {};
       if (live.price != null && priceEl) priceEl.textContent = String(live.price);
     } catch (_) { }
   }, 500);
@@ -205,8 +205,8 @@ body {
           resultEl.textContent = noteInput.value || '';
         }
 
-        if (typeof acSubmit === 'function') acSubmit();
-        if (typeof acStartWorkflow === 'function') acStartWorkflow();
+        if (typeof hostSubmit === 'function') hostSubmit();
+        if (typeof hostStart === 'function') hostStart();
 
         setStatus('Đã gửi submit/startWorkflow', true);
       } catch (err) {
@@ -1081,61 +1081,61 @@ statusText: #statusText";
         }
 
         private const string ApiDocAllText = @"LUỒNG TỔNG QUAN (JS ↔ C# Host):
-1) Realtime input: host push vào window.__ac
+1) Realtime input: host push vào window.hostLive
 2) JS render UI / xử lý business
-3) Nếu cần local file: resolve path -> localUrl qua acResolveLocalPath
-4) Khi user bấm submit: acSubmit() để host đọc DOM theo PARAM
-5) Nếu cần chạy node tiếp: acStartWorkflow()
+3) Nếu cần local file: resolve path -> localUrl qua hostResolvePath
+4) Khi user bấm submit: hostSubmit() để host đọc DOM theo PARAM
+5) Nếu cần chạy node tiếp: hostStart()
 
-window.__ac.onUpdate('key', cb)
+window.hostLive.on('key', cb)
 - Mục đích: nhận realtime value từ InputMappings.
-- Ví dụ: window.__ac.onUpdate('datas', function(v){ /* parse datas */ });
+- Ví dụ: window.hostLive.on('datas', function(v){ /* parse datas */ });
 
-window.__ac.onUpdate(function(live){ ... })
+window.hostLive.on(function(live){ ... })
 - Mục đích: nhận toàn bộ snapshot live object.
 - Ví dụ: var v = live['price'];
 
-window.__ac.live
+window.hostLive.values
 - Mục đích: đọc state hiện tại (polling/fallback).
-- Ví dụ: setInterval(function(){ out.textContent = window.__ac.live.price || ''; }, 500);
+- Ví dụ: setInterval(function(){ out.textContent = window.hostLive.values.price || ''; }, 500);
 
-acResolveLocalPath(localPath, requestId)
+hostResolvePath(localPath, requestId)
 - Mục đích: đổi local path -> localUrl dạng https://localfiles-*.local.
-- Ví dụ: acResolveLocalPath('C:\\path\\video.mp4', 'req1');
+- Ví dụ: hostResolvePath('C:\\path\\video.mp4', 'req1');
 - Lưu ý: không gán file:/// trực tiếp vào img/video trong HTML UI.
 
-__ac_local_path_resolved (event)
+hostPathResolved (event)
 - Mục đích: nhận kết quả resolve path.
 - Ví dụ:
-  window.addEventListener('__ac_local_path_resolved', function(ev){
+  window.addEventListener('hostPathResolved', function(ev){
     var d = ev.detail || {};
     if (d.requestId === 'req1' && d.ok && d.localUrl) {
       video.src = d.localUrl; video.load();
     }
   });
 
-acDownloadByCurl(rawCurl, fileName, key)
+hostCurl(rawCurl, fileName, key)
 - Mục đích: yêu cầu host tải file bằng curl và trả kết quả local.
-- Ví dụ: acDownloadByCurl(rawCurl, 'a.mp4', 'k1');
+- Ví dụ: hostCurl(rawCurl, 'a.mp4', 'k1');
 
-__ac_curl_download_done (event)
+hostCurlDone (event)
 - Mục đích: nhận trạng thái download + localUrl/localPath.
 - Ví dụ: if (d.ok && d.localUrl) video.src = d.localUrl;
 
-acSubmit()
+hostSubmit()
 - Mục đích: host đọc DOM theo PARAM và ghi vào outputs.
-- Ví dụ: button.onclick = function(){ acSubmit(); };
+- Ví dụ: button.onclick = function(){ hostSubmit(); };
 
-acStartWorkflow()
+hostStart()
 - Mục đích: chạy workflow từ node hiện tại.
-- Ví dụ: button.onclick = function(){ acStartWorkflow(); };";
+- Ví dụ: button.onclick = function(){ hostStart(); };";
 
         private const string TemplateRealtimeJs =
 @"(function(){
   var label = document.getElementById('label');
   var value = document.getElementById('value');
-  if (window.__ac && typeof window.__ac.onUpdate === 'function') {
-    window.__ac.onUpdate('price', 'datas', function(price, datas){
+  if (window.hostLive && typeof window.hostLive.on === 'function') {
+    window.hostLive.on('price', 'datas', function(price, datas){
       if (label) label.textContent = 'Realtime';
       if (value) value.textContent = (price != null && price !== '') ? String(price) : JSON.stringify(datas || {});
     });
@@ -1146,7 +1146,7 @@ acStartWorkflow()
 @"(function(){
   var video = document.getElementById('vid');
   var req = 'req_' + Date.now();
-  window.addEventListener('__ac_local_path_resolved', function(ev){
+  window.addEventListener('hostPathResolved', function(ev){
     var d = (ev && ev.detail) || {};
     if (d.requestId !== req) return;
     if (d.ok && d.localUrl && video) {
@@ -1154,8 +1154,8 @@ acStartWorkflow()
       video.load();
     }
   });
-  if (typeof acResolveLocalPath === 'function') {
-    acResolveLocalPath('C:\\path\\video.mp4', req);
+  if (typeof hostResolvePath === 'function') {
+    hostResolvePath('C:\\path\\video.mp4', req);
   }
 })();";
 
@@ -1167,9 +1167,39 @@ acStartWorkflow()
   if (!btn) return;
   btn.addEventListener('click', function(){
     if (out && inp) out.textContent = inp.value || '';
-    if (typeof acSubmit === 'function') acSubmit();
-    if (typeof acStartWorkflow === 'function') acStartWorkflow();
+    if (typeof hostSubmit === 'function') hostSubmit();
+    if (typeof hostStart === 'function') hostStart();
   });
+})();";
+
+        private const string TemplateFullNewApiJs =
+@"(function(){
+  var req = 'req_' + Date.now();
+  if (window.hostLive && typeof window.hostLive.on === 'function') {
+    window.hostLive.on('datas', function(datas){ console.log('live datas', datas); });
+  }
+  if (window.hostAsync && typeof window.hostAsync.on === 'function') {
+    window.hostAsync.on('jobResult', function(v){ console.log('async jobResult', v); });
+  }
+  window.addEventListener('hostPathResolved', function(ev){
+    var d = (ev && ev.detail) || {};
+    if (d.requestId === req && d.ok) console.log('resolved:', d.localUrl);
+  });
+  window.addEventListener('hostCurlDone', function(ev){
+    var d = (ev && ev.detail) || {};
+    if (d.ok) console.log('curl done:', d.localUrl || d.path);
+  });
+  window.addEventListener('hostImagesPicked', function(ev){
+    var d = (ev && ev.detail) || {};
+    if (d.ok) console.log('images:', d.files);
+  });
+  if (typeof hostResolvePath === 'function') hostResolvePath('C:\\path\\video.mp4', req);
+  if (typeof hostCurl === 'function') hostCurl('curl --location ""https://example.com/a.mp4""', 'a.mp4', 'k1');
+  if (typeof hostPickImages === 'function') hostPickImages('img_req_1');
+  if (typeof hostSubmit === 'function') hostSubmit();
+  if (typeof hostStart === 'function') hostStart();
+  if (typeof tab1Seq === 'function') tab1Seq('console.log(""tab1 seq"")');
+  if (typeof tab1Par === 'function') tab1Par('console.log(""tab1 par"")');
 })();";
 
         private void CopyApiDocRow_Click(object sender, RoutedEventArgs e)
@@ -1206,6 +1236,9 @@ acStartWorkflow()
                     break;
                 case "tpl_submit_form":
                     SetJsTabsFromSingleCode(TemplateSubmitFormJs);
+                    break;
+                case "tpl_full_new_api":
+                    SetJsTabsFromSingleCode(TemplateFullNewApiJs);
                     break;
                 default:
                     return;
@@ -1314,7 +1347,7 @@ body {
 
             vm.JsCode =
 @"// Nhận bất kỳ biến nào được push – tự nhận diện key đầu tiên
-window.__ac.onUpdate(function(live) {
+window.hostLive.on(function(live) {
     var keys = Object.keys(live);
     if (!keys.length) return;
     var key = keys[0];
@@ -1571,7 +1604,7 @@ body {
     setTimeout(function() { el.closest('.card').classList.remove('flash'); }, 400);
 }
 // Một callback nhận cả price lẫn quantity
-window.__ac.onUpdate('price', 'quantity', function(price, quantity) {
+window.hostLive.on('price', 'quantity', function(price, quantity) {
     document.getElementById('price').textContent = price || '—';
     document.getElementById('quantity').textContent = quantity || '—';
     var total = parseFloat(price || 0) * parseFloat(quantity || 0);
@@ -1602,7 +1635,7 @@ window.__ac.onUpdate('price', 'quantity', function(price, quantity) {
 
             vm.JsCode =
 @"(function () {
-  var currentGuildId = (window.__ac && window.__ac.live) ? (window.__ac.live.outputGuildId || '') : '';
+  var currentGuildId = (window.hostLive && window.hostLive.values) ? (window.hostLive.values.outputGuildId || '') : '';
   var videoEl = document.getElementById('previewVideo');
   var statusEl = document.getElementById('statusText');
   if (!videoEl) return;
@@ -1618,12 +1651,12 @@ window.__ac.onUpdate('price', 'quantity', function(price, quantity) {
   }
 
   function playFromLocalPath(localPath) {
-    if (!localPath || typeof acResolveLocalPath !== 'function') return;
+    if (!localPath || typeof hostResolvePath !== 'function') return;
     var reqId = 'play_' + Date.now();
     function onResolved(ev) {
       var d = (ev && ev.detail) ? ev.detail : {};
       if (String(d.requestId || '') !== reqId) return;
-      window.removeEventListener('__ac_local_path_resolved', onResolved);
+      window.removeEventListener('hostPathResolved', onResolved);
       if (!d.ok || !d.localUrl) { setStatus('Resolve failed'); return; }
       videoEl.src = d.localUrl;
       try { videoEl.load(); } catch (_) {}
@@ -1631,13 +1664,13 @@ window.__ac.onUpdate('price', 'quantity', function(price, quantity) {
       if (pp && typeof pp.catch === 'function') pp.catch(function(){});
       setStatus('Loaded: ' + d.localUrl);
     }
-    window.addEventListener('__ac_local_path_resolved', onResolved);
-    acResolveLocalPath(localPath, reqId);
+    window.addEventListener('hostPathResolved', onResolved);
+    hostResolvePath(localPath, reqId);
     setStatus('Resolving local path...');
   }
 
-  if (window.__ac && typeof window.__ac.onUpdate === 'function') {
-    window.__ac.onUpdate('datas', function (datas) {
+  if (window.hostLive && typeof window.hostLive.on === 'function') {
+    window.hostLive.on('datas', function (datas) {
       var dict = normalizeDatas(datas);
       if (!dict) return;
       var lp = currentGuildId ? dict[currentGuildId] : '';
@@ -1732,7 +1765,7 @@ function updateHistory(val) {
 }
 
 // 1 param → gọi 3 func khác nhau
-window.__ac.onUpdate(function(live) {
+window.hostLive.on(function(live) {
     var keys = Object.keys(live);
     if (!keys.length) return;
     var val = live[keys[0]];
@@ -1747,7 +1780,7 @@ window.__ac.onUpdate(function(live) {
         }
 
         // ──────────────────────────────────────────────────────
-        // EX4: Polling – đọc window.__ac.live trực tiếp
+        // EX4: Polling – đọc window.hostLive.values trực tiếp
         // ──────────────────────────────────────────────────────
         private static void ApplyEx4(HtmlUiNodeDialogViewModel vm)
         {
@@ -1779,9 +1812,9 @@ body {
 .ts { font-size: 11px; color: #475569; margin-top: 12px; text-align: right; }";
 
             vm.JsCode =
-@"// Polling: đọc window.__ac.live trực tiếp mỗi 500ms
+@"// Polling: đọc window.hostLive.values trực tiếp mỗi 500ms
 setInterval(function() {
-    var live = window.__ac ? window.__ac.live : {};
+    var live = window.hostLive ? window.hostLive.values : {};
     var keys = Object.keys(live);
     var container = document.getElementById('rows');
     container.innerHTML = '';
@@ -1840,29 +1873,29 @@ input:focus { outline:none; border-color:#0ea5e9; }
 
             vm.JsCode =
 @"// ─── SEQUENTIAL: từng bước chạy xong mới sang bước tiếp theo ───
-// __tab1_exec_seq(js): cầu nối request thành chuỗi Task. request2 đợi request1.
+// tab1Seq(js): cầu nối request thành chuỗi Task. request2 đợi request1.
 function runSeq() {
     var q = document.getElementById('q').value || 'button';
     log('⏳ Gửi 3 bước tuần tự → Tab1...');
 
     // Bước 1: click nút
-    __tab1_exec_seq(`document.querySelector('` + q + `')?.click();`);
+    tab1Seq(`document.querySelector('` + q + `')?.click();`);
 
     // Bước 2: chờ B1 XONG mới fill input
-    __tab1_exec_seq(`document.querySelector('input')?.focus();`);
+    tab1Seq(`document.querySelector('input')?.focus();`);
 
     // Bước 3: log xác nhận
-    __tab1_exec_seq(`console.log('[Tab1 SEQ done]', document.title);`);
+    tab1Seq(`console.log('[Tab1 SEQ done]', document.title);`);
 
     setTimeout(function() { log('✅ Đã gửi 3 bước tuần tự → Tab1'); }, 100);
 }
 
 // ─── PARALLEL: các request chạy đồng thời, không đợi nhau ───
-// __tab1_exec_par(js): fire-and-forget. par2 KHÔNG đợi par1.
+// tab1Par(js): fire-and-forget. par2 KHÔNG đợi par1.
 function runPar() {
     log('⚡ Gửi 2 request song song → Tab1...');
-    __tab1_exec_par(`console.log('[Tab1 PAR 1] started:', Date.now());`);
-    __tab1_exec_par(`document.title = 'Processing... ' + Date.now();`);
+    tab1Par(`console.log('[Tab1 PAR 1] started:', Date.now());`);
+    tab1Par(`document.title = 'Processing... ' + Date.now();`);
     setTimeout(function() { log('⚡ Cả 2 request chạy song song trong Tab1'); }, 50);
 }
 
@@ -1906,9 +1939,9 @@ function notify() {
     log('⚡ Gửi 3 request song song...');
 
     // 3 request chạy cùng lúc trong Tab1 — fire-and-forget
-    __tab1_exec_par(`console.log('[Tab1 PAR] ping at:', new Date().toISOString());`);
-    __tab1_exec_par(`document.body.style.outline = '2px solid #7c3aed';`);
-    if (url) __tab1_exec_par(`window.location.href = '` + url + `';`);
+    tab1Par(`console.log('[Tab1 PAR] ping at:', new Date().toISOString());`);
+    tab1Par(`document.body.style.outline = '2px solid #7c3aed';`);
+    if (url) tab1Par(`window.location.href = '` + url + `';`);
 
     setTimeout(function() { log('✅ Đã gửi 3 request song song → Tab1'); }, 50);
 }
@@ -1954,14 +1987,14 @@ function doFetch() {
     out('⏳ Đối đầu...');
 
     // Bước 1 (seq): đảm bảo Tab1 ở đúng origin
-    __tab1_exec_seq(`
+    tab1Seq(`
         if (!window.location.href.includes('grok.com')) {
             console.log('[Tab1] Navigate to origin first:', window.location.href);
         }
     `);
 
     // Bước 2 (seq): thực hiện fetch bên trong Tab1
-    __tab1_exec_seq(`
+    tab1Seq(`
         (async () => {
             try {
                 const r = await fetch('` + url + `', { credentials: 'include' });
@@ -1976,7 +2009,7 @@ function doFetch() {
     `);
 
     // Bước 3 (seq): sau khi fetch xong, log xác nhận
-    __tab1_exec_seq(`console.log('[Tab1 SEQ] All done. Result:', window.__tab1FetchResult);`);
+    tab1Seq(`console.log('[Tab1 SEQ] All done. Result:', window.__tab1FetchResult);`);
 
     out('✅ Đã gửi 3 bước fetch tuần tự → Tab1. Xem console Tab1 để thấy kết quả.');
 }
