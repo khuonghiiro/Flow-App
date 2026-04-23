@@ -115,7 +115,7 @@ namespace FlowMy.Models.Nodes
             "</body>\n" +
             "</html>";
 
-        // JS mẫu: có thể thêm logic xử lý UI, validate, ... Khi muốn submit thì gọi acSubmit()
+        // JS mẫu: có thể thêm logic xử lý UI, validate, ... Khi muốn submit thì gọi hostSubmit()
         // 
         // ✅ HƯỚNG DẪN DÙNG {variableName} TRONG JS:
         // Bạn có thể dùng {variableName} để truyền giá trị từ input mappings vào JavaScript.
@@ -337,7 +337,7 @@ namespace FlowMy.Models.Nodes
 
         // Cấu hình params: mỗi dòng = "key: selector" (ví dụ: "result: #txtResult")
         // Selector dùng CSS selector: #id, .class, tag, [attr], ...
-        // Khi gọi acSubmit() hoặc postMessage({ type: 'submit' }), host sẽ đọc DOM theo Params này
+        // Khi gọi hostSubmit() hoặc postMessage({ type: 'submit' }), host sẽ đọc DOM theo Params này
         private string _paramsCode =
             "// Output mặc định khi gọi hostSubmit()\n" +
             "// result: text user nhập để gửi ra node output\n" +
@@ -726,7 +726,7 @@ namespace FlowMy.Models.Nodes
         /// <summary>
         /// Danh sách nguồn dữ liệu async: mỗi phần tử = 1 node nguồn + key nguồn + key nhận trong HTML.
         /// Khi workflow chạy vào node này, executor sẽ resolve data từ các nguồn này
-        /// và push vào WebView2 qua window.__acAsync.
+        /// và push vào WebView2 qua window.hostAsync.
         /// Khi F5/reload, dữ liệu được load lại từ cache.
         /// </summary>
         public List<AsyncDataSource> AsyncDataSources

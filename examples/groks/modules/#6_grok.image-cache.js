@@ -413,8 +413,8 @@
     function getCurrentDataImagesSnapshot() {
         var dataImages = null;
         try {
-            if (window.__ac && window.__ac.live) dataImages = window.__ac.live.dataImages;
-            if (!dataImages && window.__ac && window.__ac.datas) dataImages = window.__ac.datas.dataImages;
+            if (window.hostLive && window.hostLive.values) dataImages = window.hostLive.values.dataImages;
+            if (!dataImages && window.hostLive && window.hostLive.values) dataImages = window.hostLive.values.datas ? window.hostLive.values.datas.dataImages : null;
         } catch (_) {}
         return dataImages;
     }
@@ -869,8 +869,8 @@
     });
 
     try {
-        if (window.__ac && typeof window.__ac.onUpdate === 'function') {
-            window.__ac.onUpdate('dataImages', function (dataImages) {
+        if (window.hostLive && typeof window.hostLive.on === 'function') {
+            window.hostLive.on('dataImages', function (dataImages) {
                 if (!dataImages) return;
                 var applied = processDataImagesPayload(dataImages, { onlyTracked: false });
                 if (applied.changed) {

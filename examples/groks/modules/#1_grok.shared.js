@@ -160,14 +160,14 @@
         var attemptNo = 0;
         function attempt() {
             if (done) return;
-            if (typeof window.acResolveLocalPath !== 'function') {
+            if (typeof window.hostResolvePath !== 'function') {
                 attemptNo++;
                 if (attemptNo <= 4) setTimeout(attempt, 500);
                 else finish(fallbackUrl || '', true);
                 return;
             }
             localPathResolveWaiters[reqId] = function (resolvedUrl) { finish(resolvedUrl, false); };
-            try { window.acResolveLocalPath(localPath, reqId); } 
+            try { window.hostResolvePath(localPath, reqId); } 
             catch (_) { delete localPathResolveWaiters[reqId]; finish(fallbackUrl || '', true); return; }
             
             setTimeout(function () {
@@ -192,13 +192,13 @@
             done = true;
             cb(u || '');
         }
-        if (!isInternalPlayableRef(url) || typeof window.acResolvePlayableRef !== 'function') {
+        if (!isInternalPlayableRef(url) || typeof window.hostResolveRef !== 'function') {
             finish('');
             return;
         }
         var reqId = uid();
         localPathResolveWaiters[reqId] = finish;
-        try { window.acResolvePlayableRef(url, reqId); } catch (_) { finish(''); }
+        try { window.hostResolveRef(url, reqId); } catch (_) { finish(''); }
         setTimeout(function () {
             var w = localPathResolveWaiters[reqId];
             if (!w) return;
@@ -328,20 +328,20 @@
     var asyncPushReceiverBound = false;
     function bindAsyncPushReceiver() {
         if (asyncPushReceiverBound) return;
-        if (!window.__acAsync || typeof window.__acAsync.onReceive !== 'function') return;
+        if (!window.hostAsync || typeof window.hostAsync.on !== 'function') return;
 
-        window.__acAsync.onReceive('datas', function (value) {
+        window.hostAsync.on('datas', function (value) {
             onReceiveDataVideoHooks.forEach(function(h) { h(value); });
         });
-        window.__acAsync.onReceive('dataImages', function (value) {
+        window.hostAsync.on('dataImages', function (value) {
             onReceiveDataImagesHooks.forEach(function(h) { h(value); });
         });
-        window.__acAsync.onReceive('loadVideoDatas', function (value) {
+        window.hostAsync.on('loadVideoDatas', function (value) {
             onReceiveLoadVideoDatasHooks.forEach(function(h) { h(value); });
         });
 
         // Backward compatibility
-        window.__acAsync.onReceive('item', function (value) {
+        window.hostAsync.on('item', function (value) {
             var obj = (function(v) {
                 if (v && typeof v === 'object') return v;
                 if (typeof v !== 'string') return null;
@@ -369,7 +369,7 @@
     }
 
     // EVENT LISTENER FOR path resolve
-    window.addEventListener('__ac_local_path_resolved', function(ev) {
+    window.addEventListener('hostPathResolved', function(ev) {
         var d = ev.detail || {};
         if (d.requestId && localPathResolveWaiters[d.requestId]) {
             var cb = localPathResolveWaiters[d.requestId];

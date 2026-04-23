@@ -609,8 +609,8 @@
         });
         if (sc) sc.value = '0'; 
 
-        try { if (typeof acSubmit        === 'function') acSubmit(); }        catch (_) {}
-        try { if (typeof acStartWorkflow === 'function') acStartWorkflow(); } catch (_) {}
+        try { if (typeof hostSubmit === 'function') hostSubmit(); } catch (_) {}
+        try { if (typeof hostStart === 'function') hostStart(); } catch (_) {}
 
         var grid  = document.getElementById('videoGrid');
         var empty = document.getElementById('emptyState');
@@ -804,8 +804,8 @@
                 });
                 if (sc) sc.value = '0'; 
 
-                try { if (typeof acSubmit        === 'function') acSubmit(); }        catch (_) {}
-                try { if (typeof acStartWorkflow === 'function') acStartWorkflow(); } catch (_) {}
+                try { if (typeof hostSubmit === 'function') hostSubmit(); } catch (_) {}
+                try { if (typeof hostStart === 'function') hostStart(); } catch (_) {}
 
                 var grid  = document.getElementById('videoGrid');
                 var empty = document.getElementById('emptyState');

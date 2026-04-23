@@ -348,7 +348,7 @@
     }
 
     function buildFlatDatasFromLive() {
-        var live = window.__ac && window.__ac.live;
+        var live = window.hostLive && window.hostLive.values;
         if (!live || typeof live !== 'object') return null;
         var out = {};
         var n = 0;
@@ -397,7 +397,7 @@
         var n3 = normalizeDictMaybe(shared.getLatestDatasDict());
         if (n3) return n3;
 
-        var d4 = window.__ac && window.__ac.live ? window.__ac.live.datas : null;
+        var d4 = window.hostLive && window.hostLive.values ? window.hostLive.values.datas : null;
         var n4 = normalizeDictMaybe(d4);
         if (n4) return n4;
 
@@ -407,7 +407,7 @@
         var n5 = normalizeDictMaybe(window.datas);
         if (n5) return n5;
 
-        var n6 = normalizeDictMaybe(window.__ac && window.__ac.datas ? window.__ac.datas : null);
+        var n6 = normalizeDictMaybe(window.hostLive && window.hostLive.values ? window.hostLive.values.datas : null);
         if (n6) return n6;
 
         return {};
@@ -424,14 +424,14 @@
         var n3 = normalizeDictMaybe(shared.getLatestLoadVideoDatasDict());
         if (n3) return n3;
 
-        var d4 = window.__ac && window.__ac.live ? window.__ac.live.loadVideoDatas : null;
+        var d4 = window.hostLive && window.hostLive.values ? window.hostLive.values.loadVideoDatas : null;
         var n4 = normalizeDictMaybe(d4);
         if (n4) return n4;
 
         var n5 = normalizeDictMaybe(typeof window.loadVideoDatas !== 'undefined' ? window.loadVideoDatas : null);
         if (n5) return n5;
 
-        var n6 = normalizeDictMaybe(window.__ac && window.__ac.loadVideoDatas ? window.__ac.loadVideoDatas : null);
+        var n6 = normalizeDictMaybe(window.hostLive && window.hostLive.values ? window.hostLive.values.loadVideoDatas : null);
         if (n6) return n6;
 
         return {};
@@ -758,17 +758,17 @@
 
     // Setup generic __ac.onUpdate wrappers if they exist
     try {
-        if (window.__ac && typeof window.__ac.onUpdate === 'function') {
-            window.__ac.onUpdate('datas', function(datas, og) {
+        if (window.hostLive && typeof window.hostLive.on === 'function') {
+            window.hostLive.on('datas', function(datas, og) {
                 if(handleAsyncVideoObject(datas)) return;
                 var dict = normalizeDictMaybe(datas);
                 if(dict) { shared.setLatestDatasDict(dict); ingestDatasDict(dict); }
             });
-            window.__ac.onUpdate('loadVideoDatas', function(datas, og) {
+            window.hostLive.on('loadVideoDatas', function(datas, og) {
                 var dict = normalizeDictMaybe(datas);
                 if(dict) { shared.setLatestLoadVideoDatasDict(dict); ingestDatasDict(dict); }
             });
-            window.__ac.onUpdate(function(live) {
+            window.hostLive.on(function(live) {
                 var d = pickResultDictionary(live);
                 if(d && Object.keys(d).length) { shared.setLatestDatasDict(d); ingestDatasDict(d); }
                 var l = pickLoadVideoDatasDictionary(live);
@@ -917,8 +917,8 @@
         }
         if (sc) sc.value = '2';
 
-        try { if (typeof acSubmit === 'function') acSubmit(); } catch (_) {}
-        try { if (typeof acStartWorkflow === 'function') acStartWorkflow(); } catch (_) {}
+        try { if (typeof hostSubmit === 'function') hostSubmit(); } catch (_) {}
+        try { if (typeof hostStart === 'function') hostStart(); } catch (_) {}
 
         var btn = document.getElementById('loadCacheVideosBtn');
         var icon = document.getElementById('loadCacheVideosIcon');
@@ -948,8 +948,8 @@
         }
         if (sc) sc.value = '3';
 
-        try { if (typeof acSubmit === 'function') acSubmit(); } catch (_) {}
-        try { if (typeof acStartWorkflow === 'function') acStartWorkflow(); } catch (_) {}
+        try { if (typeof hostSubmit === 'function') hostSubmit(); } catch (_) {}
+        try { if (typeof hostStart === 'function') hostStart(); } catch (_) {}
 
         clearVideoGalleryStateAndDom();
         shared.showToast('info', 'Đã xóa', 'Đã dọn gallery và gửi statusCreate=3 (clear cache).', 2800);
@@ -974,7 +974,7 @@
     var downloadMetaByKey = {};
     var downloadItemIdByKey = {};
 
-    window.addEventListener('__ac_curl_download_done', function (ev) {
+    window.addEventListener('hostCurlDone', function (ev) {
         try {
             var d = ev && ev.detail ? ev.detail : {};
             if (!d || !d.path) return;

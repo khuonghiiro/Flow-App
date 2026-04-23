@@ -24,14 +24,14 @@ function uuid() {
 
 /**
  * ✅ Tab2→Tab1 JS injection helpers
- * __tab1_exec_seq được inject bởi HtmlUiNodeControl khi UseWebTab = true.
+ * tab1Seq được inject bởi HtmlUiNodeControl khi UseWebTab = true.
  * Safe wrapper: nếu không chạy trong 2-tab mode thì không làm gì.
  */
 function t1Seq(js) {
-  if (typeof __tab1_exec_seq === 'function') __tab1_exec_seq(js);
+  if (typeof tab1Seq === 'function') tab1Seq(js);
 }
 function t1Par(js) {
-  if (typeof __tab1_exec_par === 'function') __tab1_exec_par(js);
+  if (typeof tab1Par === 'function') tab1Par(js);
 }
 
 // Tab1 (return): gửi JS sang Tab1 và nhận kết quả trả về (tránh CORS origin null)
@@ -159,22 +159,22 @@ function t1SeqRet(js, timeoutMs = 180000, meta = null) {
       console.log('__TAB2_T1SEQRET_START__', { jobId, meta, jsPreview: String(js || '').slice(0, 180) });
     } catch {}
 
-    if (typeof __tab1_exec_seq_ret !== 'function') {
+    if (typeof tab1SeqRet !== 'function') {
       clearTimeout(timer);
       __tab1JobPromises.delete(jobId);
       try { window.__tab1_debug_events.push({ t: Date.now(), ev: 't1SeqRet_missing_bridge', jobId }); } catch {}
-      reject(new Error('Tab1 return bridge missing (__tab1_exec_seq_ret)'));
+      reject(new Error('Tab1 return bridge missing (tab1SeqRet)'));
       return;
     }
 
     // Mark as "sent" so we can tell if C# never calls back.
     try { window.__tab1_debug_events.push({ t: Date.now(), ev: 't1SeqRet_sent', jobId }); } catch {}
-    __tab1_exec_seq_ret(jobId, js, timeoutMs);
+    tab1SeqRet(jobId, js, timeoutMs);
   });
 }
 
 // Sync headerParam từ bên ngoài vào textarea
-window.__ac.onUpdate('headerParam', function (headerParam) {
+window.hostLive.on('headerParam', function (headerParam) {
   document.getElementById('headerParam').value = headerParam || '';
 });
 
@@ -479,7 +479,7 @@ async function generateVideo() {
   try {
     // Không phụ thuộc __tab1_available (flag này có thể bị “đóng băng” theo thời điểm inject).
     // Chỉ cần bridge return tồn tại là có thể thử chạy qua Tab1; nếu Tab1 chưa ready thì C# sẽ reject rõ ràng.
-    const canApiInTab1 = typeof __tab1_exec_seq_ret === 'function';
+    const canApiInTab1 = typeof tab1SeqRet === 'function';
 
     // Một số máy có bridge tồn tại nhưng bị "kẹt" (Tab1 chưa ready / navigation loop / WebView2 issue).
     // Ping nhanh để quyết định dùng Tab1 hay fallback Tab2, tránh cảm giác treo.
@@ -508,7 +508,7 @@ async function generateVideo() {
       }
 
       // If still not ok, attempt to navigate Tab1 to grok.com/imagine and retry ping.
-      if (!pingOk && typeof __tab1_exec_seq === 'function') {
+      if (!pingOk && typeof tab1Seq === 'function') {
         try {
           t1Seq(`(function(){ try { document.title='⏳ Opening grok.com/imagine...'; } catch(e){} try { location.href='https://grok.com/imagine'; } catch(e){} })();`);
         } catch {}
@@ -653,7 +653,7 @@ async function generateVideo() {
 
 async function ensureTab1OnGrokOrigin() {
   // Nếu không có bridge return thì không đảm bảo được origin
-  if (typeof __tab1_exec_seq_ret !== 'function') return false;
+  if (typeof tab1SeqRet !== 'function') return false;
 
   // Cache ngắn để tránh mỗi request lại làm Tab1 reload
   try {

@@ -6,7 +6,7 @@ namespace FlowMy.Models.Nodes
     /// <summary>
     /// Cấu hình 1 nguồn dữ liệu async push vào HTML UI.
     /// SourceNodeId + SourceOutputKey → resolve value từ node nguồn (ví dụ: AsyncTask branch output).
-    /// ReceiverKey → tên key khi push vào JS (window.__acAsync.data[ReceiverKey]).
+    /// ReceiverKey → tên key khi push vào JS (window.hostAsync.values[ReceiverKey]).
     /// Nếu ReceiverKey trống → dùng tên SourceOutputKey của node nguồn.
     /// </summary>
     public sealed class AsyncDataSource : INotifyPropertyChanged

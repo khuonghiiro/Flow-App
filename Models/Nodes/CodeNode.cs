@@ -41,8 +41,8 @@ namespace FlowMy.Models.Nodes
             set { if (_shouldReExecute != value) { _shouldReExecute = value; OnPropertyChanged(); } }
         }
 
-        // --- Auto-refresh: lấy giá trị mới nhất theo chu kỳ, push vào JS window.__ac ---
-        /// <summary>Bật/tắt tự động push giá trị mới nhất vào JS window.__ac theo khoảng thời gian.</summary>
+        // --- Auto-refresh: lấy giá trị mới nhất theo chu kỳ, push vào JS window.hostLive ---
+        /// <summary>Bật/tắt tự động push giá trị mới nhất vào JS window.hostLive theo khoảng thời gian.</summary>
         public bool AutoRefreshEnabled { get; set; } = false;
 
         /// <summary>Khoảng thời gian lấy dữ liệu mới (kèm AutoRefreshUnit: "ms" / "s" / "min").</summary>

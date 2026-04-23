@@ -139,7 +139,7 @@
     ════════════════════════════════════════ */
     var hostImagePickWaiters = {};
 
-    window.addEventListener('__ac_image_files_picked', function (ev) {
+    window.addEventListener('hostImagesPicked', function (ev) {
         try {
             var d = ev && ev.detail ? ev.detail : {};
             var reqId = d && d.requestId ? String(d.requestId) : '';
@@ -177,7 +177,7 @@
     }
 
     function tryPickImagesFromHost() {
-        if (typeof window.acPickImageFiles !== 'function') return false;
+        if (typeof window.hostPickImages !== 'function') return false;
         var reqId = 'img_pick_' + shared.uid();
         hostImagePickWaiters[reqId] = function (detail) {
             try {
@@ -186,7 +186,7 @@
             } catch (_) {}
         };
         try {
-            window.acPickImageFiles(reqId);
+            window.hostPickImages(reqId);
         } catch (_) {
             delete hostImagePickWaiters[reqId];
             return false;
@@ -356,8 +356,8 @@
             );
             if (scEl) scEl.value = '1';
 
-            try { if (typeof acSubmit        === 'function') acSubmit(); }        catch (_) {}
-            try { if (typeof acStartWorkflow === 'function') acStartWorkflow(); } catch (_) {}
+            try { if (typeof hostSubmit === 'function') hostSubmit(); } catch (_) {}
+            try { if (typeof hostStart === 'function') hostStart(); } catch (_) {}
 
             shared.showToast('success',
                 'Đã gửi ' + imageList.length + ' ảnh',
