@@ -18,47 +18,47 @@
 
     <SolidColorBrush x:Key="BorderBrush" Color="#FF98937F"/>
     <SolidColorBrush x:Key="CardColor" Color="#FF3E3D32"/>
-    <SolidColorBrush x:Key="BorderColor" Color="#FF98937F"/>
+    <SolidColorBrush x:Key="BorderColor" Color="#FFB0A98E"/>
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1D18"/>
     <SolidColorBrush x:Key="OverlayBackground" Color="#CC1E1D18"/>
     <SolidColorBrush x:Key="OverlayBackgroundReverse" Color="#66FFFFFF"/>
     <SolidColorBrush x:Key="BackgroundAll" Color="#FF272822"/>
 
     <!-- PRIMARY — Monokai green -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#A6E22E"/>
-    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#B8F24B"/>
-    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#8FCC1E"/>
-    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#272822"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#B8F24B"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#C8FA67"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#A4DE36"/>
+    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#1E2416"/>
 
     <!-- SECONDARY — Monokai gray -->
-    <SolidColorBrush x:Key="SecondaryBrush" Color="#75715E"/>
-    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#888470"/>
-    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#62604D"/>
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#8E8A76"/>
+    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#A09C89"/>
+    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#787560"/>
     <SolidColorBrush x:Key="TextOnSecondaryBrush" Color="#F8F8F2"/>
 
     <!-- SUCCESS — Monokai green -->
-    <SolidColorBrush x:Key="SuccessBrush" Color="#A6E22E"/>
-    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#B8F24B"/>
-    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#8FCC1E"/>
-    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#272822"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#9EE33B"/>
+    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#B1EE58"/>
+    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#8BCD2B"/>
+    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#1E2416"/>
 
     <!-- DANGER — Monokai red/pink -->
-    <SolidColorBrush x:Key="DangerBrush" Color="#F92672"/>
-    <SolidColorBrush x:Key="DangerHoverBrush" Color="#FF4D8A"/>
-    <SolidColorBrush x:Key="DangerPressedBrush" Color="#E01560"/>
-    <SolidColorBrush x:Key="TextOnDangerBrush" Color="#F8F8F2"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#FF4F93"/>
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="#FF69A5"/>
+    <SolidColorBrush x:Key="DangerPressedBrush" Color="#E9387F"/>
+    <SolidColorBrush x:Key="TextOnDangerBrush" Color="#2B0F1F"/>
 
     <!-- WARNING — Monokai orange -->
-    <SolidColorBrush x:Key="WarningBrush" Color="#FD971F"/>
-    <SolidColorBrush x:Key="WarningHoverBrush" Color="#FFAD40"/>
-    <SolidColorBrush x:Key="WarningPressedBrush" Color="#E07C08"/>
-    <SolidColorBrush x:Key="TextOnWarningBrush" Color="#272822"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#FFB24B"/>
+    <SolidColorBrush x:Key="WarningHoverBrush" Color="#FFC570"/>
+    <SolidColorBrush x:Key="WarningPressedBrush" Color="#E89833"/>
+    <SolidColorBrush x:Key="TextOnWarningBrush" Color="#2C2215"/>
 
     <!-- INFO — Monokai cyan -->
-    <SolidColorBrush x:Key="InfoBrush" Color="#66D9E8"/>
-    <SolidColorBrush x:Key="InfoHoverBrush" Color="#80E6F4"/>
-    <SolidColorBrush x:Key="InfoPressedBrush" Color="#50C9D5"/>
-    <SolidColorBrush x:Key="TextOnInfoBrush" Color="#272822"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#7DE5F2"/>
+    <SolidColorBrush x:Key="InfoHoverBrush" Color="#98ECF6"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#63CFDD"/>
+    <SolidColorBrush x:Key="TextOnInfoBrush" Color="#1A2A2C"/>
 
     <!-- LIGHT / DARK -->
     <SolidColorBrush x:Key="LightBrush" Color="#3E3D32"/>
@@ -214,5 +214,77 @@
     <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FFA6E22E"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FF3E3B32"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FF3E3B32"/>
+
+    <!-- Common palette overrides: only low-contrast keys -->
+    <SolidColorBrush x:Key="OceanBrush" Color="#78CCE2"/>
+    <SolidColorBrush x:Key="OceanHoverBrush" Color="#92DAEC"/>
+    <SolidColorBrush x:Key="OceanPressedBrush" Color="#63B9CF"/>
+    <SolidColorBrush x:Key="TextOnOceanBrush" Color="#132329"/>
+
+    <SolidColorBrush x:Key="BrightPowerBrush" Color="#FF6D9A"/>
+    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#FF86AB"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#E85B88"/>
+    <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#2A101A"/>
+
+    <SolidColorBrush x:Key="MagentaBloomBrush" Color="#E07BE0"/>
+    <SolidColorBrush x:Key="MagentaBloomHoverBrush" Color="#EA93EA"/>
+    <SolidColorBrush x:Key="MagentaBloomPressedBrush" Color="#CA67CA"/>
+    <SolidColorBrush x:Key="TextOnMagentaBloomBrush" Color="#2A112A"/>
+
+    <!-- Deep-tone families from Common: raised contrast for Monokai -->
+    <SolidColorBrush x:Key="NavyDeepBrush" Color="#8CA2D0"/>
+    <SolidColorBrush x:Key="NavyDeepHoverBrush" Color="#A4B8DA"/>
+    <SolidColorBrush x:Key="NavyDeepPressedBrush" Color="#778BBE"/>
+    <SolidColorBrush x:Key="TextOnNavyDeepBrush" Color="#151E2D"/>
+
+    <SolidColorBrush x:Key="MidnightBlueBrush" Color="#7D98C8"/>
+    <SolidColorBrush x:Key="MidnightBlueHoverBrush" Color="#96ADD2"/>
+    <SolidColorBrush x:Key="MidnightBluePressedBrush" Color="#6A83B5"/>
+    <SolidColorBrush x:Key="TextOnMidnightBlueBrush" Color="#131B29"/>
+
+    <SolidColorBrush x:Key="PrussianBlueBrush" Color="#7193C2"/>
+    <SolidColorBrush x:Key="PrussianBlueHoverBrush" Color="#8BAAD0"/>
+    <SolidColorBrush x:Key="PrussianBluePressedBrush" Color="#5F7FA9"/>
+    <SolidColorBrush x:Key="TextOnPrussianBlueBrush" Color="#121A26"/>
+
+    <SolidColorBrush x:Key="CharcoalDarkBrush" Color="#868B96"/>
+    <SolidColorBrush x:Key="CharcoalDarkHoverBrush" Color="#9EA3AD"/>
+    <SolidColorBrush x:Key="CharcoalDarkPressedBrush" Color="#727781"/>
+    <SolidColorBrush x:Key="TextOnCharcoalDarkBrush" Color="#15191F"/>
+
+    <SolidColorBrush x:Key="GraphiteGrayBrush" Color="#8A8782"/>
+    <SolidColorBrush x:Key="GraphiteGrayHoverBrush" Color="#A09D98"/>
+    <SolidColorBrush x:Key="GraphiteGrayPressedBrush" Color="#75726D"/>
+    <SolidColorBrush x:Key="TextOnGraphiteGrayBrush" Color="#1C1A16"/>
+
+    <SolidColorBrush x:Key="BerryPurpleBrush" Color="#B997D9"/>
+    <SolidColorBrush x:Key="BerryPurpleHoverBrush" Color="#C9ADE4"/>
+    <SolidColorBrush x:Key="BerryPurplePressedBrush" Color="#A684C8"/>
+    <SolidColorBrush x:Key="TextOnBerryPurpleBrush" Color="#251930"/>
+
+    <SolidColorBrush x:Key="CobaltBlueBrush" Color="#82A7DE"/>
+    <SolidColorBrush x:Key="CobaltBlueHoverBrush" Color="#9ABBE7"/>
+    <SolidColorBrush x:Key="CobaltBluePressedBrush" Color="#6F93CB"/>
+    <SolidColorBrush x:Key="TextOnCobaltBlueBrush" Color="#15202F"/>
+
+    <SolidColorBrush x:Key="WineRedBrush" Color="#C58E96"/>
+    <SolidColorBrush x:Key="WineRedHoverBrush" Color="#D3A3AA"/>
+    <SolidColorBrush x:Key="WineRedPressedBrush" Color="#B17B84"/>
+    <SolidColorBrush x:Key="TextOnWineRedBrush" Color="#2D161B"/>
+
+    <SolidColorBrush x:Key="EspressoBrownBrush" Color="#B79284"/>
+    <SolidColorBrush x:Key="EspressoBrownHoverBrush" Color="#C5A698"/>
+    <SolidColorBrush x:Key="EspressoBrownPressedBrush" Color="#A27F71"/>
+    <SolidColorBrush x:Key="TextOnEspressoBrownBrush" Color="#281C16"/>
+
+    <SolidColorBrush x:Key="AubergineBrush" Color="#A7899A"/>
+    <SolidColorBrush x:Key="AubergineHoverBrush" Color="#B79EB0"/>
+    <SolidColorBrush x:Key="AuberginePressedBrush" Color="#947787"/>
+    <SolidColorBrush x:Key="TextOnAubergineBrush" Color="#291C26"/>
+
+    <SolidColorBrush x:Key="BambooGreenBrush" Color="#93AB7E"/>
+    <SolidColorBrush x:Key="BambooGreenHoverBrush" Color="#A6BC92"/>
+    <SolidColorBrush x:Key="BambooGreenPressedBrush" Color="#81986C"/>
+    <SolidColorBrush x:Key="TextOnBambooGreenBrush" Color="#182313"/>
 
 </ResourceDictionary>

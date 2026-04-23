@@ -19,7 +19,7 @@
 
     <SolidColorBrush x:Key="BorderBrush" Color="#FF8B9DC9"/>
     <SolidColorBrush x:Key="CardColor" Color="#FF44475A"/>
-    <SolidColorBrush x:Key="BorderColor" Color="#FF8B9DC9"/>
+    <SolidColorBrush x:Key="BorderColor" Color="#FFA3B4DD"/>
 
     <!-- Header -->
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF21222C"/>
@@ -32,40 +32,40 @@
     <SolidColorBrush x:Key="BackgroundAll" Color="#FF282A36"/>
 
     <!-- === PRIMARY — Dracula purple === -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#BD93F9"/>
-    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#CFB3FF"/>
-    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#A377E6"/>
-    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#282A36"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#D4B0FF"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#E0C5FF"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#BF99F0"/>
+    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#221B2E"/>
 
     <!-- === SECONDARY === -->
-    <SolidColorBrush x:Key="SecondaryBrush" Color="#6272A4"/>
-    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#7585B7"/>
-    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#4F5E90"/>
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#7C8CC2"/>
+    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#93A3D6"/>
+    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#6878AC"/>
     <SolidColorBrush x:Key="TextOnSecondaryBrush" Color="#F8F8F2"/>
 
     <!-- === SUCCESS — Dracula green === -->
-    <SolidColorBrush x:Key="SuccessBrush" Color="#50FA7B"/>
-    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#70FF97"/>
-    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#3AE364"/>
-    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#282A36"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#6AFB90"/>
+    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#86FFAA"/>
+    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#52E279"/>
+    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#1D2420"/>
 
     <!-- === DANGER — Dracula red === -->
-    <SolidColorBrush x:Key="DangerBrush" Color="#FF5555"/>
-    <SolidColorBrush x:Key="DangerHoverBrush" Color="#FF7373"/>
-    <SolidColorBrush x:Key="DangerPressedBrush" Color="#E54040"/>
-    <SolidColorBrush x:Key="TextOnDangerBrush" Color="#F8F8F2"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#FF737A"/>
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="#FF8C92"/>
+    <SolidColorBrush x:Key="DangerPressedBrush" Color="#E85E65"/>
+    <SolidColorBrush x:Key="TextOnDangerBrush" Color="#2A0D11"/>
 
     <!-- === WARNING — Dracula orange === -->
-    <SolidColorBrush x:Key="WarningBrush" Color="#FFB86C"/>
-    <SolidColorBrush x:Key="WarningHoverBrush" Color="#FFC87A"/>
-    <SolidColorBrush x:Key="WarningPressedBrush" Color="#EC9F4E"/>
-    <SolidColorBrush x:Key="TextOnWarningBrush" Color="#282A36"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#FFC77D"/>
+    <SolidColorBrush x:Key="WarningHoverBrush" Color="#FFD79B"/>
+    <SolidColorBrush x:Key="WarningPressedBrush" Color="#E8B163"/>
+    <SolidColorBrush x:Key="TextOnWarningBrush" Color="#2E2213"/>
 
     <!-- === INFO — Dracula cyan === -->
-    <SolidColorBrush x:Key="InfoBrush" Color="#8BE9FD"/>
-    <SolidColorBrush x:Key="InfoHoverBrush" Color="#A1EFFF"/>
-    <SolidColorBrush x:Key="InfoPressedBrush" Color="#70D8F0"/>
-    <SolidColorBrush x:Key="TextOnInfoBrush" Color="#282A36"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#9BEFFF"/>
+    <SolidColorBrush x:Key="InfoHoverBrush" Color="#B4F4FF"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#84DDF3"/>
+    <SolidColorBrush x:Key="TextOnInfoBrush" Color="#1B2A32"/>
 
     <!-- === LIGHT / DARK variants === -->
     <SolidColorBrush x:Key="LightBrush" Color="#44475A"/>
@@ -223,5 +223,102 @@
     <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FFBD93F9"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FF3A3C4E"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FF3A3C4E"/>
+
+    <!-- Common palette overrides (fine-tuned for Dracula contrast) -->
+    <SolidColorBrush x:Key="OceanBrush" Color="#8FD6FF"/>
+    <SolidColorBrush x:Key="OceanHoverBrush" Color="#A8E1FF"/>
+    <SolidColorBrush x:Key="OceanPressedBrush" Color="#78C4EB"/>
+    <SolidColorBrush x:Key="TextOnOceanBrush" Color="#122430"/>
+
+    <SolidColorBrush x:Key="OceanBlueBrush" Color="#87CBF7"/>
+    <SolidColorBrush x:Key="OceanBlueHoverBrush" Color="#A0D9FB"/>
+    <SolidColorBrush x:Key="OceanBluePressedBrush" Color="#71B8E3"/>
+    <SolidColorBrush x:Key="TextOnOceanBlueBrush" Color="#10222F"/>
+
+    <SolidColorBrush x:Key="EmeraldBrush" Color="#7BE6A0"/>
+    <SolidColorBrush x:Key="EmeraldHoverBrush" Color="#97F0B7"/>
+    <SolidColorBrush x:Key="EmeraldPressedBrush" Color="#66CF8A"/>
+    <SolidColorBrush x:Key="TextOnEmeraldBrush" Color="#11231A"/>
+
+    <SolidColorBrush x:Key="AmethystBrush" Color="#D0AEFF"/>
+    <SolidColorBrush x:Key="AmethystHoverBrush" Color="#DEC4FF"/>
+    <SolidColorBrush x:Key="AmethystPressedBrush" Color="#BC95EF"/>
+    <SolidColorBrush x:Key="TextOnAmethystBrush" Color="#251B35"/>
+
+    <SolidColorBrush x:Key="ChocolateBrownBrush" Color="#D6A889"/>
+    <SolidColorBrush x:Key="ChocolateBrownHoverBrush" Color="#E2BCA2"/>
+    <SolidColorBrush x:Key="ChocolateBrownPressedBrush" Color="#C39474"/>
+    <SolidColorBrush x:Key="TextOnChocolateBrownBrush" Color="#2D1F15"/>
+
+    <SolidColorBrush x:Key="RoyalPurpleBrush" Color="#C7A8FA"/>
+    <SolidColorBrush x:Key="RoyalPurpleHoverBrush" Color="#D6C0FF"/>
+    <SolidColorBrush x:Key="RoyalPurplePressedBrush" Color="#B492EC"/>
+    <SolidColorBrush x:Key="TextOnRoyalPurpleBrush" Color="#221833"/>
+
+    <SolidColorBrush x:Key="RubyRedBrush" Color="#FF8D9D"/>
+    <SolidColorBrush x:Key="RubyRedHoverBrush" Color="#FFA5B1"/>
+    <SolidColorBrush x:Key="RubyRedPressedBrush" Color="#EA7789"/>
+    <SolidColorBrush x:Key="TextOnRubyRedBrush" Color="#33131C"/>
+
+    <SolidColorBrush x:Key="TealCyanBrush" Color="#88DDD8"/>
+    <SolidColorBrush x:Key="TealCyanHoverBrush" Color="#A0E8E4"/>
+    <SolidColorBrush x:Key="TealCyanPressedBrush" Color="#73C7C1"/>
+    <SolidColorBrush x:Key="TextOnTealCyanBrush" Color="#122726"/>
+
+    <!-- Deep-tone families from Common: raised contrast for Dracula -->
+    <SolidColorBrush x:Key="NavyDeepBrush" Color="#95A7DA"/>
+    <SolidColorBrush x:Key="NavyDeepHoverBrush" Color="#ADBCE5"/>
+    <SolidColorBrush x:Key="NavyDeepPressedBrush" Color="#7E92C8"/>
+    <SolidColorBrush x:Key="TextOnNavyDeepBrush" Color="#171B30"/>
+
+    <SolidColorBrush x:Key="MidnightBlueBrush" Color="#85A0D6"/>
+    <SolidColorBrush x:Key="MidnightBlueHoverBrush" Color="#9EB6E0"/>
+    <SolidColorBrush x:Key="MidnightBluePressedBrush" Color="#7089C2"/>
+    <SolidColorBrush x:Key="TextOnMidnightBlueBrush" Color="#151A2D"/>
+
+    <SolidColorBrush x:Key="PrussianBlueBrush" Color="#7B9ECD"/>
+    <SolidColorBrush x:Key="PrussianBlueHoverBrush" Color="#95B3DB"/>
+    <SolidColorBrush x:Key="PrussianBluePressedBrush" Color="#6789B7"/>
+    <SolidColorBrush x:Key="TextOnPrussianBlueBrush" Color="#131A29"/>
+
+    <SolidColorBrush x:Key="CharcoalDarkBrush" Color="#8A93A8"/>
+    <SolidColorBrush x:Key="CharcoalDarkHoverBrush" Color="#A2ABBE"/>
+    <SolidColorBrush x:Key="CharcoalDarkPressedBrush" Color="#757E92"/>
+    <SolidColorBrush x:Key="TextOnCharcoalDarkBrush" Color="#151B24"/>
+
+    <SolidColorBrush x:Key="GraphiteGrayBrush" Color="#8B8A99"/>
+    <SolidColorBrush x:Key="GraphiteGrayHoverBrush" Color="#A39FB0"/>
+    <SolidColorBrush x:Key="GraphiteGrayPressedBrush" Color="#767385"/>
+    <SolidColorBrush x:Key="TextOnGraphiteGrayBrush" Color="#1A1721"/>
+
+    <SolidColorBrush x:Key="BerryPurpleBrush" Color="#C39DE8"/>
+    <SolidColorBrush x:Key="BerryPurpleHoverBrush" Color="#D2B3EF"/>
+    <SolidColorBrush x:Key="BerryPurplePressedBrush" Color="#B086D8"/>
+    <SolidColorBrush x:Key="TextOnBerryPurpleBrush" Color="#2A1A36"/>
+
+    <SolidColorBrush x:Key="CobaltBlueBrush" Color="#88AEE8"/>
+    <SolidColorBrush x:Key="CobaltBlueHoverBrush" Color="#A1C1EF"/>
+    <SolidColorBrush x:Key="CobaltBluePressedBrush" Color="#7498D3"/>
+    <SolidColorBrush x:Key="TextOnCobaltBlueBrush" Color="#152033"/>
+
+    <SolidColorBrush x:Key="WineRedBrush" Color="#D095A6"/>
+    <SolidColorBrush x:Key="WineRedHoverBrush" Color="#DDAAB8"/>
+    <SolidColorBrush x:Key="WineRedPressedBrush" Color="#BC8394"/>
+    <SolidColorBrush x:Key="TextOnWineRedBrush" Color="#331822"/>
+
+    <SolidColorBrush x:Key="EspressoBrownBrush" Color="#C19A8F"/>
+    <SolidColorBrush x:Key="EspressoBrownHoverBrush" Color="#CFADA2"/>
+    <SolidColorBrush x:Key="EspressoBrownPressedBrush" Color="#AD877C"/>
+    <SolidColorBrush x:Key="TextOnEspressoBrownBrush" Color="#2D1E19"/>
+
+    <SolidColorBrush x:Key="AubergineBrush" Color="#B08FA8"/>
+    <SolidColorBrush x:Key="AubergineHoverBrush" Color="#C0A5BA"/>
+    <SolidColorBrush x:Key="AuberginePressedBrush" Color="#9D7D95"/>
+    <SolidColorBrush x:Key="TextOnAubergineBrush" Color="#2B1C2A"/>
+
+    <SolidColorBrush x:Key="BambooGreenBrush" Color="#9BB686"/>
+    <SolidColorBrush x:Key="BambooGreenHoverBrush" Color="#AECAA0"/>
+    <SolidColorBrush x:Key="BambooGreenPressedBrush" Color="#87A272"/>
+    <SolidColorBrush x:Key="TextOnBambooGreenBrush" Color="#1A2414"/>
 
 </ResourceDictionary>

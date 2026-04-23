@@ -18,7 +18,7 @@
 
     <SolidColorBrush x:Key="BorderBrush" Color="#FFD0C9C0"/>
     <SolidColorBrush x:Key="CardColor" Color="#FFFAF8F4"/>
-    <SolidColorBrush x:Key="BorderColor" Color="#FFD0C9C0"/>
+    <SolidColorBrush x:Key="BorderColor" Color="#FFB2A79A"/>
 
     <!-- Header — kem nhạt -->
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FFF5F2ED"/>
@@ -29,9 +29,9 @@
     <SolidColorBrush x:Key="BackgroundAll" Color="#FFE8E6E1"/>
 
     <!-- ===== PRIMARY — teal sage dịu ===== -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#458B7E"/>
-    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#3F7A6F"/>
-    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#356A5F"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#4B978A"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#3F8579"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#336F64"/>
     <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#FFFFFF"/>
 
     <!-- ===== SECONDARY ===== -->
@@ -59,9 +59,9 @@
     <SolidColorBrush x:Key="TextOnWarningBrush" Color="White"/>
 
     <!-- ===== INFO ===== -->
-    <SolidColorBrush x:Key="InfoBrush" Color="#458B7E"/>
-    <SolidColorBrush x:Key="InfoHoverBrush" Color="#3F7A6F"/>
-    <SolidColorBrush x:Key="InfoPressedBrush" Color="#356A5F"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#4B978A"/>
+    <SolidColorBrush x:Key="InfoHoverBrush" Color="#3F8579"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#336F64"/>
     <SolidColorBrush x:Key="TextOnInfoBrush" Color="White"/>
 
     <!-- ===== LIGHT / DARK variants ===== -->
@@ -221,5 +221,21 @@
     <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FF458B7E"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FFE8E4DF"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FFE8E4DF"/>
+
+    <!-- Common palette overrides: only low-contrast keys -->
+    <SolidColorBrush x:Key="OceanBrush" Color="#2B8FB3"/>
+    <SolidColorBrush x:Key="OceanHoverBrush" Color="#257FA0"/>
+    <SolidColorBrush x:Key="OceanPressedBrush" Color="#1F6F8B"/>
+    <SolidColorBrush x:Key="TextOnOceanBrush" Color="#FFFFFF"/>
+
+    <SolidColorBrush x:Key="BrightPowerBrush" Color="#D64274"/>
+    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#BE3A66"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#A83258"/>
+    <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#FFFFFF"/>
+
+    <SolidColorBrush x:Key="MagentaBloomBrush" Color="#B53AAE"/>
+    <SolidColorBrush x:Key="MagentaBloomHoverBrush" Color="#9E3298"/>
+    <SolidColorBrush x:Key="MagentaBloomPressedBrush" Color="#862A81"/>
+    <SolidColorBrush x:Key="TextOnMagentaBloomBrush" Color="#FFFFFF"/>
 
 </ResourceDictionary>
