@@ -52,6 +52,12 @@ namespace FlowMy.Services.Utilities
         /// Tắt để tăng hiệu năng trên máy yếu.
         /// </summary>
         public bool UiAnimationsEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Bật để ép đồng bộ trạng thái UI ngay khi runtime kết thúc
+        /// và flush dữ liệu cuối cho result badge/widget.
+        /// </summary>
+        public bool StrictFinalSyncEnabled { get; set; } = true;
     }
 
     public static class CanvasToolbarPreferencesStore

@@ -83,14 +83,19 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     public void OnNodeStarted(WorkflowNode node, string? manualRunSessionId = null)
     {
         var runKey = manualRunSessionId ?? "";
-        _dispatcher.BeginInvoke(DispatcherPriority.Background, () => StartNodeTiming(node, runKey));
+        _dispatcher.BeginInvoke(DispatcherPriority.Send, () => StartNodeTiming(node, runKey));
     }
 
     public void OnNodeCompleted(WorkflowNode node, TimeSpan elapsed, string? manualRunSessionId = null)
     {
-        _dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        // Chốt trạng thái running ngay, không để kẹt hàng đợi Background.
+        _dispatcher.BeginInvoke(DispatcherPriority.Send, () =>
         {
             StopNodeTiming(node, elapsed, manualRunSessionId);
+        });
+        // Render results có thể nặng, giữ ở Background để không giật UI.
+        _dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
             UpdateNodeExecutionResults(node);
         });
     }
@@ -134,7 +139,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     public void OnExecutionCancelled()
     {
         // Không chạy đồng bộ trên UI khi bấm Stop hàng loạt; luôn queue để click/UI animation không bị khựng.
-        _dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)CancelNodeTiming);
+        _dispatcher.BeginInvoke(DispatcherPriority.Send, (Action)CancelNodeTiming);
     }
 
     public void RefreshSavedOutputs(IEnumerable<WorkflowNode> nodes)

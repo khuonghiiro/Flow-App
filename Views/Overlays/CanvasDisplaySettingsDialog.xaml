@@ -80,6 +80,15 @@
                                 <RadioButton x:Name="CullingProfileNormalRadio" Content="Máy bình thường" Tag="Normal" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
                                 <RadioButton x:Name="CullingProfileHighRadio" Content="Máy mạnh" Tag="High" GroupName="CullingProfileGroup" Margin="0,0,14,6" Foreground="{DynamicResource TextBrush}"/>
                             </WrapPanel>
+
+                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,10,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Đồng bộ kết thúc luồng (Final Sync)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
+                                    <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="StrictFinalSyncEnabledCheckBox" Content="Strict Final Sync (code xong thì chốt UI và flush dữ liệu cuối)" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Bật để ép đồng bộ UI ngay khi luồng code kết thúc. Nếu tắt, UI có thể mượt hơn nhẹ nhưng trạng thái/result có thể trễ một nhịp."
+                                               Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="1" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="6,0,0,0">

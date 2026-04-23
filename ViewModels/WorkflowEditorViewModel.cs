@@ -1608,11 +1608,73 @@ namespace FlowMy.ViewModels
             d.Invoke(() => OnPropertyChanged(nameof(ManualExecutionRunsInFlight)), DispatcherPriority.Send);
         }
 
+        private void FinalizeManualRunUiState(int remaining, bool operationCancelled)
+        {
+            void Apply()
+            {
+                IsExecuting = remaining > 0;
+                if (remaining == 0)
+                {
+                    ActiveExecutionConnection = null;
+
+                    if (!AnyAutoScheduledLaneInFlight())
+                    {
+                        lock (_runningNodesBookkeepingLock)
+                            _nodeRunningRefCount.Clear();
+                        RunningNodes.Clear();
+                        HasRunningNodes = false;
+
+                        if (operationCancelled)
+                            _executionVisualizer.OnExecutionCancelled();
+                    }
+                }
+            }
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.CheckAccess())
+            {
+                Apply();
+            }
+            else
+            {
+                // Chốt trạng thái flow ngay khi runtime code đã kết thúc.
+                dispatcher.Invoke(Apply, DispatcherPriority.Send);
+            }
+        }
+
+        private void FinalizeAllExecutionUiStateIfIdle()
+        {
+            var manualInFlight = Volatile.Read(ref _manualExecutionRunsInFlight);
+            var autoInFlight = Volatile.Read(ref _autoScheduledLaneRunsInFlight);
+            if (manualInFlight != 0 || autoInFlight != 0) return;
+
+            void Apply()
+            {
+                IsExecuting = false;
+                ActiveExecutionConnection = null;
+                lock (_runningNodesBookkeepingLock)
+                    _nodeRunningRefCount.Clear();
+                RunningNodes.Clear();
+                HasRunningNodes = false;
+            }
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.CheckAccess())
+            {
+                Apply();
+            }
+            else
+            {
+                // Ép chốt ngay trạng thái "đã dừng" khi không còn lane nào chạy.
+                dispatcher.Invoke(Apply, DispatcherPriority.Send);
+            }
+        }
+
         private void RegisterRunningNodeVisual(WorkflowNode node)
         {
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher == null) return;
-            dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+            void Apply()
             {
                 lock (_runningNodesBookkeepingLock)
                 {
@@ -1623,7 +1685,12 @@ namespace FlowMy.ViewModels
                         RunningNodes.Add(node);
                     HasRunningNodes = RunningNodes.Count > 0;
                 }
-            });
+            }
+
+            if (dispatcher.CheckAccess())
+                Apply();
+            else
+                dispatcher.Invoke(Apply, DispatcherPriority.Send);
         }
 
         /// <summary>Gỡ ref-count trên UI thread (luôn qua Background) để finally của async không chặn UI khi hủy nhiều node.</summary>
@@ -1633,7 +1700,7 @@ namespace FlowMy.ViewModels
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher == null) return;
             var batch = nodes.ToList();
-            dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+            void Apply()
             {
                 lock (_runningNodesBookkeepingLock)
                 {
@@ -1655,7 +1722,12 @@ namespace FlowMy.ViewModels
 
                     HasRunningNodes = RunningNodes.Count > 0;
                 }
-            });
+            }
+
+            if (dispatcher.CheckAccess())
+                Apply();
+            else
+                dispatcher.Invoke(Apply, DispatcherPriority.Send);
         }
 
         private void ReleaseRunningNodeVisual(WorkflowNode node)
@@ -1801,27 +1873,11 @@ namespace FlowMy.ViewModels
                 {
                     ManualRunSessions.Remove(sessionRow);
                     HasManualRunSessions = ManualRunSessions.Count > 0;
-                }), DispatcherPriority.Background);
+                }), DispatcherPriority.Send);
 
                 var remaining = Interlocked.Decrement(ref _manualExecutionRunsInFlight);
                 NotifyManualRunsInFlightChanged();
-                IsExecuting = remaining > 0;
-                if (remaining == 0)
-                    ActiveExecutionConnection = null;
-
-                Application.Current?.Dispatcher?.BeginInvoke(new Action(() =>
-                {
-                    if (!AnyAutoScheduledLaneInFlight() && remaining == 0)
-                    {
-                        lock (_runningNodesBookkeepingLock)
-                            _nodeRunningRefCount.Clear();
-                        RunningNodes.Clear();
-                        HasRunningNodes = false;
-                    }
-
-                    if (operationCancelled && remaining == 0 && !AnyAutoScheduledLaneInFlight())
-                        _executionVisualizer.OnExecutionCancelled();
-                }), DispatcherPriority.Background);
+                FinalizeManualRunUiState(remaining, operationCancelled);
             }
         }
 
@@ -1960,27 +2016,11 @@ namespace FlowMy.ViewModels
                 {
                     ManualRunSessions.Remove(sessionRow);
                     HasManualRunSessions = ManualRunSessions.Count > 0;
-                }), DispatcherPriority.Background);
+                }), DispatcherPriority.Send);
 
                 var remaining = Interlocked.Decrement(ref _manualExecutionRunsInFlight);
                 NotifyManualRunsInFlightChanged();
-                IsExecuting = remaining > 0;
-                if (remaining == 0)
-                    ActiveExecutionConnection = null;
-
-                Application.Current?.Dispatcher?.BeginInvoke(new Action(() =>
-                {
-                    if (!AnyAutoScheduledLaneInFlight() && remaining == 0)
-                    {
-                        lock (_runningNodesBookkeepingLock)
-                            _nodeRunningRefCount.Clear();
-                        RunningNodes.Clear();
-                        HasRunningNodes = false;
-                    }
-
-                    if (operationCancelled && remaining == 0 && !AnyAutoScheduledLaneInFlight())
-                        _executionVisualizer.OnExecutionCancelled();
-                }), DispatcherPriority.Background);
+                FinalizeManualRunUiState(remaining, operationCancelled);
             }
         }
 
@@ -2089,6 +2129,7 @@ namespace FlowMy.ViewModels
                 ReleaseRunningNodeVisualBatch(orphanAuto);
 
                 Interlocked.Decrement(ref _autoScheduledLaneRunsInFlight);
+                FinalizeAllExecutionUiStateIfIdle();
             }
         }
 

@@ -1,6 +1,7 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.ViewModels;
 using Microsoft.Web.WebView2.Core;
@@ -3070,15 +3071,66 @@ window.__acPush = function(key, value) {
 
     private void WorkflowVm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!string.Equals(e.PropertyName, nameof(WorkflowEditorViewModel.ManualExecutionRunsInFlight), StringComparison.Ordinal))
+        if (string.Equals(e.PropertyName, nameof(WorkflowEditorViewModel.ManualExecutionRunsInFlight), StringComparison.Ordinal))
+        {
+            if (Dispatcher.CheckAccess())
+            {
+                UpdateRunButtonsState();
+            }
+            else
+            {
+                Dispatcher.Invoke(UpdateRunButtonsState, DispatcherPriority.Send);
+            }
+
+            if ((_host?.ViewModel?.ManualExecutionRunsInFlight ?? 0) == 0)
+                TriggerFinalDataFlushAfterExecution();
             return;
-        if (Dispatcher.CheckAccess())
-        {
-            UpdateRunButtonsState();
         }
-        else
+
+        if (string.Equals(e.PropertyName, nameof(WorkflowEditorViewModel.IsExecuting), StringComparison.Ordinal)
+            && _host?.ViewModel?.IsExecuting == false)
         {
-            Dispatcher.Invoke(UpdateRunButtonsState, DispatcherPriority.Send);
+            TriggerFinalDataFlushAfterExecution();
+        }
+    }
+
+    private void TriggerFinalDataFlushAfterExecution()
+    {
+        if (!IsStrictFinalSyncEnabled()) return;
+        if (_node is not HtmlUiNode htmlNode) return;
+        _ = Dispatcher.InvokeAsync(async () =>
+        {
+            try
+            {
+                // Runtime code đã kết thúc: flush nhịp cuối để result trên UI chốt giá trị mới nhất.
+                DrainPendingAsyncQueueToBuffer(htmlNode);
+                MoveHiddenBacklogToPending();
+                if (_htmlRuntimeReady)
+                {
+                    for (var i = 0; i < 4; i++)
+                    {
+                        var flushed = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+                        DrainPendingAsyncQueueToBuffer(htmlNode);
+                        MoveHiddenBacklogToPending();
+                        if (flushed == 0 && htmlNode.PendingAsyncPushQueue.IsEmpty && _pendingAsyncBuffer.Count == 0)
+                            break;
+                        await Task.Delay(4);
+                    }
+                }
+            }
+            catch { }
+        }, DispatcherPriority.Send);
+    }
+
+    private static bool IsStrictFinalSyncEnabled()
+    {
+        try
+        {
+            return CanvasToolbarPreferencesStore.Load()?.StrictFinalSyncEnabled ?? true;
+        }
+        catch
+        {
+            return true;
         }
     }
 

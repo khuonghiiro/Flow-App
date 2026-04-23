@@ -120,6 +120,7 @@ namespace FlowMy.Views.Overlays
             GpuEnabledCheckBox.IsChecked = preferences.GpuEnabled;
             CacheNodeCheckBox.IsChecked = preferences.CacheNodeEnabled;
             UiAnimationsEnabledCheckBox.IsChecked = preferences.UiAnimationsEnabled;
+            StrictFinalSyncEnabledCheckBox.IsChecked = preferences.StrictFinalSyncEnabled;
             SetRadioSelection(BulkTitleModeNodeRadio, BulkTitleModeCustomRadio, preferences.BulkTitleColorMode);
             SelectByTag(BulkTitleColorKeyComboBox, string.IsNullOrWhiteSpace(preferences.BulkTitleColorKey) ? "PrimaryBrush" : preferences.BulkTitleColorKey);
             SetRadioSelection(EnergyColorModeFollowLineRadio, EnergyColorModeCustomRadio, preferences.EnergyColorMode);
@@ -306,7 +307,8 @@ namespace FlowMy.Views.Overlays
                 NodeSpinnerBlinkBaseOpacity = blinkBase,
                 NodeSpinnerBlinkPeakOpacity = blinkPeak,
                 ApplyDebounceMs = SelectedDebounceMs(),
-                UiAnimationsEnabled = UiAnimationsEnabledCheckBox.IsChecked == true
+                UiAnimationsEnabled = UiAnimationsEnabledCheckBox.IsChecked == true,
+                StrictFinalSyncEnabled = StrictFinalSyncEnabledCheckBox.IsChecked == true
             };
         }
 
@@ -336,6 +338,8 @@ namespace FlowMy.Views.Overlays
             GpuQualityComboBox.SelectionChanged += AnyControlChanged;
             UiAnimationsEnabledCheckBox.Checked += AnyControlChanged;
             UiAnimationsEnabledCheckBox.Unchecked += AnyControlChanged;
+            StrictFinalSyncEnabledCheckBox.Checked += AnyControlChanged;
+            StrictFinalSyncEnabledCheckBox.Unchecked += AnyControlChanged;
             BulkTitleColorKeyComboBox.SelectionChanged += AnyControlChanged;
             EnergyCustomColorKeyComboBox.SelectionChanged += AnyControlChanged;
             CacheNodeCheckBox.Checked += CacheNodeCheckBox_Checked;

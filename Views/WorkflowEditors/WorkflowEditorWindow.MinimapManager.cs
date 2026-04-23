@@ -507,7 +507,8 @@ namespace FlowMy.Views
                 NodeSpinnerBlinkIntensity = _nodeSpinnerBlinkIntensity,
                 NodeSpinnerBlinkBaseOpacity = _nodeSpinnerBlinkBaseOpacity,
                 NodeSpinnerBlinkPeakOpacity = _nodeSpinnerBlinkPeakOpacity,
-                UiAnimationsEnabled = persisted.UiAnimationsEnabled
+                UiAnimationsEnabled = persisted.UiAnimationsEnabled,
+                StrictFinalSyncEnabled = persisted.StrictFinalSyncEnabled
             };
         }
 
