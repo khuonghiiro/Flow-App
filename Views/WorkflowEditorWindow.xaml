@@ -497,8 +497,8 @@ Cursor="Hand"
                                                       Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='box-arrow-down-magnifying-glass solid'}"
                                                       Width="14"
                                                       Height="14"
-                                                     Fill="White"
-                                                      Opacity="0.6"
+                                                      Fill="{DynamicResource PlaceholderBrush}"
+                                                      Opacity="0.8"
                                                       VerticalAlignment="Center"
                                                       Margin="4,0,0,0"
                                                       IsHitTestVisible="False"/>
@@ -601,7 +601,7 @@ Cursor="Hand"
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='flag-checkered sharp-duotone-solid'}"
-                                                          Fill="White"/>
+                                                          Fill="{DynamicResource TextOnDangerBrush}"/>
                                 </Grid>
                             </Border>
                         </WrapPanel>
@@ -763,12 +763,12 @@ Cursor="Hand"
                                 <Grid  ClipToBounds="False">
                                     <!-- Hình thoi = Border xoay 45 độ -->
                                     <Border Width="40"
-                Height="40"
-                Background="{DynamicResource WarningBrush}"
-                BorderBrush="White" 
-                BorderThickness="1.5"
-                CornerRadius="3"
-                RenderTransformOrigin="0.5,0.5">
+                                            Height="40"
+                                            Background="{DynamicResource WarningBrush}"
+                                            BorderBrush="{DynamicResource TextOnWarningBrush}" 
+                                            BorderThickness="1.5"
+                                            CornerRadius="3"
+                                            RenderTransformOrigin="0.5,0.5">
                                         <Border.RenderTransform>
                                             <RotateTransform Angle="45"/>
                                         </Border.RenderTransform>

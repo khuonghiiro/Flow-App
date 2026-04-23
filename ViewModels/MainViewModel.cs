@@ -21,6 +21,11 @@ namespace FlowMy.ViewModels
 {
     public partial class MainViewModel : BaseViewModel
     {
+        private sealed class MainLauncherPreferences
+        {
+            public List<string> PinnedWidgetKeys { get; set; } = new();
+        }
+
         [ObservableProperty] private ObservableCollection<WorkflowWidgetGroupItem> widgetGroups = new();
         [ObservableProperty] private ObservableCollection<WidgetShortcutItem> widgetShortcuts = new();
         [ObservableProperty] private int widgetEnabledCount;
@@ -37,6 +42,7 @@ namespace FlowMy.ViewModels
         {
             FloatingWidgetManager.Instance.WidgetOpened += OnWidgetOpened;
             FloatingWidgetManager.Instance.WidgetClosed += OnWidgetClosed;
+            LoadLauncherPreferences();
             RefreshWidgetShortcuts();
             SyncTrayPinnedMenu();
         }
@@ -115,6 +121,7 @@ namespace FlowMy.ViewModels
                 _trayPinnedKeys.Add(key);
             }
 
+            SaveLauncherPreferences();
             SyncTrayPinnedMenu();
         }
 
@@ -156,6 +163,55 @@ namespace FlowMy.ViewModels
         {
             if (string.IsNullOrWhiteSpace(workflowName) || string.IsNullOrWhiteSpace(nodeId)) return string.Empty;
             return $"{workflowName}::{nodeId}";
+        }
+
+        private static string GetLauncherPreferencesFilePath()
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var folder = Path.Combine(appData, "FlowMy");
+            Directory.CreateDirectory(folder);
+            return Path.Combine(folder, "main-launcher-preferences.json");
+        }
+
+        private void LoadLauncherPreferences()
+        {
+            try
+            {
+                var file = GetLauncherPreferencesFilePath();
+                if (!File.Exists(file)) return;
+                var json = File.ReadAllText(file);
+                var prefs = JsonSerializer.Deserialize<MainLauncherPreferences>(json);
+                if (prefs?.PinnedWidgetKeys == null) return;
+
+                _trayPinnedKeys.Clear();
+                foreach (var key in prefs.PinnedWidgetKeys.Where(k => !string.IsNullOrWhiteSpace(k)))
+                    _trayPinnedKeys.Add(key);
+            }
+            catch
+            {
+                // best effort only
+            }
+        }
+
+        private void SaveLauncherPreferences()
+        {
+            try
+            {
+                var prefs = new MainLauncherPreferences
+                {
+                    PinnedWidgetKeys = _trayPinnedKeys
+                        .Where(k => !string.IsNullOrWhiteSpace(k))
+                        .OrderBy(k => k, System.StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                };
+                var file = GetLauncherPreferencesFilePath();
+                var json = JsonSerializer.Serialize(prefs, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(file, json);
+            }
+            catch
+            {
+                // best effort only
+            }
         }
 
         private void SetHeadlessDebugVisibleForWorkflow(string workflowName, bool visible)
@@ -291,6 +347,7 @@ namespace FlowMy.ViewModels
                         _trayPinnedKeys.Remove(key);
                 }
 
+                SaveLauncherPreferences();
                 RefreshWidgetShortcuts();
             }
             catch

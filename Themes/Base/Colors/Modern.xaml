@@ -19,9 +19,9 @@
     <SolidColorBrush x:Key="OverlayBackgroundReverse" Color="#80000000"/>
     <SolidColorBrush x:Key="BackgroundAll" Color="#FFF7FAFF"/>
 
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#2F6DFF"/>
-    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#2059E0"/>
-    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#1B49B8"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#3D73E6"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#3166D0"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#2A58B5"/>
     <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="SecondaryBrush" Color="#6C7C96"/>
@@ -29,24 +29,24 @@
     <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#4B5C74"/>
     <SolidColorBrush x:Key="TextOnSecondaryBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="SuccessBrush" Color="#1FAE56"/>
-    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#199749"/>
-    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#157B3C"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#2FA35D"/>
+    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#278F51"/>
+    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#207845"/>
     <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="DangerBrush" Color="#E23D3D"/>
-    <SolidColorBrush x:Key="DangerHoverBrush" Color="#C83232"/>
-    <SolidColorBrush x:Key="DangerPressedBrush" Color="#A72626"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#D24B4B"/>
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="#BE3F3F"/>
+    <SolidColorBrush x:Key="DangerPressedBrush" Color="#9F3434"/>
     <SolidColorBrush x:Key="TextOnDangerBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="WarningBrush" Color="#E18A14"/>
-    <SolidColorBrush x:Key="WarningHoverBrush" Color="#C9760E"/>
-    <SolidColorBrush x:Key="WarningPressedBrush" Color="#A45E0A"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#CC8A2F"/>
+    <SolidColorBrush x:Key="WarningHoverBrush" Color="#B57927"/>
+    <SolidColorBrush x:Key="WarningPressedBrush" Color="#95631F"/>
     <SolidColorBrush x:Key="TextOnWarningBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="InfoBrush" Color="#19B2F4"/>
-    <SolidColorBrush x:Key="InfoHoverBrush" Color="#0998D8"/>
-    <SolidColorBrush x:Key="InfoPressedBrush" Color="#0679AD"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#2E9DCF"/>
+    <SolidColorBrush x:Key="InfoHoverBrush" Color="#288CB8"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#21779D"/>
     <SolidColorBrush x:Key="TextOnInfoBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="LightBrush" Color="#F8FAFC"/>
@@ -184,14 +184,14 @@
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FFEEF2F7"/>
 
     <!-- Common palette overrides (fine-tuned for Modern contrast) -->
-    <SolidColorBrush x:Key="OceanBrush" Color="#0D8DD6"/>
-    <SolidColorBrush x:Key="OceanHoverBrush" Color="#0B7DC0"/>
-    <SolidColorBrush x:Key="OceanPressedBrush" Color="#096CA5"/>
+    <SolidColorBrush x:Key="OceanBrush" Color="#258CBF"/>
+    <SolidColorBrush x:Key="OceanHoverBrush" Color="#207DAA"/>
+    <SolidColorBrush x:Key="OceanPressedBrush" Color="#1A6B91"/>
     <SolidColorBrush x:Key="TextOnOceanBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="OceanBlueBrush" Color="#0A83CB"/>
-    <SolidColorBrush x:Key="OceanBlueHoverBrush" Color="#0973B4"/>
-    <SolidColorBrush x:Key="OceanBluePressedBrush" Color="#076197"/>
+    <SolidColorBrush x:Key="OceanBlueBrush" Color="#2A86BA"/>
+    <SolidColorBrush x:Key="OceanBlueHoverBrush" Color="#2377A6"/>
+    <SolidColorBrush x:Key="OceanBluePressedBrush" Color="#1D658E"/>
     <SolidColorBrush x:Key="TextOnOceanBlueBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="EmeraldBrush" Color="#1F9E59"/>
@@ -199,9 +199,9 @@
     <SolidColorBrush x:Key="EmeraldPressedBrush" Color="#167445"/>
     <SolidColorBrush x:Key="TextOnEmeraldBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="AmethystBrush" Color="#7D4CC2"/>
-    <SolidColorBrush x:Key="AmethystHoverBrush" Color="#6E41AE"/>
-    <SolidColorBrush x:Key="AmethystPressedBrush" Color="#5D3694"/>
+    <SolidColorBrush x:Key="AmethystBrush" Color="#8A63BF"/>
+    <SolidColorBrush x:Key="AmethystHoverBrush" Color="#7955AA"/>
+    <SolidColorBrush x:Key="AmethystPressedBrush" Color="#674793"/>
     <SolidColorBrush x:Key="TextOnAmethystBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="ChocolateBrownBrush" Color="#8A4D24"/>
@@ -209,9 +209,9 @@
     <SolidColorBrush x:Key="ChocolateBrownPressedBrush" Color="#66371A"/>
     <SolidColorBrush x:Key="TextOnChocolateBrownBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="RoyalPurpleBrush" Color="#7442D6"/>
-    <SolidColorBrush x:Key="RoyalPurpleHoverBrush" Color="#6638BE"/>
-    <SolidColorBrush x:Key="RoyalPurplePressedBrush" Color="#562FA2"/>
+    <SolidColorBrush x:Key="RoyalPurpleBrush" Color="#7E56CC"/>
+    <SolidColorBrush x:Key="RoyalPurpleHoverBrush" Color="#7048B7"/>
+    <SolidColorBrush x:Key="RoyalPurplePressedBrush" Color="#5F3D9D"/>
     <SolidColorBrush x:Key="TextOnRoyalPurpleBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="RubyRedBrush" Color="#C73333"/>

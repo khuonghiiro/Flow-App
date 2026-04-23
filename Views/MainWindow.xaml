@@ -12,9 +12,9 @@
         mc:Ignorable="d"
         Title="FlowMy"
         Height="720"
-        Width="1080"
+        Width="900"
         MinHeight="520"
-        MinWidth="860"
+        MinWidth="500"
         Background="{DynamicResource WindowBackgroundBrush}"
         WindowStartupLocation="CenterScreen">
 
@@ -679,8 +679,19 @@
                                                                     CommandParameter="{Binding}"
                                                                     Height="35"
                                                                         helper:ButtonHelper.ColorTheme="NavyDeep"
-                                                                    Style="{DynamicResource DynamicOutlineCircleButton}"
                                                                     ToolTip="Ghim/bỏ ghim widget vào menu tray">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
+                                                                        <Setter Property="Background" Value="Transparent"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsPinnedToTray}" Value="True">
+                                                                                <Setter Property="Background" Value="{DynamicResource NavyDeepBrush}"/>
+                                                                                <Setter Property="BorderBrush" Value="{DynamicResource NavyDeepBrush}"/>
+                                                                                <Setter Property="Foreground" Value="{DynamicResource TextOnNavyDeepBrush}"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
                                                                 <Grid>
                                                                     <TextBlock Text="📌"
                                                                                FontSize="13"
