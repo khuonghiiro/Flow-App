@@ -1629,10 +1629,12 @@ namespace FlowMy.Views
                 }));
             }
 
-            // Kết thúc chạy: ShowExecutionPathNodes đã Collapsed node ngoài path; culling thường return sớm nếu viewport không đổi → cần refresh ngay.
+            // Kết thúc chạy: ở chế độ headless/hidden, ContextIdle có thể bị trễ lâu
+            // khiến UI vẫn hiển thị "đang chạy" dù execution đã xong.
+            // Dùng Send để đồng bộ trạng thái kết thúc ngay với runtime.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsExecuting) && ViewModel?.IsExecuting == false)
             {
-                Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+                Dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(() =>
                 {
                     ApplyExecutionConnectionHighlight(null);
                     _viewportCullingService?.ForceUpdate();

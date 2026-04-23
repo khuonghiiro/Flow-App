@@ -24,3 +24,4 @@ border-none regular
 whmcs brands
 tire-rugged sharp-duotone-light
 gear-complex light
+circle-question chisel-regular

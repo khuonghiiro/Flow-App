@@ -1,14 +1,10 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
-using FlowMy.Services.Rendering;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Reflection;
 
 namespace FlowMy.ViewModels
@@ -233,7 +229,7 @@ namespace FlowMy.ViewModels
             _nodeTitle = node.Title ?? GetDefaultTitle();
             _titleDisplayMode = GetTitleDisplayMode(node);
             _titleColorMode = GetTitleColorMode(node);
-            
+
             // Set TitleColorKey based on current mode
             var currentColorKey = GetTitleColorKey(node);
             if (_titleColorMode == TitleColorMode.NodeColor || string.IsNullOrEmpty(currentColorKey))
@@ -350,7 +346,7 @@ namespace FlowMy.ViewModels
             var stack = new Stack<WorkflowNode>();
             stack.Push(_node);
 
-             // Track các LoopNode cha nếu luồng đi qua LoopBodyLeft của LoopBodyNode
+            // Track các LoopNode cha nếu luồng đi qua LoopBodyLeft của LoopBodyNode
             var parentLoops = new HashSet<LoopNode>();
 
             while (stack.Count > 0)
@@ -363,8 +359,8 @@ namespace FlowMy.ViewModels
                 // D -> LoopBody B (via LoopBodyLeft) -> E (via LoopBodyRight return) -> D (via E's input)
                 var incoming = connections
                     .Where(c => c.ToNode == current && c.FromNode != null)
-                    .Where(c => !(current is LoopBodyNode && 
-                                  c.ToPort != null && 
+                    .Where(c => !(current is LoopBodyNode &&
+                                  c.ToPort != null &&
                                   string.Equals(c.ToPort.Id, "LoopBodyRight", StringComparison.OrdinalIgnoreCase)))
                     .ToList();
 
@@ -1023,7 +1019,7 @@ namespace FlowMy.ViewModels
                 NodeType.KeyScopedStore => "arrow-progress sharp-regular",
                 NodeType.LoopContext => "arrows-spin duotone",
                 NodeType.Condition => "list-tree sharp-light",
-                _ => "cog"
+                _ => "circle-question chisel-regular"
             };
         }
 

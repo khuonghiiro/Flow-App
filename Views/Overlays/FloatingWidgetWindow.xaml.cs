@@ -71,6 +71,9 @@ public partial class FloatingWidgetWindow : Window
     private string? _lastContentSignature;
     private readonly List<(string SessionId, string Key, string Value)> _pendingAsyncBuffer = new();
     private readonly List<(string SessionId, string Key, string Value)> _hiddenAsyncBacklog = new();
+    private const int AsyncFlushBatchSize = 48;
+    private const int AsyncFlushMaxPerCycle = 384;
+    private bool _isDeferredPendingFlushQueued;
     private readonly Dictionary<string, string> _localHostByFolder = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _localFolderByHost = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _localHostMapSync = new();
@@ -1753,15 +1756,21 @@ public partial class FloatingWidgetWindow : Window
         foreach (var kvp in items)
         {
             if (IsPlaceholderValue(kvp.Value)) continue;
-            // Khi widget đang ẩn/collapse: cache backlog để mở lại phát đủ toàn bộ event.
-            if (!_isExpanded)
+
+            var sessionId = kvp.SessionId ?? "session:unknown";
+            var key = kvp.Key ?? string.Empty;
+            var value = kvp.Value ?? string.Empty;
+
+            // Ưu tiên realtime: nếu runtime đã sẵn sàng thì vẫn đẩy ngay kể cả widget đang ẩn/collapse.
+            // Điều này giúp trạng thái flow trên canvas đồng bộ với runtime, tránh lag "đã chạy xong nhưng UI còn running".
+            if (_webViewInitialized && _htmlRuntimeReady)
             {
-                _hiddenAsyncBacklog.Add((kvp.SessionId ?? "session:unknown", kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
+                _pendingAsyncBuffer.Add((sessionId, key, value));
                 continue;
             }
 
-            // Widget đang hiển thị: đẩy realtime theo đúng thứ tự event.
-            _pendingAsyncBuffer.Add((kvp.SessionId ?? "session:unknown", kvp.Key ?? string.Empty, kvp.Value ?? string.Empty));
+            // Runtime chưa sẵn sàng thì tạm giữ backlog để không mất dữ liệu.
+            _hiddenAsyncBacklog.Add((sessionId, key, value));
         }
 #if DEBUG
         System.Diagnostics.Debug.WriteLine(
@@ -1796,17 +1805,34 @@ public partial class FloatingWidgetWindow : Window
     private async Task<int> FlushBufferedAsyncDataToWidgetAsync(HtmlUiNode node)
     {
         if (_webView?.CoreWebView2 == null) return 0;
+        if (!_htmlRuntimeReady) return 0;
         if (_pendingAsyncBuffer.Count == 0) return 0;
 
-        var snapshot = _pendingAsyncBuffer.ToList();
-        _pendingAsyncBuffer.Clear();
-        foreach (var kv in snapshot)
-            await PushKeyValueToWidgetRuntimeAsync(kv.Key, kv.Value, node.Id);
+        var takeCount = Math.Min(_pendingAsyncBuffer.Count, AsyncFlushMaxPerCycle);
+        var snapshot = _pendingAsyncBuffer.Take(takeCount).ToList();
+        _pendingAsyncBuffer.RemoveRange(0, takeCount);
+
+        var flushed = 0;
+        for (int i = 0; i < snapshot.Count; i += AsyncFlushBatchSize)
+        {
+            var batch = snapshot.Skip(i).Take(AsyncFlushBatchSize).ToList();
+            if (batch.Count == 0) continue;
+            if (await PushBatchToWidgetRuntimeAsync(batch, node.Id))
+            {
+                flushed += batch.Count;
+            }
+            else
+            {
+                // Runtime chưa thực sự sẵn sàng: trả batch lại buffer để retry sau.
+                _pendingAsyncBuffer.InsertRange(0, batch);
+                break;
+            }
+        }
 #if DEBUG
         System.Diagnostics.Debug.WriteLine(
-            $"[FloatingWidget:{node.Id}] Flush buffered flushedCount={snapshot.Count}, bufferRemaining={_pendingAsyncBuffer.Count}");
+            $"[FloatingWidget:{node.Id}] Flush buffered flushedCount={flushed}, bufferRemaining={_pendingAsyncBuffer.Count}");
 #endif
-        return snapshot.Count;
+        return flushed;
     }
 
     private static bool IsPlaceholderValue(string? value)
@@ -1937,6 +1963,145 @@ public partial class FloatingWidgetWindow : Window
             UpsertPendingAsyncBuffer(sessionId, key ?? string.Empty, value ?? string.Empty);
             _htmlRuntimeReady = false;
         }
+    }
+
+    private async Task<bool> PushBatchToWidgetRuntimeAsync(
+        IReadOnlyList<(string SessionId, string Key, string Value)> batch,
+        string nodeIdForLog)
+    {
+        if (_webView?.CoreWebView2 == null) return false;
+        if (!_htmlRuntimeReady) return false;
+        if (batch.Count == 0) return true;
+
+        var payload = batch.Select(x => new[] { x.Key ?? string.Empty, x.Value ?? string.Empty }).ToList();
+        var jsPayload = JsonSerializer.Serialize(payload);
+        var inspect = await _webView.CoreWebView2.ExecuteScriptAsync($@"
+(function() {{
+  try {{
+    window.__ac = window.__ac || {{}};
+    window.__ac.live = window.__ac.live || {{}};
+    if (typeof window.__acPush !== 'function') {{
+      window.__ac._subs = window.__ac._subs || {{}};
+      window.__ac._allSubs = window.__ac._allSubs || [];
+      window.__acPush = function(key, value) {{
+        window.__ac = window.__ac || {{}};
+        window.__ac.live = window.__ac.live || {{}};
+        window.__ac.live[key] = value;
+      }};
+    }}
+    if (!window.__acAsyncReady) {{
+      window.__acAsyncReady = true;
+      var _data = {{}};
+      var _keyCallbacks = {{}};
+      var _allCallbacks = [];
+      window.__acAsync = {{
+        data: _data,
+        onReceive: function(keyOrFn, fn) {{
+          if (typeof keyOrFn === 'function') {{
+            _allCallbacks.push(keyOrFn);
+          }} else if (typeof keyOrFn === 'string' && typeof fn === 'function') {{
+            if (!_keyCallbacks[keyOrFn]) _keyCallbacks[keyOrFn] = [];
+            _keyCallbacks[keyOrFn].push(fn);
+          }}
+        }}
+      }};
+      window.__acAsyncPush = function(key, value) {{
+        _data[key] = value;
+        var cbs = _keyCallbacks[key];
+        if (cbs) for (var i = 0; i < cbs.length; i++) {{ try {{ cbs[i](value); }} catch (_) {{}} }}
+        for (var j = 0; j < _allCallbacks.length; j++) {{ try {{ _allCallbacks[j](JSON.parse(JSON.stringify(_data))); }} catch (_) {{}} }}
+      }};
+    }} else if (typeof window.__acAsyncPush !== 'function') {{
+      window.__acAsync = window.__acAsync || {{ data: {{}} }};
+      window.__acAsyncPush = function(key, value) {{
+        window.__acAsync.data = window.__acAsync.data || {{}};
+        window.__acAsync.data[key] = value;
+      }};
+    }}
+
+    var payload = {jsPayload};
+    var pushed = 0;
+    for (var k = 0; k < payload.length; k++) {{
+      var row = payload[k];
+      var key = row[0];
+      var value = row[1];
+      if (typeof window.__acAsyncPush === 'function') window.__acAsyncPush(key, value);
+      if (typeof window.__acPush === 'function') window.__acPush(key, value);
+      pushed++;
+    }}
+
+    return JSON.stringify({{
+      hasAsyncPush: typeof window.__acAsyncPush === 'function',
+      hasLivePush: typeof window.__acPush === 'function',
+      pushed: pushed
+    }});
+  }} catch (e) {{
+    return JSON.stringify({{ error: String(e && e.message ? e.message : e) }});
+  }}
+}})();");
+
+        var hasAsyncPush = false;
+        var hasLivePush = false;
+        try
+        {
+            var decoded = JsonSerializer.Deserialize<string>(inspect);
+            if (!string.IsNullOrWhiteSpace(decoded))
+            {
+                using var doc = JsonDocument.Parse(decoded);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("hasAsyncPush", out var asyncEl) && asyncEl.ValueKind == JsonValueKind.True)
+                    hasAsyncPush = true;
+                if (root.TryGetProperty("hasLivePush", out var liveEl) && liveEl.ValueKind == JsonValueKind.True)
+                    hasLivePush = true;
+            }
+        }
+        catch
+        {
+            hasAsyncPush = false;
+            hasLivePush = false;
+        }
+
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine(
+            $"[FloatingWidget:{nodeIdForLog}] JS batch push count={batch.Count}, inspect={inspect}");
+#endif
+
+        if (!hasAsyncPush && !hasLivePush)
+        {
+            _htmlRuntimeReady = false;
+            return false;
+        }
+        return true;
+    }
+
+    private void QueueDeferredPendingFlush(HtmlUiNode htmlNode)
+    {
+        if (_isDeferredPendingFlushQueued) return;
+        _isDeferredPendingFlushQueued = true;
+        _ = Dispatcher.InvokeAsync(async () =>
+        {
+            try
+            {
+                for (var rounds = 0; rounds < 10; rounds++)
+                {
+                    DrainPendingAsyncQueueToBuffer(htmlNode);
+                    MoveHiddenBacklogToPending();
+                    if (_htmlRuntimeReady)
+                        await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
+
+                    var hasRemaining = !htmlNode.PendingAsyncPushQueue.IsEmpty
+                                       || _hiddenAsyncBacklog.Count > 0
+                                       || _pendingAsyncBuffer.Count > 0;
+                    if (!hasRemaining) break;
+                    await Task.Delay(8);
+                }
+            }
+            catch { }
+            finally
+            {
+                _isDeferredPendingFlushQueued = false;
+            }
+        }, DispatcherPriority.Background);
     }
 
     private static string BuildRuntimeBridgeBootstrapJs()
@@ -3511,6 +3676,12 @@ window.__acPush = function(key, value) {
                     finally
                     {
                         htmlNode.PendingAsyncDataPush = false;
+                        if (!htmlNode.PendingAsyncPushQueue.IsEmpty
+                            || _hiddenAsyncBacklog.Count > 0
+                            || _pendingAsyncBuffer.Count > 0)
+                        {
+                            QueueDeferredPendingFlush(htmlNode);
+                        }
 #if DEBUG
                         System.Diagnostics.Debug.WriteLine(
                             $"[FloatingWidget:{htmlNode.Id}] PendingAsyncDataPush reset to false.");
