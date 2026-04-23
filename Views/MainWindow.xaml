@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:FlowMy.Views"
         xmlns:vm="clr-namespace:FlowMy.ViewModels"
         xmlns:controls="clr-namespace:FlowMy.Controls"
+       xmlns:helper="clr-namespace:FlowMy.Helpers"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:conv="clr-namespace:FlowMy.Converters"
         mc:Ignorable="d"
@@ -494,22 +495,26 @@
                                     <StackPanel Orientation="Horizontal">
                                         <Button Command="{Binding DataContext.OpenWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}"
-                                                Style="{DynamicResource PillPrimary}"
+                                                 helper:ButtonHelper.ColorTheme="Primary"
+                                                 
+                                                 Style="{DynamicResource DynamicOutlineCircleButton}"
                                                 Margin="0,0,8,0"
-                                                ToolTip="Mở Workflow Editor (hiển thị canvas + tự bật các widget)">
+                                                ToolTip="Mở workflow này trong editor (không tự bật widget)">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="🛠" Margin="0,0,6,0" FontSize="13"/>
-                                                <TextBlock Text="Mở Editor"/>
+                                                <TextBlock Text="Mở Workflow"/>
                                             </StackPanel>
                                         </Button>
 
-                                        <Button Command="{Binding DataContext.LaunchAllWidgetsHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        <Button Command="{Binding DataContext.ClearWorkflowWidgetConfigsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}"
-                                                Style="{StaticResource PillOutline}"
-                                                ToolTip="Chỉ mở tất cả widget của workflow này (chạy ngầm)">
+                                                helper:ButtonHelper.ColorTheme="Danger"
+
+                                                Style="{DynamicResource DynamicOutlineCircleButton}"
+                                                ToolTip="Xóa toàn bộ cấu hình widget của workflow này">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="📌" Margin="0,0,6,0" FontSize="13"/>
-                                                <TextBlock Text="Mở tất cả widget"/>
+                                                <TextBlock Text="🗑" Margin="0,0,6,0" FontSize="13"/>
+                                                <TextBlock Text="Xóa cấu hình widget"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -569,10 +574,12 @@
                                                             <Button Command="{Binding DataContext.ConfigureWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
                                                                     Margin="0,0,6,0"
+                                                                    Height="35"
+                                                                    helper:ButtonHelper.ColorTheme="ChocolateBrown"
                                                                     ToolTip="Mở nhanh màn cấu hình widget này"
                                                                     IsEnabled="True">
                                                                 <Button.Style>
-                                                                    <Style TargetType="Button" BasedOn="{StaticResource IconCircleButton}">
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
                                                                         <Setter Property="IsEnabled" Value="True"/>
                                                                         <Style.Triggers>
                                                                             <DataTrigger Binding="{Binding IsConfiguring}" Value="True">
@@ -584,7 +591,7 @@
                                                                 <Grid>
                                                                    
                                                                     <controls:SvgViewboxEx Width="18" Height="18"
-                                                                           Fill="{DynamicResource TextBrush}"
+                                                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                            Source="{Binding Source={x:Static sys:String.Empty},
                                                                                     Converter={StaticResource IconKeyToPathConverter},
                                                                                     ConverterParameter='gear-complex light'}"
@@ -597,9 +604,11 @@
                                                             <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
                                                                     Margin="0,0,6,0"
+                                                                     Height="35"
+                                                                    helper:ButtonHelper.ColorTheme="Primary"
                                                                     ToolTip="Chỉ mở widget này (ngầm)">
                                                                 <Button.Style>
-                                                                    <Style TargetType="Button" BasedOn="{StaticResource IconCircleButton}">
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
                                                                         <Setter Property="IsEnabled" Value="True"/>
                                                                         <Style.Triggers>
                                                                             <Trigger Property="IsEnabled" Value="False">
@@ -626,9 +635,11 @@
                                                             <Button Command="{Binding DataContext.ReopenHeadlessWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
                                                                     Margin="0,0,6,0"
+                                                                     Height="35"
+                                                                        helper:ButtonHelper.ColorTheme="NavyDeep"
                                                                     ToolTip="Mở lại workflow đang chạy ngầm để debug">
                                                                 <Button.Style>
-                                                                    <Style TargetType="Button" BasedOn="{StaticResource IconCircleButtonSuccess}">
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
                                                                         <Setter Property="IsEnabled" Value="False"/>
                                                                         <Style.Triggers>
                                                                             <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
@@ -642,7 +653,7 @@
                                                                 </Button.Style>
                                                                 <Grid>
                                                                     <controls:SvgViewboxEx Width="18" Height="18"
-                                                                       Fill="White"
+                                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                        Source="{Binding Source={x:Static sys:String.Empty},
                                                                                 Converter={StaticResource IconKeyToPathConverter},
                                                                                 ConverterParameter='folder-open duotone-light'}"
@@ -666,16 +677,16 @@
                                                             </Button>
                                                             <Button Command="{Binding DataContext.TogglePinToTrayCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
-                                                                    Style="{DynamicResource IconCircleButtonPrimary}"
+                                                                    Height="35"
+                                                                        helper:ButtonHelper.ColorTheme="NavyDeep"
+                                                                    Style="{DynamicResource DynamicOutlineCircleButton}"
                                                                     ToolTip="Ghim/bỏ ghim widget vào menu tray">
                                                                 <Grid>
                                                                     <TextBlock Text="📌"
                                                                                FontSize="13"
-                                                                               Foreground="{DynamicResource TextOnPrimaryBrush}"
                                                                                Visibility="{Binding IsPinnedToTray, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                                                                     <TextBlock Text="📍"
                                                                                FontSize="13"
-                                                                               Foreground="{DynamicResource TextOnPrimaryBrush}"
                                                                                Visibility="{Binding IsPinnedToTray, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                                 </Grid>
                                                             </Button>

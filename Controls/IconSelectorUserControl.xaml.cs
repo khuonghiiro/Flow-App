@@ -436,12 +436,29 @@ namespace FlowMy.Controls
             // Ưu tiên Fill nếu được cung cấp.
             if (Fill != null) return Fill;
 
+            // Nếu icon nằm trong ControlTemplate, thử lấy Foreground từ TemplatedParent trước.
+            if (TemplatedParent is Control templatedControl && templatedControl.Foreground != null)
+            {
+                return templatedControl.Foreground;
+            }
+            if (TemplatedParent is TextBlock templatedText && templatedText.Foreground != null)
+            {
+                return templatedText.Foreground;
+            }
+
             // Fill null => fallback lấy Foreground từ control cha gần nhất.
             DependencyObject p = VisualTreeHelper.GetParent(this);
             while (p != null)
             {
                 if (p is Control c && c.Foreground != null) return c.Foreground;
                 if (p is TextBlock t && t.Foreground != null) return t.Foreground;
+
+                // Một số trường hợp parent không phải Control nhưng có TemplatedParent là Button.
+                if (p is FrameworkElement fe && fe.TemplatedParent is Control parentControl && parentControl.Foreground != null)
+                {
+                    return parentControl.Foreground;
+                }
+
                 p = VisualTreeHelper.GetParent(p);
             }
 

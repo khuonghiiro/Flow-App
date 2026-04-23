@@ -187,8 +187,9 @@ namespace FlowMy.ViewModels
         private void OpenWorkflow(WorkflowWidgetGroupItem? group)
         {
             if (group == null || string.IsNullOrWhiteSpace(group.WorkflowName)) return;
-            var ids = group.Widgets.Select(w => w.NodeId).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
-            OpenWorkflowEditorInternal(group.WorkflowName, ids, headless: false);
+            // Chỉ mở workflow tương ứng (giống thao tác chọn workflow trong editor),
+            // không tự kích hoạt widget.
+            OpenWorkflowEditorInternal(group.WorkflowName, widgetNodeIds: null, headless: false);
         }
 
         /// <summary>
@@ -247,6 +248,59 @@ namespace FlowMy.ViewModels
             var ids = group.Widgets.Select(w => w.NodeId).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
             if (ids.Count == 0) return;
             OpenWorkflowEditorInternal(group.WorkflowName, ids, headless: true);
+        }
+
+        [RelayCommand]
+        private void ClearWorkflowWidgetConfigs(WorkflowWidgetGroupItem? group)
+        {
+            if (group == null || string.IsNullOrWhiteSpace(group.WorkflowName)) return;
+
+            var confirm = MessageBox.Show(
+                $"Bạn có muốn xóa toàn bộ cấu hình Floating Widget của workflow \"{group.WorkflowName}\" không?",
+                "Xác nhận xóa cấu hình widget",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.OK) return;
+
+            try
+            {
+                var dir = FileWorkflowPersistenceService.GetDefaultWorkflowsDirectory();
+                var workflowFilePath = Path.Combine(dir, $"{group.WorkflowName}.json");
+                if (!File.Exists(workflowFilePath)) return;
+
+                var rawJson = File.ReadAllText(workflowFilePath);
+                var root = JsonNode.Parse(rawJson) as JsonObject;
+                var nodeArray = root?["Nodes"] as JsonArray;
+                if (root == null || nodeArray == null) return;
+
+                foreach (var item in nodeArray)
+                {
+                    if (item is not JsonObject nodeObj) continue;
+                    if (nodeObj["Properties"] is not JsonObject propsObj) continue;
+                    propsObj.Remove("FloatingWidget");
+                }
+
+                var updated = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(workflowFilePath, updated);
+
+                // Dọn pin tray cho các widget thuộc workflow vừa bị xóa config.
+                foreach (var widget in group.Widgets)
+                {
+                    var key = BuildTrayPinKey(widget.WorkflowName, widget.NodeId);
+                    if (!string.IsNullOrWhiteSpace(key))
+                        _trayPinnedKeys.Remove(key);
+                }
+
+                RefreshWidgetShortcuts();
+            }
+            catch
+            {
+                MessageBox.Show(
+                    "Không thể xóa cấu hình widget cho workflow này.",
+                    "Lỗi",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         [RelayCommand]
