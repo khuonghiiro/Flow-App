@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Services.Rendering;
+using FlowMy.Services.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -83,13 +84,12 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     public void OnNodeStarted(WorkflowNode node, string? manualRunSessionId = null)
     {
         var runKey = manualRunSessionId ?? "";
-        _dispatcher.BeginInvoke(DispatcherPriority.Send, () => StartNodeTiming(node, runKey));
+        _dispatcher.BeginInvoke(GetExecutionStatusPriority(), () => StartNodeTiming(node, runKey));
     }
 
     public void OnNodeCompleted(WorkflowNode node, TimeSpan elapsed, string? manualRunSessionId = null)
     {
-        // Chốt trạng thái running ngay, không để kẹt hàng đợi Background.
-        _dispatcher.BeginInvoke(DispatcherPriority.Send, () =>
+        _dispatcher.BeginInvoke(GetExecutionStatusPriority(), () =>
         {
             StopNodeTiming(node, elapsed, manualRunSessionId);
         });
@@ -139,7 +139,7 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     public void OnExecutionCancelled()
     {
         // Không chạy đồng bộ trên UI khi bấm Stop hàng loạt; luôn queue để click/UI animation không bị khựng.
-        _dispatcher.BeginInvoke(DispatcherPriority.Send, (Action)CancelNodeTiming);
+        _dispatcher.BeginInvoke(GetExecutionStatusPriority(), (Action)CancelNodeTiming);
     }
 
     public void RefreshSavedOutputs(IEnumerable<WorkflowNode> nodes)
@@ -166,6 +166,19 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     {
         if (_dispatcher.CheckAccess()) action();
         else _dispatcher.BeginInvoke(action);
+    }
+
+    private static DispatcherPriority GetExecutionStatusPriority()
+    {
+        try
+        {
+            var strict = CanvasToolbarPreferencesStore.Load()?.StrictFinalSyncEnabled ?? true;
+            return strict ? DispatcherPriority.Send : DispatcherPriority.Background;
+        }
+        catch
+        {
+            return DispatcherPriority.Send;
+        }
     }
 
     private void RefreshAggregateTimingForNode(WorkflowNode node)

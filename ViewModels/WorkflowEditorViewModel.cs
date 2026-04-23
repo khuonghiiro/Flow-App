@@ -1,6 +1,7 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Rendering;
+using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -1610,6 +1611,7 @@ namespace FlowMy.ViewModels
 
         private void FinalizeManualRunUiState(int remaining, bool operationCancelled)
         {
+            var strictFinalSync = IsStrictFinalSyncEnabled();
             void Apply()
             {
                 IsExecuting = remaining > 0;
@@ -1637,13 +1639,22 @@ namespace FlowMy.ViewModels
             }
             else
             {
-                // Chốt trạng thái flow ngay khi runtime code đã kết thúc.
-                dispatcher.Invoke(Apply, DispatcherPriority.Send);
+                if (strictFinalSync)
+                {
+                    // Strict: chốt trạng thái flow ngay khi runtime code đã kết thúc.
+                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
+                }
+                else
+                {
+                    // Non-strict: để UI đi theo nhịp flow tự nhiên.
+                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
+                }
             }
         }
 
         private void FinalizeAllExecutionUiStateIfIdle()
         {
+            var strictFinalSync = IsStrictFinalSyncEnabled();
             var manualInFlight = Volatile.Read(ref _manualExecutionRunsInFlight);
             var autoInFlight = Volatile.Read(ref _autoScheduledLaneRunsInFlight);
             if (manualInFlight != 0 || autoInFlight != 0) return;
@@ -1665,13 +1676,21 @@ namespace FlowMy.ViewModels
             }
             else
             {
-                // Ép chốt ngay trạng thái "đã dừng" khi không còn lane nào chạy.
-                dispatcher.Invoke(Apply, DispatcherPriority.Send);
+                if (strictFinalSync)
+                {
+                    // Strict: ép chốt ngay trạng thái "đã dừng" khi không còn lane nào chạy.
+                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
+                }
+                else
+                {
+                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
+                }
             }
         }
 
         private void RegisterRunningNodeVisual(WorkflowNode node)
         {
+            var strictFinalSync = IsStrictFinalSyncEnabled();
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher == null) return;
             void Apply()
@@ -1690,12 +1709,18 @@ namespace FlowMy.ViewModels
             if (dispatcher.CheckAccess())
                 Apply();
             else
-                dispatcher.Invoke(Apply, DispatcherPriority.Send);
+            {
+                if (strictFinalSync)
+                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
+                else
+                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
+            }
         }
 
         /// <summary>Gỡ ref-count trên UI thread (luôn qua Background) để finally của async không chặn UI khi hủy nhiều node.</summary>
         private void ReleaseRunningNodeVisualBatch(IReadOnlyList<WorkflowNode> nodes)
         {
+            var strictFinalSync = IsStrictFinalSyncEnabled();
             if (nodes == null || nodes.Count == 0) return;
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher == null) return;
@@ -1727,7 +1752,24 @@ namespace FlowMy.ViewModels
             if (dispatcher.CheckAccess())
                 Apply();
             else
-                dispatcher.Invoke(Apply, DispatcherPriority.Send);
+            {
+                if (strictFinalSync)
+                    dispatcher.Invoke(Apply, DispatcherPriority.Send);
+                else
+                    dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Apply));
+            }
+        }
+
+        private static bool IsStrictFinalSyncEnabled()
+        {
+            try
+            {
+                return CanvasToolbarPreferencesStore.Load()?.StrictFinalSyncEnabled ?? true;
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         private void ReleaseRunningNodeVisual(WorkflowNode node)
