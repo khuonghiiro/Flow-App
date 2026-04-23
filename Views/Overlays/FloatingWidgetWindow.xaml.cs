@@ -1743,6 +1743,9 @@ public partial class FloatingWidgetWindow : Window
 
     private void DrainPendingAsyncQueueToBuffer(HtmlUiNode node)
     {
+        var strictFinalSync = IsStrictFinalSyncEnabled();
+        var isFlowExecuting = _host?.ViewModel?.IsExecuting == true
+                              || (_host?.ViewModel?.ManualExecutionRunsInFlight ?? 0) > 0;
         var items = new List<(string SessionId, string Key, string Value)>();
         while (node.PendingAsyncPushQueue.TryDequeue(out var item))
             items.Add(item);
@@ -1761,6 +1764,14 @@ public partial class FloatingWidgetWindow : Window
             var sessionId = kvp.SessionId ?? "session:unknown";
             var key = kvp.Key ?? string.Empty;
             var value = kvp.Value ?? string.Empty;
+
+            // Non-strict mode: trong lúc flow còn chạy thì giữ data lại,
+            // chỉ flush sau khi flow kết thúc để result/UI đi theo nhịp flow.
+            if (!strictFinalSync && isFlowExecuting)
+            {
+                _hiddenAsyncBacklog.Add((sessionId, key, value));
+                continue;
+            }
 
             // Ưu tiên realtime: nếu runtime đã sẵn sàng thì vẫn đẩy ngay kể cả widget đang ẩn/collapse.
             // Điều này giúp trạng thái flow trên canvas đồng bộ với runtime, tránh lag "đã chạy xong nhưng UI còn running".
@@ -3096,7 +3107,6 @@ window.__acPush = function(key, value) {
 
     private void TriggerFinalDataFlushAfterExecution()
     {
-        if (!IsStrictFinalSyncEnabled()) return;
         if (_node is not HtmlUiNode htmlNode) return;
         _ = Dispatcher.InvokeAsync(async () =>
         {
