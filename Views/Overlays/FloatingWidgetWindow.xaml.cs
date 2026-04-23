@@ -2188,7 +2188,6 @@ public partial class FloatingWidgetWindow : Window
     {
         var mediaRootsJson = BuildMediaSearchRootsJson();
         var script = @"
-<script>
 // ── Widget Bridge JS ──
 window.__acMediaSearchRoots = __AC_MEDIA_ROOTS__;
 function acSubmit() {
@@ -2321,7 +2320,7 @@ window.__acPush = function(key, value) {
     }
   };
 })();
-</script>";
+";
         return script.Replace("__AC_MEDIA_ROOTS__", mediaRootsJson);
     }
 
