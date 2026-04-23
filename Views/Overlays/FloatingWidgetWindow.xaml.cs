@@ -1599,7 +1599,7 @@ public partial class FloatingWidgetWindow : Window
                 }
                 catch { }
 
-                // Handle web messages from HTML (acSubmit, acStartWorkflow)
+                // Handle web messages from HTML (hostSubmit, hostStart)
                 _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
                 _webView.CoreWebView2.NavigationCompleted += (_, _) =>
                 {
@@ -2245,74 +2245,47 @@ function hostResolveRef(url, requestId) {
       });
     } catch (_) {}
 }
-// Backward compatibility aliases (old API names)
+// Expose only new API names
 window.hostSubmit = hostSubmit;
 window.hostStart = hostStart;
 window.hostResolvePath = hostResolvePath;
 window.hostCurl = hostCurl;
 window.hostPickImages = hostPickImages;
 window.hostResolveRef = hostResolveRef;
-window.requestHostSubmitOutputs = hostSubmit;
-window.requestHostStartWorkflow = hostStart;
-window.requestHostResolveLocalPathToUrl = hostResolvePath;
-window.requestHostDownloadFileByCurl = hostCurl;
-window.requestHostPickImageFiles = hostPickImages;
-window.requestHostResolvePlayableRef = hostResolveRef;
-window.acSubmit = hostSubmit;
-window.acStartWorkflow = hostStart;
-window.acResolveLocalPath = hostResolvePath;
-window.acDownloadByCurl = hostCurl;
-window.acPickImageFiles = hostPickImages;
-window.acResolvePlayableRef = hostResolveRef;
-// Override __ac if needed
-window.__ac = window.__ac || {};
-window.__ac.live = window.__ac.live || {};
-window.__ac.submit = hostSubmit;
-window.__ac.startWorkflow = hostStart;
-window.__ac._subs = window.__ac._subs || {};
-window.__ac._allSubs = window.__ac._allSubs || [];
-window.__ac.onUpdate = function() {
+
+window.hostLive = window.hostLive || {};
+window.hostLive.values = window.hostLive.values || {};
+window.hostLive._subs = window.hostLive._subs || {};
+window.hostLive._allSubs = window.hostLive._allSubs || [];
+window.hostLive.on = function() {
   var args = Array.prototype.slice.call(arguments);
   var cb = args[args.length - 1];
   if (typeof cb !== 'function') return;
   if (args.length === 1 && typeof args[0] === 'function') {
-    window.__ac._allSubs.push(args[0]);
+    window.hostLive._allSubs.push(args[0]);
     return;
   }
   var keys = args.slice(0, -1).map(function(k){ return String(k); });
   var token = { keys: keys, cb: cb };
   keys.forEach(function(k){
-    window.__ac._subs[k] = window.__ac._subs[k] || [];
-    window.__ac._subs[k].push(token);
+    window.hostLive._subs[k] = window.hostLive._subs[k] || [];
+    window.hostLive._subs[k].push(token);
   });
 };
-window.__ac.onData = window.__ac.onUpdate;
-window.__ac._notify = function(key) {
-  var keySubs = window.__ac._subs[key] || [];
+window.__acPush = function(key, value) {
+  window.hostLive.values[key] = value;
+  var keySubs = window.hostLive._subs[String(key)] || [];
   for (var i = 0; i < keySubs.length; i++) {
     var sub = keySubs[i];
     try {
-      var vals = sub.keys.map(function(k){ return window.__ac.live[k]; });
+      var vals = sub.keys.map(function(k){ return window.hostLive.values[k]; });
       sub.cb.apply(null, vals);
     } catch(e) {}
   }
-  for (var j = 0; j < window.__ac._allSubs.length; j++) {
-    try { window.__ac._allSubs[j](window.__ac.live); } catch(e) {}
+  for (var j = 0; j < window.hostLive._allSubs.length; j++) {
+    try { window.hostLive._allSubs[j](window.hostLive.values); } catch(e) {}
   }
 };
-window.__ac.push = function(key, value) {
-  window.__ac.live[key] = value;
-  window.__ac._notify(String(key));
-};
-window.__acPush = function(key, value) {
-  window.__ac.push(key, value);
-};
-window.hostLive = window.hostLive || {};
-window.hostLive.on = window.__ac.onUpdate;
-window.hostLive.values = window.__ac.live;
-window.hostLiveData = window.hostLiveData || {};
-window.hostLiveData.onUpdate = window.__ac.onUpdate;
-window.hostLiveData.values = window.__ac.live;
 
 // Async receiver runtime (tương thích HtmlUiNode Async Data tab)
 (function(){
@@ -2348,9 +2321,6 @@ window.hostLiveData.values = window.__ac.live;
 window.hostAsync = window.hostAsync || {};
 window.hostAsync.on = window.__acAsync.onReceive;
 window.hostAsync.values = window.__acAsync.data;
-window.hostAsyncData = window.hostAsyncData || {};
-window.hostAsyncData.onReceive = window.__acAsync.onReceive;
-window.hostAsyncData.values = window.__acAsync.data;
 ";
         return script.Replace("__AC_MEDIA_ROOTS__", mediaRootsJson);
     }
@@ -2574,8 +2544,7 @@ window.hostAsyncData.values = window.__acAsync.data;
             error
         });
         var script =
-            "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" + detailJson + "}));" +
-            "window.dispatchEvent(new CustomEvent('hostLocalPathResolved',{detail:" + detailJson + "}));";
+            "window.dispatchEvent(new CustomEvent('hostPathResolved',{detail:" + detailJson + "}));";
         try
         {
             await _webView.CoreWebView2.ExecuteScriptAsync(script);
@@ -2696,8 +2665,7 @@ window.hostAsyncData.values = window.__acAsync.data;
             key = downloadKey ?? string.Empty,
             localUrl
         });
-        await DispatchJsEventAsync("__ac_curl_download_done", payload);
-        await DispatchJsEventAsync("hostCurlDownloadCompleted", payload);
+        await DispatchJsEventAsync("hostCurlDone", payload);
     }
 
     private async Task HandlePickImageFilesAsync(JsonElement root)
@@ -2757,8 +2725,7 @@ window.hostAsyncData.values = window.__acAsync.data;
             files = filesPayload,
             error = errMsg
         });
-        await DispatchJsEventAsync("__ac_image_files_picked", payload);
-        await DispatchJsEventAsync("hostImageFilesPicked", payload);
+        await DispatchJsEventAsync("hostImagesPicked", payload);
     }
 
     private async Task HandleResolvePlayableRefAsync(JsonElement root)
@@ -2845,8 +2812,7 @@ window.hostAsyncData.values = window.__acAsync.data;
             error = errMsg
         });
         // Keep same event as HtmlUiNodeControl for compatibility.
-        await DispatchJsEventAsync("__ac_local_path_resolved", payload);
-        await DispatchJsEventAsync("hostLocalPathResolved", payload);
+        await DispatchJsEventAsync("hostPathResolved", payload);
     }
 
     private async Task DispatchJsEventAsync(string eventName, string detailJson)

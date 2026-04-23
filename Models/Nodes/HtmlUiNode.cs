@@ -82,27 +82,35 @@ namespace FlowMy.Models.Nodes
             "<html>\n" +
             "<head>\n" +
             "    <meta charset=\"UTF-8\">\n" +
-            "    <title>HTML UI – ví dụ output 'result'</title>\n" +
+            "    <title>HTML UI - New Host API Demo</title>\n" +
             "</head>\n" +
             "<body>\n" +
             "    <div class=\"container\">\n" +
-            "        <h1>HTML UI Node – ví dụ output 'result'</h1>\n" +
-            "        <!-- Ví dụ dùng {variableName}: <p>Giá trị từ node: {input}</p> -->\n" +
-            "        <p>Nhập giá trị cho output key <strong>result</strong> rồi bấm Gửi.</p>\n" +
-            "        <label for=\"txtResult\">Giá trị output 'result':</label>\n" +
-            "        <input id=\"txtResult\" type=\"text\" placeholder=\"Nhập giá trị...\" />\n" +
-            "        <button onclick=\"acSubmit()\">Gửi</button>\n" +
-            "        <p class=\"hint\">Sau khi bấm Gửi, node sẽ đọc giá trị từ <code>#txtResult</code> theo cấu hình Params\n" +
-            "        (ví dụ: <code>result: #txtResult</code>) và đẩy ra output key <strong>result</strong>.</p>\n" +
-            "        <hr style=\"margin: 20px 0; border-color: #374151;\" />\n" +
-            "        <p><strong>Ví dụ dùng JS:</strong></p>\n" +
-            "        <button onclick=\"setUpperResult()\">Viết HOA & Gửi</button>\n" +
-            "        <button onclick=\"sendResultDirect()\">Gửi trực tiếp (không dùng Params)</button>\n" +
-            "        <p class=\"hint\">Các hàm <code>setUpperResult()</code> và <code>sendResultDirect()</code> được định nghĩa trong tab JS.</p>\n" +
-            "        <hr style=\"margin: 20px 0; border-color: #374151;\" />\n" +
-            "        <p><strong>Chạy Workflow:</strong></p>\n" +
-            "        <button onclick=\"acStartWorkflow()\" class=\"btn-start\">▶ Chạy Workflow</button>\n" +
-            "        <p class=\"hint\">Nút này sẽ kích hoạt chạy workflow (tương đương nhấn nút Start trong editor).</p>\n" +
+            "        <h2>HTML UI Demo - host* API</h2>\n" +
+            "        <p class=\"hint\">Input mapping mẫu: <code>datas</code> hoặc <code>jobResult</code>. Trong JS có thể đọc bằng <code>window.hostLive</code> / <code>window.hostAsync</code>.</p>\n" +
+            "\n" +
+            "        <div class=\"block\">\n" +
+            "            <label for=\"localImagePath\">Local image path:</label>\n" +
+            "            <input id=\"localImagePath\" type=\"text\" placeholder=\"C:\\\\path\\\\image.png\" />\n" +
+            "            <button id=\"btnResolveImage\">Resolve ảnh local</button>\n" +
+            "            <img id=\"previewImage\" alt=\"preview image\" />\n" +
+            "        </div>\n" +
+            "\n" +
+            "        <div class=\"block\">\n" +
+            "            <label for=\"localVideoPath\">Local video path:</label>\n" +
+            "            <input id=\"localVideoPath\" type=\"text\" placeholder=\"C:\\\\path\\\\video.mp4\" />\n" +
+            "            <button id=\"btnResolveVideo\">Resolve video local</button>\n" +
+            "            <video id=\"previewVideo\" controls playsinline preload=\"metadata\"></video>\n" +
+            "        </div>\n" +
+            "\n" +
+            "        <div class=\"block\">\n" +
+            "            <label for=\"txtResult\">Output result:</label>\n" +
+            "            <input id=\"txtResult\" type=\"text\" placeholder=\"Giá trị sẽ submit ra output\" />\n" +
+            "            <button id=\"btnSubmit\">hostSubmit()</button>\n" +
+            "            <button id=\"btnRun\" class=\"btn-start\">hostStart()</button>\n" +
+            "        </div>\n" +
+            "\n" +
+            "        <pre id=\"logBox\">[log]</pre>\n" +
             "    </div>\n" +
             "</body>\n" +
             "</html>";
@@ -125,50 +133,108 @@ namespace FlowMy.Models.Nodes
         // - Nếu không tìm thấy variable, {variableName} sẽ giữ nguyên (không replace)
         //
         private string _jsCode =
-            "// JS tab – bạn có thể thêm logic xử lý UI, validate, thay đổi DOM, ...\n" +
-            "// Khi muốn 'submit' giá trị ra outputs, gọi hàm acSubmit() (đã được inject tự động).\n" +
-            "// Ví dụ: sau khi validate xong, gọi acSubmit() để host đọc DOM theo Params.\n" +
-            "//\n" +
-            "// Để chạy workflow từ button trong HTML UI, gọi acStartWorkflow():\n" +
-            "// <button onclick=\"acStartWorkflow()\">Chạy Workflow</button>\n" +
-            "//\n" +
-            "// ✅ Ví dụ dùng {variableName} từ input mappings:\n" +
-            "// const apiData = JSON.parse('{apiResponse}'); // apiResponse là biến từ input mapping\n" +
-            "// const userId = '{userId}'; // userId là biến từ input mapping\n" +
-            "//\n" +
-            "console.log('HTML UI loaded');\n" +
+            "// New API demo: hostLive / hostAsync / hostResolvePath / hostSubmit / hostStart\n" +
+            "// HTML id cần có: localImagePath, localVideoPath, previewImage, previewVideo, txtResult, logBox\n" +
+            "(function(){\n" +
+            "    var reqImage = '';\n" +
+            "    var reqVideo = '';\n" +
+            "    var logBox = document.getElementById('logBox');\n" +
             "\n" +
-            "// Ví dụ 1: Hàm xử lý và gửi qua acSubmit() (dùng Params để map)\n" +
-            "function setUpperResult() {\n" +
-            "    const el = document.getElementById('txtResult');\n" +
-            "    if (!el) return;\n" +
-            "    \n" +
-            "    // Xử lý: viết hoa giá trị\n" +
-            "    el.value = (el.value || '').toUpperCase();\n" +
-            "    \n" +
-            "    // Gửi qua acSubmit() - host sẽ đọc DOM theo Params (ví dụ: result: #txtResult)\n" +
-            "    acSubmit();\n" +
-            "}\n" +
+            "    function log(msg) {\n" +
+            "        console.log(msg);\n" +
+            "        if (logBox) {\n" +
+            "            logBox.textContent = (logBox.textContent || '') + '\\n' + msg;\n" +
+            "        }\n" +
+            "    }\n" +
             "\n" +
-            "// Ví dụ 2: Gửi output trực tiếp từ JS (không cần Params)\n" +
-            "function sendResultDirect() {\n" +
-            "    const el = document.getElementById('txtResult');\n" +
-            "    const value = el ? el.value : '';\n" +
-            "    \n" +
-            "    // Gửi trực tiếp qua postMessage - các key trong object sẽ thành outputs\n" +
-            "    if (window.chrome && window.chrome.webview) {\n" +
-            "        window.chrome.webview.postMessage({\n" +
-            "            result: value,\n" +
-            "            timestamp: new Date().toISOString()\n" +
+            "    function resolveLocalPath(localPath, requestId) {\n" +
+            "        if (!localPath) {\n" +
+            "            log('[warn] localPath rỗng');\n" +
+            "            return;\n" +
+            "        }\n" +
+            "        if (typeof hostResolvePath !== 'function') {\n" +
+            "            log('[warn] hostResolvePath chưa sẵn sàng');\n" +
+            "            return;\n" +
+            "        }\n" +
+            "        hostResolvePath(localPath, requestId);\n" +
+            "        log('[call] hostResolvePath: ' + localPath);\n" +
+            "    }\n" +
+            "\n" +
+            "    window.addEventListener('hostPathResolved', function(ev){\n" +
+            "        var d = (ev && ev.detail) || {};\n" +
+            "        if (!d.ok || !d.localUrl) return;\n" +
+            "\n" +
+            "        if (d.requestId === reqImage) {\n" +
+            "            var img = document.getElementById('previewImage');\n" +
+            "            if (img) img.src = d.localUrl;\n" +
+            "            log('[ok] image localUrl: ' + d.localUrl);\n" +
+            "        }\n" +
+            "\n" +
+            "        if (d.requestId === reqVideo) {\n" +
+            "            var vid = document.getElementById('previewVideo');\n" +
+            "            if (vid) {\n" +
+            "                vid.src = d.localUrl;\n" +
+            "                try { vid.load(); } catch (_) {}\n" +
+            "            }\n" +
+            "            log('[ok] video localUrl: ' + d.localUrl);\n" +
+            "        }\n" +
+            "    });\n" +
+            "\n" +
+            "    if (window.hostLive && typeof window.hostLive.on === 'function') {\n" +
+            "        window.hostLive.on('datas', function(datas){\n" +
+            "            log('[live] datas updated');\n" +
+            "            try {\n" +
+            "                var obj = (typeof datas === 'string') ? JSON.parse(datas) : datas;\n" +
+            "                if (obj && obj.localImagePath && !document.getElementById('localImagePath').value) {\n" +
+            "                    document.getElementById('localImagePath').value = String(obj.localImagePath);\n" +
+            "                }\n" +
+            "                if (obj && obj.localVideoPath && !document.getElementById('localVideoPath').value) {\n" +
+            "                    document.getElementById('localVideoPath').value = String(obj.localVideoPath);\n" +
+            "                }\n" +
+            "            } catch (_) {}\n" +
             "        });\n" +
             "    }\n" +
-            "}\n" +
             "\n" +
-            "// Ví dụ 3: Tự bind event khi DOM load xong (không cần onclick trong HTML)\n" +
-            "document.addEventListener('DOMContentLoaded', function() {\n" +
-            "    // Có thể thêm logic tự động bind events, validate, ...\n" +
-            "    console.log('DOM ready, có thể thêm event listeners');\n" +
-            "});\n";
+            "    if (window.hostAsync && typeof window.hostAsync.on === 'function') {\n" +
+            "        window.hostAsync.on('jobResult', function(v){\n" +
+            "            log('[async] jobResult: ' + JSON.stringify(v));\n" +
+            "        });\n" +
+            "    }\n" +
+            "\n" +
+            "    var btnResolveImage = document.getElementById('btnResolveImage');\n" +
+            "    if (btnResolveImage) {\n" +
+            "        btnResolveImage.addEventListener('click', function(){\n" +
+            "            reqImage = 'img_' + Date.now();\n" +
+            "            var p = (document.getElementById('localImagePath').value || '').trim();\n" +
+            "            resolveLocalPath(p, reqImage);\n" +
+            "        });\n" +
+            "    }\n" +
+            "\n" +
+            "    var btnResolveVideo = document.getElementById('btnResolveVideo');\n" +
+            "    if (btnResolveVideo) {\n" +
+            "        btnResolveVideo.addEventListener('click', function(){\n" +
+            "            reqVideo = 'vid_' + Date.now();\n" +
+            "            var p = (document.getElementById('localVideoPath').value || '').trim();\n" +
+            "            resolveLocalPath(p, reqVideo);\n" +
+            "        });\n" +
+            "    }\n" +
+            "\n" +
+            "    var btnSubmit = document.getElementById('btnSubmit');\n" +
+            "    if (btnSubmit) {\n" +
+            "        btnSubmit.addEventListener('click', function(){\n" +
+            "            if (typeof hostSubmit === 'function') hostSubmit();\n" +
+            "            log('[call] hostSubmit');\n" +
+            "        });\n" +
+            "    }\n" +
+            "\n" +
+            "    var btnRun = document.getElementById('btnRun');\n" +
+            "    if (btnRun) {\n" +
+            "        btnRun.addEventListener('click', function(){\n" +
+            "            if (typeof hostStart === 'function') hostStart();\n" +
+            "            log('[call] hostStart');\n" +
+            "        });\n" +
+            "    }\n" +
+            "})();\n";
 
         // CSS mẫu cho giao diện cơ bản
         // 
@@ -188,48 +254,99 @@ namespace FlowMy.Models.Nodes
         // - Nếu không tìm thấy variable, {variableName} sẽ giữ nguyên (không replace)
         //
         private string _cssCode =
-            "/* CSS tab – style đơn giản cho ví dụ HTML UI */\n" +
-            "/* ✅ Ví dụ dùng {variableName}: .title { color: {titleColor}; } */\n" +
+            "/* CSS mẫu cho demo host API mới */\n" +
+            "/* Có thể dùng variable mapping, ví dụ: .container { border-color: {themeColor}; } */\n" +
             "body {\n" +
-            "    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;\n" +
             "    margin: 0;\n" +
-            "    padding: 0;\n" +
-            "    background: #0f172a;\n" +
-            "    color: #e5e7eb;\n" +
+            "    background: #0b1220;\n" +
+            "    color: #e2e8f0;\n" +
+            "    font-family: system-ui, -apple-system, Segoe UI, sans-serif;\n" +
             "}\n" +
             ".container {\n" +
-            "    padding: 20px;\n" +
+            "    max-width: 920px;\n" +
+            "    margin: 16px auto;\n" +
+            "    padding: 16px;\n" +
+            "}\n" +
+            ".block {\n" +
+            "    border: 1px solid #334155;\n" +
+            "    border-radius: 10px;\n" +
+            "    padding: 12px;\n" +
+            "    margin-bottom: 12px;\n" +
+            "    background: #111b2f;\n" +
+            "}\n" +
+            "label {\n" +
+            "    display: block;\n" +
+            "    margin-bottom: 6px;\n" +
+            "    font-weight: 600;\n" +
             "}\n" +
             "input[type=\"text\"] {\n" +
-            "    padding: 6px 8px;\n" +
-            "    margin-right: 8px;\n" +
-            "    min-width: 220px;\n" +
+            "    width: 100%;\n" +
+            "    height: 34px;\n" +
+            "    border: 1px solid #475569;\n" +
+            "    border-radius: 8px;\n" +
+            "    background: #0f172a;\n" +
+            "    color: #e2e8f0;\n" +
+            "    padding: 0 10px;\n" +
+            "    margin-bottom: 8px;\n" +
             "}\n" +
             "button {\n" +
-            "    padding: 6px 12px;\n" +
-            "}\n" +
-            ".btn-start {\n" +
-            "    background: #10b981;\n" +
-            "    color: white;\n" +
+            "    height: 32px;\n" +
+            "    padding: 0 12px;\n" +
             "    border: none;\n" +
+            "    border-radius: 8px;\n" +
+            "    background: #2563eb;\n" +
+            "    color: #fff;\n" +
+            "    margin-right: 6px;\n" +
             "    cursor: pointer;\n" +
-            "    font-weight: 500;\n" +
             "}\n" +
-            ".btn-start:hover {\n" +
-            "    background: #059669;\n" +
+            "button:hover { background: #1d4ed8; }\n" +
+            ".btn-start { background: #059669; }\n" +
+            ".btn-start:hover { background: #047857; }\n" +
+            "#previewImage {\n" +
+            "    display: block;\n" +
+            "    width: 100%;\n" +
+            "    max-height: 220px;\n" +
+            "    object-fit: contain;\n" +
+            "    border: 1px solid #334155;\n" +
+            "    border-radius: 8px;\n" +
+            "    margin-top: 8px;\n" +
+            "    background: #020617;\n" +
+            "}\n" +
+            "#previewVideo {\n" +
+            "    display: block;\n" +
+            "    width: 100%;\n" +
+            "    max-height: 260px;\n" +
+            "    margin-top: 8px;\n" +
+            "    border: 1px solid #334155;\n" +
+            "    border-radius: 8px;\n" +
+            "    background: #000;\n" +
+            "}\n" +
+            "#logBox {\n" +
+            "    min-height: 120px;\n" +
+            "    border: 1px solid #334155;\n" +
+            "    border-radius: 8px;\n" +
+            "    padding: 10px;\n" +
+            "    background: #020617;\n" +
+            "    color: #93c5fd;\n" +
+            "    white-space: pre-wrap;\n" +
             "}\n" +
             ".hint {\n" +
-            "    margin-top: 10px;\n" +
-            "    font-size: 12px;\n" +
-            "    color: #9ca3af;\n" +
+            "    color: #94a3b8;\n" +
+            "    margin: 6px 0 12px;\n" +
             "}\n";
 
         // Cấu hình params: mỗi dòng = "key: selector" (ví dụ: "result: #txtResult")
         // Selector dùng CSS selector: #id, .class, tag, [attr], ...
         // Khi gọi acSubmit() hoặc postMessage({ type: 'submit' }), host sẽ đọc DOM theo Params này
         private string _paramsCode =
-            "// Output key 'result' lấy từ textbox có id=txtResult\n" +
-            "result: #txtResult\n";
+            "// Output mặc định khi gọi hostSubmit()\n" +
+            "// result: text user nhập để gửi ra node output\n" +
+            "result: #txtResult\n" +
+            "\n" +
+            "// localImagePath/localVideoPath: lưu lại path user nhập\n" +
+            "// (giúp node sau dùng tiếp nếu cần)\n" +
+            "localImagePath: #localImagePath\n" +
+            "localVideoPath: #localVideoPath\n";
 
         public HtmlUiNode()
         {

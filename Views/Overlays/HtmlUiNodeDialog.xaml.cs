@@ -1132,9 +1132,13 @@ hostStart()
 
         private const string TemplateRealtimeJs =
 @"(function(){
+  // HTML gợi ý:
+  // <div id=""label""></div>
+  // <div id=""value""></div>
   var label = document.getElementById('label');
   var value = document.getElementById('value');
   if (window.hostLive && typeof window.hostLive.on === 'function') {
+    // Realtime từ InputMappings
     window.hostLive.on('price', 'datas', function(price, datas){
       if (label) label.textContent = 'Realtime';
       if (value) value.textContent = (price != null && price !== '') ? String(price) : JSON.stringify(datas || {});
@@ -1144,8 +1148,13 @@ hostStart()
 
         private const string TemplateLocalVideoJs =
 @"(function(){
+  // HTML gợi ý:
+  // <input id=""localVideoPath"" placeholder=""C:\...\video.mp4"" />
+  // <video id=""vid"" controls playsinline></video>
   var video = document.getElementById('vid');
+  var videoPathInput = document.getElementById('localVideoPath');
   var req = 'req_' + Date.now();
+
   window.addEventListener('hostPathResolved', function(ev){
     var d = (ev && ev.detail) || {};
     if (d.requestId !== req) return;
@@ -1154,18 +1163,25 @@ hostStart()
       video.load();
     }
   });
+
   if (typeof hostResolvePath === 'function') {
-    hostResolvePath('C:\\path\\video.mp4', req);
+    var localPath = (videoPathInput && videoPathInput.value) ? videoPathInput.value.trim() : 'C:\\path\\video.mp4';
+    hostResolvePath(localPath, req);
   }
 })();";
 
         private const string TemplateSubmitFormJs =
 @"(function(){
+  // HTML gợi ý:
+  // <input id=""noteInput"" />
+  // <div id=""resultBox""></div>
+  // <button id=""btnRun"">Run</button>
   var btn = document.getElementById('btnRun');
   var inp = document.getElementById('noteInput');
   var out = document.getElementById('resultBox');
   if (!btn) return;
   btn.addEventListener('click', function(){
+    // Đưa dữ liệu vào DOM để host đọc theo PARAM config
     if (out && inp) out.textContent = inp.value || '';
     if (typeof hostSubmit === 'function') hostSubmit();
     if (typeof hostStart === 'function') hostStart();
@@ -1174,30 +1190,74 @@ hostStart()
 
         private const string TemplateFullNewApiJs =
 @"(function(){
-  var req = 'req_' + Date.now();
+  // FULL NEW API DEMO
+  // HTML gợi ý:
+  // <input id=""localImagePath"" placeholder=""C:\...\img.png"" />
+  // <input id=""localVideoPath"" placeholder=""C:\...\video.mp4"" />
+  // <img id=""previewImage"" />
+  // <video id=""previewVideo"" controls playsinline></video>
+  // <button id=""btnRun"">Run</button>
+
+  var reqImage = 'img_' + Date.now();
+  var reqVideo = 'vid_' + Date.now();
+  var img = document.getElementById('previewImage');
+  var vid = document.getElementById('previewVideo');
+  var imgPath = document.getElementById('localImagePath');
+  var vidPath = document.getElementById('localVideoPath');
+  var btnRun = document.getElementById('btnRun');
+
+  // 1) Realtime data từ InputMappings
   if (window.hostLive && typeof window.hostLive.on === 'function') {
-    window.hostLive.on('datas', function(datas){ console.log('live datas', datas); });
+    window.hostLive.on('datas', function(datas){
+      console.log('live datas', datas);
+    });
   }
+
+  // 2) Async data từ tab Async Data Receiver
   if (window.hostAsync && typeof window.hostAsync.on === 'function') {
-    window.hostAsync.on('jobResult', function(v){ console.log('async jobResult', v); });
+    window.hostAsync.on('jobResult', function(v){
+      console.log('async jobResult', v);
+    });
   }
+
+  // 3) Nhận callback resolve path cho ảnh/video local
   window.addEventListener('hostPathResolved', function(ev){
     var d = (ev && ev.detail) || {};
-    if (d.requestId === req && d.ok) console.log('resolved:', d.localUrl);
+    if (!d.ok || !d.localUrl) return;
+    if (d.requestId === reqImage && img) img.src = d.localUrl;
+    if (d.requestId === reqVideo && vid) {
+      vid.src = d.localUrl;
+      try { vid.load(); } catch (_) {}
+    }
   });
+
   window.addEventListener('hostCurlDone', function(ev){
     var d = (ev && ev.detail) || {};
     if (d.ok) console.log('curl done:', d.localUrl || d.path);
   });
+
   window.addEventListener('hostImagesPicked', function(ev){
     var d = (ev && ev.detail) || {};
-    if (d.ok) console.log('images:', d.files);
+    if (d.ok) console.log('images picked:', d.files);
   });
-  if (typeof hostResolvePath === 'function') hostResolvePath('C:\\path\\video.mp4', req);
+
+  // 4) Chủ động gọi host API
+  if (typeof hostResolvePath === 'function') {
+    hostResolvePath((imgPath && imgPath.value) ? imgPath.value.trim() : 'C:\\path\\image.png', reqImage);
+    hostResolvePath((vidPath && vidPath.value) ? vidPath.value.trim() : 'C:\\path\\video.mp4', reqVideo);
+  }
   if (typeof hostCurl === 'function') hostCurl('curl --location ""https://example.com/a.mp4""', 'a.mp4', 'k1');
   if (typeof hostPickImages === 'function') hostPickImages('img_req_1');
-  if (typeof hostSubmit === 'function') hostSubmit();
-  if (typeof hostStart === 'function') hostStart();
+
+  // 5) Submit + Start workflow
+  if (btnRun) {
+    btnRun.addEventListener('click', function(){
+      if (typeof hostSubmit === 'function') hostSubmit();
+      if (typeof hostStart === 'function') hostStart();
+    });
+  }
+
+  // 6) Tab2 -> Tab1 bridge (chỉ khi UseWebTab=true)
   if (typeof tab1Seq === 'function') tab1Seq('console.log(""tab1 seq"")');
   if (typeof tab1Par === 'function') tab1Par('console.log(""tab1 par"")');
 })();";

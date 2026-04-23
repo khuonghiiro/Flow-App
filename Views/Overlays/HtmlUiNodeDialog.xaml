@@ -233,7 +233,7 @@
                                                               VerticalAlignment="Center"
                                                               Foreground="{DynamicResource TextSecondary}" FontSize="11"
                                                               Content="Auto push JS mỗi"
-                                                              ToolTip="Bật để tự động push giá trị mới nhất vào window.__ac theo khoảng thời gian"/>
+                                                              ToolTip="Bật để tự động push giá trị mới nhất vào window.hostLive theo khoảng thời gian"/>
                                                     <TextBox Text="{Binding AutoRefreshInterval, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                              Width="52" Height="26" Margin="6,0,4,0"
                                                              Style="{DynamicResource BaseTextBoxV2}"
@@ -244,7 +244,7 @@
                                                               IsEnabled="{Binding AutoRefreshEnabled}"
                                                               ItemsSource="{Binding DataContext.AutoRefreshUnitOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                               SelectedItem="{Binding AutoRefreshUnit, Mode=TwoWay}"/>
-                                                    <TextBlock Text="→ window.__ac.live['{biến}']"
+                                                    <TextBlock Text="→ window.hostLive.values['{biến}']"
                                                                Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                                VerticalAlignment="Center" Margin="8,0,0,0"
                                                                FontFamily="Consolas"/>
@@ -263,7 +263,7 @@
                     <!-- Ví dụ & Gợi ý -->
                     <Expander x:Name="ExampleHintsExpander" IsExpanded="False" Margin="0,0,0,12">
                         <Expander.Header>
-                            <TextBlock Text="Hướng dẫn dùng {variableName} trong HTML/CSS/JS" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Hướng dẫn biến {variableName} + API mới (hostLive/hostAsync/host*)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
                         </Expander.Header>
                         <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
                             <StackPanel>
@@ -334,13 +334,13 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- === REAL-TIME window.__ac === -->
+                                <!-- === REAL-TIME window.hostLive === -->
                                 <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,0">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                             <TextBlock Text="⚡ Real-time: " Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
                                             <TextBlock FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center">
-                                                <Run Text="window.__ac.onUpdate(key, callback)"/>
+                                                <Run Text="window.hostLive.on(key, callback)"/>
                                             </TextBlock>
                                         </StackPanel>
                                         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
@@ -357,14 +357,14 @@
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                             Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
-                                                            Tag="window.__ac.onUpdate('price', function(price) {&amp;#xA;    document.getElementById('price').textContent = price;&amp;#xA;});"/>
+                                                            Tag="window.hostLive.on('price', function(price) {&#xA;    document.getElementById('price').textContent = price;&#xA;});"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                             Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex1"
                                                             ToolTip="Điền sẵn HTML/CSS/JS ví dụ này vào editor"/>
                                                 </StackPanel>
                                                 <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="window.__ac.onUpdate("/>
+                                                    <Run Text="window.hostLive.on("/>
                                                     <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text=", function(price) {"/>
                                                     <LineBreak/>
@@ -383,14 +383,14 @@
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                             Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
-                                                            Tag="// Khi cả price lẫn quantity thay đổi đều gọi callback này&amp;#xA;window.__ac.onUpdate('price', 'quantity', function(price, quantity) {&amp;#xA;    var total = parseFloat(price || 0) * parseInt(quantity || 0);&amp;#xA;    document.getElementById('total').textContent = 'Tổng: ' + total;&amp;#xA;});"/>
+                                                            Tag="// Khi cả price lẫn quantity thay đổi đều gọi callback này&#xA;window.hostLive.on('price', 'quantity', function(price, quantity) {&#xA;    var total = parseFloat(price || 0) * parseInt(quantity || 0);&#xA;    document.getElementById('total').textContent = 'Tổng: ' + total;&#xA;});"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                             Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex2"
                                                             ToolTip="Điền sẵn HTML/CSS/JS ví dụ price × quantity vào editor"/>
                                                 </StackPanel>
                                                 <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="window.__ac.onUpdate("/>
+                                                    <Run Text="window.hostLive.on("/>
                                                     <Run Text="'price', 'quantity'" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text=", function(price, qty) {"/>
                                                     <LineBreak/>
@@ -411,7 +411,7 @@
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                             Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
-                                                            Tag="function updateChart(price) { /* vẽ chart */ }&amp;#xA;function updateBadge(price) { /* cập nhật badge */ }&amp;#xA;function updateHistory(price) { /* thêm vào lịch sử */ }&amp;#xA;&amp;#xA;// Gọi 3 func trong 1 callback khi price cập nhật&amp;#xA;window.__ac.onUpdate('price', function(price) {&amp;#xA;    updateChart(price);&amp;#xA;    updateBadge(price);&amp;#xA;    updateHistory(price);&amp;#xA;});"/>
+                                                            Tag="function updateChart(price) { /* vẽ chart */ }&#xA;function updateBadge(price) { /* cập nhật badge */ }&#xA;function updateHistory(price) { /* thêm vào lịch sử */ }&#xA;&#xA;// Gọi 3 func trong 1 callback khi price cập nhật&#xA;window.hostLive.on('price', function(price) {&#xA;    updateChart(price);&#xA;    updateBadge(price);&#xA;    updateHistory(price);&#xA;});"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                             Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex3"
@@ -427,7 +427,7 @@
                                                     <LineBreak/>
                                                     <Run Text="function updateHistory(p) { /* lưu lịch sử */ }"/>
                                                     <LineBreak/><LineBreak/>
-                                                    <Run Text="window.__ac.onUpdate("/>
+                                                    <Run Text="window.hostLive.on("/>
                                                     <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text=", function(price) {"/>
                                                     <LineBreak/>
@@ -450,7 +450,7 @@
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                             Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
-                                                            Tag="setInterval(function() {&amp;#xA;    var p = window.__ac.live['price'];  // luôn là giá trị mới nhất&amp;#xA;    document.getElementById('out').textContent = p ?? '—';&amp;#xA;}, 500);"/>
+                                                            Tag="setInterval(function() {&#xA;    var p = window.hostLive.values['price'];  // luôn là giá trị mới nhất&#xA;    document.getElementById('out').textContent = p ?? '—';&#xA;}, 500);"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                             Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex4"
@@ -459,7 +459,7 @@
                                                 <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                                     <Run Text="setInterval(function() {"/>
                                                     <LineBreak/>
-                                                    <Run Text="  var p = window.__ac.live["/>
+                                                    <Run Text="  var p = window.hostLive.values["/>
                                                     <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text="];"/>
                                                     <LineBreak/>
@@ -478,22 +478,22 @@
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                             Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
-                                                            Tag="// 1) Gọi host tải file bằng raw curl&#xA;var rawCurl = &quot;curl --location 'https://assets.grok.com/.../generated_video.mp4?cache=1' --header 'Cookie: ...'&quot;;&#xA;var key = 'gid|https://assets.grok.com/...';&#xA;if (typeof acDownloadByCurl === 'function') {&#xA;  acDownloadByCurl(rawCurl, 'grok_video.mp4', key);&#xA;}&#xA;&#xA;// 2) Nhận kết quả tải xong từ host&#xA;window.addEventListener('__ac_curl_download_done', function (ev) {&#xA;  var d = (ev &amp;&amp; ev.detail) ? ev.detail : {};&#xA;  if (!d.ok) {&#xA;    console.log('Download fail:', d.error);&#xA;    return;&#xA;  }&#xA;  // d.localUrl: URL local dạng https://downloads.local/xxx.mp4 (phát được trong UI)&#xA;  // d.path: đường dẫn file thật trong Downloads\\Workflow_Downloads\\Videos&#xA;  document.getElementById('status').textContent = d.localUrl || d.path;&#xA;});"/>
+                                                            Tag="// 1) Gọi host tải file bằng raw curl&#xA;var rawCurl = &quot;curl --location 'https://assets.grok.com/.../generated_video.mp4?cache=1' --header 'Cookie: ...'&quot;;&#xA;var key = 'gid|https://assets.grok.com/...';&#xA;if (typeof hostCurl === 'function') {&#xA;  hostCurl(rawCurl, 'grok_video.mp4', key);&#xA;}&#xA;&#xA;// 2) Nhận kết quả tải xong từ host&#xA;window.addEventListener('hostCurlDone', function (ev) {&#xA;  var d = (ev &amp;&amp; ev.detail) ? ev.detail : {};&#xA;  if (!d.ok) {&#xA;    console.log('Download fail:', d.error);&#xA;    return;&#xA;  }&#xA;  // d.localUrl: URL local dạng https://downloads.local/xxx.mp4 (phát được trong UI)&#xA;  // d.path: đường dẫn file thật trong Downloads\\Workflow_Downloads\\Videos&#xA;  document.getElementById('status').textContent = d.localUrl || d.path;&#xA;});"/>
                                                 </StackPanel>
                                                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
                                                     Hàm host hỗ trợ:
-                                                    <Run Text=" acDownloadByCurl(rawCurl, fileName, downloadKey) " Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=" hostCurl(rawCurl, fileName, downloadKey) " Foreground="{DynamicResource WarningColor}"/>
                                                     và event
-                                                    <Run Text=" __ac_curl_download_done " Foreground="{DynamicResource WarningColor}"/>.
+                                                    <Run Text=" hostCurlDone " Foreground="{DynamicResource WarningColor}"/>.
                                                 </TextBlock>
                                                 <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                                     <Run Text="// Gọi tải file"/>
                                                     <LineBreak/>
-                                                    <Run Text="acDownloadByCurl(rawCurl, 'grok_video.mp4', 'gid|videoUrl');"/>
+                                                    <Run Text="hostCurl(rawCurl, 'grok_video.mp4', 'gid|videoUrl');"/>
                                                     <LineBreak/><LineBreak/>
                                                     <Run Text="// Nhận kết quả"/>
                                                     <LineBreak/>
-                                                    <Run Text="window.addEventListener('__ac_curl_download_done', function(ev) {"/>
+                                                    <Run Text="window.addEventListener('hostCurlDone', function(ev) {"/>
                                                     <LineBreak/>
                                                     <Run Text="  var d = ev.detail || {};"/>
                                                     <LineBreak/>
@@ -518,15 +518,15 @@
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                             Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
-                                                            Tag="// Input mapping gợi ý: key = datas (string JSON/object)&#xA;// Ví dụ datas: {&quot;8a85...733f&quot;:&quot;C:\\_DU_AN\\App_Desktop\\download_20260409_145008.mp4&quot;}&#xA;(function() {&#xA;  var currentGuildId = ''; // set từ outputGuildId hoặc từ UI của bạn&#xA;  var v = document.getElementById('previewVideo');&#xA;  if (!v) return;&#xA;&#xA;  function pickPathFromDatas(datas, gid) {&#xA;    if (!datas) return '';&#xA;    if (typeof datas === 'string') {&#xA;      try { datas = JSON.parse(datas); } catch (_) { return ''; }&#xA;    }&#xA;    if (!datas || typeof datas !== 'object') return '';&#xA;    var p = datas[gid];&#xA;    if (typeof p !== 'string') return '';&#xA;    return p.trim();&#xA;  }&#xA;&#xA;  function playLocalPath(localPath) {&#xA;    if (!localPath || typeof acResolveLocalPath !== 'function') return;&#xA;    var reqId = 'play_' + Date.now();&#xA;    function onResolved(ev) {&#xA;      var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;      if (String(d.requestId || '') !== reqId) return;&#xA;      window.removeEventListener('__ac_local_path_resolved', onResolved);&#xA;      if (!d.ok || !d.localUrl) return;&#xA;      // QUAN TRỌNG: dùng localUrl https://localfiles-*.local..., KHÔNG dùng file:///...&#xA;      v.src = d.localUrl;&#xA;      try { v.load(); } catch (_) {}&#xA;      var pp = v.play &amp;&amp; v.play();&#xA;      if (pp &amp;&amp; typeof pp.catch === 'function') pp.catch(function(){});&#xA;    }&#xA;    window.addEventListener('__ac_local_path_resolved', onResolved);&#xA;    acResolveLocalPath(localPath, reqId);&#xA;  }&#xA;&#xA;  if (window.__ac &amp;&amp; typeof window.__ac.onUpdate === 'function') {&#xA;    window.__ac.onUpdate('datas', function(datas) {&#xA;      var path = pickPathFromDatas(datas, currentGuildId);&#xA;      if (path) playLocalPath(path);&#xA;    });&#xA;  }&#xA;})();"/>
+                                                            Tag="// Input mapping gợi ý: key = datas (string JSON/object)&#xA;// Ví dụ datas: {&quot;8a85...733f&quot;:&quot;C:\\_DU_AN\\App_Desktop\\download_20260409_145008.mp4&quot;}&#xA;(function() {&#xA;  var currentGuildId = ''; // set từ outputGuildId hoặc từ UI của bạn&#xA;  var v = document.getElementById('previewVideo');&#xA;  if (!v) return;&#xA;&#xA;  function pickPathFromDatas(datas, gid) {&#xA;    if (!datas) return '';&#xA;    if (typeof datas === 'string') {&#xA;      try { datas = JSON.parse(datas); } catch (_) { return ''; }&#xA;    }&#xA;    if (!datas || typeof datas !== 'object') return '';&#xA;    var p = datas[gid];&#xA;    if (typeof p !== 'string') return '';&#xA;    return p.trim();&#xA;  }&#xA;&#xA;  function playLocalPath(localPath) {&#xA;    if (!localPath || typeof hostResolvePath !== 'function') return;&#xA;    var reqId = 'play_' + Date.now();&#xA;    function onResolved(ev) {&#xA;      var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;      if (String(d.requestId || '') !== reqId) return;&#xA;      window.removeEventListener('hostPathResolved', onResolved);&#xA;      if (!d.ok || !d.localUrl) return;&#xA;      // QUAN TRỌNG: dùng localUrl https://localfiles-*.local..., KHÔNG dùng file:///...&#xA;      v.src = d.localUrl;&#xA;      try { v.load(); } catch (_) {}&#xA;      var pp = v.play &amp;&amp; v.play();&#xA;      if (pp &amp;&amp; typeof pp.catch === 'function') pp.catch(function(){});&#xA;    }&#xA;    window.addEventListener('hostPathResolved', onResolved);&#xA;    hostResolvePath(localPath, reqId);&#xA;  }&#xA;&#xA;  if (window.hostLive &amp;&amp; typeof window.hostLive.on === 'function') {&#xA;    window.hostLive.on('datas', function(datas) {&#xA;      var path = pickPathFromDatas(datas, currentGuildId);&#xA;      if (path) playLocalPath(path);&#xA;    });&#xA;  }&#xA;})();"/>
                                                 </StackPanel>
                                                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
                                                     Quy trình đúng:
                                                     <Run Text=" datas[guid] => localPath tuyệt đối " Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text="→ gọi "/>
-                                                    <Run Text="acResolveLocalPath(localPath, reqId)" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="hostResolvePath(localPath, reqId)" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text=" → nhận event "/>
-                                                    <Run Text="__ac_local_path_resolved" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="hostPathResolved" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text=" với "/>
                                                     <Run Text="d.localUrl" Foreground="{DynamicResource WarningColor}"/>
                                                     <Run Text=" → gán vào "/>
@@ -542,9 +542,9 @@
                                                     <LineBreak/><LineBreak/>
                                                     <Run Text="// dùng localPath -> resolve -> localUrl -> video.src"/>
                                                     <LineBreak/>
-                                                    <Run Text="acResolveLocalPath(localPath, reqId);"/>
+                                                    <Run Text="hostResolvePath(localPath, reqId);"/>
                                                     <LineBreak/>
-                                                    <Run Text="// event __ac_local_path_resolved => d.localUrl"/>
+                                                    <Run Text="// event hostPathResolved => d.localUrl"/>
                                                 </TextBlock>
                                             </StackPanel>
                                         </Border>
@@ -557,7 +557,7 @@
                                                     <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
                                                             Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="CopySnippet_Click"
-                                                            Tag="// HTML&#xA;&lt;div class=&quot;card-media card-media-inline&quot;&gt;&#xA;  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;&#xA;&lt;/div&gt;&#xA;&#xA;// JS&#xA;var currentGuildId = (window.__ac &amp;&amp; window.__ac.live) ? (window.__ac.live.outputGuildId || '') : '';&#xA;window.__ac.onUpdate('datas', function(datas) {&#xA;  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }&#xA;  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';&#xA;  if (!localPath || typeof acResolveLocalPath !== 'function') return;&#xA;  var reqId = 'play_' + Date.now();&#xA;  window.addEventListener('__ac_local_path_resolved', function onR(ev) {&#xA;    var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;    if (String(d.requestId || '') !== reqId) return;&#xA;    window.removeEventListener('__ac_local_path_resolved', onR);&#xA;    if (!d.ok || !d.localUrl) return;&#xA;    var v = document.getElementById('previewVideo'); if (!v) return;&#xA;    v.src = d.localUrl; try { v.load(); } catch (_) {}&#xA;  });&#xA;  acResolveLocalPath(localPath, reqId);&#xA;});&#xA;&#xA;// CSS&#xA;.card-media-inline { position: relative; }&#xA;.card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
+                                                            Tag="// HTML&#xA;&lt;div class=&quot;card-media card-media-inline&quot;&gt;&#xA;  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;&#xA;&lt;/div&gt;&#xA;&#xA;// JS&#xA;var currentGuildId = (window.hostLive &amp;&amp; window.hostLive.values) ? (window.hostLive.values.outputGuildId || '') : '';&#xA;window.hostLive.on('datas', function(datas) {&#xA;  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }&#xA;  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';&#xA;  if (!localPath || typeof hostResolvePath !== 'function') return;&#xA;  var reqId = 'play_' + Date.now();&#xA;  window.addEventListener('hostPathResolved', function onR(ev) {&#xA;    var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;    if (String(d.requestId || '') !== reqId) return;&#xA;    window.removeEventListener('hostPathResolved', onR);&#xA;    if (!d.ok || !d.localUrl) return;&#xA;    var v = document.getElementById('previewVideo'); if (!v) return;&#xA;    v.src = d.localUrl; try { v.load(); } catch (_) {}&#xA;  });&#xA;  hostResolvePath(localPath, reqId);&#xA;});&#xA;&#xA;// CSS&#xA;.card-media-inline { position: relative; }&#xA;.card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
                                                     <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
                                                             Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
                                                             Click="ApplyExample_Click" Tag="ex_grok_local"
@@ -568,7 +568,7 @@
                                                     <LineBreak/>
                                                     2) Trong JS đọc datas theo guildId hiện tại
                                                     <LineBreak/>
-                                                    3) Gọi acResolveLocalPath rồi set video.src = d.localUrl
+                                                    3) Gọi hostResolvePath rồi set video.src = d.localUrl
                                                     <LineBreak/>
                                                     4) CSS cho video fill card
                                                 </TextBlock>
@@ -589,25 +589,25 @@
                                                     <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
                                                         <Run Text="// JS (giống flow resolve trong grok.js)"/>
                                                         <LineBreak/>
-                                                        <Run Text="var currentGuildId = (window.__ac &amp;&amp; window.__ac.live) ? (window.__ac.live.outputGuildId || '') : '';"/>
+                                                        <Run Text="var currentGuildId = (window.hostLive &amp;&amp; window.hostLive.values) ? (window.hostLive.values.outputGuildId || '') : '';"/>
                                                         <LineBreak/>
-                                                        <Run Text="window.__ac.onUpdate('datas', function(datas) {"/>
+                                                        <Run Text="window.hostLive.on('datas', function(datas) {"/>
                                                         <LineBreak/>
                                                         <Run Text="  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }"/>
                                                         <LineBreak/>
                                                         <Run Text="  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';"/>
                                                         <LineBreak/>
-                                                        <Run Text="  if (!localPath || typeof acResolveLocalPath !== 'function') return;"/>
+                                                        <Run Text="  if (!localPath || typeof hostResolvePath !== 'function') return;"/>
                                                         <LineBreak/>
                                                         <Run Text="  var reqId = 'play_' + Date.now();"/>
                                                         <LineBreak/>
-                                                        <Run Text="  window.addEventListener('__ac_local_path_resolved', function onR(ev) {"/>
+                                                        <Run Text="  window.addEventListener('hostPathResolved', function onR(ev) {"/>
                                                         <LineBreak/>
                                                         <Run Text="    var d = ev &amp;&amp; ev.detail ? ev.detail : {};"/>
                                                         <LineBreak/>
                                                         <Run Text="    if (String(d.requestId || '') !== reqId) return;"/>
                                                         <LineBreak/>
-                                                        <Run Text="    window.removeEventListener('__ac_local_path_resolved', onR);"/>
+                                                        <Run Text="    window.removeEventListener('hostPathResolved', onR);"/>
                                                         <LineBreak/>
                                                         <Run Text="    if (!d.ok || !d.localUrl) return;"/>
                                                         <LineBreak/>
@@ -617,7 +617,7 @@
                                                         <LineBreak/>
                                                         <Run Text="  });"/>
                                                         <LineBreak/>
-                                                        <Run Text="  acResolveLocalPath(localPath, reqId);"/>
+                                                        <Run Text="  hostResolvePath(localPath, reqId);"/>
                                                         <LineBreak/>
                                                         <Run Text="});"/>
                                                     </TextBlock>
@@ -1137,7 +1137,7 @@
                                     <TextBlock Text="📘 Hướng dẫn sử dụng window.hostAsync trong JS" Foreground="{DynamicResource PrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                     <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
                                         <Run Text="Khác với "/>
-                                        <Run Text="window.__ac" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
+                                        <Run Text="window.hostLive" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
                                         <Run Text=" (dùng cho Input Mappings — tab Logic), "/>
                                         <Run Text="window.hostAsync" Foreground="{DynamicResource AccentBrush}" FontFamily="Consolas" FontWeight="SemiBold"/>
                                         <Run Text=" chuyên nhận dữ liệu từ các nhánh async task song song. Mỗi nhánh xong sẽ push kết quả realtime — không cần polling."/>
@@ -1199,7 +1199,7 @@
                                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11">
                                                 <Run Text="• Dữ liệu được cache — nhấn F5/reload page sẽ tự push lại tất cả data đã nhận."/>
                                                 <LineBreak/>
-                                                <Run Text="• window.hostAsync hoạt động ĐỘC LẬP với window.__ac (Input Mappings)."/>
+                                                <Run Text="• window.hostAsync hoạt động ĐỘC LẬP với window.hostLive (Input Mappings)."/>
                                                 <LineBreak/>
                                                 <Run Text="• Nếu 'Key nhận' để trống → dùng tên key nguồn của node."/>
                                                 <LineBreak/>
@@ -1851,11 +1851,11 @@
                                     <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.hostLive.on(function(values){...})"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận toàn bộ live object"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="var v = values['price'];"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.hostLive.on(function(values){ var v = values['price']; });"/></Grid>
                                     <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="window.hostLive.values"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đọc state hiện tại (polling/fallback)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="setInterval(()=>{ out.textContent = window.hostLive.values.price; },500);"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="setInterval(function(){ out.textContent = window.hostLive.values['price']; }, 500);"/></Grid>
                                     <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostResolvePath(localPath, requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Đổi local path -&gt; localUrl https://localfiles-*.local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="hostResolvePath('C:\path\video.mp4', 'req1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="hostResolvePath('C:\\path\\video.mp4', 'req1');"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostLocalPathResolved (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận kết quả resolve path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostLocalPathResolved', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostPathResolved (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận kết quả resolve path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostPathResolved', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
                                     <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostCurl(rawCurl, fileName, key)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Host tải file từ curl và lưu local"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="hostCurl(curl, 'a.mp4', 'k1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="hostCurl(rawCurl, 'a.mp4', 'k1');"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostCurlDownloadCompleted (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận trạng thái download + localUrl/path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostCurlDownloadCompleted', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostCurlDone (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận trạng thái download + localUrl/path"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) video.src = d.localUrl;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostCurlDone', function(ev){ var d = ev.detail || {}; if (d.ok) video.src = d.localUrl; });"/></Grid>
                                     <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostPickImages(requestId)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Mở native picker để lấy ảnh + full path tuyệt đối"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="hostPickImages('img_req_1');"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="hostPickImages('img_req_1');"/></Grid>
-                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostImageFilesPicked (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận danh sách ảnh host đã chọn (có path + dataUrl)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) pending = d.files;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostImageFilesPicked', function(ev){ var d = ev.detail || {}; if (d.ok) { console.log(d.files); } });"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostImagesPicked (event)"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Nhận danh sách ảnh host đã chọn (có path + dataUrl)"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="if (d.ok) pending = d.files;"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="window.addEventListener('hostImagesPicked', function(ev){ var d = ev.detail || {}; if (d.ok) { console.log(d.files); } });"/></Grid>
                                     <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostSubmit()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Yêu cầu host đọc DOM theo PARAM"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> hostSubmit();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ hostSubmit(); };"/></Grid>
                                     <Grid Margin="0,0,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Foreground="{DynamicResource WarningColor}" TextWrapping="Wrap" Text="hostStart()"/><TextBlock Grid.Column="1" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="Kích hoạt chạy workflow"/><TextBlock Grid.Column="2" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="button.onclick = ()=> hostStart();"/><Button Grid.Column="3" Margin="8,0,0,0" Content="Copy" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click" Tag="button.onclick = function(){ hostStart(); };"/></Grid>
                                 </StackPanel>
@@ -1878,7 +1878,7 @@
                                         <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Nhận realtime từ datas/price rồi render label/value."/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                             <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
-                                                    Tag="(function(){ var label=document.getElementById('label'); var value=document.getElementById('value'); if(window.hostLive&amp;&amp;typeof window.hostLive.on==='function'){ window.hostLive.on('price','datas', function(price,datas){ if(label) label.textContent='Realtime'; if(value) value.textContent=(price!=null&amp;&amp;price!=='')?String(price):JSON.stringify(datas||{}); }); } })();"/>
+                                                    Tag="// HTML gợi ý: &lt;div id='label'&gt;&lt;/div&gt; + &lt;div id='value'&gt;&lt;/div&gt;&#xA;(function(){&#xA;  var label = document.getElementById('label');&#xA;  var value = document.getElementById('value');&#xA;  if (window.hostLive &amp;&amp; typeof window.hostLive.on === 'function') {&#xA;    // Nhận realtime từ InputMappings&#xA;    window.hostLive.on('price','datas', function(price,datas){&#xA;      if (label) label.textContent = 'Realtime';&#xA;      if (value) value.textContent = (price != null &amp;&amp; price !== '') ? String(price) : JSON.stringify(datas || {});&#xA;    });&#xA;  }&#xA;})();"/>
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_realtime"/>
                                         </StackPanel>
                                     </Grid>
@@ -1893,7 +1893,7 @@
                                         <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Resolve local path sang localUrl rồi gán cho video (an toàn WebView2)."/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                             <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
-                                                    Tag="(function(){ var video=document.getElementById('vid'); var req='req_'+Date.now(); window.addEventListener('hostPathResolved', function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.requestId!==req) return; if(d.ok&amp;&amp;d.localUrl&amp;&amp;video){ video.src=d.localUrl; video.load(); } }); if(typeof hostResolvePath==='function'){ hostResolvePath('C:\\\\path\\\\video.mp4', req); } })();"/>
+                                                    Tag="// HTML gợi ý: &lt;video id='vid' controls playsinline&gt;&lt;/video&gt;&#xA;(function(){&#xA;  var video = document.getElementById('vid');&#xA;  var req = 'req_' + Date.now();&#xA;  window.addEventListener('hostPathResolved', function(ev){&#xA;    var d = (ev &amp;&amp; ev.detail) || {};&#xA;    if (d.requestId !== req) return;&#xA;    if (d.ok &amp;&amp; d.localUrl &amp;&amp; video) {&#xA;      video.src = d.localUrl;&#xA;      video.load();&#xA;    }&#xA;  });&#xA;  if (typeof hostResolvePath === 'function') {&#xA;    // localPath thật từ node input hoặc textbox&#xA;    hostResolvePath('C:\\\\path\\\\video.mp4', req);&#xA;  }&#xA;})();"/>
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_local_video"/>
                                         </StackPanel>
                                     </Grid>
@@ -1908,7 +1908,7 @@
                                         <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Ghi dữ liệu vào DOM rồi gọi hostSubmit + hostStart."/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                             <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
-                                                    Tag="(function(){ var btn=document.getElementById('btnRun'); var inp=document.getElementById('noteInput'); var out=document.getElementById('resultBox'); if(!btn) return; btn.addEventListener('click', function(){ if(out&amp;&amp;inp) out.textContent=inp.value||''; if(typeof hostSubmit==='function') hostSubmit(); if(typeof hostStart==='function') hostStart(); }); })();"/>
+                                                    Tag="// HTML gợi ý: input#noteInput + div#resultBox + button#btnRun&#xA;(function(){&#xA;  var btn = document.getElementById('btnRun');&#xA;  var inp = document.getElementById('noteInput');&#xA;  var out = document.getElementById('resultBox');&#xA;  if (!btn) return;&#xA;  btn.addEventListener('click', function(){&#xA;    // Đưa dữ liệu vào DOM để host đọc theo PARAM&#xA;    if (out &amp;&amp; inp) out.textContent = inp.value || '';&#xA;    // Gọi host đọc DOM&#xA;    if (typeof hostSubmit === 'function') hostSubmit();&#xA;    // (tuỳ chọn) chạy workflow tiếp&#xA;    if (typeof hostStart === 'function') hostStart();&#xA;  });&#xA;})();"/>
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_submit_form"/>
                                         </StackPanel>
                                     </Grid>
@@ -1922,7 +1922,7 @@
                                         <TextBlock Grid.Column="1" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Text="Ví dụ đầy đủ tên mới: hostLive + hostAsync + host* + tab1Seq/tab1Par."/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                             <Button Content="Copy template" Height="24" Padding="8,0" Cursor="Hand" Click="CopyApiDocRow_Click"
-                                                    Tag="(function(){ var req='req_'+Date.now(); if(window.hostLive&amp;&amp;typeof window.hostLive.on==='function'){ window.hostLive.on('datas',function(datas){ console.log('live datas',datas); }); } if(window.hostAsync&amp;&amp;typeof window.hostAsync.on==='function'){ window.hostAsync.on('jobResult',function(v){ console.log('async jobResult',v); }); } window.addEventListener('hostPathResolved',function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.requestId===req&amp;&amp;d.ok) console.log('resolved',d.localUrl); }); window.addEventListener('hostCurlDone',function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.ok) console.log('curl done',d.localUrl||d.path); }); window.addEventListener('hostImagesPicked',function(ev){ var d=(ev&amp;&amp;ev.detail)||{}; if(d.ok) console.log('picked',d.files); }); if(typeof hostResolvePath==='function') hostResolvePath('C:\\\\path\\\\video.mp4',req); if(typeof hostCurl==='function') hostCurl('curl --location &quot;https://example.com/a.mp4&quot;','a.mp4','k1'); if(typeof hostPickImages==='function') hostPickImages('img_req_1'); if(typeof hostSubmit==='function') hostSubmit(); if(typeof hostStart==='function') hostStart(); if(typeof tab1Seq==='function') tab1Seq('console.log(&quot;tab1 seq&quot;)'); if(typeof tab1Par==='function') tab1Par('console.log(&quot;tab1 par&quot;)'); })();"/>
+                                                    Tag="// FULL NEW API DEMO&#xA;// HTML gợi ý: video#vid + input#localImagePath + input#localVideoPath&#xA;(function(){&#xA;  var req = 'req_' + Date.now();&#xA;&#xA;  // 1) Live data từ InputMappings&#xA;  if (window.hostLive &amp;&amp; typeof window.hostLive.on === 'function') {&#xA;    window.hostLive.on('datas', function(datas){&#xA;      console.log('live datas', datas);&#xA;    });&#xA;  }&#xA;&#xA;  // 2) Async data từ Async Data tab&#xA;  if (window.hostAsync &amp;&amp; typeof window.hostAsync.on === 'function') {&#xA;    window.hostAsync.on('jobResult', function(v){&#xA;      console.log('async jobResult', v);&#xA;    });&#xA;  }&#xA;&#xA;  // 3) Event host trả về&#xA;  window.addEventListener('hostPathResolved', function(ev){&#xA;    var d = (ev &amp;&amp; ev.detail) || {};&#xA;    if (d.requestId === req &amp;&amp; d.ok) console.log('resolved:', d.localUrl);&#xA;  });&#xA;  window.addEventListener('hostCurlDone', function(ev){&#xA;    var d = (ev &amp;&amp; ev.detail) || {};&#xA;    if (d.ok) console.log('curl done:', d.localUrl || d.path);&#xA;  });&#xA;  window.addEventListener('hostImagesPicked', function(ev){&#xA;    var d = (ev &amp;&amp; ev.detail) || {};&#xA;    if (d.ok) console.log('picked images:', d.files);&#xA;  });&#xA;&#xA;  // 4) Gọi host API&#xA;  if (typeof hostResolvePath === 'function') hostResolvePath('C:\\\\path\\\\video.mp4', req);&#xA;  if (typeof hostCurl === 'function') hostCurl('curl --location &quot;https://example.com/a.mp4&quot;', 'a.mp4', 'k1');&#xA;  if (typeof hostPickImages === 'function') hostPickImages('img_req_1');&#xA;  if (typeof hostSubmit === 'function') hostSubmit();&#xA;  if (typeof hostStart === 'function') hostStart();&#xA;&#xA;  // 5) Tab1 bridge (UseWebTab=true)&#xA;  if (typeof tab1Seq === 'function') tab1Seq('console.log(&quot;tab1 seq&quot;)');&#xA;  if (typeof tab1Par === 'function') tab1Par('console.log(&quot;tab1 par&quot;)');&#xA;})();"/>
                                             <Button Content="Apply template" Height="24" Padding="8,0" Cursor="Hand" Margin="6,0,0,0" Click="ApplyApiTemplate_Click" Tag="tpl_full_new_api"/>
                                         </StackPanel>
                                     </Grid>

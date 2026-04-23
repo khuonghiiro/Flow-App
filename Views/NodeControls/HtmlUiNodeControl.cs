@@ -407,7 +407,7 @@ namespace FlowMy.Views.NodeControls
                 _sleepModeTimer.Start();
             }
 
-            // ✅ Sequential task chain cho JS injection Tab2→Tab1 (__tab1_exec_seq)
+            // ✅ Sequential task chain cho JS injection Tab2→Tab1 (tab1Seq)
             Task _tab1SeqTask = Task.CompletedTask;
 
             string GetTopBarBaseTitle() => node.UseWebTab ? "Web + HTML UI" : "HTML UI";
@@ -720,37 +720,50 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
-                // ── Inject __acAsync runtime TRƯỚC user JS để window.__acAsync.onReceive() hoạt động ──
+                // ── Inject __acAsync runtime TRƯỚC user JS (normalize, không phá bridge đã có) ──
                 {
                     var asyncRuntimeTag = @"
     <script>
     (function() {
-      var _data = {};
-      var _keyCallbacks = {};
-      var _allCallbacks = [];
-      window.__acAsync = {
-        data: _data,
-        onReceive: function(keyOrFn, fn) {
-          if (typeof keyOrFn === 'function') {
-            _allCallbacks.push(keyOrFn);
-          } else if (typeof keyOrFn === 'string' && typeof fn === 'function') {
-            if (!_keyCallbacks[keyOrFn]) _keyCallbacks[keyOrFn] = [];
-            _keyCallbacks[keyOrFn].push(fn);
-          }
+      window.__acAsync = window.__acAsync || {};
+      window.__acAsync.data = window.__acAsync.data || {};
+      window.__acAsync._callbacks = Array.isArray(window.__acAsync._callbacks) ? window.__acAsync._callbacks : [];
+
+      window.__acAsync.onReceive = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var cb = args[args.length - 1];
+        if (typeof cb !== 'function') return;
+        if (args.length === 1) {
+          window.__acAsync._callbacks.push({ keys: [], cb: cb });
+          setTimeout(function() { try { cb(window.__acAsync.data); } catch(e) {} }, 0);
+        } else {
+          var keys = args.slice(0, -1);
+          window.__acAsync._callbacks.push({ keys: keys, cb: cb });
+          var vals0 = keys.map(function(k) { return window.__acAsync.data[k]; });
+          setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
         }
       };
+
       window.__acAsyncPush = function(key, value) {
-        _data[key] = value;
-        var cbs = _keyCallbacks[key];
-        if (cbs) {
-          for (var i = 0; i < cbs.length; i++) {
-            try { cbs[i](value); } catch (e) { console.error('__acAsync callback error:', e); }
-          }
-        }
-        for (var j = 0; j < _allCallbacks.length; j++) {
-          try { _allCallbacks[j](JSON.parse(JSON.stringify(_data))); } catch (e) { console.error('__acAsync allData error:', e); }
+        window.__acAsync.data[key] = value;
+        var cbs = window.__acAsync._callbacks || [];
+        for (var i = 0; i < cbs.length; i++) {
+          var sub = cbs[i];
+          try {
+            if (!sub || typeof sub.cb !== 'function') continue;
+            if (!Array.isArray(sub.keys) || sub.keys.length === 0) {
+              sub.cb(window.__acAsync.data);
+            } else if (sub.keys.indexOf(key) >= 0) {
+              var vals = sub.keys.map(function(k) { return window.__acAsync.data[k]; });
+              sub.cb.apply(null, vals);
+            }
+          } catch (e) { console.error('__acAsync callback error:', e); }
         }
       };
+
+      window.hostAsync = window.hostAsync || {};
+      window.hostAsync.on = window.__acAsync.onReceive;
+      window.hostAsync.values = window.__acAsync.data;
     })();
     </script>";
                     if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
@@ -837,7 +850,7 @@ namespace FlowMy.Views.NodeControls
 
                     var htmlContent = BuildHtmlContent();
 
-                    // Inject helper JS: acSubmit() -> host đọc DOM theo Params
+                    // Inject helper JS: hostSubmit() -> host đọc DOM theo Params
                     // Helper này được append cuối HTML để user có thể gọi trực tiếp trong onclick.
                     var mediaRootsJson = BuildMediaSearchRootsJson();
                     var helperScript = $@"
@@ -909,28 +922,13 @@ namespace FlowMy.Views.NodeControls
     }} catch (_) {{}}
   }}
 
-  // Backward compatibility aliases (old API names)
-  // Short API (preferred)
+  // Expose only new API names
   window.hostSubmit = hostSubmit;
   window.hostStart = hostStart;
   window.hostCurl = hostCurl;
   window.hostResolvePath = hostResolvePath;
   window.hostResolveRef = hostResolveRef;
   window.hostPickImages = hostPickImages;
-
-  // Backward compatibility aliases (legacy + previous naming)
-  window.requestHostSubmitOutputs = hostSubmit;
-  window.requestHostStartWorkflow = hostStart;
-  window.requestHostDownloadFileByCurl = hostCurl;
-  window.requestHostResolveLocalPathToUrl = hostResolvePath;
-  window.requestHostResolvePlayableRef = hostResolveRef;
-  window.requestHostPickImageFiles = hostPickImages;
-  window.acSubmit = hostSubmit;
-  window.acStartWorkflow = hostStart;
-  window.acDownloadByCurl = hostCurl;
-  window.acResolveLocalPath = hostResolvePath;
-  window.acResolvePlayableRef = hostResolveRef;
-  window.acPickImageFiles = hostPickImages;
 
   // ✅ Catch F5 / Ctrl+R to reload via C# (capture mode for better reliability)
   function __acHandleReloadHotkey(e) {{
@@ -2400,7 +2398,7 @@ namespace FlowMy.Views.NodeControls
                     // Note: AcceleratorKeyPressed không có sẵn trên CoreWebView2 class ở version này hoặc cần cast sang Controller.
                     // Thay vào đó, ta inject JS để bắt keydown và gửi message về C#.
 
-                    // Lắng nghe message từ JS (acSubmit hoặc custom)
+                    // Lắng nghe message từ JS (hostSubmit hoặc custom)
                     core.WebMessageReceived += async (_, args) =>
                     {
                         try
@@ -2631,10 +2629,7 @@ namespace FlowMy.Views.NodeControls
                                                 localUrl
                                             });
                                             var jsNotify =
-                                                "window.dispatchEvent(new CustomEvent('__ac_curl_download_done',{detail:" +
-                                                payload +
-                                                "}));" +
-                                                "window.dispatchEvent(new CustomEvent('hostCurlDownloadCompleted',{detail:" +
+                                                "window.dispatchEvent(new CustomEvent('hostCurlDone',{detail:" +
                                                 payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
@@ -2718,10 +2713,7 @@ namespace FlowMy.Views.NodeControls
                                                 error = errMsg
                                             });
                                             var jsNotify =
-                                                "window.dispatchEvent(new CustomEvent('__ac_image_files_picked',{detail:" +
-                                                payload +
-                                                "}));" +
-                                                "window.dispatchEvent(new CustomEvent('hostImageFilesPicked',{detail:" +
+                                                "window.dispatchEvent(new CustomEvent('hostImagesPicked',{detail:" +
                                                 payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
@@ -2792,10 +2784,7 @@ namespace FlowMy.Views.NodeControls
                                                 error = errMsg
                                             });
                                             var jsNotify =
-                                                "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" +
-                                                payload +
-                                                "}));" +
-                                                "window.dispatchEvent(new CustomEvent('hostLocalPathResolved',{detail:" +
+                                                "window.dispatchEvent(new CustomEvent('hostPathResolved',{detail:" +
                                                 payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
@@ -3011,10 +3000,7 @@ namespace FlowMy.Views.NodeControls
                                                 error = errMsg
                                             });
                                             var jsNotify =
-                                                "window.dispatchEvent(new CustomEvent('__ac_local_path_resolved',{detail:" +
-                                                payload +
-                                                "}));" +
-                                                "window.dispatchEvent(new CustomEvent('hostLocalPathResolved',{detail:" +
+                                                "window.dispatchEvent(new CustomEvent('hostPathResolved',{detail:" +
                                                 payload +
                                                 "}));";
                                             await webView.Dispatcher.InvokeAsync(async () =>
@@ -3542,9 +3528,6 @@ namespace FlowMy.Views.NodeControls
   window.hostLive = window.hostLive || {};
   window.hostLive.on = window.__ac.onUpdate;
   window.hostLive.values = window.__ac.live;
-  window.hostLiveData = window.hostLiveData || {};
-  window.hostLiveData.onUpdate = window.__ac.onUpdate;
-  window.hostLiveData.values = window.__ac.live;
 })();
 ";
                     try
@@ -3563,6 +3546,9 @@ namespace FlowMy.Views.NodeControls
   window.__acAsyncReady = true;
   window.__acAsync = { data: {}, _callbacks: [] };
   window.__acAsync.onReceive = function() {
+    window.__acAsync = window.__acAsync || {};
+    window.__acAsync.data = window.__acAsync.data || {};
+    window.__acAsync._callbacks = Array.isArray(window.__acAsync._callbacks) ? window.__acAsync._callbacks : [];
     var args = Array.prototype.slice.call(arguments);
     var cb = args[args.length - 1];
     if (typeof cb !== 'function') return;
@@ -3609,9 +3595,6 @@ namespace FlowMy.Views.NodeControls
   window.hostAsync = window.hostAsync || {};
   window.hostAsync.on = window.__acAsync.onReceive;
   window.hostAsync.values = window.__acAsync.data;
-  window.hostAsyncData = window.hostAsyncData || {};
-  window.hostAsyncData.onReceive = window.__acAsync.onReceive;
-  window.hostAsyncData.values = window.__acAsync.data;
 })();
 ";
                     try
@@ -3631,34 +3614,26 @@ namespace FlowMy.Views.NodeControls
   // Cờ để Tab2 biết có thể sử dụng Tab1 WebView2 hay không
   window.__tab1_available = " + (node.UseWebTab ? "true" : "false") + @";
   // Sequential: request2 đợi request1 hoàn thành rồi mới chạy
-  window.__tab1_exec_seq = function(js) {
+  window.tab1Seq = function(js) {
     if (window.chrome && window.chrome.webview)
       window.chrome.webview.postMessage({ type: 'tab1_exec', js: js, mode: 'seq' });
   };
   // Parallel: các request chạy đồng thời, không đợi nhau
-  window.__tab1_exec_par = function(js) {
+  window.tab1Par = function(js) {
     if (window.chrome && window.chrome.webview)
       window.chrome.webview.postMessage({ type: 'tab1_exec', js: js, mode: 'par' });
   };
-  window.tab1Seq = window.__tab1_exec_seq;
-  window.tab1Par = window.__tab1_exec_par;
-  window.runInTab1Sequential = window.__tab1_exec_seq;
-  window.runInTab1Parallel = window.__tab1_exec_par;
 
   // Sequential (return): chạy trong Tab1 và trả kết quả về Tab2 qua __tab1_job_resolve/__tab1_job_reject
-  window.__tab1_exec_seq_ret = function(jobId, js, timeoutMs) {
+  window.tab1SeqRet = function(jobId, js, timeoutMs) {
     if (window.chrome && window.chrome.webview)
       window.chrome.webview.postMessage({ type: 'tab1_exec_ret', jobId: jobId, js: js, mode: 'seq', timeoutMs: timeoutMs });
   };
   // Parallel (return)
-  window.__tab1_exec_par_ret = function(jobId, js, timeoutMs) {
+  window.tab1ParRet = function(jobId, js, timeoutMs) {
     if (window.chrome && window.chrome.webview)
       window.chrome.webview.postMessage({ type: 'tab1_exec_ret', jobId: jobId, js: js, mode: 'par', timeoutMs: timeoutMs });
   };
-  window.tab1SeqRet = window.__tab1_exec_seq_ret;
-  window.tab1ParRet = window.__tab1_exec_par_ret;
-  window.runInTab1SequentialWithResult = window.__tab1_exec_seq_ret;
-  window.runInTab1ParallelWithResult = window.__tab1_exec_par_ret;
 })();";
                     try { await core.AddScriptToExecuteOnDocumentCreatedAsync(tab1BridgeScript); } catch { }
 
