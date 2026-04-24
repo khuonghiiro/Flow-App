@@ -89,12 +89,20 @@ namespace FlowMy.Views
 
         private void CanvasSettingsPopupButton_Click(object sender, RoutedEventArgs e)
         {
-            var current = BuildCurrentCanvasToolbarPreferences();
+            var current = IsDebugReopenSession
+                ? (GetDebugCanvasPreferences() ?? BuildCurrentCanvasToolbarPreferences())
+                : BuildCurrentCanvasToolbarPreferences();
             var dialog = new CanvasDisplaySettingsDialog(current)
             {
                 Owner = this
             };
-            dialog.PreferencesChanged += preferences => ApplyCanvasToolbarPreferences(preferences, saveToDisk: true);
+            dialog.PreferencesChanged += preferences =>
+            {
+                var persistToReleaseProfile = !IsDebugReopenSession;
+                ApplyCanvasToolbarPreferences(preferences, saveToDisk: persistToReleaseProfile);
+                if (IsDebugReopenSession)
+                    SetDebugCanvasPreferences(preferences);
+            };
             dialog.ShowDialog();
         }
 
@@ -514,6 +522,11 @@ namespace FlowMy.Views
 
         internal void ApplyCanvasToolbarPreferences()
         {
+            if (IsDebugReopenSession && GetDebugCanvasPreferences() != null)
+            {
+                ApplyCanvasToolbarPreferences(GetDebugCanvasPreferences()!, saveToDisk: false);
+                return;
+            }
             ApplyCanvasToolbarPreferences(CanvasToolbarPreferencesStore.Load(), saveToDisk: false);
         }
 

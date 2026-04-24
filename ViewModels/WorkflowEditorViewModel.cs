@@ -3,6 +3,7 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
+using FlowMy.Services.Interaction;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.VisualBasic;
@@ -70,6 +71,10 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(DeleteNodeCommand))]
         private WorkflowNode? selectedNode;
+
+        [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(DeleteNodeCommand))]
+        private bool isDebugReadOnlyMode;
 
         [ObservableProperty]
         private string currentWorkflowName = "";
@@ -2254,6 +2259,18 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         public void SaveWorkflow()
         {
+            if (IsDebugReadOnlyMode)
+            {
+                ToastNotificationService.ShowToast(
+                    "Debug mode",
+                    "Đang ở chế độ debug, không thể lưu thay đổi.",
+                    durationSeconds: 3,
+                    titleColorKey: "TextOnWarningBrush",
+                    contentColorKey: "TextOnWarningBrush",
+                    backgroundColorKey: "WarningBrush",
+                    backgroundOpacity: 0.95);
+                return;
+            }
             SaveWorkflowInternal(promptForName: true);
         }
 
@@ -2262,6 +2279,8 @@ namespace FlowMy.ViewModels
         /// </summary>
         public void SaveWorkflowSilently()
         {
+            if (IsDebugReadOnlyMode)
+                return;
             SaveWorkflowInternal(promptForName: false);
         }
 
@@ -2270,6 +2289,18 @@ namespace FlowMy.ViewModels
         /// </summary>
         public bool TrySaveFromEditorShortcut()
         {
+            if (IsDebugReadOnlyMode)
+            {
+                ToastNotificationService.ShowToast(
+                    "Debug mode",
+                    "Đang ở chế độ debug, không thể lưu thay đổi.",
+                    durationSeconds: 3,
+                    titleColorKey: "TextOnWarningBrush",
+                    contentColorKey: "TextOnWarningBrush",
+                    backgroundColorKey: "WarningBrush",
+                    backgroundOpacity: 0.95);
+                return false;
+            }
             if (!string.IsNullOrWhiteSpace(CurrentWorkflowName) && SavedWorkflows.Contains(CurrentWorkflowName))
                 return SaveWorkflowInternal(promptForName: false);
             return SaveWorkflowInternal(promptForName: true);
@@ -3241,6 +3272,7 @@ namespace FlowMy.ViewModels
 
         private bool CanDeleteNode()
         {
+            if (IsDebugReadOnlyMode) return false;
             if (SelectedNode == null) return false;
             if ((SelectedNode.Type == NodeType.Start || SelectedNode.Type == NodeType.End) &&
                 SelectedNode.IsDefaultSampleStartEnd)

@@ -3885,14 +3885,18 @@ window.hostAsync.values = window.__acAsync.data;
     {
         try
         {
-            var brush = ResolveWidgetAccentBrush();
-            Icon = BuildTaskbarIcon(brush, Config.TaskbarIconShape, Config.TaskbarIconSize);
+            var accentBrush = ResolveWidgetAccentBrush();
+            var iconBrush = ResolveWidgetIconBrush();
+            Icon = BuildTaskbarIcon(accentBrush, iconBrush, Config.TaskbarIconShape, Config.TaskbarIconSize);
         }
         catch { }
     }
 
     private Brush ResolveWidgetAccentBrush()
     {
+        if (ParseHexBrush(Config.IdleBackgroundColor) is SolidColorBrush idleBackground && idleBackground.Color.A > 0)
+            return idleBackground;
+
         if (_node.NodeBrush is SolidColorBrush nb && nb.Color.A > 0)
             return nb;
 
@@ -3905,20 +3909,30 @@ window.hostAsync.values = window.__acAsync.data;
         return Brushes.DodgerBlue;
     }
 
-    private ImageSource BuildTaskbarIcon(Brush accentBrush, WidgetIdleShape shape, double iconSize)
+    private Brush ResolveWidgetIconBrush()
+    {
+        if (ParseHexBrush(Config.IdleForegroundColor) is SolidColorBrush idleForeground && idleForeground.Color.A > 0)
+            return idleForeground;
+        if (TryFindResource("TextOnPrimaryBrush") is SolidColorBrush textOnPrimary)
+            return textOnPrimary;
+        return Brushes.White;
+    }
+
+    private ImageSource BuildTaskbarIcon(Brush accentBrush, Brush iconBrush, WidgetIdleShape shape, double iconSize)
     {
         const int size = 64;
         var radius = Math.Max(8, Math.Min(28, iconSize));
         var center = new Point(size / 2d, size / 2d);
+        var iconColor = iconBrush is SolidColorBrush iconSolid ? iconSolid.Color : Colors.White;
         var iconName = Config.IdleIconText;
         var iconDrawing = FlowMy.IconResources.IconExists(iconName)
-            ? FlowMy.IconResources.GetSvgImage(iconName, Colors.White)?.Drawing
+            ? FlowMy.IconResources.GetSvgImage(iconName, iconColor)?.Drawing
             : null;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
             dc.DrawRoundedRectangle(Brushes.Transparent, null, new Rect(0, 0, size, size), 0, 0);
-            var pen = new Pen(Brushes.White, 3);
+            var pen = new Pen(iconBrush, 3);
             switch (shape)
             {
                 case WidgetIdleShape.Square:

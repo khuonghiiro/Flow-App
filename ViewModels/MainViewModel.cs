@@ -385,6 +385,8 @@ namespace FlowMy.ViewModels
                         workflowWindow.DisableHeadlessCanvasOptimizationForDebug();
                         workflowWindow.ApplyLowestRenderPresetForDebugReopen();
                         workflowWindow.PrepareForInteractiveDebugSession();
+                        workflowWindow.EnterDebugReopenMode();
+                        workflowWindow.EnsureExecutionTraceVisibleForDebug();
 
                         workflowWindow.Owner = null;
                         workflowWindow.ShowInTaskbar = true;

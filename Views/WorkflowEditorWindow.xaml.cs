@@ -83,6 +83,8 @@ namespace FlowMy.Views
         private bool _headlessCanvasOptimizationEnabled;
         private HashSet<string> _headlessHiddenWidgetNodeIds = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, (double Width, double Height)> _headlessOriginalNodeSizes = new(StringComparer.OrdinalIgnoreCase);
+        private bool _isDebugReopenSession;
+        private CanvasToolbarPreferences? _debugCanvasToolbarPreferences;
         private const double HeadlessWebNodeWidth = 1366d;
         private const double HeadlessWebNodeHeight = 768d;
         
@@ -247,6 +249,7 @@ namespace FlowMy.Views
                 NodeSpinnerSpinSeconds = 1.6
             };
 
+            _debugCanvasToolbarPreferences = low;
             ApplyCanvasToolbarPreferences(low, saveToDisk: false);
         }
 
@@ -272,6 +275,37 @@ namespace FlowMy.Views
                 }
             }
             catch { }
+        }
+
+        public void EnterDebugReopenMode()
+        {
+            _isDebugReopenSession = true;
+            if (ViewModel != null)
+                ViewModel.IsDebugReadOnlyMode = true;
+            // Debug reopen: giữ canvas nhẹ nhất, ẩn hẳn chrome editor (menu trái + toolbar + save/import/export/workflow list).
+            SetViewportExpandedUiHidden(true);
+        }
+
+        public bool IsDebugReopenSession => _isDebugReopenSession;
+
+        public CanvasToolbarPreferences? GetDebugCanvasPreferences()
+        {
+            return _debugCanvasToolbarPreferences;
+        }
+
+        public void SetDebugCanvasPreferences(CanvasToolbarPreferences preferences)
+        {
+            _debugCanvasToolbarPreferences = preferences;
+        }
+
+        public void EnsureExecutionTraceVisibleForDebug()
+        {
+            if (ViewModel == null) return;
+            if (ViewModel.EnableExecutionTraceLog)
+                ViewModel.IsExecutionTracePanelExpanded = true;
+            if (ExecutionTracePanelHostBorder != null)
+                ExecutionTracePanelHostBorder.Visibility = Visibility.Visible;
+            SyncExecutionTraceDetachState();
         }
 
         private bool ShouldRenderNodeInHeadlessMode(WorkflowNode node)
@@ -1246,10 +1280,23 @@ namespace FlowMy.Views
 
                 if (LeftMenuBorder != null) LeftMenuBorder.Visibility = Visibility.Collapsed;
                 if (NodePaletteExpandButton != null) NodePaletteExpandButton.Visibility = Visibility.Collapsed;
-                if (TopToolbarBorder != null) TopToolbarBorder.Visibility = Visibility.Collapsed;
-                if (WorkflowManagementPanel != null) WorkflowManagementPanel.Visibility = Visibility.Collapsed;
-                if (ExecutionPanel != null) ExecutionPanel.Visibility = Visibility.Collapsed;
-                if (PersistencePanel != null) PersistencePanel.Visibility = Visibility.Collapsed;
+
+                // Debug reopen: vẫn giữ Start/Stop để chạy/dừng flow,
+                // chỉ ẩn các cụm workflow/save/import/export không cần thiết.
+                if (_isDebugReopenSession)
+                {
+                    if (TopToolbarBorder != null) TopToolbarBorder.Visibility = Visibility.Visible;
+                    if (ExecutionPanel != null) ExecutionPanel.Visibility = Visibility.Visible;
+                    if (WorkflowManagementPanel != null) WorkflowManagementPanel.Visibility = Visibility.Collapsed;
+                    if (PersistencePanel != null) PersistencePanel.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    if (TopToolbarBorder != null) TopToolbarBorder.Visibility = Visibility.Collapsed;
+                    if (WorkflowManagementPanel != null) WorkflowManagementPanel.Visibility = Visibility.Collapsed;
+                    if (ExecutionPanel != null) ExecutionPanel.Visibility = Visibility.Collapsed;
+                    if (PersistencePanel != null) PersistencePanel.Visibility = Visibility.Collapsed;
+                }
 
                 // Ẩn panel Execution Log ở dưới canvas để Web/HtmlUi có toàn bộ chiều cao viewport.
                 if (ExecutionTracePanelHostBorder != null) ExecutionTracePanelHostBorder.Visibility = Visibility.Collapsed;
@@ -1568,11 +1615,11 @@ namespace FlowMy.Views
                                     bool anyExpanded = ViewModel.Nodes.Any(n =>
                                         (n is FlowMy.Models.Nodes.HtmlUiNode h && h.IsViewportExpanded) ||
                                         (n is FlowMy.Models.Nodes.WebNode w && w.IsViewportExpanded));
-                                    SetViewportExpandedUiHidden(anyExpanded);
+                                    SetViewportExpandedUiHidden(_isDebugReopenSession || anyExpanded);
                                 }
                                 else
                                 {
-                                    SetViewportExpandedUiHidden(false);
+                                    SetViewportExpandedUiHidden(_isDebugReopenSession);
                                 }
                             }
                             catch

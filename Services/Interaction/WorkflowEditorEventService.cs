@@ -209,6 +209,20 @@ namespace FlowMy.Services.Interaction
 
             if (e.Key != Key.Delete) return;
 
+            if (vm.IsDebugReadOnlyMode)
+            {
+                ToastNotificationService.ShowToast(
+                    "Debug mode",
+                    "Đang ở chế độ debug, không thể xóa node.",
+                    durationSeconds: 3,
+                    titleColorKey: "TextOnWarningBrush",
+                    contentColorKey: "TextOnWarningBrush",
+                    backgroundColorKey: "WarningBrush",
+                    backgroundOpacity: 0.95);
+                e.Handled = true;
+                return;
+            }
+
             if (Host.SelectedConnection != null)
             {
                 DeleteConnection(Host.SelectedConnection);
