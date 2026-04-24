@@ -762,6 +762,41 @@ Cursor="Hand"
                                 </Border.Effect>
                             </Border>
 
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource CharcoalMistBrush}"
+                                    Tag="BodyContainer">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Body Container" FontWeight="Bold"/>
+                                            <TextBlock Text="Tạo vùng body tự do để gom node, resize 8 hướng và lock/unlock node bên trong." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource CharcoalMistBrush}"
+                                                        CornerRadius="10" Padding="10"
+                                                        BorderBrush="{DynamicResource BorderColor}"
+                                                        BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Body Container" Foreground="{DynamicResource TextOnCharcoalMistBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Right-click trên body để đổi màu nền/viền, opacity và bật khóa node bên trong." Foreground="{DynamicResource TextOnCharcoalMistBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='border-none sharp-duotone-regular'}"
+                                                          Fill="{DynamicResource TextOnCharcoalMistBrush}"/>
+                                </Grid>
+                            </Border>
+
                             <Border Style="{StaticResource PaletteIconNodeStyle}" Margin="6"
                                     Background="{DynamicResource DangerBrush}"
                                     CornerRadius="30"

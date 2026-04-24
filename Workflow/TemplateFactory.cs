@@ -54,6 +54,7 @@ namespace FlowMy.Workflow
                 "Callback" => CreateCallbackNode(x, y),
                 "DataFetcher" => CreateDataFetcherNode(x, y),
                 "FileDownload" => CreateFileDownloadNode(x, y),
+                "BodyContainer" => CreateBodyContainerNode(x, y),
                 "FolderFilePaths" => CreateFolderFilePathsNode(x, y),
                 "KeyValueBridge" => CreateKeyValueBridgeNode(x, y),
                 "FlowOverwrite" => CreateFlowOverwriteNode(x, y),
@@ -1196,6 +1197,20 @@ namespace FlowMy.Workflow
                 NodeBrush = nodeBrush,
                 ColorKey = "KiwiGreen",
                 Type = NodeType.FlowOverwrite
+            };
+            return node;
+        }
+
+        private WorkflowNode CreateBodyContainerNode(double x, double y)
+        {
+            var node = new BodyContainerNode
+            {
+                Id = $"Node_BodyContainer_{Guid.NewGuid()}",
+                X = x - 400,
+                Y = y - 200,
+                NodeBrush = _colorThemeService.GetBrush("CharcoalMistBrush") ?? Brushes.SlateGray,
+                ColorKey = "CharcoalMist",
+                Type = NodeType.BodyContainer
             };
             return node;
         }

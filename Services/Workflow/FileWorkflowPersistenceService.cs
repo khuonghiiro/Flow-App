@@ -3632,6 +3632,57 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
             flowOverwriteRestore.RebuildDynamicOutputs();
         }
+        else if (node is BodyContainerNode bodyContainerRestore)
+        {
+            if (properties.TryGetValue("BodyWidth", out var widthObj) &&
+                widthObj != null &&
+                double.TryParse(widthObj.ToString(), out var bodyWidth))
+            {
+                bodyContainerRestore.BodyWidth = bodyWidth;
+            }
+            if (properties.TryGetValue("BodyHeight", out var heightObj) &&
+                heightObj != null &&
+                double.TryParse(heightObj.ToString(), out var bodyHeight))
+            {
+                bodyContainerRestore.BodyHeight = bodyHeight;
+            }
+            if (properties.TryGetValue("BodyBackgroundColorHex", out var bgObj))
+                bodyContainerRestore.BodyBackgroundColorHex = bgObj?.ToString() ?? bodyContainerRestore.BodyBackgroundColorHex;
+            if (properties.TryGetValue("BodyBorderColorHex", out var borderObj))
+                bodyContainerRestore.BodyBorderColorHex = borderObj?.ToString() ?? bodyContainerRestore.BodyBorderColorHex;
+            if (properties.TryGetValue("UseUnifiedColors", out var unifiedObj) &&
+                unifiedObj != null &&
+                bool.TryParse(unifiedObj.ToString(), out var unified))
+            {
+                bodyContainerRestore.UseUnifiedColors = unified;
+            }
+            if (properties.TryGetValue("BackgroundOpacityPercent", out var opacityObj) &&
+                opacityObj != null &&
+                double.TryParse(opacityObj.ToString(), out var opacity))
+            {
+                bodyContainerRestore.BackgroundOpacityPercent = opacity;
+            }
+            if (properties.TryGetValue("LockInnerNodes", out var lockObj) &&
+                lockObj != null &&
+                bool.TryParse(lockObj.ToString(), out var lockInner))
+            {
+                bodyContainerRestore.LockInnerNodes = lockInner;
+            }
+            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) &&
+                tdmObj != null &&
+                Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var titleDisplayMode))
+            {
+                bodyContainerRestore.TitleDisplayMode = titleDisplayMode;
+            }
+            if (properties.TryGetValue("TitleColorMode", out var tcmObj) &&
+                tcmObj != null &&
+                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var titleColorMode))
+            {
+                bodyContainerRestore.TitleColorMode = titleColorMode;
+            }
+            if (properties.TryGetValue("TitleColorKey", out var tckObj))
+                bodyContainerRestore.TitleColorKey = tckObj?.ToString();
+        }
         else if (node is OutputNode outputNode)
         {
             // Deserialize OutputKey
@@ -4732,6 +4783,20 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     })
                     .ToList());
             }
+        }
+        else if (node is BodyContainerNode bodyContainerSer)
+        {
+            dict["BodyWidth"] = bodyContainerSer.BodyWidth;
+            dict["BodyHeight"] = bodyContainerSer.BodyHeight;
+            dict["BodyBackgroundColorHex"] = bodyContainerSer.BodyBackgroundColorHex;
+            dict["BodyBorderColorHex"] = bodyContainerSer.BodyBorderColorHex;
+            dict["UseUnifiedColors"] = bodyContainerSer.UseUnifiedColors;
+            dict["BackgroundOpacityPercent"] = bodyContainerSer.BackgroundOpacityPercent;
+            dict["LockInnerNodes"] = bodyContainerSer.LockInnerNodes;
+            dict["TitleDisplayMode"] = bodyContainerSer.TitleDisplayMode.ToString();
+            dict["TitleColorMode"] = bodyContainerSer.TitleColorMode.ToString();
+            if (!string.IsNullOrWhiteSpace(bodyContainerSer.TitleColorKey))
+                dict["TitleColorKey"] = bodyContainerSer.TitleColorKey;
         }
         else if (node is WebNode webNodeForSerialize)
         {

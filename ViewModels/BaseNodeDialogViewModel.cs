@@ -85,6 +85,7 @@ namespace FlowMy.ViewModels
                 case Models.Nodes.WebNode n: n.TitleColorMode = mode; break;
                 case Models.Nodes.HtmlUiNode n: n.TitleColorMode = mode; break;
                 case Models.Nodes.StorageNode n: n.TitleColorMode = mode; break;
+                case Models.Nodes.BodyContainerNode n: n.TitleColorMode = mode; break;
                 case DelayNode n: n.TitleColorMode = mode; break;
             }
         }
@@ -114,6 +115,7 @@ namespace FlowMy.ViewModels
                 case Models.Nodes.WebNode n: n.TitleColorKey = key; break;
                 case DelayNode n: n.TitleColorKey = key; break;
                 case Models.Nodes.StorageNode n: n.TitleColorKey = key; break;
+                case Models.Nodes.BodyContainerNode n: n.TitleColorKey = key; break;
                 case Models.Nodes.ImageProcessingNode n: n.TitleColorKey = key; break;
             }
         }
@@ -970,6 +972,7 @@ namespace FlowMy.ViewModels
                 NodeType.FolderFilePaths => "Folder File Paths",
                 NodeType.AsyncTaskDispatchCollect => "Async Dispatch Collect",
                 NodeType.KeyScopedStore => "Key Scoped Store",
+                NodeType.BodyContainer => "Body Container",
                 _ => type.ToString()
             };
         }
@@ -1011,6 +1014,7 @@ namespace FlowMy.ViewModels
                 NodeType.FolderFilePaths => "file-import duotone-light",
                 NodeType.KeyValueBridge => "list-check solid",
                 NodeType.FlowOverwrite => "merge sharp-regular",
+                NodeType.BodyContainer => "border-none sharp-duotone-regular",
                 NodeType.Notification => "message-captions duotone-regular",
                 NodeType.Storage => "arrow-progress sharp-regular",
                 NodeType.Callback => "arrows-turn-right regular",

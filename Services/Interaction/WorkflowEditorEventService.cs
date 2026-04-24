@@ -134,6 +134,7 @@ namespace FlowMy.Services.Interaction
                     vm.SelectedNode is NotificationNode ||
                     vm.SelectedNode is HttpRequestNode ||
                     vm.SelectedNode is LoopNode ||
+                    vm.SelectedNode is BodyContainerNode ||
                     vm.SelectedNode.IsConditionalNode)
                     {
                         _copiedNode = vm.SelectedNode;
@@ -170,6 +171,7 @@ namespace FlowMy.Services.Interaction
                        _copiedNode is HttpRequestNode ||
                        _copiedNode is LoopNode ||
                        _copiedNode is AsyncTaskNode ||
+                       _copiedNode is BodyContainerNode ||
                        _copiedNode.IsConditionalNode)
                     {
                         // Lấy vị trí con trỏ chuột trên Canvas
@@ -225,6 +227,11 @@ namespace FlowMy.Services.Interaction
 
             if (Host.SelectedConnection != null)
             {
+                if (IsConnectionProtectedByLockedBody(vm, Host.SelectedConnection))
+                {
+                    e.Handled = true;
+                    return;
+                }
                 DeleteConnection(Host.SelectedConnection);
                 e.Handled = true;
                 return;
@@ -232,6 +239,11 @@ namespace FlowMy.Services.Interaction
 
             if (vm.SelectedNode != null && vm.DeleteNodeCommand.CanExecute(null))
             {
+                if (IsNodeLockedByBodyContainer(vm, vm.SelectedNode))
+                {
+                    e.Handled = true;
+                    return;
+                }
                 vm.DeleteNodeCommand.Execute(null);
                 e.Handled = true;
             }
@@ -1031,6 +1043,7 @@ namespace FlowMy.Services.Interaction
         {
             var vm = ViewModel;
             if (vm == null) return;
+            if (IsConnectionProtectedByLockedBody(vm, connection)) return;
 
             // QUAN TRỌNG: Không cho xóa default connection của Loop Node
             var loopNode = connection.FromNode as LoopNode ?? connection.ToNode as LoopNode;
@@ -1048,6 +1061,30 @@ namespace FlowMy.Services.Interaction
             
             // Đóng dialog nếu đang mở
             CloseNodeDialogIfOpen();
+        }
+
+        private static bool IsConnectionProtectedByLockedBody(WorkflowEditorViewModel vm, WorkflowConnection connection)
+        {
+            return IsNodeLockedByBodyContainer(vm, connection.FromNode) || IsNodeLockedByBodyContainer(vm, connection.ToNode);
+        }
+
+        private static bool IsNodeLockedByBodyContainer(WorkflowEditorViewModel vm, WorkflowNode node)
+        {
+            if (node is BodyContainerNode) return false;
+            foreach (var body in vm.Nodes.OfType<BodyContainerNode>())
+            {
+                if (!body.LockInnerNodes) continue;
+                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
+                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+                if (width <= 0 || height <= 0) continue;
+
+                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                    return true;
+            }
+            return false;
         }
         
         private void CloseNodeDialogIfOpen()

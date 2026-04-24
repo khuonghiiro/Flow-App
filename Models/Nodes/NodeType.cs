@@ -49,6 +49,8 @@ namespace FlowMy.Models
         KeyValueBridge,
         /// <summary>Tải file từ URL hoặc curl vào thư mục đích.</summary>
         FileDownload,
+        /// <summary>Body container tự do để gom node theo vùng.</summary>
+        BodyContainer,
         /// <summary>Liệt kê (và tuỳ chọn đọc) file trong một thư mục.</summary>
         FolderFilePaths,
         FlowOverwrite

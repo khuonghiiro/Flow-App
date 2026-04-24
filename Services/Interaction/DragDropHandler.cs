@@ -56,6 +56,14 @@ namespace FlowMy.Services.Interaction
             var viewModel = host.ViewModel;
             if (viewModel == null) return;
 
+            // Body container resize handles are Ellipse; do not start drag here.
+            if (sender is Border bodyBorder &&
+                bodyBorder.Tag is BodyContainerNode &&
+                e.OriginalSource is Ellipse)
+            {
+                return;
+            }
+
             // ✅ Nếu click vào control tương tác (Button/ComboBox/TextBox/...) thì KHÔNG drag node
             if (IsInteractiveElement(e.OriginalSource as DependencyObject))
             {
@@ -95,6 +103,7 @@ namespace FlowMy.Services.Interaction
             host.DraggedNode = viewModel.Nodes.FirstOrDefault(n => n.Border == border);
 
             if (host.DraggedNode == null) return;
+            if (IsNodeLockedByBodyContainer(viewModel, host.DraggedNode)) return;
 
             host.ZIndexManager.SelectNode(host.DraggedNode);
             
@@ -176,6 +185,25 @@ namespace FlowMy.Services.Interaction
                     .Where(n => n != asyncBody && n is not LoopNode)
                     .ToList()
                 : null;
+        }
+
+        private static bool IsNodeLockedByBodyContainer(FlowMy.ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node)
+        {
+            if (node is BodyContainerNode) return false;
+            foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
+            {
+                if (!body.LockInnerNodes || body.Border == null) continue;
+                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border.ActualWidth > 0 ? body.Border.ActualWidth : body.Border.Width);
+                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border.ActualHeight > 0 ? body.Border.ActualHeight : body.Border.Height);
+                if (width <= 0 || height <= 0) continue;
+
+                var centerX = node.X + ((node.Border?.ActualWidth ?? node.Border?.Width ?? 150) / 2.0);
+                var centerY = node.Y + ((node.Border?.ActualHeight ?? node.Border?.Height ?? 80) / 2.0);
+                var bounds = new Rect(body.X, body.Y, width, height);
+                if (bounds.Contains(new Point(centerX, centerY)))
+                    return true;
+            }
+            return false;
         }
 
         private static bool IsInteractiveElement(DependencyObject? source)

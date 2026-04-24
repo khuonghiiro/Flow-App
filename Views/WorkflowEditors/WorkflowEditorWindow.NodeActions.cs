@@ -223,6 +223,20 @@ namespace FlowMy.Views
                 dstAssign.TitleColorKey = srcAssign.TitleColorKey;
                 dstAssign.NotifyTitleChanged();
             }
+            else if (source is BodyContainerNode srcBody && node is BodyContainerNode dstBody)
+            {
+                dstBody.BodyWidth = srcBody.BodyWidth;
+                dstBody.BodyHeight = srcBody.BodyHeight;
+                dstBody.BodyBackgroundColorHex = srcBody.BodyBackgroundColorHex;
+                dstBody.BodyBorderColorHex = srcBody.BodyBorderColorHex;
+                dstBody.UseUnifiedColors = srcBody.UseUnifiedColors;
+                dstBody.BackgroundOpacityPercent = srcBody.BackgroundOpacityPercent;
+                dstBody.LockInnerNodes = srcBody.LockInnerNodes;
+                dstBody.TitleDisplayMode = srcBody.TitleDisplayMode;
+                dstBody.TitleColorMode = srcBody.TitleColorMode;
+                dstBody.TitleColorKey = srcBody.TitleColorKey;
+                dstBody.NotifyTitleChanged();
+            }
             else if (source is MediaGalleryNode srcGallery && node is MediaGalleryNode dstGallery)
             {
                 dstGallery.Width = srcGallery.Width;
@@ -927,6 +941,10 @@ namespace FlowMy.Views
             else if (node is FlowOverwriteNode flowOverwriteNode)
             {
                 flowOverwriteNode.NotifyTitleChanged();
+            }
+            else if (node is BodyContainerNode bodyContainerNode)
+            {
+                bodyContainerNode.NotifyTitleChanged();
             }
 
             // Fallback: if we created by Activator and Id is empty, ensure unique

@@ -1118,6 +1118,7 @@ namespace FlowMy.ViewModels
                 NodeType.Web => "internet-explorer brands",
                 NodeType.AsyncTask => "diagram-project duotone-light",
                 NodeType.DataFetcher => "inbox-out duotone-light",
+                NodeType.BodyContainer => "border-none sharp-duotone-regular",
                 NodeType.FolderFilePaths => "file-import duotone-light",
                 NodeType.KeyValueBridge => "list-check solid",
                 NodeType.FlowOverwrite => "merge sharp-regular",

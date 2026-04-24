@@ -1,0 +1,191 @@
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.BodyContainerNodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FlowMy.Views.Overlays"
+        Title="Body Container"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Width="460"
+        MinWidth="360"
+        MinHeight="360">
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TitleTextBox"
+                             Grid.Column="0"
+                             Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{DynamicResource BaseTextBoxV2}"
+                             FontSize="16"
+                             Padding="0,4,0,4"
+                             VerticalContentAlignment="Center"
+                             Cursor="IBeam"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="PlayButton"
+                                Padding="0,0,0,0"
+                                Width="24" Height="24"
+                                Content="▶"
+                                FontSize="12"
+                                Style="{DynamicResource PrimaryButton}"
+                                Cursor="Hand"
+                                Margin="8,0,0,0"
+                                ToolTip="Chạy logic node này"
+                                Command="{Binding RunSingleNodeCommand}"/>
+                        <Button x:Name="CloseButton"
+                                Padding="0,0,0,0"
+                                Width="24" Height="24"
+                                Style="{DynamicResource DangerButton}"
+                                Content="×"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                Cursor="Hand"
+                                Margin="8,0,0,0"
+                                Click="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+                <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="Hiển thị tiêu đề:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <ComboBox Height="36"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      Margin="0,0,0,16"
+                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                      SelectedValuePath="Value"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+
+                            <TextBlock Text="Màu tiêu đề:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <ComboBox Height="36"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      Margin="0,0,0,16"
+                                      ItemsSource="{Binding TitleColorOptions}"
+                                      SelectedValuePath="Key"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"/>
+
+                            <TextBlock Text="Màu nền body:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0"
+                                          Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding BodyColorOptions}"
+                                          SelectedValuePath="Key"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding BodyBackgroundColorKey, Mode=TwoWay}"/>
+                                <Button Grid.Column="1"
+                                        Content="🎨"
+                                        Width="32"
+                                        Height="32"
+                                        Margin="8,0,0,0"
+                                        ToolTip="Chọn màu tuỳ ý"
+                                        Click="PickBodyBackgroundColor_Click"/>
+                            </Grid>
+                            <Border x:Name="BodyBackgroundColorPreview"
+                                    Height="18"
+                                    Margin="0,0,0,12"
+                                    CornerRadius="4"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1"/>
+
+                            <TextBlock Text="Màu viền body:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0"
+                                          Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding BodyColorOptions}"
+                                          SelectedValuePath="Key"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding BodyBorderColorKey, Mode=TwoWay}"/>
+                                <Button Grid.Column="1"
+                                        Content="🎨"
+                                        Width="32"
+                                        Height="32"
+                                        Margin="8,0,0,0"
+                                        ToolTip="Chọn màu tuỳ ý"
+                                        Click="PickBodyBorderColor_Click"/>
+                            </Grid>
+                            <Border x:Name="BodyBorderColorPreview"
+                                    Height="18"
+                                    Margin="0,0,0,12"
+                                    CornerRadius="4"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1"/>
+
+                            <CheckBox Content="Dùng cùng một màu cho nền và viền"
+                                      IsChecked="{Binding UseUnifiedColors, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Độ trong suốt nền (%):"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Slider Grid.Column="0"
+                                        Minimum="0" Maximum="100"
+                                        Value="{Binding BackgroundOpacityPercent, Mode=TwoWay}"
+                                        TickFrequency="5"
+                                        IsSnapToTickEnabled="False"/>
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Text="{Binding BackgroundOpacityPercent, StringFormat='{}{0:F0}%'}"/>
+                            </Grid>
+
+                            <CheckBox Content="Khóa node bên trong body"
+                                      IsChecked="{Binding LockInnerNodes, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Border>
+</local:BaseNodeDialog>

@@ -368,6 +368,7 @@ namespace FlowMy.Views
                 "FolderFilePaths" => "file-import duotone-light",
                 "KeyValueBridge" => "list-check solid",
                 "FlowOverwrite" => "merge sharp-regular",
+                "BodyContainer" => "border-none sharp-duotone-regular",
                 _ => "circle2"
             };
         }
