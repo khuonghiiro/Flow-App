@@ -267,14 +267,14 @@ namespace FlowMy.Views.NodeControls
                 throw new InvalidOperationException("AsyncTaskBodyNode is required.");
 
             var body = node.AsyncTaskBodyNode;
+            var mintChocolate = Application.Current.TryFindResource("MintChocolateBrush") as SolidColorBrush;
+            var mintColor = mintChocolate?.Color ?? Color.FromRgb(152, 216, 200);
             var border = new Border
             {
                 Width = body.Width,
                 Height = body.Height,
-                // Important: avoid Background fill stealing hit-test over delete buttons/lines inside the body.
-                // Dashed rectangle + resize handles still provide the visuals/interaction.
-                // Use Transparent (not null) so containerBorder still receives mouse events for dragging.
-                Background = Brushes.Transparent,
+                // Nền trong suốt kiểu Loop body nhưng dùng tông MintChocolate.
+                Background = new SolidColorBrush(Color.FromArgb(30, mintColor.R, mintColor.G, mintColor.B)),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(46, 125, 50)),
                 BorderThickness = new Thickness(0),
                 CornerRadius = new CornerRadius(8),

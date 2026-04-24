@@ -744,46 +744,10 @@ namespace FlowMy.Workflow
                 X = x - 100,
                 Y = y - 60,
                 NodeBrush = nodeBrush,
-                ColorKey = "MintChocolate"
+                ColorKey = "MintChocolate",
+                UiPresentationMode = AsyncTaskUiPresentationMode.LoopLikeDispatch
             };
-
-            node.Ports.Add(new NodePort
-            {
-                IsInput = true,
-                Position = PortPosition.Left,
-                IsVisible = true,
-                ColorKey = "Info"
-            });
-
-            // Tạo task branch đầu tiên
-            var task1Branch = new AsyncTaskBranch { Label = "Task", CanRemove = false };
-            var task1Port = new NodePort
-            {
-                IsInput = false,
-                Position = PortPosition.Right,
-                IsVisible = true,
-                ExecutionOrder = 0,
-                ColorKey = "ChocolateBrown",
-                ExecutionMode = node.RunInParallel ? PortExecutionMode.Parallel : PortExecutionMode.Sequential
-            };
-            task1Branch.Port = task1Port;
-            node.Ports.Add(task1Port);
-            node.AsyncTaskBranches.Add(task1Branch);
-
-            // Tạo task branch thứ hai
-            var task2Branch = new AsyncTaskBranch { Label = "Task", CanRemove = true };
-            var task2Port = new NodePort
-            {
-                IsInput = false,
-                Position = PortPosition.Right,
-                IsVisible = true,
-                ExecutionOrder = 1,
-                ColorKey = "OceanBlue",
-                ExecutionMode = node.RunInParallel ? PortExecutionMode.Parallel : PortExecutionMode.Sequential
-            };
-            task2Branch.Port = task2Port;
-            node.Ports.Add(task2Port);
-            node.AsyncTaskBranches.Add(task2Branch);
+            ConfigureAsyncTaskLoopLikePorts(node);
 
             return node;
         }
