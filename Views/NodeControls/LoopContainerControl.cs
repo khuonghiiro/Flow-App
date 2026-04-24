@@ -79,6 +79,7 @@ namespace FlowMy.Views.NodeControls
 
             // Attach resize logic
             AttachResizeLogic(border, node);
+            UpdateBodyResizeHandleScale(border, node.LoopBodyNode.Width, node.LoopBodyNode.Height);
 
             return border;
         }
@@ -100,6 +101,25 @@ namespace FlowMy.Views.NodeControls
             };
 
             grid.Children.Add(handle);
+        }
+
+        private static void UpdateBodyResizeHandleScale(Border border, double bodyWidth, double bodyHeight)
+        {
+            if (border.Child is not Grid grid) return;
+
+            var widthScale = bodyWidth / 800.0;
+            var heightScale = bodyHeight / 400.0;
+            var rawScale = Math.Max(1.0, Math.Max(widthScale, heightScale));
+            var visualScale = Math.Max(1.0, Math.Min(2.8, rawScale * 1.2));
+
+            foreach (var child in grid.Children)
+            {
+                if (child is Ellipse handle && handle.Tag is ResizeDirection)
+                {
+                    handle.RenderTransformOrigin = new Point(0.5, 0.5);
+                    handle.RenderTransform = new ScaleTransform(visualScale, visualScale);
+                }
+            }
         }
 
         private static Cursor GetCursorForDirection(ResizeDirection direction)
@@ -218,6 +238,7 @@ namespace FlowMy.Views.NodeControls
                     node.LoopBodyNode.Y = newY;
 
                     UpdateContainerSize(border, newWidth, newHeight);
+                    UpdateBodyResizeHandleScale(border, newWidth, newHeight);
 
                     // Update Position on Canvas
                     Canvas.SetLeft(border, newX);
@@ -293,6 +314,7 @@ namespace FlowMy.Views.NodeControls
 
             border.Child = grid;
             AttachResizeLogicAsyncTask(border, node);
+            UpdateBodyResizeHandleScale(border, body.Width, body.Height);
             return border;
         }
 
@@ -371,6 +393,7 @@ namespace FlowMy.Views.NodeControls
                 body.X = newX;
                 body.Y = newY;
                 UpdateContainerSize(border, newWidth, newHeight);
+                UpdateBodyResizeHandleScale(border, newWidth, newHeight);
                 Canvas.SetLeft(border, newX);
                 Canvas.SetTop(border, newY);
                 e.Handled = true;

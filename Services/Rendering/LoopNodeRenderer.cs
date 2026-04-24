@@ -323,6 +323,7 @@ namespace FlowMy.Services.Rendering
             }
 
             // ✅ Cập nhật vị trí ports dựa trên BODY NODE
+            ApplyBodyPortScaleBySize(bodyNode);
             UpdateLoopBodyPortsPosition(loopNode);
 
             // ✅ Thêm ports vào canvas
@@ -400,6 +401,21 @@ namespace FlowMy.Services.Rendering
                     Canvas.SetLeft(bodyRightPort.PortUI, bodyRightPort.PositionPoint.X - 9);
                     Canvas.SetTop(bodyRightPort.PortUI, bodyRightPort.PositionPoint.Y - 9);
                 }
+            }
+        }
+
+        private static void ApplyBodyPortScaleBySize(LoopBodyNode bodyNode)
+        {
+            var widthScale = bodyNode.Width / 800.0;
+            var heightScale = bodyNode.Height / 400.0;
+            var rawScale = Math.Max(1.0, Math.Max(widthScale, heightScale));
+            var visualScale = Math.Max(1.0, Math.Min(2.8, rawScale * 1.2));
+
+            foreach (var port in bodyNode.Ports.Where(p => p.Id is "LoopBodyTop" or "LoopBodyLeft" or "LoopBodyRight"))
+            {
+                if (port.PortUI == null) continue;
+                port.PortUI.RenderTransformOrigin = new Point(0.5, 0.5);
+                port.PortUI.RenderTransform = new ScaleTransform(visualScale, visualScale);
             }
         }
 
@@ -637,6 +653,7 @@ namespace FlowMy.Services.Rendering
                  if (e.PropertyName == nameof(LoopBodyNode.Width) ||
                      e.PropertyName == nameof(LoopBodyNode.Height))
                  {
+                    ApplyBodyPortScaleBySize(loopNode.LoopBodyNode);
                     UpdateLoopBodyPortsPosition(loopNode);
                     Host.UpdateMinimap(); // ✅ Cập nhật minimap khi resize
                     

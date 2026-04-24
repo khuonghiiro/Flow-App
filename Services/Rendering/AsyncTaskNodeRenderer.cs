@@ -610,6 +610,7 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
+            ApplyAsyncBodyPortScaleBySize(bodyNode);
             UpdateAsyncTaskBodyPortsPosition(parent);
 
             foreach (var port in new[] { bodyTopPort, bodyLeftPort, bodyRightPort })
@@ -667,6 +668,21 @@ namespace FlowMy.Services.Rendering
                     Canvas.SetLeft(bodyRightPort.PortUI, bodyRightPort.PositionPoint.X - 9);
                     Canvas.SetTop(bodyRightPort.PortUI, bodyRightPort.PositionPoint.Y - 9);
                 }
+            }
+        }
+
+        private static void ApplyAsyncBodyPortScaleBySize(AsyncTaskBodyNode bodyNode)
+        {
+            var widthScale = bodyNode.Width / 800.0;
+            var heightScale = bodyNode.Height / 400.0;
+            var rawScale = Math.Max(1.0, Math.Max(widthScale, heightScale));
+            var visualScale = Math.Max(1.0, Math.Min(2.8, rawScale * 1.2));
+
+            foreach (var port in bodyNode.Ports.Where(p => p.Id is "LoopBodyTop" or "LoopBodyLeft" or "LoopBodyRight"))
+            {
+                if (port.PortUI == null) continue;
+                port.PortUI.RenderTransformOrigin = new Point(0.5, 0.5);
+                port.PortUI.RenderTransform = new ScaleTransform(visualScale, visualScale);
             }
         }
 
@@ -845,6 +861,7 @@ namespace FlowMy.Services.Rendering
                 if (e.PropertyName != nameof(AsyncTaskBodyNode.Width) && e.PropertyName != nameof(AsyncTaskBodyNode.Height))
                     return;
 
+                ApplyAsyncBodyPortScaleBySize(body);
                 UpdateAsyncTaskBodyPortsPosition(asyncTaskNode);
                 _host.UpdateMinimap();
                 _host.ViewportCullingService?.OnNodeChanged(body);
