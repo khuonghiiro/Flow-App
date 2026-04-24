@@ -673,10 +673,7 @@ namespace FlowMy.Services.Rendering
 
         private static void ApplyAsyncBodyPortScaleBySize(AsyncTaskBodyNode bodyNode)
         {
-            var widthScale = bodyNode.Width / 800.0;
-            var heightScale = bodyNode.Height / 400.0;
-            var rawScale = Math.Max(1.0, Math.Max(widthScale, heightScale));
-            var visualScale = Math.Max(1.0, Math.Min(2.8, rawScale * 1.2));
+            var visualScale = LoopContainerControl.ComputeBodyInteractionScale(bodyNode.Width, bodyNode.Height);
 
             foreach (var port in bodyNode.Ports.Where(p => p.Id is "LoopBodyTop" or "LoopBodyLeft" or "LoopBodyRight"))
             {

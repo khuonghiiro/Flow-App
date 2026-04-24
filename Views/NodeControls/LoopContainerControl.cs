@@ -9,6 +9,18 @@ namespace FlowMy.Views.NodeControls
 {
     public static class LoopContainerControl
     {
+        // Kích thước body "chuẩn" để làm mốc tính scale interaction visuals (handle + body ports).
+        // Khi body lớn hơn mốc này, visuals sẽ được phóng to dần theo tỉ lệ.
+        public const double BodyScaleBaseWidth = 800.0;
+        public const double BodyScaleBaseHeight = 400.0;
+        // Min scale: tránh nhỏ hơn kích thước gốc (1.0 = 100%).
+        public const double BodyInteractionMinScale = 1.0;
+        // Max scale: giới hạn trên để tránh handle/port quá to gây rối UI.
+        public const double BodyInteractionMaxScale = 2.0;
+        // Hệ số tăng thêm sau khi tính raw ratio từ width/height.
+        // 1.0 = scale đúng theo ratio; >1.0 = phóng nhanh hơn.
+        public const double BodyInteractionScaleBoost = 1.0;
+
         // Enum cho resize directions
         private enum ResizeDirection
         {
@@ -64,15 +76,12 @@ namespace FlowMy.Views.NodeControls
             };
             grid.Children.Add(headerText);
 
-            // Resize handles (8 handles - 4 góc + 4 cạnh)
+            // Resize handles: chỉ giữ 4 góc + cạnh dưới.
+            // Loại bỏ trái/top/phải để không chặn thao tác nối port ở các cạnh này.
             AddResizeHandle(grid, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
             AddResizeHandle(grid, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
             AddResizeHandle(grid, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
             AddResizeHandle(grid, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
-
-            AddResizeHandle(grid, ResizeDirection.Left, HorizontalAlignment.Left, VerticalAlignment.Center, new Thickness(2, 0, 0, 0));
-            AddResizeHandle(grid, ResizeDirection.Right, HorizontalAlignment.Right, VerticalAlignment.Center, new Thickness(0, 0, 2, 0));
-            AddResizeHandle(grid, ResizeDirection.Top, HorizontalAlignment.Center, VerticalAlignment.Top, new Thickness(0, 2, 0, 0));
             AddResizeHandle(grid, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
 
             border.Child = grid;
@@ -107,10 +116,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (border.Child is not Grid grid) return;
 
-            var widthScale = bodyWidth / 800.0;
-            var heightScale = bodyHeight / 400.0;
-            var rawScale = Math.Max(1.0, Math.Max(widthScale, heightScale));
-            var visualScale = Math.Max(1.0, Math.Min(2.8, rawScale * 1.2));
+            var visualScale = ComputeBodyInteractionScale(bodyWidth, bodyHeight);
 
             foreach (var child in grid.Children)
             {
@@ -120,6 +126,16 @@ namespace FlowMy.Views.NodeControls
                     handle.RenderTransform = new ScaleTransform(visualScale, visualScale);
                 }
             }
+        }
+
+        public static double ComputeBodyInteractionScale(double bodyWidth, double bodyHeight)
+        {
+            var widthScale = bodyWidth / BodyScaleBaseWidth;
+            var heightScale = bodyHeight / BodyScaleBaseHeight;
+            var rawScale = Math.Max(BodyInteractionMinScale, Math.Max(widthScale, heightScale));
+            return Math.Max(
+                BodyInteractionMinScale,
+                Math.Min(BodyInteractionMaxScale, rawScale * BodyInteractionScaleBoost));
         }
 
         private static Cursor GetCursorForDirection(ResizeDirection direction)
@@ -305,11 +321,12 @@ namespace FlowMy.Views.NodeControls
                 Padding = new Thickness(8, 2, 8, 2)
             });
 
+            // AsyncTask body cũng giữ cùng policy resize như Loop body:
+            // chỉ 4 góc + cạnh dưới.
             AddResizeHandle(grid, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
             AddResizeHandle(grid, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
             AddResizeHandle(grid, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
             AddResizeHandle(grid, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
-            // Chỉ giữ resize ở góc + cạnh dưới để tránh chặn các thao tác kéo/kết nối port hai bên + top.
             AddResizeHandle(grid, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
 
             border.Child = grid;
