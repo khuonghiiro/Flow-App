@@ -753,6 +753,10 @@ namespace FlowMy.Services.Rendering
             containerBorder.PreviewMouseDown += (s, e) =>
             {
                 if (e.OriginalSource is Ellipse) return;
+                if (e.LeftButton == MouseButtonState.Pressed)
+                {
+                    CloseNodeDialogIfOpen();
+                }
 
                 _host.ZIndexManager.SelectNode(body);
 
@@ -869,6 +873,18 @@ namespace FlowMy.Services.Rendering
                         _host.UpdateConnectionPath(conn);
                 }
             };
+        }
+
+        private void CloseNodeDialogIfOpen()
+        {
+            if (_host is not Window window) return;
+            var field = window.GetType().GetField(
+                "_nodeDialogManager",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field?.GetValue(window) is NodeDialogManager manager)
+            {
+                manager.CloseCurrentDialog();
+            }
         }
 
         private List<WorkflowNode> GetAsyncTaskBodyClusterNodes(AsyncTaskNode asyncTaskNode)

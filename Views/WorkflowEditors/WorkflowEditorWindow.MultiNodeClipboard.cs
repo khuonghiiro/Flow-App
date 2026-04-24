@@ -51,6 +51,49 @@ namespace FlowMy.Views
             return false;
         }
 
+        private bool TryHandleBoxSelectionDeleteShortcut(KeyEventArgs e)
+        {
+            if (e.Key != Key.Delete) return false;
+            if (IsEditingTextInput()) return false;
+            if (_boxSelectedNodes.Count == 0) return false;
+
+            var vm = ViewModel;
+            if (vm == null) return false;
+            if (vm.IsDebugReadOnlyMode) return false;
+
+            var selectedNodes = _boxSelectedNodes
+                .Where(vm.Nodes.Contains)
+                .ToList();
+            if (selectedNodes.Count == 0) return false;
+
+            // Đồng bộ behavior với copy/paste: nếu chọn Loop/AsyncTask parent thì lấy thêm body companion.
+            selectedNodes = ExpandSelectionWithCompanionBodyNodes(selectedNodes);
+
+            var nodesToDelete = selectedNodes
+                .Where(n => n.Type != NodeType.Start && n.Type != NodeType.End)
+                .Distinct()
+                .ToList();
+            if (nodesToDelete.Count == 0) return false;
+
+            var nodeIds = new HashSet<string>(nodesToDelete.Select(n => n.Id), StringComparer.OrdinalIgnoreCase);
+            var connectionsToDelete = vm.Connections
+                .Where(c => nodeIds.Contains(c.FromNode.Id) || nodeIds.Contains(c.ToNode.Id))
+                .ToList();
+
+            foreach (var connection in connectionsToDelete)
+                vm.Connections.Remove(connection);
+
+            foreach (var node in nodesToDelete)
+                vm.Nodes.Remove(node);
+
+            _boxSelectedNodes.Clear();
+            if (_selectionResultBorder != null && WorkflowCanvas.Children.Contains(_selectionResultBorder))
+                WorkflowCanvas.Children.Remove(_selectionResultBorder);
+            _selectionResultBorder = null;
+            vm.SelectedNode = null;
+            return true;
+        }
+
         private bool IsEditingTextInput()
         {
             var focused = Keyboard.FocusedElement as DependencyObject;

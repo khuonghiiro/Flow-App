@@ -1556,6 +1556,12 @@ namespace FlowMy.Views
             if (TryHandleWorkflowClipboardShortcuts(e))
                 return;
 
+            if (TryHandleBoxSelectionDeleteShortcut(e))
+            {
+                e.Handled = true;
+                return;
+            }
+
             _eventService.HandleKeyDown(e);
         }
 

@@ -505,6 +505,10 @@ namespace FlowMy.Services.Rendering
             {
                 // ✅ Allow dragging on background or headers (excluding resize handles)
                 if (e.OriginalSource is Ellipse) return; // Ignore resize handles
+                if (e.LeftButton == MouseButtonState.Pressed)
+                {
+                    CloseNodeDialogIfOpen();
+                }
 
                 // ✅ Quản lý Z-index: Nổi lên khi click vào Loop Body
                 Host.ZIndexManager.SelectNode(loopNode.LoopBodyNode);
@@ -670,6 +674,18 @@ namespace FlowMy.Services.Rendering
                      }
                  }
             };
+        }
+
+        private void CloseNodeDialogIfOpen()
+        {
+            if (Host is not Window window) return;
+            var field = window.GetType().GetField(
+                "_nodeDialogManager",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field?.GetValue(window) is NodeDialogManager manager)
+            {
+                manager.CloseCurrentDialog();
+            }
         }
 
         /// <summary>
