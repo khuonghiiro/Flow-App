@@ -273,6 +273,7 @@
                                             Content="🎨"
                                             Width="32"
                                             Height="32"
+                                             Padding ="0"
                                             Margin="8,0,0,0"
                                             ToolTip="Chọn màu tuỳ ý"
                                             Click="PickToastTitleColor_Click"/>
@@ -306,6 +307,7 @@
                                             Content="🎨"
                                             Width="32"
                                             Height="32"
+                                             Padding ="0"
                                             Margin="8,0,0,0"
                                             ToolTip="Chọn màu tuỳ ý"
                                             Click="PickToastContentColor_Click"/>
@@ -339,6 +341,7 @@
                                             Content="🎨"
                                             Width="32"
                                             Height="32"
+                                             Padding ="0"
                                             Margin="8,0,0,0"
                                             ToolTip="Chọn màu tuỳ ý"
                                             Click="PickToastBackgroundColor_Click"/>

@@ -1,10 +1,13 @@
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
+using FlowMy.Views.NodeControls;
 using System;
 using System.Windows.Media;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using WinForms = System.Windows.Forms;
 
 namespace FlowMy.Views.Overlays;
@@ -12,10 +15,12 @@ namespace FlowMy.Views.Overlays;
 public partial class BodyContainerNodeDialog : BaseNodeDialog
 {
     private readonly BodyContainerNodeDialogViewModel _viewModel;
+    private readonly BodyContainerNode _node;
 
     public BodyContainerNodeDialog(BodyContainerNode node, IWorkflowEditorHost host, Window? owner)
         : base()
     {
+        _node = node;
         InitializeComponent();
         _viewModel = new BodyContainerNodeDialogViewModel(node, host);
         InitializeBase(_viewModel, owner);
@@ -27,6 +32,16 @@ public partial class BodyContainerNodeDialog : BaseNodeDialog
             {
                 UpdateColorPreviews();
             }
+
+            if (e.PropertyName == nameof(BodyContainerNodeDialogViewModel.BodyBackgroundColorHex) ||
+                e.PropertyName == nameof(BodyContainerNodeDialogViewModel.BodyBorderColorHex) ||
+                e.PropertyName == nameof(BodyContainerNodeDialogViewModel.UseUnifiedColors) ||
+                e.PropertyName == nameof(BodyContainerNodeDialogViewModel.BackgroundOpacityPercent) ||
+                e.PropertyName == nameof(BodyContainerNodeDialogViewModel.LockInnerNodes))
+            {
+                // Direct refresh safeguard from dialog side.
+                BodyContainerControl.RefreshVisualFromNode(_node);
+            }
         };
         UpdateColorPreviews();
     }
@@ -37,8 +52,14 @@ public partial class BodyContainerNodeDialog : BaseNodeDialog
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
+        FlushEditorsToViewModel();
         ViewModel.SaveTitleCommand.Execute(null);
         Close();
+    }
+
+    protected override void BeforeSaveOnClose()
+    {
+        FlushEditorsToViewModel();
     }
 
     private void PickBodyBackgroundColor_Click(object sender, RoutedEventArgs e)
@@ -106,5 +127,16 @@ public partial class BodyContainerNodeDialog : BaseNodeDialog
         }
         catch { }
         return fallback;
+    }
+
+    private void FlushEditorsToViewModel()
+    {
+        BodyBackgroundColorComboBox?.GetBindingExpression(ComboBox.SelectedValueProperty)?.UpdateSource();
+        BodyBorderColorComboBox?.GetBindingExpression(ComboBox.SelectedValueProperty)?.UpdateSource();
+        UseUnifiedColorsCheckBox?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
+        LockInnerNodesCheckBox?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
+        BackgroundOpacitySlider?.GetBindingExpression(Slider.ValueProperty)?.UpdateSource();
+        TitleTextBox?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        BindingOperations.GetBindingExpressionBase(this, DataContextProperty)?.UpdateSource();
     }
 }

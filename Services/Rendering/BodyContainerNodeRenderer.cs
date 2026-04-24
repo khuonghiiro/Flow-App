@@ -15,11 +15,13 @@ namespace FlowMy.Services.Rendering;
 public sealed class BodyContainerNodeRenderer : INodeRenderer
 {
     private readonly IWorkflowEditorHostAccessor _hostAccessor;
+    private readonly CollisionResolver _collisionResolver;
     private IWorkflowEditorHost Host => _hostAccessor.GetRequiredHost();
 
-    public BodyContainerNodeRenderer(IWorkflowEditorHostAccessor hostAccessor)
+    public BodyContainerNodeRenderer(IWorkflowEditorHostAccessor hostAccessor, CollisionResolver collisionResolver)
     {
         _hostAccessor = hostAccessor;
+        _collisionResolver = collisionResolver;
     }
 
     public void RenderNode(WorkflowNode node, Canvas canvas)
@@ -131,6 +133,11 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
                 }
             }
 
+            if (bodyNode.LockInnerNodes && Host.ViewModel != null)
+            {
+                PushExternalNodesOutOfBody(bodyNode, nodesInside ?? new List<WorkflowNode>());
+            }
+
             if (Host.ViewModel != null)
             {
                 foreach (var conn in Host.ViewModel.Connections.Where(c => c.FromNode == bodyNode || c.ToNode == bodyNode))
@@ -219,6 +226,66 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
                 if (e.PropertyName == nameof(BodyContainerNode.TitleDisplayMode))
                     BodyContainerControl.UpdateTitleVisibility(bodyNode, titleText, hovering);
             };
+        }
+    }
+
+    private void PushExternalNodesOutOfBody(BodyContainerNode bodyNode, List<WorkflowNode> lockedNodes)
+    {
+        var vm = Host.ViewModel;
+        if (vm == null) return;
+
+        var bodyBounds = new Rect(bodyNode.X, bodyNode.Y, bodyNode.BodyWidth, bodyNode.BodyHeight);
+        var lockedSet = new HashSet<WorkflowNode>(lockedNodes) { bodyNode };
+        const double gap = 12.0;
+        var movedNodes = new List<WorkflowNode>();
+
+        foreach (var node in vm.Nodes)
+        {
+            if (lockedSet.Contains(node)) continue;
+            if (node is LoopBodyNode or AsyncTaskBodyNode) continue;
+
+            var width = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+            var height = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+            var nodeRect = new Rect(node.X, node.Y, width, height);
+            if (!bodyBounds.IntersectsWith(nodeRect)) continue;
+
+            var center = new Point(nodeRect.Left + nodeRect.Width / 2.0, nodeRect.Top + nodeRect.Height / 2.0);
+            var leftDist = Math.Abs(center.X - bodyBounds.Left);
+            var rightDist = Math.Abs(bodyBounds.Right - center.X);
+            var topDist = Math.Abs(center.Y - bodyBounds.Top);
+            var bottomDist = Math.Abs(bodyBounds.Bottom - center.Y);
+
+            var minDist = Math.Min(Math.Min(leftDist, rightDist), Math.Min(topDist, bottomDist));
+            double targetX = node.X;
+            double targetY = node.Y;
+
+            if (minDist == leftDist)
+            {
+                targetX = bodyBounds.Left - width - gap;
+            }
+            else if (minDist == rightDist)
+            {
+                targetX = bodyBounds.Right + gap;
+            }
+            else if (minDist == topDist)
+            {
+                targetY = bodyBounds.Top - height - gap;
+            }
+            else
+            {
+                targetY = bodyBounds.Bottom + gap;
+            }
+
+            Host.UpdateNodePosition(node, targetX, targetY);
+            foreach (var conn in vm.Connections.Where(c => c.FromNode == node || c.ToNode == node))
+                Host.UpdateConnectionPath(conn);
+            movedNodes.Add(node);
+        }
+
+        // Collision pass: nodes vừa bị đẩy sẽ tiếp tục đẩy nhau nếu còn chồng lấn.
+        foreach (var moved in movedNodes)
+        {
+            _collisionResolver.ResolveCollision(vm, moved, Host);
         }
     }
 }

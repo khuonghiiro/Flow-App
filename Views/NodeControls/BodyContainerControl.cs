@@ -92,6 +92,19 @@ public static class BodyContainerControl
         return border;
     }
 
+    public static void RefreshVisualFromNode(BodyContainerNode node)
+    {
+        if (node.Border?.Child is not Grid grid) return;
+        if (grid.Children.Count < 4) return;
+        if (grid.Children[0] is not Rectangle fillRect) return;
+        if (grid.Children[1] is not Rectangle borderRect) return;
+        if (grid.Children[2] is not TextBlock titleText) return;
+        if (grid.Children[3] is not SvgViewboxEx lockIcon) return;
+
+        ApplyNodeVisual(node, node.Border, fillRect, borderRect, titleText, lockIcon);
+        UpdateTitleVisibility(node, titleText, isHovering: false);
+    }
+
     public static void ApplyNodeVisual(
         BodyContainerNode node,
         Border border,
@@ -102,6 +115,7 @@ public static class BodyContainerControl
     {
         border.Width = node.BodyWidth;
         border.Height = node.BodyHeight;
+        var visualScale = Math.Clamp(Math.Max(node.BodyWidth / BodyScaleBaseWidth, node.BodyHeight / BodyScaleBaseHeight), 1.0, 2.0);
 
         var borderColor = ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Color.FromRgb(107, 114, 128));
         var backgroundColor = ParseColor(node.BodyBackgroundColorHex, Color.FromRgb(107, 114, 128));
@@ -112,15 +126,20 @@ public static class BodyContainerControl
         borderRect.Stroke = new SolidColorBrush(borderColor);
         titleText.Text = node.Title;
         titleText.Foreground = ResolveTitleBrush(node, borderColor);
+        titleText.FontSize = Math.Clamp(12 * visualScale, 12, 26);
+        titleText.Margin = new Thickness(0, -26 * visualScale, 0, 0);
 
-        var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";
+        // Use only known icon keys from icon resources.
+        var lockIconKey = node.LockInnerNodes ? "list-check solid" : "unlock light";
+        lockIcon.Source = null;
         lockIcon.Source = new IconKeyToPathConverter().Convert(
             null, typeof(Uri), lockIconKey, CultureInfo.CurrentCulture) as Uri;
+        lockIcon.InvalidateVisual();
         lockIcon.Fill = new SolidColorBrush(Color.FromArgb(235, 17, 24, 39));
         lockIcon.Width = Math.Max(32, Math.Min(node.BodyWidth, node.BodyHeight) * 0.18);
         lockIcon.Height = lockIcon.Width;
 
-        UpdateResizeHandleScale(border, node.BodyWidth, node.BodyHeight, borderColor);
+        UpdateResizeHandleScale(border, node.BodyWidth, node.BodyHeight, borderColor, node.LockInnerNodes);
     }
 
     public static void UpdateTitleVisibility(BodyContainerNode node, TextBlock titleText, bool isHovering)
@@ -150,7 +169,7 @@ public static class BodyContainerControl
         grid.Children.Add(handle);
     }
 
-    private static void UpdateResizeHandleScale(Border border, double bodyWidth, double bodyHeight, Color handleColor)
+    private static void UpdateResizeHandleScale(Border border, double bodyWidth, double bodyHeight, Color handleColor, bool hideHandles)
     {
         if (border.Child is not Grid grid) return;
         var scale = Math.Clamp(Math.Max(bodyWidth / BodyScaleBaseWidth, bodyHeight / BodyScaleBaseHeight), 1.0, 2.0);
@@ -160,6 +179,7 @@ public static class BodyContainerControl
             handle.Fill = new SolidColorBrush(handleColor);
             handle.RenderTransformOrigin = new Point(0.5, 0.5);
             handle.RenderTransform = new ScaleTransform(scale, scale);
+            handle.Visibility = hideHandles ? Visibility.Collapsed : Visibility.Visible;
         }
     }
 
@@ -226,7 +246,7 @@ public static class BodyContainerControl
             node.BodyHeight = newH;
             border.Width = newW;
             border.Height = newH;
-            UpdateResizeHandleScale(border, newW, newH, ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Color.FromRgb(107, 114, 128)));
+            UpdateResizeHandleScale(border, newW, newH, ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Color.FromRgb(107, 114, 128)), node.LockInnerNodes);
 
             Canvas.SetLeft(border, newX);
             Canvas.SetTop(border, newY);

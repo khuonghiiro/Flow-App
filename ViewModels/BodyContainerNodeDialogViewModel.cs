@@ -1,10 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Views.NodeControls;
 using System;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Controls;
+using System.Windows.Shapes;
 
 namespace FlowMy.ViewModels;
 
@@ -66,27 +69,28 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
 
     protected override void OnSaveTitle()
     {
-        _nodeRef.BodyBackgroundColorHex = NormalizeHex(BodyBackgroundColorHex, _nodeRef.BodyBackgroundColorHex);
-        _nodeRef.BodyBorderColorHex = NormalizeHex(BodyBorderColorHex, _nodeRef.BodyBorderColorHex);
+        var bgResolved = ResolveColorToken(BodyBackgroundColorKey) ?? BodyBackgroundColorHex;
+        var borderResolved = ResolveColorToken(BodyBorderColorKey) ?? BodyBorderColorHex;
+        _nodeRef.BodyBackgroundColorHex = NormalizeColorValue(bgResolved, _nodeRef.BodyBackgroundColorHex);
+        _nodeRef.BodyBorderColorHex = NormalizeColorValue(borderResolved, _nodeRef.BodyBorderColorHex);
         _nodeRef.UseUnifiedColors = UseUnifiedColors;
         _nodeRef.BackgroundOpacityPercent = BackgroundOpacityPercent;
         _nodeRef.LockInnerNodes = LockInnerNodes;
-        _nodeRef.BodyBackgroundColorHex = NormalizeHex(BodyBackgroundColorKey, _nodeRef.BodyBackgroundColorHex);
-        _nodeRef.BodyBorderColorHex = NormalizeHex(BodyBorderColorKey, _nodeRef.BodyBorderColorHex);
         _nodeRef.NotifyTitleChanged();
+        RefreshBodyVisualImmediate();
         _host.RequestSyncDataPanels(immediate: true);
     }
 
     partial void OnBodyBackgroundColorHexChanged(string value)
     {
-        BodyBackgroundColorKey = value;
-        _nodeRef.BodyBackgroundColorHex = NormalizeHex(value, _nodeRef.BodyBackgroundColorHex);
+        _nodeRef.BodyBackgroundColorHex = NormalizeColorValue(value, _nodeRef.BodyBackgroundColorHex);
+        RefreshBodyVisualImmediate();
     }
 
     partial void OnBodyBorderColorHexChanged(string value)
     {
-        BodyBorderColorKey = value;
-        _nodeRef.BodyBorderColorHex = NormalizeHex(value, _nodeRef.BodyBorderColorHex);
+        _nodeRef.BodyBorderColorHex = NormalizeColorValue(value, _nodeRef.BodyBorderColorHex);
+        RefreshBodyVisualImmediate();
     }
 
     partial void OnBodyBackgroundColorKeyChanged(string? value)
@@ -95,7 +99,8 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         if (!string.IsNullOrWhiteSpace(resolved))
         {
             BodyBackgroundColorHex = resolved;
-            _nodeRef.BodyBackgroundColorHex = NormalizeHex(resolved, _nodeRef.BodyBackgroundColorHex);
+            _nodeRef.BodyBackgroundColorHex = NormalizeColorValue(resolved, _nodeRef.BodyBackgroundColorHex);
+            RefreshBodyVisualImmediate();
         }
     }
 
@@ -105,23 +110,27 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         if (!string.IsNullOrWhiteSpace(resolved))
         {
             BodyBorderColorHex = resolved;
-            _nodeRef.BodyBorderColorHex = NormalizeHex(resolved, _nodeRef.BodyBorderColorHex);
+            _nodeRef.BodyBorderColorHex = NormalizeColorValue(resolved, _nodeRef.BodyBorderColorHex);
+            RefreshBodyVisualImmediate();
         }
     }
 
     partial void OnUseUnifiedColorsChanged(bool value)
     {
         _nodeRef.UseUnifiedColors = value;
+        RefreshBodyVisualImmediate();
     }
 
     partial void OnBackgroundOpacityPercentChanged(double value)
     {
         _nodeRef.BackgroundOpacityPercent = value;
+        RefreshBodyVisualImmediate();
     }
 
     partial void OnLockInnerNodesChanged(bool value)
     {
         _nodeRef.LockInnerNodes = value;
+        RefreshBodyVisualImmediate();
     }
 
     private static string? ResolveColorToken(string? value)
@@ -149,16 +158,34 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         public string DisplayName { get; }
     }
 
-    private static string NormalizeHex(string? input, string fallback)
+    private static string NormalizeColorValue(string? input, string fallback)
     {
         if (string.IsNullOrWhiteSpace(input)) return fallback;
         var value = input.Trim();
-        if (!value.StartsWith('#')) value = $"#{value}";
-        if (value.Length is not (7 or 9)) return fallback;
-        for (var i = 1; i < value.Length; i++)
+
+        if (value.StartsWith('#'))
         {
-            if (!Uri.IsHexDigit(value[i])) return fallback;
+            if (value.Length is not (7 or 9)) return fallback;
+            for (var i = 1; i < value.Length; i++)
+            {
+                if (!Uri.IsHexDigit(value[i])) return fallback;
+            }
+            return value.ToUpperInvariant();
         }
-        return value.ToUpperInvariant();
+
+        // Allow resource key values such as PrimaryBrush, DangerBrush, etc.
+        return value;
+    }
+
+    private void RefreshBodyVisualImmediate()
+    {
+        if (_nodeRef.Border?.Child is not Grid grid) return;
+        if (grid.Children.Count < 4) return;
+        if (grid.Children[0] is not Rectangle fillRect) return;
+        if (grid.Children[1] is not Rectangle borderRect) return;
+        if (grid.Children[2] is not TextBlock titleText) return;
+        if (grid.Children[3] is not FlowMy.Controls.SvgViewboxEx lockIcon) return;
+        BodyContainerControl.ApplyNodeVisual(_nodeRef, _nodeRef.Border, fillRect, borderRect, titleText, lockIcon);
+        BodyContainerControl.UpdateTitleVisibility(_nodeRef, titleText, isHovering: false);
     }
 }

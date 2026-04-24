@@ -98,7 +98,8 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ComboBox Grid.Column="0"
+                                <ComboBox x:Name="BodyBackgroundColorComboBox"
+                                          Grid.Column="0"
                                           Height="32"
                                           Style="{DynamicResource BaseComboBox}"
                                           ItemsSource="{Binding BodyColorOptions}"
@@ -109,6 +110,7 @@
                                         Content="🎨"
                                         Width="32"
                                         Height="32"
+                                        Padding ="0"
                                         Margin="8,0,0,0"
                                         ToolTip="Chọn màu tuỳ ý"
                                         Click="PickBodyBackgroundColor_Click"/>
@@ -130,7 +132,8 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ComboBox Grid.Column="0"
+                                <ComboBox x:Name="BodyBorderColorComboBox"
+                                          Grid.Column="0"
                                           Height="32"
                                           Style="{DynamicResource BaseComboBox}"
                                           ItemsSource="{Binding BodyColorOptions}"
@@ -141,6 +144,7 @@
                                         Content="🎨"
                                         Width="32"
                                         Height="32"
+                                        Padding ="0"
                                         Margin="8,0,0,0"
                                         ToolTip="Chọn màu tuỳ ý"
                                         Click="PickBodyBorderColor_Click"/>
@@ -152,7 +156,8 @@
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1"/>
 
-                            <CheckBox Content="Dùng cùng một màu cho nền và viền"
+                            <CheckBox x:Name="UseUnifiedColorsCheckBox"
+                                      Content="Dùng cùng một màu cho nền và viền"
                                       IsChecked="{Binding UseUnifiedColors, Mode=TwoWay}"
                                       Foreground="{DynamicResource TextBrush}"
                                       Margin="0,0,0,12"/>
@@ -167,7 +172,8 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Slider Grid.Column="0"
+                                <Slider x:Name="BackgroundOpacitySlider"
+                                        Grid.Column="0"
                                         Minimum="0" Maximum="100"
                                         Value="{Binding BackgroundOpacityPercent, Mode=TwoWay}"
                                         TickFrequency="5"
@@ -179,7 +185,8 @@
                                            Text="{Binding BackgroundOpacityPercent, StringFormat='{}{0:F0}%'}"/>
                             </Grid>
 
-                            <CheckBox Content="Khóa node bên trong body"
+                            <CheckBox x:Name="LockInnerNodesCheckBox"
+                                      Content="Khóa node bên trong body"
                                       IsChecked="{Binding LockInnerNodes, Mode=TwoWay}"
                                       Foreground="{DynamicResource TextBrush}"/>
                         </StackPanel>
