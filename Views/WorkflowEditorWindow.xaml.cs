@@ -1297,6 +1297,10 @@ namespace FlowMy.Views
                     if (ExecutionPanel != null) ExecutionPanel.Visibility = Visibility.Visible;
                     if (WorkflowManagementPanel != null) WorkflowManagementPanel.Visibility = Visibility.Collapsed;
                     if (PersistencePanel != null) PersistencePanel.Visibility = Visibility.Collapsed;
+                    // Debug mode: để DataTrigger/binding của VM quyết định panel log theo checkbox "hiển thị log".
+                    // Tránh bị kẹt local Visibility=Collapsed từ các mode trước.
+                    if (ExecutionTracePanelHostBorder != null)
+                        ExecutionTracePanelHostBorder.ClearValue(UIElement.VisibilityProperty);
                 }
                 else
                 {

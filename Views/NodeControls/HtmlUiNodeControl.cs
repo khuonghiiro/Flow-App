@@ -739,8 +739,12 @@ namespace FlowMy.Views.NodeControls
         } else {
           var keys = args.slice(0, -1);
           window.hostAsync._callbacks.push({ keys: keys, cb: cb });
-          var vals0 = keys.map(function(k) { return window.hostAsync.values[k]; });
-          setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
+          // Chỉ fire lần đầu khi tất cả key đã có giá trị thực sự.
+          var hasAll = keys.every(function(k){ return Object.prototype.hasOwnProperty.call(window.hostAsync.values, k); });
+          if (hasAll) {
+            var vals0 = keys.map(function(k) { return window.hostAsync.values[k]; });
+            setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
+          }
         }
       };
 
@@ -3554,8 +3558,12 @@ namespace FlowMy.Views.NodeControls
       // onReceive('key1', 'key2', function(v1, v2) { ... })
       var keys = args.slice(0, -1);
       window.hostAsync._callbacks.push({ keys: keys, cb: cb });
-      var vals0 = keys.map(function(k) { return window.hostAsync.values[k]; });
-      setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
+      // Chỉ fire lần đầu khi tất cả key đã có giá trị thực sự.
+      var hasAll = keys.every(function(k){ return Object.prototype.hasOwnProperty.call(window.hostAsync.values, k); });
+      if (hasAll) {
+        var vals0 = keys.map(function(k) { return window.hostAsync.values[k]; });
+        setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
+      }
     }
   };
   window.hostAsyncPush = function(key, value) {

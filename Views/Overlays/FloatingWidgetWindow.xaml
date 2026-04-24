@@ -379,7 +379,7 @@
 
         <!-- ═══ STATE 2: Expanded / Active ═══ -->
         <Grid x:Name="ExpandedContainer" Visibility="Collapsed">
-            <Border x:Name="ExpandedBorder"
+             <Border x:Name="ExpandedBorder"
                     CornerRadius="0"
                     BorderThickness="1"
                     Background="{DynamicResource WindowBackgroundBrush}"
@@ -640,7 +640,7 @@
                             </ControlTemplate>
                         </Thumb.Template>
                     </Thumb>
-                </Grid>
+                    </Grid>
             </Border>
         </Grid>
     </Grid>
