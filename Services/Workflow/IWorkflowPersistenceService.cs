@@ -1,4 +1,5 @@
 using FlowMy.Models;
+using FlowMy.Models.Persistence;
 using System.Collections.Generic;
 
 namespace FlowMy.Services.Workflow;
@@ -58,7 +59,9 @@ public interface IWorkflowPersistenceService
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
         string? connectionLineStyle = null,
-        string? portableWebBundleFileName = null);
+        string? portableWebBundleFileName = null,
+        bool includeRuntimeOutput = false,
+        WorkflowExportOptionsDto? exportOptions = null);
 
     WorkflowLoadResult? ImportFromJson(string json);
 }

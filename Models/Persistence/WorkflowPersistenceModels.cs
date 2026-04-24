@@ -30,6 +30,37 @@ namespace FlowMy.Models.Persistence
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? PortableWebBundleFileName { get; set; }
+
+        /// <summary>
+        /// Metadata mô tả cấu hình đã dùng khi export file này.
+        /// Import có thể dùng để tự nhận diện hành vi khôi phục phù hợp.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public WorkflowExportOptionsDto? ExportOptions { get; set; }
+    }
+
+    public class WorkflowExportOptionsDto
+    {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IncludeRuntimeData { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Compressed { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IncludeWebBundle { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IncludeWebCookies { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IncludeOfflineHtmlAssets { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? PackageKind { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? CompressionMode { get; set; }
     }
 
     public class NodeDto

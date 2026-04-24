@@ -16,54 +16,105 @@ namespace FlowMy.Views
     public partial class WorkflowEditorWindow
     {
         private const string CompressedWorkflowExtension = ".flowz";
+        private const string WebBundleExtension = ".webpkg.zip";
+
+        private sealed class ExportWorkflowSelection
+        {
+            public string Format { get; init; } = "json";
+            public bool IncludeRuntimeOutput { get; init; }
+            public bool IncludeWebCookies { get; init; }
+            public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
+            public string CompressionMode { get; init; } = "medium";
+
+            public bool IsCompressed => string.Equals(Format, "flowz", StringComparison.OrdinalIgnoreCase);
+            public bool IsWebBundle => string.Equals(Format, "webpkg", StringComparison.OrdinalIgnoreCase);
+        }
 
         private void ExportWorkflow_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel == null) return;
 
+            var selection = ShowExportWorkflowOptionsDialog();
+            if (selection == null) return;
+
+            if (selection.IsWebBundle)
+            {
+                _ = ExportWorkflowWithWebBundleAsync(selection);
+                return;
+            }
+
             var saveFileDialog = new SaveFileDialog
             {
-                Filter = "Workflow JSON (*.json)|*.json",
-                FileName = ViewModel.CurrentWorkflowName ?? "workflow"
+                Filter = selection.IsCompressed
+                    ? "Compressed Workflow (*.flowz)|*.flowz"
+                    : "Workflow JSON (*.json)|*.json",
+                FileName = selection.IsCompressed
+                    ? (ViewModel.CurrentWorkflowName ?? "workflow") + CompressedWorkflowExtension
+                    : ViewModel.CurrentWorkflowName ?? "workflow"
             };
 
             if (saveFileDialog.ShowDialog(this) == true)
             {
-                string json = ViewModel.ExportToJson();
-                File.WriteAllText(saveFileDialog.FileName, json);
+                var exportOptions = new WorkflowExportOptionsDto
+                {
+                    IncludeRuntimeData = selection.IncludeRuntimeOutput,
+                    Compressed = selection.IsCompressed,
+                    IncludeWebBundle = false,
+                    IncludeWebCookies = false,
+                    IncludeOfflineHtmlAssets = false,
+                    PackageKind = selection.IsCompressed ? "flowz" : "json",
+                    CompressionMode = selection.IsCompressed ? selection.CompressionMode : null
+                };
+                var json = ViewModel.ExportToJson(
+                    includeRuntimeOutput: selection.IncludeRuntimeOutput,
+                    exportOptions: exportOptions);
+
+                if (selection.IsCompressed)
+                {
+                    var utf8 = System.Text.Encoding.UTF8.GetBytes(json);
+                    using var output = File.Create(saveFileDialog.FileName);
+                    using var brotli = new BrotliStream(output, selection.CompressionLevel, leaveOpen: false);
+                    brotli.Write(utf8, 0, utf8.Length);
+                }
+                else
+                {
+                    File.WriteAllText(saveFileDialog.FileName, json);
+                }
+
                 Activate();
             }
         }
 
-        private void ExportCompressedWorkflow_Click(object sender, RoutedEventArgs e)
+        private ExportWorkflowSelection? ShowExportWorkflowOptionsDialog()
         {
-            if (ViewModel == null) return;
-
-            var saveFileDialog = new SaveFileDialog
+            var dialog = new ExportWorkflowOptionsDialog
             {
-                Filter = "Compressed Workflow (*.flowz)|*.flowz",
-                FileName = (ViewModel.CurrentWorkflowName ?? "workflow") + CompressedWorkflowExtension
+                Owner = this
             };
 
-            if (saveFileDialog.ShowDialog(this) == true)
+            if (dialog.ShowDialog() != true)
             {
-                var json = ViewModel.ExportToJson();
-                var utf8 = System.Text.Encoding.UTF8.GetBytes(json);
-                using var output = File.Create(saveFileDialog.FileName);
-                using var brotli = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: false);
-                brotli.Write(utf8, 0, utf8.Length);
-                Activate();
+                return null;
             }
+
+            return new ExportWorkflowSelection
+            {
+                Format = dialog.SelectedFormat,
+                IncludeRuntimeOutput = dialog.IncludeRuntimeOutput,
+                IncludeWebCookies = dialog.IncludeWebCookies,
+                CompressionLevel = dialog.SelectedCompressionLevel,
+                CompressionMode = dialog.SelectedCompressionMode
+            };
         }
 
-        private async void ExportWorkflowWithWebBundle_Click(object sender, RoutedEventArgs e)
+        private async Task ExportWorkflowWithWebBundleAsync(ExportWorkflowSelection selection)
         {
             if (ViewModel == null) return;
 
             var saveFileDialog = new SaveFileDialog
             {
                 Filter = "Workflow Package (*.webpkg.zip)|*.webpkg.zip|Zip (*.zip)|*.zip",
-                FileName = (ViewModel.CurrentWorkflowName ?? "workflow") + PortableWebBundleZipService.BundleFileSuffix
+                FileName = (ViewModel.CurrentWorkflowName ?? "workflow") + WebBundleExtension
             };
 
             if (saveFileDialog.ShowDialog(this) != true) return;
@@ -89,24 +140,47 @@ namespace FlowMy.Views
             SetExportImportBusy(true);
             try
             {
-                string cookiesJson;
-                try
+                string cookiesJson = "{}";
+                if (selection.IncludeWebCookies)
                 {
-                    cookiesJson = await WebCookieSnapshotService.ExportSnapshotJsonAsync(ViewModel.Nodes.ToList(), cts.Token);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(
-                        this,
-                        $"Không thu thập được cookie từ WebView2 (cần UI thread / WebView2): {ex.Message}",
-                        "Export + Web",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
+                    try
+                    {
+                        cookiesJson = await WebCookieSnapshotService.ExportSnapshotJsonAsync(ViewModel.Nodes.ToList(), cts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            this,
+                            $"Không thu thập được cookie từ WebView2 (cần UI thread / WebView2): {ex.Message}",
+                            "Export + Web",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        return;
+                    }
                 }
 
-                var json = ViewModel.ExportToJson(portableWebBundleFileName: null);
-                await PortableWebBundleZipService.CreateWorkflowPackageZipAsync(packagePath, json, ViewModel.Nodes, cookiesJson, progress, cts.Token);
+                var exportOptions = new WorkflowExportOptionsDto
+                {
+                    IncludeRuntimeData = selection.IncludeRuntimeOutput,
+                    Compressed = true,
+                    IncludeWebBundle = true,
+                    IncludeWebCookies = selection.IncludeWebCookies,
+                    IncludeOfflineHtmlAssets = true,
+                    PackageKind = "webpkg",
+                    CompressionMode = selection.CompressionMode
+                };
+                var json = ViewModel.ExportToJson(
+                    portableWebBundleFileName: null,
+                    includeRuntimeOutput: selection.IncludeRuntimeOutput,
+                    exportOptions: exportOptions);
+                await PortableWebBundleZipService.CreateWorkflowPackageZipAsync(
+                    packagePath,
+                    json,
+                    ViewModel.Nodes,
+                    cookiesJson,
+                    progress,
+                    cts.Token,
+                    selection.CompressionLevel);
             }
             catch (OperationCanceledException)
             {
@@ -197,6 +271,22 @@ namespace FlowMy.Views
                     MessageBox.Show(this, "File JSON workflow không hợp lệ.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+
+                if (dtoProbe.ExportOptions?.IncludeWebBundle == true && extractedPackageRoot == null)
+                {
+                    var packageName = dtoProbe.PortableWebBundleFileName;
+                    if (!string.IsNullOrWhiteSpace(packageName))
+                    {
+                        var adjacentZip = Path.Combine(Path.GetDirectoryName(importPath) ?? string.Empty, packageName);
+                        if (File.Exists(adjacentZip))
+                        {
+                            var temp = Path.Combine(Path.GetTempPath(), "FlowMyImportPkg_" + Guid.NewGuid().ToString("N"));
+                            Directory.CreateDirectory(temp);
+                            ZipFile.ExtractToDirectory(adjacentZip, temp, overwriteFiles: true);
+                            extractedPackageRoot = temp;
+                        }
+                    }
+                }
             }
             catch (JsonException)
             {
@@ -277,8 +367,6 @@ namespace FlowMy.Views
         private void SetExportImportBusy(bool busy)
         {
             if (ExportButton != null) ExportButton.IsEnabled = !busy;
-            if (ExportCompressedButton != null) ExportCompressedButton.IsEnabled = !busy;
-            if (ExportWebBundleButton != null) ExportWebBundleButton.IsEnabled = !busy;
             if (ImportButton != null) ImportButton.IsEnabled = !busy;
         }
 

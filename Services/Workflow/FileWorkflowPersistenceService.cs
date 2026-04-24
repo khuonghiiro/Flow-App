@@ -236,13 +236,15 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
         string? connectionLineStyle = null,
-        string? portableWebBundleFileName = null)
+        string? portableWebBundleFileName = null,
+        bool includeRuntimeOutput = false,
+        WorkflowExportOptionsDto? exportOptions = null)
     {
         var dto = BuildWorkflowDto(
             workflowName,
             nodes,
             connections,
-            includeRuntimeOutput: false,
+            includeRuntimeOutput,
             zoomLevel,
             panX,
             panY,
@@ -251,7 +253,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             savedViewportCenterX,
             savedViewportCenterY,
             connectionLineStyle,
-            portableWebBundleFileName);
+            portableWebBundleFileName,
+            exportOptions);
         return JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
     }
 
@@ -268,7 +271,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
         string? connectionLineStyle = null,
-        string? portableWebBundleFileName = null)
+        string? portableWebBundleFileName = null,
+        WorkflowExportOptionsDto? exportOptions = null)
     {
         var orderedNodes = OrderNodesForExport(nodes.ToList(), connections.ToList());
 
@@ -295,6 +299,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             PortableWebBundleFileName = string.IsNullOrWhiteSpace(portableWebBundleFileName)
                 ? null
                 : portableWebBundleFileName.Trim(),
+            ExportOptions = exportOptions,
             Nodes = allNodes.Select(n => BuildNodeDto(n, includeRuntimeOutput)).ToList(),
             Connections = connections.Select(c => new ConnectionDto
             {

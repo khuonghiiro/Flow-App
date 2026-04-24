@@ -1,0 +1,88 @@
+<Window x:Class="FlowMy.Views.Overlays.ExportWorkflowOptionsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cấu hình Export Workflow"
+        Width="520"
+        SizeToContent="Height"
+        MinHeight="260"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="14"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Chọn cấu hình export trước khi lưu file."
+                   Foreground="{DynamicResource TextBrush}"
+                   FontSize="14"
+                   FontWeight="SemiBold"/>
+
+        <Border Grid.Row="2"
+                Background="{DynamicResource WindowBackgroundBrush}"
+                BorderBrush="{DynamicResource ControlBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12">
+            <StackPanel>
+                <StackPanel Margin="0,0,0,10">
+                    <TextBlock Text="Định dạng file"
+                               Foreground="{DynamicResource TextBrush}"
+                               Margin="0,0,0,6"/>
+                    <ComboBox x:Name="ExportFormatComboBox"
+                              Height="32"
+                              SelectionChanged="ExportFormatComboBox_SelectionChanged">
+                        <ComboBoxItem Tag="json" IsSelected="True">JSON (.json)</ComboBoxItem>
+                        <ComboBoxItem Tag="flowz">JSON nén Brotli (.flowz)</ComboBoxItem>
+                        <ComboBoxItem Tag="webpkg">Package Web Bundle (.webpkg.zip)</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Margin="0,0,0,10">
+                    <TextBlock Text="Mức nén"
+                               Foreground="{DynamicResource TextBrush}"
+                               Margin="0,0,0,6"/>
+                    <ComboBox x:Name="CompressionModeComboBox"
+                              Height="32">
+                        <ComboBoxItem Tag="light">Nén nhẹ (nhanh nhất, file lớn hơn)</ComboBoxItem>
+                        <ComboBoxItem Tag="medium" IsSelected="True">Nén vừa (cân bằng tốc độ và dung lượng)</ComboBoxItem>
+                        <ComboBoxItem Tag="strong">Nén mạnh (file nhỏ nhất, export chậm hơn)</ComboBoxItem>
+                    </ComboBox>
+                    <TextBlock x:Name="CompressionHintTextBlock"
+                               Foreground="{DynamicResource TextSecondary}"
+                               TextWrapping="Wrap"
+                               Margin="0,6,0,0"
+                               Text="Gợi ý: Nén vừa phù hợp hầu hết trường hợp. Nén nhẹ khi cần export nhanh; nén mạnh khi ưu tiên gửi file nhỏ."/>
+                </StackPanel>
+
+                <CheckBox x:Name="IncludeRuntimeOutputCheckBox"
+                          Content="Xuất kèm dữ liệu output đã chạy (OutputValues)"
+                          Foreground="{DynamicResource TextBrush}"
+                          Margin="0,0,0,8"/>
+
+                <CheckBox x:Name="IncludeWebCookiesCheckBox"
+                          Content="Xuất cookies WebView2 (áp dụng cho Web Bundle)"
+                          Foreground="{DynamicResource TextBrush}"
+                          Margin="0,0,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Content="Hủy"
+                    Width="96"
+                    Margin="0,0,8,0"
+                    Click="CancelButton_Click"/>
+            <Button Content="Export"
+                    Width="110"
+                    Style="{StaticResource PrimaryButton}"
+                    Click="ConfirmButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

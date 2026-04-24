@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using FlowMy.Models.Persistence;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
@@ -2468,7 +2469,10 @@ namespace FlowMy.ViewModels
         }
 
         /// <param name="portableWebBundleFileName">Tên file .webpkg.zip cùng thư mục JSON (chỉ tên file), hoặc null khi export chỉ logic.</param>
-        public string ExportToJson(string? portableWebBundleFileName = null)
+        public string ExportToJson(
+            string? portableWebBundleFileName = null,
+            bool includeRuntimeOutput = false,
+            WorkflowExportOptionsDto? exportOptions = null)
         {
             return _persistenceService.ExportToJson(
                 CurrentWorkflowName,
@@ -2482,7 +2486,9 @@ namespace FlowMy.ViewModels
                 SavedViewportCenterX,
                 SavedViewportCenterY,
                 ConnectionLineStyle.ToString(),
-                portableWebBundleFileName);
+                portableWebBundleFileName,
+                includeRuntimeOutput,
+                exportOptions);
         }
 
         /// <summary>

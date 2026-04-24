@@ -206,7 +206,7 @@
                                      ConverterParameter='file-import regular'}"/>
                     </Button>
 
-                    <!-- Export Button — icon only, xanh dương -->
+                    <!-- Export Button — icon only, mở popup cấu hình -->
                     <Button x:Name="ExportButton"
                             Click="ExportWorkflow_Click"
                             Margin = "6,0"
@@ -214,41 +214,11 @@
  Width="40" 
 Padding="8,4"
 Cursor="Hand"
-                            ToolTip="📤 Export JSON — chỉ logic workflow, không cookie/WebView2">
+                            ToolTip="📤 Export workflow (chọn cấu hình JSON / nén / web bundle)">
                         <controls:SvgViewboxEx Width="16" Height="16" Fill="White"
     Source="{Binding Source={x:Static sys:String.Empty},
              Converter={StaticResource IconKeyToPathConverter},
              ConverterParameter='file-brackets-curly duotone-light'}"/>
-                    </Button>
-
-                    <!-- Export Compressed Button — icon only -->
-                    <Button x:Name="ExportCompressedButton"
-                            Click="ExportCompressedWorkflow_Click"
-                            Margin = "6,0"
-                            Style="{StaticResource SecondaryButton}"
-                            Width="40"
-                            Padding="8,4"
-                            Cursor="Hand"
-                            ToolTip="🗜 Export JSON nén (.flowz) — nhẹ hơn, dùng để gửi/dán sang canvas khác">
-                        <controls:SvgViewboxEx Width="16" Height="16" Fill="White"
-                            Source="{Binding Source={x:Static sys:String.Empty},
-                                     Converter={StaticResource IconKeyToPathConverter},
-                                     ConverterParameter='file-zip duotone-light'}"/>
-                    </Button>
-
-                    <!-- ExportWebBundle Button — icon only, vàng amber -->
-                    <Button x:Name="ExportWebBundleButton"
-                            Click="ExportWorkflowWithWebBundle_Click"
-                            Margin = "6,0"
-                                                         Style="{StaticResource SecondaryButton}"
- Width="40" 
-Padding="8,4"
-Cursor="Hand"
-                            ToolTip="🌐 Export+Web Bundle — 1 file nén .webpkg.zip (chứa workflow.json + cookies + offline HTML). Không copy WebView2 profile (~500MB).">
-                        <controls:SvgViewboxEx Width="16" Height="16" Fill="White"
-     Source="{Binding Source={x:Static sys:String.Empty},
-              Converter={StaticResource IconKeyToPathConverter},
-              ConverterParameter='file-code duotone-light'}"/>
                     </Button>
 
 
