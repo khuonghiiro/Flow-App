@@ -534,7 +534,7 @@ namespace FlowMy.Views.NodeControls
                             var jsKey = System.Text.Json.JsonSerializer.Serialize(mapping.EffectiveInputKey);
                             var jsVal = System.Text.Json.JsonSerializer.Serialize(value);
                             await core2.ExecuteScriptAsync(
-                                $"if(typeof window.__acPush==='function') window.__acPush({jsKey},{jsVal});");
+                                $"if(typeof window.hostLivePush==='function') window.hostLivePush({jsKey},{jsVal});");
                         }
                         catch (ObjectDisposedException)
                         {
@@ -720,50 +720,46 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
-                // ── Inject __acAsync runtime TRƯỚC user JS (normalize, không phá bridge đã có) ──
+                // ── Inject hostAsync runtime TRƯỚC user JS (normalize, không phá bridge đã có) ──
                 {
                     var asyncRuntimeTag = @"
     <script>
     (function() {
-      window.__acAsync = window.__acAsync || {};
-      window.__acAsync.data = window.__acAsync.data || {};
-      window.__acAsync._callbacks = Array.isArray(window.__acAsync._callbacks) ? window.__acAsync._callbacks : [];
+      window.hostAsync = window.hostAsync || {};
+      window.hostAsync.values = window.hostAsync.values || {};
+      window.hostAsync._callbacks = Array.isArray(window.hostAsync._callbacks) ? window.hostAsync._callbacks : [];
 
-      window.__acAsync.onReceive = function() {
+      window.hostAsync.on = function() {
         var args = Array.prototype.slice.call(arguments);
         var cb = args[args.length - 1];
         if (typeof cb !== 'function') return;
         if (args.length === 1) {
-          window.__acAsync._callbacks.push({ keys: [], cb: cb });
-          setTimeout(function() { try { cb(window.__acAsync.data); } catch(e) {} }, 0);
+          window.hostAsync._callbacks.push({ keys: [], cb: cb });
+          setTimeout(function() { try { cb(window.hostAsync.values); } catch(e) {} }, 0);
         } else {
           var keys = args.slice(0, -1);
-          window.__acAsync._callbacks.push({ keys: keys, cb: cb });
-          var vals0 = keys.map(function(k) { return window.__acAsync.data[k]; });
+          window.hostAsync._callbacks.push({ keys: keys, cb: cb });
+          var vals0 = keys.map(function(k) { return window.hostAsync.values[k]; });
           setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
         }
       };
 
-      window.__acAsyncPush = function(key, value) {
-        window.__acAsync.data[key] = value;
-        var cbs = window.__acAsync._callbacks || [];
+      window.hostAsyncPush = function(key, value) {
+        window.hostAsync.values[key] = value;
+        var cbs = window.hostAsync._callbacks || [];
         for (var i = 0; i < cbs.length; i++) {
           var sub = cbs[i];
           try {
             if (!sub || typeof sub.cb !== 'function') continue;
             if (!Array.isArray(sub.keys) || sub.keys.length === 0) {
-              sub.cb(window.__acAsync.data);
+              sub.cb(window.hostAsync.values);
             } else if (sub.keys.indexOf(key) >= 0) {
-              var vals = sub.keys.map(function(k) { return window.__acAsync.data[k]; });
+              var vals = sub.keys.map(function(k) { return window.hostAsync.values[k]; });
               sub.cb.apply(null, vals);
             }
-          } catch (e) { console.error('__acAsync callback error:', e); }
+          } catch (e) { console.error('hostAsync callback error:', e); }
         }
       };
-
-      window.hostAsync = window.hostAsync || {};
-      window.hostAsync.on = window.__acAsync.onReceive;
-      window.hostAsync.values = window.__acAsync.data;
     })();
     </script>";
                     if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
@@ -855,7 +851,7 @@ namespace FlowMy.Views.NodeControls
                     var mediaRootsJson = BuildMediaSearchRootsJson();
                     var helperScript = $@"
 <script>
-  window.__acMediaSearchRoots = {mediaRootsJson};
+  window.hostMediaSearchRoots = {mediaRootsJson};
 
   function hostSubmit() {{
     if (window.chrome && window.chrome.webview) {{
@@ -900,7 +896,7 @@ namespace FlowMy.Views.NodeControls
       if (!(window.chrome && window.chrome.webview)) return;
       var roots = [];
       try {{
-        if (Array.isArray(window.__acMediaSearchRoots)) roots = window.__acMediaSearchRoots;
+        if (Array.isArray(window.hostMediaSearchRoots)) roots = window.hostMediaSearchRoots;
       }} catch (_) {{}}
       window.chrome.webview.postMessage({{
         type: 'resolve_playable_ref',
@@ -931,7 +927,7 @@ namespace FlowMy.Views.NodeControls
   window.hostPickImages = hostPickImages;
 
   // ✅ Catch F5 / Ctrl+R to reload via C# (capture mode for better reliability)
-  function __acHandleReloadHotkey(e) {{
+  function __hostHandleReloadHotkey(e) {{
     var isReloadKey = e && (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R')));
     if (!isReloadKey) return;
     try {{ e.preventDefault(); }} catch (_) {{}}
@@ -951,8 +947,8 @@ namespace FlowMy.Views.NodeControls
       try {{ window.location.reload(); }} catch (_) {{}}
     }}
   }}
-  window.addEventListener('keydown', __acHandleReloadHotkey, true);
-  document.addEventListener('keydown', __acHandleReloadHotkey, true);
+  window.addEventListener('keydown', __hostHandleReloadHotkey, true);
+  document.addEventListener('keydown', __hostHandleReloadHotkey, true);
 </script>";
                     if (htmlContent.Contains("</body>", StringComparison.OrdinalIgnoreCase))
                         htmlContent = htmlContent.Replace("</body>", helperScript + "\n</body>", StringComparison.OrdinalIgnoreCase);
@@ -1049,7 +1045,7 @@ namespace FlowMy.Views.NodeControls
                             var jsKey = System.Text.Json.JsonSerializer.Serialize(item.Key);
                             var jsVal = System.Text.Json.JsonSerializer.Serialize(item.Value);
                             await coreForRepush.ExecuteScriptAsync(
-                                $"if(typeof window.__acAsyncPush==='function') window.__acAsyncPush({jsKey},{jsVal});");
+                                $"if(typeof window.hostAsyncPush==='function') window.hostAsyncPush({jsKey},{jsVal});");
                         }
                         return;
                     }
@@ -1062,7 +1058,7 @@ namespace FlowMy.Views.NodeControls
                             var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
                             var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
                             await coreForRepush.ExecuteScriptAsync(
-                                $"if(typeof window.__acAsyncPush==='function') window.__acAsyncPush({jsKey},{jsVal});");
+                                $"if(typeof window.hostAsyncPush==='function') window.hostAsyncPush({jsKey},{jsVal});");
                         }
                     }
                 }
@@ -1252,7 +1248,7 @@ namespace FlowMy.Views.NodeControls
                     else if (e.PropertyName == nameof(HtmlUiNode.PendingAsyncDataPush) && node.PendingAsyncDataPush)
                     {
                         // Khi widget đang mở, ưu tiên để FloatingWidgetWindow drain queue + push vào runtime widget.
-                        // Nếu canvas drain trước thì widget sẽ không còn data để nhận (__acAsync không cập nhật).
+                        // Nếu canvas drain trước thì widget sẽ không còn data để nhận (hostAsync không cập nhật).
                         if (FlowMy.Services.FloatingWidgetManager.Instance.IsWidgetOpen(node.Id))
                         {
 #if DEBUG
@@ -1285,7 +1281,7 @@ namespace FlowMy.Views.NodeControls
                                     var jsKey = System.Text.Json.JsonSerializer.Serialize(kvp.Key);
                                     var jsVal = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
                                     await core.ExecuteScriptAsync(
-                                        $"if(typeof window.__acAsyncPush==='function') window.__acAsyncPush({jsKey},{jsVal});");
+                                        $"if(typeof window.hostAsyncPush==='function') window.hostAsyncPush({jsKey},{jsVal});");
                                 }
                             }
                             catch (Exception exPush)
@@ -3154,7 +3150,7 @@ namespace FlowMy.Views.NodeControls
 
                                             // WebView2 ExecuteScriptAsync KHÔNG await Promise.
                                             // Nếu user chạy `(async()=>{ ... })();` thì kết quả sẽ là `{}` (Promise object).
-                                            // => Wrap thành job async ghi kết quả vào window.__ac_tab1_jobs[jobId] rồi poll lấy kết quả.
+                                            // => Wrap thành job async ghi kết quả vào window.__hostTab1Jobs[jobId] rồi poll lấy kết quả.
                                             async Task ExecAndReturnAsync(WebView2 wv1Local, string scriptLocal)
                                             {
                                                 try
@@ -3170,17 +3166,17 @@ namespace FlowMy.Views.NodeControls
 (function() {{
   try {{
     var jobId = {jobIdJson};
-    window.__ac_tab1_jobs = window.__ac_tab1_jobs || {{}};
+    window.__hostTab1Jobs = window.__hostTab1Jobs || {{}};
     // payload=null => chưa xong; khi xong sẽ set payload là JSON string
-    window.__ac_tab1_jobs[jobId] = {{ payload: null, ts: Date.now() }};
+    window.__hostTab1Jobs[jobId] = {{ payload: null, ts: Date.now() }};
     (async function() {{
       try {{
         var r = await (0, eval)({scriptJson});
-        window.__ac_tab1_jobs[jobId].payload = JSON.stringify({{ ok: true, result: r }});
-        window.__ac_tab1_jobs[jobId].ts = Date.now();
+        window.__hostTab1Jobs[jobId].payload = JSON.stringify({{ ok: true, result: r }});
+        window.__hostTab1Jobs[jobId].ts = Date.now();
       }} catch (e) {{
-        window.__ac_tab1_jobs[jobId].payload = JSON.stringify({{ ok: false, error: (e && e.message) ? e.message : String(e) }});
-        window.__ac_tab1_jobs[jobId].ts = Date.now();
+        window.__hostTab1Jobs[jobId].payload = JSON.stringify({{ ok: false, error: (e && e.message) ? e.message : String(e) }});
+        window.__hostTab1Jobs[jobId].ts = Date.now();
       }}
     }})();
     return '__TAB1_JOB_STARTED__';
@@ -3231,7 +3227,7 @@ namespace FlowMy.Views.NodeControls
 
                                                         // Check if job object exists
                                                         var existsScript =
-                                                            $"(function(){{ try{{ var jobId={jobIdJson}; var j=(window.__ac_tab1_jobs && window.__ac_tab1_jobs[jobId]) ? window.__ac_tab1_jobs[jobId] : null; return j ? '1' : '0'; }}catch(e){{ return '0'; }} }})();";
+                                                            $"(function(){{ try{{ var jobId={jobIdJson}; var j=(window.__hostTab1Jobs && window.__hostTab1Jobs[jobId]) ? window.__hostTab1Jobs[jobId] : null; return j ? '1' : '0'; }}catch(e){{ return '0'; }} }})();";
                                                         var existsRaw = await await wv1Local.Dispatcher.InvokeAsync(() =>
                                                         {
                                                             var c1Local = wv1Local.CoreWebView2;
@@ -3268,7 +3264,7 @@ namespace FlowMy.Views.NodeControls
                                                     // If startScript truly failed, usually we get "start_error".
                                                     // Sometimes ExecuteScriptAsync may return null even if the script executed (no return value captured),
                                                     // so: only reject early when startRaw is non-empty AND does NOT include our marker.
-                                                    // Otherwise keep polling for window.__ac_tab1_jobs[jobId].payload.
+                                                    // Otherwise keep polling for window.__hostTab1Jobs[jobId].payload.
                                                     var startRawTrim = startRaw?.Trim();
                                                     if (!string.IsNullOrWhiteSpace(startRawTrim) &&
                                                         !startRawTrim.Equals("null", StringComparison.OrdinalIgnoreCase) &&
@@ -3283,7 +3279,7 @@ namespace FlowMy.Views.NodeControls
 
                                                     // 2) Poll result from Tab1
                                                     // Important: chỉ coi là "xong" khi payload != null (không dùng truthy để tránh bị đánh nhầm).
-                                                    var pollScript = $"(function(){{ try{{ var jobId={jobIdJson}; var j=(window.__ac_tab1_jobs && window.__ac_tab1_jobs[jobId]) ? window.__ac_tab1_jobs[jobId] : null; return (j && j.payload !== null && j.payload !== undefined) ? j.payload : null; }}catch(e){{ return null; }} }})();";
+                                                    var pollScript = $"(function(){{ try{{ var jobId={jobIdJson}; var j=(window.__hostTab1Jobs && window.__hostTab1Jobs[jobId]) ? window.__hostTab1Jobs[jobId] : null; return (j && j.payload !== null && j.payload !== undefined) ? j.payload : null; }}catch(e){{ return null; }} }})();";
                                                     string? pollRaw = "null";
                                                     var start = DateTime.UtcNow;
                                                     while (DateTime.UtcNow - start < pollTimeout)
@@ -3475,59 +3471,57 @@ namespace FlowMy.Views.NodeControls
                         }
                     };
 
-                    // ✅ Inject window.__ac TRƯỚC khi page script chạy
+                    // ✅ Inject hostLive TRƯỚC khi page script chạy
                     // AddScriptToExecuteOnDocumentCreatedAsync đảm bảo script chạy TRƯỚC mọi script của trang
                     // (NavigationCompleted thì quá muộn – trang đã load script rồi)
                     const string acHelperScript = @"
 (function() {
-  if (window.__acHelperReady) return;
-  window.__acHelperReady = true;
-  window.__ac = { live: {}, _callbacks: [] };
-  window.__ac.onUpdate = function() {
+  if (window.__hostLiveReady) return;
+  window.__hostLiveReady = true;
+  window.hostLive = { values: {}, _callbacks: [] };
+  window.hostLive.on = function() {
     var args = Array.prototype.slice.call(arguments);
     var cb = args[args.length - 1];
     if (typeof cb !== 'function') return;
     var keys = args.slice(0, -1);
-    window.__ac._callbacks.push({ keys: keys, cb: cb });
+    window.hostLive._callbacks.push({ keys: keys, cb: cb });
     // Call once immediately with current values (handles late subscribers like app.js).
     try {
       var vals0 = keys.length > 0
-        ? keys.map(function(k) { return window.__ac.live[k]; })
-        : [window.__ac.live];
+        ? keys.map(function(k) { return window.hostLive.values[k]; })
+        : [window.hostLive.values];
       setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
     } catch(e) {}
   };
-  window.__acPush = function(key, value) {
-    window.__ac.live[key] = value;
-    var cbs = window.__ac._callbacks || [];
+  window.hostLivePush = function(key, value) {
+    window.hostLive.values[key] = value;
+    var cbs = window.hostLive._callbacks || [];
     for (var i = 0; i < cbs.length; i++) {
       var sub = cbs[i];
       try {
         if (sub.keys.length === 0 || sub.keys.indexOf(key) >= 0) {
           var vals = sub.keys.length > 0
-            ? sub.keys.map(function(k) { return window.__ac.live[k]; })
-            : [window.__ac.live];
+            ? sub.keys.map(function(k) { return window.hostLive.values[k]; })
+            : [window.hostLive.values];
           sub.cb.apply(null, vals);
         }
       } catch(e) {}
     }
   };
-  window.__acPushAll = function(obj) {
-    Object.keys(obj).forEach(function(k) { window.__ac.live[k] = obj[k]; });
-    var cbs = window.__ac._callbacks || [];
+  window.hostLivePushAll = function(obj) {
+    Object.keys(obj).forEach(function(k) { window.hostLive.values[k] = obj[k]; });
+    var cbs = window.hostLive._callbacks || [];
     for (var i = 0; i < cbs.length; i++) {
       var sub = cbs[i];
       try {
         var vals = sub.keys.length > 0
-          ? sub.keys.map(function(k) { return window.__ac.live[k]; })
-          : [window.__ac.live];
+          ? sub.keys.map(function(k) { return window.hostLive.values[k]; })
+          : [window.hostLive.values];
         sub.cb.apply(null, vals);
       } catch(e) {}
     }
   };
   window.hostLive = window.hostLive || {};
-  window.hostLive.on = window.__ac.onUpdate;
-  window.hostLive.values = window.__ac.live;
 })();
 ";
                     try
@@ -3539,62 +3533,60 @@ namespace FlowMy.Views.NodeControls
                         System.Diagnostics.Debug.WriteLine($"HTML UI AddScriptToExecuteOnDocumentCreated error: {acEx.Message}");
                     }
 
-                    // ✅ Inject window.__acAsync — namespace riêng cho Async Data Receiver
+                    // ✅ Inject hostAsync — namespace riêng cho Async Data Receiver
                     const string acAsyncScript = @"
 (function() {
-  if (window.__acAsyncReady) return;
-  window.__acAsyncReady = true;
-  window.__acAsync = { data: {}, _callbacks: [] };
-  window.__acAsync.onReceive = function() {
-    window.__acAsync = window.__acAsync || {};
-    window.__acAsync.data = window.__acAsync.data || {};
-    window.__acAsync._callbacks = Array.isArray(window.__acAsync._callbacks) ? window.__acAsync._callbacks : [];
+  if (window.__hostAsyncReady) return;
+  window.__hostAsyncReady = true;
+  window.hostAsync = { values: {}, _callbacks: [] };
+  window.hostAsync.on = function() {
+    window.hostAsync = window.hostAsync || {};
+    window.hostAsync.values = window.hostAsync.values || {};
+    window.hostAsync._callbacks = Array.isArray(window.hostAsync._callbacks) ? window.hostAsync._callbacks : [];
     var args = Array.prototype.slice.call(arguments);
     var cb = args[args.length - 1];
     if (typeof cb !== 'function') return;
     if (args.length === 1) {
       // onReceive(function(allData) { ... }) — nhận tất cả
-      window.__acAsync._callbacks.push({ keys: [], cb: cb });
-      setTimeout(function() { try { cb(window.__acAsync.data); } catch(e) {} }, 0);
+      window.hostAsync._callbacks.push({ keys: [], cb: cb });
+      setTimeout(function() { try { cb(window.hostAsync.values); } catch(e) {} }, 0);
     } else {
       // onReceive('key1', 'key2', function(v1, v2) { ... })
       var keys = args.slice(0, -1);
-      window.__acAsync._callbacks.push({ keys: keys, cb: cb });
-      var vals0 = keys.map(function(k) { return window.__acAsync.data[k]; });
+      window.hostAsync._callbacks.push({ keys: keys, cb: cb });
+      var vals0 = keys.map(function(k) { return window.hostAsync.values[k]; });
       setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
     }
   };
-  window.__acAsyncPush = function(key, value) {
-    window.__acAsync.data[key] = value;
-    var cbs = window.__acAsync._callbacks || [];
+  window.hostAsyncPush = function(key, value) {
+    window.hostAsync.values[key] = value;
+    var cbs = window.hostAsync._callbacks || [];
     for (var i = 0; i < cbs.length; i++) {
       var sub = cbs[i];
       try {
         if (sub.keys.length === 0) {
-          sub.cb(window.__acAsync.data);
+          sub.cb(window.hostAsync.values);
         } else if (sub.keys.indexOf(key) >= 0) {
-          var vals = sub.keys.map(function(k) { return window.__acAsync.data[k]; });
+          var vals = sub.keys.map(function(k) { return window.hostAsync.values[k]; });
           sub.cb.apply(null, vals);
         }
       } catch(e) {}
     }
   };
-  window.__acAsyncPushAll = function(obj) {
-    Object.keys(obj).forEach(function(k) { window.__acAsync.data[k] = obj[k]; });
-    var cbs = window.__acAsync._callbacks || [];
+  window.hostAsyncPushAll = function(obj) {
+    Object.keys(obj).forEach(function(k) { window.hostAsync.values[k] = obj[k]; });
+    var cbs = window.hostAsync._callbacks || [];
     for (var i = 0; i < cbs.length; i++) {
       var sub = cbs[i];
       try {
         var vals = sub.keys.length > 0
-          ? sub.keys.map(function(k) { return window.__acAsync.data[k]; })
-          : [window.__acAsync.data];
+          ? sub.keys.map(function(k) { return window.hostAsync.values[k]; })
+          : [window.hostAsync.values];
         sub.cb.apply(null, vals);
       } catch(e) {}
     }
   };
   window.hostAsync = window.hostAsync || {};
-  window.hostAsync.on = window.__acAsync.onReceive;
-  window.hostAsync.values = window.__acAsync.data;
 })();
 ";
                     try
@@ -3603,7 +3595,7 @@ namespace FlowMy.Views.NodeControls
                     }
                     catch (Exception acAsyncEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"HTML UI AddScript __acAsync error: {acAsyncEx.Message}");
+                        System.Diagnostics.Debug.WriteLine($"HTML UI AddScript hostAsync error: {acAsyncEx.Message}");
                     }
 
                     // ✅ Inject Tab2→Tab1 JS bridge: gửi JS từ Tab2 (webView) để chạy trong Tab1 (_webViewTab1)

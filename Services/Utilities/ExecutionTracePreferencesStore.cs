@@ -42,19 +42,22 @@ namespace FlowMy.Services.Utilities
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-        private static string GetSettingsFilePath()
+        private static string GetSettingsFilePath(string? profileKey = null)
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var folder = Path.Combine(appData, "FlowMy");
             Directory.CreateDirectory(folder);
-            return Path.Combine(folder, "execution-trace-preferences.json");
+            var suffix = string.IsNullOrWhiteSpace(profileKey)
+                ? string.Empty
+                : $".{profileKey.Trim().ToLowerInvariant()}";
+            return Path.Combine(folder, $"execution-trace-preferences{suffix}.json");
         }
 
-        public static ExecutionTracePreferences Load()
+        public static ExecutionTracePreferences Load(string? profileKey = null)
         {
             try
             {
-                var file = GetSettingsFilePath();
+                var file = GetSettingsFilePath(profileKey);
                 if (!File.Exists(file))
                     return new ExecutionTracePreferences();
                 var json = File.ReadAllText(file);
@@ -67,11 +70,11 @@ namespace FlowMy.Services.Utilities
             }
         }
 
-        public static void Save(ExecutionTracePreferences prefs)
+        public static void Save(ExecutionTracePreferences prefs, string? profileKey = null)
         {
             try
             {
-                var file = GetSettingsFilePath();
+                var file = GetSettingsFilePath(profileKey);
                 var json = JsonSerializer.Serialize(prefs, JsonOptions);
                 File.WriteAllText(file, json);
             }

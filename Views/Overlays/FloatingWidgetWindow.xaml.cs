@@ -1593,7 +1593,7 @@ public partial class FloatingWidgetWindow : Window
                 _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
                 try
                 {
-                    // Inject runtime bridge ở document-start để luôn có __acPush/__acAsyncPush,
+                    // Inject runtime bridge ở document-start để luôn có hostLivePush/hostAsyncPush,
                     // kể cả khi HTML widget có cấu trúc phức tạp hoặc nhiều tab JS con.
                     await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BuildRuntimeBridgeBootstrapJs());
                 }
@@ -1875,25 +1875,25 @@ public partial class FloatingWidgetWindow : Window
 (function() {{
   try {{
     // Ensure tối thiểu bridge runtime trước khi push data
-    window.__ac = window.__ac || {{}};
-    window.__ac.live = window.__ac.live || {{}};
-    if (typeof window.__acPush !== 'function') {{
-      window.__ac._subs = window.__ac._subs || {{}};
-      window.__ac._allSubs = window.__ac._allSubs || [];
-      window.__acPush = function(key, value) {{
-        window.__ac = window.__ac || {{}};
-        window.__ac.live = window.__ac.live || {{}};
-        window.__ac.live[key] = value;
+    window.hostLive = window.hostLive || {{}};
+    window.hostLive.values = window.hostLive.values || {{}};
+    if (typeof window.hostLivePush !== 'function') {{
+      window.hostLive._subs = window.hostLive._subs || {{}};
+      window.hostLive._allSubs = window.hostLive._allSubs || [];
+      window.hostLivePush = function(key, value) {{
+        window.hostLive = window.hostLive || {{}};
+        window.hostLive.values = window.hostLive.values || {{}};
+        window.hostLive.values[key] = value;
       }};
     }}
-    if (!window.__acAsyncReady) {{
-      window.__acAsyncReady = true;
+    if (!window.hostAsyncReady) {{
+      window.hostAsyncReady = true;
       var _data = {{}};
       var _keyCallbacks = {{}};
       var _allCallbacks = [];
-      window.__acAsync = {{
-        data: _data,
-        onReceive: function(keyOrFn, fn) {{
+      window.hostAsync = {{
+        values: _data,
+        on: function(keyOrFn, fn) {{
           if (typeof keyOrFn === 'function') {{
             _allCallbacks.push(keyOrFn);
           }} else if (typeof keyOrFn === 'string' && typeof fn === 'function') {{
@@ -1902,7 +1902,7 @@ public partial class FloatingWidgetWindow : Window
           }}
         }}
       }};
-      window.__acAsyncPush = function(key, value) {{
+      window.hostAsyncPush = function(key, value) {{
         _data[key] = value;
         var cbs = _keyCallbacks[key];
         if (cbs) {{
@@ -1914,22 +1914,21 @@ public partial class FloatingWidgetWindow : Window
           try {{ _allCallbacks[j](JSON.parse(JSON.stringify(_data))); }} catch (_) {{}}
         }}
       }};
-    }} else if (typeof window.__acAsyncPush !== 'function') {{
-      // Compat fallback cho trường hợp runtime cũ thiếu push function
-      window.__acAsync = window.__acAsync || {{ data: {{}} }};
-      window.__acAsyncPush = function(key, value) {{
-        window.__acAsync.data = window.__acAsync.data || {{}};
-        window.__acAsync.data[key] = value;
+    }} else if (typeof window.hostAsyncPush !== 'function') {{
+      window.hostAsync = window.hostAsync || {{ values: {{}} }};
+      window.hostAsyncPush = function(key, value) {{
+        window.hostAsync.values = window.hostAsync.values || {{}};
+        window.hostAsync.values[key] = value;
       }};
     }}
 
-    if (typeof window.__acAsyncPush === 'function') window.__acAsyncPush({jsKey}, {jsVal});
-    if (typeof window.__acPush === 'function') window.__acPush({jsKey}, {jsVal});
-    var asyncVal = (window.__acAsync && window.__acAsync.data) ? window.__acAsync.data[{jsKey}] : undefined;
-    var liveVal = (window.__ac && window.__ac.live) ? window.__ac.live[{jsKey}] : undefined;
+    if (typeof window.hostAsyncPush === 'function') window.hostAsyncPush({jsKey}, {jsVal});
+    if (typeof window.hostLivePush === 'function') window.hostLivePush({jsKey}, {jsVal});
+    var asyncVal = (window.hostAsync && window.hostAsync.values) ? window.hostAsync.values[{jsKey}] : undefined;
+    var liveVal = (window.hostLive && window.hostLive.values) ? window.hostLive.values[{jsKey}] : undefined;
     return JSON.stringify({{
-      hasAsyncPush: typeof window.__acAsyncPush === 'function',
-      hasLivePush: typeof window.__acPush === 'function',
+      hasAsyncPush: typeof window.hostAsyncPush === 'function',
+      hasLivePush: typeof window.hostLivePush === 'function',
       asyncValue: asyncVal,
       liveValue: liveVal
     }});
@@ -1990,25 +1989,25 @@ public partial class FloatingWidgetWindow : Window
         var inspect = await _webView.CoreWebView2.ExecuteScriptAsync($@"
 (function() {{
   try {{
-    window.__ac = window.__ac || {{}};
-    window.__ac.live = window.__ac.live || {{}};
-    if (typeof window.__acPush !== 'function') {{
-      window.__ac._subs = window.__ac._subs || {{}};
-      window.__ac._allSubs = window.__ac._allSubs || [];
-      window.__acPush = function(key, value) {{
-        window.__ac = window.__ac || {{}};
-        window.__ac.live = window.__ac.live || {{}};
-        window.__ac.live[key] = value;
+    window.hostLive = window.hostLive || {{}};
+    window.hostLive.values = window.hostLive.values || {{}};
+    if (typeof window.hostLivePush !== 'function') {{
+      window.hostLive._subs = window.hostLive._subs || {{}};
+      window.hostLive._allSubs = window.hostLive._allSubs || [];
+      window.hostLivePush = function(key, value) {{
+        window.hostLive = window.hostLive || {{}};
+        window.hostLive.values = window.hostLive.values || {{}};
+        window.hostLive.values[key] = value;
       }};
     }}
-    if (!window.__acAsyncReady) {{
-      window.__acAsyncReady = true;
+    if (!window.hostAsyncReady) {{
+      window.hostAsyncReady = true;
       var _data = {{}};
       var _keyCallbacks = {{}};
       var _allCallbacks = [];
-      window.__acAsync = {{
-        data: _data,
-        onReceive: function(keyOrFn, fn) {{
+      window.hostAsync = {{
+        values: _data,
+        on: function(keyOrFn, fn) {{
           if (typeof keyOrFn === 'function') {{
             _allCallbacks.push(keyOrFn);
           }} else if (typeof keyOrFn === 'string' && typeof fn === 'function') {{
@@ -2017,17 +2016,17 @@ public partial class FloatingWidgetWindow : Window
           }}
         }}
       }};
-      window.__acAsyncPush = function(key, value) {{
+      window.hostAsyncPush = function(key, value) {{
         _data[key] = value;
         var cbs = _keyCallbacks[key];
         if (cbs) for (var i = 0; i < cbs.length; i++) {{ try {{ cbs[i](value); }} catch (_) {{}} }}
         for (var j = 0; j < _allCallbacks.length; j++) {{ try {{ _allCallbacks[j](JSON.parse(JSON.stringify(_data))); }} catch (_) {{}} }}
       }};
-    }} else if (typeof window.__acAsyncPush !== 'function') {{
-      window.__acAsync = window.__acAsync || {{ data: {{}} }};
-      window.__acAsyncPush = function(key, value) {{
-        window.__acAsync.data = window.__acAsync.data || {{}};
-        window.__acAsync.data[key] = value;
+    }} else if (typeof window.hostAsyncPush !== 'function') {{
+      window.hostAsync = window.hostAsync || {{ values: {{}} }};
+      window.hostAsyncPush = function(key, value) {{
+        window.hostAsync.values = window.hostAsync.values || {{}};
+        window.hostAsync.values[key] = value;
       }};
     }}
 
@@ -2037,14 +2036,14 @@ public partial class FloatingWidgetWindow : Window
       var row = payload[k];
       var key = row[0];
       var value = row[1];
-      if (typeof window.__acAsyncPush === 'function') window.__acAsyncPush(key, value);
-      if (typeof window.__acPush === 'function') window.__acPush(key, value);
+      if (typeof window.hostAsyncPush === 'function') window.hostAsyncPush(key, value);
+      if (typeof window.hostLivePush === 'function') window.hostLivePush(key, value);
       pushed++;
     }}
 
     return JSON.stringify({{
-      hasAsyncPush: typeof window.__acAsyncPush === 'function',
-      hasLivePush: typeof window.__acPush === 'function',
+      hasAsyncPush: typeof window.hostAsyncPush === 'function',
+      hasLivePush: typeof window.hostLivePush === 'function',
       pushed: pushed
     }});
   }} catch (e) {{
@@ -2121,40 +2120,40 @@ public partial class FloatingWidgetWindow : Window
         return @"
 (function() {
   try {
-    window.__ac = window.__ac || {};
-    window.__ac.live = window.__ac.live || {};
-    window.__ac._subs = window.__ac._subs || {};
-    window.__ac._allSubs = window.__ac._allSubs || [];
-    window.__ac.onUpdate = window.__ac.onUpdate || function(key, cb) {
+    window.hostLive = window.hostLive || {};
+    window.hostLive.values = window.hostLive.values || {};
+    window.hostLive._subs = window.hostLive._subs || {};
+    window.hostLive._allSubs = window.hostLive._allSubs || [];
+    window.hostLive.on = window.hostLive.on || function(key, cb) {
       if (typeof cb !== 'function') return;
       if (!this._subs[key]) this._subs[key] = [];
       this._subs[key].push(cb);
-      try { cb(this.live[key]); } catch (_) {}
+      try { cb(this.values[key]); } catch (_) {}
     };
-    window.__ac.onAllUpdate = window.__ac.onAllUpdate || function(cb) {
+    window.hostLive.onAll = window.hostLive.onAll || function(cb) {
       if (typeof cb !== 'function') return;
       this._allSubs.push(cb);
-      try { cb(JSON.parse(JSON.stringify(this.live || {}))); } catch (_) {}
+      try { cb(JSON.parse(JSON.stringify(this.values || {}))); } catch (_) {}
     };
-    window.__acPush = function(key, value) {
-      this.__ac = this.__ac || {};
-      this.__ac.live = this.__ac.live || {};
-      this.__ac._subs = this.__ac._subs || {};
-      this.__ac._allSubs = this.__ac._allSubs || [];
-      this.__ac.live[key] = value;
-      var list = this.__ac._subs[key] || [];
+    window.hostLivePush = function(key, value) {
+      this.hostLive = this.hostLive || {};
+      this.hostLive.values = this.hostLive.values || {};
+      this.hostLive._subs = this.hostLive._subs || {};
+      this.hostLive._allSubs = this.hostLive._allSubs || [];
+      this.hostLive.values[key] = value;
+      var list = this.hostLive._subs[key] || [];
       for (var i = 0; i < list.length; i++) { try { list[i](value); } catch (_) {} }
-      for (var j = 0; j < this.__ac._allSubs.length; j++) { try { this.__ac._allSubs[j](JSON.parse(JSON.stringify(this.__ac.live))); } catch (_) {} }
+      for (var j = 0; j < this.hostLive._allSubs.length; j++) { try { this.hostLive._allSubs[j](JSON.parse(JSON.stringify(this.hostLive.values))); } catch (_) {} }
     };
 
-    if (!window.__acAsyncReady) {
-      window.__acAsyncReady = true;
+    if (!window.hostAsyncReady) {
+      window.hostAsyncReady = true;
       var _data = {};
       var _keyCallbacks = {};
       var _allCallbacks = [];
-      window.__acAsync = {
-        data: _data,
-        onReceive: function(keyOrFn, fn) {
+      window.hostAsync = {
+        values: _data,
+        on: function(keyOrFn, fn) {
           if (typeof keyOrFn === 'function') {
             _allCallbacks.push(keyOrFn);
           } else if (typeof keyOrFn === 'string' && typeof fn === 'function') {
@@ -2163,7 +2162,7 @@ public partial class FloatingWidgetWindow : Window
           }
         }
       };
-      window.__acAsyncPush = function(key, value) {
+      window.hostAsyncPush = function(key, value) {
         _data[key] = value;
         var cbs = _keyCallbacks[key];
         if (cbs) {
@@ -2173,11 +2172,11 @@ public partial class FloatingWidgetWindow : Window
           try { _allCallbacks[j](JSON.parse(JSON.stringify(_data))); } catch (_) {}
         }
       };
-    } else if (typeof window.__acAsyncPush !== 'function') {
-      window.__acAsync = window.__acAsync || { data: {} };
-      window.__acAsyncPush = function(key, value) {
-        window.__acAsync.data = window.__acAsync.data || {};
-        window.__acAsync.data[key] = value;
+    } else if (typeof window.hostAsyncPush !== 'function') {
+      window.hostAsync = window.hostAsync || { values: {} };
+      window.hostAsyncPush = function(key, value) {
+        window.hostAsync.values = window.hostAsync.values || {};
+        window.hostAsync.values[key] = value;
       };
     }
   } catch (_) {}
@@ -2189,7 +2188,7 @@ public partial class FloatingWidgetWindow : Window
         var mediaRootsJson = BuildMediaSearchRootsJson();
         var script = @"
 // ── Widget Bridge JS ──
-window.__acMediaSearchRoots = __AC_MEDIA_ROOTS__;
+window.hostMediaSearchRoots = __AC_MEDIA_ROOTS__;
 function hostSubmit() {
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage({ __widgetAction: 'submit', type: 'submit' });
@@ -2235,7 +2234,7 @@ function hostResolveRef(url, requestId) {
       if (!(window.chrome && window.chrome.webview)) return;
       var roots = [];
       try {
-        if (Array.isArray(window.__acMediaSearchRoots)) roots = window.__acMediaSearchRoots;
+        if (Array.isArray(window.hostMediaSearchRoots)) roots = window.hostMediaSearchRoots;
       } catch (_) {}
       window.chrome.webview.postMessage({
         type: 'resolve_playable_ref',
@@ -2272,7 +2271,7 @@ window.hostLive.on = function() {
     window.hostLive._subs[k].push(token);
   });
 };
-window.__acPush = function(key, value) {
+window.hostLivePush = function(key, value) {
   window.hostLive.values[key] = value;
   var keySubs = window.hostLive._subs[String(key)] || [];
   for (var i = 0; i < keySubs.length; i++) {
@@ -2289,14 +2288,14 @@ window.__acPush = function(key, value) {
 
 // Async receiver runtime (tương thích HtmlUiNode Async Data tab)
 (function(){
-  if (window.__acAsyncReady) return;
-  window.__acAsyncReady = true;
+  if (window.hostAsyncReady) return;
+  window.hostAsyncReady = true;
   var _data = {};
   var _keyCallbacks = {};
   var _allCallbacks = [];
-  window.__acAsync = {
-    data: _data,
-    onReceive: function(keyOrFn, fn) {
+  window.hostAsync = {
+    values: _data,
+    on: function(keyOrFn, fn) {
       if (typeof keyOrFn === 'function') {
         _allCallbacks.push(keyOrFn);
       } else if (typeof keyOrFn === 'string' && typeof fn === 'function') {
@@ -2305,7 +2304,7 @@ window.__acPush = function(key, value) {
       }
     }
   };
-  window.__acAsyncPush = function(key, value) {
+  window.hostAsyncPush = function(key, value) {
     _data[key] = value;
     var cbs = _keyCallbacks[key];
     if (cbs) {
@@ -2319,8 +2318,8 @@ window.__acPush = function(key, value) {
   };
 })();
 window.hostAsync = window.hostAsync || {};
-window.hostAsync.on = window.__acAsync.onReceive;
-window.hostAsync.values = window.__acAsync.data;
+window.hostAsync.on = window.hostAsync.on || function(){};
+window.hostAsync.values = window.hostAsync.values || {};
 ";
         return script.Replace("__AC_MEDIA_ROOTS__", mediaRootsJson);
     }

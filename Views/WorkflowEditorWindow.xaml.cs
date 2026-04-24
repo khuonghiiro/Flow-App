@@ -281,7 +281,10 @@ namespace FlowMy.Views
         {
             _isDebugReopenSession = true;
             if (ViewModel != null)
+            {
                 ViewModel.IsDebugReadOnlyMode = true;
+                ViewModel.SwitchExecutionTraceProfile("debug");
+            }
             // Debug reopen: giữ canvas nhẹ nhất, ẩn hẳn chrome editor (menu trái + toolbar + save/import/export/workflow list).
             SetViewportExpandedUiHidden(true);
         }
@@ -301,10 +304,7 @@ namespace FlowMy.Views
         public void EnsureExecutionTraceVisibleForDebug()
         {
             if (ViewModel == null) return;
-            if (ViewModel.EnableExecutionTraceLog)
-                ViewModel.IsExecutionTracePanelExpanded = true;
-            if (ExecutionTracePanelHostBorder != null)
-                ExecutionTracePanelHostBorder.Visibility = Visibility.Visible;
+            // Không force visible ở debug; để checkbox EnableExecutionTraceLog điều khiển chuẩn.
             SyncExecutionTraceDetachState();
         }
 
@@ -504,6 +504,14 @@ namespace FlowMy.Views
             {
                 try { _executionTraceDetachedWindow?.Close(); } catch { }
                 _executionTraceDetachedWindow = null;
+                try
+                {
+                    if (_isDebugReopenSession && ViewModel != null)
+                    {
+                        ViewModel.ClearExecutionTraceRuntimeCache();
+                    }
+                }
+                catch { }
             };
         }
 
@@ -1298,10 +1306,14 @@ namespace FlowMy.Views
                     if (PersistencePanel != null) PersistencePanel.Visibility = Visibility.Collapsed;
                 }
 
-                // Ẩn panel Execution Log ở dưới canvas để Web/HtmlUi có toàn bộ chiều cao viewport.
-                if (ExecutionTracePanelHostBorder != null) ExecutionTracePanelHostBorder.Visibility = Visibility.Collapsed;
-                if (ViewModel != null && ViewModel.IsExecutionTracePanelExpanded)
-                    ViewModel.IsExecutionTracePanelExpanded = false;
+                // Với debug session: để checkbox "hiển thị log" điều khiển panel log.
+                // Chỉ force ẩn log ở mode fullscreen/view-expanded thông thường.
+                if (!_isDebugReopenSession)
+                {
+                    if (ExecutionTracePanelHostBorder != null) ExecutionTracePanelHostBorder.Visibility = Visibility.Collapsed;
+                    if (ViewModel != null && ViewModel.IsExecutionTracePanelExpanded)
+                        ViewModel.IsExecutionTracePanelExpanded = false;
+                }
 
                 // Hide canvas scrollbars (bottom/right)
                 if (ScrollViewer != null)

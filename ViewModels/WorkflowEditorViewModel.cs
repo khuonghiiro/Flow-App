@@ -153,6 +153,8 @@ namespace FlowMy.ViewModels
         private readonly Dictionary<WorkflowNode, List<ExecutionTraceTreeNodeViewModel>> _pendingTraceTreeRowsByNode = new();
         private const int MaxExecutionTraceRows = 1200;
         public ICollectionView? ExecutionTraceFilteredView { get; private set; }
+        private string _executionTraceProfileKey = "release";
+        private bool _isApplyingExecutionTracePreferences;
 
         [ObservableProperty]
         private string executionTraceSearchText = string.Empty;
@@ -300,36 +302,7 @@ namespace FlowMy.ViewModels
                 InitializeSampleNodes();
             }
 
-            // Khôi phục cấu hình Execution Trace panel đã lưu từ lần chạy trước (AppData\FlowMy).
-            try
-            {
-                var prefs = FlowMy.Services.Utilities.ExecutionTracePreferencesStore.Load();
-                enableExecutionTraceLog = prefs.EnableExecutionTraceLog;
-                isExecutionTracePanelExpanded = prefs.IsExecutionTracePanelExpanded;
-                if (prefs.ExecutionTraceCardMaxWidth >= 200) executionTraceCardMaxWidth = prefs.ExecutionTraceCardMaxWidth;
-                if (!string.IsNullOrWhiteSpace(prefs.ExecutionTracePanelDockMode))
-                    executionTracePanelDockMode = prefs.ExecutionTracePanelDockMode!;
-                if (prefs.ExecutionTracePanelDockHeight >= 120) executionTracePanelDockHeight = prefs.ExecutionTracePanelDockHeight;
-                if (prefs.ExecutionTracePanelDockWidth >= 240) executionTracePanelDockWidth = prefs.ExecutionTracePanelDockWidth;
-                executionTracePanelDetachedLeft = prefs.ExecutionTracePanelDetachedLeft;
-                executionTracePanelDetachedTop = prefs.ExecutionTracePanelDetachedTop;
-                if (prefs.ExecutionTracePanelDetachedWidth >= 300) executionTracePanelDetachedWidth = prefs.ExecutionTracePanelDetachedWidth;
-                if (prefs.ExecutionTracePanelDetachedHeight >= 200) executionTracePanelDetachedHeight = prefs.ExecutionTracePanelDetachedHeight;
-                if (!string.IsNullOrWhiteSpace(prefs.ExecutionTraceDisplayStyle))
-                    executionTraceDisplayStyle = prefs.ExecutionTraceDisplayStyle!;
-                exportIncludeInput = prefs.ExportIncludeInput;
-                exportIncludeOutput = prefs.ExportIncludeOutput;
-                exportIncludeError = prefs.ExportIncludeError;
-                exportMaxFieldLength = prefs.ExportMaxFieldLength;
-                exportIncludeTree = prefs.ExportIncludeTree;
-                exportOnlyCurrentFilter = prefs.ExportOnlyCurrentFilter;
-                exportPrettyPrint = prefs.ExportPrettyPrint;
-            }
-            catch
-            {
-                enableExecutionTraceLog = false;
-                isExecutionTracePanelExpanded = true;
-            }
+            LoadExecutionTracePreferences("release");
             ExecutionTraceFilteredView = CollectionViewSource.GetDefaultView(ExecutionTraceLogs);
             if (ExecutionTraceFilteredView != null)
             {
@@ -341,6 +314,8 @@ namespace FlowMy.ViewModels
 
         partial void OnEnableExecutionTraceLogChanged(bool value)
         {
+            if (_isApplyingExecutionTracePreferences)
+                return;
             // Khi user bật lại trace từ checkbox toolbar, tự mở panel để thấy log ngay.
             if (value && !IsExecutionTracePanelExpanded)
                 IsExecutionTracePanelExpanded = true;
@@ -356,6 +331,8 @@ namespace FlowMy.ViewModels
 
         partial void OnIsExecutionTracePanelExpandedChanged(bool value)
         {
+            if (_isApplyingExecutionTracePreferences)
+                return;
             // Nếu đang maximize và user ẩn panel → cũng un-maximize để canvas hiện lại,
             // tránh trường hợp panel ẩn nhưng canvas vẫn bị che khi lần sau mở lại.
             if (!value && IsExecutionTracePanelMaximized)
@@ -375,6 +352,8 @@ namespace FlowMy.ViewModels
 
         partial void OnExecutionTracePanelDockModeChanged(string value)
         {
+            if (_isApplyingExecutionTracePreferences)
+                return;
             OnPropertyChanged(nameof(IsTraceDockBottom));
             OnPropertyChanged(nameof(IsTraceDockLeft));
             OnPropertyChanged(nameof(IsTraceDockRight));
@@ -385,6 +364,8 @@ namespace FlowMy.ViewModels
 
         partial void OnExecutionTraceDisplayStyleChanged(string value)
         {
+            if (_isApplyingExecutionTracePreferences)
+                return;
             OnPropertyChanged(nameof(IsTraceDisplayFull));
             OnPropertyChanged(nameof(IsTraceDisplayRelative));
             OnPropertyChanged(nameof(IsTraceDisplayCompact));
@@ -393,6 +374,8 @@ namespace FlowMy.ViewModels
 
         partial void OnExecutionTracePanelDockHeightChanged(double value)
         {
+            if (_isApplyingExecutionTracePreferences)
+                return;
             OnPropertyChanged(nameof(ExecutionTracePanelHeight));
             SaveExecutionTracePreferencesSafe();
         }
@@ -414,6 +397,8 @@ namespace FlowMy.ViewModels
 
         private void SaveExecutionTracePreferencesSafe()
         {
+            if (_isApplyingExecutionTracePreferences)
+                return;
             try
             {
                 FlowMy.Services.Utilities.ExecutionTracePreferencesStore.Save(new FlowMy.Services.Utilities.ExecutionTracePreferences
@@ -436,9 +421,66 @@ namespace FlowMy.ViewModels
                     ExportIncludeTree = ExportIncludeTree,
                     ExportOnlyCurrentFilter = ExportOnlyCurrentFilter,
                     ExportPrettyPrint = ExportPrettyPrint,
-                });
+                }, _executionTraceProfileKey);
             }
             catch { /* best-effort */ }
+        }
+
+        public void SwitchExecutionTraceProfile(string profileKey)
+        {
+            LoadExecutionTracePreferences(string.IsNullOrWhiteSpace(profileKey) ? "release" : profileKey);
+        }
+
+        private void LoadExecutionTracePreferences(string profileKey)
+        {
+            _executionTraceProfileKey = string.IsNullOrWhiteSpace(profileKey) ? "release" : profileKey.Trim().ToLowerInvariant();
+            _isApplyingExecutionTracePreferences = true;
+            try
+            {
+                var prefs = FlowMy.Services.Utilities.ExecutionTracePreferencesStore.Load(_executionTraceProfileKey);
+                EnableExecutionTraceLog = prefs.EnableExecutionTraceLog;
+                IsExecutionTracePanelExpanded = prefs.IsExecutionTracePanelExpanded;
+                if (prefs.ExecutionTraceCardMaxWidth >= 200) ExecutionTraceCardMaxWidth = prefs.ExecutionTraceCardMaxWidth;
+                if (!string.IsNullOrWhiteSpace(prefs.ExecutionTracePanelDockMode))
+                    ExecutionTracePanelDockMode = prefs.ExecutionTracePanelDockMode!;
+                if (prefs.ExecutionTracePanelDockHeight >= 120) ExecutionTracePanelDockHeight = prefs.ExecutionTracePanelDockHeight;
+                if (prefs.ExecutionTracePanelDockWidth >= 240) ExecutionTracePanelDockWidth = prefs.ExecutionTracePanelDockWidth;
+                ExecutionTracePanelDetachedLeft = prefs.ExecutionTracePanelDetachedLeft;
+                ExecutionTracePanelDetachedTop = prefs.ExecutionTracePanelDetachedTop;
+                if (prefs.ExecutionTracePanelDetachedWidth >= 300) ExecutionTracePanelDetachedWidth = prefs.ExecutionTracePanelDetachedWidth;
+                if (prefs.ExecutionTracePanelDetachedHeight >= 200) ExecutionTracePanelDetachedHeight = prefs.ExecutionTracePanelDetachedHeight;
+                if (!string.IsNullOrWhiteSpace(prefs.ExecutionTraceDisplayStyle))
+                    ExecutionTraceDisplayStyle = prefs.ExecutionTraceDisplayStyle!;
+                ExportIncludeInput = prefs.ExportIncludeInput;
+                ExportIncludeOutput = prefs.ExportIncludeOutput;
+                ExportIncludeError = prefs.ExportIncludeError;
+                ExportMaxFieldLength = prefs.ExportMaxFieldLength;
+                ExportIncludeTree = prefs.ExportIncludeTree;
+                ExportOnlyCurrentFilter = prefs.ExportOnlyCurrentFilter;
+                ExportPrettyPrint = prefs.ExportPrettyPrint;
+            }
+            catch
+            {
+                EnableExecutionTraceLog = false;
+                IsExecutionTracePanelExpanded = true;
+            }
+            finally
+            {
+                _isApplyingExecutionTracePreferences = false;
+            }
+
+            OnPropertyChanged(nameof(IsExecutionTracePanelVisible));
+            OnPropertyChanged(nameof(IsExecutionTraceReopenerVisible));
+            OnPropertyChanged(nameof(IsExecutionLogMaximizedOverCanvas));
+            OnPropertyChanged(nameof(IsExecutionTracePanelInMainGrid));
+            OnPropertyChanged(nameof(IsTraceDockBottom));
+            OnPropertyChanged(nameof(IsTraceDockLeft));
+            OnPropertyChanged(nameof(IsTraceDockRight));
+            OnPropertyChanged(nameof(IsTraceDockDetached));
+            OnPropertyChanged(nameof(IsTraceDisplayFull));
+            OnPropertyChanged(nameof(IsTraceDisplayRelative));
+            OnPropertyChanged(nameof(IsTraceDisplayCompact));
+            OnPropertyChanged(nameof(ExecutionTracePanelHeight));
         }
 
         partial void OnExecutionTraceSearchTextChanged(string value) => RefreshExecutionTraceFilter();
@@ -538,6 +580,11 @@ namespace FlowMy.ViewModels
                 }
                 RefreshExecutionTraceFilter();
             }));
+        }
+
+        public void ClearExecutionTraceRuntimeCache()
+        {
+            ClearExecutionTraceLogs();
         }
 
         [RelayCommand]
