@@ -78,11 +78,11 @@ namespace FlowMy.Views.Overlays
 
             var isWebBundle = SelectedFormat == "webpkg";
             var isCompressedOutput = isWebBundle || SelectedFormat == "flowz";
-            IncludeWebCookiesCheckBox.IsEnabled = isWebBundle;
+            IncludeWebCookiesCheckBox.IsEnabled = isCompressedOutput;
             CompressionModeComboBox.IsEnabled = isCompressedOutput;
             CompressionHintTextBlock.Opacity = isCompressedOutput ? 1.0 : 0.6;
 
-            if (!isWebBundle)
+            if (!isCompressedOutput)
             {
                 IncludeWebCookiesCheckBox.IsChecked = false;
             }

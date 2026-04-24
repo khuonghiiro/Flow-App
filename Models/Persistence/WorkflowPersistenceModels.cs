@@ -37,6 +37,12 @@ namespace FlowMy.Models.Persistence
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public WorkflowExportOptionsDto? ExportOptions { get; set; }
+
+        /// <summary>
+        /// Dùng cho export .flowz có nhúng web bundle (zip bytes, base64).
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? EmbeddedPortableWebBundleBase64 { get; set; }
     }
 
     public class WorkflowExportOptionsDto

@@ -66,9 +66,14 @@
                           Margin="0,0,0,8"/>
 
                 <CheckBox x:Name="IncludeWebCookiesCheckBox"
-                          Content="Xuất cookies WebView2 (áp dụng cho Web Bundle)"
+                          Content="Xuất dữ liệu Web (cookies + web cache nhẹ) cho flowz/webpkg"
                           Foreground="{DynamicResource TextBrush}"
                           Margin="0,0,0,0"/>
+                <TextBlock Text="Lưu ý: bật web data với flowz có thể làm file lớn hơn đáng kể; dùng khi cần mang theo phiên web/cookie."
+                           Foreground="{DynamicResource TextSecondary}"
+                           TextWrapping="Wrap"
+                           Margin="24,6,0,0"
+                           Opacity="0.9"/>
             </StackPanel>
         </Border>
 

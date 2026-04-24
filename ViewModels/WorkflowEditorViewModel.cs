@@ -2472,7 +2472,8 @@ namespace FlowMy.ViewModels
         public string ExportToJson(
             string? portableWebBundleFileName = null,
             bool includeRuntimeOutput = false,
-            WorkflowExportOptionsDto? exportOptions = null)
+            WorkflowExportOptionsDto? exportOptions = null,
+            string? embeddedPortableWebBundleBase64 = null)
         {
             return _persistenceService.ExportToJson(
                 CurrentWorkflowName,
@@ -2488,7 +2489,8 @@ namespace FlowMy.ViewModels
                 ConnectionLineStyle.ToString(),
                 portableWebBundleFileName,
                 includeRuntimeOutput,
-                exportOptions);
+                exportOptions,
+                embeddedPortableWebBundleBase64);
         }
 
         /// <summary>

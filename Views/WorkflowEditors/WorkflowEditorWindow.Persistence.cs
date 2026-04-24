@@ -30,7 +30,7 @@ namespace FlowMy.Views
             public bool IsWebBundle => string.Equals(Format, "webpkg", StringComparison.OrdinalIgnoreCase);
         }
 
-        private void ExportWorkflow_Click(object sender, RoutedEventArgs e)
+        private async void ExportWorkflow_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel == null) return;
 
@@ -55,19 +55,55 @@ namespace FlowMy.Views
 
             if (saveFileDialog.ShowDialog(this) == true)
             {
+                string? embeddedPortableWebBundleBase64 = null;
+                var includeEmbeddedWeb = selection.IsCompressed && selection.IncludeWebCookies;
+                if (includeEmbeddedWeb)
+                {
+                    try
+                    {
+                        var cookiesJson = await WebCookieSnapshotService.ExportSnapshotJsonAsync(ViewModel.Nodes.ToList(), CancellationToken.None);
+                        var tempZip = Path.Combine(Path.GetTempPath(), "FlowMyExportEmbedded_" + Guid.NewGuid().ToString("N") + ".zip");
+                        try
+                        {
+                            await PortableWebBundleZipService.CreateBundleZipAsync(
+                                tempZip,
+                                ViewModel.Nodes,
+                                cookiesJson,
+                                progress: null,
+                                cancellationToken: CancellationToken.None,
+                                compressionLevel: selection.CompressionLevel);
+                            embeddedPortableWebBundleBase64 = Convert.ToBase64String(File.ReadAllBytes(tempZip));
+                        }
+                        finally
+                        {
+                            try { if (File.Exists(tempZip)) File.Delete(tempZip); } catch { /* ignore */ }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            this,
+                            $"Không thu thập được dữ liệu Web để nhúng vào flowz: {ex.Message}",
+                            "Export flowz",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                }
+
                 var exportOptions = new WorkflowExportOptionsDto
                 {
                     IncludeRuntimeData = selection.IncludeRuntimeOutput,
                     Compressed = selection.IsCompressed,
-                    IncludeWebBundle = false,
-                    IncludeWebCookies = false,
-                    IncludeOfflineHtmlAssets = false,
+                    IncludeWebBundle = includeEmbeddedWeb,
+                    IncludeWebCookies = includeEmbeddedWeb,
+                    IncludeOfflineHtmlAssets = includeEmbeddedWeb,
                     PackageKind = selection.IsCompressed ? "flowz" : "json",
                     CompressionMode = selection.IsCompressed ? selection.CompressionMode : null
                 };
                 var json = ViewModel.ExportToJson(
                     includeRuntimeOutput: selection.IncludeRuntimeOutput,
-                    exportOptions: exportOptions);
+                    exportOptions: exportOptions,
+                    embeddedPortableWebBundleBase64: embeddedPortableWebBundleBase64);
 
                 if (selection.IsCompressed)
                 {
@@ -274,8 +310,19 @@ namespace FlowMy.Views
 
                 if (dtoProbe.ExportOptions?.IncludeWebBundle == true && extractedPackageRoot == null)
                 {
+                    if (!string.IsNullOrWhiteSpace(dtoProbe.EmbeddedPortableWebBundleBase64))
+                    {
+                        var temp = Path.Combine(Path.GetTempPath(), "FlowMyImportPkg_" + Guid.NewGuid().ToString("N"));
+                        Directory.CreateDirectory(temp);
+                        var zipPath = Path.Combine(temp, "embedded.webpkg.zip");
+                        File.WriteAllBytes(zipPath, Convert.FromBase64String(dtoProbe.EmbeddedPortableWebBundleBase64));
+                        ZipFile.ExtractToDirectory(zipPath, temp, overwriteFiles: true);
+                        extractedPackageRoot = temp;
+                    }
+
                     var packageName = dtoProbe.PortableWebBundleFileName;
-                    if (!string.IsNullOrWhiteSpace(packageName))
+                    if (string.IsNullOrWhiteSpace(dtoProbe.EmbeddedPortableWebBundleBase64) &&
+                        !string.IsNullOrWhiteSpace(packageName))
                     {
                         var adjacentZip = Path.Combine(Path.GetDirectoryName(importPath) ?? string.Empty, packageName);
                         if (File.Exists(adjacentZip))

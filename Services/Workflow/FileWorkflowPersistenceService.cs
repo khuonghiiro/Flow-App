@@ -238,7 +238,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         string? connectionLineStyle = null,
         string? portableWebBundleFileName = null,
         bool includeRuntimeOutput = false,
-        WorkflowExportOptionsDto? exportOptions = null)
+        WorkflowExportOptionsDto? exportOptions = null,
+        string? embeddedPortableWebBundleBase64 = null)
     {
         var dto = BuildWorkflowDto(
             workflowName,
@@ -254,7 +255,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             savedViewportCenterY,
             connectionLineStyle,
             portableWebBundleFileName,
-            exportOptions);
+            exportOptions,
+            embeddedPortableWebBundleBase64);
         return JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
     }
 
@@ -272,7 +274,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         double? savedViewportCenterY = null,
         string? connectionLineStyle = null,
         string? portableWebBundleFileName = null,
-        WorkflowExportOptionsDto? exportOptions = null)
+        WorkflowExportOptionsDto? exportOptions = null,
+        string? embeddedPortableWebBundleBase64 = null)
     {
         var orderedNodes = OrderNodesForExport(nodes.ToList(), connections.ToList());
 
@@ -300,6 +303,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 ? null
                 : portableWebBundleFileName.Trim(),
             ExportOptions = exportOptions,
+            EmbeddedPortableWebBundleBase64 = string.IsNullOrWhiteSpace(embeddedPortableWebBundleBase64)
+                ? null
+                : embeddedPortableWebBundleBase64,
             Nodes = allNodes.Select(n => BuildNodeDto(n, includeRuntimeOutput)).ToList(),
             Connections = connections.Select(c => new ConnectionDto
             {

@@ -18,7 +18,8 @@ public static class PortableWebBundleZipService
         IEnumerable<WorkflowNode> nodes,
         string portableCookiesJson,
         IProgress<WorkflowTransferProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CompressionLevel compressionLevel = CompressionLevel.Optimal)
     {
         return Task.Run(() =>
         {
@@ -49,7 +50,7 @@ public static class PortableWebBundleZipService
                     }
                 }
 
-                ZipFile.CreateFromDirectory(temp, zipPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+                ZipFile.CreateFromDirectory(temp, zipPath, compressionLevel, includeBaseDirectory: false);
                 progress?.Report(new WorkflowTransferProgress("Hoàn tất", 100));
             }
             finally

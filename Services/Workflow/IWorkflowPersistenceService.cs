@@ -61,7 +61,8 @@ public interface IWorkflowPersistenceService
         string? connectionLineStyle = null,
         string? portableWebBundleFileName = null,
         bool includeRuntimeOutput = false,
-        WorkflowExportOptionsDto? exportOptions = null);
+        WorkflowExportOptionsDto? exportOptions = null,
+        string? embeddedPortableWebBundleBase64 = null);
 
     WorkflowLoadResult? ImportFromJson(string json);
 }
