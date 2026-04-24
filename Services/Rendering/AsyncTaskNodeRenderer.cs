@@ -890,26 +890,7 @@ namespace FlowMy.Services.Rendering
                     result.Add(node);
             }
 
-            // Also include nodes that are visually inside body bounds even if currently disconnected.
-            // This ensures "nodes in body" always move with body.
-            foreach (var node in vm.Nodes)
-            {
-                if (ReferenceEquals(node, body) || ReferenceEquals(node, asyncTaskNode))
-                    continue;
-                if (IsNodeCenterInsideRect(node, body.X, body.Y, body.Width, body.Height) && !result.Contains(node))
-                    result.Add(node);
-            }
             return result;
-        }
-
-        private static bool IsNodeCenterInsideRect(WorkflowNode node, double x, double y, double width, double height)
-        {
-            if (width <= 0 || height <= 0) return false;
-            double w = node.Border?.ActualWidth > 0 ? node.Border.ActualWidth : 60;
-            double h = node.Border?.ActualHeight > 0 ? node.Border.ActualHeight : 60;
-            double cx = node.X + (w / 2);
-            double cy = node.Y + (h / 2);
-            return cx >= x && cx <= (x + width) && cy >= y && cy <= (y + height);
         }
 
         public void RenderAsyncTaskNodePorts(WorkflowNode node)
