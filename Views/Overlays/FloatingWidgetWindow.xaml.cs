@@ -2364,6 +2364,7 @@ window.hostAsync.values = window.hostAsync.values || {};
             else if (root.TryGetProperty("type", out var typeEl) && typeEl.ValueKind == JsonValueKind.String)
             {
                 var type = typeEl.GetString();
+                JsonElement rootSnapshot;
                 switch (type)
                 {
                     case "submit":
@@ -2376,16 +2377,20 @@ window.hostAsync.values = window.hostAsync.values || {};
                         _ = Dispatcher.InvokeAsync(async () => await ReloadContentAsync(), DispatcherPriority.Background);
                         break;
                     case "resolve_local_path":
-                        _ = Dispatcher.InvokeAsync(async () => await HandleResolveLocalPathAsync(root), DispatcherPriority.Background);
+                        rootSnapshot = root.Clone();
+                        _ = Dispatcher.InvokeAsync(async () => await HandleResolveLocalPathAsync(rootSnapshot), DispatcherPriority.Background);
                         break;
                     case "download_curl":
-                        _ = Dispatcher.InvokeAsync(async () => await HandleDownloadByCurlAsync(root), DispatcherPriority.Background);
+                        rootSnapshot = root.Clone();
+                        _ = Dispatcher.InvokeAsync(async () => await HandleDownloadByCurlAsync(rootSnapshot), DispatcherPriority.Background);
                         break;
                     case "pick_image_files":
-                        _ = Dispatcher.InvokeAsync(async () => await HandlePickImageFilesAsync(root), DispatcherPriority.Background);
+                        rootSnapshot = root.Clone();
+                        _ = Dispatcher.InvokeAsync(async () => await HandlePickImageFilesAsync(rootSnapshot), DispatcherPriority.Background);
                         break;
                     case "resolve_playable_ref":
-                        _ = Dispatcher.InvokeAsync(async () => await HandleResolvePlayableRefAsync(root), DispatcherPriority.Background);
+                        rootSnapshot = root.Clone();
+                        _ = Dispatcher.InvokeAsync(async () => await HandleResolvePlayableRefAsync(rootSnapshot), DispatcherPriority.Background);
                         break;
                     default:
                         HandleGenericOutputs(root);
