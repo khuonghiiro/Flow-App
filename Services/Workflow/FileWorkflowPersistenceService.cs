@@ -2088,6 +2088,71 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("TitleColorKey", out var tckObj))
                 imageNode.TitleColorKey = tckObj?.ToString();
         }
+        else if (node is VideoProcessingNode videoNode)
+        {
+            if (properties.TryGetValue("Width", out var wObj) && wObj != null && double.TryParse(wObj.ToString(), out var w) && w >= 540)
+                videoNode.Width = w;
+            if (properties.TryGetValue("Height", out var hObj) && hObj != null && double.TryParse(hObj.ToString(), out var h) && h >= 340)
+                videoNode.Height = h;
+
+            if (properties.TryGetValue("VideoSourceNodeId", out var vsnObj))
+                videoNode.VideoSourceNodeId = vsnObj?.ToString();
+            if (properties.TryGetValue("VideoSourceOutputKey", out var vskObj))
+                videoNode.VideoSourceOutputKey = vskObj?.ToString();
+            if (properties.TryGetValue("VideoPath", out var vpObj))
+                videoNode.VideoPath = vpObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("OutputFolderSourceNodeId", out var fsnObj))
+                videoNode.OutputFolderSourceNodeId = fsnObj?.ToString();
+            if (properties.TryGetValue("OutputFolderSourceOutputKey", out var fskObj))
+                videoNode.OutputFolderSourceOutputKey = fskObj?.ToString();
+
+            if (properties.TryGetValue("OutputBase64", out var obObj) && obObj != null && bool.TryParse(obObj.ToString(), out var ob))
+                videoNode.OutputBase64 = ob;
+            if (properties.TryGetValue("PreferGpu", out var pgObj) && pgObj != null && bool.TryParse(pgObj.ToString(), out var pg))
+                videoNode.PreferGpu = pg;
+
+            if (properties.TryGetValue("SourceFps", out var sfObj) && sfObj != null && double.TryParse(sfObj.ToString(), out var sf))
+                videoNode.SourceFps = sf;
+            if (properties.TryGetValue("ExtractFps", out var efObj) && efObj != null && double.TryParse(efObj.ToString(), out var ef))
+                videoNode.ExtractFps = ef;
+            if (properties.TryGetValue("Brightness", out var brObj) && brObj != null && double.TryParse(brObj.ToString(), out var br))
+                videoNode.Brightness = br;
+            if (properties.TryGetValue("Contrast", out var ctObj) && ctObj != null && double.TryParse(ctObj.ToString(), out var ct))
+                videoNode.Contrast = ct;
+            if (properties.TryGetValue("Saturation", out var stObj) && stObj != null && double.TryParse(stObj.ToString(), out var st))
+                videoNode.Saturation = st;
+            if (properties.TryGetValue("Hue", out var huObj) && huObj != null && double.TryParse(huObj.ToString(), out var hu))
+                videoNode.Hue = hu;
+
+            if (properties.TryGetValue("AudioTracks", out var atObj) && atObj != null)
+            {
+                try
+                {
+                    string? atJson = atObj is string s ? s : atObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(atJson))
+                    {
+                        var tracks = JsonSerializer.Deserialize<List<VideoAudioTrackConfig>>(atJson);
+                        if (tracks != null)
+                        {
+                            videoNode.AudioTracks.Clear();
+                            foreach (var t in tracks) videoNode.AudioTracks.Add(t);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null &&
+                Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
+                videoNode.TitleDisplayMode = tdm;
+            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null &&
+                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
+                videoNode.TitleColorMode = tcm;
+            if (properties.TryGetValue("TitleColorKey", out var tckObj))
+                videoNode.TitleColorKey = tckObj?.ToString();
+        }
         else if (node is DataFetcherNode fetcherNode)
         {
             if (properties.TryGetValue("SourceNodeId", out var snObj))
@@ -4618,6 +4683,37 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["TitleColorMode"] = imageNode.TitleColorMode.ToString();
             if (!string.IsNullOrWhiteSpace(imageNode.TitleColorKey))
                 dict["TitleColorKey"] = imageNode.TitleColorKey;
+        }
+        else if (node is VideoProcessingNode videoNode)
+        {
+            dict["Width"] = videoNode.Width;
+            dict["Height"] = videoNode.Height;
+            if (!string.IsNullOrWhiteSpace(videoNode.VideoSourceNodeId))
+                dict["VideoSourceNodeId"] = videoNode.VideoSourceNodeId;
+            if (!string.IsNullOrWhiteSpace(videoNode.VideoSourceOutputKey))
+                dict["VideoSourceOutputKey"] = videoNode.VideoSourceOutputKey;
+            if (!string.IsNullOrWhiteSpace(videoNode.VideoPath))
+                dict["VideoPath"] = videoNode.VideoPath;
+            if (!string.IsNullOrWhiteSpace(videoNode.OutputFolderSourceNodeId))
+                dict["OutputFolderSourceNodeId"] = videoNode.OutputFolderSourceNodeId;
+            if (!string.IsNullOrWhiteSpace(videoNode.OutputFolderSourceOutputKey))
+                dict["OutputFolderSourceOutputKey"] = videoNode.OutputFolderSourceOutputKey;
+
+            dict["OutputBase64"] = videoNode.OutputBase64;
+            dict["PreferGpu"] = videoNode.PreferGpu;
+            dict["SourceFps"] = videoNode.SourceFps;
+            dict["ExtractFps"] = videoNode.ExtractFps;
+            dict["Brightness"] = videoNode.Brightness;
+            dict["Contrast"] = videoNode.Contrast;
+            dict["Saturation"] = videoNode.Saturation;
+            dict["Hue"] = videoNode.Hue;
+            if (videoNode.AudioTracks.Count > 0)
+                dict["AudioTracks"] = JsonSerializer.Serialize(videoNode.AudioTracks.ToList());
+
+            dict["TitleDisplayMode"] = videoNode.TitleDisplayMode.ToString();
+            dict["TitleColorMode"] = videoNode.TitleColorMode.ToString();
+            if (!string.IsNullOrWhiteSpace(videoNode.TitleColorKey))
+                dict["TitleColorKey"] = videoNode.TitleColorKey;
         }
         else if (node is DataFetcherNode fetcherNodeSer)
         {

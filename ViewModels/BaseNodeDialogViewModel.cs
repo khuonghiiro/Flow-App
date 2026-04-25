@@ -78,6 +78,7 @@ namespace FlowMy.ViewModels
                 case Models.Nodes.AssignDataNode n: n.TitleColorMode = mode; break;
                 case Models.Nodes.MediaGalleryNode n: n.TitleColorMode = mode; break;
                 case Models.Nodes.ImageProcessingNode n: n.TitleColorMode = mode; break;
+                case Models.Nodes.VideoProcessingNode n: n.TitleColorMode = mode; break;
                 case Models.Nodes.CodeNode n: n.TitleColorMode = mode; break;
                 case Models.Nodes.FolderNode n: n.TitleColorMode = mode; break;
                 case Models.Nodes.FileDownloadNode n: n.TitleColorMode = mode; break;
@@ -117,6 +118,7 @@ namespace FlowMy.ViewModels
                 case Models.Nodes.StorageNode n: n.TitleColorKey = key; break;
                 case Models.Nodes.BodyContainerNode n: n.TitleColorKey = key; break;
                 case Models.Nodes.ImageProcessingNode n: n.TitleColorKey = key; break;
+                case Models.Nodes.VideoProcessingNode n: n.TitleColorKey = key; break;
             }
         }
 
@@ -964,6 +966,7 @@ namespace FlowMy.ViewModels
                 NodeType.AssignData => "Assign Data",
                 NodeType.MediaGallery => "Media Gallery",
                 NodeType.ImageProcessing => "Image Processing",
+                NodeType.VideoProcessing => "Video Processing",
                 NodeType.HttpRequest => "HTTP Request",
                 NodeType.FileDownload => "File Download",
                 NodeType.DataFetcher => "Data Fetcher",
@@ -1004,6 +1007,7 @@ namespace FlowMy.ViewModels
                 NodeType.AssignData => "arrows-left-right duotone",
                 NodeType.MediaGallery => "image-stack duotone",
                 NodeType.ImageProcessing => "image notdog-duo-solid",
+                NodeType.VideoProcessing => "circle-video sharp-light",
                 NodeType.Code => "code duotone-regular",
                 NodeType.HtmlUi => "html5 brands",
                 NodeType.Folder => "folder-open duotone-thin",

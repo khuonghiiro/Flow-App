@@ -31,6 +31,7 @@ namespace FlowMy.Services.Rendering
         private readonly AssignDataNodeRenderer _assignDataNodeRenderer;
         private readonly MediaGalleryNodeRenderer _mediaGalleryNodeRenderer;
         private readonly ImageProcessingNodeRenderer _imageProcessingNodeRenderer;
+        private readonly VideoProcessingNodeRenderer _videoProcessingNodeRenderer;
         private readonly DataFetcherNodeRenderer _dataFetcherNodeRenderer;
         private readonly KeyValueBridgeNodeRenderer _keyValueBridgeNodeRenderer;
         private readonly WebNodeRenderer _webNodeRenderer;
@@ -67,6 +68,7 @@ namespace FlowMy.Services.Rendering
             AssignDataNodeRenderer assignDataNodeRenderer,
             MediaGalleryNodeRenderer mediaGalleryNodeRenderer,
             ImageProcessingNodeRenderer imageProcessingNodeRenderer,
+            VideoProcessingNodeRenderer videoProcessingNodeRenderer,
             DataFetcherNodeRenderer dataFetcherNodeRenderer,
             KeyValueBridgeNodeRenderer keyValueBridgeNodeRenderer,
             WebNodeRenderer webNodeRenderer,
@@ -101,6 +103,7 @@ namespace FlowMy.Services.Rendering
             _assignDataNodeRenderer = assignDataNodeRenderer ?? throw new ArgumentNullException(nameof(assignDataNodeRenderer));
             _mediaGalleryNodeRenderer = mediaGalleryNodeRenderer ?? throw new ArgumentNullException(nameof(mediaGalleryNodeRenderer));
             _imageProcessingNodeRenderer = imageProcessingNodeRenderer ?? throw new ArgumentNullException(nameof(imageProcessingNodeRenderer));
+            _videoProcessingNodeRenderer = videoProcessingNodeRenderer ?? throw new ArgumentNullException(nameof(videoProcessingNodeRenderer));
             _dataFetcherNodeRenderer = dataFetcherNodeRenderer ?? throw new ArgumentNullException(nameof(dataFetcherNodeRenderer));
             _keyValueBridgeNodeRenderer = keyValueBridgeNodeRenderer ?? throw new ArgumentNullException(nameof(keyValueBridgeNodeRenderer));
             _webNodeRenderer = webNodeRenderer ?? throw new ArgumentNullException(nameof(webNodeRenderer));
@@ -185,6 +188,12 @@ namespace FlowMy.Services.Rendering
             if (node is ImageProcessingNode imageProcessingNode)
             {
                 _imageProcessingNodeRenderer.RenderNode(imageProcessingNode, canvas);
+                return;
+            }
+
+            if (node is VideoProcessingNode videoProcessingNode)
+            {
+                _videoProcessingNodeRenderer.RenderNode(videoProcessingNode, canvas);
                 return;
             }
 
@@ -564,6 +573,12 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
+            if (node is VideoProcessingNode videoProcessingNode)
+            {
+                _videoProcessingNodeRenderer.UpdateNodePosition(videoProcessingNode, x, y);
+                return;
+            }
+
             if (node is DataFetcherNode dataFetcherNodeForPos)
             {
                 _dataFetcherNodeRenderer.UpdateNodePosition(dataFetcherNodeForPos, x, y);
@@ -908,6 +923,12 @@ namespace FlowMy.Services.Rendering
             if (node is ImageProcessingNode imageProcessingNode)
             {
                 _imageProcessingNodeRenderer.RemoveNode(imageProcessingNode, canvas);
+                return;
+            }
+
+            if (node is VideoProcessingNode videoProcessingNode)
+            {
+                _videoProcessingNodeRenderer.RemoveNode(videoProcessingNode, canvas);
                 return;
             }
 
@@ -1278,6 +1299,15 @@ namespace FlowMy.Services.Rendering
                             canvas.Children.Remove(titleTextBlock);
                         }
                         imageProcessingNode.TitleTextBlockUI = null;
+                    }
+                    else if (node is VideoProcessingNode videoProcessingNode && videoProcessingNode.TitleTextBlockUI != null)
+                    {
+                        var titleTextBlock = videoProcessingNode.TitleTextBlockUI;
+                        if (canvas.Children.Contains(titleTextBlock))
+                        {
+                            canvas.Children.Remove(titleTextBlock);
+                        }
+                        videoProcessingNode.TitleTextBlockUI = null;
                     }
                     else if (node is CodeNode codeNode && codeNode.TitleTextBlockUI != null)
                     {

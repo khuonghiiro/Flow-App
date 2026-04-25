@@ -286,6 +286,41 @@ namespace FlowMy.Views
 
                 dstImage.NotifyTitleChanged();
             }
+            else if (source is VideoProcessingNode srcVideo && node is VideoProcessingNode dstVideo)
+            {
+                dstVideo.Width = srcVideo.Width;
+                dstVideo.Height = srcVideo.Height;
+                dstVideo.VideoSourceNodeId = srcVideo.VideoSourceNodeId;
+                dstVideo.VideoSourceOutputKey = srcVideo.VideoSourceOutputKey;
+                dstVideo.VideoPath = srcVideo.VideoPath;
+                dstVideo.OutputFolderSourceNodeId = srcVideo.OutputFolderSourceNodeId;
+                dstVideo.OutputFolderSourceOutputKey = srcVideo.OutputFolderSourceOutputKey;
+                dstVideo.OutputBase64 = srcVideo.OutputBase64;
+                dstVideo.PreferGpu = srcVideo.PreferGpu;
+                dstVideo.PreferredHwAccel = srcVideo.PreferredHwAccel;
+                dstVideo.SourceFps = srcVideo.SourceFps;
+                dstVideo.ExtractFps = srcVideo.ExtractFps;
+                dstVideo.Brightness = srcVideo.Brightness;
+                dstVideo.Contrast = srcVideo.Contrast;
+                dstVideo.Saturation = srcVideo.Saturation;
+                dstVideo.Hue = srcVideo.Hue;
+                dstVideo.AudioTracks.Clear();
+                foreach (var track in srcVideo.AudioTracks)
+                {
+                    dstVideo.AudioTracks.Add(new VideoAudioTrackConfig
+                    {
+                        SourceNodeId = track.SourceNodeId,
+                        SourceOutputKey = track.SourceOutputKey,
+                        VolumePercent = track.VolumePercent,
+                        ShorterMode = track.ShorterMode,
+                        LongerMode = track.LongerMode
+                    });
+                }
+                dstVideo.TitleDisplayMode = srcVideo.TitleDisplayMode;
+                dstVideo.TitleColorMode = srcVideo.TitleColorMode;
+                dstVideo.TitleColorKey = srcVideo.TitleColorKey;
+                dstVideo.NotifyTitleChanged();
+            }
             else if (source is WebNode srcWeb && node is WebNode dstWeb)
             {
                 dstWeb.Width = srcWeb.Width;
@@ -945,6 +980,10 @@ namespace FlowMy.Views
             else if (node is BodyContainerNode bodyContainerNode)
             {
                 bodyContainerNode.NotifyTitleChanged();
+            }
+            else if (node is VideoProcessingNode videoProcessingNode)
+            {
+                videoProcessingNode.NotifyTitleChanged();
             }
 
             // Fallback: if we created by Activator and Id is empty, ensure unique

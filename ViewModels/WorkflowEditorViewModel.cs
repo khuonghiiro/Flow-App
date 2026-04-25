@@ -1111,6 +1111,7 @@ namespace FlowMy.ViewModels
                 NodeType.AssignData => "arrows-left-right duotone",
                 NodeType.MediaGallery => "image-stack duotone",
                 NodeType.ImageProcessing => "image notdog-duo-solid",
+                NodeType.VideoProcessing => "circle-video sharp-light",
                 NodeType.Code => "code duotone-regular",
                 NodeType.HtmlUi => "html5 brands",
                 NodeType.Folder => "folder-open duotone-thin",

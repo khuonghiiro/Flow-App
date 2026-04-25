@@ -742,6 +742,13 @@ namespace FlowMy.Views
                     imageProcessingNode.ImageBase64SourceNodeId = RemapNodeId(imageProcessingNode.ImageBase64SourceNodeId, sourceToNewNodeMap);
                     break;
 
+                case VideoProcessingNode videoProcessingNode:
+                    videoProcessingNode.VideoSourceNodeId = RemapNodeId(videoProcessingNode.VideoSourceNodeId, sourceToNewNodeMap);
+                    videoProcessingNode.OutputFolderSourceNodeId = RemapNodeId(videoProcessingNode.OutputFolderSourceNodeId, sourceToNewNodeMap);
+                    foreach (var track in videoProcessingNode.AudioTracks)
+                        track.SourceNodeId = RemapNodeId(track.SourceNodeId, sourceToNewNodeMap);
+                    break;
+
                 case KeyValueBridgeNode keyValueBridgeNode:
                     keyValueBridgeNode.SelectedSourceBridgeNodeId = RemapNodeId(keyValueBridgeNode.SelectedSourceBridgeNodeId, sourceToNewNodeMap);
                     keyValueBridgeNode.CleanupTargetBridgeNodeId = RemapNodeId(keyValueBridgeNode.CleanupTargetBridgeNodeId, sourceToNewNodeMap);

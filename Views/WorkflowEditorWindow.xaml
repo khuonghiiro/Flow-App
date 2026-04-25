@@ -1133,6 +1133,30 @@ Cursor="Hand"
                                 </Grid>
                             </Border>
 
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+       Background="{DynamicResource GraphiteGrayBrush}"
+         Tag="VideoProcessing">
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource GraphiteGrayBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Video Processing" Foreground="{DynamicResource TextOnGraphiteGrayBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Xử lý video bằng FFmpeg: tách frame, color grading, và ghép nhiều audio track." Foreground="{DynamicResource TextOnGraphiteGrayBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-video sharp-light'}"
+                               Fill="{DynamicResource TextOnGraphiteGrayBrush}"/>
+                                </Grid>
+                            </Border>
+
                             <!-- Code Node -->
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource PrussianBlueBrush}"

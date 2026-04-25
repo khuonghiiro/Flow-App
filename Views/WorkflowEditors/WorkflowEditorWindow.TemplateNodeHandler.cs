@@ -239,6 +239,10 @@ namespace FlowMy.Views
                     n.TitleColorMode = colorMode;
                     n.TitleColorKey = colorKey;
                     break;
+                case VideoProcessingNode n:
+                    n.TitleColorMode = colorMode;
+                    n.TitleColorKey = colorKey;
+                    break;
                 case CodeNode n:
                     n.TitleColorMode = colorMode;
                     n.TitleColorKey = colorKey;
@@ -358,6 +362,7 @@ namespace FlowMy.Views
                 "AssignData" => "arrows-left-right duotone",
                 "MediaGallery" => "image-stack duotone",
                 "ImageProcessing" => "image notdog-duo-solid",
+                "VideoProcessing" => "circle-video sharp-light",
                 "Code" => "code duotone-regular",
                 "HtmlUi" => "html5 brands",
                 "Folder" => "folder-open duotone-thin",

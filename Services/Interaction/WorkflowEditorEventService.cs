@@ -122,6 +122,7 @@ namespace FlowMy.Services.Interaction
                     vm.SelectedNode is AssignDataNode ||
                     vm.SelectedNode is MediaGalleryNode ||
                     vm.SelectedNode is ImageProcessingNode ||
+                    vm.SelectedNode is VideoProcessingNode ||
                     vm.SelectedNode is CodeNode ||
                     vm.SelectedNode is FolderNode ||
                     vm.SelectedNode is FileDownloadNode ||
@@ -160,6 +161,7 @@ namespace FlowMy.Services.Interaction
                        _copiedNode is AssignDataNode ||
                        _copiedNode is MediaGalleryNode ||
                        _copiedNode is ImageProcessingNode ||
+                       _copiedNode is VideoProcessingNode ||
                        _copiedNode is CodeNode ||
                        _copiedNode is FolderNode ||
                        _copiedNode is FileDownloadNode ||

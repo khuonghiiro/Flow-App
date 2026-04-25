@@ -34,6 +34,7 @@ namespace FlowMy.Models
         AssignData,
         MediaGallery,
         ImageProcessing,
+        VideoProcessing,
         Code,
         Folder,
         Web,

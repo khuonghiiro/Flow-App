@@ -704,6 +704,12 @@
     <SolidColorBrush x:Key="ChampagneGoldPressedBrush" Color="#F5E1C1"/>
     <SolidColorBrush x:Key="TextOnChampagneGoldBrush" Color="#1F2937"/>
 
+    <!-- 51. Dusky Rose -->
+    <SolidColorBrush x:Key="DuskyRoseBrush" Color="#B76E79"/>
+    <SolidColorBrush x:Key="DuskyRoseHoverBrush" Color="#C37F89"/>
+    <SolidColorBrush x:Key="DuskyRosePressedBrush" Color="#A75F6A"/>
+    <SolidColorBrush x:Key="TextOnDuskyRoseBrush" Color="White"/>
+
     
     <!-- Background Colors -->
     <SolidColorBrush x:Key="WindowBackgroundMainBrush" Color="#FFF8FAFC"/>

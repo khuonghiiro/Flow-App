@@ -570,6 +570,7 @@ namespace FlowMy.Services.Workflow
                 new NodeExecutors.HttpRequestNodeExecutor(),
                 new NodeExecutors.MediaGalleryNodeExecutor(),
                 new NodeExecutors.ImageProcessingNodeExecutor(),
+                new NodeExecutors.VideoProcessingNodeExecutor(),
                 new NodeExecutors.DataFetcherNodeExecutor(),
                 new NodeExecutors.KeyValueBridgeNodeExecutor(),
                 new NodeExecutors.FlowOverwriteNodeExecutor(),

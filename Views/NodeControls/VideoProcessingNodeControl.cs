@@ -1,0 +1,637 @@
+using FlowMy.Controls;
+using FlowMy.Converters;
+using FlowMy.Models;
+using FlowMy.Models.Nodes;
+using FlowMy.Services.Interaction;
+using FlowMy.Services.Rendering;
+using FlowMy.Views.Overlays;
+using Microsoft.Win32;
+using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using System.Windows.Threading;
+
+namespace FlowMy.Views.NodeControls
+{
+    public static class VideoProcessingNodeControl
+    {
+        private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Bottom }
+        private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
+        private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
+        private const int TitleUpdateThrottleMs = 50;
+
+        public static Border CreateBorder(VideoProcessingNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
+        {
+            if (host == null) throw new ArgumentNullException(nameof(host));
+
+            var root = new Grid();
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var iconConverter = new IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(null, typeof(Uri), "circle-video sharp-light",
+                System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            var icon = new SvgViewboxEx
+            {
+                Source = iconUri,
+                Width = 26,
+                Height = 26,
+                Margin = new Thickness(8, 8, 8, 4),
+                Fill = GetTextBrush(node.ColorKey),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            var selectVideoButton = new Button
+            {
+                Content = "Mở video...",
+                Style = Application.Current.TryFindResource("PrimaryButton") as Style,
+                Width = 84,
+                Height = 24,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 8, 8, 4)
+            };
+
+            var topPanel = new Grid();
+            topPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            topPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            topPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            topPanel.Children.Add(icon);
+            Grid.SetColumn(icon, 0);
+            topPanel.Children.Add(selectVideoButton);
+            Grid.SetColumn(selectVideoButton, 2);
+            root.Children.Add(topPanel);
+            Grid.SetRow(topPanel, 0);
+
+            var previewBorder = new Border
+            {
+                Margin = new Thickness(8, 0, 8, 6),
+                Background = new SolidColorBrush(Color.FromArgb(35, 255, 255, 255)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6)
+            };
+            var previewGrid = new Grid();
+            var previewText = new TextBlock
+            {
+                Foreground = GetTextBrush(node.ColorKey),
+                Margin = new Thickness(8),
+                FontSize = 11,
+                Opacity = 0.85,
+                TextWrapping = TextWrapping.Wrap,
+                Text = "Chưa chọn video"
+            };
+            var previewMedia = new MediaElement
+            {
+                LoadedBehavior = MediaState.Manual,
+                UnloadedBehavior = MediaState.Manual,
+                Stretch = Stretch.UniformToFill,
+                Volume = 0,
+                ScrubbingEnabled = true,
+                Visibility = Visibility.Collapsed
+            };
+            previewMedia.MediaEnded += (_, _) =>
+            {
+                previewMedia.Position = TimeSpan.Zero;
+                previewMedia.Play();
+            };
+            previewGrid.Children.Add(previewMedia);
+            previewGrid.Children.Add(previewText);
+            previewBorder.Child = previewGrid;
+            root.Children.Add(previewBorder);
+            Grid.SetRow(previewBorder, 1);
+
+            var fpsText = new TextBlock
+            {
+                Margin = new Thickness(8, 0, 8, 4),
+                Foreground = GetTextBrush(node.ColorKey),
+                FontSize = 11
+            };
+            root.Children.Add(fpsText);
+            Grid.SetRow(fpsText, 2);
+
+            var fpsSlider = CreateSlider(1, Math.Max(1, node.SourceFps), node.ExtractFps, v => node.ExtractFps = v);
+            fpsSlider.Margin = new Thickness(8, 0, 8, 4);
+            root.Children.Add(fpsSlider);
+            Grid.SetRow(fpsSlider, 3);
+
+            var gradingPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 8, 6) };
+            gradingPanel.Children.Add(CreateLabeledSlider("Brightness", -1, 1, node.Brightness, v => node.Brightness = v));
+            gradingPanel.Children.Add(CreateLabeledSlider("Contrast", 0.1, 3, node.Contrast, v => node.Contrast = v));
+            gradingPanel.Children.Add(CreateLabeledSlider("Saturation", 0, 3, node.Saturation, v => node.Saturation = v));
+            gradingPanel.Children.Add(CreateLabeledSlider("Hue", -180, 180, node.Hue, v => node.Hue = v));
+            root.Children.Add(gradingPanel);
+            Grid.SetRow(gradingPanel, 4);
+
+            var audioSummary = new TextBlock
+            {
+                Margin = new Thickness(8, 0, 8, 8),
+                Foreground = GetTextBrush(node.ColorKey),
+                FontSize = 11,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            root.Children.Add(audioSummary);
+            Grid.SetRow(audioSummary, 5);
+
+            var border = new Border
+            {
+                Width = node.Width,
+                Height = node.Height,
+                MinWidth = 540,
+                MinHeight = 340,
+                Background = node.NodeBrush,
+                BorderBrush = new SolidColorBrush(Colors.White),
+                BorderThickness = new Thickness(2),
+                CornerRadius = new CornerRadius(10),
+                Cursor = Cursors.Hand,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Direction = 270,
+                    ShadowDepth = 5,
+                    BlurRadius = 10,
+                    Opacity = 0.5
+                },
+                Tag = node
+            };
+            var overlayGrid = new Grid();
+            overlayGrid.Children.Add(root);
+
+            var handlesLayer = new Grid { IsHitTestVisible = true };
+            AddResizeHandle(handlesLayer, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
+            AddResizeHandle(handlesLayer, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
+            AddResizeHandle(handlesLayer, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
+            AddResizeHandle(handlesLayer, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
+            AddResizeHandle(handlesLayer, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
+            overlayGrid.Children.Add(handlesLayer);
+            border.Child = overlayGrid;
+
+            void RefreshVideoPreview()
+            {
+                var path = node.VideoPath?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    previewMedia.Stop();
+                    previewMedia.Source = null;
+                    previewMedia.Visibility = Visibility.Collapsed;
+                    previewText.Visibility = Visibility.Visible;
+                    previewText.Text = "Chưa chọn video";
+                    return;
+                }
+
+                try
+                {
+                    previewMedia.Source = Uri.TryCreate(path, UriKind.Absolute, out var uri) ? uri : new Uri(path, UriKind.RelativeOrAbsolute);
+                    previewMedia.Visibility = Visibility.Visible;
+                    previewText.Visibility = Visibility.Collapsed;
+                    previewMedia.Position = TimeSpan.Zero;
+                    previewMedia.Play();
+                }
+                catch
+                {
+                    previewMedia.Stop();
+                    previewMedia.Source = null;
+                    previewMedia.Visibility = Visibility.Collapsed;
+                    previewText.Visibility = Visibility.Visible;
+                    previewText.Text = "Không thể preview video";
+                }
+            }
+
+            selectVideoButton.Click += (_, e) =>
+            {
+                e.Handled = true;
+                try
+                {
+                    var dlg = new OpenFileDialog
+                    {
+                        Title = "Chọn video",
+                        Filter = "Video Files|*.mp4;*.mov;*.mkv;*.avi;*.webm|All Files|*.*",
+                        CheckFileExists = true,
+                        Multiselect = false
+                    };
+                    if (dlg.ShowDialog() == true)
+                    {
+                        node.VideoPath = dlg.FileName;
+                        node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
+                    }
+                }
+                catch
+                {
+                }
+            };
+            RefreshVideoPreview();
+
+            var titleText = new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(node.Title) ? "Video Processing" : node.Title,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = GetTitleBrush(node),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextAlignment = TextAlignment.Center,
+                Visibility = GetTitleVisibility(node.TitleDisplayMode, false),
+                IsHitTestVisible = false
+            };
+            node.TitleTextBlockUI = titleText;
+
+            void RefreshInlineText()
+            {
+                fpsText.Text = $"FPS video: {node.SourceFps:0.##} | Trich: {node.ExtractFps:0.##}/s";
+                audioSummary.Text = $"Audio tracks: {node.AudioTracks.Count} | Output: {(node.OutputBase64 ? "base64" : "file")}";
+            }
+            RefreshInlineText();
+
+            bool isHovering = false;
+            border.Focusable = true;
+            border.FocusVisualStyle = null;
+            border.MouseEnter += (_, _) =>
+            {
+                isHovering = true;
+                UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
+                UpdateTitlePosition(titleText, border, host);
+                Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => border.Focus()));
+            };
+            border.MouseLeave += (_, _) =>
+            {
+                isHovering = false;
+                UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
+            };
+
+            border.PreviewKeyDown += (s, e) =>
+            {
+                if (!isHovering) return;
+                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+                PortPosition? newPos = e.Key switch
+                {
+                    Key.Left => PortPosition.Left,
+                    Key.Up => PortPosition.Top,
+                    Key.Right => PortPosition.Right,
+                    Key.Down => PortPosition.Bottom,
+                    _ => null
+                };
+                if (newPos == null) return;
+                e.Handled = true;
+                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
+            };
+
+            if (node is INotifyPropertyChanged npc)
+            {
+                npc.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(WorkflowNode.Title))
+                    {
+                        titleText.Text = string.IsNullOrWhiteSpace(node.Title) ? "Video Processing" : node.Title;
+                    }
+                    else if (e.PropertyName == nameof(VideoProcessingNode.TitleDisplayMode))
+                    {
+                        UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
+                    }
+                    else if (e.PropertyName == nameof(VideoProcessingNode.TitleColorMode) ||
+                             e.PropertyName == nameof(VideoProcessingNode.TitleColorKey) ||
+                             e.PropertyName == nameof(WorkflowNode.NodeBrush))
+                    {
+                        border.Background = node.NodeBrush;
+                        titleText.Foreground = GetTitleBrush(node);
+                    }
+                    else if (e.PropertyName == nameof(VideoProcessingNode.SourceFps))
+                    {
+                        fpsSlider.Maximum = Math.Max(1, node.SourceFps);
+                        if (node.ExtractFps > fpsSlider.Maximum) node.ExtractFps = fpsSlider.Maximum;
+                        RefreshInlineText();
+                    }
+                    else if (e.PropertyName == nameof(VideoProcessingNode.ExtractFps) ||
+                             e.PropertyName == nameof(VideoProcessingNode.OutputBase64))
+                    {
+                        RefreshInlineText();
+                    }
+                    else if (e.PropertyName == nameof(VideoProcessingNode.VideoPath))
+                    {
+                        RefreshVideoPreview();
+                    }
+                    else if (e.PropertyName == nameof(VideoProcessingNode.Width) ||
+                             e.PropertyName == nameof(VideoProcessingNode.Height))
+                    {
+                        border.Width = node.Width;
+                        border.Height = node.Height;
+                        UpdateTitlePosition(titleText, border, host);
+                    }
+                };
+            }
+
+            node.AudioTracks.CollectionChanged += (_, _) => RefreshInlineText();
+
+            border.MouseRightButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                OpenNodeDialog(node, host, ownerWindow);
+            };
+
+            border.Loaded += (_, _) =>
+            {
+                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleText))
+                {
+                    host.WorkflowCanvas.Children.Add(titleText);
+                    Panel.SetZIndex(titleText, 20000);
+                    UpdateTitlePosition(titleText, border, host);
+                }
+            };
+
+            border.LayoutUpdated += (_, _) =>
+            {
+                if (border.Visibility != Visibility.Visible)
+                {
+                    titleText.Visibility = Visibility.Collapsed;
+                    return;
+                }
+                if (NodeChrome.IsZooming)
+                {
+                    titleText.Visibility = Visibility.Collapsed;
+                    _titleUpdatedAfterZoom[border] = false;
+                    return;
+                }
+                var hasUpdated = _titleUpdatedAfterZoom.TryGetValue(border, out var v) && v;
+                if (!hasUpdated)
+                {
+                    _titleUpdatedAfterZoom[border] = true;
+                    UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
+                    UpdateTitlePosition(titleText, border, host);
+                }
+                if (titleText.Visibility == Visibility.Visible && !host.IsPanning && host.DraggedNode != node)
+                    ThrottledUpdateTitlePosition(titleText, border, host);
+            };
+
+            border.Unloaded += (_, _) =>
+            {
+                previewMedia.Stop();
+                if (_titleUpdateTimers.TryGetValue(border, out var timer))
+                {
+                    timer.Stop();
+                    _titleUpdateTimers.Remove(border);
+                }
+                _titleUpdatedAfterZoom.Remove(border);
+                if (host.WorkflowCanvas?.Children.Contains(titleText) == true)
+                    host.WorkflowCanvas.Children.Remove(titleText);
+                if (ReferenceEquals(node.TitleTextBlockUI, titleText))
+                    node.TitleTextBlockUI = null;
+            };
+
+            return border;
+        }
+
+        private static void AddResizeHandle(Grid grid, ResizeDirection direction, HorizontalAlignment hAlign, VerticalAlignment vAlign, Thickness margin)
+        {
+            var handle = new Ellipse
+            {
+                Width = 12,
+                Height = 12,
+                Fill = new SolidColorBrush(Colors.White),
+                Stroke = new SolidColorBrush(Colors.Black),
+                StrokeThickness = 1,
+                HorizontalAlignment = hAlign,
+                VerticalAlignment = vAlign,
+                Margin = margin,
+                Tag = direction,
+                Cursor = direction switch
+                {
+                    ResizeDirection.TopLeft or ResizeDirection.BottomRight => Cursors.SizeNWSE,
+                    ResizeDirection.TopRight or ResizeDirection.BottomLeft => Cursors.SizeNESW,
+                    ResizeDirection.Bottom => Cursors.SizeNS,
+                    _ => Cursors.Arrow
+                }
+            };
+            grid.Children.Add(handle);
+        }
+
+        private static Slider CreateSlider(double min, double max, double value, Action<double> onChanged)
+        {
+            var slider = new Slider
+            {
+                Minimum = min,
+                Maximum = max,
+                Value = value,
+                TickFrequency = 0.1,
+                IsSnapToTickEnabled = false
+            };
+            slider.ValueChanged += (_, e) => onChanged(e.NewValue);
+            return slider;
+        }
+
+        private static FrameworkElement CreateLabeledSlider(string label, double min, double max, double value, Action<double> onChanged)
+        {
+            var stack = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 0, 3) };
+            stack.Children.Add(new TextBlock { Text = label, FontSize = 10, Foreground = Brushes.White, Opacity = 0.9 });
+            stack.Children.Add(CreateSlider(min, max, value, onChanged));
+            return stack;
+        }
+
+        private static Brush GetTitleBrush(VideoProcessingNode node)
+        {
+            if (node.TitleColorMode == TitleColorMode.CustomColor && !string.IsNullOrWhiteSpace(node.TitleColorKey))
+                return Application.Current.TryFindResource(node.TitleColorKey) as Brush ?? node.NodeBrush;
+            return node.NodeBrush;
+        }
+
+        private static Brush GetTextBrush(string? colorKey)
+        {
+            if (string.IsNullOrWhiteSpace(colorKey))
+                return new SolidColorBrush(Color.FromRgb(229, 231, 235));
+            return Application.Current.TryFindResource($"TextOn{colorKey}Brush") as Brush
+                   ?? new SolidColorBrush(Color.FromRgb(229, 231, 235));
+        }
+
+        private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)
+            => mode switch
+            {
+                TitleDisplayMode.Hidden => Visibility.Collapsed,
+                TitleDisplayMode.Hover => isHovering ? Visibility.Visible : Visibility.Collapsed,
+                TitleDisplayMode.Always => Visibility.Visible,
+                _ => Visibility.Collapsed
+            };
+
+        private static void UpdateTitleVisibility(TextBlock tb, TitleDisplayMode mode, bool isHovering, Border? nodeBorder = null)
+        {
+            if (nodeBorder != null && nodeBorder.Visibility != Visibility.Visible)
+            {
+                tb.Visibility = Visibility.Collapsed;
+                return;
+            }
+            tb.Visibility = GetTitleVisibility(mode, isHovering);
+        }
+
+        private static void ThrottledUpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
+        {
+            if (!_titleUpdateTimers.TryGetValue(border, out var timer))
+            {
+                timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TitleUpdateThrottleMs) };
+                timer.Tick += (_, _) =>
+                {
+                    timer.Stop();
+                    UpdateTitlePosition(tb, border, host);
+                };
+                _titleUpdateTimers[border] = timer;
+            }
+            timer.Stop();
+            timer.Start();
+        }
+
+        private static void UpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
+        {
+            if (host.WorkflowCanvas == null || !host.WorkflowCanvas.Children.Contains(tb)) return;
+            var left = Canvas.GetLeft(border);
+            var top = Canvas.GetTop(border);
+            if (double.IsNaN(left) || double.IsNaN(top)) return;
+
+            if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
+            {
+                tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                tb.Arrange(new Rect(tb.DesiredSize));
+            }
+
+            Canvas.SetLeft(tb, left + (border.ActualWidth / 2) - (tb.ActualWidth / 2));
+            Canvas.SetTop(tb, top - tb.ActualHeight - 4);
+        }
+
+        private static void OpenNodeDialog(VideoProcessingNode node, IWorkflowEditorHost host, Window? ownerWindow)
+        {
+            try
+            {
+                if (node.Border?.IsMouseCaptured == true) node.Border.ReleaseMouseCapture();
+                host.DraggedNode = null;
+                if (host.ViewModel != null) host.ViewModel.SelectedNode = null;
+
+                var dialogManager = GetOrCreateDialogManager(host);
+                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
+                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
+                    dialogManager.CloseCurrentDialog();
+
+                var dialog = new VideoProcessingNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
+                dialogManager.OpenDialog(node, dialog, host);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
+        {
+            if (host is WorkflowEditorWindow window)
+            {
+                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
+            }
+            return new NodeDialogManager();
+        }
+
+        private static void ChangePortPosition(WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
+        {
+            var port = isInputPort
+                ? node.Ports.FirstOrDefault(p => p.IsInput)
+                : node.Ports.FirstOrDefault(p => !p.IsInput);
+
+            if (port == null || port.Position == newPosition) return;
+            port.Position = newPosition;
+            host.UpdatePortsPositionOnSide(node, newPosition);
+            var cons = host.ViewModel?.Connections;
+            if (cons != null && cons.Count > 0)
+            {
+                host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
+                host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
+            }
+        }
+
+        static VideoProcessingNodeControl()
+        {
+            EventManager.RegisterClassHandler(typeof(Border), UIElement.PreviewMouseDownEvent, new MouseButtonEventHandler((s, e) =>
+            {
+                if (s is not Border border || border.Tag is not VideoProcessingNode node) return;
+                if (border.Child is not Grid overlayGrid || overlayGrid.Children.Count < 2) return;
+                if (e.OriginalSource is not Ellipse handle || handle.Tag is not ResizeDirection direction) return;
+
+                var parent = border.Parent as UIElement;
+                if (parent == null) return;
+                var start = e.GetPosition(parent);
+                var originalWidth = border.Width;
+                var originalHeight = border.Height;
+                var originalX = Canvas.GetLeft(border);
+                var originalY = Canvas.GetTop(border);
+                if (double.IsNaN(originalX)) originalX = node.X;
+                if (double.IsNaN(originalY)) originalY = node.Y;
+
+                border.CaptureMouse();
+                e.Handled = true;
+
+                MouseEventHandler? move = null;
+                MouseButtonEventHandler? up = null;
+                move = (_, me) =>
+                {
+                    if (!border.IsMouseCaptured) return;
+                    var current = me.GetPosition(parent);
+                    var dx = current.X - start.X;
+                    var dy = current.Y - start.Y;
+
+                    var newX = originalX;
+                    var newY = originalY;
+                    var newWidth = originalWidth;
+                    var newHeight = originalHeight;
+
+                    switch (direction)
+                    {
+                        case ResizeDirection.BottomRight:
+                            newWidth = Math.Max(border.MinWidth, originalWidth + dx);
+                            newHeight = Math.Max(border.MinHeight, originalHeight + dy);
+                            break;
+                        case ResizeDirection.TopLeft:
+                            newWidth = Math.Max(border.MinWidth, originalWidth - dx);
+                            newHeight = Math.Max(border.MinHeight, originalHeight - dy);
+                            newX = originalX + (originalWidth - newWidth);
+                            newY = originalY + (originalHeight - newHeight);
+                            break;
+                        case ResizeDirection.TopRight:
+                            newWidth = Math.Max(border.MinWidth, originalWidth + dx);
+                            newHeight = Math.Max(border.MinHeight, originalHeight - dy);
+                            newY = originalY + (originalHeight - newHeight);
+                            break;
+                        case ResizeDirection.BottomLeft:
+                            newWidth = Math.Max(border.MinWidth, originalWidth - dx);
+                            newHeight = Math.Max(border.MinHeight, originalHeight + dy);
+                            newX = originalX + (originalWidth - newWidth);
+                            break;
+                        case ResizeDirection.Bottom:
+                            newHeight = Math.Max(border.MinHeight, originalHeight + dy);
+                            break;
+                    }
+
+                    border.Width = newWidth;
+                    border.Height = newHeight;
+                    Canvas.SetLeft(border, newX);
+                    Canvas.SetTop(border, newY);
+                    node.Width = newWidth;
+                    node.Height = newHeight;
+                    node.X = newX;
+                    node.Y = newY;
+                    me.Handled = true;
+                };
+                up = (_, ue) =>
+                {
+                    if (move != null) border.PreviewMouseMove -= move;
+                    if (up != null) border.PreviewMouseUp -= up;
+                    border.ReleaseMouseCapture();
+                    ue.Handled = true;
+                };
+                border.PreviewMouseMove += move;
+                border.PreviewMouseUp += up;
+            }), true);
+        }
+    }
+}

@@ -44,6 +44,7 @@ namespace FlowMy.Workflow
                 "AssignData" => CreateAssignDataNode(x, y),
                 "MediaGallery" => CreateMediaGalleryNode(x, y),
                 "ImageProcessing" => CreateImageProcessingNode(x, y),
+                "VideoProcessing" => CreateVideoProcessingNode(x, y),
                 "Code" => CreateCodeNode(x, y),
                 "HtmlUi" => CreateHtmlUiNode(x, y),
                 "Folder" => CreateFolderNode(x, y),
@@ -134,6 +135,80 @@ namespace FlowMy.Workflow
             // Vậy mặc định checked = thêm vào SkipOutputs
             node.SkipOutputs.Add("imageBase64");
             node.SkipOutputs.Add("cropListBase64");
+
+            return node;
+        }
+
+        private WorkflowNode CreateVideoProcessingNode(double x, double y)
+        {
+            var node = new VideoProcessingNode
+            {
+                Id = $"Node_VideoProcessing_{Guid.NewGuid()}",
+                Title = "Video Processing",
+                X = x - 270,
+                Y = y - 170,
+                ColorKey = "GraphiteGray",
+                NodeBrush = Application.Current.TryFindResource("GraphiteGrayBrush") as Brush ?? Brushes.DimGray,
+                Type = NodeType.VideoProcessing,
+                Width = 540,
+                Height = 340,
+                OutputBase64 = true,
+                PreferGpu = true
+            };
+
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = true,
+                Position = PortPosition.Left,
+                IsVisible = true,
+                ColorKey = "Info"
+            });
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = false,
+                Position = PortPosition.Right,
+                IsVisible = true,
+                ColorKey = "SunsetOrange"
+            });
+
+            node.DynamicInputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "video_input",
+                DisplayName = "Video Input",
+                IsMultiple = false,
+                OutputType = WorkflowDataType.String
+            });
+            node.DynamicInputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "folder_input",
+                DisplayName = "Output Folder Input",
+                IsMultiple = false,
+                OutputType = WorkflowDataType.String
+            });
+            node.DynamicInputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "audio_inputs",
+                DisplayName = "Audio Inputs",
+                IsMultiple = true,
+                OutputType = WorkflowDataType.String
+            });
+
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "frames_output",
+                DisplayName = "Frames Output",
+                IsMultiple = true,
+                OutputType = WorkflowDataType.String
+            });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "video_output",
+                DisplayName = "Video Output",
+                IsMultiple = false,
+                OutputType = WorkflowDataType.String
+            });
 
             return node;
         }
