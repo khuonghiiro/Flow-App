@@ -26,3 +26,4 @@ tire-rugged sharp-duotone-light
 gear-complex light
 circle-question chisel-regular
 unlock light
+arrow-down-up-lock duotone-light

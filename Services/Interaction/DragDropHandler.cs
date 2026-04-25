@@ -31,6 +31,8 @@ namespace FlowMy.Services.Interaction
         private AsyncTaskBodyNode? _draggedNodeOwningAsyncBody;
         private List<WorkflowNode>? _draggedLoopBodyChildren;
         private List<WorkflowNode>? _draggedAsyncBodyChildren;
+        private BodyContainerNode? _draggedOwningLockedBody;
+        private List<WorkflowNode>? _draggedLockedBodyChildren;
         
         // Sử dụng CompositionTarget.Rendering để sync với refresh rate và tăng hiệu suất GPU
         private EventHandler? _renderingHandler;
@@ -103,7 +105,19 @@ namespace FlowMy.Services.Interaction
             host.DraggedNode = viewModel.Nodes.FirstOrDefault(n => n.Border == border);
 
             if (host.DraggedNode == null) return;
-            if (IsNodeLockedByBodyContainer(viewModel, host.DraggedNode)) return;
+            _draggedOwningLockedBody = null;
+            _draggedLockedBodyChildren = null;
+
+            if (host.DraggedNode is not BodyContainerNode)
+            {
+                var owningLockedBody = FindOwningLockedBody(viewModel, host.DraggedNode);
+                if (owningLockedBody != null)
+                {
+                    _draggedOwningLockedBody = owningLockedBody;
+                    _draggedLockedBodyChildren = CaptureNodesInsideBody(viewModel, owningLockedBody);
+                    host.DraggedNode = owningLockedBody;
+                }
+            }
 
             host.ZIndexManager.SelectNode(host.DraggedNode);
             
@@ -147,7 +161,7 @@ namespace FlowMy.Services.Interaction
             Point mousePos = e.GetPosition(host.WorkflowCanvas);
             host.DragOffset = new Point(mousePos.X - host.DraggedNode.X, mousePos.Y - host.DraggedNode.Y);
 
-            border?.CaptureMouse();
+            host.DraggedNode.Border?.CaptureMouse();
             viewModel.SelectedNode = host.DraggedNode;
             host.FocusWindow();
 
@@ -164,6 +178,14 @@ namespace FlowMy.Services.Interaction
             _draggedNodeConnections = viewModel.Connections
                 .Where(conn => conn.FromNode == host.DraggedNode || conn.ToNode == host.DraggedNode)
                 .ToList();
+
+            if (host.DraggedNode is BodyContainerNode draggedBodyForConnections && draggedBodyForConnections.LockInnerNodes && _draggedLockedBodyChildren != null)
+            {
+                var lockedSet = new HashSet<WorkflowNode>(_draggedLockedBodyChildren) { draggedBodyForConnections };
+                _draggedNodeConnections = viewModel.Connections
+                    .Where(conn => lockedSet.Contains(conn.FromNode) || lockedSet.Contains(conn.ToNode))
+                    .ToList();
+            }
 
             // Cache adjacency + kết quả BFS cho phiên drag hiện tại để tránh tính lại mỗi frame.
             _dragAdjacency = BuildAdjacency(viewModel);
@@ -436,6 +458,40 @@ namespace FlowMy.Services.Interaction
 
             if (host.DraggedNode != null)
             {
+                if (host.DraggedNode is BodyContainerNode draggedBody && draggedBody.LockInnerNodes && _draggedLockedBodyChildren != null)
+                {
+                    var dxBody = newX - draggedBody.X;
+                    var dyBody = newY - draggedBody.Y;
+                    if (Math.Abs(dxBody) > 0.001 || Math.Abs(dyBody) > 0.001)
+                    {
+                        foreach (var child in _draggedLockedBodyChildren)
+                        {
+                            var cx = Math.Round(child.X + dxBody);
+                            var cy = Math.Round(child.Y + dyBody);
+                            host.UpdateNodePosition(child, cx, cy);
+                            viewModel.UpdateNodePosition(child, cx, cy);
+
+                            if (child.Border != null)
+                            {
+                                Canvas.SetLeft(child.Border, cx);
+                                Canvas.SetTop(child.Border, cy);
+                            }
+
+                            if (child.IsConditionalNode && child.ConditionalVisualMode == ConditionalVisualMode.Diamond)
+                            {
+                                host.RenderConditionalNodePorts(child);
+                            }
+                            else
+                            {
+                                foreach (var port in child.Ports.Where(p => p.IsVisible))
+                                    host.UpdatePortsPositionOnSide(child, port.Position);
+                            }
+
+                            host.ViewportCullingService?.OnNodeChanged(child);
+                        }
+                    }
+                }
+
                 // Snap toạ độ về integer pixel. Lý do: BitmapCache render lại bitmap tại
                 // offset subpixel sẽ bị bilinear-resample → hình ảnh node bị mờ sau khi
                 // drag xong (khác với lúc mới kéo từ palette rơi ở vị trí nguyên).
@@ -821,7 +877,10 @@ namespace FlowMy.Services.Interaction
                 var viewModel = host.ViewModel;
                 if (viewModel != null && host.DraggedNode != null)
                 {
-                    _collisionResolver.ResolveCollision(viewModel, host.DraggedNode, host);
+                    if (host.DraggedNode is not BodyContainerNode bodyNode || !bodyNode.LockInnerNodes)
+                    {
+                        _collisionResolver.ResolveCollision(viewModel, host.DraggedNode, host);
+                    }
                 }
                 
                 // Stop rendering handler khi drag kết thúc
@@ -892,7 +951,45 @@ namespace FlowMy.Services.Interaction
                 _draggedNodeOwningAsyncBody = null;
                 _draggedLoopBodyChildren = null;
                 _draggedAsyncBodyChildren = null;
+                _draggedOwningLockedBody = null;
+                _draggedLockedBodyChildren = null;
             }
+        }
+
+        private static BodyContainerNode? FindOwningLockedBody(FlowMy.ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node)
+        {
+            if (node is BodyContainerNode) return null;
+            foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
+            {
+                if (!body.LockInnerNodes) continue;
+                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
+                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+                if (width <= 0 || height <= 0) continue;
+
+                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                    return body;
+            }
+            return null;
+        }
+
+        private static List<WorkflowNode> CaptureNodesInsideBody(FlowMy.ViewModels.WorkflowEditorViewModel viewModel, BodyContainerNode bodyNode)
+        {
+            var result = new List<WorkflowNode>();
+            var bounds = new Rect(bodyNode.X, bodyNode.Y, bodyNode.BodyWidth, bodyNode.BodyHeight);
+            foreach (var node in viewModel.Nodes)
+            {
+                if (ReferenceEquals(node, bodyNode)) continue;
+                if (node is LoopBodyNode or AsyncTaskBodyNode) continue;
+                var cx = node.X + (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth / 2 : 75);
+                var cy = node.Y + (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight / 2 : 40);
+                if (bounds.Contains(new Point(cx, cy)))
+                    result.Add(node);
+            }
+
+            return result;
         }
     }
 }

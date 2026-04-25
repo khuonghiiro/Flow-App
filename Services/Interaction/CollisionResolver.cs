@@ -53,11 +53,17 @@ namespace FlowMy.Services.Interaction
 
             // Tìm tất cả các node khác có thể bị overlap
             var overlappingNodes = new List<(WorkflowNode otherNode, Rect otherBounds, double overlapX, double overlapY)>();
+            BodyContainerNode? lockedBodyNode = node as BodyContainerNode;
+            var targetIsLockedBody = lockedBodyNode?.LockInnerNodes == true;
+            var targetBodyRect = targetIsLockedBody
+                ? new Rect(lockedBodyNode!.X, lockedBodyNode.Y, lockedBodyNode.BodyWidth, lockedBodyNode.BodyHeight)
+                : Rect.Empty;
 
             foreach (var otherNode in viewModel.Nodes)
             {
                 if (otherNode == node || processedNodes.Contains(otherNode)) continue;
                 if (otherNode.Border == null) continue; // Skip node chưa được render
+                if (targetIsLockedBody && IsNodeInsideBodyRect(otherNode, targetBodyRect)) continue;
 
                 var otherBounds = GetNodeBounds(otherNode);
                 if (otherBounds.Width <= 0 || otherBounds.Height <= 0) continue;
@@ -119,6 +125,15 @@ namespace FlowMy.Services.Interaction
                 processedNodes.Add(otherNode);
                 ResolveCollisionRecursive(viewModel, otherNode, host, processedNodes, depth + 1);
             }
+        }
+
+        private static bool IsNodeInsideBodyRect(WorkflowNode node, Rect bodyRect)
+        {
+            if (node is BodyContainerNode) return false;
+            var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+            var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+            var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+            return bodyRect.Contains(center);
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
 using FlowMy.Models;
+using FlowMy.Models.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -64,6 +65,12 @@ namespace FlowMy.Services.Interaction
             }
 
             if (_host.ConnectingFromNode == null) return;
+            if (IsNodeLockedByBodyContainer(viewModel, _host.ConnectingFromNode))
+            {
+                _host.ConnectingFromNode = null;
+                RemoveTempLineIfAny();
+                return;
+            }
 
             var connectingPort = _host.ConnectingFromNode.Ports.FirstOrDefault(p => 
                 (p.PortUI == port || (p.PortUI is Border border && border.Child == port)) && p.IsVisible);
@@ -373,6 +380,14 @@ namespace FlowMy.Services.Interaction
 
             if (targetNode != null && targetNode != _host.ConnectingFromNode && targetPort != null)
             {
+                if (IsNodeLockedByBodyContainer(viewModel, _host.ConnectingFromNode) ||
+                    IsNodeLockedByBodyContainer(viewModel, targetNode))
+                {
+                    RemoveTempLineIfAny();
+                    _host.ConnectingFromNode = null;
+                    return;
+                }
+
                 if ((isFromInput && isToOutput) || (isFromOutput && isToInput))
                 {
                     var fromNode = _host.ConnectingFromNode;
@@ -977,6 +992,25 @@ namespace FlowMy.Services.Interaction
             return Math.Abs(dx) > Math.Abs(dy)
                 ? (dx > 0 ? PortPosition.Left : PortPosition.Right)
                 : (dy > 0 ? PortPosition.Top : PortPosition.Bottom);
+        }
+
+        private static bool IsNodeLockedByBodyContainer(ViewModels.WorkflowEditorViewModel vm, WorkflowNode node)
+        {
+            if (node is BodyContainerNode) return false;
+            foreach (var body in vm.Nodes.OfType<BodyContainerNode>())
+            {
+                if (!body.LockInnerNodes) continue;
+                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
+                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+                if (width <= 0 || height <= 0) continue;
+
+                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>

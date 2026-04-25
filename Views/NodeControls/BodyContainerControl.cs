@@ -114,6 +114,9 @@ public static class BodyContainerControl
         border.Height = node.BodyHeight;
         var visualScale = Math.Clamp(Math.Max(node.BodyWidth / BodyScaleBaseWidth, node.BodyHeight / BodyScaleBaseHeight), 1.0, 2.0);
 
+        // bỏ giới hạn của scale title
+        var titleScale = Math.Max(1.0, Math.Max(node.BodyWidth / BodyScaleBaseWidth, node.BodyHeight / BodyScaleBaseHeight));
+
         var borderColor = ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Color.FromRgb(107, 114, 128));
         var backgroundColor = ParseColor(node.BodyBackgroundColorHex, Color.FromRgb(107, 114, 128));
         var alpha = (byte)Math.Round(Math.Clamp(node.BackgroundOpacityPercent / 100.0, 0, 1) * 255);
@@ -123,11 +126,11 @@ public static class BodyContainerControl
         borderRect.Stroke = new SolidColorBrush(borderColor);
         titleText.Text = node.Title;
         titleText.Foreground = ResolveTitleBrush(node, borderColor);
-        titleText.FontSize = Math.Clamp(12 * visualScale, 12, 26);
-        titleText.Margin = new Thickness(0, -26 * visualScale, 0, 0);
+        titleText.FontSize = 12 * titleScale;
+        titleText.Margin = new Thickness(0, -26 * titleScale, 0, 0);
 
-        // Use only known icon keys from icon resources.
-        var lockIconKey = node.LockInnerNodes ? "list-check solid" : "unlock light";
+        // Đổi icon hiển thị giữa tâm border khi check lock/unlock
+        var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";
         lockIcon.Source = null;
         lockIcon.Source = new IconKeyToPathConverter().Convert(
             null, typeof(Uri), lockIconKey, CultureInfo.CurrentCulture) as Uri;

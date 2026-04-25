@@ -10,6 +10,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using ShapesPath = System.Windows.Shapes.Path;
 using FlowMy.Models;
+using FlowMy.Models.Nodes;
 using FlowMy.Services.Geometry;
 using FlowMy.Services.Interaction;
 
@@ -2086,7 +2087,7 @@ namespace FlowMy.Services.Rendering
                 Background = new SolidColorBrush(Color.FromArgb(220, 239, 68, 68)),
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
-                Visibility = connection.IsDeleteVisible ? Visibility.Visible : Visibility.Collapsed
+                Visibility = ShouldShowDeleteButton(connection) ? Visibility.Visible : Visibility.Collapsed
             };
 
             var template = new ControlTemplate(typeof(Button));
@@ -2302,7 +2303,7 @@ namespace FlowMy.Services.Rendering
             if (connection.DeleteButton == null || connection.LineUI == null) return;
 
             // Đồng bộ lại visibility nếu cần (quan trọng khi re-render)
-            connection.DeleteButton.Visibility = connection.IsDeleteVisible ? Visibility.Visible : Visibility.Collapsed;
+            connection.DeleteButton.Visibility = ShouldShowDeleteButton(connection) ? Visibility.Visible : Visibility.Collapsed;
 
             Point midpoint = GetConnectionMidpoint(connection);
             Canvas.SetLeft(connection.DeleteButton, midpoint.X - 14); // 28/2 = 14
@@ -2357,6 +2358,38 @@ namespace FlowMy.Services.Rendering
 
             // Fallback: điểm giữa đơn giản (cho Straight line hoặc khi chưa có LineUI)
             return new Point((start.X + end.X) / 2, (start.Y + end.Y) / 2);
+        }
+
+        private bool ShouldShowDeleteButton(WorkflowConnection connection)
+        {
+            return connection.IsDeleteVisible && !IsConnectionProtectedByLockedBody(connection);
+        }
+
+        private bool IsConnectionProtectedByLockedBody(WorkflowConnection connection)
+        {
+            var vm = Host.ViewModel;
+            if (vm == null) return false;
+            return IsNodeLockedByBodyContainer(vm, connection.FromNode) || IsNodeLockedByBodyContainer(vm, connection.ToNode);
+        }
+
+        private static bool IsNodeLockedByBodyContainer(ViewModels.WorkflowEditorViewModel vm, WorkflowNode node)
+        {
+            if (node is BodyContainerNode) return false;
+            foreach (var body in vm.Nodes.OfType<BodyContainerNode>())
+            {
+                if (!body.LockInnerNodes) continue;
+                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
+                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+                if (width <= 0 || height <= 0) continue;
+
+                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
