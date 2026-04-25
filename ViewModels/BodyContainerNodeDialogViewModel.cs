@@ -179,13 +179,6 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
 
     private void RefreshBodyVisualImmediate()
     {
-        if (_nodeRef.Border?.Child is not Grid grid) return;
-        if (grid.Children.Count < 4) return;
-        if (grid.Children[0] is not Rectangle fillRect) return;
-        if (grid.Children[1] is not Rectangle borderRect) return;
-        if (grid.Children[2] is not TextBlock titleText) return;
-        if (grid.Children[3] is not FlowMy.Controls.SvgViewboxEx lockIcon) return;
-        BodyContainerControl.ApplyNodeVisual(_nodeRef, _nodeRef.Border, fillRect, borderRect, titleText, lockIcon);
-        BodyContainerControl.UpdateTitleVisibility(_nodeRef, titleText, isHovering: false);
+        BodyContainerControl.RefreshVisualFromNode(_nodeRef);
     }
 }

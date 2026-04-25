@@ -75,13 +75,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
     private void RefreshNodeVisual(BodyContainerNode node)
     {
-        if (node.Border?.Child is not Grid grid) return;
-        if (grid.Children.Count < 4) return;
-        if (grid.Children[0] is not Rectangle fillRect) return;
-        if (grid.Children[1] is not Rectangle borderRect) return;
-        if (grid.Children[2] is not TextBlock titleText) return;
-        if (grid.Children[3] is not FlowMy.Controls.SvgViewboxEx lockIcon) return;
-        BodyContainerControl.ApplyNodeVisual(node, node.Border, fillRect, borderRect, titleText, lockIcon);
+        BodyContainerControl.RefreshVisualFromNode(node);
     }
 
     private void AttachBodyDragHandlers(BodyContainerNode bodyNode, Border border)
@@ -201,9 +195,8 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
     private void AttachHoverTitleBehavior(BodyContainerNode bodyNode, Border border)
     {
-        if (border.Child is not Grid grid) return;
-        if (grid.Children.Count < 3) return;
-        if (grid.Children[2] is not TextBlock titleText) return;
+        if (!BodyContainerControl.TryGetVisualElements(bodyNode, out _, out _, out _, out var titleText, out _))
+            return;
 
         var hovering = false;
         BodyContainerControl.UpdateTitleVisibility(bodyNode, titleText, hovering);

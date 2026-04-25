@@ -105,7 +105,7 @@
                                           ItemsSource="{Binding BodyColorOptions}"
                                           SelectedValuePath="Key"
                                           DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding BodyBackgroundColorKey, Mode=TwoWay}"/>
+                                          SelectedValue="{Binding BodyBackgroundColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 <Button Grid.Column="1"
                                         Content="🎨"
                                         Width="32"
@@ -139,7 +139,7 @@
                                           ItemsSource="{Binding BodyColorOptions}"
                                           SelectedValuePath="Key"
                                           DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding BodyBorderColorKey, Mode=TwoWay}"/>
+                                          SelectedValue="{Binding BodyBorderColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 <Button Grid.Column="1"
                                         Content="🎨"
                                         Width="32"
@@ -158,7 +158,7 @@
 
                             <CheckBox x:Name="UseUnifiedColorsCheckBox"
                                       Content="Dùng cùng một màu cho nền và viền"
-                                      IsChecked="{Binding UseUnifiedColors, Mode=TwoWay}"
+                                      IsChecked="{Binding UseUnifiedColors, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Foreground="{DynamicResource TextBrush}"
                                       Margin="0,0,0,12"/>
 
@@ -175,7 +175,7 @@
                                 <Slider x:Name="BackgroundOpacitySlider"
                                         Grid.Column="0"
                                         Minimum="0" Maximum="100"
-                                        Value="{Binding BackgroundOpacityPercent, Mode=TwoWay}"
+                                        Value="{Binding BackgroundOpacityPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         TickFrequency="5"
                                         IsSnapToTickEnabled="False"/>
                                 <TextBlock Grid.Column="1"
@@ -187,7 +187,7 @@
 
                             <CheckBox x:Name="LockInnerNodesCheckBox"
                                       Content="Khóa node bên trong body"
-                                      IsChecked="{Binding LockInnerNodes, Mode=TwoWay}"
+                                      IsChecked="{Binding LockInnerNodes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Foreground="{DynamicResource TextBrush}"/>
                         </StackPanel>
                     </ScrollViewer>

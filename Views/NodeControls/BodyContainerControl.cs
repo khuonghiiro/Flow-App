@@ -2,6 +2,7 @@ using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models.Nodes;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -94,12 +95,8 @@ public static class BodyContainerControl
 
     public static void RefreshVisualFromNode(BodyContainerNode node)
     {
-        if (node.Border?.Child is not Grid grid) return;
-        if (grid.Children.Count < 4) return;
-        if (grid.Children[0] is not Rectangle fillRect) return;
-        if (grid.Children[1] is not Rectangle borderRect) return;
-        if (grid.Children[2] is not TextBlock titleText) return;
-        if (grid.Children[3] is not SvgViewboxEx lockIcon) return;
+        if (!TryGetVisualElements(node, out _, out var fillRect, out var borderRect, out var titleText, out var lockIcon))
+            return;
 
         ApplyNodeVisual(node, node.Border, fillRect, borderRect, titleText, lockIcon);
         UpdateTitleVisibility(node, titleText, isHovering: false);
@@ -171,7 +168,8 @@ public static class BodyContainerControl
 
     private static void UpdateResizeHandleScale(Border border, double bodyWidth, double bodyHeight, Color handleColor, bool hideHandles)
     {
-        if (border.Child is not Grid grid) return;
+        var grid = GetBodyVisualGrid(border);
+        if (grid == null) return;
         var scale = Math.Clamp(Math.Max(bodyWidth / BodyScaleBaseWidth, bodyHeight / BodyScaleBaseHeight), 1.0, 2.0);
         foreach (var child in grid.Children)
         {
@@ -181,6 +179,56 @@ public static class BodyContainerControl
             handle.RenderTransform = new ScaleTransform(scale, scale);
             handle.Visibility = hideHandles ? Visibility.Collapsed : Visibility.Visible;
         }
+    }
+
+    public static bool TryGetVisualElements(
+        BodyContainerNode node,
+        out Border border,
+        out Rectangle fillRect,
+        out Rectangle borderRect,
+        out TextBlock titleText,
+        out SvgViewboxEx lockIcon)
+    {
+        border = node.Border!;
+        fillRect = null!;
+        borderRect = null!;
+        titleText = null!;
+        lockIcon = null!;
+
+        if (node.Border == null) return false;
+        var bodyGrid = GetBodyVisualGrid(node.Border);
+        if (bodyGrid == null) return false;
+        if (bodyGrid.Children.Count < 4) return false;
+        if (bodyGrid.Children[0] is not Rectangle fill) return false;
+        if (bodyGrid.Children[1] is not Rectangle stroke) return false;
+        if (bodyGrid.Children[2] is not TextBlock title) return false;
+        if (bodyGrid.Children[3] is not SvgViewboxEx icon) return false;
+
+        border = node.Border;
+        fillRect = fill;
+        borderRect = stroke;
+        titleText = title;
+        lockIcon = icon;
+        return true;
+    }
+
+    private static Grid? GetBodyVisualGrid(Border border)
+    {
+        if (border.Child is not Grid root) return null;
+        if (LooksLikeBodyVisualGrid(root)) return root;
+
+        return root.Children
+            .OfType<Grid>()
+            .FirstOrDefault(LooksLikeBodyVisualGrid);
+    }
+
+    private static bool LooksLikeBodyVisualGrid(Grid grid)
+    {
+        return grid.Children.Count >= 4 &&
+               grid.Children[0] is Rectangle &&
+               grid.Children[1] is Rectangle &&
+               grid.Children[2] is TextBlock &&
+               grid.Children[3] is SvgViewboxEx;
     }
 
     private static Cursor GetCursor(ResizeDirection direction) => direction switch
