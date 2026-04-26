@@ -192,6 +192,53 @@
                                               SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Grid>
+
+                            <TextBlock Text="Đường dẫn FFmpeg"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Height="36"
+                                         Style="{DynamicResource BaseTextBoxV2}"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding FfmpegPath, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Button Grid.Column="2"
+                                        MinWidth="92"
+                                        Height="36"
+                                        Content="Chọn thư mục"
+                                        Style="{DynamicResource PrimaryButton}"
+                                        Click="BrowseFfmpegFolderButton_Click"/>
+                                <Button Grid.Column="4"
+                                        MinWidth="92"
+                                        Height="36"
+                                        Content="Chọn file..."
+                                        Style="{DynamicResource PrimaryButton}"
+                                        Click="BrowseFfmpegPathButton_Click"/>
+                            </Grid>
+                            <TextBlock Foreground="{DynamicResource TextMuted}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,4">
+                                Có thể nhập đường dẫn thư mục chứa <Run FontWeight="SemiBold">ffmpeg.exe</Run> hoặc nhập trực tiếp file <Run FontWeight="SemiBold">ffmpeg.exe</Run>.
+                            </TextBlock>
+                            <TextBlock Foreground="{DynamicResource TextMuted}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,16">
+                                Nếu chưa có FFmpeg, tải bản full build tại
+                                <Hyperlink NavigateUri="https://www.gyan.dev/ffmpeg/builds/"
+                                           RequestNavigate="OpenFfmpegGuideLink_Click">gyan.dev/ffmpeg/builds</Hyperlink>,
+                                giải nén và chọn file <Run FontWeight="SemiBold">bin\ffmpeg.exe</Run>.
+                            </TextBlock>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

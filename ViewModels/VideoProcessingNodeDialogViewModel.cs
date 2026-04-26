@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Utilities;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string? _outputFolderSourceNodeId;
         [ObservableProperty] private string? _outputFolderSourceOutputKey;
         [ObservableProperty] private bool _outputBase64 = true;
+        [ObservableProperty] private string _ffmpegPath = string.Empty;
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -30,6 +32,7 @@ namespace FlowMy.ViewModels
             OutputFolderSourceNodeId = node.OutputFolderSourceNodeId;
             OutputFolderSourceOutputKey = node.OutputFolderSourceOutputKey;
             OutputBase64 = node.OutputBase64;
+            FfmpegPath = FfmpegPathPreferencesStore.Load().FfmpegPath ?? string.Empty;
 
             RefreshAvailableNodes();
             if (node is INotifyPropertyChanged npc)
@@ -79,8 +82,19 @@ namespace FlowMy.ViewModels
             _videoNode.OutputFolderSourceNodeId = string.IsNullOrWhiteSpace(OutputFolderSourceNodeId) ? null : OutputFolderSourceNodeId;
             _videoNode.OutputFolderSourceOutputKey = string.IsNullOrWhiteSpace(OutputFolderSourceOutputKey) ? null : OutputFolderSourceOutputKey;
             _videoNode.OutputBase64 = OutputBase64;
+            SaveFfmpegPathPreference();
             _videoNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        public void SaveFfmpegPathPreference()
+        {
+            var normalized = FfmpegPathPreferencesStore.NormalizeUserInput(FfmpegPath);
+            FfmpegPath = normalized;
+            FfmpegPathPreferencesStore.Save(new FfmpegPathPreferences
+            {
+                FfmpegPath = normalized
+            });
         }
     }
 }

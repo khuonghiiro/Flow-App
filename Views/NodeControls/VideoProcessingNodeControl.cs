@@ -75,6 +75,21 @@ namespace FlowMy.Views.NodeControls
             };
             node.TitleTextBlockUI = titleText;
 
+            contentControl.SuggestedNodeSizeReady += (suggestedWidth, suggestedHeight) =>
+            {
+                // Auto-fit only grows to avoid surprising shrink after manual resize.
+                var nextWidth = Math.Max(node.Width, suggestedWidth);
+                var nextHeight = Math.Max(node.Height, suggestedHeight);
+                if (nextWidth <= node.Width + 0.01 && nextHeight <= node.Height + 0.01) return;
+
+                node.Width = nextWidth;
+                node.Height = nextHeight;
+
+                border.Width = node.Width;
+                border.Height = node.Height;
+                UpdateTitlePosition(titleText, border, host);
+            };
+
             bool isHovering = false;
             border.Focusable = true;
             border.FocusVisualStyle = null;

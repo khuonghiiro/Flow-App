@@ -1,9 +1,12 @@
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
+using Microsoft.Win32;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Navigation;
 
 namespace FlowMy.Views.Overlays
 {
@@ -33,6 +36,19 @@ namespace FlowMy.Views.Overlays
             Close();
         }
 
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            try
+            {
+                _viewModel.SaveFfmpegPathPreference();
+            }
+            catch
+            {
+                // best-effort
+            }
+            base.OnClosing(e);
+        }
+
         private void VideoSourceNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
             => RefreshVideoSourceKeyOptions();
 
@@ -58,6 +74,68 @@ namespace FlowMy.Views.Overlays
         {
             if (OutputFolderKeyComboBox == null) return;
             OutputFolderKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.OutputFolderSourceNodeId);
+        }
+
+        private void BrowseFfmpegPathButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new OpenFileDialog
+                {
+                    Title = "Chon ffmpeg.exe",
+                    Filter = "ffmpeg.exe|ffmpeg.exe|Executable files|*.exe|All files|*.*",
+                    CheckFileExists = true,
+                    Multiselect = false
+                };
+
+                if (picker.ShowDialog(this) == true)
+                {
+                    _viewModel.FfmpegPath = picker.FileName;
+                    _viewModel.SaveFfmpegPathPreference();
+                }
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+
+        private void BrowseFfmpegFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new OpenFolderDialog
+                {
+                    Title = "Chon thu muc chua ffmpeg.exe",
+                    Multiselect = false
+                };
+                if (picker.ShowDialog(this) == true)
+                {
+                    _viewModel.FfmpegPath = picker.FolderName;
+                    _viewModel.SaveFfmpegPathPreference();
+                }
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+
+        private void OpenFfmpegGuideLink_Click(object sender, RequestNavigateEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = e.Uri.AbsoluteUri,
+                    UseShellExecute = true
+                });
+                e.Handled = true;
+            }
+            catch
+            {
+                // ignore
+            }
         }
     }
 }

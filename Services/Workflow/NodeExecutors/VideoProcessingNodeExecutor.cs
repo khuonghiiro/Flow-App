@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using FlowMy.Services.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -419,15 +420,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static string ResolveBinary(string binary)
         {
-            try
-            {
-                var local = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Ffmpeg", $"{binary}.exe");
-                return File.Exists(local) ? local : binary;
-            }
-            catch
-            {
-                return binary;
-            }
+            return FfmpegPathPreferencesStore.ResolveBinaryPath(binary);
         }
 
         private static void SetOutput(VideoProcessingNode node, string key, string value)
