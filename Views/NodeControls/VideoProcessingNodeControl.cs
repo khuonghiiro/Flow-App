@@ -1,11 +1,8 @@
-using FlowMy.Controls;
-using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Views.Overlays;
-using Microsoft.Win32;
 using System;
 using System.ComponentModel;
 using System.Linq;
@@ -29,117 +26,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
 
-            var root = new Grid();
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            var iconConverter = new IconKeyToPathConverter();
-            var iconUri = iconConverter.Convert(null, typeof(Uri), "circle-video sharp-light",
-                System.Globalization.CultureInfo.CurrentCulture) as Uri;
-            var icon = new SvgViewboxEx
-            {
-                Source = iconUri,
-                Width = 26,
-                Height = 26,
-                Margin = new Thickness(8, 8, 8, 4),
-                Fill = GetTextBrush(node.ColorKey),
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-            var selectVideoButton = new Button
-            {
-                Content = "Mở video...",
-                Style = Application.Current.TryFindResource("PrimaryButton") as Style,
-                Width = 84,
-                Height = 24,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 8, 8, 4)
-            };
-
-            var topPanel = new Grid();
-            topPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            topPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            topPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            topPanel.Children.Add(icon);
-            Grid.SetColumn(icon, 0);
-            topPanel.Children.Add(selectVideoButton);
-            Grid.SetColumn(selectVideoButton, 2);
-            root.Children.Add(topPanel);
-            Grid.SetRow(topPanel, 0);
-
-            var previewBorder = new Border
-            {
-                Margin = new Thickness(8, 0, 8, 6),
-                Background = new SolidColorBrush(Color.FromArgb(35, 255, 255, 255)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6)
-            };
-            var previewGrid = new Grid();
-            var previewText = new TextBlock
-            {
-                Foreground = GetTextBrush(node.ColorKey),
-                Margin = new Thickness(8),
-                FontSize = 11,
-                Opacity = 0.85,
-                TextWrapping = TextWrapping.Wrap,
-                Text = "Chưa chọn video"
-            };
-            var previewMedia = new MediaElement
-            {
-                LoadedBehavior = MediaState.Manual,
-                UnloadedBehavior = MediaState.Manual,
-                Stretch = Stretch.UniformToFill,
-                Volume = 0,
-                ScrubbingEnabled = true,
-                Visibility = Visibility.Collapsed
-            };
-            previewMedia.MediaEnded += (_, _) =>
-            {
-                previewMedia.Position = TimeSpan.Zero;
-                previewMedia.Play();
-            };
-            previewGrid.Children.Add(previewMedia);
-            previewGrid.Children.Add(previewText);
-            previewBorder.Child = previewGrid;
-            root.Children.Add(previewBorder);
-            Grid.SetRow(previewBorder, 1);
-
-            var fpsText = new TextBlock
-            {
-                Margin = new Thickness(8, 0, 8, 4),
-                Foreground = GetTextBrush(node.ColorKey),
-                FontSize = 11
-            };
-            root.Children.Add(fpsText);
-            Grid.SetRow(fpsText, 2);
-
-            var fpsSlider = CreateSlider(1, Math.Max(1, node.SourceFps), node.ExtractFps, v => node.ExtractFps = v);
-            fpsSlider.Margin = new Thickness(8, 0, 8, 4);
-            root.Children.Add(fpsSlider);
-            Grid.SetRow(fpsSlider, 3);
-
-            var gradingPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 8, 6) };
-            gradingPanel.Children.Add(CreateLabeledSlider("Brightness", -1, 1, node.Brightness, v => node.Brightness = v));
-            gradingPanel.Children.Add(CreateLabeledSlider("Contrast", 0.1, 3, node.Contrast, v => node.Contrast = v));
-            gradingPanel.Children.Add(CreateLabeledSlider("Saturation", 0, 3, node.Saturation, v => node.Saturation = v));
-            gradingPanel.Children.Add(CreateLabeledSlider("Hue", -180, 180, node.Hue, v => node.Hue = v));
-            root.Children.Add(gradingPanel);
-            Grid.SetRow(gradingPanel, 4);
-
-            var audioSummary = new TextBlock
-            {
-                Margin = new Thickness(8, 0, 8, 8),
-                Foreground = GetTextBrush(node.ColorKey),
-                FontSize = 11,
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-            root.Children.Add(audioSummary);
-            Grid.SetRow(audioSummary, 5);
+            var contentControl = new VideoProcessingNodeContentControl(node);
 
             var border = new Border
             {
@@ -163,7 +50,7 @@ namespace FlowMy.Views.NodeControls
                 Tag = node
             };
             var overlayGrid = new Grid();
-            overlayGrid.Children.Add(root);
+            overlayGrid.Children.Add(contentControl);
 
             var handlesLayer = new Grid { IsHitTestVisible = true };
             AddResizeHandle(handlesLayer, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(2, 2, 0, 0));
@@ -173,61 +60,6 @@ namespace FlowMy.Views.NodeControls
             AddResizeHandle(handlesLayer, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
             overlayGrid.Children.Add(handlesLayer);
             border.Child = overlayGrid;
-
-            void RefreshVideoPreview()
-            {
-                var path = node.VideoPath?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(path))
-                {
-                    previewMedia.Stop();
-                    previewMedia.Source = null;
-                    previewMedia.Visibility = Visibility.Collapsed;
-                    previewText.Visibility = Visibility.Visible;
-                    previewText.Text = "Chưa chọn video";
-                    return;
-                }
-
-                try
-                {
-                    previewMedia.Source = Uri.TryCreate(path, UriKind.Absolute, out var uri) ? uri : new Uri(path, UriKind.RelativeOrAbsolute);
-                    previewMedia.Visibility = Visibility.Visible;
-                    previewText.Visibility = Visibility.Collapsed;
-                    previewMedia.Position = TimeSpan.Zero;
-                    previewMedia.Play();
-                }
-                catch
-                {
-                    previewMedia.Stop();
-                    previewMedia.Source = null;
-                    previewMedia.Visibility = Visibility.Collapsed;
-                    previewText.Visibility = Visibility.Visible;
-                    previewText.Text = "Không thể preview video";
-                }
-            }
-
-            selectVideoButton.Click += (_, e) =>
-            {
-                e.Handled = true;
-                try
-                {
-                    var dlg = new OpenFileDialog
-                    {
-                        Title = "Chọn video",
-                        Filter = "Video Files|*.mp4;*.mov;*.mkv;*.avi;*.webm|All Files|*.*",
-                        CheckFileExists = true,
-                        Multiselect = false
-                    };
-                    if (dlg.ShowDialog() == true)
-                    {
-                        node.VideoPath = dlg.FileName;
-                        node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
-                    }
-                }
-                catch
-                {
-                }
-            };
-            RefreshVideoPreview();
 
             var titleText = new TextBlock
             {
@@ -242,13 +74,6 @@ namespace FlowMy.Views.NodeControls
                 IsHitTestVisible = false
             };
             node.TitleTextBlockUI = titleText;
-
-            void RefreshInlineText()
-            {
-                fpsText.Text = $"FPS video: {node.SourceFps:0.##} | Trich: {node.ExtractFps:0.##}/s";
-                audioSummary.Text = $"Audio tracks: {node.AudioTracks.Count} | Output: {(node.OutputBase64 ? "base64" : "file")}";
-            }
-            RefreshInlineText();
 
             bool isHovering = false;
             border.Focusable = true;
@@ -302,21 +127,6 @@ namespace FlowMy.Views.NodeControls
                         border.Background = node.NodeBrush;
                         titleText.Foreground = GetTitleBrush(node);
                     }
-                    else if (e.PropertyName == nameof(VideoProcessingNode.SourceFps))
-                    {
-                        fpsSlider.Maximum = Math.Max(1, node.SourceFps);
-                        if (node.ExtractFps > fpsSlider.Maximum) node.ExtractFps = fpsSlider.Maximum;
-                        RefreshInlineText();
-                    }
-                    else if (e.PropertyName == nameof(VideoProcessingNode.ExtractFps) ||
-                             e.PropertyName == nameof(VideoProcessingNode.OutputBase64))
-                    {
-                        RefreshInlineText();
-                    }
-                    else if (e.PropertyName == nameof(VideoProcessingNode.VideoPath))
-                    {
-                        RefreshVideoPreview();
-                    }
                     else if (e.PropertyName == nameof(VideoProcessingNode.Width) ||
                              e.PropertyName == nameof(VideoProcessingNode.Height))
                     {
@@ -326,8 +136,6 @@ namespace FlowMy.Views.NodeControls
                     }
                 };
             }
-
-            node.AudioTracks.CollectionChanged += (_, _) => RefreshInlineText();
 
             border.MouseRightButtonUp += (_, e) =>
             {
@@ -371,7 +179,6 @@ namespace FlowMy.Views.NodeControls
 
             border.Unloaded += (_, _) =>
             {
-                previewMedia.Stop();
                 if (_titleUpdateTimers.TryGetValue(border, out var timer))
                 {
                     timer.Stop();
@@ -411,41 +218,11 @@ namespace FlowMy.Views.NodeControls
             grid.Children.Add(handle);
         }
 
-        private static Slider CreateSlider(double min, double max, double value, Action<double> onChanged)
-        {
-            var slider = new Slider
-            {
-                Minimum = min,
-                Maximum = max,
-                Value = value,
-                TickFrequency = 0.1,
-                IsSnapToTickEnabled = false
-            };
-            slider.ValueChanged += (_, e) => onChanged(e.NewValue);
-            return slider;
-        }
-
-        private static FrameworkElement CreateLabeledSlider(string label, double min, double max, double value, Action<double> onChanged)
-        {
-            var stack = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 0, 3) };
-            stack.Children.Add(new TextBlock { Text = label, FontSize = 10, Foreground = Brushes.White, Opacity = 0.9 });
-            stack.Children.Add(CreateSlider(min, max, value, onChanged));
-            return stack;
-        }
-
         private static Brush GetTitleBrush(VideoProcessingNode node)
         {
             if (node.TitleColorMode == TitleColorMode.CustomColor && !string.IsNullOrWhiteSpace(node.TitleColorKey))
                 return Application.Current.TryFindResource(node.TitleColorKey) as Brush ?? node.NodeBrush;
             return node.NodeBrush;
-        }
-
-        private static Brush GetTextBrush(string? colorKey)
-        {
-            if (string.IsNullOrWhiteSpace(colorKey))
-                return new SolidColorBrush(Color.FromRgb(229, 231, 235));
-            return Application.Current.TryFindResource($"TextOn{colorKey}Brush") as Brush
-                   ?? new SolidColorBrush(Color.FromRgb(229, 231, 235));
         }
 
         private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)

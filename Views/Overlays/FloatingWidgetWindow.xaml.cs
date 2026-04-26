@@ -4,6 +4,7 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
 using FlowMy.ViewModels;
+using FlowMy.Views.NodeControls;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System.Collections.Specialized;
@@ -68,6 +69,7 @@ public partial class FloatingWidgetWindow : Window
     private WebView2? _webView;
     private bool _webViewInitialized;
     private bool _webViewContentLoaded;
+    private VideoProcessingNodeContentControl? _videoNodeContent;
     private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
     private readonly List<(string SessionId, string Key, string Value)> _pendingAsyncBuffer = new();
@@ -167,6 +169,10 @@ public partial class FloatingWidgetWindow : Window
         if (_node is HtmlUiNode || _node is WebNode)
         {
             _ = InitWebView2Async();
+        }
+        else if (_node is VideoProcessingNode)
+        {
+            EnsureNativeNodeContent();
         }
 
         AttachManualRunObservers();
@@ -422,6 +428,8 @@ public partial class FloatingWidgetWindow : Window
         // Hide WebView2 to save resources
         if (_webView != null)
             _webView.Visibility = Visibility.Collapsed;
+        if (_videoNodeContent != null)
+            _videoNodeContent.Visibility = Visibility.Collapsed;
 
         ApplyIdleAnimation();
     }
@@ -490,6 +498,12 @@ public partial class FloatingWidgetWindow : Window
             {
                 _ = ReloadContentAsync();
             }
+        }
+        else if (_node is VideoProcessingNode)
+        {
+            EnsureNativeNodeContent();
+            if (_videoNodeContent != null)
+                _videoNodeContent.Visibility = Visibility.Visible;
         }
 
         // Đặt lại vị trí theo cạnh dock (expanded body không bị khuất ra ngoài màn).
@@ -1626,6 +1640,30 @@ public partial class FloatingWidgetWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine($"[FloatingWidget] WebView2 init error: {ex.Message}");
+        }
+    }
+
+    private void EnsureNativeNodeContent()
+    {
+        if (_videoNodeContent != null || _node is not VideoProcessingNode videoNode) return;
+        try
+        {
+            var contentGrid = ContentArea.Child as Grid;
+            if (contentGrid == null)
+            {
+                contentGrid = new Grid();
+                ContentArea.Child = contentGrid;
+            }
+
+            _videoNodeContent = new VideoProcessingNodeContentControl(videoNode)
+            {
+                Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed
+            };
+            contentGrid.Children.Add(_videoNodeContent);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Native content init error: {ex.Message}");
         }
     }
 
