@@ -26,7 +26,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
 
-            var contentControl = new VideoProcessingNodeContentControl(node);
+            var contentControl = new VideoProcessingNodeContentControl(node, host);
 
             var border = new Border
             {
@@ -213,11 +213,11 @@ namespace FlowMy.Views.NodeControls
         {
             var handle = new Ellipse
             {
-                Width = 12,
-                Height = 12,
-                Fill = new SolidColorBrush(Colors.White),
-                Stroke = new SolidColorBrush(Colors.Black),
-                StrokeThickness = 1,
+                Width = 16,
+                Height = 16,
+                Fill = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
+                Stroke = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
+                StrokeThickness = 1.2,
                 HorizontalAlignment = hAlign,
                 VerticalAlignment = vAlign,
                 Margin = margin,

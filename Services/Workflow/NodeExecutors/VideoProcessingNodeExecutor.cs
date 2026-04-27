@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 {
     internal sealed class VideoProcessingNodeExecutor : INodeExecutor
     {
+        public static event Action<VideoProcessingNode, double, string>? ProgressChanged;
+        public static event Action<VideoProcessingNode, string>? LogLine;
+
         public bool CanExecute(WorkflowNode node) => node is VideoProcessingNode;
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
@@ -48,19 +52,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
 
-                var eqFilter = BuildEqFilter(videoNode);
-                var frameFilter = $"fps={extractFps:0.###},{eqFilter}";
+                var frameFilter = BuildVideoFilterChain(videoNode, extractFps);
                 var framePattern = videoNode.OutputBase64
                     ? Path.Combine(tempRoot, $"frames_{Guid.NewGuid():N}_%06d.png")
                     : Path.Combine(outputFolder!, $"frame_%06d.png");
 
-                await RunFfmpegAsync(WithHwaccel(new[]
+                var totalDuration = await ProbeDurationSecondsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
+                await RunFfmpegWithProgressAsync(
+                    WithHwaccel(BuildTrimAwareArgs(videoNode, new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", videoInput,
+                    "-i", videoInput, 
                     "-vf", frameFilter,
                     framePattern
-                }, hwaccel), env.CancellationToken).ConfigureAwait(false);
+                }), hwaccel),
+                    totalDuration,
+                    (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
+                    line => LogLine?.Invoke(videoNode, line),
+                    env.CancellationToken).ConfigureAwait(false);
 
                 var producedFrames = Directory.GetFiles(
                         Path.GetDirectoryName(framePattern)!,
@@ -73,18 +82,33 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     : JsonSerializer.Serialize(producedFrames);
                 SetOutput(videoNode, "frames_output", framesOutput);
 
-                var baseVideoPath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}.mp4");
-                await RunFfmpegAsync(WithHwaccel(new[]
+                var (codecArgs, extension) = BuildOutputArgs(videoNode);
+                var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
+                await RunFfmpegWithProgressAsync(
+                    WithHwaccel(BuildTrimAwareArgs(videoNode, new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
                     "-i", videoInput,
-                    "-vf", eqFilter,
+                    "-vf", frameFilter,
+                    "-sn",
                     "-an",
-                    baseVideoPath
-                }, hwaccel), env.CancellationToken).ConfigureAwait(false);
+                }.Concat(codecArgs).Concat(new[] { outputBasePath })), hwaccel),
+                    totalDuration,
+                    (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
+                    line => LogLine?.Invoke(videoNode, line),
+                    env.CancellationToken).ConfigureAwait(false);
 
-                var mixedVideo = await MergeAudioTracksAsync(videoNode, env, videoInput, baseVideoPath, outputFolder).ConfigureAwait(false);
+                var postStabilizedPath = outputBasePath;
+                if (videoNode.StabilizeEnabled)
+                {
+                    var stabilizedPath = Path.Combine(tempRoot, $"video_stabilized_{Guid.NewGuid():N}{extension}");
+                    await StabilizeVideoAsync(outputBasePath, stabilizedPath, env.CancellationToken).ConfigureAwait(false);
+                    postStabilizedPath = stabilizedPath;
+                }
+
+                var mixedVideo = await MergeAudioTracksAsync(videoNode, env, videoInput, postStabilizedPath, outputFolder).ConfigureAwait(false);
                 SetOutput(videoNode, "video_output", mixedVideo);
+                ProgressChanged?.Invoke(videoNode, 100, "Completed");
             }
             catch (Exception ex)
             {
@@ -116,21 +140,27 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var tempRoot = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing");
             Directory.CreateDirectory(tempRoot);
 
-            var outputVideo = string.IsNullOrWhiteSpace(outputFolder)
-                ? Path.Combine(Path.GetTempPath(), $"video_processed_{Guid.NewGuid():N}.mp4")
-                : Path.Combine(outputFolder, $"video_processed_{DateTime.Now:yyyyMMddHHmmss}.mp4");
+            var (_, extension) = BuildOutputArgs(node);
+            var outputVideo = !string.IsNullOrWhiteSpace(node.OutputPathOverride)
+                ? node.OutputPathOverride!
+                : string.IsNullOrWhiteSpace(outputFolder)
+                    ? Path.Combine(Path.GetTempPath(), $"video_processed_{Guid.NewGuid():N}{extension}")
+                    : Path.Combine(outputFolder, $"video_processed_{DateTime.Now:yyyyMMddHHmmss}{extension}");
 
             var audioInputs = new List<(string path, VideoAudioTrackConfig cfg)>();
-            var sourceAudioPath = Path.Combine(tempRoot, $"audio_source_{Guid.NewGuid():N}.wav");
-            await ExtractAudioTrackAsync(sourceVideoInput, sourceAudioPath, env.CancellationToken).ConfigureAwait(false);
-            if (File.Exists(sourceAudioPath))
+            if (node.SourceAudioEnabled)
             {
-                audioInputs.Add((sourceAudioPath, new VideoAudioTrackConfig
+                var sourceAudioPath = Path.Combine(tempRoot, $"audio_source_{Guid.NewGuid():N}.wav");
+                await ExtractAudioTrackAsync(sourceVideoInput, sourceAudioPath, env.CancellationToken).ConfigureAwait(false);
+                if (File.Exists(sourceAudioPath))
                 {
-                    VolumePercent = 100,
-                    ShorterMode = AudioSyncMode.PadSilence,
-                    LongerMode = AudioSyncMode.Trim
-                }));
+                    audioInputs.Add((sourceAudioPath, new VideoAudioTrackConfig
+                    {
+                        VolumePercent = 100,
+                        ShorterMode = AudioSyncMode.PadSilence,
+                        LongerMode = AudioSyncMode.Trim
+                    }));
+                }
             }
 
             foreach (var t in node.AudioTracks)
@@ -243,7 +273,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 case AudioSyncMode.Stretch:
                 {
-                    var factor = Math.Max(0.01, audioDuration / videoDurationSec);
+                    var factor = Math.Max(0.01, audioDuration / Math.Max(0.001, videoDurationSec));
                     var atempo = BuildAtempoChain(factor);
                     await RunFfmpegAsync(new[]
                     {
@@ -269,7 +299,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 case AudioSyncMode.Compress:
                 {
-                    var factor = Math.Max(0.01, audioDuration / videoDurationSec);
+                    var factor = Math.Max(0.01, audioDuration / Math.Max(0.001, videoDurationSec));
                     var atempo = BuildAtempoChain(factor);
                     await RunFfmpegAsync(new[]
                     {
@@ -309,6 +339,105 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             var hueRadians = node.Hue * Math.PI / 180d;
             return $"eq=brightness={node.Brightness:0.###}:contrast={node.Contrast:0.###}:saturation={node.Saturation:0.###}:hue={hueRadians:0.###}";
+        }
+
+        private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps)
+        {
+            var filters = new List<string> { $"fps={extractFps:0.###}", BuildEqFilter(node) };
+            if (Math.Abs(node.Gamma - 1) > 0.01)
+            {
+                var g = node.Gamma.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"lutrgb=r='pow(val/255,1/{g})*255':g='pow(val/255,1/{g})*255':b='pow(val/255,1/{g})*255'");
+            }
+            if (node.SharpenEnabled && node.SharpenStrength > 0)
+            {
+                var s = (node.SharpenStrength * 0.3).ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"unsharp=5:5:{s}:5:5:0");
+            }
+            if (node.DenoiseEnabled && node.DenoiseStrength > 0)
+            {
+                var d = node.DenoiseStrength.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"hqdn3d={d}:{d}:{d}:{d}");
+            }
+            if (node.BlurEnabled && node.BlurRadius > 0)
+            {
+                var r = node.BlurRadius.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"gblur=sigma={r}");
+            }
+
+            var rot = ((int)node.RotationDegrees / 90) % 4;
+            if (rot == 1) filters.Add("transpose=1");
+            else if (rot == 2) filters.Add("transpose=2,transpose=2");
+            else if (rot == 3) filters.Add("transpose=2");
+            if (node.FlipH) filters.Add("hflip");
+            if (node.FlipV) filters.Add("vflip");
+
+            if (node.FixedResolutionHeight.HasValue) filters.Add($"scale=-2:{node.FixedResolutionHeight.Value}");
+            else if (Math.Abs(node.ResolutionScale - 1) > 0.01)
+            {
+                var sc = node.ResolutionScale.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"scale=iw*{sc}:ih*{sc}");
+            }
+            if (Math.Abs(node.SpeedFactor - 1) > 0.01)
+            {
+                var pts = (1.0 / node.SpeedFactor).ToString("0.######", CultureInfo.InvariantCulture);
+                filters.Add($"setpts={pts}*PTS");
+            }
+            return string.Join(",", filters);
+        }
+
+        private static IEnumerable<string> BuildTrimAwareArgs(VideoProcessingNode node, IEnumerable<string> remainingArgs)
+        {
+            var trimArgs = new List<string>();
+            if (node.TrimEnabled && node.TrimEndSec > node.TrimStartSec)
+            {
+                trimArgs.AddRange(new[]
+                {
+                    "-ss", node.TrimStartSec.ToString("0.###", CultureInfo.InvariantCulture),
+                    "-to", node.TrimEndSec.ToString("0.###", CultureInfo.InvariantCulture)
+                });
+            }
+            return trimArgs.Concat(remainingArgs);
+        }
+
+        private static (string[] codecArgs, string extension) BuildOutputArgs(VideoProcessingNode node)
+        {
+            return (node.OutputFormat ?? "mp4_h264") switch
+            {
+                "mp4_h264" => (new[] { "-c:v", "libx264", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString() }, ".mp4"),
+                "mp4_h265" => (new[] { "-c:v", "libx265", "-preset", node.EncoderPreset ?? "medium", "-crf", ((int)node.Crf).ToString(), "-tag:v", "hvc1" }, ".mp4"),
+                "webm_vp9" => (new[] { "-c:v", "libvpx-vp9", "-crf", ((int)node.Crf).ToString(), "-b:v", "0" }, ".webm"),
+                "mov_prores" => (new[] { "-c:v", "prores_ks", "-profile:v", "3" }, ".mov"),
+                "gif" => (new[] { "-loop", "0" }, ".gif"),
+                _ => (new[] { "-c:v", "copy" }, ".mp4")
+            };
+        }
+
+        private static async Task StabilizeVideoAsync(string inputPath, string outputPath, CancellationToken ct)
+        {
+            var tempVectors = Path.Combine(Path.GetTempPath(), $"vidstab_{Guid.NewGuid():N}.trf");
+            try
+            {
+                await RunFfmpegAsync(new[]
+                {
+                    "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", inputPath,
+                    "-vf", $"vidstabdetect=stepsize=6:shakiness=8:accuracy=9:result={tempVectors}",
+                    "-f", "null", "-"
+                }, ct).ConfigureAwait(false);
+
+                await RunFfmpegAsync(new[]
+                {
+                    "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", inputPath,
+                    "-vf", $"vidstabtransform=input={tempVectors}:zoom=1:smoothing=30,unsharp=5:5:0.8",
+                    outputPath
+                }, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (File.Exists(tempVectors)) File.Delete(tempVectors);
+            }
         }
 
         private static async Task<double> ProbeSourceFpsAsync(string inputPath, CancellationToken ct)
@@ -379,6 +508,45 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var exit = await RunProcessExitCodeAsync(ResolveBinary("ffmpeg"), args, ct).ConfigureAwait(false);
             if (exit != 0)
                 throw new InvalidOperationException("VideoProcessingNode: FFmpeg xử lý thất bại.");
+        }
+
+        private static async Task RunFfmpegWithProgressAsync(
+            IEnumerable<string> args,
+            double totalDurationSec,
+            Action<double, string>? onProgress,
+            Action<string>? onLogLine,
+            CancellationToken ct)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = ResolveBinary("ffmpeg"),
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+            foreach (var a in args) psi.ArgumentList.Add(a);
+            using var p = Process.Start(psi);
+            if (p == null) throw new InvalidOperationException("Cannot start ffmpeg.");
+
+            p.ErrorDataReceived += (_, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(e.Data)) return;
+                onLogLine?.Invoke(e.Data);
+                var match = Regex.Match(e.Data, @"time=(\d+):(\d+):(\d+(?:\.\d+)?)");
+                if (match.Success && totalDurationSec > 0)
+                {
+                    var h = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                    var m = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+                    var s = double.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture);
+                    var elapsed = h * 3600 + m * 60 + s;
+                    var pct = Math.Min(100, elapsed / totalDurationSec * 100);
+                    onProgress?.Invoke(pct, $"Processing... {elapsed:0}s / {totalDurationSec:0}s");
+                }
+            };
+            p.BeginErrorReadLine();
+            await p.WaitForExitAsync(ct).ConfigureAwait(false);
+            if (p.ExitCode != 0) throw new InvalidOperationException("FFmpeg failed. Xem Log tab để biết chi tiết.");
         }
 
         private static async Task<int> RunProcessExitCodeAsync(string fileName, IEnumerable<string> args, CancellationToken ct)

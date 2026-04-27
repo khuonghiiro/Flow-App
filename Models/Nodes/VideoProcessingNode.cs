@@ -89,6 +89,31 @@ namespace FlowMy.Models.Nodes
         private double _contrast = 1;
         private double _saturation = 1;
         private double _hue;
+        private double _gamma = 1;
+
+        private bool _sharpenEnabled;
+        private double _sharpenStrength = 1;
+        private bool _denoiseEnabled;
+        private double _denoiseStrength = 3;
+        private bool _blurEnabled;
+        private double _blurRadius = 3;
+        private bool _stabilizeEnabled;
+        private double _speedFactor = 1;
+        private double _rotationDegrees;
+        private bool _flipH;
+        private bool _flipV;
+
+        private string _outputFormat = "mp4_h264";
+        private string _encoderPreset = "medium";
+        private double _crf = 23;
+        private double _resolutionScale = 1;
+        private int? _fixedResolutionHeight;
+        private bool _trimEnabled;
+        private double _trimStartSec;
+        private double _trimEndSec;
+        private string? _outputPathOverride;
+        private bool _sourceAudioEnabled = true;
+        private double _previewVolume = 0.7;
 
         public VideoProcessingNode()
         {
@@ -254,6 +279,200 @@ namespace FlowMy.Models.Nodes
             {
                 var next = value < -180 ? -180 : (value > 180 ? 180 : value);
                 if (Math.Abs(_hue - next) > 0.001) { _hue = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double Gamma
+        {
+            get => _gamma;
+            set
+            {
+                var next = value < 0.1 ? 0.1 : (value > 3 ? 3 : value);
+                if (Math.Abs(_gamma - next) > 0.001) { _gamma = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool SharpenEnabled
+        {
+            get => _sharpenEnabled;
+            set { if (_sharpenEnabled != value) { _sharpenEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double SharpenStrength
+        {
+            get => _sharpenStrength;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 5 ? 5 : value);
+                if (Math.Abs(_sharpenStrength - next) > 0.001) { _sharpenStrength = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool DenoiseEnabled
+        {
+            get => _denoiseEnabled;
+            set { if (_denoiseEnabled != value) { _denoiseEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double DenoiseStrength
+        {
+            get => _denoiseStrength;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 10 ? 10 : value);
+                if (Math.Abs(_denoiseStrength - next) > 0.001) { _denoiseStrength = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool BlurEnabled
+        {
+            get => _blurEnabled;
+            set { if (_blurEnabled != value) { _blurEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double BlurRadius
+        {
+            get => _blurRadius;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 15 ? 15 : value);
+                if (Math.Abs(_blurRadius - next) > 0.001) { _blurRadius = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool StabilizeEnabled
+        {
+            get => _stabilizeEnabled;
+            set { if (_stabilizeEnabled != value) { _stabilizeEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double SpeedFactor
+        {
+            get => _speedFactor;
+            set
+            {
+                var next = value < 0.25 ? 0.25 : (value > 4 ? 4 : value);
+                if (Math.Abs(_speedFactor - next) > 0.001) { _speedFactor = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double RotationDegrees
+        {
+            get => _rotationDegrees;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 270 ? 270 : value);
+                if (Math.Abs(_rotationDegrees - next) > 0.001) { _rotationDegrees = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool FlipH
+        {
+            get => _flipH;
+            set { if (_flipH != value) { _flipH = value; OnPropertyChanged(); } }
+        }
+
+        public bool FlipV
+        {
+            get => _flipV;
+            set { if (_flipV != value) { _flipV = value; OnPropertyChanged(); } }
+        }
+
+        public string OutputFormat
+        {
+            get => _outputFormat;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "mp4_h264" : value.Trim();
+                if (_outputFormat != next) { _outputFormat = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string EncoderPreset
+        {
+            get => _encoderPreset;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "medium" : value.Trim();
+                if (_encoderPreset != next) { _encoderPreset = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double Crf
+        {
+            get => _crf;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 51 ? 51 : value);
+                if (Math.Abs(_crf - next) > 0.001) { _crf = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double ResolutionScale
+        {
+            get => _resolutionScale;
+            set
+            {
+                var next = value < 0.1 ? 0.1 : (value > 1 ? 1 : value);
+                if (Math.Abs(_resolutionScale - next) > 0.001) { _resolutionScale = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int? FixedResolutionHeight
+        {
+            get => _fixedResolutionHeight;
+            set
+            {
+                int? next = value is null ? (int?)null : Math.Max(144, value.Value);
+                if (_fixedResolutionHeight != next) { _fixedResolutionHeight = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool TrimEnabled
+        {
+            get => _trimEnabled;
+            set { if (_trimEnabled != value) { _trimEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double TrimStartSec
+        {
+            get => _trimStartSec;
+            set
+            {
+                var next = value < 0 ? 0 : value;
+                if (Math.Abs(_trimStartSec - next) > 0.001) { _trimStartSec = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double TrimEndSec
+        {
+            get => _trimEndSec;
+            set
+            {
+                var next = value < 0 ? 0 : value;
+                if (Math.Abs(_trimEndSec - next) > 0.001) { _trimEndSec = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string? OutputPathOverride
+        {
+            get => _outputPathOverride;
+            set { if (_outputPathOverride != value) { _outputPathOverride = value; OnPropertyChanged(); } }
+        }
+
+        public bool SourceAudioEnabled
+        {
+            get => _sourceAudioEnabled;
+            set { if (_sourceAudioEnabled != value) { _sourceAudioEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public double PreviewVolume
+        {
+            get => _previewVolume;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 1 ? 1 : value);
+                if (Math.Abs(_previewVolume - next) > 0.001) { _previewVolume = next; OnPropertyChanged(); }
             }
         }
 
