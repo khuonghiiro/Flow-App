@@ -1,4 +1,5 @@
 using FlowMy.Converters;
+using FlowMy.Controls;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Workflow.NodeExecutors;
@@ -11,11 +12,13 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Windows.Media.Media3D;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -41,6 +44,10 @@ namespace FlowMy.Views.NodeControls
         private bool _isPlaying;
         private bool _isMuted;
         private bool _suppressControlSync;
+        private bool _isLightTheme;
+        private bool _isNodeZoomed;
+        private double _prevNodeWidth;
+        private double _prevNodeHeight;
         private double _lastVolume = 0.7;
         private int? _fixedResolutionHeight;
         private DateTime _lastRunStartedAtUtc = DateTime.UtcNow;
@@ -71,6 +78,7 @@ namespace FlowMy.Views.NodeControls
                 RefreshInfoText();
                 RefreshVideoPreview();
                 UpdatePlaybackUi();
+                ApplyLocalTheme();
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdatePreviewAspectRatio));
             };
             Unloaded += (_, _) => DetachSubscriptions();
@@ -84,6 +92,12 @@ namespace FlowMy.Views.NodeControls
 
             OpenVideoButton.Click += (_, _) => SelectVideo();
             OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
+            ThemeModeButton.Click += (_, _) =>
+            {
+                _isLightTheme = !_isLightTheme;
+                ApplyLocalTheme();
+            };
+            ToggleNodeSizeButton.Click += (_, _) => ToggleNodeZoom();
             RunProcessingButton.Click += (_, _) =>
             {
                 TabNavList.SelectedIndex = 6;
@@ -179,6 +193,15 @@ namespace FlowMy.Views.NodeControls
                     FrameInfoOverlay.Visibility = Visibility.Visible;
             };
             VideoAreaGrid.MouseLeave += (_, _) => FrameInfoOverlay.Visibility = Visibility.Collapsed;
+            VideoAreaGrid.MouseLeftButtonUp += (_, e) =>
+            {
+                if (PreviewMedia.Source != null &&
+                    !IsClickFromInteractiveElement(e.OriginalSource as DependencyObject))
+                {
+                    TogglePlayPause();
+                    e.Handled = true;
+                }
+            };
 
             PreviewContainerBorder.AllowDrop = true;
             PreviewContainerBorder.DragOver += (_, e) =>
@@ -221,6 +244,12 @@ namespace FlowMy.Views.NodeControls
             StopButton.Click += (_, _) => StopPlayback();
             SkipBackButton.Click += (_, _) => SeekRelativeSeconds(-5);
             SkipForwardButton.Click += (_, _) => SeekRelativeSeconds(5);
+            ProgressBarHitArea.MouseUp += (_, e) =>
+            {
+                _isProgressDragging = false;
+                ProgressBarHitArea.ReleaseMouseCapture();
+                e.Handled = true;
+            };
 
             VolumeSlider.ValueChanged += (_, e) =>
             {
@@ -234,6 +263,7 @@ namespace FlowMy.Views.NodeControls
             {
                 VolumeSlider.Value = _isMuted ? (_lastVolume > 0 ? _lastVolume : 0.7) : 0;
             };
+            SetTransportIcons();
 
             FpsSlider.ValueChanged += (_, e) =>
             {
@@ -679,14 +709,31 @@ namespace FlowMy.Views.NodeControls
             => TogglePlayPause();
 
         private void ProgressBarHitArea_MouseDown(object sender, MouseButtonEventArgs e)
-            => SeekByMousePosition(e);
+        {
+            _isProgressDragging = true;
+            ProgressBarHitArea.CaptureMouse();
+            SeekByMousePosition(e);
+            e.Handled = true;
+        }
 
         private void ProgressBarHitArea_MouseMove(object sender, MouseEventArgs e)
         {
             if (e.LeftButton == MouseButtonState.Pressed)
             {
                 SeekByMousePosition(e);
+                e.Handled = true;
             }
+        }
+
+        private void ProgressBarHitArea_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            _isProgressDragging = false;
+            if (ProgressBarHitArea.IsMouseCaptured)
+            {
+                ProgressBarHitArea.ReleaseMouseCapture();
+            }
+            ProgressThumb.Visibility = Visibility.Collapsed;
+            e.Handled = true;
         }
 
         private void ProgressBarHitArea_MouseEnter(object sender, MouseEventArgs e)
@@ -695,6 +742,29 @@ namespace FlowMy.Views.NodeControls
         private void ProgressBarHitArea_MouseLeave(object sender, MouseEventArgs e)
         {
             if (!_isProgressDragging) ProgressThumb.Visibility = Visibility.Collapsed;
+            e.Handled = true;
+        }
+
+        private static bool IsClickFromInteractiveElement(DependencyObject? source)
+        {
+            var current = source;
+            while (current != null)
+            {
+                if (current is ButtonBase || current is Slider || current is ToggleButton ||
+                    current is TextBox || current is ComboBox || current is ListBox)
+                {
+                    return true;
+                }
+
+                current = current switch
+                {
+                    Visual v => VisualTreeHelper.GetParent(v),
+                    Visual3D v3 => VisualTreeHelper.GetParent(v3),
+                    _ => null
+                };
+            }
+
+            return false;
         }
 
         private void UpdatePlaybackUi()
@@ -715,12 +785,7 @@ namespace FlowMy.Views.NodeControls
                     $"Frame #{currentFrame:N0}  |  {_node.SourceFps:0.##} fps  |  " +
                     $"{(PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--")}";
             }
-            PlayPauseButton.Content = new TextBlock
-            {
-                Text = _isPlaying ? "⏸" : "▶",
-                Foreground = Brushes.White,
-                FontSize = 13
-            };
+            PlayPauseButton.Content = CreateTransportIcon(_isPlaying ? "pause chisel-regular" : "play chisel-regular");
         }
 
         private double GetNaturalDurationSeconds()
@@ -863,6 +928,63 @@ namespace FlowMy.Views.NodeControls
         private void UpdateVolumeIcon()
         {
             MuteButton.Content = new TextBlock { Text = _isMuted ? "MUTE" : (PreviewMedia.Volume > 0.5 ? "VOL+" : "VOL") };
+        }
+
+        private void SetTransportIcons()
+        {
+            SkipBackButton.Content = CreateTransportIcon("backward-fast sharp-regular");
+            SkipForwardButton.Content = CreateTransportIcon("forward-fast sharp-regular");
+            PlayPauseButton.Content = CreateTransportIcon("play chisel-regular");
+            StopButton.Content = new TextBlock { Text = "⏹", Foreground = Brushes.White, FontSize = 12 };
+        }
+
+        private static SvgViewboxEx CreateTransportIcon(string iconKey)
+        {
+            var iconConverter = new IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), iconKey,
+                System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            return new SvgViewboxEx
+            {
+                Width = 14,
+                Height = 14,
+                Source = iconUri!,
+                Fill = Brushes.White
+            };
+        }
+
+        private void ApplyLocalTheme()
+        {
+            var isLight = _isLightTheme;
+            Background = isLight ? new SolidColorBrush(Color.FromRgb(242, 245, 252)) : new SolidColorBrush(Color.FromRgb(15, 15, 23));
+            Foreground = isLight ? new SolidColorBrush(Color.FromRgb(34, 40, 49)) : new SolidColorBrush(Color.FromRgb(232, 232, 240));
+            ThemeModeButton.Content = new TextBlock
+            {
+                Text = isLight ? "🌙" : "☀",
+                FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+
+        private void ToggleNodeZoom()
+        {
+            if (_node == null) return;
+
+            if (!_isNodeZoomed)
+            {
+                _prevNodeWidth = _node.Width;
+                _prevNodeHeight = _node.Height;
+                _node.Width = Math.Max(1360, _node.Width);
+                _node.Height = Math.Max(768, _node.Height);
+                _isNodeZoomed = true;
+                ToggleNodeSizeButton.Content = new TextBlock { Text = "⤡", FontSize = 12 };
+            }
+            else
+            {
+                _node.Width = _prevNodeWidth > 0 ? _prevNodeWidth : 1360;
+                _node.Height = _prevNodeHeight > 0 ? _prevNodeHeight : 768;
+                _isNodeZoomed = false;
+                ToggleNodeSizeButton.Content = new TextBlock { Text = "⤢", FontSize = 12 };
+            }
         }
 
         private void EmitAutoFitSizeSuggestion()

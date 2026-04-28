@@ -56,14 +56,7 @@ namespace FlowMy.Views.NodeControls
                 BorderThickness = new Thickness(2),
                 CornerRadius = new CornerRadius(10),
                 Cursor = Cursors.Hand,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect
-                {
-                    Color = Colors.Black,
-                    Direction = 270,
-                    ShadowDepth = 5,
-                    BlurRadius = 10,
-                    Opacity = 0.5
-                },
+                Effect = null,
                 Tag = node
             };
             var overlayGrid = new Grid();
