@@ -150,8 +150,8 @@ namespace FlowMy.Workflow
                 ColorKey = "GraphiteGray",
                 NodeBrush = Application.Current.TryFindResource("GraphiteGrayBrush") as Brush ?? Brushes.DimGray,
                 Type = NodeType.VideoProcessing,
-                Width = 540,
-                Height = 340,
+                Width = 1360,
+                Height = 768,
                 OutputBase64 = true,
                 PreferGpu = true
             };

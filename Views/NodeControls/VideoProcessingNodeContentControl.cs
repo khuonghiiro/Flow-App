@@ -69,16 +69,16 @@ namespace FlowMy.Views.NodeControls
                 RefreshInfoText();
                 RefreshVideoPreview();
                 UpdatePlaybackUi();
-                UpdatePreviewAspectRatio();
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdatePreviewAspectRatio));
             };
             Unloaded += (_, _) => DetachSubscriptions();
-            SizeChanged += (_, _) => UpdatePreviewAspectRatio();
         }
 
         private void InitializeInteractiveControls()
         {
             TabNavList.SelectionChanged += TabNavList_SelectionChanged;
             TabNavList.SelectedIndex = 0;
+            SizeChanged += (_, _) => UpdatePreviewAspectRatio();
 
             OpenVideoButton.Click += (_, _) => SelectVideo();
             RunProcessingButton.Click += (_, _) =>
@@ -607,11 +607,7 @@ namespace FlowMy.Views.NodeControls
 
         private void ProgressBarHitArea_MouseLeave(object sender, MouseEventArgs e)
         {
-            _isProgressDragging = false;
-            if (!_isProgressDragging)
-            {
-                ProgressThumb.Visibility = Visibility.Collapsed;
-            }
+            if (!_isProgressDragging) ProgressThumb.Visibility = Visibility.Collapsed;
         }
 
         private void UpdatePlaybackUi()
@@ -797,9 +793,58 @@ namespace FlowMy.Views.NodeControls
         private void UpdatePreviewAspectRatio()
         {
             if (PreviewContainerBorder == null) return;
-            var width = PreviewContainerBorder.ActualWidth;
-            if (width <= 1) return;
-            PreviewContainerBorder.Height = (width * 9.0 / 16.0) + 58;
+
+            var width = ActualWidth;
+            if (width <= 16) return;
+
+            var innerWidth = width - 16;
+            var widthBasedVideoHeight = Math.Clamp(innerWidth * 9.0 / 16.0, 140, 500);
+            var totalHeight = ActualHeight;
+
+            var headerHeight = HeaderCardBorder?.ActualHeight > 0 ? HeaderCardBorder.ActualHeight : 58;
+            var navHeight = TabNavBorder?.ActualHeight > 0 ? TabNavBorder.ActualHeight : 38;
+            var actionsHeight = ActionButtonsBorder?.ActualHeight > 0 ? ActionButtonsBorder.ActualHeight : 48;
+            const double controlsBarHeight = 58;
+            const double verticalGaps = 32;
+            const double minimumTabContentHeight = 170;
+
+            var maxVideoHeightByContainer = 500d;
+            if (totalHeight > 0)
+            {
+                maxVideoHeightByContainer = totalHeight
+                    - headerHeight
+                    - navHeight
+                    - actionsHeight
+                    - controlsBarHeight
+                    - verticalGaps
+                    - minimumTabContentHeight;
+            }
+
+            if (maxVideoHeightByContainer < 120)
+            {
+                maxVideoHeightByContainer = 120;
+            }
+
+            var videoHeight = Math.Min(widthBasedVideoHeight, maxVideoHeightByContainer);
+            PreviewContainerBorder.Height = videoHeight + controlsBarHeight;
+
+            if (TabContentBorder != null)
+            {
+                if (totalHeight > 0)
+                {
+                    var remaining = totalHeight
+                        - (videoHeight + controlsBarHeight)
+                        - headerHeight
+                        - navHeight
+                        - actionsHeight
+                        - verticalGaps;
+                    TabContentBorder.MaxHeight = Math.Max(120, remaining);
+                }
+                else
+                {
+                    TabContentBorder.MaxHeight = 360;
+                }
+            }
         }
 
         private static string FormatTime(TimeSpan value)

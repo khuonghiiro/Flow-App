@@ -27,6 +27,23 @@ namespace FlowMy.Views.NodeControls
             if (host == null) throw new ArgumentNullException(nameof(host));
 
             var contentControl = new VideoProcessingNodeContentControl(node, host);
+            void RefreshPortsAndConnections()
+            {
+                if (node.Ports != null)
+                {
+                    foreach (var position in node.Ports.Select(p => p.Position).Distinct())
+                    {
+                        host.UpdatePortsPositionOnSide(node, position);
+                    }
+                }
+
+                var connections = host.ViewModel?.Connections;
+                if (connections != null && connections.Count > 0)
+                {
+                    host.ConnectionRenderer.UpdateAllConnectionPaths(connections);
+                    host.ConnectionRenderer.UpdateAllConnectionAnimations(connections);
+                }
+            }
 
             var border = new Border
             {
@@ -60,6 +77,12 @@ namespace FlowMy.Views.NodeControls
             AddResizeHandle(handlesLayer, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
             overlayGrid.Children.Add(handlesLayer);
             border.Child = overlayGrid;
+            AttachResizeLogic(border, node);
+
+            if (node.Width < border.MinWidth) node.Width = border.MinWidth;
+            if (node.Height < border.MinHeight) node.Height = border.MinHeight;
+            border.Width = node.Width;
+            border.Height = node.Height;
 
             var titleText = new TextBlock
             {
@@ -87,7 +110,27 @@ namespace FlowMy.Views.NodeControls
 
                 border.Width = node.Width;
                 border.Height = node.Height;
+                RefreshPortsAndConnections();
                 UpdateTitlePosition(titleText, border, host);
+            };
+
+            border.SizeChanged += (_, _) => RefreshPortsAndConnections();
+
+            contentControl.Loaded += (_, _) =>
+            {
+                contentControl.Measure(new Size(border.Width, double.PositiveInfinity));
+                var desired = contentControl.DesiredSize;
+                var minRequiredWidth = Math.Max(border.MinWidth, desired.Width + 8);
+                var minRequiredHeight = Math.Max(border.MinHeight, Math.Min(920, desired.Height + 10));
+
+                border.MinWidth = minRequiredWidth;
+                border.MinHeight = minRequiredHeight;
+
+                if (border.Width < minRequiredWidth) border.Width = minRequiredWidth;
+                if (border.Height < minRequiredHeight) border.Height = minRequiredHeight;
+
+                node.Width = border.Width;
+                node.Height = border.Height;
             };
 
             bool isHovering = false;
@@ -147,6 +190,7 @@ namespace FlowMy.Views.NodeControls
                     {
                         border.Width = node.Width;
                         border.Height = node.Height;
+                        RefreshPortsAndConnections();
                         UpdateTitlePosition(titleText, border, host);
                     }
                 };
@@ -342,88 +386,97 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        static VideoProcessingNodeControl()
+        private static void AttachResizeLogic(Border border, VideoProcessingNode node)
         {
-            EventManager.RegisterClassHandler(typeof(Border), UIElement.PreviewMouseDownEvent, new MouseButtonEventHandler((s, e) =>
+            bool isResizing = false;
+            ResizeDirection currentDirection = ResizeDirection.None;
+            Point resizeStartPoint = new();
+            double originalWidth = 0;
+            double originalHeight = 0;
+            double originalX = 0;
+            double originalY = 0;
+
+            border.PreviewMouseDown += (_, e) =>
             {
-                if (s is not Border border || border.Tag is not VideoProcessingNode node) return;
                 if (border.Child is not Grid overlayGrid || overlayGrid.Children.Count < 2) return;
                 if (e.OriginalSource is not Ellipse handle || handle.Tag is not ResizeDirection direction) return;
 
                 var parent = border.Parent as UIElement;
                 if (parent == null) return;
-                var start = e.GetPosition(parent);
-                var originalWidth = border.Width;
-                var originalHeight = border.Height;
-                var originalX = Canvas.GetLeft(border);
-                var originalY = Canvas.GetTop(border);
+                isResizing = true;
+                currentDirection = direction;
+                resizeStartPoint = e.GetPosition(parent);
+                originalWidth = border.Width;
+                originalHeight = border.Height;
+                originalX = Canvas.GetLeft(border);
+                originalY = Canvas.GetTop(border);
                 if (double.IsNaN(originalX)) originalX = node.X;
                 if (double.IsNaN(originalY)) originalY = node.Y;
 
                 border.CaptureMouse();
                 e.Handled = true;
+            };
 
-                MouseEventHandler? move = null;
-                MouseButtonEventHandler? up = null;
-                move = (_, me) =>
+            border.PreviewMouseMove += (_, e) =>
+            {
+                if (!isResizing || !border.IsMouseCaptured) return;
+                var parent = border.Parent as UIElement;
+                if (parent == null) return;
+                var current = e.GetPosition(parent);
+                var dx = current.X - resizeStartPoint.X;
+                var dy = current.Y - resizeStartPoint.Y;
+
+                var newX = originalX;
+                var newY = originalY;
+                var newWidth = originalWidth;
+                var newHeight = originalHeight;
+
+                switch (currentDirection)
                 {
-                    if (!border.IsMouseCaptured) return;
-                    var current = me.GetPosition(parent);
-                    var dx = current.X - start.X;
-                    var dy = current.Y - start.Y;
+                    case ResizeDirection.BottomRight:
+                        newWidth = Math.Max(border.MinWidth, originalWidth + dx);
+                        newHeight = Math.Max(border.MinHeight, originalHeight + dy);
+                        break;
+                    case ResizeDirection.TopLeft:
+                        newWidth = Math.Max(border.MinWidth, originalWidth - dx);
+                        newHeight = Math.Max(border.MinHeight, originalHeight - dy);
+                        newX = originalX + (originalWidth - newWidth);
+                        newY = originalY + (originalHeight - newHeight);
+                        break;
+                    case ResizeDirection.TopRight:
+                        newWidth = Math.Max(border.MinWidth, originalWidth + dx);
+                        newHeight = Math.Max(border.MinHeight, originalHeight - dy);
+                        newY = originalY + (originalHeight - newHeight);
+                        break;
+                    case ResizeDirection.BottomLeft:
+                        newWidth = Math.Max(border.MinWidth, originalWidth - dx);
+                        newHeight = Math.Max(border.MinHeight, originalHeight + dy);
+                        newX = originalX + (originalWidth - newWidth);
+                        break;
+                    case ResizeDirection.Bottom:
+                        newHeight = Math.Max(border.MinHeight, originalHeight + dy);
+                        break;
+                }
 
-                    var newX = originalX;
-                    var newY = originalY;
-                    var newWidth = originalWidth;
-                    var newHeight = originalHeight;
+                border.Width = newWidth;
+                border.Height = newHeight;
+                Canvas.SetLeft(border, newX);
+                Canvas.SetTop(border, newY);
+                node.Width = newWidth;
+                node.Height = newHeight;
+                node.X = newX;
+                node.Y = newY;
+                e.Handled = true;
+            };
 
-                    switch (direction)
-                    {
-                        case ResizeDirection.BottomRight:
-                            newWidth = Math.Max(border.MinWidth, originalWidth + dx);
-                            newHeight = Math.Max(border.MinHeight, originalHeight + dy);
-                            break;
-                        case ResizeDirection.TopLeft:
-                            newWidth = Math.Max(border.MinWidth, originalWidth - dx);
-                            newHeight = Math.Max(border.MinHeight, originalHeight - dy);
-                            newX = originalX + (originalWidth - newWidth);
-                            newY = originalY + (originalHeight - newHeight);
-                            break;
-                        case ResizeDirection.TopRight:
-                            newWidth = Math.Max(border.MinWidth, originalWidth + dx);
-                            newHeight = Math.Max(border.MinHeight, originalHeight - dy);
-                            newY = originalY + (originalHeight - newHeight);
-                            break;
-                        case ResizeDirection.BottomLeft:
-                            newWidth = Math.Max(border.MinWidth, originalWidth - dx);
-                            newHeight = Math.Max(border.MinHeight, originalHeight + dy);
-                            newX = originalX + (originalWidth - newWidth);
-                            break;
-                        case ResizeDirection.Bottom:
-                            newHeight = Math.Max(border.MinHeight, originalHeight + dy);
-                            break;
-                    }
-
-                    border.Width = newWidth;
-                    border.Height = newHeight;
-                    Canvas.SetLeft(border, newX);
-                    Canvas.SetTop(border, newY);
-                    node.Width = newWidth;
-                    node.Height = newHeight;
-                    node.X = newX;
-                    node.Y = newY;
-                    me.Handled = true;
-                };
-                up = (_, ue) =>
-                {
-                    if (move != null) border.PreviewMouseMove -= move;
-                    if (up != null) border.PreviewMouseUp -= up;
-                    border.ReleaseMouseCapture();
-                    ue.Handled = true;
-                };
-                border.PreviewMouseMove += move;
-                border.PreviewMouseUp += up;
-            }), true);
+            border.PreviewMouseUp += (_, e) =>
+            {
+                if (!isResizing) return;
+                isResizing = false;
+                currentDirection = ResizeDirection.None;
+                border.ReleaseMouseCapture();
+                e.Handled = true;
+            };
         }
     }
 }

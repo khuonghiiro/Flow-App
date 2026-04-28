@@ -71,8 +71,8 @@ namespace FlowMy.Models.Nodes
         private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
         private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
         private string? _titleColorKey;
-        private double _width = 540;
-        private double _height = 340;
+        private double _width = 1360;
+        private double _height = 768;
 
         private string? _videoSourceNodeId;
         private string? _videoSourceOutputKey;

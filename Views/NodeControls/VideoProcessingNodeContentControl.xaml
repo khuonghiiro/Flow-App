@@ -11,11 +11,7 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="#35FFFFFF"/>
             <Setter Property="Background" Value="#1AFFFFFF"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.18" Color="#000000"/>
-                </Setter.Value>
-            </Setter>
+           
         </Style>
         <Style x:Key="InnerCardStyle" TargetType="Border">
             <Setter Property="Background" Value="#18000000"/>
@@ -25,12 +21,21 @@
             <Setter Property="Padding" Value="12,10"/>
             <Setter Property="TextElement.Foreground" Value="#F0F4FF"/>
         </Style>
-        <DropShadowEffect x:Key="GlowEffect" Color="#7C6BF8" BlurRadius="8" ShadowDepth="0" Opacity="0.6"/>
         <Style x:Key="ValueBadgeStyle" TargetType="Border">
             <Setter Property="Background" Value="#22FFFFFF"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Margin" Value="6,0,0,0"/>
             <Setter Property="Padding" Value="4,3"/>
+        </Style>
+        <Style x:Key="ReadableCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#EAF2FF"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,1,0,1"/>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#88EAF2FF"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style TargetType="Slider" x:Key="ModernSliderStyle">
             <Setter Property="Template">
@@ -49,7 +54,7 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Width="16" Height="16" Fill="White" Effect="{StaticResource GlowEffect}"/>
+                                                <Ellipse Width="16" Height="16" Fill="White"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -176,14 +181,14 @@
 
     <Grid Margin="8">
         <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/> <!-- Row 0: Header -->
+            <RowDefinition Height="Auto"/> <!-- Row 1: Video preview -->
+            <RowDefinition Height="Auto"/> <!-- Row 2: Tab nav -->
+            <RowDefinition Height="Auto"/> <!-- Row 3: Tab content -->
+            <RowDefinition Height="Auto"/> <!-- Row 4: Action buttons -->
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="12,10">
+        <Border Grid.Row="0" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="12,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -224,27 +229,47 @@
                               Stretch="Uniform"
                               Volume="0.7"
                               ScrubbingEnabled="True"
-                              MinHeight="180"
+                              MinHeight="160"
                               Visibility="Collapsed"
                               MouseLeftButtonUp="PreviewMedia_MouseLeftButtonUp"
                               Cursor="Hand"/>
-                <StackPanel x:Name="PreviewPlaceholder"
-                            Grid.Row="0"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Visibility="Visible"
-                            IsHitTestVisible="False">
-                        <Border Width="64" Height="64" CornerRadius="32" BorderBrush="#33FFFFFF" BorderThickness="1.5" Background="#0AFFFFFF"/>
-                        <TextBlock Text="Chưa chọn video" FontSize="11.5" Opacity="0.5" HorizontalAlignment="Center" Margin="0,10,0,0"/>
-                        <TextBlock Text="Nhấn 'Mở video' để bắt đầu" FontSize="10" Opacity="0.35" HorizontalAlignment="Center" Margin="0,3,0,0"/>
-                </StackPanel>
-                <Border Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="10" Background="#88000000" BorderBrush="#30FFFFFF" BorderThickness="1" IsHitTestVisible="False">
+                <Grid Grid.Row="0"
+                      x:Name="PreviewPlaceholder"
+                      Panel.ZIndex="1"
+                      Visibility="Visible">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <TextBlock Text="Chưa chọn video"
+                                   FontSize="11.5"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Nhấn 'Mở video' để bắt đầu"
+                                   FontSize="10"
+                                   Opacity="0.35"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Grid>
+                <Border Grid.Row="0"
+                        Panel.ZIndex="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="8"
+                        Padding="7,3"
+                        CornerRadius="8"
+                        Background="#88000000"
+                        BorderBrush="#30FFFFFF"
+                        BorderThickness="1"
+                        IsHitTestVisible="False">
                     <StackPanel Orientation="Horizontal">
                         <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,5,0" VerticalAlignment="Center" x:Name="LiveDot" Visibility="Collapsed"/>
                         <TextBlock Text="Preview" FontSize="9.5" Foreground="#DDFFFFFF"/>
                     </StackPanel>
                 </Border>
-                <Border x:Name="GradingOverlay" Grid.Row="0" Background="Transparent" IsHitTestVisible="False"/>
+                <Border x:Name="GradingOverlay"
+                        Grid.Row="0"
+                        Panel.ZIndex="2"
+                        Background="Transparent"
+                        IsHitTestVisible="False"/>
                 <Border Grid.Row="1" Background="#EE0A0A18" Padding="10,6,10,8" CornerRadius="0,0,12,12">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
@@ -253,39 +278,39 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="TimeCurrentText" Text="00:00" FontSize="9.5" Foreground="#AAFFFFFF" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="TimeCurrentText" Text="00:00" FontSize="9.5" Foreground="#99FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,7,0"/>
                             <Grid Grid.Column="1" Height="14" Cursor="Hand" x:Name="ProgressBarHitArea"
                                   VerticalAlignment="Center"
                                   MouseDown="ProgressBarHitArea_MouseDown"
                                   MouseMove="ProgressBarHitArea_MouseMove"
                                   MouseEnter="ProgressBarHitArea_MouseEnter"
                                   MouseLeave="ProgressBarHitArea_MouseLeave">
-                                <Border Background="#33FFFFFF" CornerRadius="2" Height="3" VerticalAlignment="Center"/>
+                                <Border Background="#2AFFFFFF" CornerRadius="2" Height="3" VerticalAlignment="Center"/>
                                 <Border x:Name="ProgressBarFill" Background="#7C6BF8" CornerRadius="2" Height="3" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
                                 <Canvas>
                                     <Ellipse x:Name="ProgressThumb" Width="12" Height="12" Fill="White" Visibility="Collapsed"/>
                                 </Canvas>
                             </Grid>
-                            <TextBlock x:Name="TimeTotalText" Grid.Column="2" Text="00:00" FontSize="9.5" Foreground="#AAFFFFFF" FontFamily="Consolas" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            <TextBlock x:Name="TimeTotalText" Grid.Column="2" Text="00:00" FontSize="9.5" Foreground="#99FFFFFF" FontFamily="Consolas" VerticalAlignment="Center" Margin="7,0,0,0"/>
                         </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="4"/>
+                                <ColumnDefinition Width="3"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="4"/>
+                                <ColumnDefinition Width="3"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="4"/>
+                                <ColumnDefinition Width="3"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="72"/>
                             </Grid.ColumnDefinitions>
-                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" Content="⏮" ToolTip="Lùi 5 giây"/>
-                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="36" Height="36" Style="{StaticResource PlayButtonStyle}"/>
-                            <Button x:Name="StopButton" Grid.Column="4" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" Content="⏹" ToolTip="Dừng"/>
-                            <Button x:Name="SkipForwardButton" Grid.Column="6" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" Content="⏭" ToolTip="Tiến 5 giây"/>
-                            <Button x:Name="MuteButton" Grid.Column="8" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" ToolTip="Bật/Tắt âm"/>
+                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏮" FontSize="12" ToolTip="Lùi 5 giây"/>
+                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="34" Height="34" Style="{StaticResource PlayButtonStyle}"/>
+                            <Button x:Name="StopButton" Grid.Column="4" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏹" FontSize="12" ToolTip="Dừng"/>
+                            <Button x:Name="SkipForwardButton" Grid.Column="6" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏭" FontSize="12" ToolTip="Tiến 5 giây"/>
+                            <Button x:Name="MuteButton" Grid.Column="8" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm"/>
                             <Slider x:Name="VolumeSlider" Grid.Column="9" Minimum="0" Maximum="1" Value="0.7" VerticalAlignment="Center" Margin="4,0" Style="{StaticResource ModernSliderStyle}"/>
                         </Grid>
                     </StackPanel>
@@ -293,7 +318,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Margin="0,0,0,6" Padding="4" Background="#0AFFFFFF" CornerRadius="12">
+        <Border Grid.Row="2" x:Name="TabNavBorder" Margin="0,0,0,6" Padding="4" Background="#0AFFFFFF" CornerRadius="12">
             <ListBox x:Name="TabNavList" Style="{StaticResource PillTabNavStyle}" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -311,7 +336,7 @@
 
         <Grid Grid.Row="3">
             <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" x:Name="TabContentBorder" Style="{StaticResource GlassCardStyle}" Padding="12,10">
                 <Grid>
@@ -351,14 +376,14 @@
                                         </ComboBox>
                                         <Slider Grid.Column="1" x:Name="JpegQualitySlider" Minimum="0" Maximum="100" Value="90" Style="{StaticResource ModernSliderStyle}"/>
                                     </Grid>
-                                    <CheckBox x:Name="ExtractAllFramesCheckBox" Content="Extract All Frames"/>
+                                    <CheckBox x:Name="ExtractAllFramesCheckBox" Content="Extract All Frames" Style="{StaticResource ReadableCheckBoxStyle}"/>
                                     <TextBlock x:Name="EstimatedFrameCountText" Margin="0,6,0,0" FontSize="10.5" Foreground="#99C0C8D8"/>
                                 </StackPanel>
                             </Border>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <CheckBox x:Name="OutputBase64CheckBox" Content="Output Base64" Grid.Column="0" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="PreferGpuCheckBox" Content="Prefer GPU" Grid.Column="1" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="OutputBase64CheckBox" Content="Output Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}"/>
+                                <CheckBox x:Name="PreferGpuCheckBox" Content="Prefer GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}"/>
                             </Grid>
                         </StackPanel>
                     </ScrollViewer>
@@ -562,7 +587,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="4" Margin="0,4,0,0" Padding="10,8"
+        <Border Grid.Row="4" x:Name="ActionButtonsBorder" Margin="0,4,0,0" Padding="10,8"
                 Background="#12FFFFFF" CornerRadius="0,0,12,12"
                 BorderBrush="#18FFFFFF" BorderThickness="0,1,0,0">
             <WrapPanel>
