@@ -794,55 +794,26 @@ namespace FlowMy.Views.NodeControls
         {
             if (PreviewContainerBorder == null) return;
 
-            var width = ActualWidth;
-            if (width <= 16) return;
-
-            var innerWidth = width - 16;
-            var widthBasedVideoHeight = Math.Clamp(innerWidth * 9.0 / 16.0, 140, 500);
             var totalHeight = ActualHeight;
-
             var headerHeight = HeaderCardBorder?.ActualHeight > 0 ? HeaderCardBorder.ActualHeight : 58;
             var navHeight = TabNavBorder?.ActualHeight > 0 ? TabNavBorder.ActualHeight : 38;
             var actionsHeight = ActionButtonsBorder?.ActualHeight > 0 ? ActionButtonsBorder.ActualHeight : 48;
-            const double controlsBarHeight = 58;
-            const double verticalGaps = 32;
-            const double minimumTabContentHeight = 170;
-
-            var maxVideoHeightByContainer = 500d;
-            if (totalHeight > 0)
-            {
-                maxVideoHeightByContainer = totalHeight
-                    - headerHeight
-                    - navHeight
-                    - actionsHeight
-                    - controlsBarHeight
-                    - verticalGaps
-                    - minimumTabContentHeight;
-            }
-
-            if (maxVideoHeightByContainer < 120)
-            {
-                maxVideoHeightByContainer = 120;
-            }
-
-            var videoHeight = Math.Min(widthBasedVideoHeight, maxVideoHeightByContainer);
-            PreviewContainerBorder.Height = videoHeight + controlsBarHeight;
+            const double verticalGaps = 28;
+            PreviewContainerBorder.Height = double.NaN;
 
             if (TabContentBorder != null)
             {
                 if (totalHeight > 0)
                 {
                     var remaining = totalHeight
-                        - (videoHeight + controlsBarHeight)
                         - headerHeight
-                        - navHeight
                         - actionsHeight
                         - verticalGaps;
-                    TabContentBorder.MaxHeight = Math.Max(120, remaining);
+                    TabContentBorder.MaxHeight = Math.Max(180, remaining);
                 }
                 else
                 {
-                    TabContentBorder.MaxHeight = 360;
+                    TabContentBorder.MaxHeight = 420;
                 }
             }
         }

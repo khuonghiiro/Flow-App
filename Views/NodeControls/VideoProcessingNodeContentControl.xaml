@@ -37,6 +37,43 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="Foreground" Value="#E8F0FF"/>
+            <Setter Property="BorderBrush" Value="#40FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="#E8F0FF"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Padding" Value="10,6"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#28FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#7C6BF8"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBoxStyle}"/>
+        <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#15FFFFFF"/>
+            <Setter Property="Foreground" Value="#E8F0FF"/>
+            <Setter Property="BorderBrush" Value="#35FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="#E8F0FF"/>
+            <Setter Property="SelectionBrush" Value="#7C6BF8"/>
+            <Setter Property="Padding" Value="8,4"/>
+        </Style>
+        <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBoxStyle}"/>
         <Style TargetType="Slider" x:Key="ModernSliderStyle">
             <Setter Property="Template">
                 <Setter.Value>
@@ -180,15 +217,18 @@
     </UserControl.Resources>
 
     <Grid Margin="8">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="280"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="*" MinWidth="300"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Row 0: Header -->
-            <RowDefinition Height="Auto"/> <!-- Row 1: Video preview -->
-            <RowDefinition Height="Auto"/> <!-- Row 2: Tab nav -->
-            <RowDefinition Height="Auto"/> <!-- Row 3: Tab content -->
-            <RowDefinition Height="Auto"/> <!-- Row 4: Action buttons -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="12,10">
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="12,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -216,23 +256,25 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,6" Padding="0" ClipToBounds="True">
+        <Border Grid.Row="1" Grid.Column="0" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,6" Padding="0" ClipToBounds="True" VerticalAlignment="Stretch">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <MediaElement x:Name="PreviewMedia"
-                              Grid.Row="0"
-                              LoadedBehavior="Manual"
-                              UnloadedBehavior="Manual"
-                              Stretch="Uniform"
-                              Volume="0.7"
-                              ScrubbingEnabled="True"
-                              MinHeight="160"
-                              Visibility="Collapsed"
-                              MouseLeftButtonUp="PreviewMedia_MouseLeftButtonUp"
-                              Cursor="Hand"/>
+                <Viewbox Grid.Row="0" Stretch="Uniform" StretchDirection="Both">
+                    <MediaElement x:Name="PreviewMedia"
+                                  LoadedBehavior="Manual"
+                                  UnloadedBehavior="Manual"
+                                  Stretch="Uniform"
+                                  Width="1280"
+                                  Height="720"
+                                  Volume="0.7"
+                                  ScrubbingEnabled="True"
+                                  Visibility="Collapsed"
+                                  MouseLeftButtonUp="PreviewMedia_MouseLeftButtonUp"
+                                  Cursor="Hand"/>
+                </Viewbox>
                 <Grid Grid.Row="0"
                       x:Name="PreviewPlaceholder"
                       Panel.ZIndex="1"
@@ -318,27 +360,27 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" x:Name="TabNavBorder" Margin="0,0,0,6" Padding="4" Background="#0AFFFFFF" CornerRadius="12">
-            <ListBox x:Name="TabNavList" Style="{StaticResource PillTabNavStyle}" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <UniformGrid Rows="1"/>
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBoxItem Content="General" Tag="General"/>
-                <ListBoxItem Content="Grading" Tag="Grading"/>
-                <ListBoxItem Content="Filters" Tag="Filters"/>
-                <ListBoxItem Content="Audio" Tag="Audio"/>
-                <ListBoxItem Content="Export" Tag="Export"/>
-                <ListBoxItem Content="Log" Tag="Log"/>
-            </ListBox>
-        </Border>
-
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="1" Grid.Column="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" x:Name="TabContentBorder" Style="{StaticResource GlassCardStyle}" Padding="12,10">
+            <Border Grid.Row="0" x:Name="TabNavBorder" Margin="0,0,0,6" Padding="4" Background="#0AFFFFFF" CornerRadius="12">
+                <ListBox x:Name="TabNavList" Style="{StaticResource PillTabNavStyle}" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1"/>
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBoxItem Content="General" Tag="General"/>
+                    <ListBoxItem Content="Grading" Tag="Grading"/>
+                    <ListBoxItem Content="Filters" Tag="Filters"/>
+                    <ListBoxItem Content="Audio" Tag="Audio"/>
+                    <ListBoxItem Content="Export" Tag="Export"/>
+                    <ListBoxItem Content="Log" Tag="Log"/>
+                </ListBox>
+            </Border>
+            <Border Grid.Row="1" x:Name="TabContentBorder" Style="{StaticResource GlassCardStyle}" Padding="12,10">
                 <Grid>
                     <ScrollViewer x:Name="GeneralTabContent" VerticalScrollBarVisibility="Auto" Visibility="Visible">
                         <StackPanel Margin="0,2,0,0">
@@ -587,32 +629,32 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="4" x:Name="ActionButtonsBorder" Margin="0,4,0,0" Padding="10,8"
+        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" x:Name="ActionButtonsBorder" Margin="0,6,0,0" Padding="8,6"
                 Background="#12FFFFFF" CornerRadius="0,0,12,12"
                 BorderBrush="#18FFFFFF" BorderThickness="0,1,0,0">
-            <WrapPanel>
-                <Button x:Name="ExtractFramesButton" Height="30" Margin="0,0,5,4" Padding="12,0" Style="{DynamicResource SecondaryButton}" ToolTip="Xuất từng frame thành ảnh PNG/JPG">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Extract" VerticalAlignment="Center"/></StackPanel>
+            <UniformGrid x:Name="ActionButtonsGrid" Rows="1">
+                <Button x:Name="ExtractFramesButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Xuất frame thành ảnh PNG/JPEG từ video nguồn">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🖼" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Extract" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="BurnSubtitleButton" Height="30" Margin="0,0,5,4" Padding="12,0" Style="{DynamicResource SecondaryButton}" ToolTip="Gắn subtitle vào video (burn-in)">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="💬" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Burn Subtitle" VerticalAlignment="Center"/></StackPanel>
+                <Button x:Name="BurnSubtitleButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Gắn file subtitle (.srt/.ass) vào video">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="💬" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Subtitle" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="QuickWatermarkButton" Height="30" Margin="0,0,5,4" Padding="12,0" Style="{DynamicResource SecondaryButton}" ToolTip="Thêm logo/ảnh chìm vào video">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="🔖" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Watermark" VerticalAlignment="Center"/></StackPanel>
+                <Button x:Name="QuickWatermarkButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở tab Filters để chỉnh watermark/logo">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🔖" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Watermark" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="ConvertFormatButton" Height="30" Margin="0,0,5,4" Padding="12,0" Style="{DynamicResource SecondaryButton}" ToolTip="Chuyển đổi định dạng video nhanh">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="🔄" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Convert" VerticalAlignment="Center"/></StackPanel>
+                <Button x:Name="ConvertFormatButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở tab Export để chọn định dạng đầu ra">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🔄" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Convert" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="QuickTrimButton" Height="30" Margin="0,0,5,4" Padding="12,0" Style="{DynamicResource SecondaryButton}" ToolTip="Cắt video theo vị trí hiện tại trên timeline">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="✂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Trim" VerticalAlignment="Center"/></StackPanel>
+                <Button x:Name="QuickTrimButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Đặt Trim Start tại vị trí hiện tại của timeline">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="✂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Trim" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="SnapshotButton" Height="30" Margin="0,0,5,4" Padding="12,0" Style="{DynamicResource SecondaryButton}" ToolTip="Chụp frame hiện tại thành ảnh">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="📷" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Snapshot" VerticalAlignment="Center"/></StackPanel>
+                <Button x:Name="SnapshotButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Chụp frame hiện tại thành file PNG">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="📷" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Snapshot" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="RunAllButton" Height="30" Margin="0,0,0,4" Padding="14,0" Style="{DynamicResource PrimaryButton}" ToolTip="Chạy toàn bộ pipeline xử lý">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="▶▶" Margin="0,0,5,0" VerticalAlignment="Center" FontSize="10"/><TextBlock Text="Run All" VerticalAlignment="Center" FontWeight="SemiBold"/></StackPanel>
+                <Button x:Name="RunAllButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource PrimaryButton}" ToolTip="Chạy toàn bộ pipeline xử lý video">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="▶" Margin="0,0,5,0" VerticalAlignment="Center" FontSize="11"/><TextBlock Text="Run All" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/></StackPanel>
                 </Button>
-            </WrapPanel>
+            </UniformGrid>
         </Border>
     </Grid>
 </UserControl>
