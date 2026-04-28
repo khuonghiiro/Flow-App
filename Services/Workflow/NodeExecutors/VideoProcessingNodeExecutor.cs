@@ -47,25 +47,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var sourceFps = await ProbeSourceFpsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 if (sourceFps > 0) videoNode.SourceFps = sourceFps;
-                var extractFps = Math.Max(1, Math.Min(videoNode.ExtractFps, Math.Max(1, videoNode.SourceFps)));
+                var extractFps = videoNode.ExtractAllFrames
+                    ? Math.Max(1, videoNode.SourceFps)
+                    : Math.Max(1, Math.Min(videoNode.ExtractFps, Math.Max(1, videoNode.SourceFps)));
 
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
 
-                var frameFilter = BuildVideoFilterChain(videoNode, extractFps);
+                var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: false);
+                var frameExt = videoNode.FrameOutputFormat switch
+                {
+                    "jpg" => "jpg",
+                    "webp" => "webp",
+                    _ => "png"
+                };
                 var framePattern = videoNode.OutputBase64
-                    ? Path.Combine(tempRoot, $"frames_{Guid.NewGuid():N}_%06d.png")
-                    : Path.Combine(outputFolder!, $"frame_%06d.png");
+                    ? Path.Combine(tempRoot, $"frames_{Guid.NewGuid():N}_%06d.{frameExt}")
+                    : Path.Combine(outputFolder!, $"frame_%06d.{frameExt}");
 
                 var totalDuration = await ProbeDurationSecondsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
+                var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoInput }));
+                if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
+                frameArgs.AddRange(new[] { "-vf", frameFilter, framePattern });
                 await RunFfmpegWithProgressAsync(
-                    WithHwaccel(BuildTrimAwareArgs(videoNode, new[]
-                {
-                    "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", videoInput, 
-                    "-vf", frameFilter,
-                    framePattern
-                }), hwaccel),
+                    WithHwaccel(frameArgs, hwaccel),
                     totalDuration,
                     (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
                     line => LogLine?.Invoke(videoNode, line),
@@ -84,19 +89,52 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var (codecArgs, extension) = BuildOutputArgs(videoNode);
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
-                await RunFfmpegWithProgressAsync(
-                    WithHwaccel(BuildTrimAwareArgs(videoNode, new[]
+                var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true);
+                var mainArgs = BuildTrimAwareArgs(videoNode, new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
                     "-i", videoInput,
-                    "-vf", frameFilter,
                     "-sn",
                     "-an",
-                }.Concat(codecArgs).Concat(new[] { outputBasePath })), hwaccel),
+                }).ToList();
+                if (videoNode.WatermarkEnabled && !string.IsNullOrWhiteSpace(videoNode.WatermarkImagePath))
+                {
+                    mainArgs.AddRange(new[] { "-i", videoNode.WatermarkImagePath! });
+                    var overlayExpr = BuildOverlayExpression(videoNode);
+                    var overlayAlpha = videoNode.WatermarkOpacity.ToString("0.###", CultureInfo.InvariantCulture);
+                    mainArgs.AddRange(new[]
+                    {
+                        "-filter_complex",
+                        $"[0:v]{mainFilter}[base];[1:v]format=rgba,colorchannelmixer=aa={overlayAlpha}[wm];[base][wm]overlay={overlayExpr}[vout]",
+                        "-map", "[vout]"
+                    });
+                }
+                else
+                {
+                    mainArgs.AddRange(new[] { "-vf", mainFilter });
+                }
+                mainArgs.AddRange(codecArgs);
+                mainArgs.Add(outputBasePath);
+
+                if (videoNode.TwoPassEnabled && (videoNode.OutputFormat == "mp4_h264" || videoNode.OutputFormat == "mp4_h265"))
+                {
+                    await RunTwoPassEncodeAsync(videoNode, mainArgs, outputBasePath, hwaccel, totalDuration, env.CancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await RunFfmpegWithProgressAsync(
+                        WithHwaccel(mainArgs, hwaccel),
+                        totalDuration,
+                        (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
+                        line => LogLine?.Invoke(videoNode, line),
+                        env.CancellationToken).ConfigureAwait(false);
+                }
+
+                /*
                     totalDuration,
                     (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
                     line => LogLine?.Invoke(videoNode, line),
-                    env.CancellationToken).ConfigureAwait(false);
+                    env.CancellationToken).ConfigureAwait(false);*/
 
                 var postStabilizedPath = outputBasePath;
                 if (videoNode.StabilizeEnabled)
@@ -166,8 +204,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             foreach (var t in node.AudioTracks)
             {
                 var path = ResolveFromMapping(env, t.SourceNodeId, t.SourceOutputKey);
-                if (!string.IsNullOrWhiteSpace(path))
+                if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(t.SourceNodeId))
+                    path = t.SourceOutputKey;
+
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
                     audioInputs.Add((path, t));
+                else if (!string.IsNullOrWhiteSpace(path))
+                    LogLine?.Invoke(node, $"⚠ Audio track not found: {path}");
             }
 
             if (audioInputs.Count == 0)
@@ -211,6 +254,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 "-filter_complex", string.Join(";", filterChains),
                 "-map", "0:v:0",
                 "-map", "[aout]",
+                "-c:a", ResolveAudioCodecArg(node.AudioCodec),
+                "-b:a", node.AudioBitrate,
                 "-shortest",
                 outputVideo
             });
@@ -341,7 +386,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return $"eq=brightness={node.Brightness:0.###}:contrast={node.Contrast:0.###}:saturation={node.Saturation:0.###}:hue={hueRadians:0.###}";
         }
 
-        private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps)
+        private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps, bool includeTextOverlay)
         {
             var filters = new List<string> { $"fps={extractFps:0.###}", BuildEqFilter(node) };
             if (Math.Abs(node.Gamma - 1) > 0.01)
@@ -383,7 +428,42 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var pts = (1.0 / node.SpeedFactor).ToString("0.######", CultureInfo.InvariantCulture);
                 filters.Add($"setpts={pts}*PTS");
             }
+            if (includeTextOverlay && node.TextOverlayEnabled && !string.IsNullOrWhiteSpace(node.OverlayText))
+            {
+                var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
+                var xExpr = node.TextPosition.Contains('C') ? "(w-tw)/2" : node.TextPosition.EndsWith('L') ? "10" : "w-tw-10";
+                var yExpr = node.TextPosition.StartsWith('T') ? "10" : node.TextPosition.StartsWith('M') ? "(h-th)/2" : "h-th-10";
+                var fontPath = ResolveFontPath(node.OverlayFont);
+                filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={node.OverlayFontSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
+            }
+            if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
+            {
+                var subPath = node.SubtitlePath!.Replace("\\", "/").Replace(":", "\\:");
+                filters.Add($"subtitles='{subPath}'");
+            }
             return string.Join(",", filters);
+        }
+
+        private static string BuildOverlayExpression(VideoProcessingNode node)
+        {
+            return node.WatermarkPosition switch
+            {
+                "TL" => $"x={node.WatermarkPaddingPx}:y={node.WatermarkPaddingPx}",
+                "TC" => $"x=(W-w)/2:y={node.WatermarkPaddingPx}",
+                "TR" => $"x=W-w-{node.WatermarkPaddingPx}:y={node.WatermarkPaddingPx}",
+                "ML" => $"x={node.WatermarkPaddingPx}:y=(H-h)/2",
+                "MC" => "x=(W-w)/2:y=(H-h)/2",
+                "MR" => $"x=W-w-{node.WatermarkPaddingPx}:y=(H-h)/2",
+                "BL" => $"x={node.WatermarkPaddingPx}:y=H-h-{node.WatermarkPaddingPx}",
+                "BC" => $"x=(W-w)/2:y=H-h-{node.WatermarkPaddingPx}",
+                _ => $"x=W-w-{node.WatermarkPaddingPx}:y=H-h-{node.WatermarkPaddingPx}"
+            };
+        }
+
+        private static string ResolveFontPath(string? font)
+        {
+            var f = string.IsNullOrWhiteSpace(font) ? "Arial" : font.Trim();
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts", $"{f}.ttf");
         }
 
         private static IEnumerable<string> BuildTrimAwareArgs(VideoProcessingNode node, IEnumerable<string> remainingArgs)
@@ -411,6 +491,112 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 "gif" => (new[] { "-loop", "0" }, ".gif"),
                 _ => (new[] { "-c:v", "copy" }, ".mp4")
             };
+        }
+
+        private static string ResolveAudioCodecArg(string codec)
+        {
+            return codec switch
+            {
+                "mp3" => "libmp3lame",
+                "opus" => "libopus",
+                "copy" => "copy",
+                _ => "aac"
+            };
+        }
+
+        private static async Task RunTwoPassEncodeAsync(
+            VideoProcessingNode node,
+            List<string> fullArgs,
+            string outputPath,
+            string hwaccel,
+            double totalDurationSec,
+            CancellationToken ct)
+        {
+            var tempOut = OperatingSystem.IsWindows() ? "NUL" : "/dev/null";
+            var pass1 = new List<string>(fullArgs.Where(a => !string.Equals(a, outputPath, StringComparison.OrdinalIgnoreCase)));
+            pass1.AddRange(new[] { "-pass", "1", "-an", "-f", "null", tempOut });
+            await RunFfmpegWithProgressAsync(WithHwaccel(pass1, hwaccel), totalDurationSec, null, null, ct).ConfigureAwait(false);
+            var pass2 = new List<string>(fullArgs);
+            pass2.Insert(pass2.Count - 1, "-pass");
+            pass2.Insert(pass2.Count - 1, "2");
+            await RunFfmpegWithProgressAsync(WithHwaccel(pass2, hwaccel), totalDurationSec, null, null, ct).ConfigureAwait(false);
+        }
+
+        public static async Task RunSnapshotAsync(
+            string videoPath, string positionSec, string outputPath, CancellationToken ct)
+        {
+            await RunFfmpegAsync(new[]
+            {
+                "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", positionSec,
+                "-i", videoPath,
+                "-frames:v", "1",
+                "-q:v", "2",
+                outputPath
+            }, ct).ConfigureAwait(false);
+        }
+
+        public static async Task RunExtractFramesOnlyAsync(
+            VideoProcessingNode node,
+            Action<string> onLog,
+            Action<double, string> onProgress,
+            CancellationToken ct)
+        {
+            var outputFolder = string.IsNullOrWhiteSpace(node.OutputPathOverride)
+                ? Path.Combine(Path.GetTempPath(), $"FlowMy_Frames_{DateTime.Now:yyyyMMddHHmmss}")
+                : Path.GetDirectoryName(node.OutputPathOverride)!;
+            Directory.CreateDirectory(outputFolder);
+
+            var fps = Math.Max(0.1, node.ExtractAllFrames ? Math.Max(1, node.SourceFps) : node.ExtractFps);
+            var filter = BuildVideoFilterChain(node, fps, includeTextOverlay: false);
+            var extension = node.FrameOutputFormat switch { "jpg" => "jpg", "webp" => "webp", _ => "png" };
+            var pattern = Path.Combine(outputFolder, $"frame_%06d.{extension}");
+            var duration = await ProbeDurationSecondsAsync(node.VideoPath, ct).ConfigureAwait(false);
+
+            onLog($"📁 Output: {outputFolder}");
+            onLog($"🎞 FPS: {fps:0.##} | Filter: {filter}");
+
+            await RunFfmpegWithProgressAsync(
+                BuildTrimAwareArgs(node, new[]
+                {
+                    "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", node.VideoPath,
+                    "-vf", filter,
+                    pattern
+                }),
+                duration, onProgress, onLog, ct).ConfigureAwait(false);
+
+            var count = Directory.GetFiles(outputFolder, $"frame_*.{extension}").Length;
+            onLog($"✅ Extracted {count} frames → {outputFolder}");
+            onProgress(100, $"Done: {count} frames");
+        }
+
+        public static async Task RunBurnSubtitleAsync(
+            VideoProcessingNode node,
+            Action<string> onLog,
+            Action<double, string> onProgress,
+            CancellationToken ct)
+        {
+            var ext = Path.GetExtension(node.VideoPath);
+            var output = Path.Combine(
+                Path.GetDirectoryName(node.VideoPath)!,
+                $"{Path.GetFileNameWithoutExtension(node.VideoPath)}_subtitled{ext}");
+
+            var subPath = node.SubtitlePath!.Replace("\\", "\\\\").Replace(":", "\\:");
+            var duration = await ProbeDurationSecondsAsync(node.VideoPath, ct).ConfigureAwait(false);
+            onLog($"🔤 Burning subtitle: {node.SubtitlePath}");
+
+            await RunFfmpegWithProgressAsync(new[]
+            {
+                "-y", "-hide_banner", "-loglevel", "error",
+                "-i", node.VideoPath,
+                "-vf", $"subtitles='{subPath}'",
+                "-c:a", "copy",
+                output
+            }, duration, onProgress, onLog, ct).ConfigureAwait(false);
+
+            onLog($"✅ Output: {output}");
+            onProgress(100, "Burn subtitle done");
         }
 
         private static async Task StabilizeVideoAsync(string inputPath, string outputPath, CancellationToken ct)

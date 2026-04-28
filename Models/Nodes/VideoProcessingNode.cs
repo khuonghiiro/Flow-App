@@ -114,6 +114,25 @@ namespace FlowMy.Models.Nodes
         private string? _outputPathOverride;
         private bool _sourceAudioEnabled = true;
         private double _previewVolume = 0.7;
+        private bool _watermarkEnabled;
+        private string? _watermarkImagePath;
+        private string _watermarkPosition = "BR";
+        private double _watermarkOpacity = 1.0;
+        private int _watermarkPaddingPx = 10;
+        private bool _textOverlayEnabled;
+        private string _overlayText = string.Empty;
+        private string _overlayFont = "Arial";
+        private int _overlayFontSize = 32;
+        private string _overlayFontColor = "white";
+        private string _textPosition = "BC";
+        private string _frameOutputFormat = "png";
+        private int _jpegQuality = 90;
+        private bool _extractAllFrames;
+        private bool _twoPassEnabled;
+        private string _audioCodec = "aac";
+        private string _audioBitrate = "192k";
+        private string? _subtitlePath;
+        private bool _burnSubtitleEnabled;
 
         public VideoProcessingNode()
         {
@@ -124,7 +143,7 @@ namespace FlowMy.Models.Nodes
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public TextBlock? TitleTextBlockUI { get; set; }
+        public new TextBlock? TitleTextBlockUI { get; set; }
 
         public double Width
         {
@@ -474,6 +493,168 @@ namespace FlowMy.Models.Nodes
                 var next = value < 0 ? 0 : (value > 1 ? 1 : value);
                 if (Math.Abs(_previewVolume - next) > 0.001) { _previewVolume = next; OnPropertyChanged(); }
             }
+        }
+
+        public bool WatermarkEnabled
+        {
+            get => _watermarkEnabled;
+            set { if (_watermarkEnabled != value) { _watermarkEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public string? WatermarkImagePath
+        {
+            get => _watermarkImagePath;
+            set { if (_watermarkImagePath != value) { _watermarkImagePath = value; OnPropertyChanged(); } }
+        }
+
+        public string WatermarkPosition
+        {
+            get => _watermarkPosition;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "BR" : value.Trim().ToUpperInvariant();
+                if (_watermarkPosition != next) { _watermarkPosition = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double WatermarkOpacity
+        {
+            get => _watermarkOpacity;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 1 ? 1 : value);
+                if (Math.Abs(_watermarkOpacity - next) > 0.001) { _watermarkOpacity = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int WatermarkPaddingPx
+        {
+            get => _watermarkPaddingPx;
+            set
+            {
+                var next = value < 0 ? 0 : value;
+                if (_watermarkPaddingPx != next) { _watermarkPaddingPx = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool TextOverlayEnabled
+        {
+            get => _textOverlayEnabled;
+            set { if (_textOverlayEnabled != value) { _textOverlayEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public string OverlayText
+        {
+            get => _overlayText;
+            set
+            {
+                var next = value ?? string.Empty;
+                if (_overlayText != next) { _overlayText = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string OverlayFont
+        {
+            get => _overlayFont;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "Arial" : value.Trim();
+                if (_overlayFont != next) { _overlayFont = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int OverlayFontSize
+        {
+            get => _overlayFontSize;
+            set
+            {
+                var next = value < 10 ? 10 : (value > 120 ? 120 : value);
+                if (_overlayFontSize != next) { _overlayFontSize = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string OverlayFontColor
+        {
+            get => _overlayFontColor;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "white" : value.Trim();
+                if (_overlayFontColor != next) { _overlayFontColor = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string TextPosition
+        {
+            get => _textPosition;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "BC" : value.Trim().ToUpperInvariant();
+                if (_textPosition != next) { _textPosition = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string FrameOutputFormat
+        {
+            get => _frameOutputFormat;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "png" : value.Trim().ToLowerInvariant();
+                if (_frameOutputFormat != next) { _frameOutputFormat = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int JpegQuality
+        {
+            get => _jpegQuality;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 100 ? 100 : value);
+                if (_jpegQuality != next) { _jpegQuality = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool ExtractAllFrames
+        {
+            get => _extractAllFrames;
+            set { if (_extractAllFrames != value) { _extractAllFrames = value; OnPropertyChanged(); } }
+        }
+
+        public bool TwoPassEnabled
+        {
+            get => _twoPassEnabled;
+            set { if (_twoPassEnabled != value) { _twoPassEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public string AudioCodec
+        {
+            get => _audioCodec;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "aac" : value.Trim().ToLowerInvariant();
+                if (_audioCodec != next) { _audioCodec = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string AudioBitrate
+        {
+            get => _audioBitrate;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "192k" : value.Trim().ToLowerInvariant();
+                if (_audioBitrate != next) { _audioBitrate = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string? SubtitlePath
+        {
+            get => _subtitlePath;
+            set { if (_subtitlePath != value) { _subtitlePath = value; OnPropertyChanged(); } }
+        }
+
+        public bool BurnSubtitleEnabled
+        {
+            get => _burnSubtitleEnabled;
+            set { if (_burnSubtitleEnabled != value) { _burnSubtitleEnabled = value; OnPropertyChanged(); } }
         }
 
         public System.Collections.ObjectModel.ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }
