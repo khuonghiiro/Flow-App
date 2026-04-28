@@ -27,3 +27,7 @@ gear-complex light
 circle-question chisel-regular
 unlock light
 arrow-down-up-lock duotone-light
+play chisel-regular
+pause chisel-regular
+backward-fast sharp-regular
+forward-fast sharp-regular

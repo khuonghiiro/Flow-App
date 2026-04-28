@@ -83,6 +83,7 @@ namespace FlowMy.Views.NodeControls
             SizeChanged += (_, _) => UpdatePreviewAspectRatio();
 
             OpenVideoButton.Click += (_, _) => SelectVideo();
+            OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
             RunProcessingButton.Click += (_, _) =>
             {
                 TabNavList.SelectedIndex = 6;
@@ -122,6 +123,80 @@ namespace FlowMy.Views.NodeControls
             {
                 TabNavList.SelectedIndex = 6;
                 RunProcessingFlow();
+            };
+            ToggleQuickGradeButton.Click += (_, _) =>
+            {
+                QuickGradingPanel.Visibility = QuickGradingPanel.Visibility == Visibility.Visible
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            };
+            QuickSnapshotButton.Click += (_, _) => TakeSnapshot();
+            QuickSetTrimButton.Click += (_, _) =>
+            {
+                _node.TrimStartSec = PreviewMedia.Position.TotalSeconds;
+                _node.TrimEnabled = true;
+                TabNavList.SelectedIndex = 4;
+                TrimToggle.IsChecked = true;
+                RefreshInfoText();
+                AppendLog($"✂ Trim start đặt tại: {FormatTime(PreviewMedia.Position)}");
+            };
+            QuickBrightnessSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.Brightness = e.NewValue;
+                QuickBrightnessLabel.Text = $"{e.NewValue:0.#}";
+                BrightnessLabel.Text = $"{e.NewValue:0.##}";
+                _suppressControlSync = true;
+                BrightnessSlider.Value = e.NewValue;
+                _suppressControlSync = false;
+                ApplyPreviewColorTransform();
+            };
+            QuickContrastSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.Contrast = e.NewValue;
+                QuickContrastLabel.Text = $"{e.NewValue:0.#}";
+                ContrastLabel.Text = $"{e.NewValue:0.##}";
+                _suppressControlSync = true;
+                ContrastSlider.Value = e.NewValue;
+                _suppressControlSync = false;
+                ApplyPreviewColorTransform();
+            };
+            QuickSaturationSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.Saturation = e.NewValue;
+                QuickSaturationLabel.Text = $"{e.NewValue:0.#}";
+                SaturationLabel.Text = $"{e.NewValue:0.##}";
+                _suppressControlSync = true;
+                SaturationSlider.Value = e.NewValue;
+                _suppressControlSync = false;
+                ApplyPreviewColorTransform();
+            };
+            VideoAreaGrid.MouseEnter += (_, _) =>
+            {
+                if (PreviewMedia.Source != null)
+                    FrameInfoOverlay.Visibility = Visibility.Visible;
+            };
+            VideoAreaGrid.MouseLeave += (_, _) => FrameInfoOverlay.Visibility = Visibility.Collapsed;
+
+            PreviewContainerBorder.AllowDrop = true;
+            PreviewContainerBorder.DragOver += (_, e) =>
+            {
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                    e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            };
+            PreviewContainerBorder.Drop += (_, e) =>
+            {
+                if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+                var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                var video = files?.FirstOrDefault(f =>
+                    new[] { ".mp4", ".mov", ".mkv", ".avi", ".webm" }
+                        .Contains(System.IO.Path.GetExtension(f).ToLowerInvariant()));
+                if (video == null) return;
+                _node.VideoPath = video;
+                _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
             };
             OpenOutputVideoButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
             OpenFramesFolderButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
@@ -164,6 +239,7 @@ namespace FlowMy.Views.NodeControls
             {
                 _node.ExtractFps = e.NewValue;
                 FpsValueText.Text = $"{e.NewValue:0.##}";
+                UpdateFrameExtractionPreview();
             };
             OutputBase64CheckBox.Checked += (_, _) => _node.OutputBase64 = true;
             OutputBase64CheckBox.Unchecked += (_, _) => _node.OutputBase64 = false;
@@ -227,8 +303,8 @@ namespace FlowMy.Views.NodeControls
                 JpegQualitySlider.Visibility = _node.FrameOutputFormat == "jpg" ? Visibility.Visible : Visibility.Collapsed;
             };
             JpegQualitySlider.ValueChanged += (_, e) => _node.JpegQuality = (int)e.NewValue;
-            ExtractAllFramesCheckBox.Checked += (_, _) => _node.ExtractAllFrames = true;
-            ExtractAllFramesCheckBox.Unchecked += (_, _) => _node.ExtractAllFrames = false;
+            ExtractAllFramesCheckBox.Checked += (_, _) => { _node.ExtractAllFrames = true; UpdateFrameExtractionPreview(); };
+            ExtractAllFramesCheckBox.Unchecked += (_, _) => { _node.ExtractAllFrames = false; UpdateFrameExtractionPreview(); };
 
             WatermarkToggle.Checked += (_, _) => _node.WatermarkEnabled = true;
             WatermarkToggle.Unchecked += (_, _) => _node.WatermarkEnabled = false;
@@ -426,8 +502,8 @@ namespace FlowMy.Views.NodeControls
             TrimStartText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimStartSec));
             TrimEndText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimEndSec));
             var duration = GetNaturalDurationSeconds();
-            var estimated = _node.ExtractAllFrames ? Math.Round(duration * _node.SourceFps) : Math.Round(duration * _node.ExtractFps);
-            EstimatedFrameCountText.Text = $"Estimated frames: {estimated:0}";
+            _ = duration;
+            UpdateFrameExtractionPreview();
             RefreshOutputsSummaryUi();
         }
 
@@ -457,6 +533,12 @@ namespace FlowMy.Views.NodeControls
                 SaturationLabel.Text = $"{_node.Saturation:0.##}";
                 HueLabel.Text = $"{_node.Hue:0.##}";
                 GammaLabel.Text = $"{_node.Gamma:0.##}";
+                QuickBrightnessSlider.Value = _node.Brightness;
+                QuickContrastSlider.Value = _node.Contrast;
+                QuickSaturationSlider.Value = _node.Saturation;
+                QuickBrightnessLabel.Text = $"{_node.Brightness:0.#}";
+                QuickContrastLabel.Text = $"{_node.Contrast:0.#}";
+                QuickSaturationLabel.Text = $"{_node.Saturation:0.#}";
 
                 SharpenToggle.IsChecked = _node.SharpenEnabled;
                 SharpenSlider.IsEnabled = _node.SharpenEnabled;
@@ -625,6 +707,14 @@ namespace FlowMy.Views.NodeControls
             Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - 6));
             TimeCurrentText.Text = FormatTime(position);
             TimeTotalText.Text = FormatTime(duration);
+            if (PreviewMedia.Source != null && _node.SourceFps > 0)
+            {
+                var currentSec = PreviewMedia.Position.TotalSeconds;
+                var currentFrame = (int)(currentSec * _node.SourceFps);
+                FrameInfoText.Text =
+                    $"Frame #{currentFrame:N0}  |  {_node.SourceFps:0.##} fps  |  " +
+                    $"{(PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--")}";
+            }
             PlayPauseButton.Content = new TextBlock
             {
                 Text = _isPlaying ? "⏸" : "▶",
@@ -880,6 +970,37 @@ namespace FlowMy.Views.NodeControls
             else
             {
                 SetTextStyleIfExists("ConfigMissingSummaryText", $"⚠ Còn thiếu {missingCount} cấu hình cần thiết", new SolidColorBrush(Color.FromRgb(248, 113, 113)));
+            }
+        }
+
+        private void UpdateFrameExtractionPreview()
+        {
+            var duration = GetNaturalDurationSeconds();
+            var sourceFps = _node.SourceFps > 0 ? _node.SourceFps : 30;
+
+            if (_node.ExtractAllFrames)
+            {
+                var total = (int)Math.Floor(duration * sourceFps);
+                EstFramePerSecText.Text = $"{sourceFps:0.##}";
+                EstimatedFrameCountText.Text = $"{total:N0}";
+                EstFrameIntervalText.Text = $"{(1000.0 / sourceFps):0.#} ms";
+                return;
+            }
+
+            var framesPerSec = Math.Max(1, (int)Math.Round(_node.ExtractFps));
+            var interval = sourceFps / framesPerSec;
+            var offsetMs = (interval / 2.0 / sourceFps) * 1000.0;
+            var timestamps = FrameExtractionCalculator.CalculateAllExtractTimestamps(duration, sourceFps, framesPerSec);
+            EstFramePerSecText.Text = $"{framesPerSec}";
+            EstimatedFrameCountText.Text = $"{timestamps.Count:N0}";
+            EstFrameIntervalText.Text = $"{(1000.0 / framesPerSec):0.#} ms";
+
+            var indices = FrameExtractionCalculator.CalculateFrameIndicesPerSecond(sourceFps, framesPerSec);
+            var indicesStr = string.Join(", ", indices.Take(4).Select(i => $"#{i}"));
+            if (indices.Count > 4) indicesStr += "…";
+            if (timestamps.Count > 0)
+            {
+                AppendLog($"ℹ Frame indices/giây: [{indicesStr}] | offset ≈ {offsetMs:0.#}ms");
             }
         }
 

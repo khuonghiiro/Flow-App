@@ -292,15 +292,11 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="12,10">
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="10,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="6"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <controls:SvgViewboxEx x:Name="IconView" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center"/>
@@ -308,13 +304,7 @@
                     <TextBlock x:Name="TitleText" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display"/>
                     <TextBlock x:Name="VideoPathText" FontSize="10" Opacity="0.65" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                 </StackPanel>
-                <Border Grid.Column="2" x:Name="HwBadge" Background="#2A7C6BF8" BorderBrush="#557C6BF8" BorderThickness="1" CornerRadius="12" Padding="8,3" VerticalAlignment="Center">
-                    <TextBlock x:Name="HwBadgeText" FontSize="9.5" FontWeight="Medium" Foreground="#D0C8FF"/>
-                </Border>
-                <Button Grid.Column="4" x:Name="OpenVideoButton" Height="30" MinWidth="96" Padding="14,0" Style="{DynamicResource SecondaryButton}">
-                    <TextBlock Text="Mở video"/>
-                </Button>
-                <Button Grid.Column="6" x:Name="RunProcessingButton" Height="30" MinWidth="84" Padding="14,0" Style="{DynamicResource PrimaryButton}" ToolTip="Chạy xử lý video qua FFmpeg">
+                <Button Grid.Column="2" x:Name="RunProcessingButton" Height="30" MinWidth="84" Padding="14,0" Style="{DynamicResource PrimaryButton}" ToolTip="Chạy xử lý video qua FFmpeg">
                     <TextBlock Text="Chạy"/>
                 </Button>
             </Grid>
@@ -339,11 +329,11 @@
                                   MouseLeftButtonUp="PreviewMedia_MouseLeftButtonUp"
                                   Cursor="Hand"/>
                 </Viewbox>
-                <Grid Grid.Row="0"
-                      x:Name="PreviewPlaceholder"
-                      Panel.ZIndex="1"
-                      Visibility="Visible">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                <Grid Grid.Row="0" x:Name="VideoAreaGrid">
+                    <Grid x:Name="PreviewPlaceholder"
+                          Panel.ZIndex="1"
+                          Visibility="Visible">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="Chưa chọn video"
                                    FontSize="11.5"
                                    Opacity="0.5"
@@ -353,29 +343,124 @@
                                    Opacity="0.35"
                                    HorizontalAlignment="Center"
                                    Margin="0,4,0,0"/>
-                    </StackPanel>
+                        <Button x:Name="OpenVideoInPlaceholderButton"
+                                Height="32"
+                                Margin="0,10,0,0"
+                                Padding="16,0"
+                                Style="{DynamicResource PrimaryButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📁" Margin="0,0,6,0"/>
+                                <TextBlock Text="Chọn video" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
-                <Border Grid.Row="0"
-                        Panel.ZIndex="2"
-                        HorizontalAlignment="Right"
+                <Button x:Name="OpenVideoButton"
+                        Grid.Row="0"
+                        Panel.ZIndex="5"
+                        HorizontalAlignment="Left"
                         VerticalAlignment="Top"
-                        Margin="8"
-                        Padding="7,3"
-                        CornerRadius="8"
-                        Background="#88000000"
-                        BorderBrush="#30FFFFFF"
-                        BorderThickness="1"
-                        IsHitTestVisible="False">
+                        Margin="8,8,0,0"
+                        Height="28"
+                        Padding="10,0"
+                        Style="{DynamicResource SecondaryButton}"
+                        Opacity="0.84">
                     <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,5,0" VerticalAlignment="Center" x:Name="LiveDot" Visibility="Collapsed"/>
-                        <TextBlock Text="Preview" FontSize="9.5" Foreground="#DDFFFFFF"/>
+                        <TextBlock Text="📁" FontSize="10" Margin="0,0,4,0"/>
+                        <TextBlock Text="Mở video" FontSize="10.5"/>
                     </StackPanel>
-                </Border>
+                </Button>
+                <StackPanel Grid.Row="0"
+                            Panel.ZIndex="5"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Orientation="Horizontal"
+                            Margin="0,8,8,0">
+                    <Border x:Name="HwBadge"
+                            Background="#2A7C6BF8" BorderBrush="#557C6BF8"
+                            BorderThickness="1" CornerRadius="10"
+                            Padding="7,3" Margin="0,0,6,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="#D0C8FF"/>
+                    </Border>
+                    <Border Padding="7,3" CornerRadius="8"
+                            Background="#88000000"
+                            BorderBrush="#30FFFFFF" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,5,0" VerticalAlignment="Center" x:Name="LiveDot" Visibility="Collapsed"/>
+                            <TextBlock Text="Preview" FontSize="9.5" Foreground="#DDFFFFFF"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
                 <Border x:Name="GradingOverlay"
                         Grid.Row="0"
                         Panel.ZIndex="2"
                         Background="Transparent"
                         IsHitTestVisible="False"/>
+                <Border x:Name="QuickGradingPanel"
+                        Grid.Row="0"
+                        Panel.ZIndex="5"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Bottom"
+                        Margin="8,0,0,8"
+                        Padding="8,6"
+                        CornerRadius="10"
+                        Background="#CC0A0A1E"
+                        BorderBrush="#30FFFFFF" BorderThickness="1"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Text="Quick Grade" FontSize="9" Foreground="#88FFFFFF" Margin="0,0,0,4"/>
+                        <Grid Margin="0,0,0,3">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="80"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="Sáng" FontSize="9.5" Foreground="#99FFFFFF" VerticalAlignment="Center"/>
+                            <Slider x:Name="QuickBrightnessSlider" Grid.Column="1" Minimum="-1" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
+                            <TextBlock x:Name="QuickBrightnessLabel" Grid.Column="2" FontSize="9" FontFamily="Consolas" Foreground="#AAFFFFFF" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,3">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="80"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="Tương phản" FontSize="9.5" Foreground="#99FFFFFF" VerticalAlignment="Center"/>
+                            <Slider x:Name="QuickContrastSlider" Grid.Column="1" Minimum="0.1" Maximum="3" Style="{StaticResource ModernSliderStyle}"/>
+                            <TextBlock x:Name="QuickContrastLabel" Grid.Column="2" FontSize="9" FontFamily="Consolas" Foreground="#AAFFFFFF" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="80"/><ColumnDefinition Width="28"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="Bão hòa" FontSize="9.5" Foreground="#99FFFFFF" VerticalAlignment="Center"/>
+                            <Slider x:Name="QuickSaturationSlider" Grid.Column="1" Minimum="0" Maximum="3" Style="{StaticResource ModernSliderStyle}"/>
+                            <TextBlock x:Name="QuickSaturationLabel" Grid.Column="2" FontSize="9" FontFamily="Consolas" Foreground="#AAFFFFFF" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                <StackPanel Grid.Row="0"
+                            Panel.ZIndex="5"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Orientation="Vertical"
+                            Margin="0,0,8,8">
+                    <Button x:Name="ToggleQuickGradeButton" Width="30" Height="30" Style="{StaticResource IconButtonStyle}" Background="#AA0A0A1E" Margin="0,0,0,4">
+                        <TextBlock Text="🎨" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                    <Button x:Name="QuickSnapshotButton" Width="30" Height="30" Style="{StaticResource IconButtonStyle}" Background="#AA0A0A1E" Margin="0,0,0,4">
+                        <TextBlock Text="📷" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                    <Button x:Name="QuickSetTrimButton" Width="30" Height="30" Style="{StaticResource IconButtonStyle}" Background="#AA0A0A1E">
+                        <TextBlock Text="✂" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                </StackPanel>
+                <Border x:Name="FrameInfoOverlay"
+                        Grid.Row="0"
+                        Panel.ZIndex="4"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Margin="0,8,0,0"
+                        Padding="10,4"
+                        CornerRadius="8"
+                        Background="#AA000000"
+                        BorderBrush="#20FFFFFF"
+                        BorderThickness="1"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False">
+                    <TextBlock x:Name="FrameInfoText" FontSize="9.5" FontFamily="Consolas" Foreground="#DDFFFFFF"/>
+                </Border>
                 <Border Grid.Row="1" Background="#EE0A0A18" Padding="10,6,10,8" CornerRadius="0,0,12,12">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
@@ -466,7 +551,7 @@
                             <TextBlock Text="FPS tách frame" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
-                                <Slider x:Name="FpsSlider" Minimum="0.1" Maximum="30" Style="{StaticResource ModernSliderStyle}"/>
+                                <Slider x:Name="FpsSlider" Minimum="0.1" Maximum="30" Style="{StaticResource ModernSliderStyle}" ToolTip="Số frame lấy mỗi giây. Dùng logic offset để phân bố đều, tránh frame biên."/>
                                 <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
                                     <TextBlock x:Name="FpsValueText" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Center"/>
                                 </Border>
@@ -476,21 +561,37 @@
                                     <TextBlock Text="Tách frame" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                     <Grid Margin="0,0,0,6">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <ComboBox x:Name="FrameFormatCombo" Height="28" Margin="0,0,6,0" Style="{StaticResource DarkComboBoxStyle}">
+                                        <ComboBox x:Name="FrameFormatCombo" Height="28" Margin="0,0,6,0" Style="{StaticResource DarkComboBoxStyle}" ToolTip="PNG: lossless, JPEG: nhỏ hơn, WebP: cân bằng.">
                                             <ComboBoxItem Content="PNG" Tag="png" IsSelected="True"/>
                                             <ComboBoxItem Content="JPEG" Tag="jpg"/>
                                             <ComboBoxItem Content="WebP" Tag="webp"/>
                                         </ComboBox>
-                                        <Slider Grid.Column="1" x:Name="JpegQualitySlider" Minimum="0" Maximum="100" Value="90" Style="{StaticResource ModernSliderStyle}"/>
+                                        <Slider Grid.Column="1" x:Name="JpegQualitySlider" Minimum="0" Maximum="100" Value="90" Style="{StaticResource ModernSliderStyle}" ToolTip="Chất lượng JPEG 0-100. 85-95 phù hợp cho AI vision."/>
                                     </Grid>
-                                    <CheckBox x:Name="ExtractAllFramesCheckBox" Content="Tách tất cả frame" Style="{StaticResource ReadableCheckBoxStyle}"/>
-                                    <TextBlock x:Name="EstimatedFrameCountText" Margin="0,6,0,0" FontSize="10.5" Foreground="#99C0C8D8"/>
+                                    <CheckBox x:Name="ExtractAllFramesCheckBox" Content="Tách tất cả frame" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Lấy toàn bộ frame theo FPS gốc của video."/>
+                                    <Border Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="FRAME/GIÂY" FontSize="8.5" Foreground="#77AABBCC" Margin="0,0,0,2"/>
+                                                <TextBlock x:Name="EstFramePerSecText" FontSize="14" FontWeight="SemiBold" Foreground="#EEEEFF"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="TỔNG FRAME" FontSize="8.5" Foreground="#77AABBCC" Margin="0,0,0,2"/>
+                                                <TextBlock x:Name="EstimatedFrameCountText" FontSize="14" FontWeight="SemiBold" Foreground="#EEEEFF"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="KHOẢNG CÁCH" FontSize="8.5" Foreground="#77AABBCC" Margin="0,0,0,2"/>
+                                                <TextBlock x:Name="EstFrameIntervalText" FontSize="14" FontWeight="SemiBold" Foreground="#EEEEFF"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}"/>
-                                <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}"/>
+                                <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
+                                <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
                             </Grid>
                         </StackPanel>
                     </ScrollViewer>

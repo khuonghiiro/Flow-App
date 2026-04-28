@@ -444,6 +444,41 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return string.Join(",", filters);
         }
 
+        private static string BuildVideoFilterChainWithoutFps(VideoProcessingNode node)
+        {
+            var filters = new List<string> { BuildEqFilter(node) };
+            if (Math.Abs(node.Gamma - 1) > 0.01)
+            {
+                var g = node.Gamma.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"lutrgb=r='pow(val/255,1/{g})*255':g='pow(val/255,1/{g})*255':b='pow(val/255,1/{g})*255'");
+            }
+            if (node.SharpenEnabled && node.SharpenStrength > 0)
+                filters.Add($"unsharp=5:5:{(node.SharpenStrength * 0.3).ToString("0.###", CultureInfo.InvariantCulture)}:5:5:0");
+            if (node.DenoiseEnabled && node.DenoiseStrength > 0)
+            {
+                var d = node.DenoiseStrength.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"hqdn3d={d}:{d}:{d}:{d}");
+            }
+            if (node.BlurEnabled && node.BlurRadius > 0)
+                filters.Add($"gblur=sigma={node.BlurRadius.ToString("0.###", CultureInfo.InvariantCulture)}");
+
+            var rot = ((int)node.RotationDegrees / 90) % 4;
+            if (rot == 1) filters.Add("transpose=1");
+            else if (rot == 2) filters.Add("transpose=2,transpose=2");
+            else if (rot == 3) filters.Add("transpose=2");
+            if (node.FlipH) filters.Add("hflip");
+            if (node.FlipV) filters.Add("vflip");
+
+            if (node.FixedResolutionHeight.HasValue) filters.Add($"scale=-2:{node.FixedResolutionHeight.Value}");
+            else if (Math.Abs(node.ResolutionScale - 1) > 0.01)
+            {
+                var sc = node.ResolutionScale.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"scale=iw*{sc}:ih*{sc}");
+            }
+
+            return filters.Count > 0 ? string.Join(",", filters) : string.Empty;
+        }
+
         private static string BuildOverlayExpression(VideoProcessingNode node)
         {
             return node.WatermarkPosition switch
@@ -547,23 +582,47 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 : Path.GetDirectoryName(node.OutputPathOverride)!;
             Directory.CreateDirectory(outputFolder);
 
-            var fps = Math.Max(0.1, node.ExtractAllFrames ? Math.Max(1, node.SourceFps) : node.ExtractFps);
-            var filter = BuildVideoFilterChain(node, fps, includeTextOverlay: false);
             var extension = node.FrameOutputFormat switch { "jpg" => "jpg", "webp" => "webp", _ => "png" };
             var pattern = Path.Combine(outputFolder, $"frame_%06d.{extension}");
             var duration = await ProbeDurationSecondsAsync(node.VideoPath, ct).ConfigureAwait(false);
+            var sourceFps = node.SourceFps > 0 ? node.SourceFps : await ProbeSourceFpsAsync(node.VideoPath, ct).ConfigureAwait(false);
+            if (sourceFps <= 0) sourceFps = 30;
+
+            string vfArg;
+            var useVsync0 = false;
+            if (node.ExtractAllFrames)
+            {
+                vfArg = BuildVideoFilterChain(node, Math.Max(1, sourceFps), includeTextOverlay: false);
+            }
+            else if (node.ExtractFps >= sourceFps)
+            {
+                vfArg = BuildVideoFilterChain(node, sourceFps, includeTextOverlay: false);
+            }
+            else
+            {
+                var framesPerSec = Math.Max(1, (int)Math.Round(node.ExtractFps));
+                var selectExpr = FrameExtractionCalculator.BuildSelectFilterExpression(duration, sourceFps, framesPerSec);
+                var otherFilters = BuildVideoFilterChainWithoutFps(node);
+                vfArg = string.IsNullOrEmpty(otherFilters) ? selectExpr : $"{selectExpr},{otherFilters}";
+                useVsync0 = true;
+            }
+
+            var baseArgs = new List<string> { "-y", "-hide_banner", "-loglevel", "error", "-i", node.VideoPath };
+            if (extension == "jpg")
+            {
+                var qv = Math.Max(1, 31 - (int)(node.JpegQuality / 3.35));
+                baseArgs.AddRange(new[] { "-q:v", qv.ToString(CultureInfo.InvariantCulture) });
+            }
+            baseArgs.AddRange(new[] { "-vf", vfArg });
+            if (useVsync0) baseArgs.AddRange(new[] { "-vsync", "0" });
+            baseArgs.Add(pattern);
 
             onLog($"📁 Output: {outputFolder}");
-            onLog($"🎞 FPS: {fps:0.##} | Filter: {filter}");
+            onLog($"🎞 Mode: {(node.ExtractAllFrames ? "All frames" : $"{(int)Math.Round(node.ExtractFps)} frame/s với offset")}");
+            onLog($"⚙ Filter: {vfArg}");
 
             await RunFfmpegWithProgressAsync(
-                BuildTrimAwareArgs(node, new[]
-                {
-                    "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", node.VideoPath,
-                    "-vf", filter,
-                    pattern
-                }),
+                BuildTrimAwareArgs(node, baseArgs),
                 duration, onProgress, onLog, ct).ConfigureAwait(false);
 
             var count = Directory.GetFiles(outputFolder, $"frame_*.{extension}").Length;
