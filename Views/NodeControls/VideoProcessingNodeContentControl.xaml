@@ -433,12 +433,24 @@
                             <TextBlock Text="Preview" FontSize="9.5" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                         </StackPanel>
                     </Border>
+                    <Button x:Name="ToggleBeforeAfterButton"
+                            Margin="6,0,0,0"
+                            Height="24"
+                            Padding="8,0"
+                            FontSize="9.5"
+                            Style="{DynamicResource SecondaryButton}"
+                            Content="Before/After"/>
                 </StackPanel>
                 <Border x:Name="GradingOverlay"
                         Grid.Row="0"
                         Panel.ZIndex="2"
                         Background="Transparent"
                         IsHitTestVisible="False"/>
+                <controls:OverlayCanvas x:Name="OverlayCanvasControl"
+                                        Grid.Row="0"
+                                        Panel.ZIndex="3"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch"/>
                 <Border x:Name="QuickGradingPanel"
                         Grid.Row="0"
                         Panel.ZIndex="5"
@@ -764,6 +776,121 @@
                                         <Slider x:Name="TextSizeSlider" Grid.Column="1" Minimum="10" Maximum="120" Value="32" Style="{StaticResource ModernSliderStyle}" Margin="4,0"/>
                                         <Border Grid.Column="2" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="TextSizeLabel" VerticalAlignment="Center" HorizontalAlignment="Center"/></Border>
                                     </Grid>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="Canvas Overlay Layers" FontSize="11.5" FontWeight="SemiBold" Margin="0,4,0,6"/>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <WrapPanel Margin="0,0,0,6">
+                                        <Button x:Name="AddTextOverlayItemButton" Content="+ Text" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                        <Button x:Name="AddImageOverlayItemButton" Content="+ Image/Logo" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                        <Button x:Name="RemoveSelectedOverlayItemButton" Content="Remove Selected" Style="{StaticResource PresetChipResetStyle}"/>
+                                        <Button x:Name="MoveOverlayUpButton" Content="Layer Up" Style="{StaticResource PresetChipStyle}" Margin="6,0,0,0"/>
+                                        <Button x:Name="MoveOverlayDownButton" Content="Layer Down" Style="{StaticResource PresetChipStyle}" Margin="6,0,0,0"/>
+                                        <Button x:Name="ApplyOverlayToVideoButton" Content="Áp dụng lên video" Style="{StaticResource PresetChipStyle}" Margin="6,0,0,0"/>
+                                    </WrapPanel>
+                                    <ListBox x:Name="OverlayLayerList"
+                                             Height="120"
+                                             Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                             BorderBrush="{DynamicResource ThemeInputBorderBrush}"
+                                             BorderThickness="1"
+                                             Foreground="{DynamicResource ThemeInputForegroundBrush}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Type}" Width="48" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Source}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <Border Margin="0,8,0,0"
+                                            Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                            BorderBrush="{DynamicResource ThemeInputBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="8">
+                                        <StackPanel>
+                                            <TextBlock Text="Selected Overlay Properties" FontSize="10.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Type" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ComboBox x:Name="OverlayTypeCombo" Grid.Column="1" Height="24" Style="{StaticResource DarkComboBoxStyle}">
+                                                    <ComboBoxItem Content="text" Tag="text"/>
+                                                    <ComboBoxItem Content="image" Tag="image"/>
+                                                    <ComboBoxItem Content="logo" Tag="logo"/>
+                                                </ComboBox>
+                                            </Grid>
+                                            <TextBox x:Name="OverlaySourceTextBox" Height="24" Margin="0,0,0,6"/>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Slider x:Name="OverlayXSlider" Grid.Column="1" Minimum="0" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
+                                                <TextBlock Text="Y" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Slider x:Name="OverlayYSlider" Grid.Column="4" Minimum="0" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="W" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Slider x:Name="OverlayWidthSlider" Grid.Column="1" Minimum="0.01" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
+                                                <TextBlock Text="H" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Slider x:Name="OverlayHeightSlider" Grid.Column="4" Minimum="0.01" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Opacity" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Slider x:Name="OverlayOpacitySlider" Grid.Column="1" Minimum="0" Maximum="1" Style="{StaticResource ModernSliderStyle}"/>
+                                                <TextBlock Text="Rotation" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Slider x:Name="OverlayRotationSlider" Grid.Column="4" Minimum="-180" Maximum="180" Style="{StaticResource ModernSliderStyle}"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Font" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox x:Name="OverlayFontFamilyTextBox" Grid.Column="1" Height="24"/>
+                                                <TextBlock Text="Color" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBox x:Name="OverlayFontColorTextBox" Grid.Column="4" Height="24"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Font Size" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Slider x:Name="OverlayFontSizeSlider" Grid.Column="1" Minimum="8" Maximum="200" Style="{StaticResource ModernSliderStyle}"/>
+                                            </Grid>
+                                            <StackPanel Orientation="Horizontal">
+                                                <CheckBox x:Name="OverlayVisibleCheckBox" Content="Visible" Margin="0,0,12,0" Style="{StaticResource ReadableCheckBoxStyle}"/>
+                                                <CheckBox x:Name="OverlayLockedCheckBox" Content="Locked" Style="{StaticResource ReadableCheckBoxStyle}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

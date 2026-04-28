@@ -90,6 +90,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var (codecArgs, extension) = BuildOutputArgs(videoNode);
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
                 var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true);
+                var hasCanvasOverlays = videoNode.Overlays.Any(o => o.IsVisible);
                 var mainArgs = BuildTrimAwareArgs(videoNode, new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
@@ -97,7 +98,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     "-sn",
                     "-an",
                 }).ToList();
-                if (videoNode.WatermarkEnabled && !string.IsNullOrWhiteSpace(videoNode.WatermarkImagePath))
+
+                if (hasCanvasOverlays)
+                {
+                    var (overlayFilter, imageInputs, outputLabel) = BuildOverlayFilterComplex(videoNode, mainFilter);
+                    foreach (var inputPath in imageInputs)
+                    {
+                        mainArgs.AddRange(new[] { "-i", inputPath });
+                    }
+
+                    mainArgs.AddRange(new[]
+                    {
+                        "-filter_complex", overlayFilter,
+                        "-map", outputLabel
+                    });
+                }
+                else if (videoNode.WatermarkEnabled && !string.IsNullOrWhiteSpace(videoNode.WatermarkImagePath))
                 {
                     mainArgs.AddRange(new[] { "-i", videoNode.WatermarkImagePath! });
                     var overlayExpr = BuildOverlayExpression(videoNode);
@@ -382,13 +398,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static string BuildEqFilter(VideoProcessingNode node)
         {
-            var hueRadians = node.Hue * Math.PI / 180d;
-            return $"eq=brightness={node.Brightness:0.###}:contrast={node.Contrast:0.###}:saturation={node.Saturation:0.###}:hue={hueRadians:0.###}";
+            return $"eq=brightness={node.Brightness:0.###}:contrast={node.Contrast:0.###}:saturation={node.Saturation:0.###}";
         }
 
         private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps, bool includeTextOverlay)
         {
             var filters = new List<string> { $"fps={extractFps:0.###}", BuildEqFilter(node) };
+            if (Math.Abs(node.Hue) > 0.01)
+            {
+                // Keep hue transform in dedicated filter for broader FFmpeg compatibility.
+                var hueRadians = (node.Hue * Math.PI / 180d).ToString("0.######", CultureInfo.InvariantCulture);
+                filters.Add($"hue=h={hueRadians}");
+            }
             if (Math.Abs(node.Gamma - 1) > 0.01)
             {
                 var g = node.Gamma.ToString("0.###", CultureInfo.InvariantCulture);
@@ -444,9 +465,54 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return string.Join(",", filters);
         }
 
+        private static (string filterComplex, List<string> imageInputs, string outputLabel) BuildOverlayFilterComplex(VideoProcessingNode node, string baseFilter)
+        {
+            var filterChains = new List<string> { $"[0:v]{baseFilter}[v0]" };
+            var imageInputs = new List<string>();
+            var currentLabel = "v0";
+            var imageInputIndex = 1;
+            var stageIndex = 0;
+
+            foreach (var item in node.Overlays.Where(o => o.IsVisible))
+            {
+                var type = (item.Type ?? string.Empty).Trim().ToLowerInvariant();
+                var xExpr = $"main_w*{item.X.ToString("0.######", CultureInfo.InvariantCulture)}";
+                var yExpr = $"main_h*{item.Y.ToString("0.######", CultureInfo.InvariantCulture)}";
+                var opacity = Math.Clamp(item.Opacity, 0, 1).ToString("0.###", CultureInfo.InvariantCulture);
+                var nextLabel = $"v{++stageIndex}";
+
+                if ((type == "image" || type == "logo") && !string.IsNullOrWhiteSpace(item.Source) && File.Exists(item.Source))
+                {
+                    var wExpr = $"max(1,main_w*{item.Width.ToString("0.######", CultureInfo.InvariantCulture)})";
+                    var hExpr = $"max(1,main_h*{item.Height.ToString("0.######", CultureInfo.InvariantCulture)})";
+                    imageInputs.Add(item.Source);
+                    filterChains.Add($"[{imageInputIndex}:v][{currentLabel}]scale2ref=w='{wExpr}':h='{hExpr}'[ov{stageIndex}][base{stageIndex}]");
+                    filterChains.Add($"[base{stageIndex}][ov{stageIndex}]overlay=x='{xExpr}':y='{yExpr}':alpha={opacity}[{nextLabel}]");
+                    imageInputIndex++;
+                    currentLabel = nextLabel;
+                }
+                else if (type == "text")
+                {
+                    var text = (item.Source ?? string.Empty).Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
+                    var fontFamily = string.IsNullOrWhiteSpace(item.FontFamily) ? "Arial" : item.FontFamily;
+                    var fontPath = ResolveFontPath(fontFamily).Replace("\\", "/").Replace(":", "\\:");
+                    var fontColor = string.IsNullOrWhiteSpace(item.FontColor) ? "white" : item.FontColor;
+                    filterChains.Add($"[{currentLabel}]drawtext=text='{text}':x={xExpr}:y={yExpr}:fontsize={item.FontSize}:fontcolor={fontColor}:fontfile='{fontPath}':alpha={opacity}[{nextLabel}]");
+                    currentLabel = nextLabel;
+                }
+            }
+
+            return (string.Join(";", filterChains), imageInputs, $"[{currentLabel}]");
+        }
+
         private static string BuildVideoFilterChainWithoutFps(VideoProcessingNode node)
         {
             var filters = new List<string> { BuildEqFilter(node) };
+            if (Math.Abs(node.Hue) > 0.01)
+            {
+                var hueRadians = (node.Hue * Math.PI / 180d).ToString("0.######", CultureInfo.InvariantCulture);
+                filters.Add($"hue=h={hueRadians}");
+            }
             if (Math.Abs(node.Gamma - 1) > 0.01)
             {
                 var g = node.Gamma.ToString("0.###", CultureInfo.InvariantCulture);

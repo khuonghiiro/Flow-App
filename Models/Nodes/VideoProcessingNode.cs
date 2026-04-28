@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Controls;
@@ -140,7 +141,8 @@ namespace FlowMy.Models.Nodes
         {
             Type = NodeType.VideoProcessing;
             Title = "Video Processing";
-            AudioTracks = new System.Collections.ObjectModel.ObservableCollection<VideoAudioTrackConfig>();
+            AudioTracks = new ObservableCollection<VideoAudioTrackConfig>();
+            Overlays = new ObservableCollection<OverlayItem>();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -697,7 +699,8 @@ namespace FlowMy.Models.Nodes
             set { if (_burnSubtitleEnabled != value) { _burnSubtitleEnabled = value; OnPropertyChanged(); } }
         }
 
-        public System.Collections.ObjectModel.ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }
+        public ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }
+        public ObservableCollection<OverlayItem> Overlays { get; }
 
         public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
         public void RaisePropertyChanged(string propertyName) => OnPropertyChanged(propertyName);

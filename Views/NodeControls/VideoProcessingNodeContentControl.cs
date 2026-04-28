@@ -57,6 +57,7 @@ namespace FlowMy.Views.NodeControls
         private readonly NotifyCollectionChangedEventHandler _audioTracksChangedHandler;
         private readonly PropertyChangedEventHandler _propertyChangedHandler;
         private readonly DispatcherTimer _timelineTimer;
+        private readonly DispatcherTimer _beforeAfterFlickerTimer;
 
         private bool _subscriptionsAttached;
         private bool _isProgressDragging;
@@ -77,9 +78,21 @@ namespace FlowMy.Views.NodeControls
         private TimelineDragMode _timelineDragMode = TimelineDragMode.None;
         private TimelineDragMode _trimReviewDragMode = TimelineDragMode.None;
         private bool _previewEffectTemporarilyDisabled;
+        private bool _trimUiInitialized;
+        private double _trimUiStartX;
+        private double _trimUiEndX;
+        private double _trimUiPlayX;
         private double _lastVolume = 0.7;
         private int? _fixedResolutionHeight;
         private DateTime _lastRunStartedAtUtc = DateTime.UtcNow;
+        private bool _showAfterPreview;
+        private bool _suppressOverlayEditorSync;
+        private bool _pendingOverlayApply;
+        private string? _beforePreviewPath;
+        private string? _afterPreviewPath;
+        private bool _isFlickerMode;
+        private bool _isSwitchingComparePreview;
+        private bool _isSelectingVideoDialog;
 
         public event Action<double, double>? SuggestedNodeSizeReady;
         public event Action<string>? LogLineReceived;
@@ -92,8 +105,16 @@ namespace FlowMy.Views.NodeControls
             InitializeComponent();
             ApplyThemeBrushes(GetTextBrush(_node.ColorKey));
             InitializeIcon();
-            _timelineTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            _timelineTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
             _timelineTimer.Tick += (_, _) => UpdatePlaybackUi();
+            _beforeAfterFlickerTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(650) };
+            _beforeAfterFlickerTimer.Tick += (_, _) =>
+            {
+                if (!_isFlickerMode) return;
+                _showAfterPreview = !_showAfterPreview;
+                var target = _showAfterPreview ? _afterPreviewPath : _beforePreviewPath;
+                LoadPreviewFromPath(target, isAfterPath: _showAfterPreview);
+            };
 
             _audioTracksChangedHandler = (_, _) => RefreshInfoText();
             _propertyChangedHandler = (_, e) => OnNodePropertyChanged(e.PropertyName ?? string.Empty);
@@ -121,6 +142,16 @@ namespace FlowMy.Views.NodeControls
 
             OpenVideoButton.Click += (_, _) => SelectVideo();
             OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
+            OpenVideoButton.PreviewMouseLeftButtonDown += (_, e) =>
+            {
+                e.Handled = true;
+                SelectVideo();
+            };
+            OpenVideoInPlaceholderButton.PreviewMouseLeftButtonDown += (_, e) =>
+            {
+                e.Handled = true;
+                SelectVideo();
+            };
             ThemeModeButton.Click += (_, _) =>
             {
                 _isLightTheme = !_isLightTheme;
@@ -250,6 +281,7 @@ namespace FlowMy.Views.NodeControls
                     new[] { ".mp4", ".mov", ".mkv", ".avi", ".webm" }
                         .Contains(System.IO.Path.GetExtension(f).ToLowerInvariant()));
                 if (video == null) return;
+                StopComparePreviewMode();
                 _node.VideoPath = video;
                 _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
             };
@@ -399,6 +431,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     TrimReviewHitArea.Visibility = Visibility.Visible;
                 }
+                _trimUiInitialized = false;
                 ProgressBarHitArea.IsEnabled = false;
                 ProgressBarHitArea.Opacity = 0.45;
                 UpdateTrimReviewUi();
@@ -406,12 +439,37 @@ namespace FlowMy.Views.NodeControls
             TrimReviewCheckBox.Unchecked += (_, _) =>
             {
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
+                _trimUiInitialized = false;
                 ProgressBarHitArea.IsEnabled = true;
                 ProgressBarHitArea.Opacity = 1.0;
             };
             BrowseOutputButton.Click += (_, _) => BrowseOutputPath();
             ClearLogButton.Click += (_, _) => LogTextBox.Clear();
             AddAudioTrackButton.Click += (_, _) => _node.AudioTracks.Add(new VideoAudioTrackConfig());
+            AddTextOverlayItemButton.Click += (_, _) => AddOverlayItem("text");
+            AddImageOverlayItemButton.Click += (_, _) => AddOverlayItem("image");
+            RemoveSelectedOverlayItemButton.Click += (_, _) => RemoveSelectedOverlayItem();
+            MoveOverlayUpButton.Click += (_, _) => MoveSelectedOverlay(-1);
+            MoveOverlayDownButton.Click += (_, _) => MoveSelectedOverlay(1);
+            ApplyOverlayToVideoButton.Click += (_, _) => ApplyOverlaysToVideo();
+            OverlayLayerList.SelectionChanged += OverlayLayerList_SelectionChanged;
+            OverlayCanvasControl.SelectionChanged += OverlayCanvasControl_SelectionChanged;
+            ToggleBeforeAfterButton.Click += (_, _) => ToggleBeforeAfterPreview();
+            OverlayTypeCombo.SelectionChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlaySourceTextBox.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayXSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayYSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayWidthSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayHeightSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayOpacitySlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayRotationSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayFontFamilyTextBox.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayFontColorTextBox.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayFontSizeSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayVisibleCheckBox.Checked += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayVisibleCheckBox.Unchecked += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayLockedCheckBox.Checked += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayLockedCheckBox.Unchecked += (_, _) => ApplyOverlayPropertyEditorChanges();
 
             FrameFormatCombo.SelectionChanged += (_, _) =>
             {
@@ -515,7 +573,21 @@ namespace FlowMy.Views.NodeControls
 
         private void OnNodePropertyChanged(string propertyName)
         {
-            if (propertyName == nameof(VideoProcessingNode.VideoPath)) RefreshVideoPreview();
+            if (propertyName == nameof(VideoProcessingNode.VideoPath))
+            {
+                if (_isSwitchingComparePreview)
+                {
+                    _isSwitchingComparePreview = false;
+                }
+                else
+                {
+                    // User selected/changed video manually -> disable compare mode
+                    // to avoid flicker timer overriding the new source path.
+                    StopComparePreviewMode();
+                    _beforePreviewPath = _node.VideoPath;
+                }
+                RefreshVideoPreview();
+            }
             if (propertyName == nameof(VideoProcessingNode.SourceFps)) FpsSlider.Maximum = Math.Max(1, _node.SourceFps);
             if (propertyName == nameof(VideoProcessingNode.PreferredHwAccel)) HwBadgeText.Text = _node.PreferredHwAccel;
             RefreshInfoText();
@@ -527,6 +599,8 @@ namespace FlowMy.Views.NodeControls
             _node.AudioTracks.CollectionChanged += _audioTracksChangedHandler;
             _node.PropertyChanged += _propertyChangedHandler;
             AudioTracksList.ItemsSource = _node.AudioTracks;
+            OverlayCanvasControl.ItemsSource = _node.Overlays;
+            OverlayLayerList.ItemsSource = _node.Overlays;
             VideoProcessingNodeExecutor.ProgressChanged += HandleExecutorProgress;
             VideoProcessingNodeExecutor.LogLine += HandleExecutorLog;
             _subscriptionsAttached = true;
@@ -537,9 +611,12 @@ namespace FlowMy.Views.NodeControls
             if (!_subscriptionsAttached) return;
             _node.AudioTracks.CollectionChanged -= _audioTracksChangedHandler;
             _node.PropertyChanged -= _propertyChangedHandler;
+            OverlayCanvasControl.ItemsSource = null;
+            OverlayLayerList.ItemsSource = null;
             VideoProcessingNodeExecutor.ProgressChanged -= HandleExecutorProgress;
             VideoProcessingNodeExecutor.LogLine -= HandleExecutorLog;
             _timelineTimer.Stop();
+            _beforeAfterFlickerTimer.Stop();
             PreviewMedia.Stop();
             _subscriptionsAttached = false;
         }
@@ -548,6 +625,10 @@ namespace FlowMy.Views.NodeControls
         {
             if (!ReferenceEquals(node, _node)) return;
             UpdateProgress(percent, status);
+            if (_pendingOverlayApply && percent >= 99)
+            {
+                Dispatcher.BeginInvoke(new Action(OnOverlayApplyCompleted));
+            }
         }
 
         private void HandleExecutorLog(VideoProcessingNode node, string line)
@@ -582,16 +663,26 @@ namespace FlowMy.Views.NodeControls
 
         private void SelectVideo()
         {
+            if (_isSelectingVideoDialog) return;
+            _isSelectingVideoDialog = true;
             var dlg = new OpenFileDialog
             {
                 Title = "Chon video",
                 Filter = "Video Files|*.mp4;*.mov;*.mkv;*.avi;*.webm|All Files|*.*",
                 CheckFileExists = true
             };
-            if (dlg.ShowDialog() == true)
+            try
             {
-                _node.VideoPath = dlg.FileName;
-                _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
+                if (dlg.ShowDialog() == true)
+                {
+                    StopComparePreviewMode();
+                    _node.VideoPath = dlg.FileName;
+                    _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
+                }
+            }
+            finally
+            {
+                _isSelectingVideoDialog = false;
             }
         }
 
@@ -1067,7 +1158,7 @@ namespace FlowMy.Views.NodeControls
             if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
             _trimReviewDragMode = ResolveTrimReviewDragMode(e);
             TrimReviewHitArea.CaptureMouse();
-            HandleTrimReviewDrag(e, commitPreviewSeek: true);
+            HandleTrimReviewDrag(e, commitPreviewSeek: false);
             e.Handled = true;
         }
 
@@ -1076,7 +1167,7 @@ namespace FlowMy.Views.NodeControls
             if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                HandleTrimReviewDrag(e, commitPreviewSeek: true);
+                HandleTrimReviewDrag(e, commitPreviewSeek: false);
                 e.Handled = true;
             }
         }
@@ -1164,12 +1255,34 @@ namespace FlowMy.Views.NodeControls
             var endRatio = Math.Clamp(endSec / duration, 0, 1);
             if (endRatio < startRatio) (startRatio, endRatio) = (endRatio, startRatio);
 
-            TrimReviewRangeFill.Width = Math.Max(0, (endRatio - startRatio) * width);
-            TrimReviewRangeFill.Margin = new Thickness(startRatio * width, 0, 0, 0);
-            Canvas.SetLeft(TrimReviewStartThumb, Math.Max(0, (startRatio * width) - 5.5));
-            Canvas.SetLeft(TrimReviewEndThumb, Math.Max(0, (endRatio * width) - 5.5));
+            var targetStartX = Math.Max(0, (startRatio * width) - 5.5);
+            var targetEndX = Math.Max(0, (endRatio * width) - 5.5);
             var playRatio = Math.Clamp(PreviewMedia.Position.TotalSeconds / duration, 0, 1);
-            Canvas.SetLeft(TrimReviewPlayheadThumb, Math.Max(0, (playRatio * width) - 5.5));
+            var targetPlayX = Math.Max(0, (playRatio * width) - 5.5);
+
+            const double ease = 0.38;
+            if (!_trimUiInitialized)
+            {
+                _trimUiStartX = targetStartX;
+                _trimUiEndX = targetEndX;
+                _trimUiPlayX = targetPlayX;
+                _trimUiInitialized = true;
+            }
+            else
+            {
+                // Ease marker movement to reduce jitter while preserving responsiveness.
+                _trimUiStartX += (targetStartX - _trimUiStartX) * ease;
+                _trimUiEndX += (targetEndX - _trimUiEndX) * ease;
+                _trimUiPlayX += (targetPlayX - _trimUiPlayX) * ease;
+            }
+
+            var left = Math.Min(_trimUiStartX, _trimUiEndX) + 5.5;
+            var right = Math.Max(_trimUiStartX, _trimUiEndX) + 5.5;
+            TrimReviewRangeFill.Width = Math.Max(0, right - left);
+            TrimReviewRangeFill.Margin = new Thickness(left, 0, 0, 0);
+            Canvas.SetLeft(TrimReviewStartThumb, _trimUiStartX);
+            Canvas.SetLeft(TrimReviewEndThumb, _trimUiEndX);
+            Canvas.SetLeft(TrimReviewPlayheadThumb, _trimUiPlayX);
         }
 
         private double GetNaturalDurationSeconds()
@@ -1268,6 +1381,257 @@ namespace FlowMy.Views.NodeControls
         {
             if (sender is Button btn && btn.Tag is VideoAudioTrackConfig track)
                 _node.AudioTracks.Remove(track);
+        }
+
+        private void AddOverlayItem(string type)
+        {
+            if (type == "image")
+            {
+                var dlg = new OpenFileDialog
+                {
+                    Title = "Chọn ảnh overlay",
+                    Filter = "Image Files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All|*.*"
+                };
+                if (dlg.ShowDialog() != true) return;
+                _node.Overlays.Add(new OverlayItem
+                {
+                    Type = "image",
+                    Source = dlg.FileName,
+                    X = 0.08,
+                    Y = 0.08,
+                    Width = 0.24,
+                    Height = 0.24,
+                    Opacity = 1.0,
+                    IsVisible = true
+                });
+            }
+            else
+            {
+                _node.Overlays.Add(new OverlayItem
+                {
+                    Type = "text",
+                    Source = "Double-click để sửa text",
+                    X = 0.12,
+                    Y = 0.12,
+                    Width = 0.35,
+                    Height = 0.15,
+                    FontFamily = "Arial",
+                    FontColor = "White",
+                    FontSize = 28,
+                    Opacity = 1.0,
+                    IsVisible = true
+                });
+            }
+
+            var selected = _node.Overlays.LastOrDefault();
+            OverlayCanvasControl.SelectedItem = selected;
+            OverlayLayerList.SelectedItem = selected;
+        }
+
+        private void RemoveSelectedOverlayItem()
+        {
+            if (OverlayLayerList.SelectedItem is not OverlayItem selected) return;
+            _node.Overlays.Remove(selected);
+            OverlayCanvasControl.SelectedItem = null;
+            OverlayLayerList.SelectedItem = null;
+        }
+
+        private void MoveSelectedOverlay(int direction)
+        {
+            if (OverlayLayerList.SelectedItem is not OverlayItem selected) return;
+            var currentIndex = _node.Overlays.IndexOf(selected);
+            if (currentIndex < 0) return;
+            var targetIndex = Math.Clamp(currentIndex + direction, 0, _node.Overlays.Count - 1);
+            if (targetIndex == currentIndex) return;
+            _node.Overlays.Move(currentIndex, targetIndex);
+            OverlayLayerList.SelectedItem = selected;
+        }
+
+        private void OverlayLayerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OverlayLayerList.SelectedItem is OverlayItem selected)
+            {
+                OverlayCanvasControl.SelectedItem = selected;
+                SyncOverlayEditorFromSelection(selected);
+            }
+            else
+            {
+                SyncOverlayEditorFromSelection(null);
+            }
+        }
+
+        private void OverlayCanvasControl_SelectionChanged(object? sender, OverlayItem? item)
+        {
+            OverlayLayerList.SelectedItem = item;
+            SyncOverlayEditorFromSelection(item);
+        }
+
+        private void ApplyOverlaysToVideo()
+        {
+            var visibleCount = _node.Overlays.Count(o => o.IsVisible);
+            if (visibleCount == 0)
+            {
+                AppendLog("⚠ Chưa có overlay nào đang hiển thị để áp dụng.");
+                return;
+            }
+
+            _pendingOverlayApply = true;
+            _beforePreviewPath = _node.VideoPath;
+            _showAfterPreview = false;
+            _isFlickerMode = false;
+            _beforeAfterFlickerTimer.Stop();
+            TabNavList.SelectedIndex = 6;
+            AppendLog($"🎞 Bắt đầu áp dụng {visibleCount} overlay item lên video...");
+            RunProcessingFlow();
+        }
+
+        private void OnOverlayApplyCompleted()
+        {
+            if (!_pendingOverlayApply) return;
+            _pendingOverlayApply = false;
+
+            var outputCandidate = (_node.OutputPathOverride ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(outputCandidate) || !File.Exists(outputCandidate))
+            {
+                outputCandidate = OutputVideoPathText.Text?.Trim() ?? string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(outputCandidate) && File.Exists(outputCandidate))
+            {
+                _afterPreviewPath = outputCandidate;
+                _showAfterPreview = true;
+                _isFlickerMode = false;
+                _beforeAfterFlickerTimer.Stop();
+                LoadPreviewFromPath(_afterPreviewPath, isAfterPath: true);
+                ToggleBeforeAfterButton.Content = "After";
+                AppendLog("✅ Đã áp dụng overlay và chuyển preview sang bản After.");
+            }
+            else
+            {
+                AppendLog("ℹ Xử lý xong nhưng chưa tìm thấy file output để bật preview After.");
+            }
+        }
+
+        private void ToggleBeforeAfterPreview()
+        {
+            if (string.IsNullOrWhiteSpace(_beforePreviewPath) || string.IsNullOrWhiteSpace(_afterPreviewPath))
+            {
+                AppendLog("ℹ Chưa có đủ before/after để so sánh.");
+                return;
+            }
+
+            if (!_showAfterPreview && !_isFlickerMode)
+            {
+                _showAfterPreview = true;
+                LoadPreviewFromPath(_afterPreviewPath, isAfterPath: true);
+                ToggleBeforeAfterButton.Content = "After";
+                return;
+            }
+
+            if (_showAfterPreview && !_isFlickerMode)
+            {
+                _isFlickerMode = true;
+                _beforeAfterFlickerTimer.Start();
+                ToggleBeforeAfterButton.Content = "Flicker";
+                return;
+            }
+
+            _isFlickerMode = false;
+            _beforeAfterFlickerTimer.Stop();
+            _showAfterPreview = false;
+            LoadPreviewFromPath(_beforePreviewPath, isAfterPath: false);
+            ToggleBeforeAfterButton.Content = "Before";
+        }
+
+        private void LoadPreviewFromPath(string? path, bool isAfterPath)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+            _showAfterPreview = isAfterPath;
+            _isSwitchingComparePreview = true;
+            _node.VideoPath = path;
+            _node.RaisePropertyChanged(nameof(VideoProcessingNode.VideoPath));
+        }
+
+        private void StopComparePreviewMode()
+        {
+            _isFlickerMode = false;
+            _beforeAfterFlickerTimer.Stop();
+            _showAfterPreview = false;
+            ToggleBeforeAfterButton.Content = "Before/After";
+        }
+
+        private void SyncOverlayEditorFromSelection(OverlayItem? item)
+        {
+            _suppressOverlayEditorSync = true;
+            try
+            {
+                var has = item != null;
+                OverlayTypeCombo.IsEnabled = has;
+                OverlaySourceTextBox.IsEnabled = has;
+                OverlayXSlider.IsEnabled = has;
+                OverlayYSlider.IsEnabled = has;
+                OverlayWidthSlider.IsEnabled = has;
+                OverlayHeightSlider.IsEnabled = has;
+                OverlayOpacitySlider.IsEnabled = has;
+                OverlayRotationSlider.IsEnabled = has;
+                OverlayFontFamilyTextBox.IsEnabled = has;
+                OverlayFontColorTextBox.IsEnabled = has;
+                OverlayFontSizeSlider.IsEnabled = has;
+                OverlayVisibleCheckBox.IsEnabled = has;
+                OverlayLockedCheckBox.IsEnabled = has;
+
+                if (!has)
+                {
+                    OverlayTypeCombo.SelectedIndex = -1;
+                    OverlaySourceTextBox.Text = string.Empty;
+                    return;
+                }
+
+                OverlayTypeCombo.SelectedIndex = (item!.Type ?? "text").ToLowerInvariant() switch
+                {
+                    "image" => 1,
+                    "logo" => 2,
+                    _ => 0
+                };
+                OverlaySourceTextBox.Text = item.Source;
+                OverlayXSlider.Value = item.X;
+                OverlayYSlider.Value = item.Y;
+                OverlayWidthSlider.Value = item.Width;
+                OverlayHeightSlider.Value = item.Height;
+                OverlayOpacitySlider.Value = item.Opacity;
+                OverlayRotationSlider.Value = item.Rotation;
+                OverlayFontFamilyTextBox.Text = item.FontFamily;
+                OverlayFontColorTextBox.Text = item.FontColor;
+                OverlayFontSizeSlider.Value = item.FontSize;
+                OverlayVisibleCheckBox.IsChecked = item.IsVisible;
+                OverlayLockedCheckBox.IsChecked = item.IsLocked;
+            }
+            finally
+            {
+                _suppressOverlayEditorSync = false;
+            }
+        }
+
+        private void ApplyOverlayPropertyEditorChanges()
+        {
+            if (_suppressOverlayEditorSync) return;
+            if (OverlayLayerList.SelectedItem is not OverlayItem selected) return;
+
+            var selectedType = (OverlayTypeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "text";
+            selected.Type = selectedType;
+            selected.Source = OverlaySourceTextBox.Text ?? string.Empty;
+            selected.X = OverlayXSlider.Value;
+            selected.Y = OverlayYSlider.Value;
+            selected.Width = OverlayWidthSlider.Value;
+            selected.Height = OverlayHeightSlider.Value;
+            selected.Opacity = OverlayOpacitySlider.Value;
+            selected.Rotation = OverlayRotationSlider.Value;
+            selected.FontFamily = OverlayFontFamilyTextBox.Text;
+            selected.FontColor = OverlayFontColorTextBox.Text;
+            selected.FontSize = (int)OverlayFontSizeSlider.Value;
+            selected.IsVisible = OverlayVisibleCheckBox.IsChecked == true;
+            selected.IsLocked = OverlayLockedCheckBox.IsChecked == true;
+            OverlayLayerList.Items.Refresh();
         }
 
         private void BrowseAudioTrack_Click(object sender, RoutedEventArgs e)
@@ -1448,6 +1812,14 @@ namespace FlowMy.Views.NodeControls
             Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(242, 246, 252) : Color.FromRgb(30, 30, 48));
             Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
             Resources["ThemeTabHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
+            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
+            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
+            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
+            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
+            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
             Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
             Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
             Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));

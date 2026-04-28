@@ -1,0 +1,64 @@
+<UserControl x:Class="FlowMy.Controls.OverlayItemControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="18"
+             MinHeight="18"
+             Cursor="SizeAll">
+    <Grid>
+        <Rectangle x:Name="SelectionBorder"
+                   Stroke="#FF7C6BF8"
+                   StrokeThickness="1.2"
+                   Fill="#28000000"
+                   StrokeDashArray="4,2"
+                   SnapsToDevicePixels="True"
+                   Visibility="Collapsed"/>
+
+        <Grid x:Name="ContentRoot" ClipToBounds="True">
+            <Image x:Name="ImageContent" Stretch="Fill" Visibility="Collapsed"/>
+            <TextBlock x:Name="TextContent"
+                       Visibility="Collapsed"
+                       TextWrapping="Wrap"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Stretch"
+                       TextAlignment="Center"/>
+            <TextBox x:Name="TextEditor"
+                     Visibility="Collapsed"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"/>
+        </Grid>
+
+        <Line x:Name="RotateConnector"
+              X1="0"
+              Y1="0"
+              X2="0"
+              Y2="-16"
+              Stroke="#FF7C6BF8"
+              StrokeThickness="1.2"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top"
+              Visibility="Collapsed"/>
+        <Thumb x:Name="RotateThumb"
+               Width="12"
+               Height="12"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Top"
+               Margin="0,-24,0,0"
+               Cursor="Hand"
+               Visibility="Collapsed">
+            <Thumb.Template>
+                <ControlTemplate TargetType="Thumb">
+                    <Ellipse Fill="#FF7C6BF8"/>
+                </ControlTemplate>
+            </Thumb.Template>
+        </Thumb>
+
+        <Thumb x:Name="HandleNW" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="SizeNWSE" Visibility="Collapsed"/>
+        <Thumb x:Name="HandleN" Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Top" Cursor="SizeNS" Visibility="Collapsed"/>
+        <Thumb x:Name="HandleNE" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="SizeNESW" Visibility="Collapsed"/>
+        <Thumb x:Name="HandleE" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="SizeWE" Visibility="Collapsed"/>
+        <Thumb x:Name="HandleSE" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Visibility="Collapsed"/>
+        <Thumb x:Name="HandleS" Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Bottom" Cursor="SizeNS" Visibility="Collapsed"/>
+        <Thumb x:Name="HandleSW" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="SizeNESW" Visibility="Collapsed"/>
+        <Thumb x:Name="HandleW" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Center" Cursor="SizeWE" Visibility="Collapsed"/>
+    </Grid>
+</UserControl>
