@@ -81,6 +81,11 @@ namespace FlowMy.Models.Nodes
         private string? _outputFolderSourceNodeId;
         private string? _outputFolderSourceOutputKey;
         private bool _outputBase64 = true;
+        private bool _useDialogVideoConfig = true;
+        private string? _frameOutputFolderPath;
+        private string? _defaultOutputVideoPath;
+        private double _secondsPerFrame = 1;
+        private int _extractFrameCount = 10;
 
         private bool _preferGpu = true;
         private string _preferredHwAccel = "cuda";
@@ -225,6 +230,44 @@ namespace FlowMy.Models.Nodes
         {
             get => _outputBase64;
             set { if (_outputBase64 != value) { _outputBase64 = value; OnPropertyChanged(); } }
+        }
+
+        public bool UseDialogVideoConfig
+        {
+            get => _useDialogVideoConfig;
+            set { if (_useDialogVideoConfig != value) { _useDialogVideoConfig = value; OnPropertyChanged(); } }
+        }
+
+        public string? FrameOutputFolderPath
+        {
+            get => _frameOutputFolderPath;
+            set { if (_frameOutputFolderPath != value) { _frameOutputFolderPath = value; OnPropertyChanged(); } }
+        }
+
+        public string? DefaultOutputVideoPath
+        {
+            get => _defaultOutputVideoPath;
+            set { if (_defaultOutputVideoPath != value) { _defaultOutputVideoPath = value; OnPropertyChanged(); } }
+        }
+
+        public double SecondsPerFrame
+        {
+            get => _secondsPerFrame;
+            set
+            {
+                var next = value < 0.1 ? 0.1 : (value > 60 ? 60 : value);
+                if (Math.Abs(_secondsPerFrame - next) > 0.001) { _secondsPerFrame = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int ExtractFrameCount
+        {
+            get => _extractFrameCount;
+            set
+            {
+                var next = value < 1 ? 1 : value;
+                if (_extractFrameCount != next) { _extractFrameCount = next; OnPropertyChanged(); }
+            }
         }
 
         public bool PreferGpu

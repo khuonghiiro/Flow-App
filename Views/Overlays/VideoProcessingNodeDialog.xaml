@@ -119,6 +119,11 @@
                                       IsChecked="{Binding OutputBase64, Mode=TwoWay}"
                                       Margin="0,0,0,10"/>
 
+                            <CheckBox Content="Sử dụng cấu hình dialog video"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      IsChecked="{Binding UseDialogVideoConfig, Mode=TwoWay}"
+                                      Margin="0,0,0,10"/>
+
                             <StackPanel x:Name="OutputFolderPanel">
                                 <TextBlock Text="Output Folder"
                                            Foreground="{DynamicResource TextBrush}"
@@ -147,6 +152,28 @@
                                               SelectedValue="{Binding OutputFolderSourceOutputKey, Mode=TwoWay}"/>
                                 </Grid>
                             </StackPanel>
+
+                            <TextBlock Text="Frame Output Folder (local)"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <TextBox Height="36"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     Margin="0,0,0,12"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding FrameOutputFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <TextBlock Text="Default Output Video Path"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <TextBox Height="36"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     Margin="0,0,0,16"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding DefaultOutputVideoPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
                             <TextBlock Text="Outputs:"
                                        Foreground="{DynamicResource TextBrush}"

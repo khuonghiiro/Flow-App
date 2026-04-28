@@ -18,6 +18,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string? _outputFolderSourceNodeId;
         [ObservableProperty] private string? _outputFolderSourceOutputKey;
         [ObservableProperty] private bool _outputBase64 = true;
+        [ObservableProperty] private bool _useDialogVideoConfig = true;
+        [ObservableProperty] private string? _frameOutputFolderPath;
+        [ObservableProperty] private string? _defaultOutputVideoPath;
         [ObservableProperty] private string _ffmpegPath = string.Empty;
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
@@ -32,6 +35,9 @@ namespace FlowMy.ViewModels
             OutputFolderSourceNodeId = node.OutputFolderSourceNodeId;
             OutputFolderSourceOutputKey = node.OutputFolderSourceOutputKey;
             OutputBase64 = node.OutputBase64;
+            UseDialogVideoConfig = node.UseDialogVideoConfig;
+            FrameOutputFolderPath = node.FrameOutputFolderPath;
+            DefaultOutputVideoPath = node.DefaultOutputVideoPath;
             FfmpegPath = FfmpegPathPreferencesStore.Load().FfmpegPath ?? string.Empty;
 
             RefreshAvailableNodes();
@@ -82,6 +88,9 @@ namespace FlowMy.ViewModels
             _videoNode.OutputFolderSourceNodeId = string.IsNullOrWhiteSpace(OutputFolderSourceNodeId) ? null : OutputFolderSourceNodeId;
             _videoNode.OutputFolderSourceOutputKey = string.IsNullOrWhiteSpace(OutputFolderSourceOutputKey) ? null : OutputFolderSourceOutputKey;
             _videoNode.OutputBase64 = OutputBase64;
+            _videoNode.UseDialogVideoConfig = UseDialogVideoConfig;
+            _videoNode.FrameOutputFolderPath = string.IsNullOrWhiteSpace(FrameOutputFolderPath) ? null : FrameOutputFolderPath;
+            _videoNode.DefaultOutputVideoPath = string.IsNullOrWhiteSpace(DefaultOutputVideoPath) ? null : DefaultOutputVideoPath;
             SaveFfmpegPathPreference();
             _videoNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);

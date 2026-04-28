@@ -57,12 +57,11 @@ namespace FlowMy.Views.Overlays
 
         private void ViewModelOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(VideoProcessingNodeDialogViewModel.OutputBase64))
-                UpdateOutputFolderVisibility();
+            _ = e;
         }
 
         private void UpdateOutputFolderVisibility()
-            => OutputFolderPanel.Visibility = _viewModel.OutputBase64 ? Visibility.Collapsed : Visibility.Visible;
+            => OutputFolderPanel.Visibility = Visibility.Visible;
 
         private void RefreshVideoSourceKeyOptions()
         {

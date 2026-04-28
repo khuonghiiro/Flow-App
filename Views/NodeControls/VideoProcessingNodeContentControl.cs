@@ -2,6 +2,7 @@ using FlowMy.Converters;
 using FlowMy.Controls;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow.NodeExecutors;
 using Microsoft.Win32;
 using System;
@@ -93,6 +94,11 @@ namespace FlowMy.Views.NodeControls
         private bool _isFlickerMode;
         private bool _isSwitchingComparePreview;
         private bool _isSelectingVideoDialog;
+        private double _selectedAspectW = 16;
+        private double _selectedAspectH = 9;
+        private bool _aspectAuto = false;
+        private bool _isTrimReviewDragging;
+        private bool _isFrameControlSync;
 
         public event Action<double, double>? SuggestedNodeSizeReady;
         public event Action<string>? LogLineReceived;
@@ -142,16 +148,12 @@ namespace FlowMy.Views.NodeControls
 
             OpenVideoButton.Click += (_, _) => SelectVideo();
             OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
-            OpenVideoButton.PreviewMouseLeftButtonDown += (_, e) =>
-            {
-                e.Handled = true;
-                SelectVideo();
-            };
-            OpenVideoInPlaceholderButton.PreviewMouseLeftButtonDown += (_, e) =>
-            {
-                e.Handled = true;
-                SelectVideo();
-            };
+            Aspect169.Checked += (_, _) => SetAspectRatio(16, 9, false);
+            Aspect916.Checked += (_, _) => SetAspectRatio(9, 16, false);
+            Aspect11.Checked += (_, _) => SetAspectRatio(1, 1, false);
+            Aspect32.Checked += (_, _) => SetAspectRatio(3, 2, false);
+            Aspect23.Checked += (_, _) => SetAspectRatio(2, 3, false);
+            AspectAuto.Checked += (_, _) => SetAspectRatio(0, 0, true);
             ThemeModeButton.Click += (_, _) =>
             {
                 _isLightTheme = !_isLightTheme;
@@ -287,11 +289,113 @@ namespace FlowMy.Views.NodeControls
             };
             OpenOutputVideoButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
             OpenFramesFolderButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
+            OpenOutputVideoActionButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
+            OpenFramesFolderActionButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
             OpenOutputVideoFolderQuickButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
             OpenFramesFolderQuickButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
+            CopyLogButton.Click += (_, _) =>
+            {
+                if (!string.IsNullOrWhiteSpace(LogTextBox.Text))
+                    Clipboard.SetText(LogTextBox.Text);
+            };
+
+            BrowseFfmpegFolderButton.Click += (_, _) =>
+            {
+                var dlg = new System.Windows.Forms.FolderBrowserDialog
+                {
+                    Description = "Chọn thư mục chứa ffmpeg.exe và ffprobe.exe"
+                };
+                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    FfmpegFolderText.Text = dlg.SelectedPath;
+                    var prefs = FfmpegPathPreferencesStore.Load();
+                    prefs.FfmpegPath = dlg.SelectedPath;
+                    FfmpegPathPreferencesStore.Save(prefs);
+                }
+            };
+            VerifyFfmpegButton.Click += (_, _) =>
+            {
+                var folder = FfmpegFolderText.Text?.Trim() ?? string.Empty;
+                var ffmpegOk = File.Exists(System.IO.Path.Combine(folder, "ffmpeg.exe"));
+                var ffprobeOk = File.Exists(System.IO.Path.Combine(folder, "ffprobe.exe"));
+
+                if (ffmpegOk && ffprobeOk)
+                {
+                    FfmpegVerifyText.Text = "✓ ffmpeg.exe và ffprobe.exe tìm thấy";
+                    FfmpegVerifyText.Foreground = new SolidColorBrush(Color.FromRgb(74, 222, 128));
+                    FfmpegVerifyBadge.Background = new SolidColorBrush(Color.FromArgb(0x1A, 74, 222, 128));
+                }
+                else
+                {
+                    var missing = (!ffmpegOk ? "ffmpeg.exe" : "") +
+                                  (!ffmpegOk && !ffprobeOk ? ", " : "") +
+                                  (!ffprobeOk ? "ffprobe.exe" : "");
+                    FfmpegVerifyText.Text = $"✗ Không tìm thấy: {missing}";
+                    FfmpegVerifyText.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+                    FfmpegVerifyBadge.Background = new SolidColorBrush(Color.FromArgb(0x1A, 248, 113, 113));
+                }
+            };
+            BrowseFrameOutputFolderButton.Click += (_, _) =>
+            {
+                var dlg = new System.Windows.Forms.FolderBrowserDialog
+                {
+                    Description = "Chọn thư mục lưu frame ảnh"
+                };
+                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    FrameOutputFolderText.Text = dlg.SelectedPath;
+            };
+            BrowseDefaultOutputVideoButton.Click += (_, _) =>
+            {
+                var dlg = new SaveFileDialog
+                {
+                    Filter = "MP4|*.mp4|WebM|*.webm|All|*.*",
+                    Title = "Chọn đường dẫn video đầu ra mặc định"
+                };
+                if (dlg.ShowDialog() == true)
+                    DefaultOutputVideoPathText.Text = dlg.FileName;
+            };
+            DefaultOutputVideoPathText.TextChanged += (_, _) =>
+            {
+                var value = DefaultOutputVideoPathText.Text?.Trim() ?? string.Empty;
+                _node.DefaultOutputVideoPath = value;
+                if (!_node.UseDialogVideoConfig)
+                    _node.OutputPathOverride = value;
+                OutputPathText.Text = value;
+                RefreshOutputsSummaryUi();
+            };
+            FrameOutputFolderText.TextChanged += (_, _) =>
+            {
+                _node.FrameOutputFolderPath = FrameOutputFolderText.Text?.Trim();
+                RefreshOutputsSummaryUi();
+            };
+            OutputPathText.TextChanged += (_, _) => RefreshOutputsSummaryUi();
+            SaveSettingsButton.Click += (_, _) =>
+            {
+                var folder = FfmpegFolderText.Text?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(folder))
+                {
+                    var prefs = FfmpegPathPreferencesStore.Load();
+                    prefs.FfmpegPath = folder;
+                    FfmpegPathPreferencesStore.Save(prefs);
+                }
+
+                var frameFolder = FrameOutputFolderText.Text?.Trim() ?? string.Empty;
+                EnsureDirectoryExists(frameFolder);
+                _node.FrameOutputFolderPath = frameFolder;
+
+                var outputPath = DefaultOutputVideoPathText.Text?.Trim() ?? string.Empty;
+                EnsureParentDirectoryExists(outputPath);
+                _node.DefaultOutputVideoPath = outputPath;
+                if (!_node.UseDialogVideoConfig)
+                    _node.OutputPathOverride = outputPath;
+                OutputPathText.Text = outputPath;
+                AppendLog("✓ Đã lưu cài đặt.");
+                RefreshOutputsSummaryUi();
+            };
 
             PreviewMedia.MediaOpened += (_, _) =>
             {
+                ApplyAspectRatioToMedia();
                 EmitAutoFitSizeSuggestion();
                 _timelineTimer.Start();
                 _isPlaying = true;
@@ -324,14 +428,37 @@ namespace FlowMy.Views.NodeControls
             };
             SetTransportIcons();
 
+            SecondsPerFrameSlider.ValueChanged += (_, e) =>
+            {
+                if (_isFrameControlSync) return;
+                _isFrameControlSync = true;
+                _node.SecondsPerFrame = e.NewValue;
+                SecondsPerFrameValueText.Text = $"{e.NewValue:0.##}s";
+                SyncFrameCountFromSeconds();
+                _isFrameControlSync = false;
+                UpdateFrameExtractionPreview();
+            };
             FpsSlider.ValueChanged += (_, e) =>
             {
-                _node.ExtractFps = e.NewValue;
-                FpsValueText.Text = $"{e.NewValue:0.##}";
+                if (_isFrameControlSync) return;
+                var count = Math.Max(1, (int)Math.Round(e.NewValue));
+                _node.ExtractFrameCount = count;
+                FpsValueText.Text = $"{count}";
+                SyncSecondsFromFrameCount();
                 UpdateFrameExtractionPreview();
             };
             OutputBase64CheckBox.Checked += (_, _) => _node.OutputBase64 = true;
             OutputBase64CheckBox.Unchecked += (_, _) => _node.OutputBase64 = false;
+            UseDialogVideoConfigCheckBox.Checked += (_, _) =>
+            {
+                _node.UseDialogVideoConfig = true;
+                ApplyConfigSourceMode();
+            };
+            UseDialogVideoConfigCheckBox.Unchecked += (_, _) =>
+            {
+                _node.UseDialogVideoConfig = false;
+                ApplyConfigSourceMode();
+            };
             PreferGpuCheckBox.Checked += (_, _) => _node.PreferGpu = true;
             PreferGpuCheckBox.Unchecked += (_, _) => _node.PreferGpu = false;
             PreviewQualityCombo.SelectionChanged += (_, _) =>
@@ -542,12 +669,47 @@ namespace FlowMy.Views.NodeControls
 
         private void SwitchTab()
         {
-            var allTabs = new[] { GeneralTabContent, GradingTabContent, FiltersTabContent, AudioTabContent, ExportTabContent, OutputsTabContent, LogTabContent };
-            foreach (var tab in allTabs) tab.Visibility = Visibility.Collapsed;
+            var allTabs = new FrameworkElement[]
+            {
+                GeneralTabContent, GradingTabContent, FiltersTabContent,
+                AudioTabContent, ExportTabContent, OutputsTabContent, SettingsTabContent
+            };
+            foreach (var t in allTabs) t.Visibility = Visibility.Collapsed;
+
+            var allActions = new FrameworkElement[]
+            {
+                GeneralActionBar, GradingActionBar, FiltersActionBar,
+                AudioActionBar, ExportActionBar, OutputsActionBar, SettingsActionBar
+            };
+            foreach (var a in allActions) a.Visibility = Visibility.Collapsed;
+
             var idx = TabNavList.SelectedIndex;
-            var target = idx >= 0 && idx < allTabs.Length ? allTabs[idx] : GeneralTabContent;
-            target.Visibility = Visibility.Visible;
-            target.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
+            var targetTab = idx switch
+            {
+                0 => GeneralTabContent,
+                1 => GradingTabContent,
+                2 => FiltersTabContent,
+                3 => AudioTabContent,
+                4 => ExportTabContent,
+                5 => OutputsTabContent,
+                6 => SettingsTabContent,
+                _ => GeneralTabContent
+            };
+            targetTab.Visibility = Visibility.Visible;
+            targetTab.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)));
+
+            var targetAction = idx switch
+            {
+                0 => GeneralActionBar,
+                1 => GradingActionBar,
+                2 => FiltersActionBar,
+                3 => AudioActionBar,
+                4 => ExportActionBar,
+                5 => OutputsActionBar,
+                6 => SettingsActionBar,
+                _ => GeneralActionBar
+            };
+            targetAction.Visibility = Visibility.Visible;
         }
 
         private void RunProcessingFlow()
@@ -555,6 +717,7 @@ namespace FlowMy.Views.NodeControls
             if (_host == null) return;
             try
             {
+                SyncRuntimeConfigFromUi();
                 _lastRunStartedAtUtc = DateTime.UtcNow;
                 ProgressStatusText.Text = "Running...";
                 if (!string.IsNullOrWhiteSpace(_node.VideoSourceNodeId))
@@ -569,6 +732,23 @@ namespace FlowMy.Views.NodeControls
             {
                 AppendLog($"Run error: {ex.Message}");
             }
+        }
+
+        private void SyncRuntimeConfigFromUi()
+        {
+            if (_node.UseDialogVideoConfig)
+            {
+                _node.OutputPathOverride = string.IsNullOrWhiteSpace(_node.DefaultOutputVideoPath) ? _node.OutputPathOverride : _node.DefaultOutputVideoPath;
+                return;
+            }
+
+            _node.OutputBase64 = OutputBase64CheckBox.IsChecked == true;
+            _node.FrameOutputFolderPath = (FrameOutputFolderText.Text ?? string.Empty).Trim();
+            var outputVideoPath = (OutputPathText.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(outputVideoPath))
+                outputVideoPath = (DefaultOutputVideoPathText.Text ?? string.Empty).Trim();
+            _node.OutputPathOverride = outputVideoPath;
+            _node.DefaultOutputVideoPath = (DefaultOutputVideoPathText.Text ?? string.Empty).Trim();
         }
 
         private void OnNodePropertyChanged(string propertyName)
@@ -590,6 +770,7 @@ namespace FlowMy.Views.NodeControls
             }
             if (propertyName == nameof(VideoProcessingNode.SourceFps)) FpsSlider.Maximum = Math.Max(1, _node.SourceFps);
             if (propertyName == nameof(VideoProcessingNode.PreferredHwAccel)) HwBadgeText.Text = _node.PreferredHwAccel;
+            if (propertyName == nameof(VideoProcessingNode.UseDialogVideoConfig)) ApplyConfigSourceMode();
             RefreshInfoText();
         }
 
@@ -686,13 +867,82 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private void OpenVideoButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ = sender;
+            e.Handled = true;
+            SelectVideo();
+        }
+
+        private void OpenVideoInPlaceholderButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ = sender;
+            e.Handled = true;
+            SelectVideo();
+        }
+
+        private void SyncFrameCountFromSeconds()
+        {
+            var duration = Math.Max(0.1, GetNaturalDurationSeconds());
+            var sourceFps = Math.Max(1, _node.SourceFps);
+            var totalFrames = Math.Max(1, (int)Math.Floor(duration * sourceFps));
+            var secondsPerFrame = Math.Max(0.1, _node.SecondsPerFrame);
+            var count = Math.Max(1, (int)Math.Round(duration / secondsPerFrame));
+            if (count > totalFrames) count = totalFrames;
+            _node.ExtractFrameCount = count;
+            FpsSlider.Maximum = totalFrames;
+            FpsSlider.Value = count;
+            FpsValueText.Text = $"{count}";
+            _node.ExtractFps = Math.Max(1, count / duration);
+        }
+
+        private void SyncSecondsFromFrameCount()
+        {
+            var duration = Math.Max(0.1, GetNaturalDurationSeconds());
+            var sourceFps = Math.Max(1, _node.SourceFps);
+            var totalFrames = Math.Max(1, (int)Math.Floor(duration * sourceFps));
+            var count = Math.Clamp(_node.ExtractFrameCount, 1, totalFrames);
+            _node.ExtractFrameCount = count;
+            FpsSlider.Maximum = totalFrames;
+            _node.ExtractFps = Math.Max(1, count / duration);
+            var seconds = Math.Clamp(duration / count, SecondsPerFrameSlider.Minimum, SecondsPerFrameSlider.Maximum);
+            _node.SecondsPerFrame = seconds;
+            _isFrameControlSync = true;
+            SecondsPerFrameSlider.Value = seconds;
+            SecondsPerFrameValueText.Text = $"{seconds:0.##}s";
+            _isFrameControlSync = false;
+        }
+
+        private void ApplyConfigSourceMode()
+        {
+            var useDialog = UseDialogVideoConfigCheckBox.IsChecked == true;
+            _node.UseDialogVideoConfig = useDialog;
+
+            var enabled = !useDialog;
+            SecondsPerFrameSlider.IsEnabled = enabled;
+            FpsSlider.IsEnabled = enabled;
+            FrameFormatCombo.IsEnabled = enabled;
+            JpegQualitySlider.IsEnabled = enabled;
+            ExtractAllFramesCheckBox.IsEnabled = enabled;
+            OutputBase64CheckBox.IsEnabled = enabled;
+            OutputPathText.IsEnabled = enabled;
+            BrowseOutputButton.IsEnabled = enabled;
+            FrameOutputFolderText.IsEnabled = enabled;
+            BrowseFrameOutputFolderButton.IsEnabled = enabled;
+            DefaultOutputVideoPathText.IsEnabled = enabled;
+            BrowseDefaultOutputVideoButton.IsEnabled = enabled;
+        }
+
         private void BrowseOutputPath()
         {
             var dlg = new SaveFileDialog { Filter = "MP4|*.mp4|WebM|*.webm|All|*.*" };
             if (dlg.ShowDialog() == true)
             {
                 OutputPathText.Text = dlg.FileName;
+                EnsureParentDirectoryExists(dlg.FileName);
                 _node.OutputPathOverride = dlg.FileName;
+                DefaultOutputVideoPathText.Text = dlg.FileName;
+                RefreshOutputsSummaryUi();
             }
         }
 
@@ -706,7 +956,8 @@ namespace FlowMy.Views.NodeControls
             StatDurationText.Text = FormatTime(TimeSpan.FromSeconds(GetNaturalDurationSeconds()));
             CodecInfoText.Text = $"HW: {_node.PreferredHwAccel} | Extract: {_node.ExtractFps:0.##}/s";
             AudioSummaryText.Text = $"Audio tracks: {_node.AudioTracks.Count} | Output: {(_node.OutputBase64 ? "base64" : "file")}";
-            FpsValueText.Text = $"{_node.ExtractFps:0.##}";
+            FpsValueText.Text = $"{Math.Max(1, _node.ExtractFrameCount)}";
+            SecondsPerFrameValueText.Text = $"{Math.Max(0.1, _node.SecondsPerFrame):0.##}s";
             TrimStartText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimStartSec));
             TrimEndText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimEndSec));
             var duration = GetNaturalDurationSeconds();
@@ -720,8 +971,11 @@ namespace FlowMy.Views.NodeControls
             _suppressControlSync = true;
             try
             {
-                FpsSlider.Maximum = Math.Max(1, _node.SourceFps);
-                FpsSlider.Value = _node.ExtractFps;
+                var totalFrames = Math.Max(1, (int)Math.Floor(Math.Max(0.1, GetNaturalDurationSeconds()) * Math.Max(1, _node.SourceFps)));
+                FpsSlider.Maximum = Math.Max(1, totalFrames);
+                FpsSlider.Value = Math.Clamp(_node.ExtractFrameCount, 1, (int)FpsSlider.Maximum);
+                SecondsPerFrameSlider.Value = Math.Clamp(_node.SecondsPerFrame, SecondsPerFrameSlider.Minimum, SecondsPerFrameSlider.Maximum);
+                UseDialogVideoConfigCheckBox.IsChecked = _node.UseDialogVideoConfig;
                 OutputBase64CheckBox.IsChecked = _node.OutputBase64;
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
                 SourceAudioToggle.IsChecked = _node.SourceAudioEnabled;
@@ -776,6 +1030,8 @@ namespace FlowMy.Views.NodeControls
                 CrfSlider.Value = _node.Crf;
                 CrfLabel.Text = $"{(int)_node.Crf}";
                 OutputPathText.Text = _node.OutputPathOverride ?? string.Empty;
+                DefaultOutputVideoPathText.Text = _node.DefaultOutputVideoPath ?? _node.OutputPathOverride ?? string.Empty;
+                FrameOutputFolderText.Text = _node.FrameOutputFolderPath ?? string.Empty;
                 TrimToggle.IsChecked = _node.TrimEnabled;
                 TrimReviewCheckBox.IsChecked = false;
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
@@ -804,6 +1060,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             ApplyPreviewQualitySettings();
+            ApplyConfigSourceMode();
         }
 
         private void RefreshVideoPreview()
@@ -1104,6 +1361,11 @@ namespace FlowMy.Views.NodeControls
             var duration = TimeSpan.FromSeconds(GetNaturalDurationSeconds());
             var position = PreviewMedia.Position;
             var ratio = duration.TotalSeconds > 0 ? Math.Clamp(position.TotalSeconds / duration.TotalSeconds, 0, 1) : 0;
+            if (_isProgressDragging && _pendingSeekRatio >= 0)
+            {
+                ratio = _pendingSeekRatio;
+                position = TimeSpan.FromSeconds(ratio * duration.TotalSeconds);
+            }
             var barWidth = ProgressBarHitArea.ActualWidth;
             ProgressBarFill.Width = barWidth * ratio;
             Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - 6));
@@ -1156,6 +1418,7 @@ namespace FlowMy.Views.NodeControls
         private void TrimReviewHitArea_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
+            _isTrimReviewDragging = true;
             _trimReviewDragMode = ResolveTrimReviewDragMode(e);
             TrimReviewHitArea.CaptureMouse();
             HandleTrimReviewDrag(e, commitPreviewSeek: false);
@@ -1176,6 +1439,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
             HandleTrimReviewDrag(e, commitPreviewSeek: true);
+            _isTrimReviewDragging = false;
             _trimReviewDragMode = TimelineDragMode.None;
             if (TrimReviewHitArea.IsMouseCaptured) TrimReviewHitArea.ReleaseMouseCapture();
             e.Handled = true;
@@ -1187,6 +1451,7 @@ namespace FlowMy.Views.NodeControls
             {
                 TrimReviewHitArea.ReleaseMouseCapture();
                 _trimReviewDragMode = TimelineDragMode.None;
+                _isTrimReviewDragging = false;
             }
         }
 
@@ -1267,6 +1532,12 @@ namespace FlowMy.Views.NodeControls
                 _trimUiEndX = targetEndX;
                 _trimUiPlayX = targetPlayX;
                 _trimUiInitialized = true;
+            }
+            else if (_isTrimReviewDragging)
+            {
+                _trimUiStartX = targetStartX;
+                _trimUiEndX = targetEndX;
+                _trimUiPlayX = targetPlayX;
             }
             else
             {
@@ -1656,6 +1927,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
+            SyncRuntimeConfigFromUi();
             TabNavList.SelectedIndex = 6;
             _lastRunStartedAtUtc = DateTime.UtcNow;
             ProgressStatusText.Text = $"Running: {operationType}...";
@@ -1667,10 +1939,14 @@ namespace FlowMy.Views.NodeControls
                     switch (operationType)
                     {
                         case "extract_frames":
+                            var configuredFrameFolder = (_node.FrameOutputFolderPath ?? string.Empty).Trim();
+                            if (!string.IsNullOrWhiteSpace(configuredFrameFolder))
+                                EnsureDirectoryExists(configuredFrameFolder);
                             await VideoProcessingNodeExecutor.RunExtractFramesOnlyAsync(
                                 _node,
                                 line => Dispatcher.BeginInvoke(new Action(() => AppendLog(line))),
                                 (pct, status) => Dispatcher.BeginInvoke(new Action(() => UpdateProgress(pct, status))),
+                                configuredFrameFolder,
                                 System.Threading.CancellationToken.None);
                             break;
                         case "burn_subtitle":
@@ -1905,30 +2181,82 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdatePreviewAspectRatio()
         {
-            if (PreviewContainerBorder == null) return;
+            if (PreviewContainerBorder == null || VideoContainerGrid == null) return;
 
-            var totalHeight = ActualHeight;
-            var headerHeight = HeaderCardBorder?.ActualHeight > 0 ? HeaderCardBorder.ActualHeight : 58;
-            var navHeight = TabNavBorder?.ActualHeight > 0 ? TabNavBorder.ActualHeight : 38;
-            var actionsHeight = ActionButtonsBorder?.ActualHeight > 0 ? ActionButtonsBorder.ActualHeight : 48;
-            const double verticalGaps = 28;
-            PreviewContainerBorder.Height = double.NaN;
+            var outerH = PreviewContainerBorder.ActualHeight;
+            if (outerH <= 0) return;
 
-            if (TabContentBorder != null)
+            UpdateAdaptivePreviewRows(outerH);
+
+            if (PreviewMedia.Source != null)
             {
-                if (totalHeight > 0)
-                {
-                    var remaining = totalHeight
-                        - headerHeight
-                        - actionsHeight
-                        - verticalGaps;
-                    TabContentBorder.MaxHeight = Math.Max(180, remaining);
-                }
-                else
-                {
-                    TabContentBorder.MaxHeight = 420;
-                }
+                VideoViewbox.Visibility = Visibility.Visible;
+                PreviewPlaceholder.Visibility = Visibility.Collapsed;
             }
+            else
+            {
+                VideoViewbox.Visibility = Visibility.Collapsed;
+                PreviewPlaceholder.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void SetAspectRatio(double w, double h, bool auto)
+        {
+            _selectedAspectW = w;
+            _selectedAspectH = h;
+            _aspectAuto = auto;
+            ApplyAspectRatioToMedia();
+        }
+
+        private void ApplyAspectRatioToMedia()
+        {
+            if (_aspectAuto)
+            {
+                var natW = PreviewMedia.NaturalVideoWidth > 0 ? PreviewMedia.NaturalVideoWidth : 1280;
+                var natH = PreviewMedia.NaturalVideoHeight > 0 ? PreviewMedia.NaturalVideoHeight : 720;
+                PreviewMedia.Width = natW;
+                PreviewMedia.Height = natH;
+            }
+            else if (_selectedAspectW > 0 && _selectedAspectH > 0)
+            {
+                var baseW = 1280.0;
+                PreviewMedia.Width = baseW;
+                PreviewMedia.Height = baseW * (_selectedAspectH / _selectedAspectW);
+            }
+
+            UpdatePreviewAspectRatio();
+        }
+
+        private void UpdateAdaptivePreviewRows(double containerHeight)
+        {
+            if (VideoContainerGrid.RowDefinitions.Count < 4) return;
+
+            var rowAspect = VideoContainerGrid.RowDefinitions[0];
+            var rowVideo = VideoContainerGrid.RowDefinitions[1];
+            var rowTimeline = VideoContainerGrid.RowDefinitions[2];
+            var rowLog = VideoContainerGrid.RowDefinitions[3];
+
+            var topH = rowAspect.ActualHeight > 0 ? rowAspect.ActualHeight : 44;
+            var timelineH = rowTimeline.ActualHeight > 0 ? rowTimeline.ActualHeight : 120;
+            var available = containerHeight - topH - timelineH - 12;
+            if (available <= 80) return;
+
+            var mediaW = PreviewMedia.Source != null && PreviewMedia.NaturalVideoWidth > 0
+                ? PreviewMedia.NaturalVideoWidth
+                : (_selectedAspectW > 0 ? _selectedAspectW : 16);
+            var mediaH = PreviewMedia.Source != null && PreviewMedia.NaturalVideoHeight > 0
+                ? PreviewMedia.NaturalVideoHeight
+                : (_selectedAspectH > 0 ? _selectedAspectH : 9);
+            if (mediaW <= 0 || mediaH <= 0) return;
+
+            var ratio = mediaW / mediaH;
+            var videoRatio = ratio >= 1.1 ? 0.56 : (ratio <= 0.9 ? 0.73 : 0.64);
+
+            var targetVideoH = Math.Clamp(available * videoRatio, 120, available - 80);
+            var targetLogH = Math.Clamp(available - targetVideoH, 80, 260);
+
+            rowVideo.Height = new GridLength(targetVideoH, GridUnitType.Pixel);
+            rowLog.Height = new GridLength(targetLogH, GridUnitType.Pixel);
         }
 
         private void RefreshOutputsSummaryUi()
@@ -1939,37 +2267,51 @@ namespace FlowMy.Views.NodeControls
             var estimatedFrames = Math.Round(GetNaturalDurationSeconds() * (_node.ExtractAllFrames ? _node.SourceFps : _node.ExtractFps));
             SetTextIfExists("OutputEstimatedFramesText", $"{estimatedFrames:0} frame");
 
-            var outputVideoPath = (_node.OutputPathOverride ?? string.Empty).Trim();
+            var outputVideoPath = (_node.UseDialogVideoConfig
+                ? (_node.DefaultOutputVideoPath ?? string.Empty)
+                : (OutputPathText.Text ?? string.Empty)).Trim();
+            if (string.IsNullOrWhiteSpace(outputVideoPath))
+                outputVideoPath = (DefaultOutputVideoPathText.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(outputVideoPath))
+                outputVideoPath = (_node.OutputPathOverride ?? string.Empty).Trim();
+
+            if (!string.IsNullOrWhiteSpace(outputVideoPath))
+                _node.OutputPathOverride = outputVideoPath;
+
             if (string.IsNullOrWhiteSpace(outputVideoPath))
             {
                 OutputVideoPathText.Text = "Chưa đặt đường dẫn video đầu ra";
                 OpenOutputVideoButton.IsEnabled = false;
+                OpenOutputVideoActionButton.IsEnabled = false;
             }
             else
             {
                 OutputVideoPathText.Text = outputVideoPath;
                 var outputDir = System.IO.Path.GetDirectoryName(outputVideoPath) ?? string.Empty;
-                OpenOutputVideoButton.IsEnabled = File.Exists(outputVideoPath) || Directory.Exists(outputDir);
+                var ready = File.Exists(outputVideoPath) || Directory.Exists(outputDir);
+                OpenOutputVideoButton.IsEnabled = ready;
+                OpenOutputVideoActionButton.IsEnabled = ready;
             }
 
             var sourceDir = !string.IsNullOrWhiteSpace(_node.VideoPath) ? (System.IO.Path.GetDirectoryName(_node.VideoPath) ?? string.Empty) : string.Empty;
-            var framesDir = !string.IsNullOrWhiteSpace(sourceDir) ? System.IO.Path.Combine(sourceDir, "frames") : string.Empty;
-            if (_node.OutputBase64)
-            {
-                OutputFramesFolderText.Text = "Đang xuất dạng Base64 - không dùng thư mục frame";
-                OpenFramesFolderButton.IsEnabled = false;
-                OpenFramesFolderButton.Visibility = Visibility.Collapsed;
-            }
-            else if (string.IsNullOrWhiteSpace(framesDir))
+            var framesDir = (_node.UseDialogVideoConfig
+                ? (_node.FrameOutputFolderPath ?? string.Empty)
+                : (FrameOutputFolderText.Text ?? string.Empty)).Trim();
+            if (string.IsNullOrWhiteSpace(framesDir))
+                framesDir = !string.IsNullOrWhiteSpace(sourceDir) ? System.IO.Path.Combine(sourceDir, "frames") : string.Empty;
+            if (string.IsNullOrWhiteSpace(framesDir))
             {
                 OutputFramesFolderText.Text = "Chưa xác định thư mục frame";
                 OpenFramesFolderButton.IsEnabled = false;
+                OpenFramesFolderActionButton.IsEnabled = false;
                 OpenFramesFolderButton.Visibility = Visibility.Visible;
             }
             else
             {
                 OutputFramesFolderText.Text = framesDir;
-                OpenFramesFolderButton.IsEnabled = Directory.Exists(framesDir);
+                var framesReady = Directory.Exists(framesDir) || !_node.OutputBase64;
+                OpenFramesFolderButton.IsEnabled = framesReady;
+                OpenFramesFolderActionButton.IsEnabled = framesReady;
                 OpenFramesFolderButton.Visibility = Visibility.Visible;
             }
 
@@ -2000,6 +2342,12 @@ namespace FlowMy.Views.NodeControls
         {
             var duration = GetNaturalDurationSeconds();
             var sourceFps = _node.SourceFps > 0 ? _node.SourceFps : 30;
+            if (duration <= 0)
+            {
+                duration = 1;
+            }
+            var totalFrames = Math.Max(1, (int)Math.Floor(duration * sourceFps));
+            FpsSlider.Maximum = totalFrames;
 
             if (_node.ExtractAllFrames)
             {
@@ -2011,18 +2359,28 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            var framesPerSec = Math.Max(1, (int)Math.Round(_node.ExtractFps));
-            var interval = sourceFps / framesPerSec;
+            var requestedCount = Math.Clamp(_node.ExtractFrameCount, 1, totalFrames);
+            _node.ExtractFrameCount = requestedCount;
+            _isFrameControlSync = true;
+            if (FpsSlider.Value != requestedCount) FpsSlider.Value = requestedCount;
+            FpsValueText.Text = $"{requestedCount}";
+            _isFrameControlSync = false;
+
+            // Avoid duplicate frame at second boundary by sampling in [0, totalFrames-framesPerStep].
+            var samplingWindowFrames = Math.Max(requestedCount, totalFrames - Math.Max(1, totalFrames / Math.Max(1, requestedCount)));
+            var framesPerSec = Math.Max(1, (int)Math.Round(requestedCount / duration));
+            _node.ExtractFps = framesPerSec;
+            var interval = samplingWindowFrames / (double)requestedCount;
             var offsetMs = (interval / 2.0 / sourceFps) * 1000.0;
             var timestamps = FrameExtractionCalculator.CalculateAllExtractTimestamps(duration, sourceFps, framesPerSec);
             EstFramePerSecText.Text = $"{framesPerSec}";
-            EstimatedFrameCountText.Text = $"{timestamps.Count:N0}";
+            EstimatedFrameCountText.Text = $"{requestedCount:N0}";
             EstFrameIntervalText.Text = $"{(1000.0 / framesPerSec):0.#} ms";
 
             var indices = FrameExtractionCalculator.CalculateFrameIndicesPerSecond(sourceFps, framesPerSec);
             var indicesStr = string.Join(", ", indices.Take(4).Select(i => $"#{i}"));
             if (indices.Count > 4) indicesStr += "…";
-            SetTextIfExists("FrameIndexPreviewText", $"Indices/giây: [{indicesStr}] | Offset: ~{offsetMs:0.#} ms | Timestamps: {timestamps.Count:N0}");
+            SetTextIfExists("FrameIndexPreviewText", $"Indices/giây: [{indicesStr}] | Offset: ~{offsetMs:0.#} ms | Mục tiêu: {requestedCount:N0}");
         }
 
         private void SetTextIfExists(string elementName, string text)
@@ -2053,6 +2411,27 @@ namespace FlowMy.Views.NodeControls
         {
             if (string.IsNullOrWhiteSpace(text)) return;
 
+            try
+            {
+                if (text.IndexOfAny(new[] { '*', '?' }) >= 0)
+                    return;
+                var extension = System.IO.Path.GetExtension(text);
+                if (!string.IsNullOrWhiteSpace(extension))
+                {
+                    var fileParent = System.IO.Path.GetDirectoryName(text);
+                    if (!string.IsNullOrWhiteSpace(fileParent) && !Directory.Exists(fileParent))
+                        Directory.CreateDirectory(fileParent);
+                }
+                else if (!Directory.Exists(text))
+                {
+                    Directory.CreateDirectory(text);
+                }
+            }
+            catch
+            {
+                // best-effort for opening path
+            }
+
             if (Directory.Exists(text) || File.Exists(text))
             {
                 Process.Start(new ProcessStartInfo { FileName = text, UseShellExecute = true });
@@ -2063,6 +2442,35 @@ namespace FlowMy.Views.NodeControls
             if (!string.IsNullOrWhiteSpace(parent) && Directory.Exists(parent))
             {
                 Process.Start(new ProcessStartInfo { FileName = parent, UseShellExecute = true });
+            }
+        }
+
+        private static void EnsureParentDirectoryExists(string? filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) return;
+            try
+            {
+                var parent = System.IO.Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrWhiteSpace(parent) && !Directory.Exists(parent))
+                    Directory.CreateDirectory(parent);
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+
+        private static void EnsureDirectoryExists(string? directoryPath)
+        {
+            if (string.IsNullOrWhiteSpace(directoryPath)) return;
+            try
+            {
+                if (!Directory.Exists(directoryPath))
+                    Directory.CreateDirectory(directoryPath);
+            }
+            catch
+            {
+                // best-effort
             }
         }
 

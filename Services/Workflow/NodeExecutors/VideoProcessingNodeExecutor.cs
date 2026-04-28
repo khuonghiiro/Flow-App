@@ -35,6 +35,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     throw new InvalidOperationException("VideoProcessingNode: thiếu input video.");
 
                 var outputFolder = ResolveFromMapping(env, videoNode.OutputFolderSourceNodeId, videoNode.OutputFolderSourceOutputKey);
+                if (string.IsNullOrWhiteSpace(outputFolder))
+                    outputFolder = videoNode.FrameOutputFolderPath;
                 if (!videoNode.OutputBase64)
                 {
                     if (string.IsNullOrWhiteSpace(outputFolder))
@@ -197,6 +199,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var (_, extension) = BuildOutputArgs(node);
             var outputVideo = !string.IsNullOrWhiteSpace(node.OutputPathOverride)
                 ? node.OutputPathOverride!
+                : !string.IsNullOrWhiteSpace(node.DefaultOutputVideoPath)
+                    ? node.DefaultOutputVideoPath!
                 : string.IsNullOrWhiteSpace(outputFolder)
                     ? Path.Combine(Path.GetTempPath(), $"video_processed_{Guid.NewGuid():N}{extension}")
                     : Path.Combine(outputFolder, $"video_processed_{DateTime.Now:yyyyMMddHHmmss}{extension}");
@@ -641,11 +645,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             VideoProcessingNode node,
             Action<string> onLog,
             Action<double, string> onProgress,
+            string? outputFolderOverride,
             CancellationToken ct)
         {
-            var outputFolder = string.IsNullOrWhiteSpace(node.OutputPathOverride)
-                ? Path.Combine(Path.GetTempPath(), $"FlowMy_Frames_{DateTime.Now:yyyyMMddHHmmss}")
-                : Path.GetDirectoryName(node.OutputPathOverride)!;
+            var outputFolder = string.IsNullOrWhiteSpace(outputFolderOverride)
+                ? (string.IsNullOrWhiteSpace(node.OutputPathOverride)
+                    ? Path.Combine(Path.GetTempPath(), $"FlowMy_Frames_{DateTime.Now:yyyyMMddHHmmss}")
+                    : Path.GetDirectoryName(node.OutputPathOverride)!)
+                : outputFolderOverride.Trim();
             Directory.CreateDirectory(outputFolder);
 
             var extension = node.FrameOutputFormat switch { "jpg" => "jpg", "webp" => "webp", _ => "png" };

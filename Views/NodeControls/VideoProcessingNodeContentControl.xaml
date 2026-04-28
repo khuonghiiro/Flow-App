@@ -310,21 +310,50 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="AspectRadioStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" CornerRadius="7" Padding="{TemplateBinding Padding}"
+                                Background="Transparent"
+                                BorderThickness="1"
+                                BorderBrush="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource ThemeAccentBrush}"/>
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource ThemeTabHoverBrush}"/>
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
-    <Grid Margin="8">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="280"/>
-            <ColumnDefinition Width="8"/>
-            <ColumnDefinition Width="*" MinWidth="300"/>
-        </Grid.ColumnDefinitions>
+    <Grid Margin="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="10,8">
+        <Border Grid.Row="0" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="10,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -352,13 +381,78 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Grid.Column="0" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,6" Padding="0" ClipToBounds="True" VerticalAlignment="Stretch">
-            <Grid>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="260"/>
+                <ColumnDefinition Width="3*" MinWidth="320"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="8,8,4,8" Padding="0" ClipToBounds="True" VerticalAlignment="Stretch">
+                <Grid x:Name="VideoContainerGrid">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="140"/>
                 </Grid.RowDefinitions>
-                <Viewbox Grid.Row="0" Stretch="Uniform" StretchDirection="Both" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Grid.Row="0" Margin="8,8,8,4" Padding="6,4" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="OpenVideoButton"
+                                Grid.Column="0"
+                                VerticalAlignment="Center"
+                                Height="28"
+                                Padding="10,0"
+                                Style="{DynamicResource PrimaryButton}"
+                                Background="#CCDC2626"
+                                Click="OpenVideoButton_Click"
+                                Opacity="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📁" FontSize="10" Margin="0,0,4,0"/>
+                                <TextBlock Text="Mở video" FontSize="10.5"/>
+                            </StackPanel>
+                        </Button>
+                        <WrapPanel Grid.Column="1" HorizontalAlignment="Center">
+                            <RadioButton x:Name="Aspect169" Content="16:9" GroupName="AspectRatio" IsChecked="True" Style="{StaticResource AspectRadioStyle}" ToolTip="Ngang chuẩn 16:9"/>
+                            <RadioButton x:Name="Aspect916" Content="9:16" GroupName="AspectRatio" Style="{StaticResource AspectRadioStyle}" ToolTip="Dọc 9:16"/>
+                            <RadioButton x:Name="Aspect11" Content="1:1" GroupName="AspectRatio" Style="{StaticResource AspectRadioStyle}" ToolTip="Vuông 1:1"/>
+                            <RadioButton x:Name="Aspect32" Content="3:2" GroupName="AspectRatio" Style="{StaticResource AspectRadioStyle}" ToolTip="Ngang 3:2"/>
+                            <RadioButton x:Name="Aspect23" Content="2:3" GroupName="AspectRatio" Style="{StaticResource AspectRadioStyle}" ToolTip="Dọc 2:3"/>
+                            <RadioButton x:Name="AspectAuto" Content="Auto" GroupName="AspectRatio" Style="{StaticResource AspectRadioStyle}" ToolTip="Dùng kích thước video thật"/>
+                        </WrapPanel>
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    Orientation="Horizontal"
+                                    Margin="8,0,0,0">
+                            <Border x:Name="HwBadge"
+                                    Background="{DynamicResource ThemeAccentBrush}" BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
+                                    BorderThickness="1" CornerRadius="10"
+                                    Padding="7,3" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                            </Border>
+                            <Border Padding="7,3" CornerRadius="8"
+                                    Background="{DynamicResource ThemeOverlayBackgroundBrush}"
+                                    BorderBrush="{DynamicResource ThemeOverlayBorderBrush}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,5,0" VerticalAlignment="Center" x:Name="LiveDot" Visibility="Collapsed"/>
+                                    <TextBlock Text="Preview" FontSize="9.5" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <Button x:Name="ToggleBeforeAfterButton"
+                                    Margin="6,0,0,0"
+                                    Height="24"
+                                    Padding="8,0"
+                                    FontSize="9.5"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Content="Before/After"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Viewbox x:Name="VideoViewbox" Grid.Row="1" Stretch="Uniform" StretchDirection="Both" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <MediaElement x:Name="PreviewMedia"
                                   LoadedBehavior="Manual"
                                   UnloadedBehavior="Manual"
@@ -371,7 +465,7 @@
                                   MouseLeftButtonUp="PreviewMedia_MouseLeftButtonUp"
                                   Cursor="Hand"/>
                 </Viewbox>
-                <Grid Grid.Row="0" x:Name="VideoAreaGrid">
+                <Grid Grid.Row="1" x:Name="VideoAreaGrid">
                     <Grid x:Name="PreviewPlaceholder"
                           Panel.ZIndex="1"
                           Visibility="Visible">
@@ -389,6 +483,8 @@
                                 Height="32"
                                 Margin="0,10,0,0"
                                 Padding="16,0"
+                                Background="#CCDC2626"
+                                Click="OpenVideoInPlaceholderButton_Click"
                                 Style="{DynamicResource PrimaryButton}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📁" Margin="0,0,6,0"/>
@@ -398,61 +494,18 @@
                         </StackPanel>
                     </Grid>
                 </Grid>
-                <Button x:Name="OpenVideoButton"
-                        Grid.Row="0"
-                        Panel.ZIndex="5"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Margin="8,8,0,0"
-                        Height="28"
-                        Padding="10,0"
-                        Style="{DynamicResource SecondaryButton}"
-                        Opacity="0.84">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="📁" FontSize="10" Margin="0,0,4,0"/>
-                        <TextBlock Text="Mở video" FontSize="10.5"/>
-                    </StackPanel>
-                </Button>
-                <StackPanel Grid.Row="0"
-                            Panel.ZIndex="5"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Orientation="Horizontal"
-                            Margin="0,8,8,0">
-                <Border x:Name="HwBadge"
-                            Background="{DynamicResource ThemeAccentBrush}" BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
-                            BorderThickness="1" CornerRadius="10"
-                            Padding="7,3" Margin="0,0,6,0" VerticalAlignment="Center">
-                            <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
-                    </Border>
-                    <Border Padding="7,3" CornerRadius="8"
-                            Background="{DynamicResource ThemeOverlayBackgroundBrush}"
-                            BorderBrush="{DynamicResource ThemeOverlayBorderBrush}" BorderThickness="1">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,5,0" VerticalAlignment="Center" x:Name="LiveDot" Visibility="Collapsed"/>
-                            <TextBlock Text="Preview" FontSize="9.5" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
-                        </StackPanel>
-                    </Border>
-                    <Button x:Name="ToggleBeforeAfterButton"
-                            Margin="6,0,0,0"
-                            Height="24"
-                            Padding="8,0"
-                            FontSize="9.5"
-                            Style="{DynamicResource SecondaryButton}"
-                            Content="Before/After"/>
-                </StackPanel>
                 <Border x:Name="GradingOverlay"
-                        Grid.Row="0"
+                        Grid.Row="1"
                         Panel.ZIndex="2"
                         Background="Transparent"
                         IsHitTestVisible="False"/>
                 <controls:OverlayCanvas x:Name="OverlayCanvasControl"
-                                        Grid.Row="0"
+                                        Grid.Row="1"
                                         Panel.ZIndex="3"
                                         HorizontalAlignment="Stretch"
                                         VerticalAlignment="Stretch"/>
                 <Border x:Name="QuickGradingPanel"
-                        Grid.Row="0"
+                        Grid.Row="1"
                         Panel.ZIndex="5"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Bottom"
@@ -484,7 +537,7 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-                <StackPanel Grid.Row="0"
+                <StackPanel Grid.Row="1"
                             Panel.ZIndex="5"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom"
@@ -501,7 +554,7 @@
                     </Button>
                 </StackPanel>
                 <Border x:Name="FrameInfoOverlay"
-                        Grid.Row="0"
+                        Grid.Row="1"
                         Panel.ZIndex="4"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Top"
@@ -515,7 +568,7 @@
                         IsHitTestVisible="False">
                     <TextBlock x:Name="FrameInfoText" FontSize="9.5" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                 </Border>
-                <Border Grid.Row="1" Background="{DynamicResource ThemeTimelinePanelBrush}" Padding="10,6,10,8" CornerRadius="0,0,12,12">
+                <Border Grid.Row="2" Background="{DynamicResource ThemeTimelinePanelBrush}" Padding="10,6,10,8" CornerRadius="0,0,12,12">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
@@ -567,13 +620,48 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-            </Grid>
-        </Border>
+                <Border Grid.Row="3" Margin="8,0,8,8" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="10,10,0,0" Padding="10,5">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock x:Name="ProgressStatusText" Text="Chưa chạy" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                    <TextBlock x:Name="ProgressPercentText" Margin="8,0,0,0" FontSize="11" FontFamily="Consolas" Opacity="0.8"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="ClearLogButton" Content="Xóa" Height="22" Padding="8,0" FontSize="10" Style="{DynamicResource SecondaryButton}"/>
+                                    <Button x:Name="CopyLogButton" Content="Copy" Height="22" Padding="8,0" FontSize="10" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Grid.Row="0" VerticalAlignment="Bottom" Height="2">
+                            <Grid>
+                                <Border Background="{DynamicResource ThemeTrackBackgroundBrush}"/>
+                                <Border x:Name="ProgressFill" HorizontalAlignment="Left" Background="{DynamicResource ThemeAccentBrush}" Width="0"/>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <TextBox x:Name="LogTextBox" IsReadOnly="True" Background="Transparent" BorderThickness="0" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource ThemeTextPrimaryBrush}" Padding="8,6" TextWrapping="Wrap" AcceptsReturn="True"/>
+                        </ScrollViewer>
+                        <Grid Grid.Row="2" Margin="10,4,10,6">
+                            <TextBlock x:Name="ElapsedTimeText" FontSize="10.5" Opacity="0.7" Text="Elapsed: --"/>
+                            <TextBlock x:Name="EstimatedTimeText" HorizontalAlignment="Right" FontSize="10.5" Opacity="0.7" Text="ETA: --"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                </Grid>
+            </Border>
 
-        <Grid Grid.Row="1" Grid.Column="2">
+            <Grid Grid.Column="1" Margin="4,8,8,8">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" x:Name="TabNavBorder" Margin="0,0,0,6" Padding="4" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="12">
                 <ListBox x:Name="TabNavList" Style="{StaticResource PillTabNavStyle}" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -588,7 +676,7 @@
                     <ListBoxItem Content="Audio" Tag="Audio"/>
                     <ListBoxItem Content="Xuất file" Tag="Export"/>
                     <ListBoxItem Content="Đầu ra" Tag="Outputs"/>
-                    <ListBoxItem Content="Nhật ký" Tag="Log"/>
+                    <ListBoxItem Content="Cài đặt" Tag="Settings"/>
                 </ListBox>
             </Border>
             <Border Grid.Row="1" x:Name="TabContentBorder" Style="{StaticResource GlassCardStyle}" Padding="12,10">
@@ -609,10 +697,18 @@
                                     <TextBlock x:Name="AudioSummaryText" FontSize="10.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <TextBlock Text="FPS tách frame" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Số giây / 1 frame" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="58"/></Grid.ColumnDefinitions>
+                                <Slider x:Name="SecondsPerFrameSlider" Minimum="0.1" Maximum="10" Value="1" Style="{StaticResource ModernSliderStyle}" ToolTip="Ví dụ 2 giây lấy 1 frame."/>
+                                <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
+                                    <TextBlock x:Name="SecondsPerFrameValueText" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="Số lượng frame cần lấy" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
-                                <Slider x:Name="FpsSlider" Minimum="0.1" Maximum="30" Style="{StaticResource ModernSliderStyle}" ToolTip="Số frame lấy mỗi giây. Dùng logic offset để phân bố đều, tránh frame biên."/>
+                                <Slider x:Name="FpsSlider" Minimum="1" Maximum="300" Value="10" Style="{StaticResource ModernSliderStyle}" ToolTip="Số lượng frame cần lấy ra trên toàn video."/>
                                 <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
                                     <TextBlock x:Name="FpsValueText" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Center"/>
                                 </Border>
@@ -659,6 +755,11 @@
                                 <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
                                 <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
                             </Grid>
+                            <CheckBox x:Name="UseDialogVideoConfigCheckBox"
+                                      Content="Sử dụng cấu hình dialog video"
+                                      Style="{StaticResource ReadableCheckBoxStyle}"
+                                      Margin="0,0,0,10"
+                                      IsChecked="True"/>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -1093,64 +1194,104 @@
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
-                    <ScrollViewer x:Name="LogTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                    <ScrollViewer x:Name="SettingsTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                         <StackPanel Margin="0,2,0,0">
-                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,10">
+                            <TextBlock Text="Đường dẫn FFmpeg" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
                                 <StackPanel>
-                                    <Grid Margin="0,0,0,6"><TextBlock x:Name="ProgressStatusText" FontSize="11" FontWeight="Medium" Text="Chưa chạy"/><TextBlock x:Name="ProgressPercentText" HorizontalAlignment="Right" FontSize="11" FontFamily="Consolas" Opacity="0.8"/></Grid>
-                                    <Grid><Border Background="{DynamicResource ThemeTrackBackgroundBrush}" CornerRadius="4" Height="6"/><Border x:Name="ProgressFill" HorizontalAlignment="Left" Background="{DynamicResource ThemeAccentBrush}" CornerRadius="4" Height="6" Width="0"/></Grid>
-                                    <Grid Margin="0,6,0,0"><TextBlock x:Name="ElapsedTimeText" FontSize="10" Opacity="0.5" Text="Đã chạy: --"/><TextBlock x:Name="EstimatedTimeText" HorizontalAlignment="Right" FontSize="10" Opacity="0.5" Text="Còn lại: --"/></Grid>
+                                    <TextBlock Text="Thư mục chứa ffmpeg.exe, ffprobe.exe" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="FfmpegFolderText" Height="28" FontSize="10.5"/>
+                                        <Button x:Name="BrowseFfmpegFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                    </Grid>
+                                    <Border x:Name="FfmpegVerifyBadge" Margin="0,8,0,0" Padding="8,5" CornerRadius="7" Background="#1A4ADE80">
+                                        <TextBlock x:Name="FfmpegVerifyText" FontSize="10" Text="Chưa xác minh" Foreground="#4ADE80"/>
+                                    </Border>
+                                    <Button x:Name="VerifyFfmpegButton" Content="Xác minh FFmpeg" Height="30" Margin="0,8,0,0" Style="{DynamicResource SecondaryButton}"/>
                                 </StackPanel>
                             </Border>
-                            <Border Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeOverlayBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="0">
-                                <Grid>
-                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                    <Border Grid.Row="0" Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="8,8,0,0" Padding="10,6">
-                                        <Grid><TextBlock Text="Kết quả FFmpeg" FontSize="10.5" FontWeight="Medium" Opacity="0.8"/><Button x:Name="ClearLogButton" Content="Xóa" HorizontalAlignment="Right" Height="22" Padding="8,0" FontSize="10" Style="{DynamicResource SecondaryButton}"/></Grid>
-                                    </Border>
-                                    <ScrollViewer Grid.Row="1" x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto" MaxHeight="200">
-                                        <TextBox x:Name="LogTextBox" IsReadOnly="True" Background="Transparent" BorderThickness="0" FontFamily="Consolas" FontSize="10" Foreground="{DynamicResource ThemeTextPrimaryBrush}" Padding="10,8" TextWrapping="Wrap" AcceptsReturn="True"/>
-                                    </ScrollViewer>
-                                </Grid>
+
+                            <TextBlock Text="Thư mục xuất ảnh frame" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Để trống = lưu cạnh video nguồn" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="FrameOutputFolderText" Height="28" FontSize="10.5"/>
+                                        <Button x:Name="BrowseFrameOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="Đường dẫn video đầu ra mặc định" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Để trống = tự sinh tên trong /Temp" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="DefaultOutputVideoPathText" Height="28" FontSize="10.5"/>
+                                        <Button x:Name="BrowseDefaultOutputVideoButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
             </Border>
-        </Grid>
-
-        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" x:Name="ActionButtonsBorder" Margin="0,6,0,0" Padding="8,6"
+            <Border Grid.Row="2" x:Name="ActionButtonsBorder" Margin="0,6,0,0" Padding="8,6"
                 Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="0,0,12,12"
                 BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="0,1,0,0">
-            <UniformGrid x:Name="ActionButtonsGrid" Rows="1">
-                <Button x:Name="ExtractFramesButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionExtractBrush}" ToolTip="Xuất frame thành ảnh PNG/JPEG từ video nguồn">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🖼" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Tách ảnh" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="BurnSubtitleButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSubtitleBrush}" ToolTip="Gắn file subtitle (.srt/.ass) vào video">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="💬" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Phụ đề" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="QuickWatermarkButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionWatermarkBrush}" ToolTip="Mở tab Filters để chỉnh watermark/logo">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🔖" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Watermark" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="ConvertFormatButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionConvertBrush}" ToolTip="Mở tab Export để chọn định dạng đầu ra">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🔄" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Chuyển đổi" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="QuickTrimButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionTrimBrush}" ToolTip="Đặt Trim Start tại vị trí hiện tại của timeline">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="✂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Cắt" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="SnapshotButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSnapshotBrush}" ToolTip="Chụp frame hiện tại thành file PNG">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="📷" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Chụp ảnh" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="OpenOutputVideoFolderQuickButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở thư mục chứa video output" Background="{DynamicResource ThemeActionFolderVideoBrush}">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="📂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Folder Video" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="OpenFramesFolderQuickButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở thư mục chứa frames" Background="{DynamicResource ThemeActionFolderFramesBrush}">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🗂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Folder Frames" VerticalAlignment="Center" FontSize="11"/></StackPanel>
-                </Button>
-                <Button x:Name="RunAllButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource PrimaryButton}" ToolTip="Chạy toàn bộ pipeline xử lý video">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="▶" Margin="0,0,5,0" VerticalAlignment="Center" FontSize="11"/><TextBlock Text="Chạy tất cả" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/></StackPanel>
-                </Button>
-            </UniformGrid>
-        </Border>
+                <Grid>
+                    <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Visible">
+                    <Button x:Name="ExtractFramesButton" Height="30" Padding="12,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionExtractBrush}">
+                        <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock Text="Tách Frame" FontSize="11"/></StackPanel>
+                    </Button>
+                    <Button x:Name="RunAllButton" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{DynamicResource PrimaryButton}">
+                        <StackPanel Orientation="Horizontal"><TextBlock Text="▶" Margin="0,0,6,0" FontSize="11"/><TextBlock Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold"/></StackPanel>
+                    </Button>
+                </StackPanel>
+                <StackPanel x:Name="GradingActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                    <Button x:Name="ApplyGradingButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}"><TextBlock Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold"/></Button>
+                    <Button x:Name="ResetGradingButton2" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{DynamicResource SecondaryButton}"><TextBlock Text="Đặt lại" FontSize="11"/></Button>
+                </StackPanel>
+                <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                    <Button x:Name="BurnSubtitleButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSubtitleBrush}"><TextBlock Text="Gắn phụ đề" FontSize="11"/></Button>
+                    <Button x:Name="QuickWatermarkButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Watermark" FontSize="11"/></Button>
+                    <Button x:Name="ApplyOverlayToVideoActionButton" Height="30" Padding="12,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Áp dụng Overlay" FontSize="11"/></Button>
+                </StackPanel>
+                <StackPanel x:Name="AudioActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                    <Button x:Name="MixAudioButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}"><TextBlock Text="Ghép Audio" FontSize="11" FontWeight="SemiBold"/></Button>
+                </StackPanel>
+                <StackPanel x:Name="ExportActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                    <Button x:Name="RunExportButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}"><TextBlock Text="Xuất video" FontSize="11" FontWeight="SemiBold"/></Button>
+                    <Button x:Name="SnapshotButton" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSnapshotBrush}"><TextBlock Text="Chụp ảnh" FontSize="11"/></Button>
+                    <Button x:Name="ConvertFormatButton" Visibility="Collapsed"/>
+                    <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
+                </StackPanel>
+                <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                    <Button x:Name="OpenOutputVideoActionButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionFolderVideoBrush}"><TextBlock Text="Mở Video" FontSize="11"/></Button>
+                    <Button x:Name="OpenFramesFolderActionButton" Height="30" Padding="12,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionFolderFramesBrush}"><TextBlock Text="Mở Folder Frame" FontSize="11"/></Button>
+                    <Button x:Name="OpenOutputVideoFolderQuickButton" Visibility="Collapsed"/>
+                    <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
+                </StackPanel>
+                    <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                        <Button x:Name="SaveSettingsButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}">
+                            <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold"/></StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </UserControl>
