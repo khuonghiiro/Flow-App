@@ -115,6 +115,7 @@ namespace FlowMy.Models.Nodes
         private bool _sourceAudioEnabled = true;
         private double _previewVolume = 0.7;
         private string _previewQualityMode = "normal";
+        private string _previewVisualStrengthMode = "balanced";
         private bool _watermarkEnabled;
         private string? _watermarkImagePath;
         private string _watermarkPosition = "BR";
@@ -510,6 +511,25 @@ namespace FlowMy.Models.Nodes
                 if (_previewQualityMode != normalized)
                 {
                     _previewQualityMode = normalized;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string PreviewVisualStrengthMode
+        {
+            get => _previewVisualStrengthMode;
+            set
+            {
+                var normalized = string.IsNullOrWhiteSpace(value) ? "balanced" : value.Trim().ToLowerInvariant();
+                if (normalized != "fast" && normalized != "balanced" && normalized != "strong")
+                {
+                    normalized = "balanced";
+                }
+
+                if (_previewVisualStrengthMode != normalized)
+                {
+                    _previewVisualStrengthMode = normalized;
                     OnPropertyChanged();
                 }
             }

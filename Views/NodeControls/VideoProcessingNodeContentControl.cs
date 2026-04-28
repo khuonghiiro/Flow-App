@@ -24,6 +24,14 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class VideoProcessingNodeContentControl : UserControl
     {
+        private enum TimelineDragMode
+        {
+            None,
+            Scrub,
+            TrimStart,
+            TrimEnd
+        }
+
         private enum PreviewQualityMode
         {
             Auto,
@@ -66,6 +74,9 @@ namespace FlowMy.Views.NodeControls
         private double _lastSeekLatencyMs = -1;
         private bool _isSeekLatencyPending;
         private DateTime _dragReleaseBoostUntilUtc = DateTime.MinValue;
+        private TimelineDragMode _timelineDragMode = TimelineDragMode.None;
+        private TimelineDragMode _trimReviewDragMode = TimelineDragMode.None;
+        private bool _previewEffectTemporarilyDisabled;
         private double _lastVolume = 0.7;
         private int? _fixedResolutionHeight;
         private DateTime _lastRunStartedAtUtc = DateTime.UtcNow;
@@ -175,6 +186,7 @@ namespace FlowMy.Views.NodeControls
             QuickBrightnessSlider.ValueChanged += (_, e) =>
             {
                 if (_suppressControlSync) return;
+                _previewEffectTemporarilyDisabled = false;
                 _node.Brightness = e.NewValue;
                 QuickBrightnessLabel.Text = $"{e.NewValue:0.#}";
                 BrightnessLabel.Text = $"{e.NewValue:0.##}";
@@ -186,6 +198,7 @@ namespace FlowMy.Views.NodeControls
             QuickContrastSlider.ValueChanged += (_, e) =>
             {
                 if (_suppressControlSync) return;
+                _previewEffectTemporarilyDisabled = false;
                 _node.Contrast = e.NewValue;
                 QuickContrastLabel.Text = $"{e.NewValue:0.#}";
                 ContrastLabel.Text = $"{e.NewValue:0.##}";
@@ -197,6 +210,7 @@ namespace FlowMy.Views.NodeControls
             QuickSaturationSlider.ValueChanged += (_, e) =>
             {
                 if (_suppressControlSync) return;
+                _previewEffectTemporarilyDisabled = false;
                 _node.Saturation = e.NewValue;
                 QuickSaturationLabel.Text = $"{e.NewValue:0.#}";
                 SaturationLabel.Text = $"{e.NewValue:0.##}";
@@ -241,6 +255,8 @@ namespace FlowMy.Views.NodeControls
             };
             OpenOutputVideoButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
             OpenFramesFolderButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
+            OpenOutputVideoFolderQuickButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
+            OpenFramesFolderQuickButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
 
             PreviewMedia.MediaOpened += (_, _) =>
             {
@@ -292,14 +308,20 @@ namespace FlowMy.Views.NodeControls
                 _node.PreviewQualityMode = GetSelectedPreviewQualityTag();
                 ApplyPreviewQualitySettings();
             };
+            PreviewVisualStrengthCombo.SelectionChanged += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.PreviewVisualStrengthMode = GetSelectedPreviewVisualStrengthTag();
+                ApplyPreviewColorTransform();
+            };
             SourceAudioToggle.Checked += (_, _) => _node.SourceAudioEnabled = true;
             SourceAudioToggle.Unchecked += (_, _) => _node.SourceAudioEnabled = false;
 
-            BrightnessSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.Brightness = e.NewValue; BrightnessLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
-            ContrastSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.Contrast = e.NewValue; ContrastLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
-            SaturationSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.Saturation = e.NewValue; SaturationLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
-            HueSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.Hue = e.NewValue; HueLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
-            GammaSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _node.Gamma = e.NewValue; GammaLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
+            BrightnessSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _previewEffectTemporarilyDisabled = false; _node.Brightness = e.NewValue; BrightnessLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
+            ContrastSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _previewEffectTemporarilyDisabled = false; _node.Contrast = e.NewValue; ContrastLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
+            SaturationSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _previewEffectTemporarilyDisabled = false; _node.Saturation = e.NewValue; SaturationLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
+            HueSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _previewEffectTemporarilyDisabled = false; _node.Hue = e.NewValue; HueLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
+            GammaSlider.ValueChanged += (_, e) => { if (_suppressControlSync) return; _previewEffectTemporarilyDisabled = false; _node.Gamma = e.NewValue; GammaLabel.Text = $"{e.NewValue:0.##}"; ApplyPreviewColorTransform(); };
 
             PresetNeutralButton.Click += (_, _) => ApplyGradingPreset(0, 1, 1, 0, 1);
             PresetVividButton.Click += (_, _) => ApplyGradingPreset(0.05, 1.15, 1.35, 8, 1);
@@ -309,6 +331,18 @@ namespace FlowMy.Views.NodeControls
             PresetCoolButton.Click += (_, _) => ApplyGradingPreset(-0.02, 1.0, 0.95, -20, 0.98);
             PresetFadeButton.Click += (_, _) => ApplyGradingPreset(0.1, 0.85, 0.75, 0, 1.1);
             ResetGradingButton.Click += (_, _) => ApplyGradingPreset(0, 1, 1, 0, 1);
+            ApplyPreviewEffectButton.Click += (_, _) =>
+            {
+                _previewEffectTemporarilyDisabled = false;
+                ApplyPreviewColorTransform();
+                AppendLog("ℹ Preview effect applied lại theo thông số hiện tại.");
+            };
+            ResetPreviewEffectButton.Click += (_, _) =>
+            {
+                _previewEffectTemporarilyDisabled = true;
+                ApplyPreviewColorTransform();
+                AppendLog("ℹ Preview effect reset (không thay đổi thông số node).");
+            };
 
             SharpenToggle.Checked += (_, _) => { _node.SharpenEnabled = true; SharpenSlider.IsEnabled = true; };
             SharpenToggle.Unchecked += (_, _) => { _node.SharpenEnabled = false; SharpenSlider.IsEnabled = false; };
@@ -337,8 +371,44 @@ namespace FlowMy.Views.NodeControls
             Scale25Button.Click += (_, _) => SetScale(0.25, null, Scale25Button);
             Scale1080Button.Click += (_, _) => SetScale(1.0, 1080, Scale1080Button);
             Scale720Button.Click += (_, _) => SetScale(1.0, 720, Scale720Button);
-            TrimToggle.Checked += (_, _) => _node.TrimEnabled = true;
-            TrimToggle.Unchecked += (_, _) => _node.TrimEnabled = false;
+            TrimToggle.Checked += (_, _) =>
+            {
+                _node.TrimEnabled = true;
+                if (PreviewMedia.Source != null)
+                {
+                    var duration = GetNaturalDurationSeconds();
+                    if (_node.TrimEndSec <= _node.TrimStartSec || _node.TrimEndSec <= 0)
+                    {
+                        _node.TrimEndSec = duration > 0 ? duration : Math.Max(_node.TrimStartSec + 1, 1);
+                    }
+                }
+                TrimReviewHitArea.Visibility = TrimReviewCheckBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+                UpdatePlaybackUi();
+                RefreshInfoText();
+            };
+            TrimToggle.Unchecked += (_, _) =>
+            {
+                _node.TrimEnabled = false;
+                TrimReviewHitArea.Visibility = Visibility.Collapsed;
+                UpdatePlaybackUi();
+                RefreshInfoText();
+            };
+            TrimReviewCheckBox.Checked += (_, _) =>
+            {
+                if (_node.TrimEnabled)
+                {
+                    TrimReviewHitArea.Visibility = Visibility.Visible;
+                }
+                ProgressBarHitArea.IsEnabled = false;
+                ProgressBarHitArea.Opacity = 0.45;
+                UpdateTrimReviewUi();
+            };
+            TrimReviewCheckBox.Unchecked += (_, _) =>
+            {
+                TrimReviewHitArea.Visibility = Visibility.Collapsed;
+                ProgressBarHitArea.IsEnabled = true;
+                ProgressBarHitArea.Opacity = 1.0;
+            };
             BrowseOutputButton.Click += (_, _) => BrowseOutputPath();
             ClearLogButton.Click += (_, _) => LogTextBox.Clear();
             AddAudioTrackButton.Click += (_, _) => _node.AudioTracks.Add(new VideoAudioTrackConfig());
@@ -572,6 +642,12 @@ namespace FlowMy.Views.NodeControls
                     "high" => 3,
                     _ => 2
                 };
+                PreviewVisualStrengthCombo.SelectedIndex = _node.PreviewVisualStrengthMode switch
+                {
+                    "fast" => 0,
+                    "strong" => 2,
+                    _ => 1
+                };
                 FrameFormatCombo.SelectedIndex = _node.FrameOutputFormat switch { "jpg" => 1, "webp" => 2, _ => 0 };
                 JpegQualitySlider.Value = _node.JpegQuality;
                 ExtractAllFramesCheckBox.IsChecked = _node.ExtractAllFrames;
@@ -610,6 +686,10 @@ namespace FlowMy.Views.NodeControls
                 CrfLabel.Text = $"{(int)_node.Crf}";
                 OutputPathText.Text = _node.OutputPathOverride ?? string.Empty;
                 TrimToggle.IsChecked = _node.TrimEnabled;
+                TrimReviewCheckBox.IsChecked = false;
+                TrimReviewHitArea.Visibility = Visibility.Collapsed;
+                ProgressBarHitArea.IsEnabled = true;
+                ProgressBarHitArea.Opacity = 1.0;
                 _fixedResolutionHeight = _node.FixedResolutionHeight;
                 WatermarkToggle.IsChecked = _node.WatermarkEnabled;
                 WatermarkPathText.Text = _node.WatermarkImagePath ?? string.Empty;
@@ -753,21 +833,12 @@ namespace FlowMy.Views.NodeControls
 
             if (forceSeek)
             {
-                SeekToRatio(ratio);
-                _lastDragSeekAtUtc = DateTime.UtcNow;
-                UpdatePlaybackUi();
+                UpdateProgressVisualByRatio(ratio);
                 return;
             }
 
-            // During drag, keep UI responsive but throttle expensive media seeks.
+            // During drag, update only visuals; commit seek on mouse up.
             UpdateProgressVisualByRatio(ratio);
-            var now = DateTime.UtcNow;
-            if ((now - _lastDragSeekAtUtc).TotalMilliseconds >= GetDragSeekThrottleMs())
-            {
-                SeekToRatio(ratio);
-                _lastDragSeekAtUtc = now;
-                UpdatePlaybackUi();
-            }
         }
 
         private void PreviewMedia_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -775,34 +846,37 @@ namespace FlowMy.Views.NodeControls
 
         private void ProgressBarHitArea_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (TrimReviewCheckBox.IsChecked == true) return;
+            if (PreviewMedia.Source == null) return;
             _isProgressDragging = true;
             _dragReleaseBoostUntilUtc = DateTime.MinValue;
             ApplyPreviewQualitySettings();
             ProgressBarHitArea.CaptureMouse();
-            SeekByMousePosition(e, forceSeek: true);
+            _timelineDragMode = TimelineDragMode.Scrub;
+            HandleTimelineDrag(e, commitSeekImmediately: false);
             e.Handled = true;
         }
 
         private void ProgressBarHitArea_MouseMove(object sender, MouseEventArgs e)
         {
+            if (TrimReviewCheckBox.IsChecked == true) return;
+            if (PreviewMedia.Source == null) return;
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                SeekByMousePosition(e);
+                HandleTimelineDrag(e, commitSeekImmediately: false);
                 e.Handled = true;
             }
         }
 
         private void ProgressBarHitArea_MouseUp(object sender, MouseButtonEventArgs e)
         {
+            if (TrimReviewCheckBox.IsChecked == true) return;
+            if (PreviewMedia.Source == null) return;
             _isProgressDragging = false;
             _dragReleaseBoostUntilUtc = DateTime.UtcNow.AddMilliseconds(1500);
             ApplyPreviewQualitySettings();
-            if (_pendingSeekRatio >= 0)
-            {
-                SeekToRatio(_pendingSeekRatio);
-                _pendingSeekRatio = -1;
-                UpdatePlaybackUi();
-            }
+            HandleTimelineDrag(e, commitSeekImmediately: true);
+            _timelineDragMode = TimelineDragMode.None;
             if (ProgressBarHitArea.IsMouseCaptured)
             {
                 ProgressBarHitArea.ReleaseMouseCapture();
@@ -840,6 +914,21 @@ namespace FlowMy.Views.NodeControls
             }
 
             return false;
+        }
+
+        private void HandleTimelineDrag(MouseEventArgs e, bool commitSeekImmediately)
+        {
+            var ratio = GetSeekRatioByMousePosition(e);
+            _pendingSeekRatio = ratio;
+
+            // Scrub mode: only seek on mouse-up for smoother drag.
+            UpdateProgressVisualByRatio(ratio);
+            if (commitSeekImmediately)
+            {
+                SeekToRatio(ratio);
+                _pendingSeekRatio = -1;
+                UpdatePlaybackUi();
+            }
         }
 
         private int GetDragSeekThrottleMs()
@@ -902,6 +991,18 @@ namespace FlowMy.Views.NodeControls
             return "normal";
         }
 
+        private string GetSelectedPreviewVisualStrengthTag()
+        {
+            if (PreviewVisualStrengthCombo.SelectedItem is ComboBoxItem selected &&
+                selected.Tag is string tag &&
+                !string.IsNullOrWhiteSpace(tag))
+            {
+                return tag;
+            }
+
+            return "balanced";
+        }
+
         private void UpdatePlaybackUi()
         {
             if (GetPreviewQualityMode() == PreviewQualityMode.Auto && !_isProgressDragging)
@@ -958,6 +1059,117 @@ namespace FlowMy.Views.NodeControls
             var latencyText = _lastSeekLatencyMs >= 0 ? $"{_lastSeekLatencyMs:0} ms" : "-- ms";
             SetTextIfExists("SeekPerfText", $"Preview: {configuredModeText}/{effectiveModeText} | Seek: {latencyText}");
             PlayPauseButton.Content = CreateTransportIcon(_isPlaying ? "pause chisel-regular" : "play chisel-regular");
+            UpdateTrimReviewUi();
+        }
+
+        private void TrimReviewHitArea_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
+            _trimReviewDragMode = ResolveTrimReviewDragMode(e);
+            TrimReviewHitArea.CaptureMouse();
+            HandleTrimReviewDrag(e, commitPreviewSeek: true);
+            e.Handled = true;
+        }
+
+        private void TrimReviewHitArea_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                HandleTrimReviewDrag(e, commitPreviewSeek: true);
+                e.Handled = true;
+            }
+        }
+
+        private void TrimReviewHitArea_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
+            HandleTrimReviewDrag(e, commitPreviewSeek: true);
+            _trimReviewDragMode = TimelineDragMode.None;
+            if (TrimReviewHitArea.IsMouseCaptured) TrimReviewHitArea.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+
+        private void TrimReviewHitArea_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed && TrimReviewHitArea.IsMouseCaptured)
+            {
+                TrimReviewHitArea.ReleaseMouseCapture();
+                _trimReviewDragMode = TimelineDragMode.None;
+            }
+        }
+
+        private TimelineDragMode ResolveTrimReviewDragMode(MouseEventArgs e)
+        {
+            var duration = GetNaturalDurationSeconds();
+            var barWidth = TrimReviewHitArea.ActualWidth;
+            if (duration <= 0 || barWidth <= 1) return TimelineDragMode.Scrub;
+
+            var pos = e.GetPosition(TrimReviewHitArea);
+            var startX = Math.Clamp(_node.TrimStartSec / duration, 0, 1) * barWidth;
+            var endSec = _node.TrimEndSec > 0 ? _node.TrimEndSec : duration;
+            var endX = Math.Clamp(endSec / duration, 0, 1) * barWidth;
+            const double handleHitRange = 12;
+
+            if (Math.Abs(pos.X - startX) <= handleHitRange) return TimelineDragMode.TrimStart;
+            if (Math.Abs(pos.X - endX) <= handleHitRange) return TimelineDragMode.TrimEnd;
+            return TimelineDragMode.Scrub;
+        }
+
+        private void HandleTrimReviewDrag(MouseEventArgs e, bool commitPreviewSeek)
+        {
+            var duration = GetNaturalDurationSeconds();
+            if (duration <= 0 || TrimReviewHitArea.ActualWidth <= 1) return;
+            var ratio = Math.Clamp(e.GetPosition(TrimReviewHitArea).X / TrimReviewHitArea.ActualWidth, 0, 1);
+            var targetSec = ratio * duration;
+
+            if (_trimReviewDragMode == TimelineDragMode.TrimStart)
+            {
+                var end = _node.TrimEndSec > 0 ? _node.TrimEndSec : duration;
+                _node.TrimStartSec = Math.Clamp(targetSec, 0, Math.Max(0, end - 0.05));
+                if (commitPreviewSeek) PreviewMedia.Position = TimeSpan.FromSeconds(_node.TrimStartSec);
+            }
+            else if (_trimReviewDragMode == TimelineDragMode.TrimEnd)
+            {
+                var start = Math.Max(0, _node.TrimStartSec + 0.05);
+                _node.TrimEndSec = Math.Clamp(targetSec, start, duration);
+                if (commitPreviewSeek) PreviewMedia.Position = TimeSpan.FromSeconds(_node.TrimEndSec);
+            }
+            else
+            {
+                var start = _node.TrimStartSec;
+                var end = _node.TrimEndSec > 0 ? _node.TrimEndSec : duration;
+                targetSec = Math.Clamp(targetSec, start, end);
+                if (commitPreviewSeek) PreviewMedia.Position = TimeSpan.FromSeconds(targetSec);
+            }
+
+            RefreshInfoText();
+            UpdateTrimReviewUi();
+        }
+
+        private void UpdateTrimReviewUi()
+        {
+            if (TrimReviewHitArea == null || TrimReviewRangeFill == null || PreviewMedia == null) return;
+            if (!_node.TrimEnabled || TrimReviewHitArea.Visibility != Visibility.Visible)
+            {
+                return;
+            }
+
+            var duration = GetNaturalDurationSeconds();
+            var width = TrimReviewHitArea.ActualWidth;
+            if (duration <= 0 || width <= 1) return;
+
+            var startRatio = Math.Clamp(_node.TrimStartSec / duration, 0, 1);
+            var endSec = _node.TrimEndSec > 0 ? _node.TrimEndSec : duration;
+            var endRatio = Math.Clamp(endSec / duration, 0, 1);
+            if (endRatio < startRatio) (startRatio, endRatio) = (endRatio, startRatio);
+
+            TrimReviewRangeFill.Width = Math.Max(0, (endRatio - startRatio) * width);
+            TrimReviewRangeFill.Margin = new Thickness(startRatio * width, 0, 0, 0);
+            Canvas.SetLeft(TrimReviewStartThumb, Math.Max(0, (startRatio * width) - 5.5));
+            Canvas.SetLeft(TrimReviewEndThumb, Math.Max(0, (endRatio * width) - 5.5));
+            var playRatio = Math.Clamp(PreviewMedia.Position.TotalSeconds / duration, 0, 1);
+            Canvas.SetLeft(TrimReviewPlayheadThumb, Math.Max(0, (playRatio * width) - 5.5));
         }
 
         private double GetNaturalDurationSeconds()
@@ -965,6 +1177,7 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyGradingPreset(double brightness, double contrast, double saturation, double hue, double gamma)
         {
+            _previewEffectTemporarilyDisabled = false;
             _node.Brightness = brightness;
             _node.Contrast = contrast;
             _node.Saturation = saturation;
@@ -976,28 +1189,79 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyPreviewColorTransform()
         {
-            // Lightweight preview grading to avoid expensive per-frame processing in UI.
-            // Full-quality grading is still applied in FFmpeg pipeline during execution.
+            if (_previewEffectTemporarilyDisabled)
+            {
+                GradingOverlay.Background = Brushes.Transparent;
+                PreviewMedia.Opacity = 1.0;
+                return;
+            }
+
+            // MediaElement does not support full realtime color matrix in this control.
+            // This block applies a stronger approximate preview so grading changes are visibly reflected.
             var brightness = Math.Clamp(_node.Brightness, -1.0, 1.0);
             var contrast = Math.Clamp(_node.Contrast, 0.1, 3.0);
             var saturation = Math.Clamp(_node.Saturation, 0.0, 3.0);
+            var hue = Math.Clamp(_node.Hue, -180.0, 180.0);
             var gamma = Math.Clamp(_node.Gamma, 0.1, 3.0);
+            var strength = (_node.PreviewVisualStrengthMode ?? "balanced").ToLowerInvariant();
+            var strengthScale = strength switch
+            {
+                "fast" => 0.65,
+                "strong" => 1.45,
+                _ => 1.0
+            };
+
+            var tintStrength = Math.Min(0.45, (Math.Abs(hue) / 180.0 * 0.28 + Math.Max(0, saturation - 1.0) * 0.06) * strengthScale);
+            var hueColor = HsvToColor((hue + 360.0) % 360.0, 0.9, 1.0);
+            byte tintAlpha;
+            Color tintRgb;
+
             if (brightness >= 0)
             {
-                var alpha = (byte)Math.Clamp((int)(brightness * 42), 0, 70);
-                GradingOverlay.Background = new SolidColorBrush(Color.FromArgb(alpha, 255, 255, 255));
+                tintAlpha = (byte)Math.Clamp((int)((brightness * 90 + tintStrength * 100) * strengthScale), 0, 170);
+                tintRgb = tintStrength > 0.01 ? hueColor : Color.FromRgb(255, 255, 255);
             }
             else
             {
-                var alpha = (byte)Math.Clamp((int)(-brightness * 56), 0, 90);
-                GradingOverlay.Background = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+                tintAlpha = (byte)Math.Clamp((int)((-brightness * 120 + tintStrength * 90) * strengthScale), 0, 190);
+                if (tintStrength > 0.01)
+                {
+                    tintRgb = Color.FromRgb(
+                        (byte)Math.Max(0, hueColor.R - 55),
+                        (byte)Math.Max(0, hueColor.G - 55),
+                        (byte)Math.Max(0, hueColor.B - 55));
+                }
+                else
+                {
+                    tintRgb = Color.FromRgb(0, 0, 0);
+                }
             }
 
-            // Approximate visual response in preview for controls besides brightness.
-            var contrastOpacityBoost = (contrast - 1.0) * 0.06;
-            var saturationPenalty = (1.0 - Math.Min(1.0, saturation)) * 0.12;
-            var gammaPenalty = Math.Max(0, 1.0 - gamma) * 0.08;
-            PreviewMedia.Opacity = Math.Clamp(1.0 + contrastOpacityBoost - saturationPenalty - gammaPenalty, 0.75, 1.0);
+            GradingOverlay.Background = new SolidColorBrush(Color.FromArgb(tintAlpha, tintRgb.R, tintRgb.G, tintRgb.B));
+
+            var contrastOpacityBoost = (contrast - 1.0) * 0.11 * strengthScale;
+            var saturationPenalty = (1.0 - Math.Min(1.0, saturation)) * 0.18 * strengthScale;
+            var gammaPenalty = Math.Max(0, 1.0 - gamma) * 0.12 * strengthScale;
+            PreviewMedia.Opacity = Math.Clamp(1.0 + contrastOpacityBoost - saturationPenalty - gammaPenalty, 0.52, 1.0);
+        }
+
+        private static Color HsvToColor(double hue, double saturation, double value)
+        {
+            var c = value * saturation;
+            var x = c * (1 - Math.Abs((hue / 60.0 % 2) - 1));
+            var m = value - c;
+            double r1, g1, b1;
+            if (hue < 60) { r1 = c; g1 = x; b1 = 0; }
+            else if (hue < 120) { r1 = x; g1 = c; b1 = 0; }
+            else if (hue < 180) { r1 = 0; g1 = c; b1 = x; }
+            else if (hue < 240) { r1 = 0; g1 = x; b1 = c; }
+            else if (hue < 300) { r1 = x; g1 = 0; b1 = c; }
+            else { r1 = c; g1 = 0; b1 = x; }
+
+            return Color.FromRgb(
+                (byte)Math.Clamp((int)((r1 + m) * 255), 0, 255),
+                (byte)Math.Clamp((int)((g1 + m) * 255), 0, 255),
+                (byte)Math.Clamp((int)((b1 + m) * 255), 0, 255));
         }
 
         private void RemoveAudioTrack_Click(object sender, RoutedEventArgs e)
@@ -1181,6 +1445,17 @@ namespace FlowMy.Views.NodeControls
             Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x9A, 0xA9, 0xBE) : Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
             Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 250, 255) : Color.FromRgb(255, 255, 255));
             Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(57, 69, 88) : Color.FromRgb(255, 255, 255));
+            Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(242, 246, 252) : Color.FromRgb(30, 30, 48));
+            Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
+            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
+            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
+            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
+            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
+            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
 
             var textPrimary = (Brush)Resources["ThemeTextPrimaryBrush"];
             var textSecondary = (Brush)Resources["ThemeTextSecondaryBrush"];
@@ -1360,6 +1635,7 @@ namespace FlowMy.Views.NodeControls
                 EstFramePerSecText.Text = $"{sourceFps:0.##}";
                 EstimatedFrameCountText.Text = $"{total:N0}";
                 EstFrameIntervalText.Text = $"{(1000.0 / sourceFps):0.#} ms";
+                SetTextIfExists("FrameIndexPreviewText", $"All frames mode: 0..{Math.Max(0, (int)sourceFps - 1)} mỗi giây");
                 return;
             }
 
@@ -1374,10 +1650,7 @@ namespace FlowMy.Views.NodeControls
             var indices = FrameExtractionCalculator.CalculateFrameIndicesPerSecond(sourceFps, framesPerSec);
             var indicesStr = string.Join(", ", indices.Take(4).Select(i => $"#{i}"));
             if (indices.Count > 4) indicesStr += "…";
-            if (timestamps.Count > 0)
-            {
-                AppendLog($"ℹ Frame indices/giây: [{indicesStr}] | offset ≈ {offsetMs:0.#}ms");
-            }
+            SetTextIfExists("FrameIndexPreviewText", $"Indices/giây: [{indicesStr}] | Offset: ~{offsetMs:0.#} ms | Timestamps: {timestamps.Count:N0}");
         }
 
         private void SetTextIfExists(string elementName, string text)

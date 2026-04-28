@@ -26,6 +26,17 @@
         <SolidColorBrush x:Key="ThemeActionBarBorderBrush" Color="#18FFFFFF"/>
         <SolidColorBrush x:Key="ThemeOnAccentTextBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ThemeSliderThumbBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeComboPopupBackgroundBrush" Color="#1E1E30"/>
+        <SolidColorBrush x:Key="ThemeComboItemHoverBrush" Color="#28FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeTabHoverBrush" Color="#28FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeActionExtractBrush" Color="#205B8FF9"/>
+        <SolidColorBrush x:Key="ThemeActionSubtitleBrush" Color="#207C6BF8"/>
+        <SolidColorBrush x:Key="ThemeActionWatermarkBrush" Color="#2014B8A6"/>
+        <SolidColorBrush x:Key="ThemeActionConvertBrush" Color="#20A78BFA"/>
+        <SolidColorBrush x:Key="ThemeActionTrimBrush" Color="#20EF4444"/>
+        <SolidColorBrush x:Key="ThemeActionSnapshotBrush" Color="#20F59E0B"/>
+        <SolidColorBrush x:Key="ThemeActionFolderVideoBrush" Color="#204ADE80"/>
+        <SolidColorBrush x:Key="ThemeActionFolderFramesBrush" Color="#20F59E0B"/>
         <Style x:Key="GlassCardStyle" TargetType="Border">
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -103,7 +114,7 @@
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True"
                                    PopupAnimation="Slide">
-                                <Border Background="{DynamicResource ThemeInputBackgroundBrush}"
+                                <Border Background="{DynamicResource ThemeComboPopupBackgroundBrush}"
                                         BorderBrush="{DynamicResource ThemeInputBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="6"
@@ -117,7 +128,7 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#28FFFFFF"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeComboItemHoverBrush}"/>
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="#60FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
@@ -130,13 +141,14 @@
             <Setter Property="ItemContainerStyle">
                 <Setter.Value>
                     <Style TargetType="ComboBoxItem">
-                        <Setter Property="Foreground" Value="#E8F0FF"/>
-                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{DynamicResource ThemeInputForegroundBrush}"/>
+                        <Setter Property="Background" Value="{DynamicResource ThemeComboPopupBackgroundBrush}"/>
                         <Setter Property="Padding" Value="10,6"/>
                         <Setter Property="FontSize" Value="11"/>
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#28FFFFFF"/>
+                                <Setter Property="Background" Value="{DynamicResource ThemeComboItemHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
@@ -153,7 +165,7 @@
             <Setter Property="Foreground" Value="{DynamicResource ThemeInputForegroundBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeInputBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CaretBrush" Value="#E8F0FF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource ThemeInputForegroundBrush}"/>
             <Setter Property="SelectionBrush" Value="{DynamicResource ThemeAccentBrush}"/>
             <Setter Property="Padding" Value="8,4"/>
         </Style>
@@ -248,7 +260,7 @@
             <Setter Property="ItemContainerStyle">
                 <Setter.Value>
                     <Style TargetType="ListBoxItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                         <Setter Property="Padding" Value="0,7"/>
                         <Setter Property="FontSize" Value="12"/>
                         <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
@@ -256,8 +268,8 @@
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
-                                    <Border x:Name="Bd" CornerRadius="8" Padding="2,7">
-                                        <ContentPresenter HorizontalAlignment="Center"/>
+                                    <Border x:Name="Bd" CornerRadius="8" Padding="6,7" Background="Transparent">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
@@ -267,7 +279,7 @@
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                         </Trigger>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="#28FFFFFF"/>
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeTabHoverBrush}"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
@@ -623,6 +635,11 @@
                                             </StackPanel>
                                         </Grid>
                                     </Border>
+                                    <TextBlock x:Name="FrameIndexPreviewText"
+                                               Margin="0,6,0,0"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                               TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                             <Grid Margin="0,0,0,10">
@@ -648,6 +665,23 @@
                                     <ComboBoxItem Content="High (Accurate)" Tag="high"/>
                                 </ComboBox>
                             </Grid>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="160"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Preview Color" VerticalAlignment="Center" FontSize="10.5" Opacity="0.8"/>
+                                <ComboBox x:Name="PreviewVisualStrengthCombo"
+                                          Grid.Column="2"
+                                          Height="26"
+                                          ToolTip="Fast: nhẹ, Balanced: cân bằng, Strong: hiệu ứng rõ nhất trên preview."
+                                          Style="{StaticResource DarkComboBoxStyle}">
+                                    <ComboBoxItem Content="Fast" Tag="fast"/>
+                                    <ComboBoxItem Content="Balanced" Tag="balanced"/>
+                                    <ComboBoxItem Content="Strong" Tag="strong"/>
+                                </ComboBox>
+                            </Grid>
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer x:Name="GradingTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
@@ -662,6 +696,8 @@
                                 <Button x:Name="PresetCoolButton" Content="Tông lạnh" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
                                 <Button x:Name="PresetFadeButton" Content="Phai màu" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
                                 <Button x:Name="ResetGradingButton" Content="Đặt lại" Style="{StaticResource PresetChipResetStyle}"/>
+                                <Button x:Name="ApplyPreviewEffectButton" Content="Preview Apply" Style="{StaticResource PresetChipStyle}" Margin="6,0,0,0"/>
+                                <Button x:Name="ResetPreviewEffectButton" Content="Preview Reset" Style="{StaticResource PresetChipResetStyle}" Margin="6,0,0,0"/>
                             </WrapPanel>
                             <TextBlock Text="Độ sáng" FontSize="11" Opacity="0.7" Margin="0,0,0,4"/>
                             <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions><Slider x:Name="BrightnessSlider" Minimum="-1" Maximum="1" Style="{StaticResource ModernSliderStyle}"/><Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="BrightnessLabel" FontSize="10.5" FontFamily="Consolas" HorizontalAlignment="Center"/></Border></Grid>
@@ -820,7 +856,27 @@
                                 <Button x:Name="Scale720Button" Content="720p" Style="{StaticResource PresetChipStyle}"/>
                             </WrapPanel>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><TextBlock Text="Cắt video"/><ToggleButton x:Name="TrimToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid></Border>
-                            <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="0"><TextBlock x:Name="TrimStartText" HorizontalAlignment="Center" Text="00:00"/></Border><TextBlock Grid.Column="1" Text="→" HorizontalAlignment="Center"/><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="2"><TextBlock x:Name="TrimEndText" HorizontalAlignment="Center" Text="00:00"/></Border></Grid>
+                            <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="0"><TextBlock x:Name="TrimStartText" HorizontalAlignment="Center" Text="00:00"/></Border><TextBlock Grid.Column="1" Text="→" HorizontalAlignment="Center"/><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="2"><TextBlock x:Name="TrimEndText" HorizontalAlignment="Center" Text="00:00"/></Border></Grid>
+                            <CheckBox x:Name="TrimReviewCheckBox"
+                                      Content="Trim Review (dùng slider cắt để xem trước)"
+                                      Style="{StaticResource ReadableCheckBoxStyle}"
+                                      Margin="0,0,0,6"/>
+                            <Grid x:Name="TrimReviewHitArea"
+                                  Height="18"
+                                  Cursor="Hand"
+                                  Visibility="Collapsed"
+                                  PreviewMouseLeftButtonDown="TrimReviewHitArea_MouseDown"
+                                  PreviewMouseMove="TrimReviewHitArea_MouseMove"
+                                  PreviewMouseLeftButtonUp="TrimReviewHitArea_MouseUp"
+                                  MouseLeave="TrimReviewHitArea_MouseLeave">
+                                <Border Background="{DynamicResource ThemeTrackBackgroundBrush}" CornerRadius="2" Height="4" VerticalAlignment="Center"/>
+                                <Border x:Name="TrimReviewRangeFill" Background="#4487A7FF" CornerRadius="2" Height="4" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
+                                <Canvas>
+                                    <Ellipse x:Name="TrimReviewStartThumb" Width="11" Height="11" Fill="#4ADE80"/>
+                                    <Ellipse x:Name="TrimReviewEndThumb" Width="11" Height="11" Fill="#FB7185"/>
+                                    <Ellipse x:Name="TrimReviewPlayheadThumb" Width="11" Height="11" Fill="{DynamicResource ThemeSliderThumbBrush}"/>
+                                </Canvas>
+                            </Grid>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputPathText" Height="28" FontSize="10.5" Padding="6,4" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/><Button x:Name="BrowseOutputButton" Grid.Column="1" Height="28" Margin="6,0,0,0" Content="..." Padding="8,0" Style="{DynamicResource SecondaryButton}"/></Grid>
                         </StackPanel>
                     </ScrollViewer>
@@ -940,23 +996,29 @@
                 Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="0,0,12,12"
                 BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="0,1,0,0">
             <UniformGrid x:Name="ActionButtonsGrid" Rows="1">
-                <Button x:Name="ExtractFramesButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Xuất frame thành ảnh PNG/JPEG từ video nguồn">
+                <Button x:Name="ExtractFramesButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionExtractBrush}" ToolTip="Xuất frame thành ảnh PNG/JPEG từ video nguồn">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🖼" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Tách ảnh" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="BurnSubtitleButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Gắn file subtitle (.srt/.ass) vào video">
+                <Button x:Name="BurnSubtitleButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSubtitleBrush}" ToolTip="Gắn file subtitle (.srt/.ass) vào video">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="💬" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Phụ đề" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="QuickWatermarkButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở tab Filters để chỉnh watermark/logo">
+                <Button x:Name="QuickWatermarkButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionWatermarkBrush}" ToolTip="Mở tab Filters để chỉnh watermark/logo">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🔖" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Watermark" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="ConvertFormatButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở tab Export để chọn định dạng đầu ra">
+                <Button x:Name="ConvertFormatButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionConvertBrush}" ToolTip="Mở tab Export để chọn định dạng đầu ra">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🔄" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Chuyển đổi" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="QuickTrimButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Đặt Trim Start tại vị trí hiện tại của timeline">
+                <Button x:Name="QuickTrimButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionTrimBrush}" ToolTip="Đặt Trim Start tại vị trí hiện tại của timeline">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="✂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Cắt" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
-                <Button x:Name="SnapshotButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Chụp frame hiện tại thành file PNG">
+                <Button x:Name="SnapshotButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSnapshotBrush}" ToolTip="Chụp frame hiện tại thành file PNG">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="📷" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Chụp ảnh" VerticalAlignment="Center" FontSize="11"/></StackPanel>
+                </Button>
+                <Button x:Name="OpenOutputVideoFolderQuickButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở thư mục chứa video output" Background="{DynamicResource ThemeActionFolderVideoBrush}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="📂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Folder Video" VerticalAlignment="Center" FontSize="11"/></StackPanel>
+                </Button>
+                <Button x:Name="OpenFramesFolderQuickButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource SecondaryButton}" ToolTip="Mở thư mục chứa frames" Background="{DynamicResource ThemeActionFolderFramesBrush}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="🗂" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="Folder Frames" VerticalAlignment="Center" FontSize="11"/></StackPanel>
                 </Button>
                 <Button x:Name="RunAllButton" Height="30" Margin="2,0" Padding="8,0" Style="{DynamicResource PrimaryButton}" ToolTip="Chạy toàn bộ pipeline xử lý video">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><TextBlock Text="▶" Margin="0,0,5,0" VerticalAlignment="Center" FontSize="11"/><TextBlock Text="Chạy tất cả" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/></StackPanel>
