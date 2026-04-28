@@ -31,3 +31,5 @@ play chisel-regular
 pause chisel-regular
 backward-fast sharp-regular
 forward-fast sharp-regular
+sun-bright duotone-thin
+moon regular

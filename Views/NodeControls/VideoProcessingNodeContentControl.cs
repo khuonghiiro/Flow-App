@@ -24,6 +24,14 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class VideoProcessingNodeContentControl : UserControl
     {
+        private enum PreviewQualityMode
+        {
+            Auto,
+            Low,
+            Normal,
+            High
+        }
+
         private const double MinAutoFitNodeWidth = 540;
         private const double MinAutoFitNodeHeight = 340;
         private const double MaxAutoFitNodeWidth = 1280;
@@ -32,6 +40,9 @@ namespace FlowMy.Views.NodeControls
         private const double MaxPreviewHeight = 620;
         private const double HorizontalPadding = 18;
         private const double NonPreviewContentHeight = 230;
+        private const int DragSeekThrottleLowMs = 140;
+        private const int DragSeekThrottleNormalMs = 90;
+        private const int DragSeekThrottleHighMs = 35;
 
         private readonly VideoProcessingNode _node;
         private readonly IWorkflowEditorHost? _host;
@@ -48,6 +59,13 @@ namespace FlowMy.Views.NodeControls
         private bool _isNodeZoomed;
         private double _prevNodeWidth;
         private double _prevNodeHeight;
+        private double _pendingSeekRatio = -1;
+        private DateTime _lastDragSeekAtUtc = DateTime.MinValue;
+        private DateTime _lastSeekRequestAtUtc = DateTime.MinValue;
+        private double _lastSeekTargetSeconds = -1;
+        private double _lastSeekLatencyMs = -1;
+        private bool _isSeekLatencyPending;
+        private DateTime _dragReleaseBoostUntilUtc = DateTime.MinValue;
         private double _lastVolume = 0.7;
         private int? _fixedResolutionHeight;
         private DateTime _lastRunStartedAtUtc = DateTime.UtcNow;
@@ -244,13 +262,6 @@ namespace FlowMy.Views.NodeControls
             StopButton.Click += (_, _) => StopPlayback();
             SkipBackButton.Click += (_, _) => SeekRelativeSeconds(-5);
             SkipForwardButton.Click += (_, _) => SeekRelativeSeconds(5);
-            ProgressBarHitArea.MouseUp += (_, e) =>
-            {
-                _isProgressDragging = false;
-                ProgressBarHitArea.ReleaseMouseCapture();
-                e.Handled = true;
-            };
-
             VolumeSlider.ValueChanged += (_, e) =>
             {
                 _node.PreviewVolume = e.NewValue;
@@ -275,6 +286,12 @@ namespace FlowMy.Views.NodeControls
             OutputBase64CheckBox.Unchecked += (_, _) => _node.OutputBase64 = false;
             PreferGpuCheckBox.Checked += (_, _) => _node.PreferGpu = true;
             PreferGpuCheckBox.Unchecked += (_, _) => _node.PreferGpu = false;
+            PreviewQualityCombo.SelectionChanged += (_, _) =>
+            {
+                if (_suppressControlSync) return;
+                _node.PreviewQualityMode = GetSelectedPreviewQualityTag();
+                ApplyPreviewQualitySettings();
+            };
             SourceAudioToggle.Checked += (_, _) => _node.SourceAudioEnabled = true;
             SourceAudioToggle.Unchecked += (_, _) => _node.SourceAudioEnabled = false;
 
@@ -548,6 +565,13 @@ namespace FlowMy.Views.NodeControls
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
                 SourceAudioToggle.IsChecked = _node.SourceAudioEnabled;
                 VolumeSlider.Value = _node.PreviewVolume;
+                PreviewQualityCombo.SelectedIndex = _node.PreviewQualityMode switch
+                {
+                    "auto" => 0,
+                    "low" => 1,
+                    "high" => 3,
+                    _ => 2
+                };
                 FrameFormatCombo.SelectedIndex = _node.FrameOutputFormat switch { "jpg" => 1, "webp" => 2, _ => 0 };
                 JpegQualitySlider.Value = _node.JpegQuality;
                 ExtractAllFramesCheckBox.IsChecked = _node.ExtractAllFrames;
@@ -607,6 +631,8 @@ namespace FlowMy.Views.NodeControls
             {
                 _suppressControlSync = false;
             }
+
+            ApplyPreviewQualitySettings();
         }
 
         private void RefreshVideoPreview()
@@ -693,16 +719,55 @@ namespace FlowMy.Views.NodeControls
             UpdatePlaybackUi();
         }
 
-        private void SeekByMousePosition(MouseEventArgs e)
+        private double GetSeekRatioByMousePosition(MouseEventArgs e)
+        {
+            var pos = e.GetPosition(ProgressBarHitArea);
+            if (ProgressBarHitArea.ActualWidth <= 0) return 0;
+            return Math.Clamp(pos.X / ProgressBarHitArea.ActualWidth, 0, 1);
+        }
+
+        private void SeekToRatio(double ratio)
         {
             if (PreviewMedia.Source == null) return;
-            var pos = e.GetPosition(ProgressBarHitArea);
-            if (ProgressBarHitArea.ActualWidth <= 0) return;
-            var ratio = Math.Clamp(pos.X / ProgressBarHitArea.ActualWidth, 0, 1);
             var duration = GetNaturalDurationSeconds();
-            PreviewMedia.Position = TimeSpan.FromSeconds(ratio * duration);
-            _isProgressDragging = e.LeftButton == MouseButtonState.Pressed;
-            UpdatePlaybackUi();
+            var targetSec = ratio * duration;
+            _lastSeekRequestAtUtc = DateTime.UtcNow;
+            _lastSeekTargetSeconds = targetSec;
+            _isSeekLatencyPending = true;
+            PreviewMedia.Position = TimeSpan.FromSeconds(targetSec);
+        }
+
+        private void UpdateProgressVisualByRatio(double ratio)
+        {
+            var barWidth = ProgressBarHitArea.ActualWidth;
+            ProgressBarFill.Width = barWidth * ratio;
+            Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - 6));
+            TimeCurrentText.Text = FormatTime(TimeSpan.FromSeconds(ratio * GetNaturalDurationSeconds()));
+        }
+
+        private void SeekByMousePosition(MouseEventArgs e, bool forceSeek = false)
+        {
+            if (PreviewMedia.Source == null) return;
+            var ratio = GetSeekRatioByMousePosition(e);
+            _pendingSeekRatio = ratio;
+
+            if (forceSeek)
+            {
+                SeekToRatio(ratio);
+                _lastDragSeekAtUtc = DateTime.UtcNow;
+                UpdatePlaybackUi();
+                return;
+            }
+
+            // During drag, keep UI responsive but throttle expensive media seeks.
+            UpdateProgressVisualByRatio(ratio);
+            var now = DateTime.UtcNow;
+            if ((now - _lastDragSeekAtUtc).TotalMilliseconds >= GetDragSeekThrottleMs())
+            {
+                SeekToRatio(ratio);
+                _lastDragSeekAtUtc = now;
+                UpdatePlaybackUi();
+            }
         }
 
         private void PreviewMedia_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -711,8 +776,10 @@ namespace FlowMy.Views.NodeControls
         private void ProgressBarHitArea_MouseDown(object sender, MouseButtonEventArgs e)
         {
             _isProgressDragging = true;
+            _dragReleaseBoostUntilUtc = DateTime.MinValue;
+            ApplyPreviewQualitySettings();
             ProgressBarHitArea.CaptureMouse();
-            SeekByMousePosition(e);
+            SeekByMousePosition(e, forceSeek: true);
             e.Handled = true;
         }
 
@@ -728,6 +795,14 @@ namespace FlowMy.Views.NodeControls
         private void ProgressBarHitArea_MouseUp(object sender, MouseButtonEventArgs e)
         {
             _isProgressDragging = false;
+            _dragReleaseBoostUntilUtc = DateTime.UtcNow.AddMilliseconds(1500);
+            ApplyPreviewQualitySettings();
+            if (_pendingSeekRatio >= 0)
+            {
+                SeekToRatio(_pendingSeekRatio);
+                _pendingSeekRatio = -1;
+                UpdatePlaybackUi();
+            }
             if (ProgressBarHitArea.IsMouseCaptured)
             {
                 ProgressBarHitArea.ReleaseMouseCapture();
@@ -767,8 +842,73 @@ namespace FlowMy.Views.NodeControls
             return false;
         }
 
+        private int GetDragSeekThrottleMs()
+        {
+            return GetEffectivePreviewQualityMode() switch
+            {
+                PreviewQualityMode.Low => DragSeekThrottleLowMs,
+                PreviewQualityMode.High => DragSeekThrottleHighMs,
+                _ => DragSeekThrottleNormalMs
+            };
+        }
+
+        private void ApplyPreviewQualitySettings()
+        {
+            var mode = GetEffectivePreviewQualityMode();
+            PreviewMedia.ScrubbingEnabled = mode == PreviewQualityMode.High;
+        }
+
+        private PreviewQualityMode GetPreviewQualityMode()
+        {
+            return (_node.PreviewQualityMode ?? "normal").ToLowerInvariant() switch
+            {
+                "auto" => PreviewQualityMode.Auto,
+                "low" => PreviewQualityMode.Low,
+                "high" => PreviewQualityMode.High,
+                _ => PreviewQualityMode.Normal
+            };
+        }
+
+        private PreviewQualityMode GetEffectivePreviewQualityMode()
+        {
+            var configured = GetPreviewQualityMode();
+            if (configured != PreviewQualityMode.Auto)
+            {
+                return configured;
+            }
+
+            if (_isProgressDragging)
+            {
+                return PreviewQualityMode.Low;
+            }
+
+            if (DateTime.UtcNow <= _dragReleaseBoostUntilUtc)
+            {
+                return PreviewQualityMode.High;
+            }
+
+            return PreviewQualityMode.Normal;
+        }
+
+        private string GetSelectedPreviewQualityTag()
+        {
+            if (PreviewQualityCombo.SelectedItem is ComboBoxItem selected &&
+                selected.Tag is string tag &&
+                !string.IsNullOrWhiteSpace(tag))
+            {
+                return tag;
+            }
+
+            return "normal";
+        }
+
         private void UpdatePlaybackUi()
         {
+            if (GetPreviewQualityMode() == PreviewQualityMode.Auto && !_isProgressDragging)
+            {
+                ApplyPreviewQualitySettings();
+            }
+
             var duration = TimeSpan.FromSeconds(GetNaturalDurationSeconds());
             var position = PreviewMedia.Position;
             var ratio = duration.TotalSeconds > 0 ? Math.Clamp(position.TotalSeconds / duration.TotalSeconds, 0, 1) : 0;
@@ -785,6 +925,38 @@ namespace FlowMy.Views.NodeControls
                     $"Frame #{currentFrame:N0}  |  {_node.SourceFps:0.##} fps  |  " +
                     $"{(PreviewMedia.NaturalVideoWidth > 0 ? $"{PreviewMedia.NaturalVideoWidth}x{PreviewMedia.NaturalVideoHeight}" : "--")}";
             }
+
+            if (_isSeekLatencyPending && _lastSeekTargetSeconds >= 0)
+            {
+                var acceptedDiff = GetEffectivePreviewQualityMode() switch
+                {
+                    PreviewQualityMode.Low => 0.32,
+                    PreviewQualityMode.High => 0.08,
+                    _ => 0.16
+                };
+
+                if (Math.Abs(position.TotalSeconds - _lastSeekTargetSeconds) <= acceptedDiff)
+                {
+                    _lastSeekLatencyMs = Math.Max(0, (DateTime.UtcNow - _lastSeekRequestAtUtc).TotalMilliseconds);
+                    _isSeekLatencyPending = false;
+                }
+            }
+
+            var effectiveModeText = GetEffectivePreviewQualityMode() switch
+            {
+                PreviewQualityMode.Low => "LOW",
+                PreviewQualityMode.High => "HIGH",
+                _ => "NORMAL"
+            };
+            var configuredModeText = GetPreviewQualityMode() switch
+            {
+                PreviewQualityMode.Auto => "AUTO",
+                PreviewQualityMode.Low => "LOW",
+                PreviewQualityMode.High => "HIGH",
+                _ => "NORMAL"
+            };
+            var latencyText = _lastSeekLatencyMs >= 0 ? $"{_lastSeekLatencyMs:0} ms" : "-- ms";
+            SetTextIfExists("SeekPerfText", $"Preview: {configuredModeText}/{effectiveModeText} | Seek: {latencyText}");
             PlayPauseButton.Content = CreateTransportIcon(_isPlaying ? "pause chisel-regular" : "play chisel-regular");
         }
 
@@ -804,9 +976,28 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyPreviewColorTransform()
         {
-            // Keep preview color faithful to source video.
-            GradingOverlay.Background = Brushes.Transparent;
-            PreviewMedia.Opacity = 1.0;
+            // Lightweight preview grading to avoid expensive per-frame processing in UI.
+            // Full-quality grading is still applied in FFmpeg pipeline during execution.
+            var brightness = Math.Clamp(_node.Brightness, -1.0, 1.0);
+            var contrast = Math.Clamp(_node.Contrast, 0.1, 3.0);
+            var saturation = Math.Clamp(_node.Saturation, 0.0, 3.0);
+            var gamma = Math.Clamp(_node.Gamma, 0.1, 3.0);
+            if (brightness >= 0)
+            {
+                var alpha = (byte)Math.Clamp((int)(brightness * 42), 0, 70);
+                GradingOverlay.Background = new SolidColorBrush(Color.FromArgb(alpha, 255, 255, 255));
+            }
+            else
+            {
+                var alpha = (byte)Math.Clamp((int)(-brightness * 56), 0, 90);
+                GradingOverlay.Background = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+            }
+
+            // Approximate visual response in preview for controls besides brightness.
+            var contrastOpacityBoost = (contrast - 1.0) * 0.06;
+            var saturationPenalty = (1.0 - Math.Min(1.0, saturation)) * 0.12;
+            var gammaPenalty = Math.Max(0, 1.0 - gamma) * 0.08;
+            PreviewMedia.Opacity = Math.Clamp(1.0 + contrastOpacityBoost - saturationPenalty - gammaPenalty, 0.75, 1.0);
         }
 
         private void RemoveAudioTrack_Click(object sender, RoutedEventArgs e)
@@ -935,10 +1126,10 @@ namespace FlowMy.Views.NodeControls
             SkipBackButton.Content = CreateTransportIcon("backward-fast sharp-regular");
             SkipForwardButton.Content = CreateTransportIcon("forward-fast sharp-regular");
             PlayPauseButton.Content = CreateTransportIcon("play chisel-regular");
-            StopButton.Content = new TextBlock { Text = "⏹", Foreground = Brushes.White, FontSize = 12 };
+            StopButton.Content = new TextBlock { Text = "⏹", Foreground = GetThemeIconBrush(), FontSize = 12 };
         }
 
-        private static SvgViewboxEx CreateTransportIcon(string iconKey)
+        private SvgViewboxEx CreateTransportIcon(string iconKey)
         {
             var iconConverter = new IconKeyToPathConverter();
             var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), iconKey,
@@ -948,8 +1139,20 @@ namespace FlowMy.Views.NodeControls
                 Width = 14,
                 Height = 14,
                 Source = iconUri!,
-                Fill = Brushes.White
+                Fill = GetThemeIconBrush()
             };
+        }
+
+        private Brush GetThemeIconBrush()
+        {
+            if (Resources["ThemeTextPrimaryBrush"] is Brush brush)
+            {
+                return brush;
+            }
+
+            return _isLightTheme
+                ? new SolidColorBrush(Color.FromRgb(35, 42, 52))
+                : new SolidColorBrush(Color.FromRgb(232, 240, 255));
         }
 
         private void ApplyLocalTheme()
@@ -957,11 +1160,62 @@ namespace FlowMy.Views.NodeControls
             var isLight = _isLightTheme;
             Background = isLight ? new SolidColorBrush(Color.FromRgb(242, 245, 252)) : new SolidColorBrush(Color.FromRgb(15, 15, 23));
             Foreground = isLight ? new SolidColorBrush(Color.FromRgb(34, 40, 49)) : new SolidColorBrush(Color.FromRgb(232, 232, 240));
-            ThemeModeButton.Content = new TextBlock
+
+            Resources["ThemeTextPrimaryBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(35, 42, 52) : Color.FromRgb(232, 240, 255));
+            Resources["ThemeTextSecondaryBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(86, 96, 112) : Color.FromRgb(198, 211, 226));
+            Resources["ThemeCardBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF5, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x4A, 0x6B, 0x7A, 0x8A) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInnerCardBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF2, 0xF5, 0xFA) : Color.FromArgb(0x18, 0x00, 0x00, 0x00));
+            Resources["ThemeInnerCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x52, 0x9C, 0xAA, 0xBC) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 251, 255) : Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(178, 191, 212) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputForegroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(36, 44, 57) : Color.FromRgb(232, 240, 255));
+            Resources["ThemeOverlayBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xEC, 0xF1, 0xF8) : Color.FromArgb(0xAA, 0x00, 0x00, 0x00));
+            Resources["ThemeOverlayBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x58, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelinePanelBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF0, 0xE9, 0xEF, 0xF8) : Color.FromArgb(0xEE, 0x0A, 0x0A, 0x18));
+            Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x60, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeAccentBrush"] = new SolidColorBrush(Color.FromRgb(124, 107, 248));
+            Resources["ThemeTabNavBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xE8, 0xEE, 0xF7) : Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeLogContainerBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF5, 0xF8, 0xFD) : Color.FromArgb(0x0C, 0x00, 0x00, 0x00));
+            Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xEF, 0xEA, 0xF1, 0xFB) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x9A, 0xA9, 0xBE) : Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 250, 255) : Color.FromRgb(255, 255, 255));
+            Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(57, 69, 88) : Color.FromRgb(255, 255, 255));
+
+            var textPrimary = (Brush)Resources["ThemeTextPrimaryBrush"];
+            var textSecondary = (Brush)Resources["ThemeTextSecondaryBrush"];
+            SetForegroundIfExists("TimeCurrentText", textSecondary);
+            SetForegroundIfExists("TimeTotalText", textSecondary);
+            SetForegroundIfExists("SeekPerfText", textSecondary);
+            SetForegroundIfExists("FrameInfoText", textPrimary);
+            SetForegroundIfExists("VideoPathText", textSecondary);
+            SetForegroundIfExists("CodecInfoText", textSecondary);
+            SetForegroundIfExists("AudioSummaryText", textSecondary);
+            SetForegroundIfExists("ConfigMissingSummaryText", textPrimary);
+
+            ThemeModeButton.Content = CreateThemeModeIcon(isLight ? "moon regular" : "sun-bright duotone-thin", isLight);
+            SetTransportIcons();
+        }
+
+        private void SetForegroundIfExists(string elementName, Brush brush)
+        {
+            if (FindName(elementName) is TextBlock tb)
             {
-                Text = isLight ? "🌙" : "☀",
-                FontSize = 12,
-                VerticalAlignment = VerticalAlignment.Center
+                tb.Foreground = brush;
+            }
+        }
+
+        private static SvgViewboxEx CreateThemeModeIcon(string iconKey, bool isLightMode)
+        {
+            var iconConverter = new IconKeyToPathConverter();
+            var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), iconKey,
+                System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            return new SvgViewboxEx
+            {
+                Width = 15,
+                Height = 15,
+                Source = iconUri!,
+                Fill = isLightMode ? new SolidColorBrush(Color.FromRgb(56, 63, 74)) : new SolidColorBrush(Color.FromRgb(255, 219, 116))
             };
         }
 
