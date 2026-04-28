@@ -6,6 +6,8 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -83,7 +85,7 @@ namespace FlowMy.Views.NodeControls
             OpenVideoButton.Click += (_, _) => SelectVideo();
             RunProcessingButton.Click += (_, _) =>
             {
-                TabNavList.SelectedIndex = 5;
+                TabNavList.SelectedIndex = 6;
                 RunProcessingFlow();
             };
             ExtractFramesButton.Click += (_, _) =>
@@ -118,9 +120,11 @@ namespace FlowMy.Views.NodeControls
             SnapshotButton.Click += (_, _) => TakeSnapshot();
             RunAllButton.Click += (_, _) =>
             {
-                TabNavList.SelectedIndex = 5;
+                TabNavList.SelectedIndex = 6;
                 RunProcessingFlow();
             };
+            OpenOutputVideoButton.Click += (_, _) => OpenPathFromText(OutputVideoPathText.Text);
+            OpenFramesFolderButton.Click += (_, _) => OpenPathFromText(OutputFramesFolderText.Text);
 
             PreviewMedia.MediaOpened += (_, _) =>
             {
@@ -287,7 +291,7 @@ namespace FlowMy.Views.NodeControls
 
         private void SwitchTab()
         {
-            var allTabs = new[] { GeneralTabContent, GradingTabContent, FiltersTabContent, AudioTabContent, ExportTabContent, LogTabContent };
+            var allTabs = new[] { GeneralTabContent, GradingTabContent, FiltersTabContent, AudioTabContent, ExportTabContent, OutputsTabContent, LogTabContent };
             foreach (var tab in allTabs) tab.Visibility = Visibility.Collapsed;
             var idx = TabNavList.SelectedIndex;
             var target = idx >= 0 && idx < allTabs.Length ? allTabs[idx] : GeneralTabContent;
@@ -424,6 +428,7 @@ namespace FlowMy.Views.NodeControls
             var duration = GetNaturalDurationSeconds();
             var estimated = _node.ExtractAllFrames ? Math.Round(duration * _node.SourceFps) : Math.Round(duration * _node.ExtractFps);
             EstimatedFrameCountText.Text = $"Estimated frames: {estimated:0}";
+            RefreshOutputsSummaryUi();
         }
 
         private void SyncControlValuesFromModel()
@@ -644,14 +649,9 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyPreviewColorTransform()
         {
-            var b = _node.Brightness;
-            GradingOverlay.Background = b switch
-            {
-                > 0.02 => new SolidColorBrush(Color.FromArgb((byte)Math.Min(200, b * 200), 255, 255, 255)),
-                < -0.02 => new SolidColorBrush(Color.FromArgb((byte)Math.Min(200, Math.Abs(b) * 200), 0, 0, 0)),
-                _ => Brushes.Transparent
-            };
-            PreviewMedia.Opacity = Math.Clamp(0.85 + (_node.Contrast - 1) * 0.15, 0.65, 1.0);
+            // Keep preview color faithful to source video.
+            GradingOverlay.Background = Brushes.Transparent;
+            PreviewMedia.Opacity = 1.0;
         }
 
         private void RemoveAudioTrack_Click(object sender, RoutedEventArgs e)
@@ -678,11 +678,11 @@ namespace FlowMy.Views.NodeControls
             if (string.IsNullOrWhiteSpace(_node.VideoPath))
             {
                 AppendLog("⚠ Chưa chọn video nguồn.");
-                TabNavList.SelectedIndex = 5;
+                TabNavList.SelectedIndex = 6;
                 return;
             }
 
-            TabNavList.SelectedIndex = 5;
+            TabNavList.SelectedIndex = 6;
             _lastRunStartedAtUtc = DateTime.UtcNow;
             ProgressStatusText.Text = $"Running: {operationType}...";
 
@@ -815,6 +815,112 @@ namespace FlowMy.Views.NodeControls
                 {
                     TabContentBorder.MaxHeight = 420;
                 }
+            }
+        }
+
+        private void RefreshOutputsSummaryUi()
+        {
+            SetTextIfExists("OutputModeSummaryText", _node.OutputBase64 ? "Base64" : "File");
+            SetTextIfExists("OutputFormatSummaryText", (OutputFormatCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "MP4 (H.264)");
+            SetTextIfExists("OutputAudioSummaryText", $"{_node.AudioTracks.Count} track | codec: {_node.AudioCodec} | bitrate: {_node.AudioBitrate}");
+            var estimatedFrames = Math.Round(GetNaturalDurationSeconds() * (_node.ExtractAllFrames ? _node.SourceFps : _node.ExtractFps));
+            SetTextIfExists("OutputEstimatedFramesText", $"{estimatedFrames:0} frame");
+
+            var outputVideoPath = (_node.OutputPathOverride ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(outputVideoPath))
+            {
+                OutputVideoPathText.Text = "Chưa đặt đường dẫn video đầu ra";
+                OpenOutputVideoButton.IsEnabled = false;
+            }
+            else
+            {
+                OutputVideoPathText.Text = outputVideoPath;
+                var outputDir = System.IO.Path.GetDirectoryName(outputVideoPath) ?? string.Empty;
+                OpenOutputVideoButton.IsEnabled = File.Exists(outputVideoPath) || Directory.Exists(outputDir);
+            }
+
+            var sourceDir = !string.IsNullOrWhiteSpace(_node.VideoPath) ? (System.IO.Path.GetDirectoryName(_node.VideoPath) ?? string.Empty) : string.Empty;
+            var framesDir = !string.IsNullOrWhiteSpace(sourceDir) ? System.IO.Path.Combine(sourceDir, "frames") : string.Empty;
+            if (_node.OutputBase64)
+            {
+                OutputFramesFolderText.Text = "Đang xuất dạng Base64 - không dùng thư mục frame";
+                OpenFramesFolderButton.IsEnabled = false;
+                OpenFramesFolderButton.Visibility = Visibility.Collapsed;
+            }
+            else if (string.IsNullOrWhiteSpace(framesDir))
+            {
+                OutputFramesFolderText.Text = "Chưa xác định thư mục frame";
+                OpenFramesFolderButton.IsEnabled = false;
+                OpenFramesFolderButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                OutputFramesFolderText.Text = framesDir;
+                OpenFramesFolderButton.IsEnabled = Directory.Exists(framesDir);
+                OpenFramesFolderButton.Visibility = Visibility.Visible;
+            }
+
+            var okVideo = !string.IsNullOrWhiteSpace(_node.VideoPath);
+            var okOutput = !string.IsNullOrWhiteSpace(_node.OutputPathOverride);
+            var okSubtitle = !_node.BurnSubtitleEnabled || !string.IsNullOrWhiteSpace(_node.SubtitlePath);
+            var okWatermark = !_node.WatermarkEnabled || !string.IsNullOrWhiteSpace(_node.WatermarkImagePath);
+            var okTextOverlay = !_node.TextOverlayEnabled || !string.IsNullOrWhiteSpace(_node.OverlayText);
+
+            SetConfigCheck(ConfigCheckVideoText, okVideo, "Đã chọn video nguồn", "Thiếu video nguồn");
+            SetConfigCheck(ConfigCheckOutputText, okOutput, "Đã đặt đường dẫn video đầu ra", "Chưa đặt đường dẫn video đầu ra");
+            SetConfigCheck(ConfigCheckSubtitleText, okSubtitle, "Subtitle hợp lệ", "Đã bật burn subtitle nhưng chưa chọn file subtitle");
+            SetConfigCheck(ConfigCheckWatermarkText, okWatermark, "Watermark hợp lệ", "Đã bật watermark nhưng chưa chọn ảnh");
+            SetConfigCheck(ConfigCheckTextOverlayText, okTextOverlay, "Text overlay hợp lệ", "Đã bật chèn chữ nhưng nội dung chữ đang trống");
+
+            var missingCount = new[] { okVideo, okOutput, okSubtitle, okWatermark, okTextOverlay }.Count(x => !x);
+            if (missingCount == 0)
+            {
+                SetTextStyleIfExists("ConfigMissingSummaryText", "✓ Tất cả cấu hình đã đầy đủ", new SolidColorBrush(Color.FromRgb(74, 222, 128)));
+            }
+            else
+            {
+                SetTextStyleIfExists("ConfigMissingSummaryText", $"⚠ Còn thiếu {missingCount} cấu hình cần thiết", new SolidColorBrush(Color.FromRgb(248, 113, 113)));
+            }
+        }
+
+        private void SetTextIfExists(string elementName, string text)
+        {
+            if (FindName(elementName) is TextBlock tb)
+            {
+                tb.Text = text;
+            }
+        }
+
+        private void SetTextStyleIfExists(string elementName, string text, Brush foreground)
+        {
+            if (FindName(elementName) is TextBlock tb)
+            {
+                tb.Text = text;
+                tb.Foreground = foreground;
+            }
+        }
+
+        private static void SetConfigCheck(TextBlock target, bool ok, string okText, string warningText)
+        {
+            target.Text = ok ? $"✓ {okText}" : $"⚠ {warningText}";
+            target.Foreground = ok ? new SolidColorBrush(Color.FromRgb(74, 222, 128)) : new SolidColorBrush(Color.FromRgb(248, 113, 113));
+            target.FontWeight = ok ? FontWeights.Normal : FontWeights.SemiBold;
+        }
+
+        private static void OpenPathFromText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            if (Directory.Exists(text) || File.Exists(text))
+            {
+                Process.Start(new ProcessStartInfo { FileName = text, UseShellExecute = true });
+                return;
+            }
+
+            var parent = System.IO.Path.GetDirectoryName(text);
+            if (!string.IsNullOrWhiteSpace(parent) && Directory.Exists(parent))
+            {
+                Process.Start(new ProcessStartInfo { FileName = parent, UseShellExecute = true });
             }
         }
 

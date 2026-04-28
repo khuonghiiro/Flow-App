@@ -441,6 +441,7 @@
                     <ListBoxItem Content="Bộ lọc" Tag="Filters"/>
                     <ListBoxItem Content="Audio" Tag="Audio"/>
                     <ListBoxItem Content="Xuất file" Tag="Export"/>
+                    <ListBoxItem Content="Đầu ra" Tag="Outputs"/>
                     <ListBoxItem Content="Nhật ký" Tag="Log"/>
                 </ListBox>
             </Border>
@@ -665,6 +666,92 @@
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><TextBlock Text="Cắt video"/><ToggleButton x:Name="TrimToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid></Border>
                             <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="0"><TextBlock x:Name="TrimStartText" HorizontalAlignment="Center" Text="00:00"/></Border><TextBlock Grid.Column="1" Text="→" HorizontalAlignment="Center"/><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="2"><TextBlock x:Name="TrimEndText" HorizontalAlignment="Center" Text="00:00"/></Border></Grid>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputPathText" Height="28" FontSize="10.5" Padding="6,4" Background="#12FFFFFF" BorderBrush="#30FFFFFF"/><Button x:Name="BrowseOutputButton" Grid.Column="1" Height="28" Margin="6,0,0,0" Content="..." Padding="8,0" Style="{DynamicResource SecondaryButton}"/></Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <ScrollViewer x:Name="OutputsTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                        <StackPanel Margin="0,2,0,0">
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="Liên kết đầu ra" FontSize="11.5" FontWeight="SemiBold"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Chế độ xuất:" Foreground="#99AABBCC"/>
+                                        <TextBlock x:Name="OutputModeSummaryText" Grid.Column="1" FontWeight="SemiBold"/>
+                                    </Grid>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Định dạng video:" Foreground="#99AABBCC"/>
+                                        <TextBlock x:Name="OutputFormatSummaryText" Grid.Column="1" FontWeight="SemiBold"/>
+                                    </Grid>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Âm thanh:" Foreground="#99AABBCC"/>
+                                        <TextBlock x:Name="OutputAudioSummaryText" Grid.Column="1"/>
+                                    </Grid>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Ước tính frame:" Foreground="#99AABBCC"/>
+                                        <TextBlock x:Name="OutputEstimatedFramesText" Grid.Column="1"/>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="OutputVideoPathText"
+                                                   Text="Chưa có đường dẫn video đầu ra"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="OpenOutputVideoButton"
+                                                Grid.Column="1"
+                                                Content="Mở"
+                                                Margin="8,0,0,0"
+                                                Height="26"
+                                                Padding="10,0"
+                                                Style="{DynamicResource SecondaryButton}"/>
+                                    </Grid>
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="OutputFramesFolderText"
+                                                   Text="Chưa có thư mục frame"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="OpenFramesFolderButton"
+                                                Grid.Column="1"
+                                                Content="Mở"
+                                                Margin="8,0,0,0"
+                                                Height="26"
+                                                Padding="10,0"
+                                                Style="{DynamicResource SecondaryButton}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InnerCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Kiểm tra cấu hình" FontSize="11.5" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="ConfigMissingSummaryText" Margin="0,6,0,0" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="ConfigCheckVideoText" Margin="0,8,0,0" Text=""/>
+                                    <TextBlock x:Name="ConfigCheckOutputText" Margin="0,4,0,0" Text=""/>
+                                    <TextBlock x:Name="ConfigCheckSubtitleText" Margin="0,4,0,0" Text=""/>
+                                    <TextBlock x:Name="ConfigCheckWatermarkText" Margin="0,4,0,0" Text=""/>
+                                    <TextBlock x:Name="ConfigCheckTextOverlayText" Margin="0,4,0,0" Text=""/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer x:Name="LogTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
