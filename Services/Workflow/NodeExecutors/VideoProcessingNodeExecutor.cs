@@ -448,7 +448,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps, bool includeTextOverlay)
         {
-            var filters = new List<string> { $"fps={extractFps:0.###}", BuildEqFilter(node) };
+            var filters = new List<string>();
+            if (node.FrameResizeScale < 0.999)
+            {
+                var sc = node.FrameResizeScale.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"scale=iw*{sc}:ih*{sc}");
+            }
+
+            filters.Add($"fps={extractFps:0.###}");
+            filters.Add(BuildEqFilter(node));
             if (Math.Abs(node.Hue) > 0.01)
             {
                 // Keep hue transform in dedicated filter for broader FFmpeg compatibility.
@@ -552,7 +560,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static string BuildVideoFilterChainWithoutFps(VideoProcessingNode node)
         {
-            var filters = new List<string> { BuildEqFilter(node) };
+            var filters = new List<string>();
+            if (node.FrameResizeScale < 0.999)
+            {
+                var sc = node.FrameResizeScale.ToString("0.###", CultureInfo.InvariantCulture);
+                filters.Add($"scale=iw*{sc}:ih*{sc}");
+            }
+
+            filters.Add(BuildEqFilter(node));
             if (Math.Abs(node.Hue) > 0.01)
             {
                 var hueRadians = (node.Hue * Math.PI / 180d).ToString("0.######", CultureInfo.InvariantCulture);

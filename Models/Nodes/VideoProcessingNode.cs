@@ -115,6 +115,7 @@ namespace FlowMy.Models.Nodes
         private string _encoderPreset = "medium";
         private double _crf = 23;
         private double _resolutionScale = 1;
+        private double _frameResizeScale = 1.0;
         private int? _fixedResolutionHeight;
         private bool _trimEnabled;
         private double _trimStartSec;
@@ -509,6 +510,21 @@ namespace FlowMy.Models.Nodes
             {
                 var next = value < 0.1 ? 0.1 : (value > 1 ? 1 : value);
                 if (Math.Abs(_resolutionScale - next) > 0.001) { _resolutionScale = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double FrameResizeScale
+        {
+            get => _frameResizeScale;
+            set
+            {
+                // UI slider: 0.4 - 1.0. Keep a narrow range to avoid unexpected scaling.
+                var next = value < 0.4 ? 0.4 : (value > 1.0 ? 1.0 : value);
+                if (Math.Abs(_frameResizeScale - next) > 0.001)
+                {
+                    _frameResizeScale = next;
+                    OnPropertyChanged();
+                }
             }
         }
 

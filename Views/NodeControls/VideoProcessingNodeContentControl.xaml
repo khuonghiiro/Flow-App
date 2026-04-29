@@ -462,12 +462,11 @@
                                   Volume="0.7"
                                   ScrubbingEnabled="False"
                                   Visibility="Collapsed"
-                                  MouseLeftButtonUp="PreviewMedia_MouseLeftButtonUp"
                                   Cursor="Hand"/>
                 </Viewbox>
                 <Grid Grid.Row="1" x:Name="VideoAreaGrid">
                     <Grid x:Name="PreviewPlaceholder"
-                          Panel.ZIndex="1"
+                          Panel.ZIndex="10"
                           Visibility="Visible">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="Chưa chọn video"
@@ -484,6 +483,7 @@
                                 Margin="0,10,0,0"
                                 Padding="16,0"
                                 Background="#CCDC2626"
+                                IsHitTestVisible="True"
                                 Click="OpenVideoInPlaceholderButton_Click"
                                 Style="{DynamicResource PrimaryButton}">
                             <StackPanel Orientation="Horizontal">
@@ -737,6 +737,34 @@
                                         </ComboBox>
                                         <Slider Grid.Column="1" x:Name="JpegQualitySlider" Minimum="0" Maximum="100" Value="90" Style="{StaticResource ModernSliderStyle}" ToolTip="Chất lượng JPEG 0-100. 85-95 phù hợp cho AI vision."/>
                                     </Grid>
+                                    <TextBlock x:Name="JpegQualityLabel"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                               Margin="0,2,0,6"
+                                               Visibility="Collapsed"
+                                               Text="Quality: 90/100"/>
+                                    <TextBlock Text="Resize output frames"
+                                               FontSize="10.5"
+                                               FontWeight="SemiBold"
+                                               Margin="0,6,0,4"/>
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="FrameResizeSlider"
+                                                Minimum="0.4"
+                                                Maximum="1.0"
+                                                Value="1.0"
+                                                Style="{StaticResource ModernSliderStyle}"/>
+                                        <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
+                                            <TextBlock x:Name="FrameResizeLabel"
+                                                       FontSize="10"
+                                                       FontFamily="Consolas"
+                                                       HorizontalAlignment="Center"
+                                                       Text="1920×1080"/>
+                                        </Border>
+                                    </Grid>
                                     <CheckBox x:Name="ExtractAllFramesCheckBox" Content="Tách tất cả frame" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Lấy toàn bộ frame theo FPS gốc của video."/>
                                     <Border Style="{StaticResource InnerCardStyle}" Margin="0,6,0,0" Padding="10,8">
                                         <Grid>
@@ -762,46 +790,51 @@
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
-                                <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
-                            </Grid>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="160"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Live Preview" VerticalAlignment="Center" FontSize="10.5" Opacity="0.8"/>
-                                <ComboBox x:Name="PreviewQualityCombo"
-                                          Grid.Column="2"
-                                          Height="26"
-                                          ToolTip="Low: kéo mượt hơn, High: seek chi tiết hơn nhưng nặng decode."
-                                          Style="{StaticResource DarkComboBoxStyle}">
-                                    <ComboBoxItem Content="Auto (Smart)" Tag="auto"/>
-                                    <ComboBoxItem Content="Low (Smooth)" Tag="low"/>
-                                    <ComboBoxItem Content="Normal" Tag="normal"/>
-                                    <ComboBoxItem Content="High (Accurate)" Tag="high"/>
-                                </ComboBox>
-                            </Grid>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="160"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Preview Color" VerticalAlignment="Center" FontSize="10.5" Opacity="0.8"/>
-                                <ComboBox x:Name="PreviewVisualStrengthCombo"
-                                          Grid.Column="2"
-                                          Height="26"
-                                          ToolTip="Fast: nhẹ, Balanced: cân bằng, Strong: hiệu ứng rõ nhất trên preview."
-                                          Style="{StaticResource DarkComboBoxStyle}">
-                                    <ComboBoxItem Content="Fast" Tag="fast"/>
-                                    <ComboBoxItem Content="Balanced" Tag="balanced"/>
-                                    <ComboBoxItem Content="Strong" Tag="strong"/>
-                                </ComboBox>
-                            </Grid>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,6" Padding="10,8">
+                                <StackPanel>
+                                    <TextBlock Text="Configuration" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
+                                        <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="160"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Live Preview" VerticalAlignment="Center" FontSize="10.5" Opacity="0.8"/>
+                                        <ComboBox x:Name="PreviewQualityCombo"
+                                                  Grid.Column="2"
+                                                  Height="26"
+                                                  ToolTip="Low: kéo mượt hơn, High: seek chi tiết hơn nhưng nặng decode."
+                                                  Style="{StaticResource DarkComboBoxStyle}">
+                                            <ComboBoxItem Content="Auto (Smart)" Tag="auto"/>
+                                            <ComboBoxItem Content="Low (Smooth)" Tag="low"/>
+                                            <ComboBoxItem Content="Normal" Tag="normal"/>
+                                            <ComboBoxItem Content="High (Accurate)" Tag="high"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="160"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Preview Color" VerticalAlignment="Center" FontSize="10.5" Opacity="0.8"/>
+                                        <ComboBox x:Name="PreviewVisualStrengthCombo"
+                                                  Grid.Column="2"
+                                                  Height="26"
+                                                  ToolTip="Fast: nhẹ, Balanced: cân bằng, Strong: hiệu ứng rõ nhất trên preview."
+                                                  Style="{StaticResource DarkComboBoxStyle}">
+                                            <ComboBoxItem Content="Fast" Tag="fast"/>
+                                            <ComboBoxItem Content="Balanced" Tag="balanced"/>
+                                            <ComboBoxItem Content="Strong" Tag="strong"/>
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer x:Name="GradingTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
@@ -839,17 +872,37 @@
                             <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions><Slider x:Name="DenoiseSlider" Minimum="0" Maximum="10" Value="3" IsEnabled="False" Style="{StaticResource ModernSliderStyle}"/><Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="DenoiseLabel" HorizontalAlignment="Center"/></Border></Grid>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><TextBlock Text="Làm mờ Gaussian"/><ToggleButton x:Name="BlurToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid></Border>
                             <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions><Slider x:Name="BlurSlider" Minimum="1" Maximum="15" Value="3" IsEnabled="False" Style="{StaticResource ModernSliderStyle}"/><Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="BlurLabel" HorizontalAlignment="Center"/></Border></Grid>
-                            <WrapPanel Margin="0,0,0,8">
-                                <Button x:Name="Rotate0Button" Content="0°" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Rotate90Button" Content="90° ↻" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Rotate180Button" Content="180°" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Rotate270Button" Content="270° ↺" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="FlipHButton" Content="Lật ngang" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="FlipVButton" Content="Lật dọc" Style="{StaticResource PresetChipStyle}"/>
-                            </WrapPanel>
-                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><TextBlock Text="Chống rung"/><ToggleButton x:Name="StabilizeToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid></Border>
-                            <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions><Slider x:Name="SpeedSlider" Minimum="0.25" Maximum="4" Value="1" TickFrequency="0.25" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}"/><Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="SpeedLabel" HorizontalAlignment="Center" Text="1.0x"/></Border></Grid>
-                            <TextBlock Text="Watermark / Logo" FontSize="11.5" FontWeight="SemiBold" Margin="0,12,0,6"/>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,8">
+                                <StackPanel>
+                                    <TextBlock Text="Transform" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <WrapPanel Margin="0,0,0,0">
+                                        <Button x:Name="Rotate0Button" Content="0°" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                        <Button x:Name="Rotate90Button" Content="90° ↻" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                        <Button x:Name="Rotate180Button" Content="180°" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                        <Button x:Name="Rotate270Button" Content="270° ↺" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                        <Button x:Name="FlipHButton" Content="Lật ngang" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                        <Button x:Name="FlipVButton" Content="Lật dọc" Style="{StaticResource PresetChipStyle}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,8">
+                                <StackPanel>
+                                    <TextBlock Text="Stabilize &amp; Speed" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <Grid>
+                                        <TextBlock Text="Chống rung"/>
+                                        <ToggleButton x:Name="StabilizeToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
+                                        <Slider x:Name="SpeedSlider" Minimum="0.25" Maximum="4" Value="1" TickFrequency="0.25" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}"/>
+                                        <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
+                                            <TextBlock x:Name="SpeedLabel" HorizontalAlignment="Center" Text="1.0x"/>
+                                        </Border>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <Border Height="1" Background="{DynamicResource ThemeInnerCardBorderBrush}" Opacity="0.7" Margin="0,10,0,10"/>
+                            <TextBlock Text="Watermark / Logo" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8">
                                 <StackPanel>
                                     <Grid>
@@ -1074,24 +1127,33 @@
                                 </Grid>
                             </Border>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions><Slider x:Name="CrfSlider" Minimum="0" Maximum="51" Value="23" Style="{StaticResource ModernSliderStyle}"/><Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="CrfLabel" HorizontalAlignment="Center"/></Border></Grid></Border>
-                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><TextBlock Text="Mã hóa hai lượt (chất lượng cao hơn)"/><ToggleButton x:Name="TwoPassToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid></Border>
-                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                    <StackPanel><TextBlock Text="Audio Codec" FontSize="10" Opacity="0.6"/><ComboBox x:Name="AudioCodecCombo" Height="28" Style="{StaticResource DarkComboBoxStyle}"><ComboBoxItem Content="AAC" Tag="aac" IsSelected="True"/><ComboBoxItem Content="MP3" Tag="mp3"/><ComboBoxItem Content="Opus" Tag="opus"/><ComboBoxItem Content="Copy" Tag="copy"/></ComboBox></StackPanel>
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0"><TextBlock Text="Audio Bitrate" FontSize="10" Opacity="0.6"/><ComboBox x:Name="AudioBitrateCombo" Height="28" Style="{StaticResource DarkComboBoxStyle}"><ComboBoxItem Content="128k"/><ComboBoxItem Content="192k" IsSelected="True"/><ComboBoxItem Content="256k"/><ComboBoxItem Content="320k"/></ComboBox></StackPanel>
-                                </Grid>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,8">
+                                <StackPanel>
+                                    <Grid>
+                                        <TextBlock Text="Mã hóa hai lượt (chất lượng cao hơn)"/>
+                                        <ToggleButton x:Name="TwoPassToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/>
+                                    </Grid>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Text="Audio Codec" FontSize="10" Opacity="0.6"/><ComboBox x:Name="AudioCodecCombo" Height="28" Style="{StaticResource DarkComboBoxStyle}"><ComboBoxItem Content="AAC" Tag="aac" IsSelected="True"/><ComboBoxItem Content="MP3" Tag="mp3"/><ComboBoxItem Content="Opus" Tag="opus"/><ComboBoxItem Content="Copy" Tag="copy"/></ComboBox></StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="8,0,0,0"><TextBlock Text="Audio Bitrate" FontSize="10" Opacity="0.6"/><ComboBox x:Name="AudioBitrateCombo" Height="28" Style="{StaticResource DarkComboBoxStyle}"><ComboBoxItem Content="128k"/><ComboBoxItem Content="192k" IsSelected="True"/><ComboBoxItem Content="256k"/><ComboBoxItem Content="320k"/></ComboBox></StackPanel>
+                                    </Grid>
+                                </StackPanel>
                             </Border>
-                            <WrapPanel Margin="0,0,0,8">
-                                <Button x:Name="Scale100Button" Content="100%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Scale75Button" Content="75%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Scale50Button" Content="50%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Scale25Button" Content="25%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Scale1080Button" Content="1080p" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
-                                <Button x:Name="Scale720Button" Content="720p" Style="{StaticResource PresetChipStyle}"/>
-                            </WrapPanel>
-                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><TextBlock Text="Cắt video"/><ToggleButton x:Name="TrimToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid></Border>
-                            <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="0"><TextBlock x:Name="TrimStartText" HorizontalAlignment="Center" Text="00:00"/></Border><TextBlock Grid.Column="1" Text="→" HorizontalAlignment="Center"/><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="2"><TextBlock x:Name="TrimEndText" HorizontalAlignment="Center" Text="00:00"/></Border></Grid>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,8">
+                                <WrapPanel>
+                                    <Button x:Name="Scale100Button" Content="100%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                    <Button x:Name="Scale75Button" Content="75%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                    <Button x:Name="Scale50Button" Content="50%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                    <Button x:Name="Scale25Button" Content="25%" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                    <Button x:Name="Scale1080Button" Content="1080p" Style="{StaticResource PresetChipStyle}" Margin="0,0,6,6"/>
+                                    <Button x:Name="Scale720Button" Content="720p" Style="{StaticResource PresetChipStyle}"/>
+                                </WrapPanel>
+                            </Border>
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,8">
+                                <StackPanel>
+                                    <Grid><TextBlock Text="Cắt video"/><ToggleButton x:Name="TrimToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid>
+                                    <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="0"><TextBlock x:Name="TrimStartText" HorizontalAlignment="Center" Text="00:00"/></Border><TextBlock Grid.Column="1" Text="→" HorizontalAlignment="Center"/><Border Style="{StaticResource ValueBadgeStyle}" Grid.Column="2"><TextBlock x:Name="TrimEndText" HorizontalAlignment="Center" Text="00:00"/></Border></Grid>
                             <CheckBox x:Name="TrimReviewCheckBox"
                                       Content="Trim Review (dùng slider cắt để xem trước)"
                                       Style="{StaticResource ReadableCheckBoxStyle}"
@@ -1130,11 +1192,15 @@
                                         BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8"
-                                        MinHeight="88"
+                                        MinHeight="120"
                                         Padding="8">
                                     <StackPanel>
                                         <TextBlock Text="Frame Start" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,6"/>
-                                        <Image x:Name="TrimStartFrameImage" Height="56" Stretch="UniformToFill" Visibility="Collapsed"/>
+                                        <Image x:Name="TrimStartFrameImage"
+                                               MinHeight="40"
+                                               MaxHeight="120"
+                                               Stretch="Uniform"
+                                               Visibility="Collapsed"/>
                                         <TextBlock x:Name="TrimStartFrameHintText" Text="Thả chuột để load..." FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Opacity="0.7" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
@@ -1144,15 +1210,21 @@
                                         BorderThickness="1"
                                         CornerRadius="8"
                                         Padding="8"
-                                        MinHeight="88"
+                                        MinHeight="120"
                                         Margin="8,0,0,0">
                                     <StackPanel>
                                         <TextBlock Text="Frame End" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,6"/>
-                                        <Image x:Name="TrimEndFrameImage" Height="56" Stretch="UniformToFill" Visibility="Collapsed"/>
+                                        <Image x:Name="TrimEndFrameImage"
+                                               MinHeight="40"
+                                               MaxHeight="120"
+                                               Stretch="Uniform"
+                                               Visibility="Collapsed"/>
                                         <TextBlock x:Name="TrimEndFrameHintText" Text="Thả chuột để load..." FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Opacity="0.7" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
+                                </StackPanel>
+                            </Border>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputPathText" Height="28" FontSize="10.5" Padding="6,4" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/><Button x:Name="BrowseOutputButton" Grid.Column="1" Height="28" Margin="6,0,0,0" Content="..." Padding="8,0" Style="{DynamicResource SecondaryButton}"/></Grid>
                         </StackPanel>
                     </ScrollViewer>
