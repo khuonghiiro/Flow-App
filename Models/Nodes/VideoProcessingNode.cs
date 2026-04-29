@@ -136,6 +136,20 @@ namespace FlowMy.Models.Nodes
         private int _overlayFontSize = 32;
         private string _overlayFontColor = "white";
         private string _textPosition = "BC";
+        private bool _frameLabelEnabled;
+        private string _frameLabelTemplate = "Frame {index} - {time}";
+        private string _frameLabelPosition = "TL";
+        private string _frameLabelTextColor = "black";
+        private string _frameLabelBackgroundColor = "white";
+        private int _frameLabelFontSize = 12;
+        private double _frameLabelX = 0.765223;
+        private double _frameLabelY = 0.005624;
+        private double _frameLabelW = 0.233889;
+        private double _frameLabelH = 0.090679;
+        private int _frameLabelHorizontalPadding = 2;
+        private int _frameLabelVerticalPadding = 4;
+        private string _frameLabelTimeFormat = "HHMMSS";
+        private int _extractParallelJobs = 1;
         private string _frameOutputFormat = "png";
         private int _jpegQuality = 90;
         private bool _extractAllFrames;
@@ -728,6 +742,142 @@ namespace FlowMy.Models.Nodes
             {
                 var next = string.IsNullOrWhiteSpace(value) ? "BC" : value.Trim().ToUpperInvariant();
                 if (_textPosition != next) { _textPosition = next; OnPropertyChanged(); }
+            }
+        }
+
+        public bool FrameLabelEnabled
+        {
+            get => _frameLabelEnabled;
+            set { if (_frameLabelEnabled != value) { _frameLabelEnabled = value; OnPropertyChanged(); } }
+        }
+
+        public string FrameLabelTemplate
+        {
+            get => _frameLabelTemplate;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "Frame {index} - {time}" : value;
+                if (_frameLabelTemplate != next) { _frameLabelTemplate = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string FrameLabelPosition
+        {
+            get => _frameLabelPosition;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "TL" : value.Trim().ToUpperInvariant();
+                if (_frameLabelPosition != next) { _frameLabelPosition = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string FrameLabelTextColor
+        {
+            get => _frameLabelTextColor;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "black" : value.Trim();
+                if (_frameLabelTextColor != next) { _frameLabelTextColor = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string FrameLabelBackgroundColor
+        {
+            get => _frameLabelBackgroundColor;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "white" : value.Trim();
+                if (_frameLabelBackgroundColor != next) { _frameLabelBackgroundColor = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int FrameLabelFontSize
+        {
+            get => _frameLabelFontSize;
+            set
+            {
+                var next = value < 8 ? 8 : (value > 120 ? 120 : value);
+                if (_frameLabelFontSize != next) { _frameLabelFontSize = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double FrameLabelX
+        {
+            get => _frameLabelX;
+            set
+            {
+                var next = Math.Clamp(value, 0, 1);
+                if (Math.Abs(_frameLabelX - next) > 0.0001) { _frameLabelX = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double FrameLabelY
+        {
+            get => _frameLabelY;
+            set
+            {
+                var next = Math.Clamp(value, 0, 1);
+                if (Math.Abs(_frameLabelY - next) > 0.0001) { _frameLabelY = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double FrameLabelW
+        {
+            get => _frameLabelW;
+            set
+            {
+                var next = Math.Clamp(value, 0.05, 1);
+                if (Math.Abs(_frameLabelW - next) > 0.0001) { _frameLabelW = next; OnPropertyChanged(); }
+            }
+        }
+
+        public double FrameLabelH
+        {
+            get => _frameLabelH;
+            set
+            {
+                var next = Math.Clamp(value, 0.03, 1);
+                if (Math.Abs(_frameLabelH - next) > 0.0001) { _frameLabelH = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int FrameLabelHorizontalPadding
+        {
+            get => _frameLabelHorizontalPadding;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 120 ? 120 : value);
+                if (_frameLabelHorizontalPadding != next) { _frameLabelHorizontalPadding = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int FrameLabelVerticalPadding
+        {
+            get => _frameLabelVerticalPadding;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 80 ? 80 : value);
+                if (_frameLabelVerticalPadding != next) { _frameLabelVerticalPadding = next; OnPropertyChanged(); }
+            }
+        }
+
+        public string FrameLabelTimeFormat
+        {
+            get => _frameLabelTimeFormat;
+            set
+            {
+                var next = string.Equals(value, "HHMMSS", StringComparison.OrdinalIgnoreCase) ? "HHMMSS" : "MMSS";
+                if (_frameLabelTimeFormat != next) { _frameLabelTimeFormat = next; OnPropertyChanged(); }
+            }
+        }
+
+        public int ExtractParallelJobs
+        {
+            get => _extractParallelJobs;
+            set
+            {
+                var next = value < 1 ? 1 : (value > 8 ? 8 : value);
+                if (_extractParallelJobs != next) { _extractParallelJobs = next; OnPropertyChanged(); }
             }
         }
 

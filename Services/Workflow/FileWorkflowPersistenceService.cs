@@ -2108,8 +2108,20 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
             if (properties.TryGetValue("OutputBase64", out var obObj) && obObj != null && bool.TryParse(obObj.ToString(), out var ob))
                 videoNode.OutputBase64 = ob;
+            if (properties.TryGetValue("UseDialogVideoConfig", out var udvcObj) && udvcObj != null && bool.TryParse(udvcObj.ToString(), out var udvc))
+                videoNode.UseDialogVideoConfig = udvc;
+            if (properties.TryGetValue("FrameOutputFolderPath", out var fofpObj))
+                videoNode.FrameOutputFolderPath = fofpObj?.ToString();
+            if (properties.TryGetValue("DefaultOutputVideoPath", out var dovpObj))
+                videoNode.DefaultOutputVideoPath = dovpObj?.ToString();
+            if (properties.TryGetValue("SecondsPerFrame", out var spfObj) && spfObj != null && double.TryParse(spfObj.ToString(), out var spf))
+                videoNode.SecondsPerFrame = spf;
+            if (properties.TryGetValue("ExtractFrameCount", out var efcObj) && efcObj != null && int.TryParse(efcObj.ToString(), out var efc))
+                videoNode.ExtractFrameCount = efc;
             if (properties.TryGetValue("PreferGpu", out var pgObj) && pgObj != null && bool.TryParse(pgObj.ToString(), out var pg))
                 videoNode.PreferGpu = pg;
+            if (properties.TryGetValue("PreferredHwAccel", out var phaObj))
+                videoNode.PreferredHwAccel = phaObj?.ToString() ?? "none";
 
             if (properties.TryGetValue("SourceFps", out var sfObj) && sfObj != null && double.TryParse(sfObj.ToString(), out var sf))
                 videoNode.SourceFps = sf;
@@ -2123,6 +2135,120 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 videoNode.Saturation = st;
             if (properties.TryGetValue("Hue", out var huObj) && huObj != null && double.TryParse(huObj.ToString(), out var hu))
                 videoNode.Hue = hu;
+            if (properties.TryGetValue("Gamma", out var gmObj) && gmObj != null && double.TryParse(gmObj.ToString(), out var gm))
+                videoNode.Gamma = gm;
+            if (properties.TryGetValue("SharpenEnabled", out var seObj) && seObj != null && bool.TryParse(seObj.ToString(), out var se))
+                videoNode.SharpenEnabled = se;
+            if (properties.TryGetValue("SharpenStrength", out var ssObj) && ssObj != null && double.TryParse(ssObj.ToString(), out var ss))
+                videoNode.SharpenStrength = ss;
+            if (properties.TryGetValue("DenoiseEnabled", out var deObj) && deObj != null && bool.TryParse(deObj.ToString(), out var de))
+                videoNode.DenoiseEnabled = de;
+            if (properties.TryGetValue("DenoiseStrength", out var dsObj) && dsObj != null && double.TryParse(dsObj.ToString(), out var ds))
+                videoNode.DenoiseStrength = ds;
+            if (properties.TryGetValue("BlurEnabled", out var beObj) && beObj != null && bool.TryParse(beObj.ToString(), out var be))
+                videoNode.BlurEnabled = be;
+            if (properties.TryGetValue("BlurRadius", out var brdObj) && brdObj != null && double.TryParse(brdObj.ToString(), out var brd))
+                videoNode.BlurRadius = brd;
+            if (properties.TryGetValue("StabilizeEnabled", out var stabEnabledObj) && stabEnabledObj != null && bool.TryParse(stabEnabledObj.ToString(), out var stabEnabledVal))
+                videoNode.StabilizeEnabled = stabEnabledVal;
+            if (properties.TryGetValue("SpeedFactor", out var spdObj) && spdObj != null && double.TryParse(spdObj.ToString(), out var spd))
+                videoNode.SpeedFactor = spd;
+            if (properties.TryGetValue("RotationDegrees", out var rotObj) && rotObj != null && double.TryParse(rotObj.ToString(), out var rot))
+                videoNode.RotationDegrees = rot;
+            if (properties.TryGetValue("FlipH", out var flipHObj) && flipHObj != null && bool.TryParse(flipHObj.ToString(), out var flipHVal))
+                videoNode.FlipH = flipHVal;
+            if (properties.TryGetValue("FlipV", out var flipVObj) && flipVObj != null && bool.TryParse(flipVObj.ToString(), out var flipVVal))
+                videoNode.FlipV = flipVVal;
+            if (properties.TryGetValue("OutputFormat", out var ofObj))
+                videoNode.OutputFormat = ofObj?.ToString() ?? "mp4_h264";
+            if (properties.TryGetValue("EncoderPreset", out var epObj))
+                videoNode.EncoderPreset = epObj?.ToString() ?? "medium";
+            if (properties.TryGetValue("Crf", out var crfObj) && crfObj != null && double.TryParse(crfObj.ToString(), out var crf))
+                videoNode.Crf = crf;
+            if (properties.TryGetValue("ResolutionScale", out var rsObj) && rsObj != null && double.TryParse(rsObj.ToString(), out var rs))
+                videoNode.ResolutionScale = rs;
+            if (properties.TryGetValue("FrameResizeScale", out var frsObj) && frsObj != null && double.TryParse(frsObj.ToString(), out var frs))
+                videoNode.FrameResizeScale = frs;
+            if (properties.TryGetValue("TrimEnabled", out var teObj) && teObj != null && bool.TryParse(teObj.ToString(), out var te))
+                videoNode.TrimEnabled = te;
+            if (properties.TryGetValue("TrimStartSec", out var tssObj) && tssObj != null && double.TryParse(tssObj.ToString(), out var tss))
+                videoNode.TrimStartSec = tss;
+            if (properties.TryGetValue("TrimEndSec", out var tesObj) && tesObj != null && double.TryParse(tesObj.ToString(), out var tes))
+                videoNode.TrimEndSec = tes;
+            if (properties.TryGetValue("OutputPathOverride", out var opoObj))
+                videoNode.OutputPathOverride = opoObj?.ToString();
+            if (properties.TryGetValue("SourceAudioEnabled", out var saeObj) && saeObj != null && bool.TryParse(saeObj.ToString(), out var sae))
+                videoNode.SourceAudioEnabled = sae;
+            if (properties.TryGetValue("PreviewVolume", out var pvObj) && pvObj != null && double.TryParse(pvObj.ToString(), out var pv))
+                videoNode.PreviewVolume = pv;
+            if (properties.TryGetValue("PreviewQualityMode", out var pqmObj))
+                videoNode.PreviewQualityMode = pqmObj?.ToString() ?? "normal";
+            if (properties.TryGetValue("PreviewVisualStrengthMode", out var pvsmObj))
+                videoNode.PreviewVisualStrengthMode = pvsmObj?.ToString() ?? "balanced";
+            if (properties.TryGetValue("WatermarkEnabled", out var wmeObj) && wmeObj != null && bool.TryParse(wmeObj.ToString(), out var wme))
+                videoNode.WatermarkEnabled = wme;
+            if (properties.TryGetValue("WatermarkImagePath", out var wmipObj))
+                videoNode.WatermarkImagePath = wmipObj?.ToString();
+            if (properties.TryGetValue("WatermarkPosition", out var wmpObj))
+                videoNode.WatermarkPosition = wmpObj?.ToString() ?? "BR";
+            if (properties.TryGetValue("WatermarkOpacity", out var wmoObj) && wmoObj != null && double.TryParse(wmoObj.ToString(), out var wmo))
+                videoNode.WatermarkOpacity = wmo;
+            if (properties.TryGetValue("WatermarkPaddingPx", out var wmpxObj) && wmpxObj != null && int.TryParse(wmpxObj.ToString(), out var wmpx))
+                videoNode.WatermarkPaddingPx = wmpx;
+            if (properties.TryGetValue("TextOverlayEnabled", out var toeObj) && toeObj != null && bool.TryParse(toeObj.ToString(), out var toe))
+                videoNode.TextOverlayEnabled = toe;
+            if (properties.TryGetValue("OverlayText", out var otObj))
+                videoNode.OverlayText = otObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("OverlayFont", out var ofnObj))
+                videoNode.OverlayFont = ofnObj?.ToString() ?? "Arial";
+            if (properties.TryGetValue("OverlayFontSize", out var ofsObj) && ofsObj != null && int.TryParse(ofsObj.ToString(), out var ofs))
+                videoNode.OverlayFontSize = ofs;
+            if (properties.TryGetValue("OverlayFontColor", out var ofcObj))
+                videoNode.OverlayFontColor = ofcObj?.ToString() ?? "white";
+            if (properties.TryGetValue("TextPosition", out var tpObj))
+                videoNode.TextPosition = tpObj?.ToString() ?? "BC";
+            if (properties.TryGetValue("FrameLabelEnabled", out var fleObj) && fleObj != null && bool.TryParse(fleObj.ToString(), out var fle))
+                videoNode.FrameLabelEnabled = fle;
+            if (properties.TryGetValue("FrameLabelTemplate", out var fltObj))
+                videoNode.FrameLabelTemplate = fltObj?.ToString() ?? "Frame {index} - {time}";
+            if (properties.TryGetValue("FrameLabelTextColor", out var fltcObj))
+                videoNode.FrameLabelTextColor = fltcObj?.ToString() ?? "black";
+            if (properties.TryGetValue("FrameLabelBackgroundColor", out var flbcObj))
+                videoNode.FrameLabelBackgroundColor = flbcObj?.ToString() ?? "white";
+            if (properties.TryGetValue("FrameLabelFontSize", out var flfsObj) && flfsObj != null && int.TryParse(flfsObj.ToString(), out var flfs))
+                videoNode.FrameLabelFontSize = flfs;
+            if (properties.TryGetValue("FrameLabelX", out var flxObj) && flxObj != null && double.TryParse(flxObj.ToString(), out var flx))
+                videoNode.FrameLabelX = flx;
+            if (properties.TryGetValue("FrameLabelY", out var flyObj) && flyObj != null && double.TryParse(flyObj.ToString(), out var fly))
+                videoNode.FrameLabelY = fly;
+            if (properties.TryGetValue("FrameLabelW", out var flwObj) && flwObj != null && double.TryParse(flwObj.ToString(), out var flw))
+                videoNode.FrameLabelW = flw;
+            if (properties.TryGetValue("FrameLabelH", out var flhObj) && flhObj != null && double.TryParse(flhObj.ToString(), out var flh))
+                videoNode.FrameLabelH = flh;
+            if (properties.TryGetValue("FrameLabelHorizontalPadding", out var flhpObj) && flhpObj != null && int.TryParse(flhpObj.ToString(), out var flhp))
+                videoNode.FrameLabelHorizontalPadding = flhp;
+            if (properties.TryGetValue("FrameLabelVerticalPadding", out var flvpObj) && flvpObj != null && int.TryParse(flvpObj.ToString(), out var flvp))
+                videoNode.FrameLabelVerticalPadding = flvp;
+            if (properties.TryGetValue("FrameLabelTimeFormat", out var fltfObj))
+                videoNode.FrameLabelTimeFormat = fltfObj?.ToString() ?? "MMSS";
+            if (properties.TryGetValue("ExtractParallelJobs", out var epjObj) && epjObj != null && int.TryParse(epjObj.ToString(), out var epj))
+                videoNode.ExtractParallelJobs = epj;
+            if (properties.TryGetValue("FrameOutputFormat", out var fofObj))
+                videoNode.FrameOutputFormat = fofObj?.ToString() ?? "png";
+            if (properties.TryGetValue("JpegQuality", out var jqObj) && jqObj != null && int.TryParse(jqObj.ToString(), out var jq))
+                videoNode.JpegQuality = jq;
+            if (properties.TryGetValue("ExtractAllFrames", out var eafObj) && eafObj != null && bool.TryParse(eafObj.ToString(), out var eaf))
+                videoNode.ExtractAllFrames = eaf;
+            if (properties.TryGetValue("TwoPassEnabled", out var tpeObj) && tpeObj != null && bool.TryParse(tpeObj.ToString(), out var tpe))
+                videoNode.TwoPassEnabled = tpe;
+            if (properties.TryGetValue("AudioCodec", out var acObj))
+                videoNode.AudioCodec = acObj?.ToString() ?? "aac";
+            if (properties.TryGetValue("AudioBitrate", out var abrObj))
+                videoNode.AudioBitrate = abrObj?.ToString() ?? "192k";
+            if (properties.TryGetValue("SubtitlePath", out var subObj))
+                videoNode.SubtitlePath = subObj?.ToString();
+            if (properties.TryGetValue("BurnSubtitleEnabled", out var bseObj) && bseObj != null && bool.TryParse(bseObj.ToString(), out var bse))
+                videoNode.BurnSubtitleEnabled = bse;
 
             if (properties.TryGetValue("AudioTracks", out var atObj) && atObj != null)
             {
@@ -2138,6 +2264,26 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                         {
                             videoNode.AudioTracks.Clear();
                             foreach (var t in tracks) videoNode.AudioTracks.Add(t);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (properties.TryGetValue("Overlays", out var ovObj) && ovObj != null)
+            {
+                try
+                {
+                    string? ovJson = ovObj is string s ? s : ovObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(ovJson))
+                    {
+                        var overlays = JsonSerializer.Deserialize<List<OverlayItem>>(ovJson);
+                        if (overlays != null)
+                        {
+                            videoNode.Overlays.Clear();
+                            foreach (var o in overlays) videoNode.Overlays.Add(o);
                         }
                     }
                 }
@@ -4700,15 +4846,87 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["OutputFolderSourceOutputKey"] = videoNode.OutputFolderSourceOutputKey;
 
             dict["OutputBase64"] = videoNode.OutputBase64;
+            dict["UseDialogVideoConfig"] = videoNode.UseDialogVideoConfig;
+            if (!string.IsNullOrWhiteSpace(videoNode.FrameOutputFolderPath))
+                dict["FrameOutputFolderPath"] = videoNode.FrameOutputFolderPath;
+            if (!string.IsNullOrWhiteSpace(videoNode.DefaultOutputVideoPath))
+                dict["DefaultOutputVideoPath"] = videoNode.DefaultOutputVideoPath;
+            dict["SecondsPerFrame"] = videoNode.SecondsPerFrame;
+            dict["ExtractFrameCount"] = videoNode.ExtractFrameCount;
             dict["PreferGpu"] = videoNode.PreferGpu;
+            if (!string.IsNullOrWhiteSpace(videoNode.PreferredHwAccel))
+                dict["PreferredHwAccel"] = videoNode.PreferredHwAccel;
             dict["SourceFps"] = videoNode.SourceFps;
             dict["ExtractFps"] = videoNode.ExtractFps;
             dict["Brightness"] = videoNode.Brightness;
             dict["Contrast"] = videoNode.Contrast;
             dict["Saturation"] = videoNode.Saturation;
             dict["Hue"] = videoNode.Hue;
+            dict["Gamma"] = videoNode.Gamma;
+            dict["SharpenEnabled"] = videoNode.SharpenEnabled;
+            dict["SharpenStrength"] = videoNode.SharpenStrength;
+            dict["DenoiseEnabled"] = videoNode.DenoiseEnabled;
+            dict["DenoiseStrength"] = videoNode.DenoiseStrength;
+            dict["BlurEnabled"] = videoNode.BlurEnabled;
+            dict["BlurRadius"] = videoNode.BlurRadius;
+            dict["StabilizeEnabled"] = videoNode.StabilizeEnabled;
+            dict["SpeedFactor"] = videoNode.SpeedFactor;
+            dict["RotationDegrees"] = videoNode.RotationDegrees;
+            dict["FlipH"] = videoNode.FlipH;
+            dict["FlipV"] = videoNode.FlipV;
+            dict["OutputFormat"] = videoNode.OutputFormat;
+            dict["EncoderPreset"] = videoNode.EncoderPreset;
+            dict["Crf"] = videoNode.Crf;
+            dict["ResolutionScale"] = videoNode.ResolutionScale;
+            dict["FrameResizeScale"] = videoNode.FrameResizeScale;
+            dict["TrimEnabled"] = videoNode.TrimEnabled;
+            dict["TrimStartSec"] = videoNode.TrimStartSec;
+            dict["TrimEndSec"] = videoNode.TrimEndSec;
+            if (!string.IsNullOrWhiteSpace(videoNode.OutputPathOverride))
+                dict["OutputPathOverride"] = videoNode.OutputPathOverride;
+            dict["SourceAudioEnabled"] = videoNode.SourceAudioEnabled;
+            dict["PreviewVolume"] = videoNode.PreviewVolume;
+            dict["PreviewQualityMode"] = videoNode.PreviewQualityMode;
+            dict["PreviewVisualStrengthMode"] = videoNode.PreviewVisualStrengthMode;
+            dict["WatermarkEnabled"] = videoNode.WatermarkEnabled;
+            if (!string.IsNullOrWhiteSpace(videoNode.WatermarkImagePath))
+                dict["WatermarkImagePath"] = videoNode.WatermarkImagePath;
+            dict["WatermarkPosition"] = videoNode.WatermarkPosition;
+            dict["WatermarkOpacity"] = videoNode.WatermarkOpacity;
+            dict["WatermarkPaddingPx"] = videoNode.WatermarkPaddingPx;
+            dict["TextOverlayEnabled"] = videoNode.TextOverlayEnabled;
+            if (!string.IsNullOrWhiteSpace(videoNode.OverlayText))
+                dict["OverlayText"] = videoNode.OverlayText;
+            dict["OverlayFont"] = videoNode.OverlayFont;
+            dict["OverlayFontSize"] = videoNode.OverlayFontSize;
+            dict["OverlayFontColor"] = videoNode.OverlayFontColor;
+            dict["TextPosition"] = videoNode.TextPosition;
+            dict["FrameLabelEnabled"] = videoNode.FrameLabelEnabled;
+            dict["FrameLabelTemplate"] = videoNode.FrameLabelTemplate;
+            dict["FrameLabelTextColor"] = videoNode.FrameLabelTextColor;
+            dict["FrameLabelBackgroundColor"] = videoNode.FrameLabelBackgroundColor;
+            dict["FrameLabelFontSize"] = videoNode.FrameLabelFontSize;
+            dict["FrameLabelX"] = videoNode.FrameLabelX;
+            dict["FrameLabelY"] = videoNode.FrameLabelY;
+            dict["FrameLabelW"] = videoNode.FrameLabelW;
+            dict["FrameLabelH"] = videoNode.FrameLabelH;
+            dict["FrameLabelHorizontalPadding"] = videoNode.FrameLabelHorizontalPadding;
+            dict["FrameLabelVerticalPadding"] = videoNode.FrameLabelVerticalPadding;
+            dict["FrameLabelTimeFormat"] = videoNode.FrameLabelTimeFormat;
+            dict["ExtractParallelJobs"] = videoNode.ExtractParallelJobs;
+            dict["FrameOutputFormat"] = videoNode.FrameOutputFormat;
+            dict["JpegQuality"] = videoNode.JpegQuality;
+            dict["ExtractAllFrames"] = videoNode.ExtractAllFrames;
+            dict["TwoPassEnabled"] = videoNode.TwoPassEnabled;
+            dict["AudioCodec"] = videoNode.AudioCodec;
+            dict["AudioBitrate"] = videoNode.AudioBitrate;
+            if (!string.IsNullOrWhiteSpace(videoNode.SubtitlePath))
+                dict["SubtitlePath"] = videoNode.SubtitlePath;
+            dict["BurnSubtitleEnabled"] = videoNode.BurnSubtitleEnabled;
             if (videoNode.AudioTracks.Count > 0)
                 dict["AudioTracks"] = JsonSerializer.Serialize(videoNode.AudioTracks.ToList());
+            if (videoNode.Overlays.Count > 0)
+                dict["Overlays"] = JsonSerializer.Serialize(videoNode.Overlays.ToList());
 
             dict["TitleDisplayMode"] = videoNode.TitleDisplayMode.ToString();
             dict["TitleColorMode"] = videoNode.TitleColorMode.ToString();

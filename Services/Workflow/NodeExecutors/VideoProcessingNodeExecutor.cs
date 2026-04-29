@@ -98,7 +98,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
 
-                var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: false);
+                var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true);
                 var frameExt = videoNode.FrameOutputFormat switch
                 {
                     "jpg" => "jpg",
@@ -112,7 +112,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var totalDuration = await ProbeDurationSecondsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoInput }));
                 if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
-                frameArgs.AddRange(new[] { "-vf", frameFilter, framePattern });
+                AppendVisualFilterArgs(frameArgs, videoNode, frameFilter);
+                frameArgs.Add(framePattern);
                 await RunFfmpegWithProgressAsync(
                     WithHwaccel(frameArgs, hwaccel),
                     totalDuration,
@@ -143,36 +144,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     "-an",
                 }).ToList();
 
-                if (hasCanvasOverlays)
-                {
-                    var (overlayFilter, imageInputs, outputLabel) = BuildOverlayFilterComplex(videoNode, mainFilter);
-                    foreach (var inputPath in imageInputs)
-                    {
-                        mainArgs.AddRange(new[] { "-i", inputPath });
-                    }
-
-                    mainArgs.AddRange(new[]
-                    {
-                        "-filter_complex", overlayFilter,
-                        "-map", outputLabel
-                    });
-                }
-                else if (videoNode.WatermarkEnabled && !string.IsNullOrWhiteSpace(videoNode.WatermarkImagePath))
-                {
-                    mainArgs.AddRange(new[] { "-i", videoNode.WatermarkImagePath! });
-                    var overlayExpr = BuildOverlayExpression(videoNode);
-                    var overlayAlpha = videoNode.WatermarkOpacity.ToString("0.###", CultureInfo.InvariantCulture);
-                    mainArgs.AddRange(new[]
-                    {
-                        "-filter_complex",
-                        $"[0:v]{mainFilter}[base];[1:v]format=rgba,colorchannelmixer=aa={overlayAlpha}[wm];[base][wm]overlay={overlayExpr}[vout]",
-                        "-map", "[vout]"
-                    });
-                }
-                else
-                {
-                    mainArgs.AddRange(new[] { "-vf", mainFilter });
-                }
+                AppendVisualFilterArgs(mainArgs, videoNode, mainFilter);
                 mainArgs.AddRange(codecArgs);
                 mainArgs.Add(outputBasePath);
 
@@ -506,10 +478,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (includeTextOverlay && node.TextOverlayEnabled && !string.IsNullOrWhiteSpace(node.OverlayText))
             {
                 var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
-                var xExpr = node.TextPosition.Contains('C') ? "(w-tw)/2" : node.TextPosition.EndsWith('L') ? "10" : "w-tw-10";
-                var yExpr = node.TextPosition.StartsWith('T') ? "10" : node.TextPosition.StartsWith('M') ? "(h-th)/2" : "h-th-10";
+                var (xExpr, yExpr) = BuildTextPositionExpression(node.TextPosition, 10);
                 var fontPath = ResolveFontPath(node.OverlayFont);
                 filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={node.OverlayFontSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
+            }
+            if (node.FrameLabelEnabled)
+            {
+                filters.Add(BuildFrameLabelFilter(node));
             }
             if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
             {
@@ -526,6 +501,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var currentLabel = "v0";
             var imageInputIndex = 1;
             var stageIndex = 0;
+
+            if (node.WatermarkEnabled && !string.IsNullOrWhiteSpace(node.WatermarkImagePath) && File.Exists(node.WatermarkImagePath))
+            {
+                var overlayAlpha = node.WatermarkOpacity.ToString("0.###", CultureInfo.InvariantCulture);
+                var watermarkLabel = $"wm{stageIndex}";
+                var nextLabel = $"v{++stageIndex}";
+                imageInputs.Add(node.WatermarkImagePath!);
+                filterChains.Add($"[{imageInputIndex}:v]format=rgba,colorchannelmixer=aa={overlayAlpha}[{watermarkLabel}]");
+                filterChains.Add($"[{currentLabel}][{watermarkLabel}]overlay={BuildOverlayExpression(node)}[{nextLabel}]");
+                currentLabel = nextLabel;
+                imageInputIndex++;
+            }
 
             foreach (var item in node.Overlays.Where(o => o.IsVisible))
             {
@@ -620,6 +607,76 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 "BC" => $"x=(W-w)/2:y=H-h-{node.WatermarkPaddingPx}",
                 _ => $"x=W-w-{node.WatermarkPaddingPx}:y=H-h-{node.WatermarkPaddingPx}"
             };
+        }
+
+        private static void AppendVisualFilterArgs(List<string> args, VideoProcessingNode node, string baseFilter)
+        {
+            var hasCanvasOverlays = node.Overlays.Any(o => o.IsVisible);
+            var hasWatermark = node.WatermarkEnabled &&
+                               !string.IsNullOrWhiteSpace(node.WatermarkImagePath) &&
+                               File.Exists(node.WatermarkImagePath);
+
+            if (hasCanvasOverlays || hasWatermark)
+            {
+                var (overlayFilter, imageInputs, outputLabel) = BuildOverlayFilterComplex(node, baseFilter);
+                foreach (var inputPath in imageInputs)
+                {
+                    args.AddRange(new[] { "-i", inputPath });
+                }
+
+                args.AddRange(new[]
+                {
+                    "-filter_complex", overlayFilter,
+                    "-map", outputLabel
+                });
+                return;
+            }
+
+            args.AddRange(new[] { "-vf", baseFilter });
+        }
+
+        private static (string x, string y) BuildTextPositionExpression(string? position, int paddingPx)
+        {
+            var pos = string.IsNullOrWhiteSpace(position) ? "BR" : position.Trim().ToUpperInvariant();
+            var x = pos.EndsWith('L') ? $"{paddingPx}" :
+                    pos.EndsWith('C') ? "(w-tw)/2" :
+                    $"w-tw-{paddingPx}";
+            var y = pos.StartsWith('T') ? $"{paddingPx}" :
+                    pos.StartsWith('M') ? "(h-th)/2" :
+                    $"h-th-{paddingPx}";
+            return (x, y);
+        }
+
+        private static string BuildFrameLabelFilter(VideoProcessingNode node)
+        {
+            var fontPath = ResolveFontPath(node.OverlayFont).Replace("\\", "/").Replace(":", "\\:");
+            var template = string.IsNullOrWhiteSpace(node.FrameLabelTemplate)
+                ? "Frame {index} - {time}"
+                : node.FrameLabelTemplate;
+
+            var sourceFps = node.SourceFps > 0 ? node.SourceFps : 30;
+            var ffmpegText = template
+                .Replace("\\", "\\\\")
+                .Replace(":", "\\:")
+                .Replace("'", "\\'")
+                .Replace("{index}", "%{eif\\:n+1\\:d}")
+                .Replace("{frame}", $"%{{eif\\:t*{sourceFps.ToString("0.###", CultureInfo.InvariantCulture)}\\:d}}")
+                .Replace("{time}", string.Equals(node.FrameLabelTimeFormat, "HHMMSS", StringComparison.OrdinalIgnoreCase)
+                    ? "%{pts\\:gmtime\\:0\\:%H\\\\\\:%M\\\\\\:%S}"
+                    : "%{pts\\:gmtime\\:0\\:%M\\\\\\:%S}");
+
+            var xExpr = $"iw*{node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture)}";
+            var yExpr = $"ih*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)}";
+            var bg = string.IsNullOrWhiteSpace(node.FrameLabelBackgroundColor) ? "white" : node.FrameLabelBackgroundColor;
+            var fg = string.IsNullOrWhiteSpace(node.FrameLabelTextColor) ? "black" : node.FrameLabelTextColor;
+            var paddingX = Math.Max(0, node.FrameLabelHorizontalPadding);
+            var paddingY = Math.Max(0, node.FrameLabelVerticalPadding);
+            var boxW = $"iw*{node.FrameLabelW.ToString("0.######", CultureInfo.InvariantCulture)}";
+            var boxH = $"ih*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)}";
+            var textX = $"w*{node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture)}+{paddingX}";
+            var textBoxH = $"h*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)}";
+            var textY = $"h*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)}+(({textBoxH}-text_h)/2)+{paddingY}";
+            return $"drawbox=x={xExpr}:y={yExpr}:w={boxW}:h={boxH}:color={bg}@0.92:t=fill,drawtext=text='{ffmpegText}':fontfile='{fontPath}':fontsize={node.FrameLabelFontSize}:fontcolor={fg}:x={textX}:y={textY}";
         }
 
         private static string ResolveFontPath(string? font)
@@ -724,45 +781,123 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var duration = await ProbeDurationSecondsAsync(node.VideoPath, ct).ConfigureAwait(false);
             var sourceFps = node.SourceFps > 0 ? node.SourceFps : await ProbeSourceFpsAsync(node.VideoPath, ct).ConfigureAwait(false);
             if (sourceFps <= 0) sourceFps = 30;
+            var effectiveStart = node.TrimEnabled ? Math.Max(0, node.TrimStartSec) : 0;
+            var effectiveEnd = node.TrimEnabled && node.TrimEndSec > effectiveStart ? Math.Min(duration, node.TrimEndSec) : duration;
+            var effectiveDuration = Math.Max(0.01, effectiveEnd - effectiveStart);
 
             string vfArg;
             var useVsync0 = false;
             if (node.ExtractAllFrames)
             {
-                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, sourceFps), includeTextOverlay: false);
+                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, sourceFps), includeTextOverlay: true);
             }
             else if (node.ExtractFps >= sourceFps)
             {
-                vfArg = BuildVideoFilterChain(node, sourceFps, includeTextOverlay: false);
+                vfArg = BuildVideoFilterChain(node, sourceFps, includeTextOverlay: true);
             }
             else
             {
                 // Allow fractional FPS (e.g. 0.333 fps) directly in the fps filter.
                 // This avoids rounding extractFps to an integer frame-per-second.
-                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, node.ExtractFps), includeTextOverlay: false);
+                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, node.ExtractFps), includeTextOverlay: true);
             }
-
-            var baseArgs = new List<string> { "-y", "-hide_banner", "-loglevel", "error", "-i", node.VideoPath };
-            if (extension == "jpg")
-            {
-                var qv = Math.Max(1, 31 - (int)(node.JpegQuality / 3.35));
-                baseArgs.AddRange(new[] { "-q:v", qv.ToString(CultureInfo.InvariantCulture) });
-            }
-            baseArgs.AddRange(new[] { "-vf", vfArg });
-            if (useVsync0) baseArgs.AddRange(new[] { "-vsync", "0" });
-            baseArgs.Add(pattern);
 
             onLog($"📁 Output: {outputFolder}");
             onLog($"🎞 Mode: {(node.ExtractAllFrames ? "All frames" : $"{node.ExtractFps:0.###} frame/s với offset")}");
+            onLog($"🧵 Parallel jobs: {node.ExtractParallelJobs}");
             onLog($"⚙ Filter: {vfArg}");
 
-            await RunFfmpegWithProgressAsync(
-                BuildTrimAwareArgs(node, baseArgs),
-                duration, onProgress, onLog, ct).ConfigureAwait(false);
+            var maxJobs = Math.Clamp(node.ExtractParallelJobs, 1, 8);
+            if (maxJobs <= 1 || effectiveDuration < 20)
+            {
+                var baseArgs = BuildExtractArgs(node, vfArg, pattern, extension, useVsync0, effectiveStart, effectiveEnd);
+                await RunFfmpegWithProgressAsync(baseArgs, effectiveDuration, onProgress, onLog, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                var jobCount = Math.Min(maxJobs, Math.Max(1, (int)Math.Ceiling(effectiveDuration / 8.0)));
+                var chunkDuration = effectiveDuration / jobCount;
+                var chunkProgress = new double[jobCount];
+                var chunkFolders = new List<string>(jobCount);
+                var tasks = new List<Task>(jobCount);
+
+                for (var i = 0; i < jobCount; i++)
+                {
+                    var chunkStart = effectiveStart + i * chunkDuration;
+                    var chunkEnd = i == jobCount - 1 ? effectiveEnd : Math.Min(effectiveEnd, chunkStart + chunkDuration);
+                    var chunkFolder = Path.Combine(outputFolder, $"__chunk_{i:D2}");
+                    Directory.CreateDirectory(chunkFolder);
+                    chunkFolders.Add(chunkFolder);
+                    var chunkPattern = Path.Combine(chunkFolder, $"frame_%06d.{extension}");
+                    var idx = i;
+
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        var args = BuildExtractArgs(node, vfArg, chunkPattern, extension, useVsync0, chunkStart, chunkEnd);
+                        onLog($"▶ Chunk {idx + 1}/{jobCount}: {chunkStart:0.##}s -> {chunkEnd:0.##}s");
+                        await RunFfmpegWithProgressAsync(
+                            args,
+                            Math.Max(0.01, chunkEnd - chunkStart),
+                            (pct, status) =>
+                            {
+                                chunkProgress[idx] = pct;
+                                onProgress(chunkProgress.Average(), $"Extracting chunks... {status}");
+                            },
+                            line => onLog($"[C{idx + 1}] {line}"),
+                            ct).ConfigureAwait(false);
+                    }, ct));
+                }
+
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+
+                var outIndex = 1;
+                foreach (var folder in chunkFolders)
+                {
+                    var files = Directory.GetFiles(folder, $"frame_*.{extension}")
+                        .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                    foreach (var file in files)
+                    {
+                        var destination = Path.Combine(outputFolder, $"frame_{outIndex:D6}.{extension}");
+                        if (File.Exists(destination)) File.Delete(destination);
+                        File.Move(file, destination);
+                        outIndex++;
+                    }
+                    Directory.Delete(folder, true);
+                }
+            }
 
             var count = Directory.GetFiles(outputFolder, $"frame_*.{extension}").Length;
             onLog($"✅ Extracted {count} frames → {outputFolder}");
             onProgress(100, $"Done: {count} frames");
+        }
+
+        private static List<string> BuildExtractArgs(
+            VideoProcessingNode node,
+            string vfArg,
+            string outputPattern,
+            string extension,
+            bool useVsync0,
+            double startSec,
+            double endSec)
+        {
+            var args = new List<string>
+            {
+                "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", startSec.ToString("0.###", CultureInfo.InvariantCulture),
+                "-to", endSec.ToString("0.###", CultureInfo.InvariantCulture),
+                "-i", node.VideoPath
+            };
+
+            AppendVisualFilterArgs(args, node, vfArg);
+            if (extension == "jpg")
+            {
+                var qv = Math.Max(1, 31 - (int)(node.JpegQuality / 3.35));
+                args.AddRange(new[] { "-q:v", qv.ToString(CultureInfo.InvariantCulture) });
+            }
+            if (useVsync0) args.AddRange(new[] { "-vsync", "0" });
+            args.Add(outputPattern);
+            return args;
         }
 
         public static async Task RunBurnSubtitleAsync(
@@ -905,6 +1040,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 RedirectStandardOutput = true,
                 CreateNoWindow = true
             };
+            psi.ArgumentList.Add("-nostats");
+            psi.ArgumentList.Add("-progress");
+            psi.ArgumentList.Add("pipe:2");
             foreach (var a in args) psi.ArgumentList.Add(a);
             using var p = Process.Start(psi);
             if (p == null) throw new InvalidOperationException("Cannot start ffmpeg.");
@@ -912,7 +1050,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             p.ErrorDataReceived += (_, e) =>
             {
                 if (string.IsNullOrWhiteSpace(e.Data)) return;
-                onLogLine?.Invoke(e.Data);
+                if (!e.Data.StartsWith("frame=", StringComparison.OrdinalIgnoreCase) &&
+                    !e.Data.StartsWith("fps=", StringComparison.OrdinalIgnoreCase) &&
+                    !e.Data.StartsWith("progress=", StringComparison.OrdinalIgnoreCase) &&
+                    !e.Data.StartsWith("out_time_ms=", StringComparison.OrdinalIgnoreCase) &&
+                    !e.Data.StartsWith("speed=", StringComparison.OrdinalIgnoreCase))
+                {
+                    onLogLine?.Invoke(e.Data);
+                }
+
+                var outTimeMatch = Regex.Match(e.Data, @"out_time_ms=(\d+)");
+                if (outTimeMatch.Success && totalDurationSec > 0)
+                {
+                    var outTimeSec = double.Parse(outTimeMatch.Groups[1].Value, CultureInfo.InvariantCulture) / 1000000d;
+                    var pct2 = Math.Min(100, outTimeSec / totalDurationSec * 100);
+                    onProgress?.Invoke(pct2, $"Processing... {outTimeSec:0}s / {totalDurationSec:0}s");
+                    return;
+                }
+
                 var match = Regex.Match(e.Data, @"time=(\d+):(\d+):(\d+(?:\.\d+)?)");
                 if (match.Success && totalDurationSec > 0)
                 {

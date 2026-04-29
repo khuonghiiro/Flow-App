@@ -298,12 +298,74 @@ namespace FlowMy.Views
                 dstVideo.OutputBase64 = srcVideo.OutputBase64;
                 dstVideo.PreferGpu = srcVideo.PreferGpu;
                 dstVideo.PreferredHwAccel = srcVideo.PreferredHwAccel;
+                dstVideo.UseDialogVideoConfig = srcVideo.UseDialogVideoConfig;
+                dstVideo.FrameOutputFolderPath = srcVideo.FrameOutputFolderPath;
+                dstVideo.DefaultOutputVideoPath = srcVideo.DefaultOutputVideoPath;
+                dstVideo.SecondsPerFrame = srcVideo.SecondsPerFrame;
+                dstVideo.ExtractFrameCount = srcVideo.ExtractFrameCount;
                 dstVideo.SourceFps = srcVideo.SourceFps;
                 dstVideo.ExtractFps = srcVideo.ExtractFps;
                 dstVideo.Brightness = srcVideo.Brightness;
                 dstVideo.Contrast = srcVideo.Contrast;
                 dstVideo.Saturation = srcVideo.Saturation;
                 dstVideo.Hue = srcVideo.Hue;
+                dstVideo.Gamma = srcVideo.Gamma;
+                dstVideo.SharpenEnabled = srcVideo.SharpenEnabled;
+                dstVideo.SharpenStrength = srcVideo.SharpenStrength;
+                dstVideo.DenoiseEnabled = srcVideo.DenoiseEnabled;
+                dstVideo.DenoiseStrength = srcVideo.DenoiseStrength;
+                dstVideo.BlurEnabled = srcVideo.BlurEnabled;
+                dstVideo.BlurRadius = srcVideo.BlurRadius;
+                dstVideo.StabilizeEnabled = srcVideo.StabilizeEnabled;
+                dstVideo.SpeedFactor = srcVideo.SpeedFactor;
+                dstVideo.RotationDegrees = srcVideo.RotationDegrees;
+                dstVideo.FlipH = srcVideo.FlipH;
+                dstVideo.FlipV = srcVideo.FlipV;
+                dstVideo.OutputFormat = srcVideo.OutputFormat;
+                dstVideo.EncoderPreset = srcVideo.EncoderPreset;
+                dstVideo.Crf = srcVideo.Crf;
+                dstVideo.ResolutionScale = srcVideo.ResolutionScale;
+                dstVideo.FrameResizeScale = srcVideo.FrameResizeScale;
+                dstVideo.TrimEnabled = srcVideo.TrimEnabled;
+                dstVideo.TrimStartSec = srcVideo.TrimStartSec;
+                dstVideo.TrimEndSec = srcVideo.TrimEndSec;
+                dstVideo.OutputPathOverride = srcVideo.OutputPathOverride;
+                dstVideo.SourceAudioEnabled = srcVideo.SourceAudioEnabled;
+                dstVideo.PreviewVolume = srcVideo.PreviewVolume;
+                dstVideo.PreviewQualityMode = srcVideo.PreviewQualityMode;
+                dstVideo.PreviewVisualStrengthMode = srcVideo.PreviewVisualStrengthMode;
+                dstVideo.WatermarkEnabled = srcVideo.WatermarkEnabled;
+                dstVideo.WatermarkImagePath = srcVideo.WatermarkImagePath;
+                dstVideo.WatermarkPosition = srcVideo.WatermarkPosition;
+                dstVideo.WatermarkOpacity = srcVideo.WatermarkOpacity;
+                dstVideo.WatermarkPaddingPx = srcVideo.WatermarkPaddingPx;
+                dstVideo.TextOverlayEnabled = srcVideo.TextOverlayEnabled;
+                dstVideo.OverlayText = srcVideo.OverlayText;
+                dstVideo.OverlayFont = srcVideo.OverlayFont;
+                dstVideo.OverlayFontSize = srcVideo.OverlayFontSize;
+                dstVideo.OverlayFontColor = srcVideo.OverlayFontColor;
+                dstVideo.TextPosition = srcVideo.TextPosition;
+                dstVideo.FrameLabelEnabled = srcVideo.FrameLabelEnabled;
+                dstVideo.FrameLabelTemplate = srcVideo.FrameLabelTemplate;
+                dstVideo.FrameLabelTextColor = srcVideo.FrameLabelTextColor;
+                dstVideo.FrameLabelBackgroundColor = srcVideo.FrameLabelBackgroundColor;
+                dstVideo.FrameLabelFontSize = srcVideo.FrameLabelFontSize;
+                dstVideo.FrameLabelX = srcVideo.FrameLabelX;
+                dstVideo.FrameLabelY = srcVideo.FrameLabelY;
+                dstVideo.FrameLabelW = srcVideo.FrameLabelW;
+                dstVideo.FrameLabelH = srcVideo.FrameLabelH;
+                dstVideo.FrameLabelHorizontalPadding = srcVideo.FrameLabelHorizontalPadding;
+                dstVideo.FrameLabelVerticalPadding = srcVideo.FrameLabelVerticalPadding;
+                dstVideo.FrameLabelTimeFormat = srcVideo.FrameLabelTimeFormat;
+                dstVideo.ExtractParallelJobs = srcVideo.ExtractParallelJobs;
+                dstVideo.FrameOutputFormat = srcVideo.FrameOutputFormat;
+                dstVideo.JpegQuality = srcVideo.JpegQuality;
+                dstVideo.ExtractAllFrames = srcVideo.ExtractAllFrames;
+                dstVideo.TwoPassEnabled = srcVideo.TwoPassEnabled;
+                dstVideo.AudioCodec = srcVideo.AudioCodec;
+                dstVideo.AudioBitrate = srcVideo.AudioBitrate;
+                dstVideo.SubtitlePath = srcVideo.SubtitlePath;
+                dstVideo.BurnSubtitleEnabled = srcVideo.BurnSubtitleEnabled;
                 dstVideo.AudioTracks.Clear();
                 foreach (var track in srcVideo.AudioTracks)
                 {
@@ -314,6 +376,26 @@ namespace FlowMy.Views
                         VolumePercent = track.VolumePercent,
                         ShorterMode = track.ShorterMode,
                         LongerMode = track.LongerMode
+                    });
+                }
+                dstVideo.Overlays.Clear();
+                foreach (var ov in srcVideo.Overlays)
+                {
+                    dstVideo.Overlays.Add(new OverlayItem
+                    {
+                        Type = ov.Type,
+                        Source = ov.Source,
+                        X = ov.X,
+                        Y = ov.Y,
+                        Width = ov.Width,
+                        Height = ov.Height,
+                        Rotation = ov.Rotation,
+                        Opacity = ov.Opacity,
+                        FontFamily = ov.FontFamily,
+                        FontColor = ov.FontColor,
+                        FontSize = ov.FontSize,
+                        IsVisible = ov.IsVisible,
+                        IsLocked = ov.IsLocked
                     });
                 }
                 dstVideo.TitleDisplayMode = srcVideo.TitleDisplayMode;

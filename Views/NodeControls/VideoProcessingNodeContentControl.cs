@@ -22,6 +22,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Media.Media3D;
 using System.Windows.Media.Imaging;
+using WinForms = System.Windows.Forms;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -402,7 +403,17 @@ namespace FlowMy.Views.NodeControls
             {
                 // Do NOT auto-play here - wait for user click.
                 // Just seek to frame 0 and prepare UI.
-                PreviewMedia.Position = TimeSpan.Zero;
+                try
+                {
+                    // Force first-frame render so user sees preview immediately.
+                    PreviewMedia.Play();
+                    PreviewMedia.Pause();
+                    PreviewMedia.Position = TimeSpan.FromMilliseconds(1);
+                }
+                catch
+                {
+                    PreviewMedia.Position = TimeSpan.Zero;
+                }
                 _isPlaying = false;
                 LiveDot.Visibility = Visibility.Collapsed;
                 _timelineTimer.Start();
@@ -649,6 +660,12 @@ namespace FlowMy.Views.NodeControls
             };
             ExtractAllFramesCheckBox.Checked += (_, _) => { _node.ExtractAllFrames = true; UpdateFrameExtractionPreview(); };
             ExtractAllFramesCheckBox.Unchecked += (_, _) => { _node.ExtractAllFrames = false; UpdateFrameExtractionPreview(); };
+            ExtractParallelJobsCombo.SelectionChanged += (_, _) =>
+            {
+                var selected = ExtractParallelJobsCombo.SelectedItem as ComboBoxItem;
+                if (int.TryParse(selected?.Tag?.ToString(), out var jobs))
+                    _node.ExtractParallelJobs = jobs;
+            };
 
             WatermarkToggle.Checked += (_, _) => _node.WatermarkEnabled = true;
             WatermarkToggle.Unchecked += (_, _) => _node.WatermarkEnabled = false;
@@ -666,10 +683,17 @@ namespace FlowMy.Views.NodeControls
                 _node.WatermarkOpacity = e.NewValue;
                 WatermarkOpacityLabel.Text = $"{e.NewValue:0.##}";
             };
+            ApplyWatermarkToVideoButton.Click += (_, _) =>
+            {
+                AppendLog("🎬 Áp dụng watermark lên video...");
+                RunProcessingFlow();
+            };
             WatermarkPositionCombo.SelectionChanged += (_, _) =>
             {
                 var selected = WatermarkPositionCombo.SelectedItem as ComboBoxItem;
-                _node.WatermarkPosition = selected?.Tag as string ?? "BR";
+                if (selected?.Tag is string tag && !string.IsNullOrWhiteSpace(tag))
+                    _node.WatermarkPosition = tag;
+                RefreshWatermarkPositionHint();
             };
 
             TextOverlayToggle.Checked += (_, _) => _node.TextOverlayEnabled = true;
@@ -680,6 +704,38 @@ namespace FlowMy.Views.NodeControls
             {
                 _node.OverlayFontSize = (int)e.NewValue;
                 TextSizeLabel.Text = $"{(int)e.NewValue}px";
+            };
+            FrameLabelToggle.Checked += (_, _) => { _node.FrameLabelEnabled = true; UpdateFrameLabelPreviewUi(); };
+            FrameLabelToggle.Unchecked += (_, _) => { _node.FrameLabelEnabled = false; UpdateFrameLabelPreviewUi(); };
+            FrameLabelTemplateTextBox.TextChanged += (_, _) => { _node.FrameLabelTemplate = FrameLabelTemplateTextBox.Text; UpdateFrameLabelPreviewUi(); };
+            FrameLabelXSlider.ValueChanged += (_, e) => { _node.FrameLabelX = e.NewValue; UpdateFrameLabelPreviewUi(); };
+            FrameLabelYSlider.ValueChanged += (_, e) => { _node.FrameLabelY = e.NewValue; UpdateFrameLabelPreviewUi(); };
+            FrameLabelWSlider.ValueChanged += (_, e) => { _node.FrameLabelW = e.NewValue; UpdateFrameLabelPreviewUi(); };
+            FrameLabelHSlider.ValueChanged += (_, e) => { _node.FrameLabelH = e.NewValue; UpdateFrameLabelPreviewUi(); };
+            FrameLabelPaddingSlider.ValueChanged += (_, e) =>
+            {
+                _node.FrameLabelHorizontalPadding = (int)e.NewValue;
+                FrameLabelPaddingLabel.Text = $"{(int)e.NewValue}px";
+                UpdateFrameLabelPreviewUi();
+            };
+            FrameLabelPaddingVSlider.ValueChanged += (_, e) =>
+            {
+                _node.FrameLabelVerticalPadding = (int)e.NewValue;
+                FrameLabelPaddingVLabel.Text = $"{(int)e.NewValue}px";
+                UpdateFrameLabelPreviewUi();
+            };
+            FrameLabelTimeFormatCombo.SelectionChanged += (_, _) =>
+            {
+                _node.FrameLabelTimeFormat = (FrameLabelTimeFormatCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "MMSS";
+                UpdateFrameLabelPreviewUi();
+            };
+            FrameLabelTextColorTextBox.TextChanged += (_, _) => { _node.FrameLabelTextColor = FrameLabelTextColorTextBox.Text; UpdateFrameLabelPreviewUi(); };
+            FrameLabelBackgroundColorTextBox.TextChanged += (_, _) => { _node.FrameLabelBackgroundColor = FrameLabelBackgroundColorTextBox.Text; UpdateFrameLabelPreviewUi(); };
+            FrameLabelFontSizeSlider.ValueChanged += (_, e) =>
+            {
+                _node.FrameLabelFontSize = (int)e.NewValue;
+                FrameLabelFontSizeLabel.Text = $"{(int)e.NewValue}px";
+                UpdateFrameLabelPreviewUi();
             };
 
             TwoPassToggle.Checked += (_, _) => _node.TwoPassEnabled = true;
@@ -1155,12 +1211,36 @@ namespace FlowMy.Views.NodeControls
                 {
                     "TL" => 0, "TC" => 1, "TR" => 2, "ML" => 3, "MC" => 4, "MR" => 5, "BL" => 6, "BC" => 7, _ => 8
                 };
+                RefreshWatermarkPositionHint();
                 WatermarkOpacitySlider.Value = _node.WatermarkOpacity;
                 WatermarkOpacityLabel.Text = $"{_node.WatermarkOpacity:0.##}";
                 TextOverlayToggle.IsChecked = _node.TextOverlayEnabled;
                 OverlayTextBox.Text = _node.OverlayText;
                 TextSizeSlider.Value = _node.OverlayFontSize;
                 TextSizeLabel.Text = $"{_node.OverlayFontSize}px";
+                FrameLabelToggle.IsChecked = _node.FrameLabelEnabled;
+                FrameLabelTemplateTextBox.Text = _node.FrameLabelTemplate;
+                FrameLabelXSlider.Value = _node.FrameLabelX;
+                FrameLabelYSlider.Value = _node.FrameLabelY;
+                FrameLabelWSlider.Value = _node.FrameLabelW;
+                FrameLabelHSlider.Value = _node.FrameLabelH;
+                FrameLabelPaddingSlider.Value = _node.FrameLabelHorizontalPadding;
+                FrameLabelPaddingLabel.Text = $"{_node.FrameLabelHorizontalPadding}px";
+                FrameLabelPaddingVSlider.Value = _node.FrameLabelVerticalPadding;
+                FrameLabelPaddingVLabel.Text = $"{_node.FrameLabelVerticalPadding}px";
+                FrameLabelTimeFormatCombo.SelectedIndex = string.Equals(_node.FrameLabelTimeFormat, "HHMMSS", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                FrameLabelTextColorTextBox.Text = _node.FrameLabelTextColor;
+                FrameLabelBackgroundColorTextBox.Text = _node.FrameLabelBackgroundColor;
+                FrameLabelFontSizeSlider.Value = _node.FrameLabelFontSize;
+                FrameLabelFontSizeLabel.Text = $"{_node.FrameLabelFontSize}px";
+                ExtractParallelJobsCombo.SelectedIndex = _node.ExtractParallelJobs switch
+                {
+                    2 => 1,
+                    4 => 2,
+                    6 => 3,
+                    8 => 4,
+                    _ => 0
+                };
                 TwoPassToggle.IsChecked = _node.TwoPassEnabled;
                 AudioCodecCombo.SelectedIndex = _node.AudioCodec switch { "mp3" => 1, "opus" => 2, "copy" => 3, _ => 0 };
                 AudioBitrateCombo.SelectedIndex = _node.AudioBitrate switch { "128k" => 0, "256k" => 2, "320k" => 3, _ => 1 };
@@ -1172,6 +1252,7 @@ namespace FlowMy.Views.NodeControls
 
             ApplyPreviewQualitySettings();
             ApplyConfigSourceMode();
+            UpdateFrameLabelPreviewUi();
         }
 
         private void RefreshVideoPreview()
@@ -1183,6 +1264,7 @@ namespace FlowMy.Views.NodeControls
                 PreviewMedia.Source = null;
                 PreviewMedia.Visibility = Visibility.Collapsed;
                 PreviewPlaceholder.Visibility = Visibility.Visible;
+                FrameLabelPreviewOverlay.Visibility = Visibility.Collapsed;
                 LiveDot.Visibility = Visibility.Collapsed;
                 _isPlaying = false;
                 _timelineTimer.Stop();
@@ -1198,18 +1280,14 @@ namespace FlowMy.Views.NodeControls
                 _isPlaying = false;
                 LiveDot.Visibility = Visibility.Collapsed;
                 UpdatePlaybackUi();
-                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
-                {
-                    PreviewMedia.Source = new Uri(path, UriKind.Absolute);
-                    PreviewMedia.Visibility = Visibility.Visible;
-                    PreviewPlaceholder.Visibility = Visibility.Collapsed;
-                    PreviewMedia.Volume = _node.PreviewVolume;
-                    _isPlaying = false;
-                    LiveDot.Visibility = Visibility.Collapsed;
-                    // Auto aspect ratio on video load.
-                    AspectAuto.IsChecked = true;
-                    SetAspectRatio(0, 0, true);
-                }));
+                PreviewMedia.Source = new Uri(path, UriKind.Absolute);
+                PreviewMedia.Visibility = Visibility.Visible;
+                PreviewPlaceholder.Visibility = Visibility.Collapsed;
+                PreviewMedia.Volume = _node.PreviewVolume;
+                _isPlaying = false;
+                LiveDot.Visibility = Visibility.Collapsed;
+                AspectAuto.IsChecked = true;
+                SetAspectRatio(0, 0, true);
             }
             catch (Exception ex)
             {
@@ -1218,6 +1296,7 @@ namespace FlowMy.Views.NodeControls
                 PreviewMedia.Source = null;
                 PreviewMedia.Visibility = Visibility.Collapsed;
                 PreviewPlaceholder.Visibility = Visibility.Visible;
+                FrameLabelPreviewOverlay.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -1233,6 +1312,153 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
             FrameResizeLabel.Text = $"{w}×{h}";
+        }
+
+        private void UpdateFrameLabelPreviewUi()
+        {
+            if (FrameLabelPreviewOverlay == null || FrameLabelPreviewText == null) return;
+
+            if (!_node.FrameLabelEnabled || PreviewMedia.Source == null)
+            {
+                FrameLabelPreviewOverlay.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var currentFrame = Math.Max(0, (int)Math.Round(PreviewMedia.Position.TotalSeconds * Math.Max(1, _node.SourceFps)));
+            var currentTime = string.Equals(_node.FrameLabelTimeFormat, "HHMMSS", StringComparison.OrdinalIgnoreCase)
+                ? PreviewMedia.Position.ToString(@"hh\:mm\:ss")
+                : PreviewMedia.Position.ToString(@"mm\:ss");
+
+            var template = string.IsNullOrWhiteSpace(_node.FrameLabelTemplate)
+                ? "Frame {index} - {time}"
+                : _node.FrameLabelTemplate;
+            var effectiveOutputFps = _node.ExtractAllFrames ? Math.Max(0.001, _node.SourceFps) : Math.Max(0.001, _node.ExtractFps);
+            var outputIndex = Math.Max(1, (int)Math.Floor(PreviewMedia.Position.TotalSeconds * effectiveOutputFps) + 1);
+
+            FrameLabelPreviewText.Text = template
+                .Replace("{index}", outputIndex.ToString())
+                .Replace("{frame}", currentFrame.ToString())
+                .Replace("{time}", currentTime);
+            FrameLabelPreviewText.FontSize = _node.FrameLabelFontSize;
+            FrameLabelPreviewText.Foreground = ParseBrushOrDefault(_node.FrameLabelTextColor, Brushes.Black);
+            FrameLabelPreviewOverlay.Background = ParseBrushOrDefault(_node.FrameLabelBackgroundColor, Brushes.White);
+            FrameLabelPreviewOverlay.Visibility = Visibility.Visible;
+            UpdateFrameLabelPreviewLayout();
+            UpdateColorPreviews();
+        }
+
+        private void UpdateFrameLabelPreviewLayout()
+        {
+            if (FrameLabelPreviewOverlay == null || VideoAreaGrid == null) return;
+            var rect = GetDisplayedVideoRect();
+            var areaW = Math.Max(1, rect.Width);
+            var areaH = Math.Max(1, rect.Height);
+
+            FrameLabelPreviewOverlay.HorizontalAlignment = HorizontalAlignment.Left;
+            FrameLabelPreviewOverlay.VerticalAlignment = VerticalAlignment.Top;
+            FrameLabelPreviewOverlay.Width = Math.Max(20, _node.FrameLabelW * areaW);
+            FrameLabelPreviewOverlay.Height = Math.Max(18, _node.FrameLabelH * areaH);
+            FrameLabelPreviewOverlay.Margin = new Thickness(rect.X + (_node.FrameLabelX * areaW), rect.Y + (_node.FrameLabelY * areaH), 0, 0);
+            FrameLabelPreviewOverlay.Padding = new Thickness(_node.FrameLabelHorizontalPadding, _node.FrameLabelVerticalPadding, _node.FrameLabelHorizontalPadding, _node.FrameLabelVerticalPadding);
+            FrameLabelPosLabel.Text = $"X {_node.FrameLabelX:0.###} | Y {_node.FrameLabelY:0.###}";
+            FrameLabelSizeLabel.Text = $"W {_node.FrameLabelW:0.###} | H {_node.FrameLabelH:0.###}";
+        }
+
+        private Rect GetDisplayedVideoRect()
+        {
+            var containerW = Math.Max(1, VideoAreaGrid.ActualWidth);
+            var containerH = Math.Max(1, VideoAreaGrid.ActualHeight);
+            var videoW = Math.Max(1, VideoViewbox.ActualWidth);
+            var videoH = Math.Max(1, VideoViewbox.ActualHeight);
+            var offsetX = Math.Max(0, (containerW - videoW) / 2);
+            var offsetY = Math.Max(0, (containerH - videoH) / 2);
+            return new Rect(offsetX, offsetY, videoW, videoH);
+        }
+
+        private void RefreshWatermarkPositionHint()
+        {
+            if (WatermarkPositionHintText == null) return;
+            WatermarkPositionHintText.Text = _node.WatermarkPosition switch
+            {
+                "TL" => "Vị trí: Top Left",
+                "TC" => "Vị trí: Top Center",
+                "TR" => "Vị trí: Top Right",
+                "ML" => "Vị trí: Middle Left",
+                "MC" => "Vị trí: Middle Center",
+                "MR" => "Vị trí: Middle Right",
+                "BL" => "Vị trí: Bottom Left",
+                "BC" => "Vị trí: Bottom Center",
+                _ => "Vị trí: Bottom Right"
+            };
+        }
+
+        private static Brush ParseBrushOrDefault(string? value, Brush fallback)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(value)) return fallback;
+                var converted = new BrushConverter().ConvertFromString(value.Trim());
+                return converted is Brush brush ? brush : fallback;
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
+
+        private void PickFrameLabelTextColor_Click(object sender, RoutedEventArgs e)
+        {
+            var picked = ShowColorPicker(_node.FrameLabelTextColor);
+            if (string.IsNullOrWhiteSpace(picked)) return;
+            _node.FrameLabelTextColor = picked;
+            FrameLabelTextColorTextBox.Text = picked;
+            UpdateFrameLabelPreviewUi();
+        }
+
+        private void PickFrameLabelBackgroundColor_Click(object sender, RoutedEventArgs e)
+        {
+            var picked = ShowColorPicker(_node.FrameLabelBackgroundColor);
+            if (string.IsNullOrWhiteSpace(picked)) return;
+            _node.FrameLabelBackgroundColor = picked;
+            FrameLabelBackgroundColorTextBox.Text = picked;
+            UpdateFrameLabelPreviewUi();
+        }
+
+        private void PickOverlayFontColor_Click(object sender, RoutedEventArgs e)
+        {
+            var picked = ShowColorPicker(OverlayFontColorTextBox.Text);
+            if (string.IsNullOrWhiteSpace(picked)) return;
+            OverlayFontColorTextBox.Text = picked;
+            ApplyOverlayPropertyEditorChanges();
+            UpdateColorPreviews();
+        }
+
+        private static string? ShowColorPicker(string? currentHex)
+        {
+            try
+            {
+                using var dialog = new WinForms.ColorDialog { FullOpen = true };
+                if (!string.IsNullOrWhiteSpace(currentHex) && currentHex.StartsWith("#", StringComparison.OrdinalIgnoreCase))
+                {
+                    try { dialog.Color = System.Drawing.ColorTranslator.FromHtml(currentHex); } catch { }
+                }
+
+                return dialog.ShowDialog() == WinForms.DialogResult.OK
+                    ? $"#{dialog.Color.R:X2}{dialog.Color.G:X2}{dialog.Color.B:X2}"
+                    : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void UpdateColorPreviews()
+        {
+            if (FrameLabelTextColorPreview != null)
+                FrameLabelTextColorPreview.Background = ParseBrushOrDefault(_node.FrameLabelTextColor, Brushes.Black);
+            if (FrameLabelBackgroundColorPreview != null)
+                FrameLabelBackgroundColorPreview.Background = ParseBrushOrDefault(_node.FrameLabelBackgroundColor, Brushes.White);
         }
 
         private async Task ProbeSourceFpsAndRefreshUiAsync()
@@ -1616,6 +1842,7 @@ namespace FlowMy.Views.NodeControls
             var latencyText = _lastSeekLatencyMs >= 0 ? $"{_lastSeekLatencyMs:0} ms" : "-- ms";
             SetTextIfExists("SeekPerfText", $"Preview: {configuredModeText}/{effectiveModeText} | Seek: {latencyText}");
             PlayPauseButton.Content = CreateTransportIcon(_isPlaying ? "pause chisel-regular" : "play chisel-regular");
+            UpdateFrameLabelPreviewUi();
             UpdateTrimReviewUi();
         }
 
@@ -2231,8 +2458,8 @@ namespace FlowMy.Views.NodeControls
                                 EnsureDirectoryExists(configuredFrameFolder);
                             await VideoProcessingNodeExecutor.RunExtractFramesOnlyAsync(
                                 _node,
-                                line => Dispatcher.BeginInvoke(new Action(() => AppendLog(line))),
-                                (pct, status) => Dispatcher.BeginInvoke(new Action(() => UpdateProgress(pct, status))),
+                                line => AppendLog(line),
+                                (pct, status) => UpdateProgress(pct, status),
                                 configuredFrameFolder,
                                 System.Threading.CancellationToken.None);
                             break;
@@ -2244,8 +2471,8 @@ namespace FlowMy.Views.NodeControls
                             }
                             await VideoProcessingNodeExecutor.RunBurnSubtitleAsync(
                                 _node,
-                                line => Dispatcher.BeginInvoke(new Action(() => AppendLog(line))),
-                                (pct, status) => Dispatcher.BeginInvoke(new Action(() => UpdateProgress(pct, status))),
+                                line => AppendLog(line),
+                                (pct, status) => UpdateProgress(pct, status),
                                 System.Threading.CancellationToken.None);
                             break;
                     }
