@@ -78,6 +78,7 @@ namespace FlowMy.Views.NodeControls
         private double _lastSeekTargetSeconds = -1;
         private double _lastSeekLatencyMs = -1;
         private bool _isSeekLatencyPending;
+        private CancellationTokenSource? _sourceFpsProbeCts;
         private DateTime _dragReleaseBoostUntilUtc = DateTime.MinValue;
         private TimelineDragMode _timelineDragMode = TimelineDragMode.None;
         private TimelineDragMode _trimReviewDragMode = TimelineDragMode.None;
@@ -397,7 +398,7 @@ namespace FlowMy.Views.NodeControls
                 RefreshOutputsSummaryUi();
             };
 
-            PreviewMedia.MediaOpened += (_, _) =>
+            PreviewMedia.MediaOpened += async (_, _) =>
             {
                 // Do NOT auto-play here - wait for user click.
                 // Just seek to frame 0 and prepare UI.
@@ -409,6 +410,8 @@ namespace FlowMy.Views.NodeControls
                 ApplyPreviewColorTransform();
                 EmitAutoFitSizeSuggestion();
                 ApplyAspectRatioToMedia();
+                RefreshFrameResizeLabel();
+                await ProbeSourceFpsAndRefreshUiAsync();
             };
             PreviewMedia.MediaEnded += (_, _) =>
             {
@@ -1216,6 +1219,97 @@ namespace FlowMy.Views.NodeControls
                 PreviewMedia.Visibility = Visibility.Collapsed;
                 PreviewPlaceholder.Visibility = Visibility.Visible;
             }
+        }
+
+        private void RefreshFrameResizeLabel()
+        {
+            if (PreviewMedia.NaturalVideoWidth <= 0 || PreviewMedia.NaturalVideoHeight <= 0) return;
+            var scale = _node.FrameResizeScale;
+            var w = (int)(PreviewMedia.NaturalVideoWidth * scale);
+            var h = (int)(PreviewMedia.NaturalVideoHeight * scale);
+            if (w <= 0 || h <= 0)
+            {
+                FrameResizeLabel.Text = $"{scale:0.##}x";
+                return;
+            }
+            FrameResizeLabel.Text = $"{w}×{h}";
+        }
+
+        private async Task ProbeSourceFpsAndRefreshUiAsync()
+        {
+            var path = _node.VideoPath?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(path)) return;
+
+            _sourceFpsProbeCts?.Cancel();
+            _sourceFpsProbeCts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            var ct = _sourceFpsProbeCts.Token;
+
+            try
+            {
+                var fps = await ProbeSourceFpsAsync(path, ct);
+                if (fps > 0)
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        _node.SourceFps = fps;
+                        RefreshInfoText(); // includes UpdateFrameExtractionPreview()
+                    }, DispatcherPriority.Loaded);
+                }
+            }
+            catch
+            {
+                // best-effort: don't block UI if probing fails.
+            }
+        }
+
+        private static async Task<double> ProbeSourceFpsAsync(string inputPath, CancellationToken ct)
+        {
+            // Keep ffprobe invocation consistent with VideoProcessingNodeExecutor.
+            var ffprobeExe = FfmpegPathPreferencesStore.ResolveBinaryPath("ffprobe");
+            if (string.IsNullOrWhiteSpace(ffprobeExe)) return 0;
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = ffprobeExe,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            var args = new[]
+            {
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=r_frame_rate",
+                "-of", "default=nokey=1:noprint_wrappers=1",
+                inputPath
+            };
+            foreach (var a in args) psi.ArgumentList.Add(a);
+
+            using var p = Process.Start(psi);
+            if (p == null) return 0;
+
+            var output = await p.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await p.WaitForExitAsync(ct).ConfigureAwait(false);
+
+            var value = output.Trim();
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+
+            if (value.Contains('/'))
+            {
+                var parts = value.Split('/');
+                if (parts.Length == 2 &&
+                    double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) &&
+                    double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d) &&
+                    d > 0)
+                {
+                    return n / d;
+                }
+            }
+
+            return double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fps)
+                ? fps
+                : 0;
         }
 
         private void TogglePlayPause()
@@ -2589,13 +2683,23 @@ namespace FlowMy.Views.NodeControls
                 _isFrameControlSync = false;
             }
 
-            var framesPerSec = Math.Max(1, (int)Math.Round(_node.ExtractFps));
-            EstFrameIntervalText.Text = $"{(1000.0 / framesPerSec):0.#} ms";
+            var extractFps = _node.ExtractFps;
+            var extractFpsSafe = Math.Max(0.001, extractFps);
+            EstFrameIntervalText.Text = $"{(1000.0 / extractFpsSafe):0.#} ms";
 
-            var indices = FrameExtractionCalculator.CalculateFrameIndicesPerSecond(sourceFps, framesPerSec);
-            var indicesStr = string.Join(", ", indices.Take(4).Select(i => $"#{i}"));
-            if (indices.Count > 4) indicesStr += "…";
-            SetTextIfExists("FrameIndexPreviewText", $"Indices/giây: [{indicesStr}] | Mục tiêu/win: {framesPerWindow:N0}");
+            if (extractFpsSafe >= 1)
+            {
+                var framesPerSec = Math.Max(1, (int)Math.Round(extractFpsSafe));
+                var indices = FrameExtractionCalculator.CalculateFrameIndicesPerSecond(sourceFps, framesPerSec);
+                var indicesStr = string.Join(", ", indices.Take(4).Select(i => $"#{i}"));
+                if (indices.Count > 4) indicesStr += "…";
+                SetTextIfExists("FrameIndexPreviewText", $"Indices/giây: [{indicesStr}] | Mục tiêu/win: {framesPerWindow:N0}");
+            }
+            else
+            {
+                var secondsPerFrame = 1.0 / extractFpsSafe;
+                SetTextIfExists("FrameIndexPreviewText", $"~1 frame mỗi {secondsPerFrame:0.##}s | Mục tiêu/win: {framesPerWindow:N0}");
+            }
         }
 
         private void SetTextIfExists(string elementName, string text)

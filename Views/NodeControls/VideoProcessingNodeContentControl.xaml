@@ -872,7 +872,7 @@
                             <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions><Slider x:Name="DenoiseSlider" Minimum="0" Maximum="10" Value="3" IsEnabled="False" Style="{StaticResource ModernSliderStyle}"/><Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="DenoiseLabel" HorizontalAlignment="Center"/></Border></Grid>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8"><Grid><TextBlock Text="Làm mờ Gaussian"/><ToggleButton x:Name="BlurToggle" HorizontalAlignment="Right" Style="{StaticResource ToggleSwitchStyle}"/></Grid></Border>
                             <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions><Slider x:Name="BlurSlider" Minimum="1" Maximum="15" Value="3" IsEnabled="False" Style="{StaticResource ModernSliderStyle}"/><Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="BlurLabel" HorizontalAlignment="Center"/></Border></Grid>
-                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,8">
+                            <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,8" Padding="10,8" MinHeight="220">
                                 <StackPanel>
                                     <TextBlock Text="Transform" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                     <WrapPanel Margin="0,0,0,0">
@@ -1192,13 +1192,13 @@
                                         BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8"
-                                        MinHeight="120"
+                                        MinHeight="220"
                                         Padding="8">
                                     <StackPanel>
                                         <TextBlock Text="Frame Start" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,6"/>
                                         <Image x:Name="TrimStartFrameImage"
                                                MinHeight="40"
-                                               MaxHeight="120"
+                                               MaxHeight="220"
                                                Stretch="Uniform"
                                                Visibility="Collapsed"/>
                                         <TextBlock x:Name="TrimStartFrameHintText" Text="Thả chuột để load..." FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Opacity="0.7" TextWrapping="Wrap"/>
@@ -1210,13 +1210,13 @@
                                         BorderThickness="1"
                                         CornerRadius="8"
                                         Padding="8"
-                                        MinHeight="120"
+                                        MinHeight="220"
                                         Margin="8,0,0,0">
                                     <StackPanel>
                                         <TextBlock Text="Frame End" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,6"/>
                                         <Image x:Name="TrimEndFrameImage"
                                                MinHeight="40"
-                                               MaxHeight="120"
+                                               MaxHeight="220"
                                                Stretch="Uniform"
                                                Visibility="Collapsed"/>
                                         <TextBlock x:Name="TrimEndFrameHintText" Text="Thả chuột để load..." FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Opacity="0.7" TextWrapping="Wrap"/>

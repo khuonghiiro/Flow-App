@@ -331,9 +331,18 @@ namespace FlowMy.Models.Nodes
             get => _extractFps;
             set
             {
-                var max = SourceFps < 1 ? 1 : SourceFps;
-                var next = value < 1 ? 1 : (value > max ? max : value);
-                if (Math.Abs(_extractFps - next) > 0.01) { _extractFps = next; OnPropertyChanged(); }
+                // Allows fractional FPS (e.g. 1 frame / 3 seconds => ~0.333 fps).
+                // Minimum is clamped to a tiny positive number to keep ffmpeg filter arguments valid.
+                var next = value <= 0 ? 0.001 : value;
+
+                var max = SourceFps > 0 ? SourceFps : double.PositiveInfinity;
+                if (!double.IsInfinity(max) && next > max) next = max;
+
+                if (Math.Abs(_extractFps - next) > 0.001)
+                {
+                    _extractFps = next;
+                    OnPropertyChanged();
+                }
             }
         }
 

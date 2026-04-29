@@ -90,9 +90,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var sourceFps = await ProbeSourceFpsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 if (sourceFps > 0) videoNode.SourceFps = sourceFps;
+                var sourceFpsClamped = Math.Max(0.001, videoNode.SourceFps);
                 var extractFps = videoNode.ExtractAllFrames
-                    ? Math.Max(1, videoNode.SourceFps)
-                    : Math.Max(1, Math.Min(videoNode.ExtractFps, Math.Max(1, videoNode.SourceFps)));
+                    ? sourceFpsClamped
+                    : Math.Max(0.001, Math.Min(videoNode.ExtractFps, sourceFpsClamped));
 
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
@@ -728,7 +729,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var useVsync0 = false;
             if (node.ExtractAllFrames)
             {
-                vfArg = BuildVideoFilterChain(node, Math.Max(1, sourceFps), includeTextOverlay: false);
+                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, sourceFps), includeTextOverlay: false);
             }
             else if (node.ExtractFps >= sourceFps)
             {
@@ -736,11 +737,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             else
             {
-                var framesPerSec = Math.Max(1, (int)Math.Round(node.ExtractFps));
-                var selectExpr = FrameExtractionCalculator.BuildSelectFilterExpression(duration, sourceFps, framesPerSec);
-                var otherFilters = BuildVideoFilterChainWithoutFps(node);
-                vfArg = string.IsNullOrEmpty(otherFilters) ? selectExpr : $"{selectExpr},{otherFilters}";
-                useVsync0 = true;
+                // Allow fractional FPS (e.g. 0.333 fps) directly in the fps filter.
+                // This avoids rounding extractFps to an integer frame-per-second.
+                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, node.ExtractFps), includeTextOverlay: false);
             }
 
             var baseArgs = new List<string> { "-y", "-hide_banner", "-loglevel", "error", "-i", node.VideoPath };
@@ -754,7 +753,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             baseArgs.Add(pattern);
 
             onLog($"📁 Output: {outputFolder}");
-            onLog($"🎞 Mode: {(node.ExtractAllFrames ? "All frames" : $"{(int)Math.Round(node.ExtractFps)} frame/s với offset")}");
+            onLog($"🎞 Mode: {(node.ExtractAllFrames ? "All frames" : $"{node.ExtractFps:0.###} frame/s với offset")}");
             onLog($"⚙ Filter: {vfArg}");
 
             await RunFfmpegWithProgressAsync(
