@@ -24,6 +24,7 @@ namespace FlowMy.Views.Overlays
             _viewModel.PropertyChanged += ViewModelOnPropertyChanged;
             RefreshVideoSourceKeyOptions();
             RefreshOutputFolderKeyOptions();
+            RefreshVideoOutputFolderKeyOptions();
             UpdateOutputFolderVisibility();
         }
 
@@ -55,6 +56,9 @@ namespace FlowMy.Views.Overlays
         private void OutputFolderNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
             => RefreshOutputFolderKeyOptions();
 
+        private void VideoOutputFolderNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+            => RefreshVideoOutputFolderKeyOptions();
+
         private void ViewModelOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             _ = e;
@@ -73,6 +77,12 @@ namespace FlowMy.Views.Overlays
         {
             if (OutputFolderKeyComboBox == null) return;
             OutputFolderKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.OutputFolderSourceNodeId);
+        }
+
+        private void RefreshVideoOutputFolderKeyOptions()
+        {
+            if (VideoOutputFolderKeyComboBox == null) return;
+            VideoOutputFolderKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.VideoOutputFolderSourceNodeId);
         }
 
         private void BrowseFfmpegPathButton_Click(object sender, RoutedEventArgs e)

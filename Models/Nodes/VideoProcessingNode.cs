@@ -80,6 +80,8 @@ namespace FlowMy.Models.Nodes
         private string _videoPath = string.Empty;
         private string? _outputFolderSourceNodeId;
         private string? _outputFolderSourceOutputKey;
+        private string? _videoOutputFolderSourceNodeId;
+        private string? _videoOutputFolderSourceOutputKey;
         private bool _outputBase64 = true;
         private bool _useDialogVideoConfig = true;
         private string? _frameOutputFolderPath;
@@ -224,6 +226,32 @@ namespace FlowMy.Models.Nodes
         {
             get => _outputFolderSourceOutputKey;
             set { if (_outputFolderSourceOutputKey != value) { _outputFolderSourceOutputKey = value; OnPropertyChanged(); } }
+        }
+
+        public string? VideoOutputFolderSourceNodeId
+        {
+            get => _videoOutputFolderSourceNodeId;
+            set
+            {
+                if (_videoOutputFolderSourceNodeId != value)
+                {
+                    _videoOutputFolderSourceNodeId = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string? VideoOutputFolderSourceOutputKey
+        {
+            get => _videoOutputFolderSourceOutputKey;
+            set
+            {
+                if (_videoOutputFolderSourceOutputKey != value)
+                {
+                    _videoOutputFolderSourceOutputKey = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         public bool OutputBase64

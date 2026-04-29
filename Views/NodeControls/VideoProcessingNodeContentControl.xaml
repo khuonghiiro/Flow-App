@@ -697,10 +697,17 @@
                                     <TextBlock x:Name="AudioSummaryText" FontSize="10.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <TextBlock Text="Số giây / 1 frame" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Số giây cần lấy frame" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="58"/></Grid.ColumnDefinitions>
-                                <Slider x:Name="SecondsPerFrameSlider" Minimum="0.1" Maximum="10" Value="1" Style="{StaticResource ModernSliderStyle}" ToolTip="Ví dụ 2 giây lấy 1 frame."/>
+                                <Slider x:Name="SecondsPerFrameSlider"
+                                         Minimum="1"
+                                         Maximum="60"
+                                         Value="10"
+                                         TickFrequency="1"
+                                         IsSnapToTickEnabled="True"
+                                         Style="{StaticResource ModernSliderStyle}"
+                                         ToolTip="Chọn số giây (1-60). Số frame ~= giây × FPS nguồn."/>
                                 <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
                                     <TextBlock x:Name="SecondsPerFrameValueText" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Center"/>
                                 </Border>
@@ -708,7 +715,12 @@
                             <TextBlock Text="Số lượng frame cần lấy" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
-                                <Slider x:Name="FpsSlider" Minimum="1" Maximum="300" Value="10" Style="{StaticResource ModernSliderStyle}" ToolTip="Số lượng frame cần lấy ra trên toàn video."/>
+                                <Slider x:Name="FpsSlider"
+                                         Minimum="1"
+                                         Maximum="300"
+                                         Value="10"
+                                         Style="{StaticResource ModernSliderStyle}"
+                                         ToolTip="Số lượng frame cần lấy ra (≈ giây × FPS nguồn)."/>
                                 <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
                                     <TextBlock x:Name="FpsValueText" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Center"/>
                                 </Border>
@@ -755,11 +767,6 @@
                                 <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
                                 <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
                             </Grid>
-                            <CheckBox x:Name="UseDialogVideoConfigCheckBox"
-                                      Content="Sử dụng cấu hình dialog video"
-                                      Style="{StaticResource ReadableCheckBoxStyle}"
-                                      Margin="0,0,0,10"
-                                      IsChecked="True"/>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -1093,17 +1100,58 @@
                                   Height="18"
                                   Cursor="Hand"
                                   Visibility="Collapsed"
+                                  ToolTip="Kéo để chỉnh Trim. Thả chuột để load ảnh Start/End."
+                                  MouseEnter="TrimReviewHitArea_MouseEnter"
+                                  MouseLeave="TrimReviewHitArea_MouseLeave"
                                   PreviewMouseLeftButtonDown="TrimReviewHitArea_MouseDown"
                                   PreviewMouseMove="TrimReviewHitArea_MouseMove"
-                                  PreviewMouseLeftButtonUp="TrimReviewHitArea_MouseUp"
-                                  MouseLeave="TrimReviewHitArea_MouseLeave">
-                                <Border Background="{DynamicResource ThemeTrackBackgroundBrush}" CornerRadius="2" Height="4" VerticalAlignment="Center"/>
+                                  PreviewMouseLeftButtonUp="TrimReviewHitArea_MouseUp">
+                                <Border x:Name="TrimReviewTrackBorder"
+                                        Background="{DynamicResource ThemeTrackBackgroundBrush}"
+                                        CornerRadius="2" Height="4" VerticalAlignment="Center"/>
                                 <Border x:Name="TrimReviewRangeFill" Background="#4487A7FF" CornerRadius="2" Height="4" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
                                 <Canvas>
-                                    <Ellipse x:Name="TrimReviewStartThumb" Width="11" Height="11" Fill="#4ADE80"/>
-                                    <Ellipse x:Name="TrimReviewEndThumb" Width="11" Height="11" Fill="#FB7185"/>
-                                    <Ellipse x:Name="TrimReviewPlayheadThumb" Width="11" Height="11" Fill="{DynamicResource ThemeSliderThumbBrush}"/>
+                                    <Ellipse x:Name="TrimReviewStartThumb" Width="13" Height="13" Fill="#4ADE80"/>
+                                    <Ellipse x:Name="TrimReviewEndThumb" Width="13" Height="13" Fill="#FB7185"/>
+                                    <Ellipse x:Name="TrimReviewPlayheadThumb" Width="13" Height="13" Fill="{DynamicResource ThemeSliderThumbBrush}"/>
                                 </Canvas>
+                            </Grid>
+
+                            <Grid x:Name="TrimReviewFramesPanel"
+                                  Margin="0,8,0,12"
+                                  VerticalAlignment="Stretch"
+                                  Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0"
+                                        Background="{DynamicResource ThemeOverlayBackgroundBrush}"
+                                        BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        MinHeight="88"
+                                        Padding="8">
+                                    <StackPanel>
+                                        <TextBlock Text="Frame Start" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,6"/>
+                                        <Image x:Name="TrimStartFrameImage" Height="56" Stretch="UniformToFill" Visibility="Collapsed"/>
+                                        <TextBlock x:Name="TrimStartFrameHintText" Text="Thả chuột để load..." FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Opacity="0.7" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource ThemeOverlayBackgroundBrush}"
+                                        BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="8"
+                                        MinHeight="88"
+                                        Margin="8,0,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Frame End" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,0,0,6"/>
+                                        <Image x:Name="TrimEndFrameImage" Height="56" Stretch="UniformToFill" Visibility="Collapsed"/>
+                                        <TextBlock x:Name="TrimEndFrameHintText" Text="Thả chuột để load..." FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Opacity="0.7" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputPathText" Height="28" FontSize="10.5" Padding="6,4" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/><Button x:Name="BrowseOutputButton" Grid.Column="1" Height="28" Margin="6,0,0,0" Content="..." Padding="8,0" Style="{DynamicResource SecondaryButton}"/></Grid>
                         </StackPanel>
@@ -1244,6 +1292,12 @@
                                     </Grid>
                                 </StackPanel>
                             </Border>
+
+                             <CheckBox x:Name="UseDialogVideoConfigCheckBox"
+                                      Content="Sử dụng cấu hình dialog video (real-time)"
+                                      Style="{StaticResource ReadableCheckBoxStyle}"
+                                      Margin="0,0,0,14"
+                                      IsChecked="True"/>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

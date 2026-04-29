@@ -12,11 +12,14 @@ namespace FlowMy.ViewModels
     public partial class VideoProcessingNodeDialogViewModel : BaseNodeDialogViewModel
     {
         private readonly VideoProcessingNode _videoNode;
+        private bool _isRealtimeSyncing;
 
         [ObservableProperty] private string? _videoSourceNodeId;
         [ObservableProperty] private string? _videoSourceOutputKey;
         [ObservableProperty] private string? _outputFolderSourceNodeId;
         [ObservableProperty] private string? _outputFolderSourceOutputKey;
+        [ObservableProperty] private string? _videoOutputFolderSourceNodeId;
+        [ObservableProperty] private string? _videoOutputFolderSourceOutputKey;
         [ObservableProperty] private bool _outputBase64 = true;
         [ObservableProperty] private bool _useDialogVideoConfig = true;
         [ObservableProperty] private string? _frameOutputFolderPath;
@@ -34,6 +37,8 @@ namespace FlowMy.ViewModels
             VideoSourceOutputKey = node.VideoSourceOutputKey;
             OutputFolderSourceNodeId = node.OutputFolderSourceNodeId;
             OutputFolderSourceOutputKey = node.OutputFolderSourceOutputKey;
+            VideoOutputFolderSourceNodeId = node.VideoOutputFolderSourceNodeId;
+            VideoOutputFolderSourceOutputKey = node.VideoOutputFolderSourceOutputKey;
             OutputBase64 = node.OutputBase64;
             UseDialogVideoConfig = node.UseDialogVideoConfig;
             FrameOutputFolderPath = node.FrameOutputFolderPath;
@@ -41,8 +46,98 @@ namespace FlowMy.ViewModels
             FfmpegPath = FfmpegPathPreferencesStore.Load().FfmpegPath ?? string.Empty;
 
             RefreshAvailableNodes();
+
+            PropertyChanged += VideoProcessingNodeDialogViewModel_PropertyChanged;
+
             if (node is INotifyPropertyChanged npc)
                 npc.PropertyChanged += (_, e) => OnNodePropertyChanged(e.PropertyName ?? string.Empty);
+        }
+
+        protected override void OnNodePropertyChanged(string propertyName)
+        {
+            if (_isRealtimeSyncing) return;
+
+            try
+            {
+                _isRealtimeSyncing = true;
+                switch (propertyName)
+                {
+                    case nameof(VideoSourceNodeId):
+                        VideoSourceNodeId = _videoNode.VideoSourceNodeId;
+                        break;
+                    case nameof(VideoSourceOutputKey):
+                        VideoSourceOutputKey = _videoNode.VideoSourceOutputKey;
+                        break;
+                    case nameof(OutputFolderSourceNodeId):
+                        OutputFolderSourceNodeId = _videoNode.OutputFolderSourceNodeId;
+                        break;
+                    case nameof(OutputFolderSourceOutputKey):
+                        OutputFolderSourceOutputKey = _videoNode.OutputFolderSourceOutputKey;
+                        break;
+                    case nameof(VideoProcessingNode.UseDialogVideoConfig):
+                        UseDialogVideoConfig = _videoNode.UseDialogVideoConfig;
+                        break;
+                    case nameof(VideoProcessingNode.FrameOutputFolderPath):
+                        FrameOutputFolderPath = _videoNode.FrameOutputFolderPath;
+                        break;
+                    case nameof(VideoProcessingNode.DefaultOutputVideoPath):
+                        DefaultOutputVideoPath = _videoNode.DefaultOutputVideoPath;
+                        break;
+                    case nameof(VideoProcessingNode.OutputBase64):
+                        OutputBase64 = _videoNode.OutputBase64;
+                        break;
+                    case nameof(VideoProcessingNode.VideoOutputFolderSourceNodeId):
+                        VideoOutputFolderSourceNodeId = _videoNode.VideoOutputFolderSourceNodeId;
+                        break;
+                    case nameof(VideoProcessingNode.VideoOutputFolderSourceOutputKey):
+                        VideoOutputFolderSourceOutputKey = _videoNode.VideoOutputFolderSourceOutputKey;
+                        break;
+                }
+            }
+            finally
+            {
+                _isRealtimeSyncing = false;
+            }
+        }
+
+        private void VideoProcessingNodeDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (_isRealtimeSyncing) return;
+            if (string.IsNullOrWhiteSpace(e.PropertyName)) return;
+
+            switch (e.PropertyName)
+            {
+                case nameof(VideoSourceNodeId):
+                    _videoNode.VideoSourceNodeId = VideoSourceNodeId;
+                    break;
+                case nameof(VideoSourceOutputKey):
+                    _videoNode.VideoSourceOutputKey = VideoSourceOutputKey;
+                    break;
+                case nameof(OutputFolderSourceNodeId):
+                    _videoNode.OutputFolderSourceNodeId = OutputFolderSourceNodeId;
+                    break;
+                case nameof(OutputFolderSourceOutputKey):
+                    _videoNode.OutputFolderSourceOutputKey = OutputFolderSourceOutputKey;
+                    break;
+                case nameof(UseDialogVideoConfig):
+                    _videoNode.UseDialogVideoConfig = UseDialogVideoConfig;
+                    break;
+                case nameof(FrameOutputFolderPath):
+                    _videoNode.FrameOutputFolderPath = FrameOutputFolderPath;
+                    break;
+                case nameof(DefaultOutputVideoPath):
+                    _videoNode.DefaultOutputVideoPath = DefaultOutputVideoPath;
+                    break;
+                case nameof(OutputBase64):
+                    _videoNode.OutputBase64 = OutputBase64;
+                    break;
+                case nameof(VideoOutputFolderSourceNodeId):
+                    _videoNode.VideoOutputFolderSourceNodeId = VideoOutputFolderSourceNodeId;
+                    break;
+                case nameof(VideoOutputFolderSourceOutputKey):
+                    _videoNode.VideoOutputFolderSourceOutputKey = VideoOutputFolderSourceOutputKey;
+                    break;
+            }
         }
 
         protected override string GetDefaultTitle() => "Video Processing";
@@ -87,6 +182,8 @@ namespace FlowMy.ViewModels
             _videoNode.VideoSourceOutputKey = string.IsNullOrWhiteSpace(VideoSourceOutputKey) ? null : VideoSourceOutputKey;
             _videoNode.OutputFolderSourceNodeId = string.IsNullOrWhiteSpace(OutputFolderSourceNodeId) ? null : OutputFolderSourceNodeId;
             _videoNode.OutputFolderSourceOutputKey = string.IsNullOrWhiteSpace(OutputFolderSourceOutputKey) ? null : OutputFolderSourceOutputKey;
+            _videoNode.VideoOutputFolderSourceNodeId = string.IsNullOrWhiteSpace(VideoOutputFolderSourceNodeId) ? null : VideoOutputFolderSourceNodeId;
+            _videoNode.VideoOutputFolderSourceOutputKey = string.IsNullOrWhiteSpace(VideoOutputFolderSourceOutputKey) ? null : VideoOutputFolderSourceOutputKey;
             _videoNode.OutputBase64 = OutputBase64;
             _videoNode.UseDialogVideoConfig = UseDialogVideoConfig;
             _videoNode.FrameOutputFolderPath = string.IsNullOrWhiteSpace(FrameOutputFolderPath) ? null : FrameOutputFolderPath;

@@ -20,6 +20,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Media.Media3D;
+using System.Windows.Media.Imaging;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -99,6 +100,7 @@ namespace FlowMy.Views.NodeControls
         private bool _aspectAuto = false;
         private bool _isTrimReviewDragging;
         private bool _isFrameControlSync;
+        private int _trimFramePreviewRequestId;
 
         public event Action<double, double>? SuggestedNodeSizeReady;
         public event Action<string>? LogLineReceived;
@@ -432,8 +434,9 @@ namespace FlowMy.Views.NodeControls
             {
                 if (_isFrameControlSync) return;
                 _isFrameControlSync = true;
-                _node.SecondsPerFrame = e.NewValue;
-                SecondsPerFrameValueText.Text = $"{e.NewValue:0.##}s";
+                var secondsInt = Math.Clamp((int)Math.Round(e.NewValue), (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
+                _node.SecondsPerFrame = secondsInt;
+                SecondsPerFrameValueText.Text = $"{secondsInt}s";
                 SyncFrameCountFromSeconds();
                 _isFrameControlSync = false;
                 UpdateFrameExtractionPreview();
@@ -451,11 +454,13 @@ namespace FlowMy.Views.NodeControls
             OutputBase64CheckBox.Unchecked += (_, _) => _node.OutputBase64 = false;
             UseDialogVideoConfigCheckBox.Checked += (_, _) =>
             {
+                if (_suppressControlSync) return;
                 _node.UseDialogVideoConfig = true;
                 ApplyConfigSourceMode();
             };
             UseDialogVideoConfigCheckBox.Unchecked += (_, _) =>
             {
+                if (_suppressControlSync) return;
                 _node.UseDialogVideoConfig = false;
                 ApplyConfigSourceMode();
             };
@@ -542,6 +547,8 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
                 TrimReviewHitArea.Visibility = TrimReviewCheckBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+                if (TrimReviewFramesPanel != null)
+                    TrimReviewFramesPanel.Visibility = TrimReviewCheckBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
                 UpdatePlaybackUi();
                 RefreshInfoText();
             };
@@ -549,6 +556,7 @@ namespace FlowMy.Views.NodeControls
             {
                 _node.TrimEnabled = false;
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
+                if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Collapsed;
                 UpdatePlaybackUi();
                 RefreshInfoText();
             };
@@ -557,6 +565,7 @@ namespace FlowMy.Views.NodeControls
                 if (_node.TrimEnabled)
                 {
                     TrimReviewHitArea.Visibility = Visibility.Visible;
+                    if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Visible;
                 }
                 _trimUiInitialized = false;
                 ProgressBarHitArea.IsEnabled = false;
@@ -566,6 +575,7 @@ namespace FlowMy.Views.NodeControls
             TrimReviewCheckBox.Unchecked += (_, _) =>
             {
                 TrimReviewHitArea.Visibility = Visibility.Collapsed;
+                if (TrimReviewFramesPanel != null) TrimReviewFramesPanel.Visibility = Visibility.Collapsed;
                 _trimUiInitialized = false;
                 ProgressBarHitArea.IsEnabled = true;
                 ProgressBarHitArea.Opacity = 1.0;
@@ -738,7 +748,9 @@ namespace FlowMy.Views.NodeControls
         {
             if (_node.UseDialogVideoConfig)
             {
-                _node.OutputPathOverride = string.IsNullOrWhiteSpace(_node.DefaultOutputVideoPath) ? _node.OutputPathOverride : _node.DefaultOutputVideoPath;
+                // When using dialog config, let executor resolve output paths from dialog fields.
+                // Clear local override to avoid treating a folder path as an exact output file.
+                _node.OutputPathOverride = string.Empty;
                 return;
             }
 
@@ -768,9 +780,38 @@ namespace FlowMy.Views.NodeControls
                 }
                 RefreshVideoPreview();
             }
+            if (propertyName == nameof(VideoProcessingNode.FrameOutputFolderPath))
+            {
+                _suppressControlSync = true;
+                FrameOutputFolderText.Text = _node.FrameOutputFolderPath ?? string.Empty;
+                _suppressControlSync = false;
+                RefreshOutputsSummaryUi();
+            }
+            if (propertyName == nameof(VideoProcessingNode.DefaultOutputVideoPath))
+            {
+                _suppressControlSync = true;
+                DefaultOutputVideoPathText.Text = _node.DefaultOutputVideoPath ?? string.Empty;
+                if (!_node.UseDialogVideoConfig)
+                {
+                    OutputPathText.Text = _node.DefaultOutputVideoPath ?? string.Empty;
+                }
+                _suppressControlSync = false;
+                RefreshOutputsSummaryUi();
+            }
+            if (propertyName == nameof(VideoProcessingNode.OutputBase64))
+            {
+                OutputBase64CheckBox.IsChecked = _node.OutputBase64;
+                RefreshOutputsSummaryUi();
+            }
             if (propertyName == nameof(VideoProcessingNode.SourceFps)) FpsSlider.Maximum = Math.Max(1, _node.SourceFps);
             if (propertyName == nameof(VideoProcessingNode.PreferredHwAccel)) HwBadgeText.Text = _node.PreferredHwAccel;
-            if (propertyName == nameof(VideoProcessingNode.UseDialogVideoConfig)) ApplyConfigSourceMode();
+            if (propertyName == nameof(VideoProcessingNode.UseDialogVideoConfig))
+            {
+                _suppressControlSync = true;
+                UseDialogVideoConfigCheckBox.IsChecked = _node.UseDialogVideoConfig;
+                _suppressControlSync = false;
+                ApplyConfigSourceMode();
+            }
             RefreshInfoText();
         }
 
@@ -885,32 +926,64 @@ namespace FlowMy.Views.NodeControls
         {
             var duration = Math.Max(0.1, GetNaturalDurationSeconds());
             var sourceFps = Math.Max(1, _node.SourceFps);
+            var fpsInt = Math.Max(1, (int)Math.Round(sourceFps));
+
             var totalFrames = Math.Max(1, (int)Math.Floor(duration * sourceFps));
-            var secondsPerFrame = Math.Max(0.1, _node.SecondsPerFrame);
-            var count = Math.Max(1, (int)Math.Round(duration / secondsPerFrame));
-            if (count > totalFrames) count = totalFrames;
-            _node.ExtractFrameCount = count;
-            FpsSlider.Maximum = totalFrames;
-            FpsSlider.Value = count;
-            FpsValueText.Text = $"{count}";
-            _node.ExtractFps = Math.Max(1, count / duration);
+            var secondsInt = (int)Math.Round(_node.SecondsPerFrame);
+            secondsInt = Math.Clamp(secondsInt, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
+            _node.SecondsPerFrame = secondsInt;
+
+            // seconds slider defines an upper bound for frame-count.
+            var maxCountBySeconds = Math.Max(1, secondsInt * fpsInt);
+            maxCountBySeconds = Math.Min(maxCountBySeconds, totalFrames);
+
+            // Update slider max in real-time.
+            _isFrameControlSync = true;
+            try
+            {
+                FpsSlider.Maximum = maxCountBySeconds;
+                var current = Math.Clamp(_node.ExtractFrameCount, 1, totalFrames);
+                if (current > maxCountBySeconds)
+                {
+                    current = maxCountBySeconds;
+                    _node.ExtractFrameCount = current;
+                }
+                FpsSlider.Value = current;
+                FpsValueText.Text = $"{current}";
+                _node.ExtractFps = Math.Max(1, current / duration);
+            }
+            finally
+            {
+                _isFrameControlSync = false;
+            }
         }
 
         private void SyncSecondsFromFrameCount()
         {
             var duration = Math.Max(0.1, GetNaturalDurationSeconds());
             var sourceFps = Math.Max(1, _node.SourceFps);
+            var fpsInt = Math.Max(1, (int)Math.Round(sourceFps));
+
             var totalFrames = Math.Max(1, (int)Math.Floor(duration * sourceFps));
             var count = Math.Clamp(_node.ExtractFrameCount, 1, totalFrames);
             _node.ExtractFrameCount = count;
             FpsSlider.Maximum = totalFrames;
             _node.ExtractFps = Math.Max(1, count / duration);
-            var seconds = Math.Clamp(duration / count, SecondsPerFrameSlider.Minimum, SecondsPerFrameSlider.Maximum);
-            _node.SecondsPerFrame = seconds;
+
+            var secondsInt = (int)Math.Round((double)count / fpsInt);
+            secondsInt = Math.Clamp(secondsInt, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
+            _node.SecondsPerFrame = secondsInt;
+
             _isFrameControlSync = true;
-            SecondsPerFrameSlider.Value = seconds;
-            SecondsPerFrameValueText.Text = $"{seconds:0.##}s";
-            _isFrameControlSync = false;
+            try
+            {
+                SecondsPerFrameSlider.Value = secondsInt;
+                SecondsPerFrameValueText.Text = $"{secondsInt}s";
+            }
+            finally
+            {
+                _isFrameControlSync = false;
+            }
         }
 
         private void ApplyConfigSourceMode()
@@ -918,19 +991,13 @@ namespace FlowMy.Views.NodeControls
             var useDialog = UseDialogVideoConfigCheckBox.IsChecked == true;
             _node.UseDialogVideoConfig = useDialog;
 
-            var enabled = !useDialog;
-            SecondsPerFrameSlider.IsEnabled = enabled;
-            FpsSlider.IsEnabled = enabled;
-            FrameFormatCombo.IsEnabled = enabled;
-            JpegQualitySlider.IsEnabled = enabled;
-            ExtractAllFramesCheckBox.IsEnabled = enabled;
-            OutputBase64CheckBox.IsEnabled = enabled;
-            OutputPathText.IsEnabled = enabled;
-            BrowseOutputButton.IsEnabled = enabled;
-            FrameOutputFolderText.IsEnabled = enabled;
-            BrowseFrameOutputFolderButton.IsEnabled = enabled;
-            DefaultOutputVideoPathText.IsEnabled = enabled;
-            BrowseDefaultOutputVideoButton.IsEnabled = enabled;
+            // Requirement: only disable controls inside the "Settings" tab.
+            // The "General" tab (sliders & trim-review) must stay interactive.
+            var settingsEnabled = !useDialog;
+            FrameOutputFolderText.IsEnabled = settingsEnabled;
+            BrowseFrameOutputFolderButton.IsEnabled = settingsEnabled;
+            DefaultOutputVideoPathText.IsEnabled = settingsEnabled;
+            BrowseDefaultOutputVideoButton.IsEnabled = settingsEnabled;
         }
 
         private void BrowseOutputPath()
@@ -957,7 +1024,9 @@ namespace FlowMy.Views.NodeControls
             CodecInfoText.Text = $"HW: {_node.PreferredHwAccel} | Extract: {_node.ExtractFps:0.##}/s";
             AudioSummaryText.Text = $"Audio tracks: {_node.AudioTracks.Count} | Output: {(_node.OutputBase64 ? "base64" : "file")}";
             FpsValueText.Text = $"{Math.Max(1, _node.ExtractFrameCount)}";
-            SecondsPerFrameValueText.Text = $"{Math.Max(0.1, _node.SecondsPerFrame):0.##}s";
+            var secondsInt = (int)Math.Round(_node.SecondsPerFrame);
+            secondsInt = Math.Clamp(secondsInt, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
+            SecondsPerFrameValueText.Text = $"{secondsInt}s";
             TrimStartText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimStartSec));
             TrimEndText.Text = FormatTime(TimeSpan.FromSeconds(_node.TrimEndSec));
             var duration = GetNaturalDurationSeconds();
@@ -974,7 +1043,9 @@ namespace FlowMy.Views.NodeControls
                 var totalFrames = Math.Max(1, (int)Math.Floor(Math.Max(0.1, GetNaturalDurationSeconds()) * Math.Max(1, _node.SourceFps)));
                 FpsSlider.Maximum = Math.Max(1, totalFrames);
                 FpsSlider.Value = Math.Clamp(_node.ExtractFrameCount, 1, (int)FpsSlider.Maximum);
-                SecondsPerFrameSlider.Value = Math.Clamp(_node.SecondsPerFrame, SecondsPerFrameSlider.Minimum, SecondsPerFrameSlider.Maximum);
+                var secondsInt = (int)Math.Round(_node.SecondsPerFrame);
+                secondsInt = Math.Clamp(secondsInt, (int)SecondsPerFrameSlider.Minimum, (int)SecondsPerFrameSlider.Maximum);
+                SecondsPerFrameSlider.Value = secondsInt;
                 UseDialogVideoConfigCheckBox.IsChecked = _node.UseDialogVideoConfig;
                 OutputBase64CheckBox.IsChecked = _node.OutputBase64;
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
@@ -1438,11 +1509,28 @@ namespace FlowMy.Views.NodeControls
         private void TrimReviewHitArea_MouseUp(object sender, MouseButtonEventArgs e)
         {
             if (!_node.TrimEnabled || PreviewMedia.Source == null) return;
+            var draggedMode = _trimReviewDragMode;
             HandleTrimReviewDrag(e, commitPreviewSeek: true);
             _isTrimReviewDragging = false;
             _trimReviewDragMode = TimelineDragMode.None;
             if (TrimReviewHitArea.IsMouseCaptured) TrimReviewHitArea.ReleaseMouseCapture();
             e.Handled = true;
+
+            // Load preview frames only after releasing mouse.
+            if (draggedMode == TimelineDragMode.TrimStart)
+            {
+                _ = LoadTrimFramePreviewAsync(isStart: true);
+            }
+            else if (draggedMode == TimelineDragMode.TrimEnd)
+            {
+                _ = LoadTrimFramePreviewAsync(isStart: false);
+            }
+            else
+            {
+                // In scrub mode, load both frames.
+                _ = LoadTrimFramePreviewAsync(isStart: true);
+                _ = LoadTrimFramePreviewAsync(isStart: false);
+            }
         }
 
         private void TrimReviewHitArea_MouseLeave(object sender, MouseEventArgs e)
@@ -1452,6 +1540,72 @@ namespace FlowMy.Views.NodeControls
                 TrimReviewHitArea.ReleaseMouseCapture();
                 _trimReviewDragMode = TimelineDragMode.None;
                 _isTrimReviewDragging = false;
+            }
+
+            if (TrimReviewTrackBorder != null) TrimReviewTrackBorder.Opacity = 0.7;
+            if (TrimReviewRangeFill != null) TrimReviewRangeFill.Opacity = 0.95;
+        }
+
+        private void TrimReviewHitArea_MouseEnter(object sender, MouseEventArgs e)
+        {
+            // Provide visual cue when interacting with trim slider.
+            if (TrimReviewTrackBorder != null) TrimReviewTrackBorder.Opacity = 1.0;
+            if (TrimReviewRangeFill != null) TrimReviewRangeFill.Opacity = 1.0;
+        }
+
+        private async System.Threading.Tasks.Task LoadTrimFramePreviewAsync(bool isStart)
+        {
+            var requestId = ++_trimFramePreviewRequestId;
+
+            if (string.IsNullOrWhiteSpace(_node.VideoPath)) return;
+            if (PreviewMedia.Source == null) return;
+
+            var duration = GetNaturalDurationSeconds();
+            if (duration <= 0) duration = 1;
+
+            var t = isStart
+                ? Math.Clamp(_node.TrimStartSec, 0, duration)
+                : Math.Clamp((_node.TrimEndSec > 0 ? _node.TrimEndSec : duration), 0, duration);
+
+            var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                $"FlowMy_trim_{(isStart ? "start" : "end")}_{Guid.NewGuid():N}.png");
+
+            try
+            {
+                await VideoProcessingNodeExecutor.RunSnapshotAsync(
+                    _node.VideoPath,
+                    t.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+                    tmp,
+                    System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+                if (requestId != _trimFramePreviewRequestId) return;
+
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = new System.Uri(tmp, System.UriKind.Absolute);
+                bmp.EndInit();
+                bmp.Freeze();
+
+                await Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (isStart)
+                    {
+                        TrimStartFrameImage.Source = bmp;
+                        TrimStartFrameImage.Visibility = Visibility.Visible;
+                        TrimStartFrameHintText.Visibility = Visibility.Collapsed;
+                    }
+                    else
+                    {
+                        TrimEndFrameImage.Source = bmp;
+                        TrimEndFrameImage.Visibility = Visibility.Visible;
+                        TrimEndFrameHintText.Visibility = Visibility.Collapsed;
+                    }
+                }));
+            }
+            catch
+            {
+                // best-effort
             }
         }
 
@@ -2347,7 +2501,15 @@ namespace FlowMy.Views.NodeControls
                 duration = 1;
             }
             var totalFrames = Math.Max(1, (int)Math.Floor(duration * sourceFps));
-            FpsSlider.Maximum = totalFrames;
+            var fpsInt = Math.Max(1, (int)Math.Round(sourceFps));
+            var secondsInt = Math.Clamp(
+                (int)Math.Round(_node.SecondsPerFrame),
+                (int)SecondsPerFrameSlider.Minimum,
+                (int)SecondsPerFrameSlider.Maximum);
+            var maxCountBySeconds = Math.Max(1, secondsInt * fpsInt);
+            maxCountBySeconds = Math.Min(maxCountBySeconds, totalFrames);
+
+            FpsSlider.Maximum = _node.ExtractAllFrames ? totalFrames : maxCountBySeconds;
 
             if (_node.ExtractAllFrames)
             {
@@ -2359,7 +2521,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            var requestedCount = Math.Clamp(_node.ExtractFrameCount, 1, totalFrames);
+            var requestedCount = Math.Clamp(_node.ExtractFrameCount, 1, (int)FpsSlider.Maximum);
             _node.ExtractFrameCount = requestedCount;
             _isFrameControlSync = true;
             if (FpsSlider.Value != requestedCount) FpsSlider.Value = requestedCount;

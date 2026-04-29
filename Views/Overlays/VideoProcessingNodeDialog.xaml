@@ -119,11 +119,6 @@
                                       IsChecked="{Binding OutputBase64, Mode=TwoWay}"
                                       Margin="0,0,0,10"/>
 
-                            <CheckBox Content="Sử dụng cấu hình dialog video"
-                                      Foreground="{DynamicResource TextBrush}"
-                                      IsChecked="{Binding UseDialogVideoConfig, Mode=TwoWay}"
-                                      Margin="0,0,0,10"/>
-
                             <StackPanel x:Name="OutputFolderPanel">
                                 <TextBlock Text="Output Folder"
                                            Foreground="{DynamicResource TextBrush}"
@@ -150,6 +145,35 @@
                                               SelectedValuePath="Key"
                                               DisplayMemberPath="Key"
                                               SelectedValue="{Binding OutputFolderSourceOutputKey, Mode=TwoWay}"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel x:Name="VideoOutputFolderPanel">
+                                <TextBlock Text="Video Folder (node link)"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Margin="0,16,0,8"/>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
+                                                                             Height="36"
+                                                                             ItemsSource="{Binding AvailableNodeOptions}"
+                                                                             SelectedValuePath="NodeId"
+                                                                             DisplayMemberPath="Title"
+                                                                             SelectedValue="{Binding VideoOutputFolderSourceNodeId, Mode=TwoWay}"
+                                                                             SelectionChanged="VideoOutputFolderNodeComboBox_SelectionChanged"/>
+                                    <ComboBox x:Name="VideoOutputFolderKeyComboBox"
+                                              Grid.Column="2"
+                                              Height="36"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              SelectedValuePath="Key"
+                                              DisplayMemberPath="Key"
+                                              SelectedValue="{Binding VideoOutputFolderSourceOutputKey, Mode=TwoWay}"/>
                                 </Grid>
                             </StackPanel>
 

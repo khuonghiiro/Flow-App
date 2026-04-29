@@ -34,14 +34,55 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (string.IsNullOrWhiteSpace(videoInput))
                     throw new InvalidOperationException("VideoProcessingNode: thiếu input video.");
 
-                var outputFolder = ResolveFromMapping(env, videoNode.OutputFolderSourceNodeId, videoNode.OutputFolderSourceOutputKey);
-                if (string.IsNullOrWhiteSpace(outputFolder))
-                    outputFolder = videoNode.FrameOutputFolderPath;
+                var downloadsRoot = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Downloads");
+
+                var defaultFrameOutputFolder = Path.Combine(downloadsRoot, "flow-frame");
+                var defaultVideoOutputFolder = Path.Combine(downloadsRoot, "flow-video");
+
+                string? frameOutputFolder;
+                if (videoNode.UseDialogVideoConfig)
+                {
+                    frameOutputFolder = ResolveFromMapping(env, videoNode.OutputFolderSourceNodeId, videoNode.OutputFolderSourceOutputKey);
+                    if (string.IsNullOrWhiteSpace(frameOutputFolder))
+                        frameOutputFolder = videoNode.FrameOutputFolderPath;
+
+                    if (string.IsNullOrWhiteSpace(frameOutputFolder))
+                        frameOutputFolder = defaultFrameOutputFolder;
+                }
+                else
+                {
+                    frameOutputFolder = videoNode.FrameOutputFolderPath;
+                }
+
+                string? videoOutputFolder;
+                if (videoNode.UseDialogVideoConfig)
+                {
+                    videoOutputFolder = ResolveFromMapping(env, videoNode.VideoOutputFolderSourceNodeId, videoNode.VideoOutputFolderSourceOutputKey);
+                    if (string.IsNullOrWhiteSpace(videoOutputFolder))
+                        videoOutputFolder = videoNode.DefaultOutputVideoPath;
+
+                    if (string.IsNullOrWhiteSpace(videoOutputFolder))
+                        videoOutputFolder = defaultVideoOutputFolder;
+                }
+                else
+                {
+                    videoOutputFolder = videoNode.DefaultOutputVideoPath;
+                }
+                if (!string.IsNullOrWhiteSpace(videoOutputFolder) &&
+                    !Directory.Exists(videoOutputFolder) &&
+                    !string.IsNullOrWhiteSpace(Path.GetExtension(videoOutputFolder)))
+                {
+                    var dir = Path.GetDirectoryName(videoOutputFolder);
+                    if (!string.IsNullOrWhiteSpace(dir)) videoOutputFolder = dir;
+                }
+
                 if (!videoNode.OutputBase64)
                 {
-                    if (string.IsNullOrWhiteSpace(outputFolder))
+                    if (string.IsNullOrWhiteSpace(frameOutputFolder))
                         throw new InvalidOperationException("VideoProcessingNode: Output Base64 tắt nhưng chưa có folder output.");
-                    Directory.CreateDirectory(outputFolder);
+                    Directory.CreateDirectory(frameOutputFolder);
                 }
 
                 var tempRoot = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing");
@@ -65,7 +106,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 };
                 var framePattern = videoNode.OutputBase64
                     ? Path.Combine(tempRoot, $"frames_{Guid.NewGuid():N}_%06d.{frameExt}")
-                    : Path.Combine(outputFolder!, $"frame_%06d.{frameExt}");
+                    : Path.Combine(frameOutputFolder!, $"frame_%06d.{frameExt}");
 
                 var totalDuration = await ProbeDurationSecondsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoInput }));
@@ -162,7 +203,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     postStabilizedPath = stabilizedPath;
                 }
 
-                var mixedVideo = await MergeAudioTracksAsync(videoNode, env, videoInput, postStabilizedPath, outputFolder).ConfigureAwait(false);
+                var mixedVideo = await MergeAudioTracksAsync(videoNode, env, videoInput, postStabilizedPath, videoOutputFolder).ConfigureAwait(false);
                 SetOutput(videoNode, "video_output", mixedVideo);
                 ProgressChanged?.Invoke(videoNode, 100, "Completed");
             }
@@ -649,9 +690,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             CancellationToken ct)
         {
             var outputFolder = string.IsNullOrWhiteSpace(outputFolderOverride)
-                ? (string.IsNullOrWhiteSpace(node.OutputPathOverride)
-                    ? Path.Combine(Path.GetTempPath(), $"FlowMy_Frames_{DateTime.Now:yyyyMMddHHmmss}")
-                    : Path.GetDirectoryName(node.OutputPathOverride)!)
+                ? (node.UseDialogVideoConfig
+                    ? (string.IsNullOrWhiteSpace(node.FrameOutputFolderPath)
+                        ? Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                            "Downloads",
+                            "flow-frame")
+                        : node.FrameOutputFolderPath!)
+                    : (string.IsNullOrWhiteSpace(node.OutputPathOverride)
+                        ? Path.Combine(Path.GetTempPath(), $"FlowMy_Frames_{DateTime.Now:yyyyMMddHHmmss}")
+                        : Path.GetDirectoryName(node.OutputPathOverride)!))
                 : outputFolderOverride.Trim();
             Directory.CreateDirectory(outputFolder);
 
