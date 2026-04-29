@@ -499,6 +499,13 @@
                         Panel.ZIndex="2"
                         Background="Transparent"
                         IsHitTestVisible="False"/>
+                <Image x:Name="WatermarkPreviewImage"
+                       Grid.Row="1"
+                       Panel.ZIndex="2"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top"
+                       Visibility="Collapsed"
+                       IsHitTestVisible="False"/>
                 <controls:OverlayCanvas x:Name="OverlayCanvasControl"
                                         Grid.Row="1"
                                         Panel.ZIndex="3"
@@ -537,7 +544,8 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-                <StackPanel Grid.Row="1"
+                <StackPanel x:Name="QuickOverlayButtonsPanel"
+                            Grid.Row="1"
                             Panel.ZIndex="5"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom"
@@ -575,7 +583,7 @@
                         VerticalAlignment="Top"
                         Margin="12"
                         Padding="10,6"
-                        CornerRadius="6"
+                        CornerRadius="0"
                         Background="#F5FFFFFF"
                         BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
                         BorderThickness="1"

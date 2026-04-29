@@ -90,6 +90,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var sourceFps = await ProbeSourceFpsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 if (sourceFps > 0) videoNode.SourceFps = sourceFps;
+                var sourceHeight = await ProbeSourceHeightAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 var sourceFpsClamped = Math.Max(0.001, videoNode.SourceFps);
                 var extractFps = videoNode.ExtractAllFrames
                     ? sourceFpsClamped
@@ -98,7 +99,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var hwaccel = await ResolveHwAccelAsync(videoNode.PreferGpu, env.CancellationToken).ConfigureAwait(false);
                 videoNode.PreferredHwAccel = hwaccel;
 
-                var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true);
+                var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
+                LogLine?.Invoke(videoNode, $"[DBG] FilterGraph: {frameFilter}");
+                LogLine?.Invoke(videoNode, $"[DBG] WatermarkExpr: {(videoNode.WatermarkEnabled ? BuildOverlayExpression(videoNode) : "disabled")}");
                 var frameExt = videoNode.FrameOutputFormat switch
                 {
                     "jpg" => "jpg",
@@ -134,7 +137,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var (codecArgs, extension) = BuildOutputArgs(videoNode);
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
-                var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true);
+                var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
                 var hasCanvasOverlays = videoNode.Overlays.Any(o => o.IsVisible);
                 var mainArgs = BuildTrimAwareArgs(videoNode, new[]
                 {
@@ -419,14 +422,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return $"eq=brightness={node.Brightness:0.###}:contrast={node.Contrast:0.###}:saturation={node.Saturation:0.###}";
         }
 
-        private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps, bool includeTextOverlay)
+        private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps, bool includeTextOverlay, int? sourceHeightOverride = null)
         {
             var filters = new List<string>();
-            if (node.FrameResizeScale < 0.999)
-            {
-                var sc = node.FrameResizeScale.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"scale=iw*{sc}:ih*{sc}");
-            }
 
             filters.Add($"fps={extractFps:0.###}");
             filters.Add(BuildEqFilter(node));
@@ -464,12 +462,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (node.FlipH) filters.Add("hflip");
             if (node.FlipV) filters.Add("vflip");
 
-            if (node.FixedResolutionHeight.HasValue) filters.Add($"scale=-2:{node.FixedResolutionHeight.Value}");
-            else if (Math.Abs(node.ResolutionScale - 1) > 0.01)
-            {
-                var sc = node.ResolutionScale.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"scale=iw*{sc}:ih*{sc}");
-            }
             if (Math.Abs(node.SpeedFactor - 1) > 0.01)
             {
                 var pts = (1.0 / node.SpeedFactor).ToString("0.######", CultureInfo.InvariantCulture);
@@ -480,11 +472,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
                 var (xExpr, yExpr) = BuildTextPositionExpression(node.TextPosition, 10);
                 var fontPath = ResolveFontPath(node.OverlayFont);
-                filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={node.OverlayFontSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
+                var sourceScale = sourceHeightOverride.HasValue && sourceHeightOverride.Value > 0
+                    ? Math.Clamp(sourceHeightOverride.Value / 720.0, 0.6, 3.0)
+                    : 1.0;
+                var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
+                filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
             }
             if (node.FrameLabelEnabled)
             {
-                filters.Add(BuildFrameLabelFilter(node));
+                filters.Add(BuildFrameLabelFilter(node, sourceFpsOverride: null, sourceHeightOverride));
             }
             if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
             {
@@ -517,18 +513,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             foreach (var item in node.Overlays.Where(o => o.IsVisible))
             {
                 var type = (item.Type ?? string.Empty).Trim().ToLowerInvariant();
-                var xExpr = $"main_w*{item.X.ToString("0.######", CultureInfo.InvariantCulture)}";
-                var yExpr = $"main_h*{item.Y.ToString("0.######", CultureInfo.InvariantCulture)}";
+                var xExpr = $"(W*{item.X.ToString("0.######", CultureInfo.InvariantCulture)})";
+                var yExpr = $"(H*{item.Y.ToString("0.######", CultureInfo.InvariantCulture)})";
                 var opacity = Math.Clamp(item.Opacity, 0, 1).ToString("0.###", CultureInfo.InvariantCulture);
                 var nextLabel = $"v{++stageIndex}";
 
                 if ((type == "image" || type == "logo") && !string.IsNullOrWhiteSpace(item.Source) && File.Exists(item.Source))
                 {
-                    var wExpr = $"max(1,main_w*{item.Width.ToString("0.######", CultureInfo.InvariantCulture)})";
-                    var hExpr = $"max(1,main_h*{item.Height.ToString("0.######", CultureInfo.InvariantCulture)})";
+                    var wExpr = $"(W*{item.Width.ToString("0.######", CultureInfo.InvariantCulture)})";
+                    var hExpr = $"(H*{item.Height.ToString("0.######", CultureInfo.InvariantCulture)})";
                     imageInputs.Add(item.Source);
-                    filterChains.Add($"[{imageInputIndex}:v][{currentLabel}]scale2ref=w='{wExpr}':h='{hExpr}'[ov{stageIndex}][base{stageIndex}]");
-                    filterChains.Add($"[base{stageIndex}][ov{stageIndex}]overlay=x='{xExpr}':y='{yExpr}':alpha={opacity}[{nextLabel}]");
+                    filterChains.Add($"[{imageInputIndex}:v]scale=w='{wExpr}':h='{hExpr}'[ov{stageIndex}]");
+                    filterChains.Add($"[{currentLabel}][ov{stageIndex}]overlay=x='{xExpr}':y='{yExpr}':alpha={opacity}[{nextLabel}]");
                     imageInputIndex++;
                     currentLabel = nextLabel;
                 }
@@ -543,17 +539,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
+            // Apply all output-size transforms at the very end:
+            // watermark/text/overlays are first composed on source frame, then resized once.
+            var tailScale = BuildTailScaleFilter(node);
+            if (!string.IsNullOrWhiteSpace(tailScale))
+            {
+                var nextLabel = $"v{++stageIndex}";
+                filterChains.Add($"[{currentLabel}]{tailScale}[{nextLabel}]");
+                currentLabel = nextLabel;
+            }
+
             return (string.Join(";", filterChains), imageInputs, $"[{currentLabel}]");
         }
 
-        private static string BuildVideoFilterChainWithoutFps(VideoProcessingNode node)
+        private static string BuildVideoFilterChainWithoutFps(VideoProcessingNode node, bool includeTextOverlay = false, double? sourceFpsOverride = null, int? sourceHeightOverride = null)
         {
             var filters = new List<string>();
-            if (node.FrameResizeScale < 0.999)
-            {
-                var sc = node.FrameResizeScale.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"scale=iw*{sc}:ih*{sc}");
-            }
 
             filters.Add(BuildEqFilter(node));
             if (Math.Abs(node.Hue) > 0.01)
@@ -583,11 +584,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (node.FlipH) filters.Add("hflip");
             if (node.FlipV) filters.Add("vflip");
 
-            if (node.FixedResolutionHeight.HasValue) filters.Add($"scale=-2:{node.FixedResolutionHeight.Value}");
-            else if (Math.Abs(node.ResolutionScale - 1) > 0.01)
+            if (includeTextOverlay && node.TextOverlayEnabled && !string.IsNullOrWhiteSpace(node.OverlayText))
             {
-                var sc = node.ResolutionScale.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"scale=iw*{sc}:ih*{sc}");
+                var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
+                var (xExpr, yExpr) = BuildTextPositionExpression(node.TextPosition, 10);
+                var fontPath = ResolveFontPath(node.OverlayFont);
+                var sourceScale = sourceHeightOverride.HasValue && sourceHeightOverride.Value > 0
+                    ? Math.Clamp(sourceHeightOverride.Value / 720.0, 0.6, 3.0)
+                    : 1.0;
+                var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
+                filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
+            }
+            if (node.FrameLabelEnabled)
+            {
+                filters.Add(BuildFrameLabelFilter(node, sourceFpsOverride, sourceHeightOverride));
+            }
+            if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
+            {
+                var subPath = node.SubtitlePath!.Replace("\\", "/").Replace(":", "\\:");
+                filters.Add($"subtitles='{subPath}'");
             }
 
             return filters.Count > 0 ? string.Join(",", filters) : string.Empty;
@@ -595,17 +610,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static string BuildOverlayExpression(VideoProcessingNode node)
         {
+            // Compose watermark on source-size frame first, then resize later.
+            // Keep original padding in source pixel space to avoid resize-dependent drift.
+            var paddingPx = Math.Max(0, node.WatermarkPaddingPx);
             return node.WatermarkPosition switch
             {
-                "TL" => $"x={node.WatermarkPaddingPx}:y={node.WatermarkPaddingPx}",
-                "TC" => $"x=(W-w)/2:y={node.WatermarkPaddingPx}",
-                "TR" => $"x=W-w-{node.WatermarkPaddingPx}:y={node.WatermarkPaddingPx}",
-                "ML" => $"x={node.WatermarkPaddingPx}:y=(H-h)/2",
+                "TL" => $"x={paddingPx}:y={paddingPx}",
+                "TC" => $"x=(W-w)/2:y={paddingPx}",
+                "TR" => $"x=W-w-{paddingPx}:y={paddingPx}",
+                "ML" => $"x={paddingPx}:y=(H-h)/2",
                 "MC" => "x=(W-w)/2:y=(H-h)/2",
-                "MR" => $"x=W-w-{node.WatermarkPaddingPx}:y=(H-h)/2",
-                "BL" => $"x={node.WatermarkPaddingPx}:y=H-h-{node.WatermarkPaddingPx}",
-                "BC" => $"x=(W-w)/2:y=H-h-{node.WatermarkPaddingPx}",
-                _ => $"x=W-w-{node.WatermarkPaddingPx}:y=H-h-{node.WatermarkPaddingPx}"
+                "MR" => $"x=W-w-{paddingPx}:y=(H-h)/2",
+                "BL" => $"x={paddingPx}:y=H-h-{paddingPx}",
+                "BC" => $"x=(W-w)/2:y=H-h-{paddingPx}",
+                _ => $"x=W-w-{paddingPx}:y=H-h-{paddingPx}"
             };
         }
 
@@ -632,7 +650,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return;
             }
 
-            args.AddRange(new[] { "-vf", baseFilter });
+            var finalFilter = baseFilter;
+            var tailScale = BuildTailScaleFilter(node);
+            if (!string.IsNullOrWhiteSpace(tailScale))
+                finalFilter = string.IsNullOrWhiteSpace(finalFilter) ? tailScale : $"{finalFilter},{tailScale}";
+            args.AddRange(new[] { "-vf", finalFilter });
         }
 
         private static (string x, string y) BuildTextPositionExpression(string? position, int paddingPx)
@@ -647,14 +669,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return (x, y);
         }
 
-        private static string BuildFrameLabelFilter(VideoProcessingNode node)
+        private static string BuildFrameLabelFilter(VideoProcessingNode node, double? sourceFpsOverride = null, int? sourceHeightOverride = null)
         {
-            var fontPath = ResolveFontPath(node.OverlayFont).Replace("\\", "/").Replace(":", "\\:");
+            var fontPath = ResolveFrameLabelFontPath().Replace("\\", "/").Replace(":", "\\:");
             var template = string.IsNullOrWhiteSpace(node.FrameLabelTemplate)
                 ? "Frame {index} - {time}"
                 : node.FrameLabelTemplate;
 
-            var sourceFps = node.SourceFps > 0 ? node.SourceFps : 30;
+            var sourceFps = sourceFpsOverride.HasValue && sourceFpsOverride.Value > 0
+                ? sourceFpsOverride.Value
+                : (node.SourceFps > 0 ? node.SourceFps : 30);
             var ffmpegText = template
                 .Replace("\\", "\\\\")
                 .Replace(":", "\\:")
@@ -665,18 +689,53 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     ? "%{pts\\:gmtime\\:0\\:%H\\\\\\:%M\\\\\\:%S}"
                     : "%{pts\\:gmtime\\:0\\:%M\\\\\\:%S}");
 
-            var xExpr = $"iw*{node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture)}";
-            var yExpr = $"ih*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)}";
+            var xExpr = $"(iw*{node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture)})";
+            var yExpr = $"(ih*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)})";
             var bg = string.IsNullOrWhiteSpace(node.FrameLabelBackgroundColor) ? "white" : node.FrameLabelBackgroundColor;
             var fg = string.IsNullOrWhiteSpace(node.FrameLabelTextColor) ? "black" : node.FrameLabelTextColor;
-            var paddingX = Math.Max(0, node.FrameLabelHorizontalPadding);
-            var paddingY = Math.Max(0, node.FrameLabelVerticalPadding);
-            var boxW = $"iw*{node.FrameLabelW.ToString("0.######", CultureInfo.InvariantCulture)}";
-            var boxH = $"ih*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)}";
+            var sourceScale = sourceHeightOverride.HasValue && sourceHeightOverride.Value > 0
+                ? Math.Clamp(sourceHeightOverride.Value / 720.0, 0.6, 3.0)
+                : 1.0;
+            var paddingX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
+            var paddingY = Math.Max(0, (int)Math.Round(node.FrameLabelVerticalPadding * sourceScale));
+            var boxW = $"(iw*{node.FrameLabelW.ToString("0.######", CultureInfo.InvariantCulture)})";
+            var boxH = $"(ih*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)})";
             var textX = $"w*{node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture)}+{paddingX}";
             var textBoxH = $"h*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)}";
             var textY = $"h*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)}+(({textBoxH}-text_h)/2)+{paddingY}";
-            return $"drawbox=x={xExpr}:y={yExpr}:w={boxW}:h={boxH}:color={bg}@0.92:t=fill,drawtext=text='{ffmpegText}':fontfile='{fontPath}':fontsize={node.FrameLabelFontSize}:fontcolor={fg}:x={textX}:y={textY}";
+            var bgWithAlpha = $"{bg}@1.0";
+            var ffmpegFontSize = Math.Max(8, (int)Math.Round((node.FrameLabelFontSize + 2) * sourceScale));
+            return $"drawbox=x={xExpr}:y={yExpr}:w={boxW}:h={boxH}:color={bgWithAlpha}:t=fill,drawtext=text='{ffmpegText}':fontfile='{fontPath}':fontsize={ffmpegFontSize}:fontcolor={fg}:x={textX}:y={textY}";
+        }
+
+        private static string BuildTailScaleFilter(VideoProcessingNode node)
+        {
+            var parts = new List<string>();
+            if (node.FixedResolutionHeight.HasValue)
+            {
+                parts.Add($"scale=-2:{node.FixedResolutionHeight.Value}");
+            }
+            else if (Math.Abs(node.ResolutionScale - 1) > 0.01)
+            {
+                var sc = node.ResolutionScale.ToString("0.###", CultureInfo.InvariantCulture);
+                parts.Add($"scale=iw*{sc}:ih*{sc}");
+            }
+            if (node.FrameResizeScale < 0.999)
+            {
+                var sc = node.FrameResizeScale.ToString("0.###", CultureInfo.InvariantCulture);
+                parts.Add($"scale=iw*{sc}:ih*{sc}");
+            }
+            return string.Join(",", parts);
+        }
+
+        private static string ResolveFrameLabelFontPath()
+        {
+            var winFonts = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts");
+            var preferred = Path.Combine(winFonts, "seguisb.ttf");
+            if (File.Exists(preferred)) return preferred;
+            var regular = Path.Combine(winFonts, "segoeui.ttf");
+            if (File.Exists(regular)) return regular;
+            return ResolveFontPath("Arial");
         }
 
         private static string ResolveFontPath(string? font)
@@ -747,12 +806,37 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await RunFfmpegAsync(new[]
             {
                 "-y", "-hide_banner", "-loglevel", "error",
-                "-ss", positionSec,
                 "-i", videoPath,
+                "-ss", positionSec,
                 "-frames:v", "1",
                 "-q:v", "2",
                 outputPath
             }, ct).ConfigureAwait(false);
+        }
+
+        public static async Task RunSnapshotAsync(
+            VideoProcessingNode node, string positionSec, string outputPath, CancellationToken ct)
+        {
+            var sourceFps = node.SourceFps > 0 ? node.SourceFps : await ProbeSourceFpsAsync(node.VideoPath, ct).ConfigureAwait(false);
+            if (sourceFps <= 0) sourceFps = 30;
+            var sourceHeight = await ProbeSourceHeightAsync(node.VideoPath, ct).ConfigureAwait(false);
+            var vf = BuildVideoFilterChainWithoutFps(node, includeTextOverlay: true, sourceFpsOverride: sourceFps, sourceHeightOverride: sourceHeight);
+
+            var args = new List<string>
+            {
+                "-y", "-hide_banner", "-loglevel", "error",
+                "-i", node.VideoPath
+            };
+            args.AddRange(new[] { "-ss", positionSec });
+            AppendVisualFilterArgs(args, node, vf);
+            if (string.Equals(Path.GetExtension(outputPath), ".jpg", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Path.GetExtension(outputPath), ".jpeg", StringComparison.OrdinalIgnoreCase))
+            {
+                args.AddRange(new[] { "-q:v", "2" });
+            }
+            args.AddRange(new[] { "-frames:v", "1" });
+            args.Add(outputPath);
+            await RunFfmpegAsync(args, ct).ConfigureAwait(false);
         }
 
         public static async Task RunExtractFramesOnlyAsync(
@@ -780,6 +864,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var pattern = Path.Combine(outputFolder, $"frame_%06d.{extension}");
             var duration = await ProbeDurationSecondsAsync(node.VideoPath, ct).ConfigureAwait(false);
             var sourceFps = node.SourceFps > 0 ? node.SourceFps : await ProbeSourceFpsAsync(node.VideoPath, ct).ConfigureAwait(false);
+            var sourceHeight = await ProbeSourceHeightAsync(node.VideoPath, ct).ConfigureAwait(false);
             if (sourceFps <= 0) sourceFps = 30;
             var effectiveStart = node.TrimEnabled ? Math.Max(0, node.TrimStartSec) : 0;
             var effectiveEnd = node.TrimEnabled && node.TrimEndSec > effectiveStart ? Math.Min(duration, node.TrimEndSec) : duration;
@@ -789,17 +874,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var useVsync0 = false;
             if (node.ExtractAllFrames)
             {
-                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, sourceFps), includeTextOverlay: true);
+                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, sourceFps), includeTextOverlay: true, sourceHeight);
             }
             else if (node.ExtractFps >= sourceFps)
             {
-                vfArg = BuildVideoFilterChain(node, sourceFps, includeTextOverlay: true);
+                vfArg = BuildVideoFilterChain(node, sourceFps, includeTextOverlay: true, sourceHeight);
             }
             else
             {
                 // Allow fractional FPS (e.g. 0.333 fps) directly in the fps filter.
                 // This avoids rounding extractFps to an integer frame-per-second.
-                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, node.ExtractFps), includeTextOverlay: true);
+                vfArg = BuildVideoFilterChain(node, Math.Max(0.001, node.ExtractFps), includeTextOverlay: true, sourceHeight);
             }
 
             onLog($"📁 Output: {outputFolder}");
@@ -991,6 +1076,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             };
             var output = await RunProcessCaptureAsync(ResolveBinary("ffprobe"), args, ct).ConfigureAwait(false);
             return double.TryParse(output.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) ? seconds : 0;
+        }
+
+        private static async Task<int> ProbeSourceHeightAsync(string inputPath, CancellationToken ct)
+        {
+            var args = new[]
+            {
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=height",
+                "-of", "default=nokey=1:noprint_wrappers=1",
+                inputPath
+            };
+            var output = await RunProcessCaptureAsync(ResolveBinary("ffprobe"), args, ct).ConfigureAwait(false);
+            return int.TryParse(output.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var h) ? h : 0;
         }
 
         private static async Task<string> ResolveHwAccelAsync(bool preferGpu, CancellationToken ct)

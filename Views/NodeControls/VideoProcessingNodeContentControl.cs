@@ -23,6 +23,7 @@ using System.Windows.Threading;
 using System.Windows.Media.Media3D;
 using System.Windows.Media.Imaging;
 using WinForms = System.Windows.Forms;
+using DrawingBitmap = System.Drawing.Bitmap;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -151,6 +152,11 @@ namespace FlowMy.Views.NodeControls
             TabNavList.SelectionChanged += TabNavList_SelectionChanged;
             TabNavList.SelectedIndex = 0;
             SizeChanged += (_, _) => UpdatePreviewAspectRatio();
+            VideoViewbox.SizeChanged += (_, _) =>
+            {
+                UpdateOverlayCanvasBounds();
+                UpdateWatermarkPreviewUi();
+            };
 
             OpenVideoButton.Click += (_, _) => SelectVideo();
             OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
@@ -168,12 +174,10 @@ namespace FlowMy.Views.NodeControls
             ToggleNodeSizeButton.Click += (_, _) => ToggleNodeZoom();
             RunProcessingButton.Click += (_, _) =>
             {
-                TabNavList.SelectedIndex = 6;
                 RunProcessingFlow();
             };
             ExtractFramesButton.Click += (_, _) =>
             {
-                TabNavList.SelectedIndex = 0;
                 RunSpecificOperation("extract_frames");
             };
             BurnSubtitleButton.Click += (_, _) =>
@@ -203,7 +207,6 @@ namespace FlowMy.Views.NodeControls
             SnapshotButton.Click += (_, _) => TakeSnapshot();
             RunAllButton.Click += (_, _) =>
             {
-                TabNavList.SelectedIndex = 6;
                 RunProcessingFlow();
             };
             ToggleQuickGradeButton.Click += (_, _) =>
@@ -667,8 +670,8 @@ namespace FlowMy.Views.NodeControls
                     _node.ExtractParallelJobs = jobs;
             };
 
-            WatermarkToggle.Checked += (_, _) => _node.WatermarkEnabled = true;
-            WatermarkToggle.Unchecked += (_, _) => _node.WatermarkEnabled = false;
+            WatermarkToggle.Checked += (_, _) => { _node.WatermarkEnabled = true; UpdateWatermarkPreviewUi(); };
+            WatermarkToggle.Unchecked += (_, _) => { _node.WatermarkEnabled = false; UpdateWatermarkPreviewUi(); };
             BrowseWatermarkButton.Click += (_, _) =>
             {
                 var dlg = new OpenFileDialog { Filter = "Image Files|*.png;*.jpg;*.gif|All|*.*" };
@@ -676,12 +679,14 @@ namespace FlowMy.Views.NodeControls
                 {
                     WatermarkPathText.Text = dlg.FileName;
                     _node.WatermarkImagePath = dlg.FileName;
+                    UpdateWatermarkPreviewUi();
                 }
             };
             WatermarkOpacitySlider.ValueChanged += (_, e) =>
             {
                 _node.WatermarkOpacity = e.NewValue;
                 WatermarkOpacityLabel.Text = $"{e.NewValue:0.##}";
+                UpdateWatermarkPreviewUi();
             };
             ApplyWatermarkToVideoButton.Click += (_, _) =>
             {
@@ -694,6 +699,7 @@ namespace FlowMy.Views.NodeControls
                 if (selected?.Tag is string tag && !string.IsNullOrWhiteSpace(tag))
                     _node.WatermarkPosition = tag;
                 RefreshWatermarkPositionHint();
+                UpdateWatermarkPreviewUi();
             };
 
             TextOverlayToggle.Checked += (_, _) => _node.TextOverlayEnabled = true;
@@ -910,6 +916,7 @@ namespace FlowMy.Views.NodeControls
             _node.PropertyChanged += _propertyChangedHandler;
             AudioTracksList.ItemsSource = _node.AudioTracks;
             OverlayCanvasControl.ItemsSource = _node.Overlays;
+            UpdateOverlayCanvasBounds();
             OverlayLayerList.ItemsSource = _node.Overlays;
             VideoProcessingNodeExecutor.ProgressChanged += HandleExecutorProgress;
             VideoProcessingNodeExecutor.LogLine += HandleExecutorLog;
@@ -1214,6 +1221,7 @@ namespace FlowMy.Views.NodeControls
                 RefreshWatermarkPositionHint();
                 WatermarkOpacitySlider.Value = _node.WatermarkOpacity;
                 WatermarkOpacityLabel.Text = $"{_node.WatermarkOpacity:0.##}";
+                UpdateWatermarkPreviewUi();
                 TextOverlayToggle.IsChecked = _node.TextOverlayEnabled;
                 OverlayTextBox.Text = _node.OverlayText;
                 TextSizeSlider.Value = _node.OverlayFontSize;
@@ -1373,6 +1381,87 @@ namespace FlowMy.Views.NodeControls
             var offsetX = Math.Max(0, (containerW - videoW) / 2);
             var offsetY = Math.Max(0, (containerH - videoH) / 2);
             return new Rect(offsetX, offsetY, videoW, videoH);
+        }
+
+        private void UpdateOverlayCanvasBounds()
+        {
+            if (OverlayCanvasControl == null || VideoAreaGrid == null || PreviewMedia.Source == null) return;
+            var rect = GetDisplayedVideoRect();
+            OverlayCanvasControl.HorizontalAlignment = HorizontalAlignment.Left;
+            OverlayCanvasControl.VerticalAlignment = VerticalAlignment.Top;
+            OverlayCanvasControl.Margin = new Thickness(rect.X, rect.Y, 0, 0);
+            OverlayCanvasControl.Width = Math.Max(1, rect.Width);
+            OverlayCanvasControl.Height = Math.Max(1, rect.Height);
+        }
+
+        private void UpdateWatermarkPreviewUi()
+        {
+            if (WatermarkPreviewImage == null)
+                return;
+
+            if (PreviewMedia.Source == null ||
+                !_node.WatermarkEnabled ||
+                string.IsNullOrWhiteSpace(_node.WatermarkImagePath) ||
+                !File.Exists(_node.WatermarkImagePath))
+            {
+                WatermarkPreviewImage.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            try
+            {
+                var imagePath = _node.WatermarkImagePath!;
+                var source = new BitmapImage();
+                source.BeginInit();
+                source.CacheOption = BitmapCacheOption.OnLoad;
+                source.UriSource = new Uri(imagePath, UriKind.Absolute);
+                source.EndInit();
+                source.Freeze();
+                WatermarkPreviewImage.Source = source;
+                WatermarkPreviewImage.Opacity = Math.Clamp(_node.WatermarkOpacity, 0, 1);
+
+                var rect = GetDisplayedVideoRect();
+                var srcVideoW = Math.Max(1, PreviewMedia.NaturalVideoWidth);
+                var srcVideoH = Math.Max(1, PreviewMedia.NaturalVideoHeight);
+                var scale = Math.Min(rect.Width / srcVideoW, rect.Height / srcVideoH);
+
+                int wmPixelW;
+                int wmPixelH;
+                using (var bmp = new DrawingBitmap(imagePath))
+                {
+                    wmPixelW = Math.Max(1, bmp.Width);
+                    wmPixelH = Math.Max(1, bmp.Height);
+                }
+
+                var wmW = Math.Max(1, wmPixelW * scale);
+                var wmH = Math.Max(1, wmPixelH * scale);
+                var pad = Math.Max(0, _node.WatermarkPaddingPx) * scale;
+
+                double x;
+                double y;
+                switch ((_node.WatermarkPosition ?? "BR").Trim().ToUpperInvariant())
+                {
+                    case "TL": x = rect.X + pad; y = rect.Y + pad; break;
+                    case "TC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Y + pad; break;
+                    case "TR": x = rect.Right - wmW - pad; y = rect.Y + pad; break;
+                    case "ML": x = rect.X + pad; y = rect.Y + (rect.Height - wmH) / 2d; break;
+                    case "MC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Y + (rect.Height - wmH) / 2d; break;
+                    case "MR": x = rect.Right - wmW - pad; y = rect.Y + (rect.Height - wmH) / 2d; break;
+                    case "BL": x = rect.X + pad; y = rect.Bottom - wmH - pad; break;
+                    case "BC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Bottom - wmH - pad; break;
+                    default: x = rect.Right - wmW - pad; y = rect.Bottom - wmH - pad; break;
+                }
+
+                WatermarkPreviewImage.Width = wmW;
+                WatermarkPreviewImage.Height = wmH;
+                WatermarkPreviewImage.Margin = new Thickness(Math.Max(0, x), Math.Max(0, y), 0, 0);
+                WatermarkPreviewImage.Visibility = Visibility.Visible;
+                AppendLog($"[DBG] DisplayedRect={rect} WMPos=({x:0.##},{y:0.##}) WMSize=({wmW:0.##}x{wmH:0.##})");
+            }
+            catch
+            {
+                WatermarkPreviewImage.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void RefreshWatermarkPositionHint()
@@ -2437,12 +2526,10 @@ namespace FlowMy.Views.NodeControls
             if (string.IsNullOrWhiteSpace(_node.VideoPath))
             {
                 AppendLog("⚠ Chưa chọn video nguồn.");
-                TabNavList.SelectedIndex = 6;
                 return;
             }
 
             SyncRuntimeConfigFromUi();
-            TabNavList.SelectedIndex = 6;
             _lastRunStartedAtUtc = DateTime.UtcNow;
             ProgressStatusText.Text = $"Running: {operationType}...";
 
@@ -2493,18 +2580,49 @@ namespace FlowMy.Views.NodeControls
                 FileName = $"snapshot_{DateTime.Now:HHmmss}.png"
             };
             if (dlg.ShowDialog() != true) return;
-            var position = PreviewMedia.Position.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
             var outputPath = dlg.FileName;
+            var position = PreviewMedia.Position.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
             System.Threading.Tasks.Task.Run(async () =>
             {
                 try
                 {
-                    await VideoProcessingNodeExecutor.RunSnapshotAsync(_node.VideoPath, position, outputPath, System.Threading.CancellationToken.None);
-                    _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"✅ Snapshot saved: {outputPath}")));
+                    // Source of truth: FFmpeg pipeline (same as extract output).
+                    await VideoProcessingNodeExecutor.RunSnapshotAsync(_node, position, outputPath, System.Threading.CancellationToken.None);
+                    _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"✅ Snapshot saved (ffmpeg): {outputPath}")));
                 }
                 catch (Exception ex)
                 {
-                    _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"❌ Snapshot failed: {ex.Message}")));
+                    try
+                    {
+                        // UI capture fallback if FFmpeg fails.
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            VideoContainerGrid.UpdateLayout();
+                            VideoAreaGrid.UpdateLayout();
+                            var dpi = VisualTreeHelper.GetDpi(VideoContainerGrid);
+                            var containerW = Math.Max(1, (int)Math.Round(VideoContainerGrid.ActualWidth * dpi.DpiScaleX));
+                            var containerH = Math.Max(1, (int)Math.Round(VideoContainerGrid.ActualHeight * dpi.DpiScaleY));
+                            var rtb = new RenderTargetBitmap(containerW, containerH, 96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+                            rtb.Render(VideoContainerGrid);
+                            var displayedRect = GetDisplayedVideoRect();
+                            var topLeft = VideoAreaGrid.TranslatePoint(new Point(displayedRect.X, displayedRect.Y), VideoContainerGrid);
+                            var cropX = Math.Max(0, (int)Math.Floor(topLeft.X * dpi.DpiScaleX));
+                            var cropY = Math.Max(0, (int)Math.Floor(topLeft.Y * dpi.DpiScaleY));
+                            var cropW = Math.Max(1, Math.Min(containerW - cropX, (int)Math.Round(displayedRect.Width * dpi.DpiScaleX)));
+                            var cropH = Math.Max(1, Math.Min(containerH - cropY, (int)Math.Round(displayedRect.Height * dpi.DpiScaleY)));
+                            var cropped = new CroppedBitmap(rtb, new Int32Rect(cropX, cropY, cropW, cropH));
+                            var encoder = new PngBitmapEncoder();
+                            encoder.Frames.Add(BitmapFrame.Create(cropped));
+                            using var fs = new System.IO.FileStream(outputPath, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.None);
+                            encoder.Save(fs);
+                        });
+                        _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"✅ Snapshot saved (UI fallback): {outputPath}")));
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        _ = Dispatcher.BeginInvoke(new Action(() => AppendLog($"❌ Snapshot failed: {ex.Message} | fallback: {fallbackEx.Message}")));
+                    }
                 }
             });
         }
@@ -2720,6 +2838,9 @@ namespace FlowMy.Views.NodeControls
                 VideoViewbox.Visibility = Visibility.Collapsed;
                 PreviewPlaceholder.Visibility = Visibility.Visible;
             }
+
+            UpdateOverlayCanvasBounds();
+            UpdateWatermarkPreviewUi();
         }
 
         private void SetAspectRatio(double w, double h, bool auto)
