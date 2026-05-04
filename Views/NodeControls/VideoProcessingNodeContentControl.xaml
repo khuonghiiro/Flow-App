@@ -592,6 +592,8 @@
                     <TextBlock x:Name="FrameLabelPreviewText"
                                Text="Frame 0 - 00:00:00"
                                FontFamily="Segoe UI Semibold"
+                               VerticalAlignment="Top"
+                               HorizontalAlignment="Left"
                                TextTrimming="CharacterEllipsis"
                                TextWrapping="NoWrap"
                                Foreground="Black"/>
@@ -1058,6 +1060,12 @@
                                         <Border x:Name="FrameLabelTextColorPreview" Height="14" CornerRadius="3" BorderBrush="{DynamicResource ThemeInputBorderBrush}" BorderThickness="1"/>
                                         <Border x:Name="FrameLabelBackgroundColorPreview" Grid.Column="2" Height="14" CornerRadius="3" BorderBrush="{DynamicResource ThemeInputBorderBrush}" BorderThickness="1"/>
                                     </Grid>
+                                    <CheckBox x:Name="FrameLabelDebugSamplesCheckBox"
+                                              Margin="0,10,0,0"
+                                              FontSize="10.5"
+                                              Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                              Content="Ghi ảnh thử nhãn (debug) — trong thư mục xuất frame"
+                                              ToolTip="Tắt mặc định. Khi bật: lưu thư mục con debug-frame-label bên cạnh (cùng cây thư mục) ảnh frame đang xuất — log hiện đường dẫn đầy đủ. Nếu chưa có thư mục xuất hợp lệ thì dùng %TEMP%\FlowMy_VideoProcessing\debug-frame-label\. Snapshot: cùng thư mục với file ảnh lưu."/>
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="Canvas Overlay Layers" FontSize="11.5" FontWeight="SemiBold" Margin="0,4,0,6"/>

@@ -137,6 +137,7 @@ namespace FlowMy.Models.Nodes
         private string _overlayFontColor = "white";
         private string _textPosition = "BC";
         private bool _frameLabelEnabled;
+        private bool _frameLabelDebugSamplesEnabled;
         private string _frameLabelTemplate = "Frame {index} - {time}";
         private string _frameLabelPosition = "TL";
         private string _frameLabelTextColor = "black";
@@ -749,6 +750,13 @@ namespace FlowMy.Models.Nodes
         {
             get => _frameLabelEnabled;
             set { if (_frameLabelEnabled != value) { _frameLabelEnabled = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Khi true: ghi thư mục ảnh nhãn render (debug) khi xuất frame/encode.</summary>
+        public bool FrameLabelDebugSamplesEnabled
+        {
+            get => _frameLabelDebugSamplesEnabled;
+            set { if (_frameLabelDebugSamplesEnabled != value) { _frameLabelDebugSamplesEnabled = value; OnPropertyChanged(); } }
         }
 
         public string FrameLabelTemplate

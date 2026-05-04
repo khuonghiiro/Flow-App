@@ -346,6 +346,7 @@ namespace FlowMy.Views
                 dstVideo.OverlayFontColor = srcVideo.OverlayFontColor;
                 dstVideo.TextPosition = srcVideo.TextPosition;
                 dstVideo.FrameLabelEnabled = srcVideo.FrameLabelEnabled;
+                dstVideo.FrameLabelDebugSamplesEnabled = srcVideo.FrameLabelDebugSamplesEnabled;
                 dstVideo.FrameLabelTemplate = srcVideo.FrameLabelTemplate;
                 dstVideo.FrameLabelTextColor = srcVideo.FrameLabelTextColor;
                 dstVideo.FrameLabelBackgroundColor = srcVideo.FrameLabelBackgroundColor;

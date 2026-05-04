@@ -2209,6 +2209,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 videoNode.TextPosition = tpObj?.ToString() ?? "BC";
             if (properties.TryGetValue("FrameLabelEnabled", out var fleObj) && fleObj != null && bool.TryParse(fleObj.ToString(), out var fle))
                 videoNode.FrameLabelEnabled = fle;
+            if (properties.TryGetValue("FrameLabelDebugSamplesEnabled", out var fldbgObj) && fldbgObj != null && bool.TryParse(fldbgObj.ToString(), out var fldbg))
+                videoNode.FrameLabelDebugSamplesEnabled = fldbg;
             if (properties.TryGetValue("FrameLabelTemplate", out var fltObj))
                 videoNode.FrameLabelTemplate = fltObj?.ToString() ?? "Frame {index} - {time}";
             if (properties.TryGetValue("FrameLabelTextColor", out var fltcObj))
@@ -4902,6 +4904,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["OverlayFontColor"] = videoNode.OverlayFontColor;
             dict["TextPosition"] = videoNode.TextPosition;
             dict["FrameLabelEnabled"] = videoNode.FrameLabelEnabled;
+            dict["FrameLabelDebugSamplesEnabled"] = videoNode.FrameLabelDebugSamplesEnabled;
             dict["FrameLabelTemplate"] = videoNode.FrameLabelTemplate;
             dict["FrameLabelTextColor"] = videoNode.FrameLabelTextColor;
             dict["FrameLabelBackgroundColor"] = videoNode.FrameLabelBackgroundColor;

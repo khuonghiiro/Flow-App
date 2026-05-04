@@ -11,6 +11,8 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Threading;
+using FlowMy.Services.Workflow;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -91,6 +93,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var sourceFps = await ProbeSourceFpsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 if (sourceFps > 0) videoNode.SourceFps = sourceFps;
                 var sourceHeight = await ProbeSourceHeightAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
+                var sourceWidth = await ProbeSourceWidthAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
                 var sourceFpsClamped = Math.Max(0.001, videoNode.SourceFps);
                 var extractFps = videoNode.ExtractAllFrames
                     ? sourceFpsClamped
@@ -113,6 +116,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     : Path.Combine(frameOutputFolder!, $"frame_%06d.{frameExt}");
 
                 var totalDuration = await ProbeDurationSecondsAsync(videoInput, env.CancellationToken).ConfigureAwait(false);
+                var effectiveStart = videoNode.TrimEnabled ? Math.Max(0, videoNode.TrimStartSec) : 0;
+                var effectiveEnd = videoNode.TrimEnabled && videoNode.TrimEndSec > effectiveStart
+                    ? Math.Min(totalDuration, videoNode.TrimEndSec)
+                    : totalDuration;
+                var effectiveDurationTrim = Math.Max(0.01, effectiveEnd - effectiveStart);
+
                 var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoInput }));
                 if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
                 AppendVisualFilterArgs(frameArgs, videoNode, frameFilter);
@@ -130,6 +139,40 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
+                if (videoNode.FrameLabelEnabled && producedFrames.Count > 0)
+                {
+                    if (videoNode.FrameLabelDebugSamplesEnabled)
+                    {
+                        var dbgDir = CreateFrameLabelDebugFolder("frames", Path.GetDirectoryName(framePattern));
+                        var dbgCount = Math.Min(24, producedFrames.Count);
+                        var srcFpsForDbg = videoNode.SourceFps > 0 ? videoNode.SourceFps : 30;
+                        await RunWpfCompositorAsync(
+                            () => FrameLabelRasterComposer.WriteLabelSequencePngs(
+                                videoNode,
+                                dbgDir,
+                                dbgCount,
+                                effectiveStart,
+                                extractFps,
+                                srcFpsForDbg,
+                                sourceWidth > 0 ? sourceWidth : 1920,
+                                sourceHeight > 0 ? sourceHeight : 1080,
+                                Math.Max(sourceHeight, 1)),
+                            env.CancellationToken).ConfigureAwait(false);
+                        LogLine?.Invoke(videoNode, $"[DBG] FrameLabel samples: {dbgDir}");
+                    }
+
+                    await ApplyRasterFrameLabelsToStillFilesAsync(
+                            videoNode,
+                            producedFrames,
+                            effectiveStart,
+                            extractFps,
+                            sourceWidth,
+                            sourceHeight,
+                            Math.Max(sourceHeight, 1),
+                            env.CancellationToken)
+                        .ConfigureAwait(false);
+                }
+
                 var framesOutput = videoNode.OutputBase64
                     ? JsonSerializer.Serialize(producedFrames.Select(File.ReadAllBytes).Select(Convert.ToBase64String).ToList())
                     : JsonSerializer.Serialize(producedFrames);
@@ -138,7 +181,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var (codecArgs, extension) = BuildOutputArgs(videoNode);
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
                 var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
-                var hasCanvasOverlays = videoNode.Overlays.Any(o => o.IsVisible);
                 var mainArgs = BuildTrimAwareArgs(videoNode, new[]
                 {
                     "-y", "-hide_banner", "-loglevel", "error",
@@ -147,22 +189,70 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     "-an",
                 }).ToList();
 
-                AppendVisualFilterArgs(mainArgs, videoNode, mainFilter);
-                mainArgs.AddRange(codecArgs);
-                mainArgs.Add(outputBasePath);
+                string? lblEncDir = null;
+                try
+                {
+                    FrameLabelSequenceFfmpegInput? labelFf = null;
+                    if (videoNode.FrameLabelEnabled)
+                    {
+                        lblEncDir = videoNode.FrameLabelDebugSamplesEnabled
+                            ? CreateFrameLabelDebugFolder("enc_seq", Path.GetDirectoryName(framePattern))
+                            : Path.Combine(tempRoot, $"enc_lbl_{Guid.NewGuid():N}");
+                        var nLbl = Math.Max(producedFrames.Count + 48, (int)Math.Ceiling(effectiveDurationTrim * extractFps) + 64);
+                        var srcFpsForSeq = videoNode.SourceFps > 0 ? videoNode.SourceFps : 30;
+                        await RunWpfCompositorAsync(
+                            () => FrameLabelRasterComposer.WriteLabelSequencePngs(
+                                videoNode,
+                                lblEncDir,
+                                nLbl,
+                                effectiveStart,
+                                extractFps,
+                                srcFpsForSeq,
+                                sourceWidth > 0 ? sourceWidth : 1920,
+                                sourceHeight > 0 ? sourceHeight : 1080,
+                                Math.Max(sourceHeight, 1)),
+                            env.CancellationToken).ConfigureAwait(false);
 
-                if (videoNode.TwoPassEnabled && (videoNode.OutputFormat == "mp4_h264" || videoNode.OutputFormat == "mp4_h265"))
-                {
-                    await RunTwoPassEncodeAsync(videoNode, mainArgs, outputBasePath, hwaccel, totalDuration, env.CancellationToken).ConfigureAwait(false);
+                        if (videoNode.FrameLabelDebugSamplesEnabled)
+                            LogLine?.Invoke(videoNode, $"[DBG] FrameLabel sequence (encode): {lblEncDir}");
+
+                        labelFf = new FrameLabelSequenceFfmpegInput(
+                            Path.Combine(lblEncDir, "label_%06d.png").Replace('\\', '/'),
+                            extractFps);
+                    }
+
+                    AppendVisualFilterArgs(mainArgs, videoNode, mainFilter, labelFf);
+                    mainArgs.AddRange(codecArgs);
+                    mainArgs.Add(outputBasePath);
+
+                    if (videoNode.TwoPassEnabled && (videoNode.OutputFormat == "mp4_h264" || videoNode.OutputFormat == "mp4_h265"))
+                    {
+                        await RunTwoPassEncodeAsync(videoNode, mainArgs, outputBasePath, hwaccel, totalDuration, env.CancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await RunFfmpegWithProgressAsync(
+                            WithHwaccel(mainArgs, hwaccel),
+                            totalDuration,
+                            (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
+                            line => LogLine?.Invoke(videoNode, line),
+                            env.CancellationToken).ConfigureAwait(false);
+                    }
                 }
-                else
+                finally
                 {
-                    await RunFfmpegWithProgressAsync(
-                        WithHwaccel(mainArgs, hwaccel),
-                        totalDuration,
-                        (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
-                        line => LogLine?.Invoke(videoNode, line),
-                        env.CancellationToken).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(lblEncDir) && !videoNode.FrameLabelDebugSamplesEnabled)
+                    {
+                        try
+                        {
+                            if (Directory.Exists(lblEncDir))
+                                Directory.Delete(lblEncDir, recursive: true);
+                        }
+                        catch
+                        {
+                            /* temp cleanup best-effort */
+                        }
+                    }
                 }
 
                 /*
@@ -476,10 +566,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
                 filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
             }
-            if (node.FrameLabelEnabled)
-            {
-                filters.Add(BuildFrameLabelFilter(node, sourceFpsOverride: null, sourceHeightOverride));
-            }
             if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
             {
                 var subPath = node.SubtitlePath!.Replace("\\", "/").Replace(":", "\\:");
@@ -488,13 +574,45 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return string.Join(",", filters);
         }
 
-        private static (string filterComplex, List<string> imageInputs, string outputLabel) BuildOverlayFilterComplex(VideoProcessingNode node, string baseFilter)
+        private sealed record FrameLabelSequenceFfmpegInput(string AbsolutePatternPath, double Fps);
+
+        /// <summary>
+        /// Debug PNGs go under <c>{frameOutputDirectory}\debug-frame-label\</c> when a frame output folder is known; otherwise %TEMP%\FlowMy_VideoProcessing\debug-frame-label\.
+        /// </summary>
+        private static string CreateFrameLabelDebugFolder(string modeTag, string? frameOutputDirectory)
+        {
+            string root;
+            if (!string.IsNullOrWhiteSpace(frameOutputDirectory))
+            {
+                root = Path.Combine(frameOutputDirectory.Trim(), "debug-frame-label");
+            }
+            else
+            {
+                root = Path.Combine(Path.GetTempPath(), "FlowMy_VideoProcessing", "debug-frame-label");
+            }
+
+            Directory.CreateDirectory(root);
+            var dir = Path.Combine(root, $"{DateTime.Now:yyyyMMdd_HHmmss}_{modeTag}_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
+
+        private static (string filterComplex, List<string> imageInputs, string outputLabel) BuildOverlayFilterComplex(VideoProcessingNode node, string baseFilter, bool rasterFrameLabelUsesInput1)
         {
             var filterChains = new List<string> { $"[0:v]{baseFilter}[v0]" };
             var imageInputs = new List<string>();
             var currentLabel = "v0";
-            var imageInputIndex = 1;
+            var imageInputIndex = rasterFrameLabelUsesInput1 ? 2 : 1;
             var stageIndex = 0;
+
+            if (rasterFrameLabelUsesInput1)
+            {
+                var nextLabel = $"v{++stageIndex}";
+                var fx = node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture);
+                var fy = node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture);
+                filterChains.Add($"[{currentLabel}][1:v]overlay=x='W*{fx}':y='H*{fy}':shortest=1:format=auto[{nextLabel}]");
+                currentLabel = nextLabel;
+            }
 
             if (node.WatermarkEnabled && !string.IsNullOrWhiteSpace(node.WatermarkImagePath) && File.Exists(node.WatermarkImagePath))
             {
@@ -591,10 +709,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
                 filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
             }
-            if (node.FrameLabelEnabled)
-            {
-                filters.Add(BuildFrameLabelFilter(node, sourceFpsOverride, sourceHeightOverride));
-            }
             if (node.BurnSubtitleEnabled && !string.IsNullOrWhiteSpace(node.SubtitlePath))
             {
                 var subPath = node.SubtitlePath!.Replace("\\", "/").Replace(":", "\\:");
@@ -623,16 +737,27 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             };
         }
 
-        private static void AppendVisualFilterArgs(List<string> args, VideoProcessingNode node, string baseFilter)
+        private static void AppendVisualFilterArgs(List<string> args, VideoProcessingNode node, string baseFilter, FrameLabelSequenceFfmpegInput? frameLabels = null)
         {
             var hasCanvasOverlays = node.Overlays.Any(o => o.IsVisible);
             var hasWatermark = node.WatermarkEnabled &&
                                !string.IsNullOrWhiteSpace(node.WatermarkImagePath) &&
                                File.Exists(node.WatermarkImagePath);
+            var useRasterLabels = frameLabels != null && node.FrameLabelEnabled;
+
+            if (useRasterLabels)
+            {
+                args.AddRange(new[]
+                {
+                    "-framerate", frameLabels!.Fps.ToString("0.###", CultureInfo.InvariantCulture),
+                    "-start_number", "1",
+                    "-i", frameLabels.AbsolutePatternPath
+                });
+            }
 
             if (hasCanvasOverlays || hasWatermark)
             {
-                var (overlayFilter, imageInputs, outputLabel) = BuildOverlayFilterComplex(node, baseFilter);
+                var (overlayFilter, imageInputs, outputLabel) = BuildOverlayFilterComplex(node, baseFilter, useRasterLabels);
                 foreach (var inputPath in imageInputs)
                 {
                     args.AddRange(new[] { "-i", inputPath });
@@ -646,10 +771,33 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return;
             }
 
+            if (useRasterLabels)
+            {
+                var fx = node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture);
+                var fy = node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture);
+                var tailScale = BuildTailScaleFilter(node);
+                string chain;
+                if (string.IsNullOrWhiteSpace(tailScale))
+                {
+                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='W*{fx}':y='H*{fy}':shortest=1:format=auto[outv]";
+                }
+                else
+                {
+                    chain = $"[0:v]{baseFilter}[m1];[m1][1:v]overlay=x='W*{fx}':y='H*{fy}':shortest=1:format=auto[flb];[flb]{tailScale}[outv]";
+                }
+
+                args.AddRange(new[]
+                {
+                    "-filter_complex", chain,
+                    "-map", "[outv]"
+                });
+                return;
+            }
+
             var finalFilter = baseFilter;
-            var tailScale = BuildTailScaleFilter(node);
-            if (!string.IsNullOrWhiteSpace(tailScale))
-                finalFilter = string.IsNullOrWhiteSpace(finalFilter) ? tailScale : $"{finalFilter},{tailScale}";
+            var tail = BuildTailScaleFilter(node);
+            if (!string.IsNullOrWhiteSpace(tail))
+                finalFilter = string.IsNullOrWhiteSpace(finalFilter) ? tail : $"{finalFilter},{tail}";
             args.AddRange(new[] { "-vf", finalFilter });
         }
 
@@ -677,43 +825,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return Math.Max(8, (int)Math.Round((node.FrameLabelFontSize + 2) * sourceScale));
         }
 
-        private static string BuildFrameLabelFilter(VideoProcessingNode node, double? sourceFpsOverride = null, int? sourceHeightOverride = null)
-        {
-            var fontPath = ResolveFrameLabelFontPath().Replace("\\", "/").Replace(":", "\\:");
-            var template = string.IsNullOrWhiteSpace(node.FrameLabelTemplate)
-                ? "Frame {index} - {time}"
-                : node.FrameLabelTemplate;
-
-            var sourceFps = sourceFpsOverride.HasValue && sourceFpsOverride.Value > 0
-                ? sourceFpsOverride.Value
-                : (node.SourceFps > 0 ? node.SourceFps : 30);
-            var ffmpegText = template
-                .Replace("\\", "\\\\")
-                .Replace(":", "\\:")
-                .Replace("'", "\\'")
-                .Replace("{index}", "%{eif\\:n+1\\:d}")
-                .Replace("{frame}", $"%{{eif\\:t*{sourceFps.ToString("0.###", CultureInfo.InvariantCulture)}\\:d}}")
-                .Replace("{time}", string.Equals(node.FrameLabelTimeFormat, "HHMMSS", StringComparison.OrdinalIgnoreCase)
-                    ? "%{pts\\:gmtime\\:0\\:%H\\\\\\:%M\\\\\\:%S}"
-                    : "%{pts\\:gmtime\\:0\\:%M\\\\\\:%S}");
-
-            var xExpr = $"(iw*{node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture)})";
-            var yExpr = $"(ih*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)})";
-            var bg = string.IsNullOrWhiteSpace(node.FrameLabelBackgroundColor) ? "white" : node.FrameLabelBackgroundColor;
-            var fg = string.IsNullOrWhiteSpace(node.FrameLabelTextColor) ? "black" : node.FrameLabelTextColor;
-            var sourceScale = ComputeFrameLabelSourceScale(sourceHeightOverride);
-            var paddingX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
-            var paddingY = Math.Max(0, (int)Math.Round(node.FrameLabelVerticalPadding * sourceScale));
-            var boxW = $"(iw*{node.FrameLabelW.ToString("0.######", CultureInfo.InvariantCulture)})";
-            var boxH = $"(ih*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)})";
-            var textX = $"w*{node.FrameLabelX.ToString("0.######", CultureInfo.InvariantCulture)}+{paddingX}";
-            var textBoxH = $"h*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)}";
-            var textY = $"h*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)}+(({textBoxH}-text_h)/2)+{paddingY}";
-            var bgWithAlpha = $"{bg}@1.0";
-            var ffmpegFontSize = ComputeFrameLabelDrawtextFontPixelSize(node, sourceHeightOverride);
-            return $"drawbox=x={xExpr}:y={yExpr}:w={boxW}:h={boxH}:color={bgWithAlpha}:t=fill,drawtext=text='{ffmpegText}':fontfile='{fontPath}':fontsize={ffmpegFontSize}:fontcolor={fg}:x={textX}:y={textY}";
-        }
-
         private static string BuildTailScaleFilter(VideoProcessingNode node)
         {
             var parts = new List<string>();
@@ -732,16 +843,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 parts.Add($"scale=iw*{sc}:ih*{sc}");
             }
             return string.Join(",", parts);
-        }
-
-        private static string ResolveFrameLabelFontPath()
-        {
-            var winFonts = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts");
-            var preferred = Path.Combine(winFonts, "seguisb.ttf");
-            if (File.Exists(preferred)) return preferred;
-            var regular = Path.Combine(winFonts, "segoeui.ttf");
-            if (File.Exists(regular)) return regular;
-            return ResolveFontPath("Arial");
         }
 
         private static string ResolveFontPath(string? font)
@@ -826,6 +927,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var sourceFps = node.SourceFps > 0 ? node.SourceFps : await ProbeSourceFpsAsync(node.VideoPath, ct).ConfigureAwait(false);
             if (sourceFps <= 0) sourceFps = 30;
             var sourceHeight = await ProbeSourceHeightAsync(node.VideoPath, ct).ConfigureAwait(false);
+            var sourceWidth = await ProbeSourceWidthAsync(node.VideoPath, ct).ConfigureAwait(false);
             var vf = BuildVideoFilterChainWithoutFps(node, includeTextOverlay: true, sourceFpsOverride: sourceFps, sourceHeightOverride: sourceHeight);
 
             var args = new List<string>
@@ -843,6 +945,49 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             args.AddRange(new[] { "-frames:v", "1" });
             args.Add(outputPath);
             await RunFfmpegAsync(args, ct).ConfigureAwait(false);
+
+            if (!node.FrameLabelEnabled || !File.Exists(outputPath))
+                return;
+
+            if (!double.TryParse(positionSec.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var posSec))
+                posSec = 0;
+            var effStart = node.TrimEnabled ? Math.Max(0, node.TrimStartSec) : 0;
+            var effFps = node.ExtractAllFrames
+                ? Math.Max(0.001, sourceFps)
+                : Math.Max(0.001, Math.Min(node.ExtractFps, sourceFps));
+            var rel = Math.Max(0, posSec - effStart);
+            var idx0 = Math.Max(0, (int)Math.Floor(rel * effFps));
+
+            if (node.FrameLabelDebugSamplesEnabled)
+            {
+                var dbgDir = CreateFrameLabelDebugFolder("snapshot", Path.GetDirectoryName(outputPath));
+                await RunWpfCompositorAsync(
+                    () => FrameLabelRasterComposer.WriteLabelSequencePngs(
+                        node,
+                        dbgDir,
+                        1,
+                        effStart,
+                        effFps,
+                        sourceFps,
+                        sourceWidth > 0 ? sourceWidth : 1920,
+                        sourceHeight > 0 ? sourceHeight : 1080,
+                        Math.Max(sourceHeight, 1)),
+                    ct).ConfigureAwait(false);
+            }
+
+            await RunWpfCompositorAsync(
+                    () => FrameLabelRasterComposer.CompositeLabelOntoStillFile(
+                        node,
+                        outputPath,
+                        idx0,
+                        effStart,
+                        effFps,
+                        sourceFps,
+                        sourceWidth > 0 ? sourceWidth : 1920,
+                        sourceHeight > 0 ? sourceHeight : 1080,
+                        Math.Max(sourceHeight, 1)),
+                    ct)
+                .ConfigureAwait(false);
         }
 
         public static async Task RunExtractFramesOnlyAsync(
@@ -871,6 +1016,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var duration = await ProbeDurationSecondsAsync(node.VideoPath, ct).ConfigureAwait(false);
             var sourceFps = node.SourceFps > 0 ? node.SourceFps : await ProbeSourceFpsAsync(node.VideoPath, ct).ConfigureAwait(false);
             var sourceHeight = await ProbeSourceHeightAsync(node.VideoPath, ct).ConfigureAwait(false);
+            var sourceWidth = await ProbeSourceWidthAsync(node.VideoPath, ct).ConfigureAwait(false);
             if (sourceFps <= 0) sourceFps = 30;
             var effectiveStart = node.TrimEnabled ? Math.Max(0, node.TrimStartSec) : 0;
             var effectiveEnd = node.TrimEnabled && node.TrimEndSec > effectiveStart ? Math.Min(duration, node.TrimEndSec) : duration;
@@ -892,6 +1038,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // This avoids rounding extractFps to an integer frame-per-second.
                 vfArg = BuildVideoFilterChain(node, Math.Max(0.001, node.ExtractFps), includeTextOverlay: true, sourceHeight);
             }
+
+            var effectiveExtractFps = node.ExtractAllFrames
+                ? Math.Max(0.001, sourceFps)
+                : (node.ExtractFps >= sourceFps ? sourceFps : Math.Max(0.001, node.ExtractFps));
 
             onLog($"📁 Output: {outputFolder}");
             onLog($"🎞 Mode: {(node.ExtractAllFrames ? "All frames" : $"{node.ExtractFps:0.###} frame/s với offset")}");
@@ -956,6 +1106,41 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                     Directory.Delete(folder, true);
                 }
+            }
+
+            if (node.FrameLabelEnabled)
+            {
+                if (node.FrameLabelDebugSamplesEnabled)
+                {
+                    var dbgDir = CreateFrameLabelDebugFolder("extract", outputFolder);
+                    var dbgCount = Math.Min(24, Math.Max(1, (int)Math.Ceiling(effectiveDuration * effectiveExtractFps)));
+                    await RunWpfCompositorAsync(
+                        () => FrameLabelRasterComposer.WriteLabelSequencePngs(
+                            node,
+                            dbgDir,
+                            dbgCount,
+                            effectiveStart,
+                            effectiveExtractFps,
+                            sourceFps,
+                            sourceWidth > 0 ? sourceWidth : 1920,
+                            sourceHeight > 0 ? sourceHeight : 1080,
+                            Math.Max(sourceHeight, 1)),
+                        ct).ConfigureAwait(false);
+                    onLog($"[DBG] FrameLabel samples: {dbgDir}");
+                }
+
+                var stills = Directory.GetFiles(outputFolder, $"frame_*.{extension}")
+                    .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                await ApplyRasterFrameLabelsToStillFilesAsync(
+                    node,
+                    stills,
+                    effectiveStart,
+                    effectiveExtractFps,
+                    sourceWidth,
+                    sourceHeight,
+                    Math.Max(sourceHeight, 1),
+                    ct).ConfigureAwait(false);
             }
 
             var count = Directory.GetFiles(outputFolder, $"frame_*.{extension}").Length;
@@ -1096,6 +1281,56 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             };
             var output = await RunProcessCaptureAsync(ResolveBinary("ffprobe"), args, ct).ConfigureAwait(false);
             return int.TryParse(output.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var h) ? h : 0;
+        }
+
+        private static async Task<int> ProbeSourceWidthAsync(string inputPath, CancellationToken ct)
+        {
+            var args = new[]
+            {
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width",
+                "-of", "default=nokey=1:noprint_wrappers=1",
+                inputPath
+            };
+            var output = await RunProcessCaptureAsync(ResolveBinary("ffprobe"), args, ct).ConfigureAwait(false);
+            return int.TryParse(output.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var w) ? w : 0;
+        }
+
+        private static Task RunWpfCompositorAsync(Action work, CancellationToken ct)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.HasShutdownStarted && !dispatcher.HasShutdownFinished)
+                return dispatcher.InvokeAsync(work, DispatcherPriority.Normal, ct).Task;
+            return Task.Run(work, ct);
+        }
+
+        private static async Task ApplyRasterFrameLabelsToStillFilesAsync(
+            VideoProcessingNode node,
+            IReadOnlyList<string> framePathsOrdered,
+            double timelineStartSec,
+            double extractFps,
+            int probeSrcW,
+            int probeSrcH,
+            int probeSrcHForFont,
+            CancellationToken ct)
+        {
+            if (!node.FrameLabelEnabled || framePathsOrdered.Count == 0) return;
+
+            var srcFps = node.SourceFps > 0 ? node.SourceFps : 30;
+            var wFall = probeSrcW > 0 ? probeSrcW : 1920;
+            var hFall = probeSrcH > 0 ? probeSrcH : 1080;
+            var hFontProbe = probeSrcHForFont > 0 ? probeSrcHForFont : hFall;
+
+            await RunWpfCompositorAsync(() =>
+            {
+                for (var i = 0; i < framePathsOrdered.Count; i++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    FrameLabelRasterComposer.CompositeLabelOntoStillFile(
+                        node, framePathsOrdered[i], i, timelineStartSec, extractFps, srcFps, wFall, hFall, hFontProbe);
+                }
+            }, ct).ConfigureAwait(false);
         }
 
         private static async Task<string> ResolveHwAccelAsync(bool preferGpu, CancellationToken ct)

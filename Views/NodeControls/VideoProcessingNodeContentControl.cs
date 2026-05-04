@@ -29,7 +29,7 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class VideoProcessingNodeContentControl : UserControl
     {
-        /// <summary>Matches FFmpeg <c>ResolveFrameLabelFontPath</c> (Segoe UI Semibold → Segoe UI → system UI).</summary>
+        /// <summary>WPF preview font — export nhãn frame dùng cùng raster (Segoe UI Semibold → system UI).</summary>
         private static readonly FontFamily FrameLabelPreviewFontFamily = CreateFrameLabelPreviewFontFamily();
 
         private static FontFamily CreateFrameLabelPreviewFontFamily()
@@ -752,6 +752,8 @@ namespace FlowMy.Views.NodeControls
                 FrameLabelFontSizeLabel.Text = $"{(int)e.NewValue}px";
                 UpdateFrameLabelPreviewUi();
             };
+            FrameLabelDebugSamplesCheckBox.Checked += (_, _) => { _node.FrameLabelDebugSamplesEnabled = true; };
+            FrameLabelDebugSamplesCheckBox.Unchecked += (_, _) => { _node.FrameLabelDebugSamplesEnabled = false; };
 
             TwoPassToggle.Checked += (_, _) => _node.TwoPassEnabled = true;
             TwoPassToggle.Unchecked += (_, _) => _node.TwoPassEnabled = false;
@@ -1250,6 +1252,7 @@ namespace FlowMy.Views.NodeControls
                 FrameLabelBackgroundColorTextBox.Text = _node.FrameLabelBackgroundColor;
                 FrameLabelFontSizeSlider.Value = _node.FrameLabelFontSize;
                 FrameLabelFontSizeLabel.Text = $"{_node.FrameLabelFontSize}px";
+                FrameLabelDebugSamplesCheckBox.IsChecked = _node.FrameLabelDebugSamplesEnabled;
                 ExtractParallelJobsCombo.SelectedIndex = _node.ExtractParallelJobs switch
                 {
                     2 => 1,
