@@ -472,9 +472,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
                 var (xExpr, yExpr) = BuildTextPositionExpression(node.TextPosition, 10);
                 var fontPath = ResolveFontPath(node.OverlayFont);
-                var sourceScale = sourceHeightOverride.HasValue && sourceHeightOverride.Value > 0
-                    ? Math.Clamp(sourceHeightOverride.Value / 720.0, 0.6, 3.0)
-                    : 1.0;
+                var sourceScale = ComputeFrameLabelSourceScale(sourceHeightOverride);
                 var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
                 filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
             }
@@ -589,9 +587,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var escapedText = node.OverlayText.Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
                 var (xExpr, yExpr) = BuildTextPositionExpression(node.TextPosition, 10);
                 var fontPath = ResolveFontPath(node.OverlayFont);
-                var sourceScale = sourceHeightOverride.HasValue && sourceHeightOverride.Value > 0
-                    ? Math.Clamp(sourceHeightOverride.Value / 720.0, 0.6, 3.0)
-                    : 1.0;
+                var sourceScale = ComputeFrameLabelSourceScale(sourceHeightOverride);
                 var textSize = Math.Max(10, (int)Math.Round(node.OverlayFontSize * sourceScale));
                 filters.Add($"drawtext=text='{escapedText}':fontfile='{fontPath}':fontsize={textSize}:fontcolor={node.OverlayFontColor}:x={xExpr}:y={yExpr}");
             }
@@ -669,6 +665,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return (x, y);
         }
 
+        /// <summary>Same scaling as FFmpeg drawtext for frame label (based on probed/source height).</summary>
+        internal static double ComputeFrameLabelSourceScale(int? sourceHeightPx) =>
+            sourceHeightPx.HasValue && sourceHeightPx.Value > 0
+                ? Math.Clamp(sourceHeightPx.Value / 720.0, 0.6, 3.0)
+                : 1.0;
+
+        internal static int ComputeFrameLabelDrawtextFontPixelSize(VideoProcessingNode node, int? sourceHeightPx)
+        {
+            var sourceScale = ComputeFrameLabelSourceScale(sourceHeightPx);
+            return Math.Max(8, (int)Math.Round((node.FrameLabelFontSize + 2) * sourceScale));
+        }
+
         private static string BuildFrameLabelFilter(VideoProcessingNode node, double? sourceFpsOverride = null, int? sourceHeightOverride = null)
         {
             var fontPath = ResolveFrameLabelFontPath().Replace("\\", "/").Replace(":", "\\:");
@@ -693,9 +701,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var yExpr = $"(ih*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)})";
             var bg = string.IsNullOrWhiteSpace(node.FrameLabelBackgroundColor) ? "white" : node.FrameLabelBackgroundColor;
             var fg = string.IsNullOrWhiteSpace(node.FrameLabelTextColor) ? "black" : node.FrameLabelTextColor;
-            var sourceScale = sourceHeightOverride.HasValue && sourceHeightOverride.Value > 0
-                ? Math.Clamp(sourceHeightOverride.Value / 720.0, 0.6, 3.0)
-                : 1.0;
+            var sourceScale = ComputeFrameLabelSourceScale(sourceHeightOverride);
             var paddingX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
             var paddingY = Math.Max(0, (int)Math.Round(node.FrameLabelVerticalPadding * sourceScale));
             var boxW = $"(iw*{node.FrameLabelW.ToString("0.######", CultureInfo.InvariantCulture)})";
@@ -704,7 +710,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var textBoxH = $"h*{node.FrameLabelH.ToString("0.######", CultureInfo.InvariantCulture)}";
             var textY = $"h*{node.FrameLabelY.ToString("0.######", CultureInfo.InvariantCulture)}+(({textBoxH}-text_h)/2)+{paddingY}";
             var bgWithAlpha = $"{bg}@1.0";
-            var ffmpegFontSize = Math.Max(8, (int)Math.Round((node.FrameLabelFontSize + 2) * sourceScale));
+            var ffmpegFontSize = ComputeFrameLabelDrawtextFontPixelSize(node, sourceHeightOverride);
             return $"drawbox=x={xExpr}:y={yExpr}:w={boxW}:h={boxH}:color={bgWithAlpha}:t=fill,drawtext=text='{ffmpegText}':fontfile='{fontPath}':fontsize={ffmpegFontSize}:fontcolor={fg}:x={textX}:y={textY}";
         }
 

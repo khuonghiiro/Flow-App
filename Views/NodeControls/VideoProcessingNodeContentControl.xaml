@@ -591,8 +591,7 @@
                         IsHitTestVisible="False">
                     <TextBlock x:Name="FrameLabelPreviewText"
                                Text="Frame 0 - 00:00:00"
-                               FontSize="13"
-                               FontWeight="SemiBold"
+                               FontFamily="Segoe UI Semibold"
                                TextTrimming="CharacterEllipsis"
                                TextWrapping="NoWrap"
                                Foreground="Black"/>

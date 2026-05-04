@@ -29,6 +29,15 @@ namespace FlowMy.Views.NodeControls
 {
     public partial class VideoProcessingNodeContentControl : UserControl
     {
+        /// <summary>Matches FFmpeg <c>ResolveFrameLabelFontPath</c> (Segoe UI Semibold → Segoe UI → system UI).</summary>
+        private static readonly FontFamily FrameLabelPreviewFontFamily = CreateFrameLabelPreviewFontFamily();
+
+        private static FontFamily CreateFrameLabelPreviewFontFamily()
+        {
+            try { return new FontFamily("Segoe UI Semibold"); }
+            catch { return SystemFonts.MessageFontFamily; }
+        }
+
         private enum TimelineDragMode
         {
             None,
@@ -1347,7 +1356,16 @@ namespace FlowMy.Views.NodeControls
                 .Replace("{index}", outputIndex.ToString())
                 .Replace("{frame}", currentFrame.ToString())
                 .Replace("{time}", currentTime);
-            FrameLabelPreviewText.FontSize = _node.FrameLabelFontSize;
+
+            var natH = PreviewMedia.NaturalVideoHeight;
+            var rect = GetDisplayedVideoRect();
+            var areaH = Math.Max(1, rect.Height);
+            var srcPixelH = natH > 0 ? natH : 720;
+            var drawtextPx = VideoProcessingNodeExecutor.ComputeFrameLabelDrawtextFontPixelSize(_node, natH > 0 ? natH : (int?)null);
+            var previewFontDip = drawtextPx * (areaH / (double)srcPixelH);
+            FrameLabelPreviewText.FontFamily = FrameLabelPreviewFontFamily;
+            FrameLabelPreviewText.FontWeight = FontWeights.Normal;
+            FrameLabelPreviewText.FontSize = Math.Max(4, previewFontDip);
             FrameLabelPreviewText.Foreground = ParseBrushOrDefault(_node.FrameLabelTextColor, Brushes.Black);
             FrameLabelPreviewOverlay.Background = ParseBrushOrDefault(_node.FrameLabelBackgroundColor, Brushes.White);
             FrameLabelPreviewOverlay.Visibility = Visibility.Visible;
@@ -1357,30 +1375,74 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateFrameLabelPreviewLayout()
         {
-            if (FrameLabelPreviewOverlay == null || VideoAreaGrid == null) return;
+            if (FrameLabelPreviewOverlay == null || VideoAreaGrid == null || PreviewMedia == null) return;
             var rect = GetDisplayedVideoRect();
             var areaW = Math.Max(1, rect.Width);
             var areaH = Math.Max(1, rect.Height);
+            var natW = PreviewMedia.NaturalVideoWidth;
+            var natH = PreviewMedia.NaturalVideoHeight;
+            var srcW = Math.Max(1, natW);
+            var srcH = Math.Max(1, natH);
 
             FrameLabelPreviewOverlay.HorizontalAlignment = HorizontalAlignment.Left;
             FrameLabelPreviewOverlay.VerticalAlignment = VerticalAlignment.Top;
             FrameLabelPreviewOverlay.Width = Math.Max(20, _node.FrameLabelW * areaW);
             FrameLabelPreviewOverlay.Height = Math.Max(18, _node.FrameLabelH * areaH);
             FrameLabelPreviewOverlay.Margin = new Thickness(rect.X + (_node.FrameLabelX * areaW), rect.Y + (_node.FrameLabelY * areaH), 0, 0);
-            FrameLabelPreviewOverlay.Padding = new Thickness(_node.FrameLabelHorizontalPadding, _node.FrameLabelVerticalPadding, _node.FrameLabelHorizontalPadding, _node.FrameLabelVerticalPadding);
+            var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(natH > 0 ? natH : (int?)null);
+            var padVidX = Math.Max(0, (int)Math.Round(_node.FrameLabelHorizontalPadding * sourceScale));
+            var padVidY = Math.Max(0, (int)Math.Round(_node.FrameLabelVerticalPadding * sourceScale));
+            var padPx = padVidX * (areaW / srcW);
+            var padPy = padVidY * (areaH / srcH);
+            FrameLabelPreviewOverlay.Padding = new Thickness(padPx, padPy, padPx, padPy);
             FrameLabelPosLabel.Text = $"X {_node.FrameLabelX:0.###} | Y {_node.FrameLabelY:0.###}";
             FrameLabelSizeLabel.Text = $"W {_node.FrameLabelW:0.###} | H {_node.FrameLabelH:0.###}";
         }
 
+        /// <summary>
+        /// Rectangle in <see cref="VideoAreaGrid"/> coordinates that matches the actual decoded video pixels
+        /// (after MediaElement Uniform letterboxing inside the Viewbox). Using the full Viewbox size would
+        /// desync watermark / overlay preview from FFmpeg, which composites on real frame dimensions.
+        /// </summary>
         private Rect GetDisplayedVideoRect()
         {
+            if (VideoAreaGrid == null || VideoViewbox == null || PreviewMedia == null)
+                return new Rect(0, 0, 1, 1);
+
             var containerW = Math.Max(1, VideoAreaGrid.ActualWidth);
             var containerH = Math.Max(1, VideoAreaGrid.ActualHeight);
-            var videoW = Math.Max(1, VideoViewbox.ActualWidth);
-            var videoH = Math.Max(1, VideoViewbox.ActualHeight);
-            var offsetX = Math.Max(0, (containerW - videoW) / 2);
-            var offsetY = Math.Max(0, (containerH - videoH) / 2);
-            return new Rect(offsetX, offsetY, videoW, videoH);
+            var viewboxW = Math.Max(1, VideoViewbox.ActualWidth);
+            var viewboxH = Math.Max(1, VideoViewbox.ActualHeight);
+            var offsetX = Math.Max(0, (containerW - viewboxW) / 2);
+            var offsetY = Math.Max(0, (containerH - viewboxH) / 2);
+
+            var natW = PreviewMedia.NaturalVideoWidth;
+            var natH = PreviewMedia.NaturalVideoHeight;
+            if (natW <= 0 || natH <= 0 || PreviewMedia.Source == null)
+                return new Rect(offsetX, offsetY, viewboxW, viewboxH);
+
+            var childW = PreviewMedia.Width;
+            var childH = PreviewMedia.Height;
+            if (double.IsNaN(childW) || childW <= 0) childW = 1280;
+            if (double.IsNaN(childH) || childH <= 0) childH = 720;
+
+            var videoScaleInChild = Math.Min(childW / natW, childH / (double)natH);
+            var dispW = natW * videoScaleInChild;
+            var dispH = natH * videoScaleInChild;
+            var innerOx = (childW - dispW) / 2;
+            var innerOy = (childH - dispH) / 2;
+
+            var s = Math.Min(viewboxW / childW, viewboxH / childH);
+            var renderedChildW = childW * s;
+            var renderedChildH = childH * s;
+            var vbOx = (viewboxW - renderedChildW) / 2;
+            var vbOy = (viewboxH - renderedChildH) / 2;
+
+            var contentX = offsetX + vbOx + innerOx * s;
+            var contentY = offsetY + vbOy + innerOy * s;
+            var contentW = dispW * s;
+            var contentH = dispH * s;
+            return new Rect(contentX, contentY, contentW, contentH);
         }
 
         private void UpdateOverlayCanvasBounds()
