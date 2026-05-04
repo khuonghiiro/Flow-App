@@ -210,6 +210,33 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="QuickOverlayIconButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeOverlayBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                CornerRadius="8"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#30FFFFFF"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#80FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#45FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="PlayButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
             <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
@@ -409,6 +436,7 @@
                                 Padding="10,0"
                                 Style="{DynamicResource PrimaryButton}"
                                 Background="#CCDC2626"
+                                Foreground ="White"
                                 Click="OpenVideoButton_Click"
                                 Opacity="1">
                             <StackPanel Orientation="Horizontal">
@@ -471,6 +499,7 @@
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="Chưa chọn video"
                                    FontSize="11.5"
+                                   Foreground ="White"
                                    Opacity="0.5"
                                    HorizontalAlignment="Center"/>
                         <TextBlock Text="Nhấn 'Mở video' để bắt đầu"
@@ -544,6 +573,39 @@
                         </Grid>
                     </StackPanel>
                 </Border>
+                <Border x:Name="QuickPreviewQualityPanel"
+                        Grid.Row="1"
+                        Panel.ZIndex="5"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Bottom"
+                        Margin="8,0,0,8"
+                        Padding="8,6"
+                        CornerRadius="10"
+                        Background="{DynamicResource ThemeOverlayBackgroundBrush}"
+                        BorderBrush="{DynamicResource ThemeOverlayBorderBrush}" BorderThickness="1"
+                        Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Preview"
+                                   Margin="0,0,6,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox x:Name="PreviewQualityCombo"
+                                  Width="132"
+                                  Height="24"
+                                  Style="{StaticResource DarkComboBoxStyle}"
+                                  ToolTip="Chất lượng hiển thị preview tại khung video">
+                            <ComboBoxItem Content="Auto" Tag="auto"/>
+                            <ComboBoxItem Content="144p" Tag="144"/>
+                            <ComboBoxItem Content="240p" Tag="240"/>
+                            <ComboBoxItem Content="480p" Tag="480"/>
+                            <ComboBoxItem Content="720p" Tag="720"/>
+                            <ComboBoxItem Content="1080p" Tag="1080"/>
+                            <ComboBoxItem Content="2K" Tag="1440"/>
+                            <ComboBoxItem Content="4K" Tag="2160"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
                 <StackPanel x:Name="QuickOverlayButtonsPanel"
                             Grid.Row="1"
                             Panel.ZIndex="5"
@@ -551,13 +613,13 @@
                             VerticalAlignment="Bottom"
                             Orientation="Vertical"
                             Margin="0,0,8,8">
-                    <Button x:Name="ToggleQuickGradeButton" Width="30" Height="30" Style="{StaticResource IconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
+                    <Button x:Name="ToggleQuickGradeButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
                         <TextBlock Text="🎨" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
-                    <Button x:Name="QuickSnapshotButton" Width="30" Height="30" Style="{StaticResource IconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
+                    <Button x:Name="QuickSnapshotButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
                         <TextBlock Text="📷" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
-                    <Button x:Name="QuickSetTrimButton" Width="30" Height="30" Style="{StaticResource IconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}">
+                    <Button x:Name="QuickSetTrimButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}">
                         <TextBlock Text="✂" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
                 </StackPanel>
@@ -843,25 +905,7 @@
                                         <CheckBox x:Name="OutputBase64CheckBox" Content="Xuất Base64" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Xuất frame dạng base64 string thay vì file."/>
                                         <CheckBox x:Name="PreferGpuCheckBox" Content="Ưu tiên GPU" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource ReadableCheckBoxStyle}" ToolTip="Ưu tiên CUDA/D3D11, tự fallback CPU nếu không hỗ trợ."/>
                                     </Grid>
-                                    <Grid Margin="0,0,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="160"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Live Preview" VerticalAlignment="Center" FontSize="10.5" Opacity="0.8"/>
-                                        <ComboBox x:Name="PreviewQualityCombo"
-                                                  Grid.Column="2"
-                                                  Height="26"
-                                                  ToolTip="Low: kéo mượt hơn, High: seek chi tiết hơn nhưng nặng decode."
-                                                  Style="{StaticResource DarkComboBoxStyle}">
-                                            <ComboBoxItem Content="Auto (Smart)" Tag="auto"/>
-                                            <ComboBoxItem Content="Low (Smooth)" Tag="low"/>
-                                            <ComboBoxItem Content="Normal" Tag="normal"/>
-                                            <ComboBoxItem Content="High (Accurate)" Tag="high"/>
-                                        </ComboBox>
-                                    </Grid>
-                                    <Grid Margin="0,0,0,10">
+                                    <Grid Margin="0,0,0,10" Visibility="Collapsed">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="8"/>

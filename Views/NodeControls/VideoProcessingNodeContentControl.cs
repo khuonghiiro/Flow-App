@@ -54,6 +54,8 @@ namespace FlowMy.Views.NodeControls
             High
         }
 
+        private static readonly int[] PreviewQualityLevelHeights = { 144, 240, 480, 720, 1080, 1440, 2160 };
+
         private const double MinAutoFitNodeWidth = 540;
         private const double MinAutoFitNodeHeight = 340;
         private const double MaxAutoFitNodeWidth = 1280;
@@ -432,6 +434,7 @@ namespace FlowMy.Views.NodeControls
                 UpdatePlaybackUi();
                 ApplyPreviewColorTransform();
                 EmitAutoFitSizeSuggestion();
+                RebuildPreviewQualityOptions(PreviewMedia.NaturalVideoHeight);
                 ApplyAspectRatioToMedia();
                 RefreshFrameResizeLabel();
                 await ProbeSourceFpsAndRefreshUiAsync();
@@ -501,6 +504,7 @@ namespace FlowMy.Views.NodeControls
             {
                 if (_suppressControlSync) return;
                 _node.PreviewQualityMode = GetSelectedPreviewQualityTag();
+                ApplyAspectRatioToMedia();
                 ApplyPreviewQualitySettings();
             };
             PreviewVisualStrengthCombo.SelectionChanged += (_, _) =>
@@ -1154,13 +1158,8 @@ namespace FlowMy.Views.NodeControls
                 PreferGpuCheckBox.IsChecked = _node.PreferGpu;
                 SourceAudioToggle.IsChecked = _node.SourceAudioEnabled;
                 VolumeSlider.Value = _node.PreviewVolume;
-                PreviewQualityCombo.SelectedIndex = _node.PreviewQualityMode switch
-                {
-                    "auto" => 0,
-                    "low" => 1,
-                    "high" => 3,
-                    _ => 2
-                };
+                _node.PreviewQualityMode = "high";
+                RebuildPreviewQualityOptions(PreviewMedia.NaturalVideoHeight);
                 PreviewVisualStrengthCombo.SelectedIndex = _node.PreviewVisualStrengthMode switch
                 {
                     "fast" => 0,
@@ -1289,6 +1288,7 @@ namespace FlowMy.Views.NodeControls
                 _isPlaying = false;
                 _timelineTimer.Stop();
                 UpdatePlaybackUi();
+                RebuildPreviewQualityOptions(0);
                 return;
             }
 
@@ -1877,15 +1877,30 @@ namespace FlowMy.Views.NodeControls
         {
             var mode = GetEffectivePreviewQualityMode();
             PreviewMedia.ScrubbingEnabled = mode == PreviewQualityMode.High;
+            var scaling = mode switch
+            {
+                PreviewQualityMode.Low => BitmapScalingMode.LowQuality,
+                PreviewQualityMode.High => BitmapScalingMode.HighQuality,
+                _ => BitmapScalingMode.Linear
+            };
+            RenderOptions.SetBitmapScalingMode(PreviewMedia, scaling);
         }
 
         private PreviewQualityMode GetPreviewQualityMode()
         {
-            return (_node.PreviewQualityMode ?? "normal").ToLowerInvariant() switch
+            var raw = (_node.PreviewQualityMode ?? "auto").ToLowerInvariant();
+            if (int.TryParse(raw, out var qh))
+            {
+                if (qh <= 240) return PreviewQualityMode.Low;
+                if (qh >= 720) return PreviewQualityMode.High;
+                return PreviewQualityMode.Normal;
+            }
+
+            return raw switch
             {
                 "auto" => PreviewQualityMode.Auto,
-                "low" => PreviewQualityMode.Low,
-                "high" => PreviewQualityMode.High,
+                "144" or "240" or "low" => PreviewQualityMode.Low,
+                "720" or "1080" or "1440" or "2160" or "high" => PreviewQualityMode.High,
                 _ => PreviewQualityMode.Normal
             };
         }
@@ -1920,7 +1935,72 @@ namespace FlowMy.Views.NodeControls
                 return tag;
             }
 
-            return "normal";
+            return "auto";
+        }
+
+        private int? GetConfiguredPreviewMaxHeight()
+        {
+            if (int.TryParse(_node.PreviewQualityMode, out var h) && h > 0)
+                return h;
+            return null;
+        }
+
+        private void RebuildPreviewQualityOptions(int sourceHeight)
+        {
+            if (PreviewQualityCombo == null) return;
+            var selectedTag = _node.PreviewQualityMode ?? "auto";
+            var maxHeight = sourceHeight > 0 ? sourceHeight : PreviewQualityLevelHeights[^1];
+
+            _suppressControlSync = true;
+            try
+            {
+                PreviewQualityCombo.Items.Clear();
+                PreviewQualityCombo.Items.Add(new ComboBoxItem { Content = "Auto", Tag = "auto" });
+
+                foreach (var q in PreviewQualityLevelHeights)
+                {
+                    if (q <= maxHeight)
+                        PreviewQualityCombo.Items.Add(new ComboBoxItem { Content = $"{q}p", Tag = q.ToString() });
+                }
+
+                if (sourceHeight > 0 && !PreviewQualityLevelHeights.Contains(sourceHeight))
+                    PreviewQualityCombo.Items.Add(new ComboBoxItem { Content = $"{sourceHeight}p (Native)", Tag = sourceHeight.ToString() });
+
+                if (!SelectPreviewQualityByTag(selectedTag))
+                {
+                    // If previously selected quality is no longer available, clamp to highest supported.
+                    if (sourceHeight > 0)
+                    {
+                        var clamped = PreviewQualityLevelHeights.Where(x => x <= sourceHeight).DefaultIfEmpty(sourceHeight).Max();
+                        if (!SelectPreviewQualityByTag(clamped.ToString()))
+                            SelectPreviewQualityByTag("auto");
+                    }
+                    else
+                    {
+                        SelectPreviewQualityByTag("auto");
+                    }
+                }
+            }
+            finally
+            {
+                _suppressControlSync = false;
+            }
+        }
+
+        private bool SelectPreviewQualityByTag(string tag)
+        {
+            for (var i = 0; i < PreviewQualityCombo.Items.Count; i++)
+            {
+                if (PreviewQualityCombo.Items[i] is ComboBoxItem cbi &&
+                    string.Equals(cbi.Tag?.ToString(), tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    PreviewQualityCombo.SelectedIndex = i;
+                    _node.PreviewQualityMode = cbi.Tag?.ToString() ?? "auto";
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private string GetSelectedPreviewVisualStrengthTag()
@@ -2918,19 +2998,37 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyAspectRatioToMedia()
         {
+            double targetW;
+            double targetH;
             if (_aspectAuto)
             {
                 var natW = PreviewMedia.NaturalVideoWidth > 0 ? PreviewMedia.NaturalVideoWidth : 1280;
                 var natH = PreviewMedia.NaturalVideoHeight > 0 ? PreviewMedia.NaturalVideoHeight : 720;
-                PreviewMedia.Width = natW;
-                PreviewMedia.Height = natH;
+                targetW = natW;
+                targetH = natH;
             }
             else if (_selectedAspectW > 0 && _selectedAspectH > 0)
             {
                 var baseW = 1280.0;
-                PreviewMedia.Width = baseW;
-                PreviewMedia.Height = baseW * (_selectedAspectH / _selectedAspectW);
+                targetW = baseW;
+                targetH = baseW * (_selectedAspectH / _selectedAspectW);
             }
+            else
+            {
+                targetW = 1280;
+                targetH = 720;
+            }
+
+            var qualityCap = GetConfiguredPreviewMaxHeight();
+            if (qualityCap.HasValue && qualityCap.Value > 0 && targetH > qualityCap.Value)
+            {
+                var scale = qualityCap.Value / targetH;
+                targetW *= scale;
+                targetH = qualityCap.Value;
+            }
+
+            PreviewMedia.Width = targetW;
+            PreviewMedia.Height = targetH;
 
             UpdatePreviewAspectRatio();
         }
