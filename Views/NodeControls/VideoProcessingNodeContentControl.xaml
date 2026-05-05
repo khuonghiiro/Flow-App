@@ -1093,7 +1093,7 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Column="1" Margin="0,0,0,0">
+            <Grid x:Name="RightPanelGrid" Grid.Column="1" Margin="0,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -1913,7 +1913,8 @@
             </Grid>
         </Grid>
             <Border x:Name="ActionButtonsBorder" Grid.Row="1" Margin="0,10,0,0" Padding="10,12"
-                HorizontalAlignment="Stretch"
+                HorizontalAlignment="Right"
+                Width="{Binding ElementName=RightPanelGrid, Path=ActualWidth}"
                 Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="8"
                 BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="1">
                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -1921,39 +1922,55 @@
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal">
                                 <Button x:Name="ExtractFramesButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock Text="Tách Frame" FontSize="11"/></StackPanel>
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock x:Name="ExtractFramesButtonLabel" Text="Tách Frame" FontSize="11" Visibility="Collapsed"/></StackPanel>
                                 </Button>
                                 <Button x:Name="RunAllButton" Height="32" MinWidth="120" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="▶" Margin="0,0,6,0" FontSize="11"/><TextBlock Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold"/></StackPanel>
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="▶" Margin="0,0,6,0" FontSize="11"/><TextBlock x:Name="RunAllButtonLabel" Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>
                         <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GradingActionBar" Orientation="Horizontal">
-                                <Button x:Name="ApplyGradingButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold"/></Button>
-                                <Button x:Name="ResetGradingButton2" Height="32" MinWidth="88" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"><TextBlock Text="Đặt lại" FontSize="11"/></Button>
+                                <Button x:Name="ApplyGradingButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🎨" Margin="0,0,6,0"/><TextBlock x:Name="ApplyGradingButtonLabel" Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                </Button>
+                                <Button x:Name="ResetGradingButton2" Height="32" MinWidth="88" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="↺" Margin="0,0,6,0"/><TextBlock x:Name="ResetGradingButton2Label" Text="Đặt lại" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
                         <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal">
-                                <Button x:Name="BurnSubtitleButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}"><TextBlock Text="Gắn phụ đề" FontSize="11"/></Button>
-                                <Button x:Name="QuickWatermarkButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Watermark" FontSize="11"/></Button>
-                                <Button x:Name="ApplyOverlayToVideoActionButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Áp dụng Overlay" FontSize="11"/></Button>
+                                <Button x:Name="BurnSubtitleButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💬" Margin="0,0,6,0"/><TextBlock x:Name="BurnSubtitleButtonLabel" Text="Gắn phụ đề" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                </Button>
+                                <Button x:Name="QuickWatermarkButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💧" Margin="0,0,6,0"/><TextBlock x:Name="QuickWatermarkButtonLabel" Text="Watermark" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                </Button>
+                                <Button x:Name="ApplyOverlayToVideoActionButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🧩" Margin="0,0,6,0"/><TextBlock x:Name="ApplyOverlayToVideoActionButtonLabel" Text="Áp dụng Overlay" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
                         <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="AudioActionBar" Orientation="Horizontal">
-                                <Button x:Name="MixAudioButton" Height="32" MinWidth="112" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Ghép Audio" FontSize="11" FontWeight="SemiBold"/></Button>
+                                <Button x:Name="MixAudioButton" Height="32" MinWidth="112" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🔊" Margin="0,0,6,0"/><TextBlock x:Name="MixAudioButtonLabel" Text="Ghép Audio" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
                         <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="ExportActionBar" Orientation="Horizontal">
-                                <Button x:Name="RunExportButton" Height="32" MinWidth="108" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Xuất video" FontSize="11" FontWeight="SemiBold"/></Button>
-                                <Button x:Name="SnapshotButton" Height="32" MinWidth="100" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}"><TextBlock Text="Chụp ảnh" FontSize="11"/></Button>
+                                <Button x:Name="RunExportButton" Height="32" MinWidth="108" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="📤" Margin="0,0,6,0"/><TextBlock x:Name="RunExportButtonLabel" Text="Xuất video" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                </Button>
+                                <Button x:Name="SnapshotButton" Height="32" MinWidth="100" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="📷" Margin="0,0,6,0"/><TextBlock x:Name="SnapshotButtonLabel" Text="Chụp ảnh" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                </Button>
                                 <Button x:Name="ConvertFormatButton" Visibility="Collapsed"/>
                                 <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
                             </StackPanel>
@@ -1961,8 +1978,12 @@
                         <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal">
-                                <Button x:Name="OpenOutputVideoActionButton" Height="32" MinWidth="100" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}"><TextBlock Text="Mở Video" FontSize="11"/></Button>
-                                <Button x:Name="OpenFramesFolderActionButton" Height="32" MinWidth="124" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}"><TextBlock Text="Mở Folder Frame" FontSize="11"/></Button>
+                                <Button x:Name="OpenOutputVideoActionButton" Height="32" MinWidth="100" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🎬" Margin="0,0,6,0"/><TextBlock x:Name="OpenOutputVideoActionButtonLabel" Text="Mở Video" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                </Button>
+                                <Button x:Name="OpenFramesFolderActionButton" Height="32" MinWidth="124" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="📁" Margin="0,0,6,0"/><TextBlock x:Name="OpenFramesFolderActionButtonLabel" Text="Mở Folder Frame" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                </Button>
                                 <Button x:Name="OpenOutputVideoFolderQuickButton" Visibility="Collapsed"/>
                                 <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
                             </StackPanel>
@@ -1971,7 +1992,7 @@
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal">
                                 <Button x:Name="SaveSettingsButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold"/></StackPanel>
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock x:Name="SaveSettingsButtonLabel" Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>

@@ -176,6 +176,15 @@ namespace FlowMy.Views.NodeControls
         {
             TabNavList.SelectionChanged += TabNavList_SelectionChanged;
             TabNavList.SelectedIndex = 0;
+            foreach (var group in new[]
+            {
+                BottomBarGroupGeneral, BottomBarGroupGrading, BottomBarGroupFilters,
+                BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
+            })
+            {
+                group.MouseEnter += (_, _) => UpdateActionButtonLabelVisibility();
+                group.MouseLeave += (_, _) => UpdateActionButtonLabelVisibility();
+            }
             SizeChanged += (_, _) =>
             {
                 SyncUserControlRoundedClip();
@@ -883,6 +892,37 @@ namespace FlowMy.Views.NodeControls
                 else
                     g.Background = Brushes.Transparent;
             }
+
+            UpdateActionButtonLabelVisibility();
+        }
+
+        private void UpdateActionButtonLabelVisibility()
+        {
+            var activeIdx = Math.Max(0, TabNavList.SelectedIndex);
+            Border[] groups =
+            {
+                BottomBarGroupGeneral, BottomBarGroupGrading, BottomBarGroupFilters,
+                BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
+            };
+
+            for (var i = 0; i < groups.Length; i++)
+            {
+                var showLabel = i == activeIdx || groups[i].IsMouseOver;
+                ToggleLabelsInGroup(groups[i], showLabel);
+            }
+        }
+
+        private static void ToggleLabelsInGroup(DependencyObject root, bool show)
+        {
+            if (root is TextBlock tb && tb.Name.EndsWith("Label", StringComparison.Ordinal))
+            {
+                tb.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
+
+            var count = VisualTreeHelper.GetChildrenCount(root);
+            for (var i = 0; i < count; i++)
+                ToggleLabelsInGroup(VisualTreeHelper.GetChild(root, i), show);
         }
 
         private void RunProcessingFlow()
