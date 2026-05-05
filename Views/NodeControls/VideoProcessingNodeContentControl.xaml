@@ -3,65 +3,117 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FlowMy.Controls"
              xmlns:models="clr-namespace:FlowMy.Models.Nodes"
-             Background="#0F0F17"
-             Foreground="#E8E8F0">
+             FontFamily="Segoe UI"
+             TextOptions.TextFormattingMode="Display"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True"
+             Background="#0E0E14"
+             Foreground="#ECECF4">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#E8E8F0"/>
-        <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#C9D3E2"/>
-        <SolidColorBrush x:Key="ThemeCardBackgroundBrush" Color="#1AFFFFFF"/>
-        <SolidColorBrush x:Key="ThemeCardBorderBrush" Color="#35FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeInnerCardBackgroundBrush" Color="#18000000"/>
-        <SolidColorBrush x:Key="ThemeInnerCardBorderBrush" Color="#30FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeInputBackgroundBrush" Color="#15FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#35FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeInputForegroundBrush" Color="#E8F0FF"/>
-        <SolidColorBrush x:Key="ThemeOverlayBackgroundBrush" Color="#AA000000"/>
-        <SolidColorBrush x:Key="ThemeOverlayBorderBrush" Color="#30FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeTimelinePanelBrush" Color="#EE0A0A18"/>
-        <SolidColorBrush x:Key="ThemeTrackBackgroundBrush" Color="#2AFFFFFF"/>
-        <SolidColorBrush x:Key="ThemeAccentBrush" Color="#7C6BF8"/>
-        <SolidColorBrush x:Key="ThemeTabNavBackgroundBrush" Color="#0AFFFFFF"/>
-        <SolidColorBrush x:Key="ThemeLogContainerBackgroundBrush" Color="#0C000000"/>
-        <SolidColorBrush x:Key="ThemeActionBarBackgroundBrush" Color="#12FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeActionBarBorderBrush" Color="#18FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#ECECF4"/>
+        <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#9CA3B8"/>
+        <SolidColorBrush x:Key="ThemeCardBackgroundBrush" Color="#18181F"/>
+        <SolidColorBrush x:Key="ThemeCardBorderBrush" Color="#2E2E3D"/>
+        <SolidColorBrush x:Key="ThemeInnerCardBackgroundBrush" Color="#14141A"/>
+        <SolidColorBrush x:Key="ThemeInnerCardBorderBrush" Color="#2A2A36"/>
+        <SolidColorBrush x:Key="ThemeInputBackgroundBrush" Color="#22222C"/>
+        <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#3A3A4A"/>
+        <SolidColorBrush x:Key="ThemeInputForegroundBrush" Color="#F1F5FF"/>
+        <SolidColorBrush x:Key="ThemeOverlayBackgroundBrush" Color="#CC0E0E14"/>
+        <SolidColorBrush x:Key="ThemeOverlayBorderBrush" Color="#404050"/>
+        <SolidColorBrush x:Key="ThemeTimelinePanelBrush" Color="#12121A"/>
+        <SolidColorBrush x:Key="ThemeTrackBackgroundBrush" Color="#353545"/>
+        <SolidColorBrush x:Key="ThemeAccentBrush" Color="#6366F1"/>
+        <SolidColorBrush x:Key="ThemeTabNavBackgroundBrush" Color="#16161E"/>
+        <SolidColorBrush x:Key="ThemeLogContainerBackgroundBrush" Color="#12121A"/>
+        <SolidColorBrush x:Key="ThemeActionBarBackgroundBrush" Color="#16161E"/>
+        <SolidColorBrush x:Key="ThemeActionBarBorderBrush" Color="#2A2A36"/>
         <SolidColorBrush x:Key="ThemeOnAccentTextBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ThemeSliderThumbBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeComboPopupBackgroundBrush" Color="#1E1E30"/>
-        <SolidColorBrush x:Key="ThemeComboItemHoverBrush" Color="#28FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeTabHoverBrush" Color="#28FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeActionExtractBrush" Color="#205B8FF9"/>
-        <SolidColorBrush x:Key="ThemeActionSubtitleBrush" Color="#207C6BF8"/>
-        <SolidColorBrush x:Key="ThemeActionWatermarkBrush" Color="#2014B8A6"/>
-        <SolidColorBrush x:Key="ThemeActionConvertBrush" Color="#20A78BFA"/>
-        <SolidColorBrush x:Key="ThemeActionTrimBrush" Color="#20EF4444"/>
-        <SolidColorBrush x:Key="ThemeActionSnapshotBrush" Color="#20F59E0B"/>
-        <SolidColorBrush x:Key="ThemeActionFolderVideoBrush" Color="#204ADE80"/>
-        <SolidColorBrush x:Key="ThemeActionFolderFramesBrush" Color="#20F59E0B"/>
+        <SolidColorBrush x:Key="ThemeComboPopupBackgroundBrush" Color="#1E1E2A"/>
+        <SolidColorBrush x:Key="ThemeComboItemHoverBrush" Color="#343448"/>
+        <SolidColorBrush x:Key="ThemeTabHoverBrush" Color="#2A2A38"/>
+        <SolidColorBrush x:Key="ThemeActionExtractBrush" Color="#262E8FF9"/>
+        <SolidColorBrush x:Key="ThemeActionSubtitleBrush" Color="#266366F1"/>
+        <SolidColorBrush x:Key="ThemeActionWatermarkBrush" Color="#2614B8A6"/>
+        <SolidColorBrush x:Key="ThemeActionConvertBrush" Color="#26A78BFA"/>
+        <SolidColorBrush x:Key="ThemeActionTrimBrush" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="ThemeActionSnapshotBrush" Color="#26F59E0B"/>
+        <SolidColorBrush x:Key="ThemeActionFolderVideoBrush" Color="#264ADE80"/>
+        <SolidColorBrush x:Key="ThemeActionFolderFramesBrush" Color="#26F59E0B"/>
+        <SolidColorBrush x:Key="ThemeOpenVideoBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="ThemeOpenVideoHoverBrush" Color="#EF4444"/>
+        <SolidColorBrush x:Key="ThemeOpenVideoPressedBrush" Color="#B91C1C"/>
+
+        <Style x:Key="VideoOpenPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeOpenVideoBrush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource ThemeOpenVideoHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource ThemeOpenVideoPressedBrush}"/>
+                                <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                                <Setter TargetName="border" Property="RenderTransform">
+                                    <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.45"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="VideoChromePrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+        </Style>
+        <Style x:Key="VideoChromeSecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+        </Style>
+
         <Style x:Key="GlassCardStyle" TargetType="Border">
-            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeCardBorderBrush}"/>
             <Setter Property="Background" Value="{DynamicResource ThemeCardBackgroundBrush}"/>
-           
+            <Setter Property="Padding" Value="0"/>
         </Style>
         <Style x:Key="InnerCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource ThemeInnerCardBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeInnerCardBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Padding" Value="14,12"/>
             <Setter Property="TextElement.Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
         </Style>
         <Style x:Key="ValueBadgeStyle" TargetType="Border">
-            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Background" Value="#2A2A36"/>
             <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Margin" Value="6,0,0,0"/>
-            <Setter Property="Padding" Value="4,3"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Padding" Value="8,5"/>
         </Style>
         <Style x:Key="ReadableCheckBoxStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Margin" Value="0,1,0,1"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,3,0,3"/>
             <Style.Triggers>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Foreground" Value="#88EAF2FF"/>
@@ -69,6 +121,7 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Background" Value="{DynamicResource ThemeInputBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeInputForegroundBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeInputBorderBrush}"/>
@@ -129,7 +182,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeComboItemHoverBrush}"/>
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#60FFFFFF"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
@@ -161,13 +214,14 @@
         </Style>
         <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBoxStyle}"/>
         <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Background" Value="{DynamicResource ThemeInputBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeInputForegroundBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeInputBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CaretBrush" Value="{DynamicResource ThemeInputForegroundBrush}"/>
             <Setter Property="SelectionBrush" Value="{DynamicResource ThemeAccentBrush}"/>
-            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Padding" Value="10,6"/>
         </Style>
         <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBoxStyle}"/>
         <Style TargetType="Slider" x:Key="ModernSliderStyle">
@@ -201,12 +255,17 @@
         <Style x:Key="IconButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-                    <Setter Property="Background" Value="#20FFFFFF"/>
+                    <Setter Property="Background" Value="{DynamicResource ThemeTabHoverBrush}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ThemeComboItemHoverBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -226,60 +285,83 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#30FFFFFF"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#80FFFFFF"/>
+                                <Setter TargetName="Root" Property="Background" Value="#383848"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#45FFFFFF"/>
+                                <Setter TargetName="Root" Property="Background" Value="#4A4A5C"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="PlayButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+        <Style x:Key="PlayButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border CornerRadius="18" Background="{TemplateBinding Background}">
+                        <Border x:Name="PlayBd" CornerRadius="18" Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="PlayBd" Property="Background" Value="#818CF8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="PlayBd" Property="Background" Value="#4F46E5"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="PlayBd" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
         <Style x:Key="PresetChipStyle" TargetType="Button">
-            <Setter Property="Background" Value="#18FFFFFF"/>
+            <Setter Property="Background" Value="#252530"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#3A3A4A"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
+                        <Border x:Name="ChipBd" Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="20"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ChipBd" Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
+                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ChipBd" Property="Background" Value="#4F46E5"/>
+                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="#4F46E5"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
         <Style x:Key="PresetChipResetStyle" TargetType="Button" BasedOn="{StaticResource PresetChipStyle}">
-            <Setter Property="Background" Value="#284B5563"/>
+            <Setter Property="Background" Value="#2A323C"/>
+            <Setter Property="BorderBrush" Value="#4B5563"/>
         </Style>
         <Style x:Key="PillTabNavStyle" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
@@ -288,27 +370,32 @@
                 <Setter.Value>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Setter Property="Padding" Value="0,7"/>
+                        <Setter Property="Padding" Value="0,6"/>
                         <Setter Property="FontSize" Value="12"/>
+                        <Setter Property="FontFamily" Value="Segoe UI"/>
                         <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
                         <Setter Property="Cursor" Value="Hand"/>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
-                                    <Border x:Name="Bd" CornerRadius="8" Padding="6,7" Background="Transparent">
+                                    <Border x:Name="Bd" CornerRadius="8" Padding="12,8" Background="Transparent">
                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
                                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
-                                            <Setter TargetName="Bd" Property="Padding" Value="4,7"/>
+                                            <Setter TargetName="Bd" Property="Padding" Value="12,8"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                         </Trigger>
-                                        <Trigger Property="IsMouseOver" Value="True">
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsSelected" Value="False"/>
+                                                <Condition Property="IsMouseOver" Value="True"/>
+                                            </MultiTrigger.Conditions>
                                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeTabHoverBrush}"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-                                        </Trigger>
+                                        </MultiTrigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Setter.Value>
@@ -339,9 +426,10 @@
         </Style>
         <Style x:Key="AspectRadioStyle" TargetType="RadioButton">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="10.5"/>
-            <Setter Property="Margin" Value="2,0"/>
-            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Padding" Value="10,5"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -374,13 +462,13 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="0">
+    <Grid Margin="12,10,12,14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="10,8">
+        <Border Grid.Row="0" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,10" Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -391,19 +479,19 @@
                     <ColumnDefinition Width="6"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <controls:SvgViewboxEx x:Name="IconView" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <controls:SvgViewboxEx x:Name="IconView" Width="24" Height="24" Margin="0,0,14,0" VerticalAlignment="Center"/>
                 <StackPanel Grid.Column="1">
-                    <TextBlock x:Name="TitleText" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display"/>
-                    <TextBlock x:Name="VideoPathText" FontSize="10" Opacity="0.65" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                    <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI"/>
+                    <TextBlock x:Name="VideoPathText" FontSize="11" Opacity="0.72" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" FontFamily="Segoe UI"/>
                 </StackPanel>
-                <Button Grid.Column="2" x:Name="ThemeModeButton" Height="30" MinWidth="40" Padding="10,0" Style="{DynamicResource SecondaryButton}" ToolTip="Đổi sáng/tối">
+                <Button Grid.Column="2" x:Name="ThemeModeButton" Height="32" MinWidth="44" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Đổi sáng/tối">
                     <TextBlock Text="☀"/>
                 </Button>
-                <Button Grid.Column="4" x:Name="ToggleNodeSizeButton" Height="30" MinWidth="40" Padding="10,0" Style="{DynamicResource SecondaryButton}" ToolTip="Phóng to/thu nhỏ node video">
-                    <TextBlock Text="⤢"/>
+                <Button Grid.Column="4" x:Name="ToggleNodeSizeButton" Height="32" MinWidth="44" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Phóng to/thu nhỏ node video">
+                    <TextBlock Text="⤢" FontSize="13"/>
                 </Button>
-                <Button Grid.Column="6" x:Name="RunProcessingButton" Height="30" MinWidth="84" Padding="14,0" Style="{DynamicResource PrimaryButton}" ToolTip="Chạy xử lý video qua FFmpeg">
-                    <TextBlock Text="Chạy"/>
+                <Button Grid.Column="6" x:Name="RunProcessingButton" Height="32" MinWidth="92" Padding="18,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Chạy xử lý video qua FFmpeg">
+                    <TextBlock Text="Chạy" FontWeight="SemiBold"/>
                 </Button>
             </Grid>
         </Border>
@@ -414,7 +502,7 @@
                 <ColumnDefinition Width="3*" MinWidth="320"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="8,8,4,8" Padding="0" ClipToBounds="True" VerticalAlignment="Stretch">
+            <Border Grid.Column="0" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,10,0" Padding="0" ClipToBounds="True" VerticalAlignment="Stretch">
                 <Grid x:Name="VideoContainerGrid">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -422,7 +510,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="140"/>
                 </Grid.RowDefinitions>
-                <Border Grid.Row="0" Margin="8,8,8,4" Padding="6,4" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="10">
+                <Border Grid.Row="0" Margin="12,12,12,8" Padding="10,8" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="10">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -432,16 +520,13 @@
                         <Button x:Name="OpenVideoButton"
                                 Grid.Column="0"
                                 VerticalAlignment="Center"
-                                Height="28"
-                                Padding="10,0"
-                                Style="{DynamicResource PrimaryButton}"
-                                Background="#CCDC2626"
-                                Foreground ="White"
-                                Click="OpenVideoButton_Click"
-                                Opacity="1">
+                                Height="30"
+                                Padding="12,0"
+                                Style="{StaticResource VideoOpenPrimaryButtonStyle}"
+                                Click="OpenVideoButton_Click">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📁" FontSize="10" Margin="0,0,4,0"/>
-                                <TextBlock Text="Mở video" FontSize="10.5"/>
+                                <TextBlock Text="📁" FontSize="10" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Mở video" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <WrapPanel Grid.Column="1" HorizontalAlignment="Center">
@@ -475,7 +560,7 @@
                                     Height="24"
                                     Padding="8,0"
                                     FontSize="9.5"
-                                    Style="{DynamicResource SecondaryButton}"
+                                    Style="{StaticResource VideoChromeSecondaryButtonStyle}"
                                     Content="Before/After"/>
                         </StackPanel>
                     </Grid>
@@ -498,26 +583,25 @@
                           Visibility="Visible">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="Chưa chọn video"
-                                   FontSize="11.5"
-                                   Foreground ="White"
-                                   Opacity="0.5"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource ThemeTextPrimaryBrush}"
+                                   Opacity="0.55"
                                    HorizontalAlignment="Center"/>
                         <TextBlock Text="Nhấn 'Mở video' để bắt đầu"
-                                   FontSize="10"
-                                   Opacity="0.35"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource ThemeTextSecondaryBrush}"
                                    HorizontalAlignment="Center"
-                                   Margin="0,4,0,0"/>
+                                   Margin="0,6,0,0"/>
                         <Button x:Name="OpenVideoInPlaceholderButton"
-                                Height="32"
-                                Margin="0,10,0,0"
-                                Padding="16,0"
-                                Background="#CCDC2626"
+                                Height="34"
+                                Margin="0,14,0,0"
+                                Padding="18,0"
                                 IsHitTestVisible="True"
                                 Click="OpenVideoInPlaceholderButton_Click"
-                                Style="{DynamicResource PrimaryButton}">
+                                Style="{StaticResource VideoOpenPrimaryButtonStyle}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📁" Margin="0,0,6,0"/>
-                                <TextBlock Text="Chọn video" FontWeight="SemiBold"/>
+                                <TextBlock Text="📁" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Chọn video" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         </StackPanel>
@@ -660,7 +744,7 @@
                                TextWrapping="NoWrap"
                                Foreground="Black"/>
                 </Border>
-                <Border Grid.Row="2" Background="{DynamicResource ThemeTimelinePanelBrush}" Padding="10,6,10,8" CornerRadius="0,0,12,12">
+                <Border Grid.Row="2" Background="{DynamicResource ThemeTimelinePanelBrush}" Padding="12,10,12,10" CornerRadius="0,0,10,10">
                     <StackPanel>
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
@@ -712,7 +796,7 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border Grid.Row="3" Margin="8,0,8,8" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
+                <Border Grid.Row="3" Margin="12,0,12,12" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -726,8 +810,8 @@
                                     <TextBlock x:Name="ProgressPercentText" Margin="8,0,0,0" FontSize="11" FontFamily="Consolas" Opacity="0.8"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button x:Name="ClearLogButton" Content="Xóa" Height="22" Padding="8,0" FontSize="10" Style="{DynamicResource SecondaryButton}"/>
-                                    <Button x:Name="CopyLogButton" Content="Copy" Height="22" Padding="8,0" FontSize="10" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                    <Button x:Name="ClearLogButton" Content="Xóa" Height="22" Padding="8,0" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
+                                    <Button x:Name="CopyLogButton" Content="Copy" Height="22" Padding="8,0" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -749,13 +833,13 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Column="1" Margin="4,8,8,8">
+            <Grid Grid.Column="1" Margin="0,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" x:Name="TabNavBorder" Margin="0,0,0,6" Padding="4" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="12">
+            <Border Grid.Row="0" x:Name="TabNavBorder" Margin="0,0,0,10" Padding="10,8" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="12">
                 <ListBox x:Name="TabNavList" Style="{StaticResource PillTabNavStyle}" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -771,7 +855,7 @@
                     <ListBoxItem Content="Cài đặt" Tag="Settings"/>
                 </ListBox>
             </Border>
-            <Border Grid.Row="1" x:Name="TabContentBorder" Style="{StaticResource GlassCardStyle}" Padding="12,10">
+            <Border Grid.Row="1" x:Name="TabContentBorder" Style="{StaticResource GlassCardStyle}" Padding="16,14">
                 <Grid>
                     <ScrollViewer x:Name="GeneralTabContent" VerticalScrollBarVisibility="Auto" Visibility="Visible">
                         <StackPanel Margin="0,2,0,0">
@@ -1000,7 +1084,7 @@
                                     <Grid Margin="0,8,0,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <TextBox x:Name="WatermarkPathText" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" Height="28"/>
-                                        <Button x:Name="BrowseWatermarkButton" Grid.Column="1" Content="..." Width="32" Style="{DynamicResource SecondaryButton}"/>
+                                        <Button x:Name="BrowseWatermarkButton" Grid.Column="1" Content="..." Width="32" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                     </Grid>
                                     <ComboBox x:Name="WatermarkPositionCombo" Margin="0,8,0,0" Height="28" Style="{StaticResource DarkComboBoxStyle}">
                                         <ComboBoxItem Content="Top Left" Tag="TL"/><ComboBoxItem Content="Top Center" Tag="TC"/><ComboBoxItem Content="Top Right" Tag="TR"/>
@@ -1246,7 +1330,7 @@
                                                 </Grid.RowDefinitions>
                                                 <Grid Grid.Row="0" Margin="0,0,0,8">
                                                     <TextBlock Text="Track âm thanh" Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button HorizontalAlignment="Right" Content="✕" Width="22" Height="22" FontSize="10" Style="{DynamicResource SecondaryButton}" Tag="{Binding}" Click="RemoveAudioTrack_Click"/>
+                                                    <Button HorizontalAlignment="Right" Content="✕" Width="22" Height="22" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="RemoveAudioTrack_Click"/>
                                                 </Grid>
                                                 <Grid Grid.Row="1" Margin="0,0,0,8">
                                                     <Grid.ColumnDefinitions>
@@ -1254,7 +1338,7 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBox Height="26" FontSize="10.5" Padding="6,3" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}" Text="{Binding SourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"/>
-                                                    <Button Grid.Column="1" Content="📁" Width="28" Height="26" Margin="4,0,0,0" Style="{DynamicResource SecondaryButton}" Tag="{Binding}" Click="BrowseAudioTrack_Click"/>
+                                                    <Button Grid.Column="1" Content="📁" Width="28" Height="26" Margin="4,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Tag="{Binding}" Click="BrowseAudioTrack_Click"/>
                                                 </Grid>
                                                 <Grid Grid.Row="2">
                                                     <Grid.ColumnDefinitions>
@@ -1290,7 +1374,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Button x:Name="AddAudioTrackButton" Height="32" Style="{DynamicResource SecondaryButton}" Content="Thêm audio track"/>
+                            <Button x:Name="AddAudioTrackButton" Height="32" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Content="Thêm audio track"/>
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer x:Name="ExportTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
@@ -1400,7 +1484,7 @@
                             </Grid>
                                 </StackPanel>
                             </Border>
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputPathText" Height="28" FontSize="10.5" Padding="6,4" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/><Button x:Name="BrowseOutputButton" Grid.Column="1" Height="28" Margin="6,0,0,0" Content="..." Padding="8,0" Style="{DynamicResource SecondaryButton}"/></Grid>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputPathText" Height="28" FontSize="10.5" Padding="6,4" Background="{DynamicResource ThemeInputBackgroundBrush}" BorderBrush="{DynamicResource ThemeInputBorderBrush}" Foreground="{DynamicResource ThemeInputForegroundBrush}"/><Button x:Name="BrowseOutputButton" Grid.Column="1" Height="28" Margin="6,0,0,0" Content="..." Padding="8,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/></Grid>
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer x:Name="OutputsTabContent" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
@@ -1455,7 +1539,7 @@
                                                 Margin="8,0,0,0"
                                                 Height="26"
                                                 Padding="10,0"
-                                                Style="{DynamicResource SecondaryButton}"/>
+                                                Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                     </Grid>
                                     <Grid Margin="0,6,0,0">
                                         <Grid.ColumnDefinitions>
@@ -1472,7 +1556,7 @@
                                                 Margin="8,0,0,0"
                                                 Height="26"
                                                 Padding="10,0"
-                                                Style="{DynamicResource SecondaryButton}"/>
+                                                Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -1501,12 +1585,12 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBox x:Name="FfmpegFolderText" Height="28" FontSize="10.5"/>
-                                        <Button x:Name="BrowseFfmpegFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                        <Button x:Name="BrowseFfmpegFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                     </Grid>
                                     <Border x:Name="FfmpegVerifyBadge" Margin="0,8,0,0" Padding="8,5" CornerRadius="7" Background="#1A4ADE80">
                                         <TextBlock x:Name="FfmpegVerifyText" FontSize="10" Text="Chưa xác minh" Foreground="#4ADE80"/>
                                     </Border>
-                                    <Button x:Name="VerifyFfmpegButton" Content="Xác minh FFmpeg" Height="30" Margin="0,8,0,0" Style="{DynamicResource SecondaryButton}"/>
+                                    <Button x:Name="VerifyFfmpegButton" Content="Xác minh FFmpeg" Height="30" Margin="0,8,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                 </StackPanel>
                             </Border>
 
@@ -1520,7 +1604,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBox x:Name="FrameOutputFolderText" Height="28" FontSize="10.5"/>
-                                        <Button x:Name="BrowseFrameOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                        <Button x:Name="BrowseFrameOutputFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -1535,7 +1619,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBox x:Name="DefaultOutputVideoPathText" Height="28" FontSize="10.5"/>
-                                        <Button x:Name="BrowseDefaultOutputVideoButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{DynamicResource SecondaryButton}" Margin="4,0,0,0"/>
+                                        <Button x:Name="BrowseDefaultOutputVideoButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -1549,44 +1633,44 @@
                     </ScrollViewer>
                 </Grid>
             </Border>
-            <Border Grid.Row="2" x:Name="ActionButtonsBorder" Margin="0,6,0,0" Padding="8,6"
-                Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="0,0,12,12"
+            <Border Grid.Row="2" x:Name="ActionButtonsBorder" Margin="0,10,0,0" Padding="12,12"
+                Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="0,0,10,10"
                 BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="0,1,0,0">
                 <Grid>
                     <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Visible">
-                    <Button x:Name="ExtractFramesButton" Height="30" Padding="12,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionExtractBrush}">
+                    <Button x:Name="ExtractFramesButton" Height="30" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}">
                         <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock Text="Tách Frame" FontSize="11"/></StackPanel>
                     </Button>
-                    <Button x:Name="RunAllButton" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{DynamicResource PrimaryButton}">
+                    <Button x:Name="RunAllButton" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
                         <StackPanel Orientation="Horizontal"><TextBlock Text="▶" Margin="0,0,6,0" FontSize="11"/><TextBlock Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold"/></StackPanel>
                     </Button>
                 </StackPanel>
                 <StackPanel x:Name="GradingActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="ApplyGradingButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}"><TextBlock Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold"/></Button>
-                    <Button x:Name="ResetGradingButton2" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{DynamicResource SecondaryButton}"><TextBlock Text="Đặt lại" FontSize="11"/></Button>
+                    <Button x:Name="ApplyGradingButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold"/></Button>
+                    <Button x:Name="ResetGradingButton2" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"><TextBlock Text="Đặt lại" FontSize="11"/></Button>
                 </StackPanel>
                 <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="BurnSubtitleButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSubtitleBrush}"><TextBlock Text="Gắn phụ đề" FontSize="11"/></Button>
-                    <Button x:Name="QuickWatermarkButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Watermark" FontSize="11"/></Button>
-                    <Button x:Name="ApplyOverlayToVideoActionButton" Height="30" Padding="12,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Áp dụng Overlay" FontSize="11"/></Button>
+                    <Button x:Name="BurnSubtitleButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}"><TextBlock Text="Gắn phụ đề" FontSize="11"/></Button>
+                    <Button x:Name="QuickWatermarkButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Watermark" FontSize="11"/></Button>
+                    <Button x:Name="ApplyOverlayToVideoActionButton" Height="30" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Áp dụng Overlay" FontSize="11"/></Button>
                 </StackPanel>
                 <StackPanel x:Name="AudioActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="MixAudioButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}"><TextBlock Text="Ghép Audio" FontSize="11" FontWeight="SemiBold"/></Button>
+                    <Button x:Name="MixAudioButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Ghép Audio" FontSize="11" FontWeight="SemiBold"/></Button>
                 </StackPanel>
                 <StackPanel x:Name="ExportActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="RunExportButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}"><TextBlock Text="Xuất video" FontSize="11" FontWeight="SemiBold"/></Button>
-                    <Button x:Name="SnapshotButton" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionSnapshotBrush}"><TextBlock Text="Chụp ảnh" FontSize="11"/></Button>
+                    <Button x:Name="RunExportButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Xuất video" FontSize="11" FontWeight="SemiBold"/></Button>
+                    <Button x:Name="SnapshotButton" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}"><TextBlock Text="Chụp ảnh" FontSize="11"/></Button>
                     <Button x:Name="ConvertFormatButton" Visibility="Collapsed"/>
                     <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
                 </StackPanel>
                 <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="OpenOutputVideoActionButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionFolderVideoBrush}"><TextBlock Text="Mở Video" FontSize="11"/></Button>
-                    <Button x:Name="OpenFramesFolderActionButton" Height="30" Padding="12,0" Style="{DynamicResource SecondaryButton}" Background="{DynamicResource ThemeActionFolderFramesBrush}"><TextBlock Text="Mở Folder Frame" FontSize="11"/></Button>
+                    <Button x:Name="OpenOutputVideoActionButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}"><TextBlock Text="Mở Video" FontSize="11"/></Button>
+                    <Button x:Name="OpenFramesFolderActionButton" Height="30" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}"><TextBlock Text="Mở Folder Frame" FontSize="11"/></Button>
                     <Button x:Name="OpenOutputVideoFolderQuickButton" Visibility="Collapsed"/>
                     <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
                 </StackPanel>
                     <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                        <Button x:Name="SaveSettingsButton" Height="30" Padding="14,0" Style="{DynamicResource PrimaryButton}">
+                        <Button x:Name="SaveSettingsButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
                             <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold"/></StackPanel>
                         </Button>
                     </StackPanel>
