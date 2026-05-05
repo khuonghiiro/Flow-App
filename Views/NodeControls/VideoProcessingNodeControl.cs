@@ -18,6 +18,9 @@ namespace FlowMy.Views.NodeControls
     public static class VideoProcessingNodeControl
     {
         private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Bottom }
+        /// <summary>Phải trùng <see cref="Border.CornerRadius"/> bên dưới — clip nền/control con (vuông mặc định).</summary>
+        private const double NodeChromeCornerRadius = 10;
+
         private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
         private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
         private const int TitleUpdateThrottleMs = 50;
@@ -54,7 +57,7 @@ namespace FlowMy.Views.NodeControls
                 Background = node.NodeBrush,
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(10),
+                CornerRadius = new CornerRadius(NodeChromeCornerRadius),
                 Cursor = Cursors.Hand,
                 Effect = null,
                 Tag = node
@@ -71,6 +74,7 @@ namespace FlowMy.Views.NodeControls
             overlayGrid.Children.Add(handlesLayer);
             border.Child = overlayGrid;
             AttachResizeLogic(border, node);
+            SyncNodeRoundedClip(border);
 
             if (node.Width < border.MinWidth) node.Width = border.MinWidth;
             if (node.Height < border.MinHeight) node.Height = border.MinHeight;
@@ -107,7 +111,11 @@ namespace FlowMy.Views.NodeControls
                 UpdateTitlePosition(titleText, border, host);
             };
 
-            border.SizeChanged += (_, _) => RefreshPortsAndConnections();
+            border.SizeChanged += (_, _) =>
+            {
+                SyncNodeRoundedClip(border);
+                RefreshPortsAndConnections();
+            };
 
             contentControl.Loaded += (_, _) =>
             {
@@ -197,6 +205,7 @@ namespace FlowMy.Views.NodeControls
 
             border.Loaded += (_, _) =>
             {
+                SyncNodeRoundedClip(border);
                 if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleText))
                 {
                     host.WorkflowCanvas.Children.Add(titleText);
@@ -244,6 +253,17 @@ namespace FlowMy.Views.NodeControls
             };
 
             return border;
+        }
+
+        private static void SyncNodeRoundedClip(Border border)
+        {
+            var w = Math.Max(1d, border.ActualWidth);
+            var h = Math.Max(1d, border.ActualHeight);
+            var maxR = Math.Min(w, h) / 2 - 0.001;
+            var r = Math.Min(NodeChromeCornerRadius, Math.Max(0, maxR));
+            border.Clip = r <= 0.25
+                ? new RectangleGeometry(new Rect(0, 0, w, h))
+                : new RectangleGeometry(new Rect(0, 0, w, h), r, r);
         }
 
         private static void AddResizeHandle(Grid grid, ResizeDirection direction, HorizontalAlignment hAlign, VerticalAlignment vAlign, Thickness margin)

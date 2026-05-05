@@ -66,6 +66,8 @@ namespace FlowMy.Views.NodeControls
         /// <summary>Half visual diameter of timeline scrub thumb (matches XAML ellipse).</summary>
         private const double ProgressThumbHalfWidth = 11;
         private const double NonPreviewContentHeight = 230;
+        /// <summary>Bo góc node + khung preview — đồng bộ <c>NodeChromeCornerRadius</c> trong <see cref="VideoProcessingNodeControl"/>.</summary>
+        private const double VideoNodeCornerRadius = 10;
         private const int DragSeekThrottleLowMs = 140;
         private const int DragSeekThrottleNormalMs = 90;
         private const int DragSeekThrottleHighMs = 35;
@@ -156,7 +158,12 @@ namespace FlowMy.Views.NodeControls
                 RefreshVideoPreview();
                 UpdatePlaybackUi();
                 ApplyLocalTheme();
-                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdatePreviewAspectRatio));
+                SyncUserControlRoundedClip();
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+                {
+                    SyncUserControlRoundedClip();
+                    UpdatePreviewAspectRatio();
+                }));
             };
             Unloaded += (_, _) => DetachSubscriptions();
         }
@@ -165,9 +172,20 @@ namespace FlowMy.Views.NodeControls
         {
             TabNavList.SelectionChanged += TabNavList_SelectionChanged;
             TabNavList.SelectedIndex = 0;
-            SizeChanged += (_, _) => UpdatePreviewAspectRatio();
+            SizeChanged += (_, _) =>
+            {
+                SyncUserControlRoundedClip();
+                UpdatePreviewAspectRatio();
+            };
             VideoViewbox.SizeChanged += (_, _) =>
             {
+                SyncVideoViewportClip();
+                UpdateOverlayCanvasBounds();
+                UpdateWatermarkPreviewUi();
+            };
+            VideoViewportClipBorder.SizeChanged += (_, _) =>
+            {
+                SyncVideoViewportClip();
                 UpdateOverlayCanvasBounds();
                 UpdateWatermarkPreviewUi();
             };
@@ -1503,6 +1521,34 @@ namespace FlowMy.Views.NodeControls
             OverlayCanvasControl.Margin = new Thickness(rect.X, rect.Y, 0, 0);
             OverlayCanvasControl.Width = Math.Max(1, rect.Width);
             OverlayCanvasControl.Height = Math.Max(1, rect.Height);
+        }
+
+        /// <summary>WPF <see cref="MediaElement"/> không luôn clip theo CornerRadius — ép clip hình chữ nhật bo góc.</summary>
+        private void SyncVideoViewportClip()
+        {
+            if (VideoViewportClipBorder == null || !VideoViewportClipBorder.IsLoaded)
+                return;
+
+            var w = Math.Max(1d, VideoViewportClipBorder.ActualWidth);
+            var h = Math.Max(1d, VideoViewportClipBorder.ActualHeight);
+            var maxR = Math.Min(w, h) / 2 - 0.001;
+            var r = Math.Min(VideoNodeCornerRadius, Math.Max(0, maxR));
+            VideoViewportClipBorder.Clip = r <= 0.25
+                ? new RectangleGeometry(new Rect(0, 0, w, h))
+                : new RectangleGeometry(new Rect(0, 0, w, h), r, r);
+        }
+
+        /// <summary>Clip toàn bộ UserControl (nền vuông từ ApplyLocalTheme) khớp bo góc node + XAML designer.</summary>
+        private void SyncUserControlRoundedClip()
+        {
+            if (!IsLoaded) return;
+            var w = Math.Max(1d, ActualWidth);
+            var h = Math.Max(1d, ActualHeight);
+            var maxR = Math.Min(w, h) / 2 - 0.001;
+            var r = Math.Min(VideoNodeCornerRadius, Math.Max(0, maxR));
+            Clip = r <= 0.25
+                ? new RectangleGeometry(new Rect(0, 0, w, h))
+                : new RectangleGeometry(new Rect(0, 0, w, h), r, r);
         }
 
         private void UpdateWatermarkPreviewUi()
@@ -3061,6 +3107,7 @@ namespace FlowMy.Views.NodeControls
 
             ThemeModeButton.Content = CreateThemeModeIcon(isLight ? "moon regular" : "sun-bright duotone-thin", isLight);
             SetTransportIcons();
+            SyncUserControlRoundedClip();
             UpdateBottomBarGroupHighlight(Math.Max(0, TabNavList.SelectedIndex));
         }
 
@@ -3143,6 +3190,7 @@ namespace FlowMy.Views.NodeControls
                 PreviewPlaceholder.Visibility = Visibility.Visible;
             }
 
+            SyncVideoViewportClip();
             UpdateOverlayCanvasBounds();
             UpdateWatermarkPreviewUi();
         }
