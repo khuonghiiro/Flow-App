@@ -1,5 +1,5 @@
-using FlowMy.Converters;
 using FlowMy.Controls;
+using FlowMy.Converters;
 using FlowMy.Effects;
 using FlowMy.Helpers;
 using FlowMy.Models.Nodes;
@@ -7,26 +7,23 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow.NodeExecutors;
 using Microsoft.Win32;
-using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Media.Animation;
-using System.Windows.Shapes;
-using System.Windows.Threading;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
-using WinForms = System.Windows.Forms;
+using System.Windows.Threading;
 using DrawingBitmap = System.Drawing.Bitmap;
+using WinForms = System.Windows.Forms;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -176,7 +173,7 @@ namespace FlowMy.Views.NodeControls
             };
 
             OpenVideoButton.Click += (_, _) => SelectVideo();
-            OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
+            //OpenVideoInPlaceholderButton.Click += (_, _) => SelectVideo();
             Aspect169.Checked += (_, _) => SetAspectRatio(16, 9, false);
             Aspect916.Checked += (_, _) => SetAspectRatio(9, 16, false);
             Aspect11.Checked += (_, _) => SetAspectRatio(1, 1, false);
@@ -1263,7 +1260,15 @@ namespace FlowMy.Views.NodeControls
                 WatermarkPathText.Text = _node.WatermarkImagePath ?? string.Empty;
                 WatermarkPositionCombo.SelectedIndex = _node.WatermarkPosition switch
                 {
-                    "TL" => 0, "TC" => 1, "TR" => 2, "ML" => 3, "MC" => 4, "MR" => 5, "BL" => 6, "BC" => 7, _ => 8
+                    "TL" => 0,
+                    "TC" => 1,
+                    "TR" => 2,
+                    "ML" => 3,
+                    "MC" => 4,
+                    "MR" => 5,
+                    "BL" => 6,
+                    "BC" => 7,
+                    _ => 8
                 };
                 RefreshWatermarkPositionHint();
                 WatermarkOpacitySlider.Value = _node.WatermarkOpacity;

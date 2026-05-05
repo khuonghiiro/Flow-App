@@ -141,7 +141,7 @@
                             <Border x:Name="WarmRing"
                                     CornerRadius="8"
                                     BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="2"
+                                    BorderThickness="1"
                                     Opacity="0"
                                     Margin="-1"/>
                         </Grid>
@@ -204,7 +204,7 @@
                             <Border x:Name="WarmRing2"
                                     CornerRadius="8"
                                     BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="2"
+                                    BorderThickness="1"
                                     Opacity="0"
                                     Margin="-1"/>
                         </Grid>
@@ -424,7 +424,7 @@
                             <Border x:Name="IbRing"
                                     CornerRadius="8"
                                     BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="2"
+                                    BorderThickness="1"
                                     Opacity="0"
                                     Margin="-1"/>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -509,7 +509,7 @@
                             <Border x:Name="PlayRing"
                                     CornerRadius="18"
                                     BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="2"
+                                    BorderThickness="1"
                                     Opacity="0"
                                     Margin="-1"/>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -569,7 +569,7 @@
                             <Border x:Name="ChipWarm"
                                     CornerRadius="20"
                                     BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="2"
+                                    BorderThickness="1"
                                     Opacity="0"
                                     Margin="-1"/>
                         </Grid>
@@ -727,9 +727,9 @@
                     <ColumnDefinition Width="6"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <controls:SvgViewboxEx x:Name="IconView" Width="24" Height="24" Margin="0,0,14,0" VerticalAlignment="Center"/>
+                <controls:SvgViewboxEx x:Name="IconView" Width="24" Height="24" Margin="0,0,14,0" VerticalAlignment="Center" Fill="White"/>
                 <StackPanel Grid.Column="1">
-                    <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI"/>
+                    <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI" Foreground="White" />
                     <TextBlock x:Name="VideoPathText" FontSize="11" Opacity="0.72" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" FontFamily="Segoe UI"/>
                 </StackPanel>
                 <Button Grid.Column="2" x:Name="ThemeModeButton" Height="32" MinWidth="44" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Đổi sáng/tối">
@@ -800,11 +800,11 @@
                                     Padding="7,3" Margin="0,0,6,0" VerticalAlignment="Center">
                                 <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                             </Border>
-                            <Border Padding="7,3" CornerRadius="8"
+                            <Border Padding="7,8" CornerRadius="8"
                                     Background="{DynamicResource ThemeOverlayBackgroundBrush}"
                                     BorderBrush="{DynamicResource ThemeOverlayBorderBrush}" BorderThickness="1">
                                 <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,5,0" VerticalAlignment="Center" x:Name="LiveDot" Visibility="Collapsed"/>
+                                    <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,5,0"  VerticalAlignment="Center" x:Name="LiveDot" Visibility="Collapsed"/>
                                     <TextBlock Text="Preview" FontSize="9.5" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
@@ -845,7 +845,7 @@
                                    Foreground="{DynamicResource ThemeTextSecondaryBrush}"
                                    HorizontalAlignment="Center"
                                    Margin="0,6,0,0"/>
-                        <Button x:Name="OpenVideoInPlaceholderButton"
+                        <!--<Button x:Name="OpenVideoInPlaceholderButton"
                                 Height="34"
                                 Margin="0,14,0,0"
                                 Padding="18,0"
@@ -856,7 +856,7 @@
                                 <TextBlock Text="📁" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                 <TextBlock Text="Chọn video" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
-                        </Button>
+                        </Button>-->
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -1049,14 +1049,14 @@
                             </Grid.ColumnDefinitions>
                             <Button x:Name="SkipBackButton" Grid.Column="0" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏮" FontSize="12" ToolTip="Lùi 5 giây"/>
                             <Button x:Name="PlayPauseButton" Grid.Column="2" Width="34" Height="34" Style="{StaticResource PlayButtonStyle}"/>
-                            <Button x:Name="StopButton" Grid.Column="4" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏹" FontSize="12" ToolTip="Dừng"/>
-                            <Button x:Name="SkipForwardButton" Grid.Column="6" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏭" FontSize="12" ToolTip="Tiến 5 giây"/>
+                            <Button x:Name="SkipForwardButton" Grid.Column="4" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏭" FontSize="12" ToolTip="Tiến 5 giây"/>
+                            <Button x:Name="StopButton" Grid.Column="6" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏹" FontSize="12" ToolTip="Dừng"/>
                             <Button x:Name="MuteButton" Grid.Column="8" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm"/>
                             <Slider x:Name="VolumeSlider" Grid.Column="9" Minimum="0" Maximum="1" Value="0.7" VerticalAlignment="Center" Margin="4,0" Style="{StaticResource ModernSliderStyle}"/>
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border Grid.Row="3" Margin="12,8,12,12" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
+                <Border Grid.Row="3" Margin="0,8,0,12" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1164,20 +1164,26 @@
                                 <StackPanel>
                                     <TextBlock Text="Tách frame" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                     <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="3*"/>
+                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="1*"/>
+                                        </Grid.ColumnDefinitions>
                                         <ComboBox x:Name="FrameFormatCombo" Height="28" Margin="0,0,6,0" Style="{StaticResource DarkComboBoxStyle}" ToolTip="PNG: lossless, JPEG: nhỏ hơn, WebP: cân bằng.">
                                             <ComboBoxItem Content="PNG" Tag="png" IsSelected="True"/>
                                             <ComboBoxItem Content="JPEG" Tag="jpg"/>
                                             <ComboBoxItem Content="WebP" Tag="webp"/>
                                         </ComboBox>
-                                        <Slider Grid.Column="1" x:Name="JpegQualitySlider" Minimum="0" Maximum="100" Value="90" Style="{StaticResource ModernSliderStyle}" ToolTip="Chất lượng JPEG 0-100. 85-95 phù hợp cho AI vision."/>
+                                        <Slider Grid.Column="1" x:Name="JpegQualitySlider" Minimum="0" Maximum="100" Value="100" Style="{StaticResource ModernSliderStyle}" ToolTip="Chất lượng JPEG 0-100. 85-95 phù hợp cho AI vision."/>
+                                    <TextBlock x:Name="JpegQualityLabel" Grid.Column="2"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                       Margin="12,5,0,0"
+                                              HorizontalAlignment="Right"
+                                       Visibility="Collapsed"
+                                       Text="Quality: 100/100"/>
                                     </Grid>
-                                    <TextBlock x:Name="JpegQualityLabel"
-                                               FontSize="10"
-                                               Foreground="{DynamicResource ThemeTextSecondaryBrush}"
-                                               Margin="0,2,0,6"
-                                               Visibility="Collapsed"
-                                               Text="Quality: 90/100"/>
+                                    
                                     <TextBlock Text="Resize output frames"
                                                FontSize="10.5"
                                                FontWeight="SemiBold"
