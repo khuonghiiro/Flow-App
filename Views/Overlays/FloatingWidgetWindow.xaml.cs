@@ -1655,8 +1655,10 @@ public partial class FloatingWidgetWindow : Window
                 ContentArea.Child = contentGrid;
             }
 
-            _videoNodeContent = new VideoProcessingNodeContentControl(videoNode)
+            _videoNodeContent = new VideoProcessingNodeContentControl(videoNode, _host)
             {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
                 Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed
             };
             contentGrid.Children.Add(_videoNodeContent);

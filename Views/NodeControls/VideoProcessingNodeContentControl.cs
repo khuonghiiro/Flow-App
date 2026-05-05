@@ -3375,8 +3375,25 @@ namespace FlowMy.Views.NodeControls
             var ratio = mediaW / mediaH;
             var videoRatio = ratio >= 1.1 ? 0.56 : (ratio <= 0.9 ? 0.73 : 0.64);
 
-            var targetVideoH = Math.Clamp(available * videoRatio, 120, available - 80);
-            var targetLogH = Math.Clamp(available - targetVideoH, 80, 260);
+            const double minVideoH = 120;
+            const double minLogH = 80;
+
+            double targetVideoH;
+            double targetLogH;
+
+            // Widget mode can shrink the container a lot; keep a safe split when
+            // available height is smaller than the standard minimum budget.
+            if (available <= minVideoH + minLogH)
+            {
+                targetVideoH = Math.Max(16, available * videoRatio);
+                targetLogH = Math.Max(16, available - targetVideoH);
+            }
+            else
+            {
+                var maxVideoH = available - minLogH;
+                targetVideoH = Math.Clamp(available * videoRatio, minVideoH, maxVideoH);
+                targetLogH = Math.Clamp(available - targetVideoH, minLogH, Math.Min(260, available));
+            }
 
             rowVideo.Height = new GridLength(targetVideoH, GridUnitType.Pixel);
             rowLog.Height = new GridLength(targetLogH, GridUnitType.Pixel);

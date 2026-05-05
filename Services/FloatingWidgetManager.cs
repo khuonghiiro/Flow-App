@@ -86,6 +86,12 @@ public sealed class FloatingWidgetManager
             _activeWidgets[node.Id] = widget;
             HideNodeVisualWhenWidgetOpened(node);
             widget.Show();
+            try
+            {
+                widget.ExpandWidget();
+                widget.Activate();
+            }
+            catch { }
             try { WidgetOpened?.Invoke(this, node.Id); } catch { }
         }
     }
@@ -166,8 +172,9 @@ public sealed class FloatingWidgetManager
 
     private void HideNodeVisualWhenWidgetOpened(WorkflowNode node)
     {
-        // Chỉ "chuyển host" visual cho các node có WebView nặng.
-        if (node is not HtmlUiNode && node is not WebNode) return;
+        // "Chuyển host" visual cho các node có nội dung nặng khi mở widget,
+        // để widget hiển thị thay cho node trên canvas.
+        if (node is not HtmlUiNode && node is not WebNode && node is not VideoProcessingNode) return;
 
         if (_hiddenNodeVisuals.ContainsKey(node.Id)) return;
 
