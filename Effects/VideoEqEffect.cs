@@ -3,10 +3,13 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using FlowMy.Helpers;
 
 namespace FlowMy.Effects
 {
-    /// <summary>GPU preview grading aligned roughly with FFmpeg eq (brightness/contrast/saturation/gamma + hue).</summary>
+    /// <summary>
+    /// GPU preview grading — matches <see cref="VideoColorGrading"/> / FFmpeg <c>eq</c>, <c>hue</c>, <c>lutrgb</c> order.
+    /// </summary>
     public sealed class VideoEqEffect : ShaderEffect
     {
         public static readonly DependencyProperty InputProperty =

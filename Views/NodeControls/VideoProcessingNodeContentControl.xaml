@@ -27,7 +27,32 @@
         <SolidColorBrush x:Key="ThemeTabNavBackgroundBrush" Color="#16161E"/>
         <SolidColorBrush x:Key="ThemeLogContainerBackgroundBrush" Color="#12121A"/>
         <SolidColorBrush x:Key="ThemeActionBarBackgroundBrush" Color="#16161E"/>
-        <SolidColorBrush x:Key="ThemeActionBarBorderBrush" Color="#2A2A36"/>
+        <SolidColorBrush x:Key="ThemeActionBarBorderBrush" Color="#5AF59E0B"/>
+        <SolidColorBrush x:Key="ThemeWarmAccentBrush" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="ThemeWarmAccentBrushSoft" Color="#66F59E0B"/>
+        <SolidColorBrush x:Key="ThemeBottomBarGroupInactiveBorderBrush" Color="#66909AA8"/>
+        <SolidColorBrush x:Key="ThemeBottomBarActiveGroupBackgroundBrush" Color="#28F59E0B"/>
+        <SolidColorBrush x:Key="ThemeVideoChromePrimaryBgBrush" Color="#303240"/>
+        <SolidColorBrush x:Key="ThemeVideoChromePrimaryHoverBgBrush" Color="#3A3D50"/>
+        <SolidColorBrush x:Key="ThemeVideoChromePrimaryFgBrush" Color="#F1F5FF"/>
+        <SolidColorBrush x:Key="ThemeVideoChromePrimaryBorderBrush" Color="#45FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeVideoChromeSecondaryBgBrush" Color="#282A36"/>
+        <SolidColorBrush x:Key="ThemeVideoChromeSecondaryHoverBgBrush" Color="#343644"/>
+        <SolidColorBrush x:Key="ThemeVideoChromeSecondaryFgBrush" Color="#E8ECF8"/>
+        <SolidColorBrush x:Key="ThemeVideoChromeSecondaryBorderBrush" Color="#38FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeVideoOpenButtonFgBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeValueBadgeBackgroundBrush" Color="#2A2B38"/>
+        <SolidColorBrush x:Key="ThemeTransportPlayBgBrush" Color="#6366F1"/>
+        <SolidColorBrush x:Key="ThemeTransportPlayHoverBgBrush" Color="#4F52DD"/>
+        <SolidColorBrush x:Key="ThemeTransportPlayFgBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeTransportIconHoverBgBrush" Color="#303240"/>
+        <SolidColorBrush x:Key="ThemeQuickOverlayHoverBgBrush" Color="#343644"/>
+        <SolidColorBrush x:Key="ThemePresetChipBgBrush" Color="#242530"/>
+        <SolidColorBrush x:Key="ThemePresetChipBorderBrush" Color="#3A3C4C"/>
+        <SolidColorBrush x:Key="ThemePresetChipHoverBgBrush" Color="#303242"/>
+        <SolidColorBrush x:Key="ThemePresetChipPressedBgBrush" Color="#2C2E3C"/>
+        <SolidColorBrush x:Key="ThemePresetChipResetBgBrush" Color="#282C38"/>
+        <SolidColorBrush x:Key="ThemePresetChipResetBorderBrush" Color="#464A5A"/>
         <SolidColorBrush x:Key="ThemeOnAccentTextBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ThemeSliderThumbBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ThemeComboPopupBackgroundBrush" Color="#1E1E2A"/>
@@ -53,13 +78,14 @@
         <Style x:Key="VideoOpenPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Background" Value="{DynamicResource ThemeOpenVideoBrush}"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeVideoOpenButtonFgBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="border"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="8"
+                                BorderThickness="0"
                                 Padding="{TemplateBinding Padding}"
                                 SnapsToDevicePixels="True">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -67,9 +93,13 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
+                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
                                 <Setter TargetName="border" Property="Background" Value="{DynamicResource ThemeOpenVideoHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
+                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
                                 <Setter TargetName="border" Property="Background" Value="{DynamicResource ThemeOpenVideoPressedBrush}"/>
                                 <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
                                 <Setter TargetName="border" Property="RenderTransform">
@@ -86,11 +116,131 @@
             </Setter>
         </Style>
 
-        <Style x:Key="VideoChromePrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Style x:Key="VideoChromePrimaryButtonStyle" TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeVideoChromePrimaryFgBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeVideoChromePrimaryBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeVideoChromePrimaryBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="FillBd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="WarmRing"
+                                    CornerRadius="8"
+                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
+                                    BorderThickness="2"
+                                    Opacity="0"
+                                    Margin="-1"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="FillBd" Property="Background" Value="{DynamicResource ThemeVideoChromePrimaryHoverBgBrush}"/>
+                                <Setter TargetName="FillBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="WarmRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0.92" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="WarmRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="FillBd" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="FillBd" Property="Opacity" Value="0.5"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style x:Key="VideoChromeSecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Style x:Key="VideoChromeSecondaryButtonStyle" TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeVideoChromeSecondaryFgBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeVideoChromeSecondaryBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="FillBd2"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="WarmRing2"
+                                    CornerRadius="8"
+                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
+                                    BorderThickness="2"
+                                    Opacity="0"
+                                    Margin="-1"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="FillBd2" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
+                                <Setter TargetName="FillBd2" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="WarmRing2" Storyboard.TargetProperty="Opacity"
+                                                             To="0.85" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="WarmRing2" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="FillBd2" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="FillBd2" Property="Opacity" Value="0.48"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="GlassCardStyle" TargetType="Border">
@@ -109,7 +259,7 @@
             <Setter Property="TextElement.Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
         </Style>
         <Style x:Key="ValueBadgeStyle" TargetType="Border">
-            <Setter Property="Background" Value="#2A2A36"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeValueBadgeBackgroundBrush}"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Margin" Value="8,0,0,0"/>
             <Setter Property="Padding" Value="8,5"/>
@@ -263,16 +413,54 @@
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-                    <Setter Property="Background" Value="{DynamicResource ThemeTabHoverBrush}"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource ThemeComboItemHoverBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="IbFill"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="0"/>
+                            <Border x:Name="IbRing"
+                                    CornerRadius="8"
+                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
+                                    BorderThickness="2"
+                                    Opacity="0"
+                                    Margin="-1"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                <Setter TargetName="IbFill" Property="Background" Value="{DynamicResource ThemeTransportIconHoverBgBrush}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="IbRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0.9" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="IbRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="IbFill" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="QuickOverlayIconButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeOverlayBorderBrush}"/>
@@ -290,12 +478,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#383848"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeQuickOverlayHoverBgBrush}"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#4A4A5C"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -303,23 +491,52 @@
             </Setter>
         </Style>
         <Style x:Key="PlayButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeTransportPlayBgBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTransportPlayFgBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeVideoChromePrimaryBorderBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="PlayBd" CornerRadius="18" Background="{TemplateBinding Background}">
+                        <Grid>
+                            <Border x:Name="PlayBd"
+                                    CornerRadius="18"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"/>
+                            <Border x:Name="PlayRing"
+                                    CornerRadius="18"
+                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
+                                    BorderThickness="2"
+                                    Opacity="0"
+                                    Margin="-1"/>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="PlayBd" Property="Background" Value="#818CF8"/>
+                                <Setter TargetName="PlayBd" Property="Background" Value="{DynamicResource ThemeTransportPlayHoverBgBrush}"/>
+                                <Setter TargetName="PlayBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PlayRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0.92" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PlayRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="PlayBd" Property="Background" Value="#4F46E5"/>
+                                <Setter TargetName="PlayBd" Property="Opacity" Value="0.9"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="PlayBd" Property="Opacity" Value="0.45"/>
@@ -330,9 +547,9 @@
             </Setter>
         </Style>
         <Style x:Key="PresetChipStyle" TargetType="Button">
-            <Setter Property="Background" Value="#252530"/>
+            <Setter Property="Background" Value="{DynamicResource ThemePresetChipBgBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="#3A3A4A"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemePresetChipBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,7"/>
             <Setter Property="FontSize" Value="11.5"/>
@@ -341,23 +558,49 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="ChipBd" Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="20"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"/>
-                        </Border>
+                        <Grid>
+                            <Border x:Name="ChipBd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="20"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="ChipWarm"
+                                    CornerRadius="20"
+                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
+                                    BorderThickness="2"
+                                    Opacity="0"
+                                    Margin="-1"/>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ChipBd" Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
-                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+                                <Setter TargetName="ChipBd" Property="Background" Value="{DynamicResource ThemePresetChipHoverBgBrush}"/>
+                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ChipWarm" Storyboard.TargetProperty="Opacity"
+                                                             To="0.82" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ChipWarm" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ChipBd" Property="Background" Value="#4F46E5"/>
-                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="#4F46E5"/>
-                                <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+                                <Setter TargetName="ChipBd" Property="Background" Value="{DynamicResource ThemePresetChipPressedBgBrush}"/>
+                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+                                <Setter TargetName="ChipBd" Property="Opacity" Value="0.5"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -365,8 +608,8 @@
             </Setter>
         </Style>
         <Style x:Key="PresetChipResetStyle" TargetType="Button" BasedOn="{StaticResource PresetChipStyle}">
-            <Setter Property="Background" Value="#2A323C"/>
-            <Setter Property="BorderBrush" Value="#4B5563"/>
+            <Setter Property="Background" Value="{DynamicResource ThemePresetChipResetBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemePresetChipResetBorderBrush}"/>
         </Style>
         <Style x:Key="PillTabNavStyle" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
@@ -502,6 +745,11 @@
         </Border>
 
         <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*" MinWidth="260"/>
                 <ColumnDefinition Width="3*" MinWidth="320"/>
@@ -808,7 +1056,7 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border Grid.Row="3" Margin="12,0,12,12" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
+                <Border Grid.Row="3" Margin="12,8,12,12" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -849,7 +1097,6 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" x:Name="TabNavBorder" Margin="0,0,0,10" Padding="10,8" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="12">
                 <ListBox x:Name="TabNavList" Style="{StaticResource PillTabNavStyle}" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -1113,11 +1360,23 @@
                                         <Slider x:Name="WatermarkOpacitySlider" Minimum="0" Maximum="1" Value="1" Style="{StaticResource ModernSliderStyle}"/>
                                         <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="WatermarkOpacityLabel" HorizontalAlignment="Center"/></Border>
                                     </Grid>
+                                    <TextBlock Text="Chiều rộng logo (% chiều ngang video)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,8,0,4"/>
+                                    <Grid Margin="0,0,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="56"/></Grid.ColumnDefinitions>
+                                        <Slider x:Name="WatermarkWidthPercentSlider" Minimum="8" Maximum="60" Value="20" TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}"/>
+                                        <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="WatermarkWidthPercentLabel" HorizontalAlignment="Center" FontSize="10"/></Border>
+                                    </Grid>
+                                    <TextBlock Text="Lề từ mép (% chiều ngang/dọc)" FontSize="10" Foreground="{DynamicResource ThemeTextSecondaryBrush}" Margin="0,8,0,4"/>
+                                    <Grid Margin="0,0,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="56"/></Grid.ColumnDefinitions>
+                                        <Slider x:Name="WatermarkInsetPercentSlider" Minimum="0" Maximum="25" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" Style="{StaticResource ModernSliderStyle}"/>
+                                        <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}"><TextBlock x:Name="WatermarkInsetPercentLabel" HorizontalAlignment="Center" FontSize="10"/></Border>
+                                    </Grid>
                                     <Button x:Name="ApplyWatermarkToVideoButton"
                                             Margin="0,8,0,0"
-                                            Height="28"
+                                            Height="30"
                                             Content="Áp dụng lên video"
-                                            Style="{StaticResource PresetChipStyle}"/>
+                                            Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="Chèn chữ" FontSize="11.5" FontWeight="SemiBold" Margin="0,4,0,6" Visibility="Collapsed" />
@@ -1645,13 +1904,15 @@
                     </ScrollViewer>
                 </Grid>
             </Border>
-            <Border Grid.Row="2" x:Name="ActionButtonsBorder" Margin="0,10,0,0" Padding="10,10"
-                Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="0,0,10,10"
-                BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="0,1,0,0">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border x:Name="BottomBarGroupGeneral" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
-                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+            </Grid>
+        </Grid>
+            <Border x:Name="ActionButtonsBorder" Grid.Row="1" Margin="0,10,0,0" Padding="10,12"
+                HorizontalAlignment="Stretch"
+                Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="8"
+                BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="1">
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border x:Name="BottomBarGroupGeneral" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal">
                                 <Button x:Name="ExtractFramesButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}">
                                     <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock Text="Tách Frame" FontSize="11"/></StackPanel>
@@ -1661,29 +1922,29 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
-                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                        <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GradingActionBar" Orientation="Horizontal">
                                 <Button x:Name="ApplyGradingButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold"/></Button>
                                 <Button x:Name="ResetGradingButton2" Height="32" MinWidth="88" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"><TextBlock Text="Đặt lại" FontSize="11"/></Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
-                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                        <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal">
                                 <Button x:Name="BurnSubtitleButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}"><TextBlock Text="Gắn phụ đề" FontSize="11"/></Button>
                                 <Button x:Name="QuickWatermarkButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Watermark" FontSize="11"/></Button>
                                 <Button x:Name="ApplyOverlayToVideoActionButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Áp dụng Overlay" FontSize="11"/></Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
-                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                        <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="AudioActionBar" Orientation="Horizontal">
                                 <Button x:Name="MixAudioButton" Height="32" MinWidth="112" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Ghép Audio" FontSize="11" FontWeight="SemiBold"/></Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
-                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                        <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="ExportActionBar" Orientation="Horizontal">
                                 <Button x:Name="RunExportButton" Height="32" MinWidth="108" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Xuất video" FontSize="11" FontWeight="SemiBold"/></Button>
                                 <Button x:Name="SnapshotButton" Height="32" MinWidth="100" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}"><TextBlock Text="Chụp ảnh" FontSize="11"/></Button>
@@ -1691,8 +1952,8 @@
                                 <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
-                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                        <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal">
                                 <Button x:Name="OpenOutputVideoActionButton" Height="32" MinWidth="100" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}"><TextBlock Text="Mở Video" FontSize="11"/></Button>
                                 <Button x:Name="OpenFramesFolderActionButton" Height="32" MinWidth="124" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}"><TextBlock Text="Mở Folder Frame" FontSize="11"/></Button>
@@ -1700,18 +1961,16 @@
                                 <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupSettings" CornerRadius="8" Padding="8,6" Margin="0,0,0,0"
-                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                        <Border x:Name="BottomBarGroupSettings" CornerRadius="8" Padding="8,6" Margin="0,0,0,8"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal">
                                 <Button x:Name="SaveSettingsButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold"/></StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                </WrapPanel>
             </Border>
-            </Grid>
         </Grid>
     </Grid>
 </UserControl>

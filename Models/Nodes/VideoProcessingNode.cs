@@ -130,6 +130,8 @@ namespace FlowMy.Models.Nodes
         private string _watermarkPosition = "BR";
         private double _watermarkOpacity = 1.0;
         private int _watermarkPaddingPx = 10;
+        private double _watermarkWidthFraction = 0.20;
+        private double _watermarkInsetFraction = 0.05;
         private bool _textOverlayEnabled;
         private string _overlayText = string.Empty;
         private string _overlayFont = "Arial";
@@ -687,6 +689,28 @@ namespace FlowMy.Models.Nodes
             {
                 var next = value < 0 ? 0 : value;
                 if (_watermarkPaddingPx != next) { _watermarkPaddingPx = next; OnPropertyChanged(); }
+            }
+        }
+
+        /// <summary>Watermark draw width as a fraction of the source frame width (e.g. 0.2 = 20%).</summary>
+        public double WatermarkWidthFraction
+        {
+            get => _watermarkWidthFraction;
+            set
+            {
+                var next = value < 0.05 ? 0.05 : (value > 0.90 ? 0.90 : value);
+                if (Math.Abs(_watermarkWidthFraction - next) > 1e-6) { _watermarkWidthFraction = next; OnPropertyChanged(); }
+            }
+        }
+
+        /// <summary>Padding from edges as a fraction of frame width/height (e.g. 0.05 = 5%).</summary>
+        public double WatermarkInsetFraction
+        {
+            get => _watermarkInsetFraction;
+            set
+            {
+                var next = value < 0 ? 0 : (value > 0.25 ? 0.25 : value);
+                if (Math.Abs(_watermarkInsetFraction - next) > 1e-6) { _watermarkInsetFraction = next; OnPropertyChanged(); }
             }
         }
 

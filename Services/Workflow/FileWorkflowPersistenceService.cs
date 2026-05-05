@@ -2195,6 +2195,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 videoNode.WatermarkOpacity = wmo;
             if (properties.TryGetValue("WatermarkPaddingPx", out var wmpxObj) && wmpxObj != null && int.TryParse(wmpxObj.ToString(), out var wmpx))
                 videoNode.WatermarkPaddingPx = wmpx;
+            if (properties.TryGetValue("WatermarkWidthFraction", out var wwObj) && wwObj != null && double.TryParse(wwObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ww))
+                videoNode.WatermarkWidthFraction = ww;
+            if (properties.TryGetValue("WatermarkInsetFraction", out var wiObj) && wiObj != null && double.TryParse(wiObj.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var wi))
+                videoNode.WatermarkInsetFraction = wi;
             if (properties.TryGetValue("TextOverlayEnabled", out var toeObj) && toeObj != null && bool.TryParse(toeObj.ToString(), out var toe))
                 videoNode.TextOverlayEnabled = toe;
             if (properties.TryGetValue("OverlayText", out var otObj))
@@ -4896,6 +4900,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["WatermarkPosition"] = videoNode.WatermarkPosition;
             dict["WatermarkOpacity"] = videoNode.WatermarkOpacity;
             dict["WatermarkPaddingPx"] = videoNode.WatermarkPaddingPx;
+            dict["WatermarkWidthFraction"] = videoNode.WatermarkWidthFraction;
+            dict["WatermarkInsetFraction"] = videoNode.WatermarkInsetFraction;
             dict["TextOverlayEnabled"] = videoNode.TextOverlayEnabled;
             if (!string.IsNullOrWhiteSpace(videoNode.OverlayText))
                 dict["OverlayText"] = videoNode.OverlayText;

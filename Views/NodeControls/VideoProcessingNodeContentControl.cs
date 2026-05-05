@@ -703,8 +703,23 @@ namespace FlowMy.Views.NodeControls
             };
             WatermarkOpacitySlider.ValueChanged += (_, e) =>
             {
+                if (_suppressControlSync) return;
                 _node.WatermarkOpacity = e.NewValue;
                 WatermarkOpacityLabel.Text = $"{e.NewValue:0.##}";
+                UpdateWatermarkPreviewUi();
+            };
+            WatermarkWidthPercentSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.WatermarkWidthFraction = e.NewValue / 100.0;
+                WatermarkWidthPercentLabel.Text = $"{e.NewValue:0.#}% video";
+                UpdateWatermarkPreviewUi();
+            };
+            WatermarkInsetPercentSlider.ValueChanged += (_, e) =>
+            {
+                if (_suppressControlSync) return;
+                _node.WatermarkInsetFraction = e.NewValue / 100.0;
+                WatermarkInsetPercentLabel.Text = $"{e.NewValue:0.#}% mép";
                 UpdateWatermarkPreviewUi();
             };
             ApplyWatermarkToVideoButton.Click += (_, _) =>
@@ -827,8 +842,10 @@ namespace FlowMy.Views.NodeControls
                 BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
             };
 
-            var accentBrush = TryFindResource("ThemeAccentBrush") as SolidColorBrush;
-            var mutedBrush = TryFindResource("ThemeActionBarBorderBrush") as Brush ?? Brushes.Gray;
+            var warmBrush = TryFindResource("ThemeWarmAccentBrush") as SolidColorBrush;
+            var inactiveBorder = TryFindResource("ThemeBottomBarGroupInactiveBorderBrush") as Brush
+                ?? TryFindResource("ThemeActionBarBorderBrush") as Brush ?? Brushes.Gray;
+            var activeBg = TryFindResource("ThemeBottomBarActiveGroupBackgroundBrush") as Brush;
 
             for (var i = 0; i < groups.Length; i++)
             {
@@ -836,18 +853,13 @@ namespace FlowMy.Views.NodeControls
                 if (g == null) continue;
 
                 var active = i == tabIndex;
-                g.BorderBrush = active ? accentBrush ?? mutedBrush : mutedBrush;
+                g.BorderBrush = active ? warmBrush ?? inactiveBorder : inactiveBorder;
                 g.BorderThickness = new Thickness(active ? 2 : 1);
 
-                if (active && accentBrush != null)
-                {
-                    var c = accentBrush.Color;
-                    g.Background = new SolidColorBrush(Color.FromArgb(36, c.R, c.G, c.B));
-                }
+                if (active)
+                    g.Background = activeBg ?? Brushes.Transparent;
                 else
-                {
                     g.Background = Brushes.Transparent;
-                }
             }
         }
 
@@ -941,6 +953,11 @@ namespace FlowMy.Views.NodeControls
                 _suppressControlSync = false;
                 ApplyConfigSourceMode();
             }
+            if (propertyName is nameof(VideoProcessingNode.WatermarkEnabled) or nameof(VideoProcessingNode.WatermarkImagePath)
+                or nameof(VideoProcessingNode.WatermarkPosition) or nameof(VideoProcessingNode.WatermarkOpacity)
+                or nameof(VideoProcessingNode.WatermarkWidthFraction) or nameof(VideoProcessingNode.WatermarkInsetFraction))
+                UpdateWatermarkPreviewUi();
+
             RefreshInfoText();
         }
 
@@ -1251,6 +1268,10 @@ namespace FlowMy.Views.NodeControls
                 RefreshWatermarkPositionHint();
                 WatermarkOpacitySlider.Value = _node.WatermarkOpacity;
                 WatermarkOpacityLabel.Text = $"{_node.WatermarkOpacity:0.##}";
+                WatermarkWidthPercentSlider.Value = Math.Clamp(_node.WatermarkWidthFraction * 100.0, WatermarkWidthPercentSlider.Minimum, WatermarkWidthPercentSlider.Maximum);
+                WatermarkWidthPercentLabel.Text = $"{WatermarkWidthPercentSlider.Value:0.#}% video";
+                WatermarkInsetPercentSlider.Value = Math.Clamp(_node.WatermarkInsetFraction * 100.0, WatermarkInsetPercentSlider.Minimum, WatermarkInsetPercentSlider.Maximum);
+                WatermarkInsetPercentLabel.Text = $"{WatermarkInsetPercentSlider.Value:0.#}% mép";
                 UpdateWatermarkPreviewUi();
                 TextOverlayToggle.IsChecked = _node.TextOverlayEnabled;
                 OverlayTextBox.Text = _node.OverlayText;
@@ -1508,7 +1529,7 @@ namespace FlowMy.Views.NodeControls
                 var rect = GetDisplayedVideoRect();
                 var srcVideoW = Math.Max(1, PreviewMedia.NaturalVideoWidth);
                 var srcVideoH = Math.Max(1, PreviewMedia.NaturalVideoHeight);
-                var scale = Math.Min(rect.Width / srcVideoW, rect.Height / srcVideoH);
+                var uScale = Math.Min(rect.Width / srcVideoW, rect.Height / srcVideoH);
 
                 int wmPixelW;
                 int wmPixelH;
@@ -1518,30 +1539,37 @@ namespace FlowMy.Views.NodeControls
                     wmPixelH = Math.Max(1, bmp.Height);
                 }
 
-                var wmW = Math.Max(1, wmPixelW * scale);
-                var wmH = Math.Max(1, wmPixelH * scale);
-                var pad = Math.Max(0, _node.WatermarkPaddingPx) * scale;
+                var wf = VideoWatermarkGeometry.ClampWidthFraction(_node.WatermarkWidthFraction);
+                var inf = VideoWatermarkGeometry.ClampInsetFraction(_node.WatermarkInsetFraction);
+                double wmWVideo = srcVideoW * wf;
+                double wmHVideo = wmWVideo * (wmPixelH / (double)wmPixelW);
+                double padXV = srcVideoW * inf;
+                double padYV = srcVideoH * inf;
+
+                double wmW = Math.Max(1, wmWVideo * uScale);
+                double wmH = Math.Max(1, wmHVideo * uScale);
+                double padXs = padXV * uScale;
+                double padYs = padYV * uScale;
 
                 double x;
                 double y;
                 switch ((_node.WatermarkPosition ?? "BR").Trim().ToUpperInvariant())
                 {
-                    case "TL": x = rect.X + pad; y = rect.Y + pad; break;
-                    case "TC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Y + pad; break;
-                    case "TR": x = rect.Right - wmW - pad; y = rect.Y + pad; break;
-                    case "ML": x = rect.X + pad; y = rect.Y + (rect.Height - wmH) / 2d; break;
+                    case "TL": x = rect.X + padXs; y = rect.Y + padYs; break;
+                    case "TC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Y + padYs; break;
+                    case "TR": x = rect.Right - wmW - padXs; y = rect.Y + padYs; break;
+                    case "ML": x = rect.X + padXs; y = rect.Y + (rect.Height - wmH) / 2d; break;
                     case "MC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Y + (rect.Height - wmH) / 2d; break;
-                    case "MR": x = rect.Right - wmW - pad; y = rect.Y + (rect.Height - wmH) / 2d; break;
-                    case "BL": x = rect.X + pad; y = rect.Bottom - wmH - pad; break;
-                    case "BC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Bottom - wmH - pad; break;
-                    default: x = rect.Right - wmW - pad; y = rect.Bottom - wmH - pad; break;
+                    case "MR": x = rect.Right - wmW - padXs; y = rect.Y + (rect.Height - wmH) / 2d; break;
+                    case "BL": x = rect.X + padXs; y = rect.Bottom - wmH - padYs; break;
+                    case "BC": x = rect.X + (rect.Width - wmW) / 2d; y = rect.Bottom - wmH - padYs; break;
+                    default: x = rect.Right - wmW - padXs; y = rect.Bottom - wmH - padYs; break;
                 }
 
                 WatermarkPreviewImage.Width = wmW;
                 WatermarkPreviewImage.Height = wmH;
                 WatermarkPreviewImage.Margin = new Thickness(Math.Max(0, x), Math.Max(0, y), 0, 0);
                 WatermarkPreviewImage.Visibility = Visibility.Visible;
-                AppendLog($"[DBG] DisplayedRect={rect} WMPos=({x:0.##},{y:0.##}) WMSize=({wmW:0.##}x{wmH:0.##})");
             }
             catch
             {
@@ -2941,6 +2969,41 @@ namespace FlowMy.Views.NodeControls
             Resources["ThemeAccentGlowColor"] = accentColor;
             Resources["ThemeAccentBrush"] = new SolidColorBrush(accentColor);
 
+            Color warmAmber = Color.FromRgb(0xF5, 0x9E, 0x0B);
+            Resources["ThemeWarmAccentBrush"] = new SolidColorBrush(warmAmber);
+            Resources["ThemeWarmAccentBrushSoft"] = new SolidColorBrush(Color.FromArgb(0x66, warmAmber.R, warmAmber.G, warmAmber.B));
+            Resources["ThemeBottomBarGroupInactiveBorderBrush"] = new SolidColorBrush(
+                isLight ? Color.FromArgb(0x90, 0x9A, 0xAA, 0xBC) : Color.FromArgb(0x42, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeBottomBarActiveGroupBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(0x2A, warmAmber.R, warmAmber.G, warmAmber.B));
+
+            Color chromePrimaryBg = isLight ? Color.FromRgb(226, 232, 246) : Color.FromRgb(48, 50, 64);
+            Color chromePrimaryHover = isLight ? Color.FromRgb(210, 218, 238) : Color.FromRgb(58, 61, 78);
+            Color chromeSecondaryBg = isLight ? Color.FromRgb(236, 240, 250) : Color.FromRgb(40, 42, 54);
+            Color chromeSecondaryHover = isLight ? Color.FromRgb(220, 228, 244) : Color.FromRgb(50, 52, 68);
+            Resources["ThemeVideoChromePrimaryBgBrush"] = new SolidColorBrush(chromePrimaryBg);
+            Resources["ThemeVideoChromePrimaryHoverBgBrush"] = new SolidColorBrush(chromePrimaryHover);
+            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromePrimaryBg, shellBg)));
+            Resources["ThemeVideoChromePrimaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 200) : Color.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeVideoChromeSecondaryBgBrush"] = new SolidColorBrush(chromeSecondaryBg);
+            Resources["ThemeVideoChromeSecondaryHoverBgBrush"] = new SolidColorBrush(chromeSecondaryHover);
+            Resources["ThemeVideoChromeSecondaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromeSecondaryBg, shellBg)));
+            Resources["ThemeVideoChromeSecondaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(150, 168, 192) : Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF));
+            Resources["ThemePresetChipBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(230, 234, 244) : Color.FromRgb(36, 37, 48));
+            Resources["ThemePresetChipBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 198) : Color.FromRgb(58, 60, 76));
+            Resources["ThemePresetChipHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(212, 220, 238) : Color.FromRgb(48, 50, 66));
+            Resources["ThemePresetChipPressedBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(198, 208, 230) : Color.FromRgb(44, 46, 60));
+            Resources["ThemePresetChipResetBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 224, 234) : Color.FromRgb(40, 44, 56));
+            Resources["ThemePresetChipResetBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(140, 155, 180) : Color.FromRgb(70, 74, 90));
+            Color transportPlayBg = isLight ? Color.FromRgb(86, 78, 220) : Color.FromRgb(99, 102, 241);
+            Color transportPlayHoverBg = isLight ? Color.FromRgb(72, 64, 200) : Color.FromRgb(79, 82, 220);
+            Resources["ThemeTransportPlayBgBrush"] = new SolidColorBrush(transportPlayBg);
+            Resources["ThemeTransportPlayHoverBgBrush"] = new SolidColorBrush(transportPlayHoverBg);
+            Resources["ThemeTransportPlayFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(transportPlayBg));
+            Resources["ThemeTransportIconHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 218, 235) : Color.FromRgb(48, 50, 64));
+            Resources["ThemeQuickOverlayHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(214, 222, 238) : Color.FromRgb(52, 54, 70));
+            Resources["ThemeVideoOpenButtonFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(Color.FromRgb(220, 38, 38)));
+            Resources["ThemeValueBadgeBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 228, 240) : Color.FromRgb(42, 43, 56));
+
             Color framePreviewBg = isLight ? Color.FromArgb(250, 255, 255, 255) : Color.FromArgb(235, 28, 30, 38);
             Color framePreviewFg = SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(framePreviewBg, shellBg));
             Resources["ThemeFrameLabelPreviewBg"] = new SolidColorBrush(framePreviewBg);
@@ -2948,7 +3011,8 @@ namespace FlowMy.Views.NodeControls
             Resources["ThemeTabNavBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xE8, 0xEE, 0xF7) : Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
             Resources["ThemeLogContainerBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF5, 0xF8, 0xFD) : Color.FromArgb(0x0C, 0x00, 0x00, 0x00));
             Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xEF, 0xEA, 0xF1, 0xFB) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x9A, 0xA9, 0xBE) : Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(
+                isLight ? Color.FromArgb(0xAA, warmAmber.R, warmAmber.G, warmAmber.B) : Color.FromArgb(0x5A, warmAmber.R, warmAmber.G, warmAmber.B));
             Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(accentColor));
             Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(57, 69, 88) : Color.FromRgb(255, 255, 255));
             Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(242, 246, 252) : Color.FromRgb(30, 30, 48));

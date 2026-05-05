@@ -12,6 +12,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
+using FlowMy.Helpers;
 using FlowMy.Services.Workflow;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
@@ -104,7 +105,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var frameFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
                 LogLine?.Invoke(videoNode, $"[DBG] FilterGraph: {frameFilter}");
-                LogLine?.Invoke(videoNode, $"[DBG] WatermarkExpr: {(videoNode.WatermarkEnabled ? BuildOverlayExpression(videoNode) : "disabled")}");
+                LogLine?.Invoke(videoNode, $"[DBG] WatermarkExpr: {(videoNode.WatermarkEnabled ? VideoWatermarkGeometry.BuildOverlayPositionExpression(videoNode.WatermarkPosition, videoNode.WatermarkInsetFraction) : "disabled")}");
                 var frameExt = videoNode.FrameOutputFormat switch
                 {
                     "jpg" => "jpg",
@@ -507,28 +508,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return string.Join(",", parts.Select(p => $"atempo={p.ToString("0.######", CultureInfo.InvariantCulture)}"));
         }
 
-        private static string BuildEqFilter(VideoProcessingNode node)
-        {
-            return $"eq=brightness={node.Brightness:0.###}:contrast={node.Contrast:0.###}:saturation={node.Saturation:0.###}";
-        }
-
         private static string BuildVideoFilterChain(VideoProcessingNode node, double extractFps, bool includeTextOverlay, int? sourceHeightOverride = null)
         {
             var filters = new List<string>();
 
             filters.Add($"fps={extractFps:0.###}");
-            filters.Add(BuildEqFilter(node));
-            if (Math.Abs(node.Hue) > 0.01)
-            {
-                // Keep hue transform in dedicated filter for broader FFmpeg compatibility.
-                var hueRadians = (node.Hue * Math.PI / 180d).ToString("0.######", CultureInfo.InvariantCulture);
-                filters.Add($"hue=h={hueRadians}");
-            }
-            if (Math.Abs(node.Gamma - 1) > 0.01)
-            {
-                var g = node.Gamma.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"lutrgb=r='pow(val/255,1/{g})*255':g='pow(val/255,1/{g})*255':b='pow(val/255,1/{g})*255'");
-            }
+            filters.Add(VideoColorGrading.BuildEqFilter(node));
+            var hueF = VideoColorGrading.BuildHueFilter(node.Hue);
+            if (hueF != null) filters.Add(hueF);
+            var gammaF = VideoColorGrading.BuildGammaLutRgbFilter(node.Gamma);
+            if (gammaF != null) filters.Add(gammaF);
             if (node.SharpenEnabled && node.SharpenStrength > 0)
             {
                 var s = (node.SharpenStrength * 0.3).ToString("0.###", CultureInfo.InvariantCulture);
@@ -617,11 +606,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (node.WatermarkEnabled && !string.IsNullOrWhiteSpace(node.WatermarkImagePath) && File.Exists(node.WatermarkImagePath))
             {
                 var overlayAlpha = node.WatermarkOpacity.ToString("0.###", CultureInfo.InvariantCulture);
-                var watermarkLabel = $"wm{stageIndex}";
+                var wScaled = $"wms{stageIndex}";
+                var wRgba = $"wmrgba{stageIndex}";
+                var vRef = $"vref{stageIndex}";
                 var nextLabel = $"v{++stageIndex}";
+                var wExpr = VideoWatermarkGeometry.BuildScaleWidthExpression(node.WatermarkWidthFraction);
+                var xy = VideoWatermarkGeometry.BuildOverlayPositionExpression(node.WatermarkPosition, node.WatermarkInsetFraction);
                 imageInputs.Add(node.WatermarkImagePath!);
-                filterChains.Add($"[{imageInputIndex}:v]format=rgba,colorchannelmixer=aa={overlayAlpha}[{watermarkLabel}]");
-                filterChains.Add($"[{currentLabel}][{watermarkLabel}]overlay={BuildOverlayExpression(node)}[{nextLabel}]");
+                filterChains.Add($"[{currentLabel}][{imageInputIndex}:v]scale2ref=w={wExpr}:h=-2[{vRef}][{wScaled}]");
+                filterChains.Add($"[{wScaled}]format=rgba,colorchannelmixer=aa={overlayAlpha}[{wRgba}]");
+                filterChains.Add($"[{vRef}][{wRgba}]overlay={xy}[{nextLabel}]");
                 currentLabel = nextLabel;
                 imageInputIndex++;
             }
@@ -672,17 +666,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             var filters = new List<string>();
 
-            filters.Add(BuildEqFilter(node));
-            if (Math.Abs(node.Hue) > 0.01)
-            {
-                var hueRadians = (node.Hue * Math.PI / 180d).ToString("0.######", CultureInfo.InvariantCulture);
-                filters.Add($"hue=h={hueRadians}");
-            }
-            if (Math.Abs(node.Gamma - 1) > 0.01)
-            {
-                var g = node.Gamma.ToString("0.###", CultureInfo.InvariantCulture);
-                filters.Add($"lutrgb=r='pow(val/255,1/{g})*255':g='pow(val/255,1/{g})*255':b='pow(val/255,1/{g})*255'");
-            }
+            filters.Add(VideoColorGrading.BuildEqFilter(node));
+            var hueNoFps = VideoColorGrading.BuildHueFilter(node.Hue);
+            if (hueNoFps != null) filters.Add(hueNoFps);
+            var gammaNoFps = VideoColorGrading.BuildGammaLutRgbFilter(node.Gamma);
+            if (gammaNoFps != null) filters.Add(gammaNoFps);
             if (node.SharpenEnabled && node.SharpenStrength > 0)
                 filters.Add($"unsharp=5:5:{(node.SharpenStrength * 0.3).ToString("0.###", CultureInfo.InvariantCulture)}:5:5:0");
             if (node.DenoiseEnabled && node.DenoiseStrength > 0)
@@ -716,25 +704,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             return filters.Count > 0 ? string.Join(",", filters) : string.Empty;
-        }
-
-        private static string BuildOverlayExpression(VideoProcessingNode node)
-        {
-            // Compose watermark on source-size frame first, then resize later.
-            // Keep original padding in source pixel space to avoid resize-dependent drift.
-            var paddingPx = Math.Max(0, node.WatermarkPaddingPx);
-            return node.WatermarkPosition switch
-            {
-                "TL" => $"x={paddingPx}:y={paddingPx}",
-                "TC" => $"x=(W-w)/2:y={paddingPx}",
-                "TR" => $"x=W-w-{paddingPx}:y={paddingPx}",
-                "ML" => $"x={paddingPx}:y=(H-h)/2",
-                "MC" => "x=(W-w)/2:y=(H-h)/2",
-                "MR" => $"x=W-w-{paddingPx}:y=(H-h)/2",
-                "BL" => $"x={paddingPx}:y=H-h-{paddingPx}",
-                "BC" => $"x=(W-w)/2:y=H-h-{paddingPx}",
-                _ => $"x=W-w-{paddingPx}:y=H-h-{paddingPx}"
-            };
         }
 
         private static void AppendVisualFilterArgs(List<string> args, VideoProcessingNode node, string baseFilter, FrameLabelSequenceFfmpegInput? frameLabels = null)

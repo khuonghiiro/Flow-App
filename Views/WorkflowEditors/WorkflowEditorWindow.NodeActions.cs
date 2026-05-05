@@ -339,6 +339,8 @@ namespace FlowMy.Views
                 dstVideo.WatermarkPosition = srcVideo.WatermarkPosition;
                 dstVideo.WatermarkOpacity = srcVideo.WatermarkOpacity;
                 dstVideo.WatermarkPaddingPx = srcVideo.WatermarkPaddingPx;
+                dstVideo.WatermarkWidthFraction = srcVideo.WatermarkWidthFraction;
+                dstVideo.WatermarkInsetFraction = srcVideo.WatermarkInsetFraction;
                 dstVideo.TextOverlayEnabled = srcVideo.TextOverlayEnabled;
                 dstVideo.OverlayText = srcVideo.OverlayText;
                 dstVideo.OverlayFont = srcVideo.OverlayFont;
