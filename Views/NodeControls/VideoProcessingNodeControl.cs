@@ -270,8 +270,8 @@ namespace FlowMy.Views.NodeControls
         {
             var handle = new Ellipse
             {
-                Width = 16,
-                Height = 16,
+                Width = 20,
+                Height = 20,
                 Fill = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
                 Stroke = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                 StrokeThickness = 1.2,
@@ -287,6 +287,8 @@ namespace FlowMy.Views.NodeControls
                     _ => Cursors.Arrow
                 }
             };
+            // Prevent node drag MouseDown from hijacking resize gestures.
+            handle.PreviewMouseLeftButtonDown += (_, e) => e.Handled = true;
             grid.Children.Add(handle);
         }
 
@@ -409,18 +411,18 @@ namespace FlowMy.Views.NodeControls
             double originalX = 0;
             double originalY = 0;
 
-            border.PreviewMouseDown += (_, e) =>
+            border.PreviewMouseLeftButtonDown += (_, e) =>
             {
-                if (border.Child is not Grid overlayGrid || overlayGrid.Children.Count < 2) return;
-                if (e.OriginalSource is not Ellipse handle || handle.Tag is not ResizeDirection direction) return;
+                if (TryGetResizeDirectionFromSource(e.OriginalSource as DependencyObject, out var direction) == false) return;
 
                 var parent = border.Parent as UIElement;
                 if (parent == null) return;
                 isResizing = true;
                 currentDirection = direction;
                 resizeStartPoint = e.GetPosition(parent);
-                originalWidth = border.Width;
-                originalHeight = border.Height;
+                // Match HtmlUi behavior: start from rendered size to avoid stale Width/Height dead-zone.
+                originalWidth = border.ActualWidth > 0 ? border.ActualWidth : Math.Max(border.MinWidth, border.Width);
+                originalHeight = border.ActualHeight > 0 ? border.ActualHeight : Math.Max(border.MinHeight, border.Height);
                 originalX = Canvas.GetLeft(border);
                 originalY = Canvas.GetTop(border);
                 if (double.IsNaN(originalX)) originalX = node.X;
@@ -490,6 +492,29 @@ namespace FlowMy.Views.NodeControls
                 border.ReleaseMouseCapture();
                 e.Handled = true;
             };
+
+            // Keep resizing stable even if child content steals mouse capture.
+            border.LostMouseCapture += (_, _) =>
+            {
+                if (isResizing)
+                    border.CaptureMouse();
+            };
+        }
+
+        private static bool TryGetResizeDirectionFromSource(DependencyObject? source, out ResizeDirection direction)
+        {
+            while (source != null)
+            {
+                if (source is FrameworkElement fe && fe.Tag is ResizeDirection rd)
+                {
+                    direction = rd;
+                    return true;
+                }
+                source = VisualTreeHelper.GetParent(source) ?? (source as FrameworkElement)?.Parent;
+            }
+
+            direction = ResizeDirection.None;
+            return false;
         }
     }
 }

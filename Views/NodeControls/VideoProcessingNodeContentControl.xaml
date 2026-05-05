@@ -727,7 +727,7 @@
                     <ColumnDefinition Width="6"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <controls:SvgViewboxEx x:Name="IconView" Width="24" Height="24" Margin="0,0,14,0" VerticalAlignment="Center" Fill="White"/>
+                <controls:SvgViewboxEx Grid.Column="0" x:Name="IconView" Width="24" Height="24" Margin="0,0,14,0" VerticalAlignment="Center" Fill="White" />
                 <StackPanel Grid.Column="1">
                     <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI" Foreground="White" />
                     <TextBlock x:Name="VideoPathText" FontSize="11" Opacity="0.72" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" FontFamily="Segoe UI"/>

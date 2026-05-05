@@ -58,10 +58,14 @@ namespace FlowMy.Services.Interaction
             var viewModel = host.ViewModel;
             if (viewModel == null) return;
 
-            // Body container resize handles are Ellipse; do not start drag here.
+            // Resize handles are Ellipse; do not start node dragging from those grips.
             if (sender is Border bodyBorder &&
                 bodyBorder.Tag is BodyContainerNode &&
                 e.OriginalSource is Ellipse)
+            {
+                return;
+            }
+            if (HasResizeHandleTag(e.OriginalSource as DependencyObject))
             {
                 return;
             }
@@ -243,6 +247,22 @@ namespace FlowMy.Services.Interaction
                 if (source is MenuItem) return true;
 
                 // Đi lên Visual tree
+                source = VisualTreeHelper.GetParent(source) ?? (source as FrameworkElement)?.Parent;
+            }
+
+            return false;
+        }
+
+        private static bool HasResizeHandleTag(DependencyObject? source)
+        {
+            while (source != null)
+            {
+                if (source is FrameworkElement fe &&
+                    fe.Tag != null &&
+                    string.Equals(fe.Tag.GetType().Name, "ResizeDirection", StringComparison.Ordinal))
+                {
+                    return true;
+                }
                 source = VisualTreeHelper.GetParent(source) ?? (source as FrameworkElement)?.Parent;
             }
 

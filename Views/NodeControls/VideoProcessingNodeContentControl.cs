@@ -803,7 +803,9 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyThemeBrushes(Brush textBrush)
         {
-            TitleText.Foreground = textBrush;
+            var headerBrush = _isLightTheme ? Brushes.Black : Brushes.White;
+            TitleText.Foreground = headerBrush;
+            IconView.Fill = headerBrush;
             VideoPathText.Foreground = textBrush;
             HwBadgeText.Foreground = textBrush;
         }
@@ -814,7 +816,7 @@ namespace FlowMy.Views.NodeControls
             var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), "circle-video sharp-light",
                 System.Globalization.CultureInfo.CurrentCulture) as Uri;
             if (iconUri != null) IconView.Source = iconUri;
-            IconView.Fill = GetTextBrush(_node.ColorKey);
+            IconView.Fill = _isLightTheme ? Brushes.Black : Brushes.White;
         }
 
         private void TabNavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -3096,6 +3098,7 @@ namespace FlowMy.Views.NodeControls
 
             var textPrimary = (Brush)Resources["ThemeTextPrimaryBrush"];
             var textSecondary = (Brush)Resources["ThemeTextSecondaryBrush"];
+            var headerBrush = isLight ? Brushes.Black : Brushes.White;
             SetForegroundIfExists("TimeCurrentText", textSecondary);
             SetForegroundIfExists("TimeTotalText", textSecondary);
             SetForegroundIfExists("SeekPerfText", textSecondary);
@@ -3104,6 +3107,9 @@ namespace FlowMy.Views.NodeControls
             SetForegroundIfExists("CodecInfoText", textSecondary);
             SetForegroundIfExists("AudioSummaryText", textSecondary);
             SetForegroundIfExists("ConfigMissingSummaryText", textPrimary);
+            SetForegroundIfExists("TitleText", headerBrush);
+            if (IconView != null)
+                IconView.Fill = headerBrush;
 
             ThemeModeButton.Content = CreateThemeModeIcon(isLight ? "moon regular" : "sun-bright duotone-thin", isLight);
             SetTransportIcons();
