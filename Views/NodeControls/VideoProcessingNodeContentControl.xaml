@@ -726,7 +726,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="6"/>
                     <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                </Grid.ColumnDefinitions> 
                 <controls:SvgViewboxEx Grid.Column="0" x:Name="IconView" Width="24" Height="24" Margin="0,0,14,0" VerticalAlignment="Center" Fill="White" />
                 <StackPanel Grid.Column="1">
                     <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI" Foreground="White" />

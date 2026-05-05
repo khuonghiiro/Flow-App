@@ -89,6 +89,8 @@ namespace FlowMy.Views.NodeControls
         private bool _isNodeZoomed;
         private double _prevNodeWidth;
         private double _prevNodeHeight;
+        private double _prevNodeX;
+        private double _prevNodeY;
         private double _pendingSeekRatio = -1;
         private DateTime _lastDragSeekAtUtc = DateTime.MinValue;
         private DateTime _lastSeekRequestAtUtc = DateTime.MinValue;
@@ -3141,24 +3143,103 @@ namespace FlowMy.Views.NodeControls
 
         private void ToggleNodeZoom()
         {
-            if (_node == null) return;
+            if (_node == null || _host == null || _node.Border == null) return;
 
-            if (!_isNodeZoomed)
+            var border = _node.Border;
+            var minW = border.MinWidth > 0 ? border.MinWidth : 540;
+            var minH = border.MinHeight > 0 ? border.MinHeight : 340;
+
+            // Collapse back to pre-expand frame.
+            if (_isNodeZoomed)
             {
-                _prevNodeWidth = _node.Width;
-                _prevNodeHeight = _node.Height;
-                _node.Width = Math.Max(1360, _node.Width);
-                _node.Height = Math.Max(768, _node.Height);
-                _isNodeZoomed = true;
-                ToggleNodeSizeButton.Content = new TextBlock { Text = "⤡", FontSize = 12 };
-            }
-            else
-            {
-                _node.Width = _prevNodeWidth > 0 ? _prevNodeWidth : 1360;
-                _node.Height = _prevNodeHeight > 0 ? _prevNodeHeight : 768;
+                var restoreX = _prevNodeX;
+                var restoreY = _prevNodeY;
+                var restoreW = _prevNodeWidth > 0 ? _prevNodeWidth : minW;
+                var restoreH = _prevNodeHeight > 0 ? _prevNodeHeight : minH;
+
+                _node.X = restoreX;
+                _node.Y = restoreY;
+                _node.Width = Math.Max(minW, restoreW);
+                _node.Height = Math.Max(minH, restoreH);
+                border.Width = _node.Width;
+                border.Height = _node.Height;
+                _host.UpdateNodePosition(_node, restoreX, restoreY);
+                _host.UpdateCanvasSize();
+                if (_host is WorkflowEditorWindow win)
+                    win.SetViewportExpandedUiHidden(false);
+
                 _isNodeZoomed = false;
                 ToggleNodeSizeButton.Content = new TextBlock { Text = "⤢", FontSize = 12 };
+                return;
             }
+
+            // Expand to current visible workflow viewport (same behavior idea as HtmlUi node).
+            if (_host is WorkflowEditorWindow winExpand)
+                winExpand.SetViewportExpandedUiHidden(true);
+            var vp = GetWorkflowViewportCanvasRect();
+            if (vp.IsEmpty || vp.Width < 1 || vp.Height < 1)
+            {
+                // Fallback to previous behavior if viewport rect can't be resolved.
+                _prevNodeWidth = _node.Width;
+                _prevNodeHeight = _node.Height;
+                _prevNodeX = _node.X;
+                _prevNodeY = _node.Y;
+                _node.Width = Math.Max(1360, _node.Width);
+                _node.Height = Math.Max(768, _node.Height);
+                border.Width = _node.Width;
+                border.Height = _node.Height;
+                _isNodeZoomed = true;
+                ToggleNodeSizeButton.Content = new TextBlock { Text = "⤡", FontSize = 12 };
+                return;
+            }
+
+            _prevNodeX = _node.X;
+            _prevNodeY = _node.Y;
+            _prevNodeWidth = _node.Width;
+            _prevNodeHeight = _node.Height;
+
+            var nextW = Math.Max(minW, vp.Width);
+            var nextH = Math.Max(minH, vp.Height);
+            _node.X = vp.Left;
+            _node.Y = vp.Top;
+            _node.Width = nextW;
+            _node.Height = nextH;
+            border.Width = nextW;
+            border.Height = nextH;
+            _host.UpdateNodePosition(_node, vp.Left, vp.Top);
+            _host.UpdateCanvasSize();
+
+            _isNodeZoomed = true;
+            ToggleNodeSizeButton.Content = new TextBlock { Text = "⤡", FontSize = 12 };
+        }
+
+        private Rect GetWorkflowViewportCanvasRect()
+        {
+            if (_host == null) return Rect.Empty;
+            var sv = _host.ScrollViewer;
+            if (sv == null) return Rect.Empty;
+            try { sv.UpdateLayout(); } catch { /* ignore */ }
+
+            var scrollX = sv.HorizontalOffset;
+            var scrollY = sv.VerticalOffset;
+            var viewportW = sv.ViewportWidth > 1 ? sv.ViewportWidth : sv.ActualWidth;
+            var viewportH = sv.ViewportHeight > 1 ? sv.ViewportHeight : sv.ActualHeight;
+            if (viewportW < 1 || viewportH < 1) return Rect.Empty;
+
+            var z = _host.ScaleTransform?.ScaleX ?? 1.0;
+            if (z <= 0.0001) z = 1.0;
+            var tx = _host.TranslateTransform?.X ?? 0;
+            var ty = _host.TranslateTransform?.Y ?? 0;
+
+            var canvasLeft = (scrollX - tx) / z;
+            var canvasTop = (scrollY - ty) / z;
+            var canvasW = viewportW / z;
+            var canvasH = viewportH / z;
+            if (double.IsNaN(canvasLeft) || double.IsInfinity(canvasLeft) ||
+                double.IsNaN(canvasTop) || double.IsInfinity(canvasTop))
+                return Rect.Empty;
+
+            return new Rect(canvasLeft, canvasTop, canvasW, canvasH);
         }
 
         private void EmitAutoFitSizeSuggestion()

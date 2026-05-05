@@ -55,6 +55,27 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetLeft(node.Border, x);
                 Canvas.SetTop(node.Border, y);
             }
+            if (node is VideoProcessingNode vpNode &&
+                vpNode.TitleTextBlockUI != null &&
+                Host.WorkflowCanvas != null)
+            {
+                var tb = vpNode.TitleTextBlockUI;
+                if (!Host.WorkflowCanvas.Children.Contains(tb))
+                {
+                    Host.WorkflowCanvas.Children.Add(tb);
+                    Panel.SetZIndex(tb, 20000);
+                }
+                if (node.Border != null)
+                {
+                    if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
+                    {
+                        tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                        tb.Arrange(new Rect(tb.DesiredSize));
+                    }
+                    Canvas.SetLeft(tb, x + (node.Border.ActualWidth / 2) - (tb.ActualWidth / 2));
+                    Canvas.SetTop(tb, y - tb.ActualHeight - 4);
+                }
+            }
             RenderPorts(node);
         }
 
