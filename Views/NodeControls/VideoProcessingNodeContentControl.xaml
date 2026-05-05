@@ -710,7 +710,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="12,10,12,14">
+    <Grid x:Name="RootContentGrid" Margin="12,10,12,14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>

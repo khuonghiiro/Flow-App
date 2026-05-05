@@ -161,9 +161,11 @@ namespace FlowMy.Views.NodeControls
                 UpdatePlaybackUi();
                 ApplyLocalTheme();
                 SyncUserControlRoundedClip();
+                RefreshLargeNodeUiScale();
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
                 {
                     SyncUserControlRoundedClip();
+                    RefreshLargeNodeUiScale();
                     UpdatePreviewAspectRatio();
                 }));
             };
@@ -177,6 +179,7 @@ namespace FlowMy.Views.NodeControls
             SizeChanged += (_, _) =>
             {
                 SyncUserControlRoundedClip();
+                RefreshLargeNodeUiScale();
                 UpdatePreviewAspectRatio();
             };
             VideoViewbox.SizeChanged += (_, _) =>
@@ -925,6 +928,10 @@ namespace FlowMy.Views.NodeControls
 
         private void OnNodePropertyChanged(string propertyName)
         {
+            if (propertyName is nameof(VideoProcessingNode.Width) or nameof(VideoProcessingNode.Height))
+            {
+                RefreshLargeNodeUiScale();
+            }
             if (propertyName == nameof(VideoProcessingNode.VideoPath))
             {
                 if (_isSwitchingComparePreview)
@@ -3240,6 +3247,22 @@ namespace FlowMy.Views.NodeControls
                 return Rect.Empty;
 
             return new Rect(canvasLeft, canvasTop, canvasW, canvasH);
+        }
+
+        private void RefreshLargeNodeUiScale()
+        {
+            if (RootContentGrid == null) return;
+
+            const double baseH = 1080.0;
+            const double minScaleActivation = 1.05;
+            var nodeH = _node?.Height ?? 0;
+            var factor = Math.Max(1.0, nodeH / baseH);
+            if (factor < minScaleActivation)
+                factor = 1.0;
+
+            RootContentGrid.LayoutTransform = factor <= 1.001
+                ? Transform.Identity
+                : new ScaleTransform(factor, factor);
         }
 
         private void EmitAutoFitSizeSuggestion()
