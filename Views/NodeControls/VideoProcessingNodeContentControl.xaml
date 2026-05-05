@@ -44,6 +44,11 @@
         <SolidColorBrush x:Key="ThemeOpenVideoBrush" Color="#DC2626"/>
         <SolidColorBrush x:Key="ThemeOpenVideoHoverBrush" Color="#EF4444"/>
         <SolidColorBrush x:Key="ThemeOpenVideoPressedBrush" Color="#B91C1C"/>
+        <SolidColorBrush x:Key="ThemeTimelineTrackBrush" Color="#3A3A48"/>
+        <SolidColorBrush x:Key="ThemeTimelineProgressBrush" Color="#6366F1"/>
+        <SolidColorBrush x:Key="ThemeTimelineThumbStrokeBrush" Color="#E2E6EF"/>
+        <SolidColorBrush x:Key="ThemeFrameLabelPreviewBg" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="ThemeFrameLabelPreviewFg" Color="#151922"/>
 
         <Style x:Key="VideoOpenPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -729,8 +734,8 @@
                         VerticalAlignment="Top"
                         Margin="12"
                         Padding="10,6"
-                        CornerRadius="0"
-                        Background="#F5FFFFFF"
+                        CornerRadius="4"
+                        Background="{DynamicResource ThemeFrameLabelPreviewBg}"
                         BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
                         BorderThickness="1"
                         Visibility="Collapsed"
@@ -742,7 +747,7 @@
                                HorizontalAlignment="Left"
                                TextTrimming="CharacterEllipsis"
                                TextWrapping="NoWrap"
-                               Foreground="Black"/>
+                               Foreground="{DynamicResource ThemeFrameLabelPreviewFg}"/>
                 </Border>
                 <Border Grid.Row="2" Background="{DynamicResource ThemeTimelinePanelBrush}" Padding="12,10,12,10" CornerRadius="0,0,10,10">
                     <StackPanel>
@@ -753,17 +758,24 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="TimeCurrentText" Text="00:00" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                            <Grid Grid.Column="1" Height="14" Cursor="Hand" x:Name="ProgressBarHitArea"
-                                  VerticalAlignment="Center"
+                            <Grid Grid.Column="1" MinHeight="28" Cursor="Hand" x:Name="ProgressBarHitArea"
+                                  VerticalAlignment="Center" Background="Transparent"
                                   PreviewMouseLeftButtonDown="ProgressBarHitArea_MouseDown"
                                   PreviewMouseMove="ProgressBarHitArea_MouseMove"
                                   PreviewMouseLeftButtonUp="ProgressBarHitArea_MouseUp"
                                   MouseEnter="ProgressBarHitArea_MouseEnter"
                                   MouseLeave="ProgressBarHitArea_MouseLeave">
-                                <Border Background="{DynamicResource ThemeTrackBackgroundBrush}" CornerRadius="2" Height="3" VerticalAlignment="Center"/>
-                                <Border x:Name="ProgressBarFill" Background="{DynamicResource ThemeAccentBrush}" CornerRadius="2" Height="3" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
-                                <Canvas>
-                                    <Ellipse x:Name="ProgressThumb" Width="12" Height="12" Fill="{DynamicResource ThemeSliderThumbBrush}" Visibility="Collapsed"/>
+                                <Border Background="{DynamicResource ThemeTimelineTrackBrush}" CornerRadius="4" Height="8" VerticalAlignment="Center"/>
+                                <Border x:Name="ProgressBarFill" Background="{DynamicResource ThemeTimelineProgressBrush}" CornerRadius="4" Height="8" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
+                                <Canvas VerticalAlignment="Center" Height="28">
+                                    <Ellipse x:Name="ProgressThumb" Width="22" Height="22" Canvas.Top="3" Visibility="Collapsed"
+                                             Fill="{DynamicResource ThemeTimelineProgressBrush}"
+                                             Stroke="{DynamicResource ThemeTimelineThumbStrokeBrush}" StrokeThickness="2">
+                                        <Ellipse.RenderTransformOrigin>0.5,0.5</Ellipse.RenderTransformOrigin>
+                                        <Ellipse.RenderTransform>
+                                            <ScaleTransform x:Name="ProgressThumbScale" ScaleX="1" ScaleY="1"/>
+                                        </Ellipse.RenderTransform>
+                                    </Ellipse>
                                 </Canvas>
                             </Grid>
                             <TextBlock x:Name="TimeTotalText" Grid.Column="2" Text="00:00" FontSize="9.5" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontFamily="Consolas" VerticalAlignment="Center" Margin="7,0,0,0"/>
@@ -1633,48 +1645,71 @@
                     </ScrollViewer>
                 </Grid>
             </Border>
-            <Border Grid.Row="2" x:Name="ActionButtonsBorder" Margin="0,10,0,0" Padding="12,12"
+            <Border Grid.Row="2" x:Name="ActionButtonsBorder" Margin="0,10,0,0" Padding="10,10"
                 Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="0,0,10,10"
                 BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="0,1,0,0">
-                <Grid>
-                    <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Visible">
-                    <Button x:Name="ExtractFramesButton" Height="30" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}">
-                        <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock Text="Tách Frame" FontSize="11"/></StackPanel>
-                    </Button>
-                    <Button x:Name="RunAllButton" Height="30" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                        <StackPanel Orientation="Horizontal"><TextBlock Text="▶" Margin="0,0,6,0" FontSize="11"/><TextBlock Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold"/></StackPanel>
-                    </Button>
-                </StackPanel>
-                <StackPanel x:Name="GradingActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="ApplyGradingButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold"/></Button>
-                    <Button x:Name="ResetGradingButton2" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"><TextBlock Text="Đặt lại" FontSize="11"/></Button>
-                </StackPanel>
-                <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="BurnSubtitleButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}"><TextBlock Text="Gắn phụ đề" FontSize="11"/></Button>
-                    <Button x:Name="QuickWatermarkButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Watermark" FontSize="11"/></Button>
-                    <Button x:Name="ApplyOverlayToVideoActionButton" Height="30" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Áp dụng Overlay" FontSize="11"/></Button>
-                </StackPanel>
-                <StackPanel x:Name="AudioActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="MixAudioButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Ghép Audio" FontSize="11" FontWeight="SemiBold"/></Button>
-                </StackPanel>
-                <StackPanel x:Name="ExportActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="RunExportButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Xuất video" FontSize="11" FontWeight="SemiBold"/></Button>
-                    <Button x:Name="SnapshotButton" Height="30" Padding="12,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}"><TextBlock Text="Chụp ảnh" FontSize="11"/></Button>
-                    <Button x:Name="ConvertFormatButton" Visibility="Collapsed"/>
-                    <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
-                </StackPanel>
-                <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="OpenOutputVideoActionButton" Height="30" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}"><TextBlock Text="Mở Video" FontSize="11"/></Button>
-                    <Button x:Name="OpenFramesFolderActionButton" Height="30" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}"><TextBlock Text="Mở Folder Frame" FontSize="11"/></Button>
-                    <Button x:Name="OpenOutputVideoFolderQuickButton" Visibility="Collapsed"/>
-                    <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
-                </StackPanel>
-                    <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                        <Button x:Name="SaveSettingsButton" Height="30" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold"/></StackPanel>
-                        </Button>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border x:Name="BottomBarGroupGeneral" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                            <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal">
+                                <Button x:Name="ExtractFramesButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock Text="Tách Frame" FontSize="11"/></StackPanel>
+                                </Button>
+                                <Button x:Name="RunAllButton" Height="32" MinWidth="120" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="▶" Margin="0,0,6,0" FontSize="11"/><TextBlock Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold"/></StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                            <StackPanel x:Name="GradingActionBar" Orientation="Horizontal">
+                                <Button x:Name="ApplyGradingButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold"/></Button>
+                                <Button x:Name="ResetGradingButton2" Height="32" MinWidth="88" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"><TextBlock Text="Đặt lại" FontSize="11"/></Button>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                            <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal">
+                                <Button x:Name="BurnSubtitleButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}"><TextBlock Text="Gắn phụ đề" FontSize="11"/></Button>
+                                <Button x:Name="QuickWatermarkButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Watermark" FontSize="11"/></Button>
+                                <Button x:Name="ApplyOverlayToVideoActionButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}"><TextBlock Text="Áp dụng Overlay" FontSize="11"/></Button>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                            <StackPanel x:Name="AudioActionBar" Orientation="Horizontal">
+                                <Button x:Name="MixAudioButton" Height="32" MinWidth="112" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Ghép Audio" FontSize="11" FontWeight="SemiBold"/></Button>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                            <StackPanel x:Name="ExportActionBar" Orientation="Horizontal">
+                                <Button x:Name="RunExportButton" Height="32" MinWidth="108" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}"><TextBlock Text="Xuất video" FontSize="11" FontWeight="SemiBold"/></Button>
+                                <Button x:Name="SnapshotButton" Height="32" MinWidth="100" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}"><TextBlock Text="Chụp ảnh" FontSize="11"/></Button>
+                                <Button x:Name="ConvertFormatButton" Visibility="Collapsed"/>
+                                <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="8,6" Margin="0,0,8,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                            <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal">
+                                <Button x:Name="OpenOutputVideoActionButton" Height="32" MinWidth="100" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}"><TextBlock Text="Mở Video" FontSize="11"/></Button>
+                                <Button x:Name="OpenFramesFolderActionButton" Height="32" MinWidth="124" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}"><TextBlock Text="Mở Folder Frame" FontSize="11"/></Button>
+                                <Button x:Name="OpenOutputVideoFolderQuickButton" Visibility="Collapsed"/>
+                                <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="BottomBarGroupSettings" CornerRadius="8" Padding="8,6" Margin="0,0,0,0"
+                                BorderThickness="1" BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" Background="Transparent">
+                            <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal">
+                                <Button x:Name="SaveSettingsButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold"/></StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-                </Grid>
+                </ScrollViewer>
             </Border>
             </Grid>
         </Grid>

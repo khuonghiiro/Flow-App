@@ -150,6 +150,7 @@
 
   
 	<ItemGroup>
+		<Resource Include="Effects\video_eq.ps" />
 		<Resource Include="Assets\Fonts\fa-solid-900.ttf">
 			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
 		</Resource>

@@ -1,5 +1,7 @@
 using FlowMy.Converters;
 using FlowMy.Controls;
+using FlowMy.Effects;
+using FlowMy.Helpers;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Utilities;
@@ -17,11 +19,12 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using System.Windows.Media.Media3D;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using WinForms = System.Windows.Forms;
 using DrawingBitmap = System.Drawing.Bitmap;
 
@@ -63,6 +66,8 @@ namespace FlowMy.Views.NodeControls
         private const double MinPreviewHeight = 180;
         private const double MaxPreviewHeight = 620;
         private const double HorizontalPadding = 18;
+        /// <summary>Half visual diameter of timeline scrub thumb (matches XAML ellipse).</summary>
+        private const double ProgressThumbHalfWidth = 11;
         private const double NonPreviewContentHeight = 230;
         private const int DragSeekThrottleLowMs = 140;
         private const int DragSeekThrottleNormalMs = 90;
@@ -96,6 +101,7 @@ namespace FlowMy.Views.NodeControls
         private TimelineDragMode _timelineDragMode = TimelineDragMode.None;
         private TimelineDragMode _trimReviewDragMode = TimelineDragMode.None;
         private bool _previewEffectTemporarilyDisabled;
+        private VideoEqEffect? _videoEqEffect;
         private bool _trimUiInitialized;
         private double _trimUiStartX;
         private double _trimUiEndX;
@@ -795,13 +801,6 @@ namespace FlowMy.Views.NodeControls
             };
             foreach (var t in allTabs) t.Visibility = Visibility.Collapsed;
 
-            var allActions = new FrameworkElement[]
-            {
-                GeneralActionBar, GradingActionBar, FiltersActionBar,
-                AudioActionBar, ExportActionBar, OutputsActionBar, SettingsActionBar
-            };
-            foreach (var a in allActions) a.Visibility = Visibility.Collapsed;
-
             var idx = TabNavList.SelectedIndex;
             var targetTab = idx switch
             {
@@ -817,18 +816,39 @@ namespace FlowMy.Views.NodeControls
             targetTab.Visibility = Visibility.Visible;
             targetTab.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)));
 
-            var targetAction = idx switch
+            UpdateBottomBarGroupHighlight(Math.Max(0, idx));
+        }
+
+        private void UpdateBottomBarGroupHighlight(int tabIndex)
+        {
+            Border[] groups =
             {
-                0 => GeneralActionBar,
-                1 => GradingActionBar,
-                2 => FiltersActionBar,
-                3 => AudioActionBar,
-                4 => ExportActionBar,
-                5 => OutputsActionBar,
-                6 => SettingsActionBar,
-                _ => GeneralActionBar
+                BottomBarGroupGeneral, BottomBarGroupGrading, BottomBarGroupFilters,
+                BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
             };
-            targetAction.Visibility = Visibility.Visible;
+
+            var accentBrush = TryFindResource("ThemeAccentBrush") as SolidColorBrush;
+            var mutedBrush = TryFindResource("ThemeActionBarBorderBrush") as Brush ?? Brushes.Gray;
+
+            for (var i = 0; i < groups.Length; i++)
+            {
+                var g = groups[i];
+                if (g == null) continue;
+
+                var active = i == tabIndex;
+                g.BorderBrush = active ? accentBrush ?? mutedBrush : mutedBrush;
+                g.BorderThickness = new Thickness(active ? 2 : 1);
+
+                if (active && accentBrush != null)
+                {
+                    var c = accentBrush.Color;
+                    g.Background = new SolidColorBrush(Color.FromArgb(36, c.R, c.G, c.B));
+                }
+                else
+                {
+                    g.Background = Brushes.Transparent;
+                }
+            }
         }
 
         private void RunProcessingFlow()
@@ -1753,7 +1773,7 @@ namespace FlowMy.Views.NodeControls
         {
             var barWidth = ProgressBarHitArea.ActualWidth;
             ProgressBarFill.Width = barWidth * ratio;
-            Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - 6));
+            Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - ProgressThumbHalfWidth));
             TimeCurrentText.Text = FormatTime(TimeSpan.FromSeconds(ratio * GetNaturalDurationSeconds()));
         }
 
@@ -1815,12 +1835,43 @@ namespace FlowMy.Views.NodeControls
         }
 
         private void ProgressBarHitArea_MouseEnter(object sender, MouseEventArgs e)
-            => ProgressThumb.Visibility = Visibility.Visible;
+        {
+            ProgressThumb.Visibility = Visibility.Visible;
+            ApplyTimelineThumbHoverVisual(true);
+        }
 
         private void ProgressBarHitArea_MouseLeave(object sender, MouseEventArgs e)
         {
-            if (!_isProgressDragging) ProgressThumb.Visibility = Visibility.Collapsed;
+            if (!_isProgressDragging)
+                ProgressThumb.Visibility = Visibility.Collapsed;
+            ApplyTimelineThumbHoverVisual(false);
             e.Handled = true;
+        }
+
+        private void ApplyTimelineThumbHoverVisual(bool hover)
+        {
+            if (ProgressThumbScale != null)
+            {
+                ProgressThumbScale.ScaleX = hover ? 1.12 : 1.0;
+                ProgressThumbScale.ScaleY = hover ? 1.12 : 1.0;
+            }
+
+            if (!hover)
+            {
+                ProgressThumb.Effect = null;
+                return;
+            }
+
+            Color glow = Color.FromRgb(99, 102, 241);
+            if (TryFindResource("ThemeAccentBrush") is SolidColorBrush ab && ab.Color.A > 0)
+                glow = ab.Color;
+            ProgressThumb.Effect = new DropShadowEffect
+            {
+                BlurRadius = 10,
+                ShadowDepth = 0,
+                Opacity = 0.5,
+                Color = glow
+            };
         }
 
         private static bool IsClickFromInteractiveElement(object? source)
@@ -2032,7 +2083,7 @@ namespace FlowMy.Views.NodeControls
             }
             var barWidth = ProgressBarHitArea.ActualWidth;
             ProgressBarFill.Width = barWidth * ratio;
-            Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - 6));
+            Canvas.SetLeft(ProgressThumb, Math.Max(0, (barWidth * ratio) - ProgressThumbHalfWidth));
             TimeCurrentText.Text = FormatTime(position);
             TimeTotalText.Text = FormatTime(duration);
             if (PreviewMedia.Source != null && _node.SourceFps > 0)
@@ -2323,18 +2374,32 @@ namespace FlowMy.Views.NodeControls
         {
             if (_previewEffectTemporarilyDisabled)
             {
+                PreviewMedia.Effect = null;
                 GradingOverlay.Background = Brushes.Transparent;
                 PreviewMedia.Opacity = 1.0;
                 return;
             }
 
-            // MediaElement does not support full realtime color matrix in this control.
-            // This block applies a stronger approximate preview so grading changes are visibly reflected.
             var brightness = Math.Clamp(_node.Brightness, -1.0, 1.0);
             var contrast = Math.Clamp(_node.Contrast, 0.1, 3.0);
             var saturation = Math.Clamp(_node.Saturation, 0.0, 3.0);
-            var hue = Math.Clamp(_node.Hue, -180.0, 180.0);
+            var hueDeg = Math.Clamp(_node.Hue, -180.0, 180.0);
             var gamma = Math.Clamp(_node.Gamma, 0.1, 3.0);
+
+            if (VideoEqEffect.ShaderAvailable)
+            {
+                _videoEqEffect ??= new VideoEqEffect();
+                var hueRad = hueDeg * (Math.PI / 180.0);
+                _videoEqEffect.Bc = new System.Windows.Point(brightness, contrast);
+                _videoEqEffect.Sg = new System.Windows.Point(saturation, gamma);
+                _videoEqEffect.HueCs = new System.Windows.Point(Math.Cos(hueRad), Math.Sin(hueRad));
+                PreviewMedia.Effect = _videoEqEffect;
+                GradingOverlay.Background = Brushes.Transparent;
+                PreviewMedia.Opacity = 1.0;
+                return;
+            }
+
+            // Software fallback — approximate tint + opacity (legacy preview).
             var strength = (_node.PreviewVisualStrengthMode ?? "balanced").ToLowerInvariant();
             var strengthScale = strength switch
             {
@@ -2343,8 +2408,8 @@ namespace FlowMy.Views.NodeControls
                 _ => 1.0
             };
 
-            var tintStrength = Math.Min(0.45, (Math.Abs(hue) / 180.0 * 0.28 + Math.Max(0, saturation - 1.0) * 0.06) * strengthScale);
-            var hueColor = HsvToColor((hue + 360.0) % 360.0, 0.9, 1.0);
+            var tintStrength = Math.Min(0.45, (Math.Abs(hueDeg) / 180.0 * 0.28 + Math.Max(0, saturation - 1.0) * 0.06) * strengthScale);
+            var hueColor = HsvToColor((hueDeg + 360.0) % 360.0, 0.9, 1.0);
             byte tintAlpha;
             Color tintRgb;
 
@@ -2369,6 +2434,7 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            PreviewMedia.Effect = null;
             GradingOverlay.Background = new SolidColorBrush(Color.FromArgb(tintAlpha, tintRgb.R, tintRgb.G, tintRgb.B));
 
             var contrastOpacityBoost = (contrast - 1.0) * 0.11 * strengthScale;
@@ -2839,28 +2905,51 @@ namespace FlowMy.Views.NodeControls
         private void ApplyLocalTheme()
         {
             var isLight = _isLightTheme;
-            Background = isLight ? new SolidColorBrush(Color.FromRgb(242, 245, 252)) : new SolidColorBrush(Color.FromRgb(15, 15, 23));
-            Foreground = isLight ? new SolidColorBrush(Color.FromRgb(34, 40, 49)) : new SolidColorBrush(Color.FromRgb(232, 232, 240));
+            var shellBg = isLight ? Color.FromRgb(242, 245, 252) : Color.FromRgb(15, 15, 23);
+            Background = new SolidColorBrush(shellBg);
+            Foreground = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(shellBg));
 
-            Resources["ThemeTextPrimaryBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(35, 42, 52) : Color.FromRgb(232, 240, 255));
-            Resources["ThemeTextSecondaryBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(86, 96, 112) : Color.FromRgb(198, 211, 226));
-            Resources["ThemeCardBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF5, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
+            Color accentColor = Color.FromRgb(124, 107, 248);
+            if (Application.Current?.TryFindResource("PrimaryBrush") is SolidColorBrush appPrimary && appPrimary.Color.A > 0)
+                accentColor = appPrimary.Color;
+
+            Color cardTop = isLight ? Color.FromArgb(245, 255, 255, 255) : Color.FromArgb(26, 255, 255, 255);
+            Color cardEffective = SurfaceContrast.CompositeOver(cardTop, shellBg);
+            Color innerTop = isLight ? Color.FromArgb(216, 242, 245, 250) : Color.FromArgb(24, 0, 0, 0);
+            Color innerEffective = SurfaceContrast.CompositeOver(innerTop, shellBg);
+
+            Color primaryText = SurfaceContrast.TextPrimaryOnSurface(cardEffective);
+            Color secondaryText = SurfaceContrast.TextSecondaryOnSurface(innerEffective);
+
+            Resources["ThemeTextPrimaryBrush"] = new SolidColorBrush(primaryText);
+            Resources["ThemeTextSecondaryBrush"] = new SolidColorBrush(secondaryText);
+            Resources["ThemeCardBackgroundBrush"] = new SolidColorBrush(cardTop);
             Resources["ThemeCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x4A, 0x6B, 0x7A, 0x8A) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeInnerCardBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF2, 0xF5, 0xFA) : Color.FromArgb(0x18, 0x00, 0x00, 0x00));
+            Resources["ThemeInnerCardBackgroundBrush"] = new SolidColorBrush(innerTop);
             Resources["ThemeInnerCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x52, 0x9C, 0xAA, 0xBC) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
             Resources["ThemeInputBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 251, 255) : Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
             Resources["ThemeInputBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(178, 191, 212) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeInputForegroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(36, 44, 57) : Color.FromRgb(232, 240, 255));
+            Resources["ThemeInputForegroundBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(
+                SurfaceContrast.CompositeOver(isLight ? Color.FromRgb(248, 251, 255) : Color.FromRgb(34, 36, 46), shellBg)));
             Resources["ThemeOverlayBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xEC, 0xF1, 0xF8) : Color.FromArgb(0xAA, 0x00, 0x00, 0x00));
             Resources["ThemeOverlayBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x58, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
             Resources["ThemeTimelinePanelBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF0, 0xE9, 0xEF, 0xF8) : Color.FromArgb(0xEE, 0x0A, 0x0A, 0x18));
             Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x60, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeAccentBrush"] = new SolidColorBrush(Color.FromRgb(124, 107, 248));
+            Resources["ThemeTimelineTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(208, 216, 228) : Color.FromRgb(52, 54, 66));
+            Resources["ThemeTimelineProgressBrush"] = new SolidColorBrush(accentColor);
+            Resources["ThemeTimelineThumbStrokeBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(72, 82, 98) : Color.FromRgb(226, 232, 245));
+            Resources["ThemeAccentGlowColor"] = accentColor;
+            Resources["ThemeAccentBrush"] = new SolidColorBrush(accentColor);
+
+            Color framePreviewBg = isLight ? Color.FromArgb(250, 255, 255, 255) : Color.FromArgb(235, 28, 30, 38);
+            Color framePreviewFg = SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(framePreviewBg, shellBg));
+            Resources["ThemeFrameLabelPreviewBg"] = new SolidColorBrush(framePreviewBg);
+            Resources["ThemeFrameLabelPreviewFg"] = new SolidColorBrush(framePreviewFg);
             Resources["ThemeTabNavBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xE8, 0xEE, 0xF7) : Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
             Resources["ThemeLogContainerBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF5, 0xF8, 0xFD) : Color.FromArgb(0x0C, 0x00, 0x00, 0x00));
             Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xEF, 0xEA, 0xF1, 0xFB) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
             Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x9A, 0xA9, 0xBE) : Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
-            Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 250, 255) : Color.FromRgb(255, 255, 255));
+            Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(accentColor));
             Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(57, 69, 88) : Color.FromRgb(255, 255, 255));
             Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(242, 246, 252) : Color.FromRgb(30, 30, 48));
             Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
@@ -2882,11 +2971,11 @@ namespace FlowMy.Views.NodeControls
             Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
             Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
 
-            // Explicit SecondaryButton palette for light theme.
-            Resources["SecondaryButtonBackground"] = new SolidColorBrush(
-                isLight ? Color.FromArgb(0xDD, 210, 220, 235) : Color.FromArgb(0x25, 255, 255, 255));
-            Resources["SecondaryButtonForeground"] = new SolidColorBrush(
-                isLight ? Color.FromRgb(30, 40, 55) : Color.FromRgb(220, 230, 245));
+            // Secondary button chips — contrast checked against real fill colors.
+            Color secBgTop = isLight ? Color.FromArgb(221, 210, 220, 235) : Color.FromArgb(37, 255, 255, 255);
+            Color secEffective = SurfaceContrast.CompositeOver(secBgTop, shellBg);
+            Resources["SecondaryButtonBackground"] = new SolidColorBrush(secBgTop);
+            Resources["SecondaryButtonForeground"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(secEffective));
             Resources["SecondaryButtonBorder"] = new SolidColorBrush(
                 isLight ? Color.FromRgb(160, 175, 195) : Color.FromArgb(0x40, 255, 255, 255));
 
@@ -2903,6 +2992,7 @@ namespace FlowMy.Views.NodeControls
 
             ThemeModeButton.Content = CreateThemeModeIcon(isLight ? "moon regular" : "sun-bright duotone-thin", isLight);
             SetTransportIcons();
+            UpdateBottomBarGroupHighlight(Math.Max(0, TabNavList.SelectedIndex));
         }
 
         private void SetForegroundIfExists(string elementName, Brush brush)
