@@ -2904,8 +2904,12 @@ namespace FlowMy.Views.NodeControls
                 var desiredFont = string.IsNullOrWhiteSpace(item.FontFamily) ? "Arial" : item.FontFamily.Trim();
                 var match = OverlayFontFamilyCombo.Items.OfType<string>()
                     .FirstOrDefault(s => string.Equals(s, desiredFont, StringComparison.OrdinalIgnoreCase));
+                if (match == null)
+                {
+                    OverlayFontFamilyCombo.Items.Add(desiredFont);
+                    match = desiredFont;
+                }
                 OverlayFontFamilyCombo.SelectedItem = match;
-                OverlayFontFamilyCombo.Text = match ?? desiredFont;
                 OverlayFontColorTextBox.Text = item.FontColor;
                 OverlayFontSizeSlider.Value = item.FontSize;
                 var align = (item.TextAlignment ?? "Left").Trim().ToLowerInvariant();
@@ -2941,7 +2945,6 @@ namespace FlowMy.Views.NodeControls
             if (isText)
             {
                 var family = (OverlayFontFamilyCombo.SelectedItem as string)
-                    ?? OverlayFontFamilyCombo.Text
                     ?? "Arial";
                 selected.FontFamily = family;
                 selected.FontColor = OverlayFontColorTextBox.Text;
