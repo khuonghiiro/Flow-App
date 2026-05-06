@@ -7,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Globalization;
 
 namespace FlowMy.Controls
 {
@@ -40,6 +41,11 @@ namespace FlowMy.Controls
         {
             InitializeComponent();
             Loaded += (_, _) => RefreshViewFromItem();
+            SizeChanged += (_, _) =>
+            {
+                if (Item != null && string.Equals(Item.Type, "text", StringComparison.OrdinalIgnoreCase))
+                    AutoFitTextContent();
+            };
 
             MouseLeftButtonDown += OnMoveStart;
             MouseMove += OnMove;
@@ -159,8 +165,46 @@ namespace FlowMy.Controls
                 {
                     TextContent.Foreground = Brushes.White;
                 }
-                TextContent.FontSize = Item.FontSize;
+                AutoFitTextContent();
             }
+        }
+
+        private void AutoFitTextContent()
+        {
+            if (Item == null) return;
+
+            var availableW = Math.Max(1, ActualWidth - 8);
+            var availableH = Math.Max(1, ActualHeight - 8);
+            var text = TextContent.Text ?? string.Empty;
+            var baseSize = Math.Max(8, Item.FontSize * (Math.Max(1, ParentSurfaceHeight) / 1080.0));
+            var typeface = new Typeface(TextContent.FontFamily, TextContent.FontStyle, TextContent.FontWeight, TextContent.FontStretch);
+            var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+            var fit = baseSize;
+
+            for (var size = baseSize; size >= 6; size -= 0.5)
+            {
+                var ft = new FormattedText(
+                    text,
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    typeface,
+                    size,
+                    Brushes.Black,
+                    dpi)
+                {
+                    MaxTextWidth = availableW,
+                    MaxTextHeight = availableH,
+                    Trimming = TextTrimming.None
+                };
+
+                if (ft.Height <= availableH && ft.Width <= availableW)
+                {
+                    fit = size;
+                    break;
+                }
+            }
+
+            TextContent.FontSize = fit;
         }
 
         private void RegisterHandle(Thumb thumb, DragMode mode)

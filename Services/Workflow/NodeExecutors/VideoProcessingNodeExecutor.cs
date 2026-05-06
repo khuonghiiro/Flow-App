@@ -12,6 +12,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
+using System.Windows;
+using System.Windows.Media.Imaging;
 using FlowMy.Helpers;
 using FlowMy.Services.Workflow;
 
@@ -125,20 +127,49 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 var frameArgs = new List<string>(BuildTrimAwareArgs(videoNode, new[] { "-y", "-hide_banner", "-loglevel", "error", "-i", videoInput }));
                 if (frameExt == "jpg") frameArgs.AddRange(new[] { "-q:v", Math.Max(1, 31 - (videoNode.JpegQuality / 4)).ToString(CultureInfo.InvariantCulture) });
-                AppendVisualFilterArgs(frameArgs, videoNode, frameFilter);
+                var overlayFrameCleanup = new List<string>();
+                AppendVisualFilterArgs(
+                    frameArgs,
+                    videoNode,
+                    frameFilter,
+                    frameLabels: null,
+                    overlayFrameCleanup,
+                    deferCanvasTextOverlayToWpfRaster: HasVisibleCanvasTextOverlays(videoNode),
+                    overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
+                    overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
+                    overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1));
                 frameArgs.Add(framePattern);
-                await RunFfmpegWithProgressAsync(
-                    WithHwaccel(frameArgs, hwaccel),
-                    totalDuration,
-                    (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
-                    line => LogLine?.Invoke(videoNode, line),
-                    env.CancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await RunFfmpegWithProgressAsync(
+                        WithHwaccel(frameArgs, hwaccel),
+                        totalDuration,
+                        (pct, status) => ProgressChanged?.Invoke(videoNode, pct, status),
+                        line => LogLine?.Invoke(videoNode, line),
+                        env.CancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    TryDeleteOverlayRasterFiles(overlayFrameCleanup);
+                }
 
                 var producedFrames = Directory.GetFiles(
                         Path.GetDirectoryName(framePattern)!,
                         Path.GetFileName(framePattern).Replace("%06d", "*"))
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                     .ToList();
+
+                if (HasVisibleCanvasTextOverlays(videoNode) && producedFrames.Count > 0)
+                {
+                    await ApplyCanvasTextOverlaysToStillFilesAsync(
+                            videoNode,
+                            producedFrames,
+                            sourceWidth > 0 ? sourceWidth : 1920,
+                            sourceHeight > 0 ? sourceHeight : 1080,
+                            Math.Max(sourceHeight, 1),
+                            env.CancellationToken)
+                        .ConfigureAwait(false);
+                }
 
                 if (videoNode.FrameLabelEnabled && producedFrames.Count > 0)
                 {
@@ -191,6 +222,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }).ToList();
 
                 string? lblEncDir = null;
+                var overlayEncodeCleanup = new List<string>();
                 try
                 {
                     FrameLabelSequenceFfmpegInput? labelFf = null;
@@ -222,7 +254,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             extractFps);
                     }
 
-                    AppendVisualFilterArgs(mainArgs, videoNode, mainFilter, labelFf);
+                    AppendVisualFilterArgs(
+                        mainArgs,
+                        videoNode,
+                        mainFilter,
+                        labelFf,
+                        overlayEncodeCleanup,
+                        deferCanvasTextOverlayToWpfRaster: false,
+                        overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
+                        overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
+                        overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1));
                     mainArgs.AddRange(codecArgs);
                     mainArgs.Add(outputBasePath);
 
@@ -242,6 +283,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 finally
                 {
+                    TryDeleteOverlayRasterFiles(overlayEncodeCleanup);
                     if (!string.IsNullOrWhiteSpace(lblEncDir) && !videoNode.FrameLabelDebugSamplesEnabled)
                     {
                         try
@@ -586,8 +628,42 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return dir;
         }
 
-        private static (string filterComplex, List<string> imageInputs, string outputLabel) BuildOverlayFilterComplex(VideoProcessingNode node, string baseFilter, bool rasterFrameLabelUsesInput1)
+        private static bool HasVisibleCanvasTextOverlays(VideoProcessingNode node) =>
+            node.Overlays.Any(o =>
+                o.IsVisible &&
+                string.Equals((o.Type ?? string.Empty).Trim(), "text", StringComparison.OrdinalIgnoreCase));
+
+        private static void TryDeleteOverlayRasterFiles(IEnumerable<string>? paths)
         {
+            if (paths == null) return;
+            foreach (var p in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(p) && File.Exists(p))
+                        File.Delete(p);
+                }
+                catch
+                {
+                    /* temp cleanup best-effort */
+                }
+            }
+        }
+
+        private static (string filterComplex, List<string> imageInputs, string outputLabel) BuildOverlayFilterComplex(
+            VideoProcessingNode node,
+            string baseFilter,
+            bool rasterFrameLabelUsesInput1,
+            List<string>? collectDisposableOverlayRasters,
+            bool deferCanvasTextOverlayToWpfRasterOnStills,
+            int overlayProbeSrcW,
+            int overlayProbeSrcH,
+            int overlayProbeSrcHForFontScale)
+        {
+            var pw = overlayProbeSrcW > 0 ? overlayProbeSrcW : 1920;
+            var ph = overlayProbeSrcH > 0 ? overlayProbeSrcH : 1080;
+            var phf = overlayProbeSrcHForFontScale > 0 ? overlayProbeSrcHForFontScale : ph;
+
             var filterChains = new List<string> { $"[0:v]{baseFilter}[v0]" };
             var imageInputs = new List<string>();
             var currentLabel = "v0";
@@ -613,7 +689,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var wExpr = VideoWatermarkGeometry.BuildScaleWidthExpression(node.WatermarkWidthFraction);
                 var xy = VideoWatermarkGeometry.BuildOverlayPositionExpression(node.WatermarkPosition, node.WatermarkInsetFraction);
                 imageInputs.Add(node.WatermarkImagePath!);
-                filterChains.Add($"[{currentLabel}][{imageInputIndex}:v]scale2ref=w={wExpr}:h=-2[{vRef}][{wScaled}]");
+                // scale2ref: input0 = stream to resize (logo), input1 = ref (main); out0=scaled logo, out1=unchanged main
+                filterChains.Add($"[{imageInputIndex}:v][{currentLabel}]scale2ref=w={wExpr}:h=-2[{wScaled}][{vRef}]");
                 filterChains.Add($"[{wScaled}]format=rgba,colorchannelmixer=aa={overlayAlpha}[{wRgba}]");
                 filterChains.Add($"[{vRef}][{wRgba}]overlay={xy}[{nextLabel}]");
                 currentLabel = nextLabel;
@@ -623,28 +700,41 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             foreach (var item in node.Overlays.Where(o => o.IsVisible))
             {
                 var type = (item.Type ?? string.Empty).Trim().ToLowerInvariant();
+                if (deferCanvasTextOverlayToWpfRasterOnStills && type == "text")
+                    continue;
+
                 var xExpr = $"(W*{item.X.ToString("0.######", CultureInfo.InvariantCulture)})";
                 var yExpr = $"(H*{item.Y.ToString("0.######", CultureInfo.InvariantCulture)})";
                 var opacity = Math.Clamp(item.Opacity, 0, 1).ToString("0.###", CultureInfo.InvariantCulture);
                 var nextLabel = $"v{++stageIndex}";
+                var wfStr = Math.Clamp(item.Width, 0.01, 1).ToString("0.######", CultureInfo.InvariantCulture);
+                var hfStr = Math.Clamp(item.Height, 0.01, 1).ToString("0.######", CultureInfo.InvariantCulture);
+                // scale2ref: iw/ih = ref (main video) when graph is [overlay][main] — not main_w (that is input0 size).
+                var wScaledExpr = $"max(1\\,trunc(iw*{wfStr}))";
+                var hScaledExpr = $"max(1\\,trunc(ih*{hfStr}))";
+                var mainPass = $"ovmain{stageIndex}";
+                var ovScaled = $"ovscl{stageIndex}";
 
                 if ((type == "image" || type == "logo") && !string.IsNullOrWhiteSpace(item.Source) && File.Exists(item.Source))
                 {
-                    var wExpr = $"(W*{item.Width.ToString("0.######", CultureInfo.InvariantCulture)})";
-                    var hExpr = $"(H*{item.Height.ToString("0.######", CultureInfo.InvariantCulture)})";
                     imageInputs.Add(item.Source);
-                    filterChains.Add($"[{imageInputIndex}:v]scale=w='{wExpr}':h='{hExpr}'[ov{stageIndex}]");
-                    filterChains.Add($"[{currentLabel}][ov{stageIndex}]overlay=x='{xExpr}':y='{yExpr}':alpha={opacity}[{nextLabel}]");
+                    filterChains.Add($"[{imageInputIndex}:v][{currentLabel}]scale2ref=w={wScaledExpr}:h={hScaledExpr}[{ovScaled}][{mainPass}]");
+                    filterChains.Add($"[{mainPass}][{ovScaled}]overlay=x='{xExpr}':y='{yExpr}':alpha={opacity}:format=auto[{nextLabel}]");
                     imageInputIndex++;
                     currentLabel = nextLabel;
                 }
                 else if (type == "text")
                 {
-                    var text = (item.Source ?? string.Empty).Replace("\\", "\\\\").Replace(":", "\\:").Replace("'", "\\'");
-                    var fontFamily = string.IsNullOrWhiteSpace(item.FontFamily) ? "Arial" : item.FontFamily;
-                    var fontPath = ResolveFontPath(fontFamily).Replace("\\", "/").Replace(":", "\\:");
-                    var fontColor = string.IsNullOrWhiteSpace(item.FontColor) ? "white" : item.FontColor;
-                    filterChains.Add($"[{currentLabel}]drawtext=text='{text}':x={xExpr}:y={yExpr}:fontsize={item.FontSize}:fontcolor={fontColor}:fontfile='{fontPath}':alpha={opacity}[{nextLabel}]");
+                    var rasterTextPath = RenderOverlayTextRasterPng(item, node, pw, ph, phf);
+                    collectDisposableOverlayRasters?.Add(rasterTextPath);
+
+                    var ovRgba = $"ovrgba{stageIndex}";
+                    imageInputs.Add(rasterTextPath);
+                    // Text PNG is already rendered to the target box pixel size (matches OverlayItemControl AutoFit).
+                    // Overlay directly to avoid any resampling that would drift font size/metrics from UI.
+                    filterChains.Add($"[{imageInputIndex}:v]format=rgba,colorchannelmixer=aa={opacity}[{ovRgba}]");
+                    filterChains.Add($"[{currentLabel}][{ovRgba}]overlay=x='{xExpr}':y='{yExpr}':alpha=1:format=auto[{nextLabel}]");
+                    imageInputIndex++;
                     currentLabel = nextLabel;
                 }
             }
@@ -654,9 +744,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var tailScale = BuildTailScaleFilter(node);
             if (!string.IsNullOrWhiteSpace(tailScale))
             {
-                var nextLabel = $"v{++stageIndex}";
-                filterChains.Add($"[{currentLabel}]{tailScale}[{nextLabel}]");
-                currentLabel = nextLabel;
+                var nextLabelTail = $"v{++stageIndex}";
+                filterChains.Add($"[{currentLabel}]{tailScale}[{nextLabelTail}]");
+                currentLabel = nextLabelTail;
             }
 
             return (string.Join(";", filterChains), imageInputs, $"[{currentLabel}]");
@@ -706,12 +796,28 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return filters.Count > 0 ? string.Join(",", filters) : string.Empty;
         }
 
-        private static void AppendVisualFilterArgs(List<string> args, VideoProcessingNode node, string baseFilter, FrameLabelSequenceFfmpegInput? frameLabels = null)
+        private static void AppendVisualFilterArgs(
+            List<string> args,
+            VideoProcessingNode node,
+            string baseFilter,
+            FrameLabelSequenceFfmpegInput? frameLabels = null,
+            List<string>? collectDisposableOverlayRasters = null,
+            bool deferCanvasTextOverlayToWpfRaster = false,
+            int overlayProbeSrcW = 0,
+            int overlayProbeSrcH = 0,
+            int overlayProbeSrcHForFontScale = 0)
         {
-            var hasCanvasOverlays = node.Overlays.Any(o => o.IsVisible);
             var hasWatermark = node.WatermarkEnabled &&
                                !string.IsNullOrWhiteSpace(node.WatermarkImagePath) &&
                                File.Exists(node.WatermarkImagePath);
+            var hasNonDeferredCanvasLayer = node.Overlays.Any(o =>
+            {
+                if (!o.IsVisible) return false;
+                var t = (o.Type ?? string.Empty).Trim();
+                if (string.Equals(t, "text", StringComparison.OrdinalIgnoreCase))
+                    return !deferCanvasTextOverlayToWpfRaster;
+                return true;
+            });
             var useRasterLabels = frameLabels != null && node.FrameLabelEnabled;
 
             if (useRasterLabels)
@@ -724,9 +830,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 });
             }
 
-            if (hasCanvasOverlays || hasWatermark)
+            if (hasNonDeferredCanvasLayer || hasWatermark)
             {
-                var (overlayFilter, imageInputs, outputLabel) = BuildOverlayFilterComplex(node, baseFilter, useRasterLabels);
+                var (overlayFilter, imageInputs, outputLabel) = BuildOverlayFilterComplex(
+                    node,
+                    baseFilter,
+                    useRasterLabels,
+                    collectDisposableOverlayRasters,
+                    deferCanvasTextOverlayToWpfRaster,
+                    overlayProbeSrcW,
+                    overlayProbeSrcH,
+                    overlayProbeSrcHForFontScale);
                 foreach (var inputPath in imageInputs)
                 {
                     args.AddRange(new[] { "-i", inputPath });
@@ -812,6 +926,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 parts.Add($"scale=iw*{sc}:ih*{sc}");
             }
             return string.Join(",", parts);
+        }
+
+        private static string RenderOverlayTextRasterPng(OverlayItem item, VideoProcessingNode node, int probeSrcW, int probeSrcH, int probeSrcHForFont)
+        {
+            var (estW, estH) = FrameLabelRasterComposer.GetEstimatedSourceFrameSize(probeSrcW, probeSrcH, node);
+            var boxW = Math.Max(16, (int)Math.Round(estW * Math.Clamp(item.Width, 0.01, 1)));
+            var boxH = Math.Max(16, (int)Math.Round(estH * Math.Clamp(item.Height, 0.01, 1)));
+            // Match OverlayItemControl.AutoFitTextContent(): base font size scales with parent surface height (/1080).
+            // For video-encode overlays we approximate parent surface height using estimated source height.
+            var parentSurfaceH = estH > 0 ? estH : (probeSrcH > 0 ? probeSrcH : 1080);
+
+            var bmp = FrameLabelRasterComposer.RenderOverlayTextStripBitmap(item, boxW, boxH, parentSurfaceHeightPx: parentSurfaceH);
+
+            var path = Path.Combine(Path.GetTempPath(), $"flow_overlay_text_{Guid.NewGuid():N}.png");
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(bmp));
+            using var fs = File.Create(path);
+            enc.Save(fs);
+            return path;
         }
 
         private static string ResolveFontPath(string? font)
@@ -905,7 +1038,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 "-i", node.VideoPath
             };
             args.AddRange(new[] { "-ss", positionSec });
-            AppendVisualFilterArgs(args, node, vf);
+            var overlayRasterCleanup = new List<string>();
+            AppendVisualFilterArgs(
+                args,
+                node,
+                vf,
+                frameLabels: null,
+                overlayRasterCleanup,
+                deferCanvasTextOverlayToWpfRaster: HasVisibleCanvasTextOverlays(node),
+                overlayProbeSrcW: sourceWidth > 0 ? sourceWidth : 1920,
+                overlayProbeSrcH: sourceHeight > 0 ? sourceHeight : 1080,
+                overlayProbeSrcHForFontScale: Math.Max(sourceHeight, 1));
             if (string.Equals(Path.GetExtension(outputPath), ".jpg", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(Path.GetExtension(outputPath), ".jpeg", StringComparison.OrdinalIgnoreCase))
             {
@@ -913,7 +1056,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             args.AddRange(new[] { "-frames:v", "1" });
             args.Add(outputPath);
-            await RunFfmpegAsync(args, ct).ConfigureAwait(false);
+            try
+            {
+                await RunFfmpegAsync(args, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                TryDeleteOverlayRasterFiles(overlayRasterCleanup);
+            }
+
+            if (HasVisibleCanvasTextOverlays(node) && File.Exists(outputPath))
+            {
+                await RunWpfCompositorAsync(
+                    () => FrameLabelRasterComposer.CompositeCanvasTextOverlaysOntoStillFile(
+                        node,
+                        outputPath,
+                        sourceWidth > 0 ? sourceWidth : 1920,
+                        sourceHeight > 0 ? sourceHeight : 1080,
+                        Math.Max(sourceHeight, 1)),
+                    ct).ConfigureAwait(false);
+            }
 
             if (!node.FrameLabelEnabled || !File.Exists(outputPath))
                 return;
@@ -1018,10 +1180,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             onLog($"⚙ Filter: {vfArg}");
 
             var maxJobs = Math.Clamp(node.ExtractParallelJobs, 1, 8);
+            var probeW = sourceWidth > 0 ? sourceWidth : 1920;
+            var probeH = sourceHeight > 0 ? sourceHeight : 1080;
+            var probeHFont = Math.Max(sourceHeight, 1);
+
             if (maxJobs <= 1 || effectiveDuration < 20)
             {
-                var baseArgs = BuildExtractArgs(node, vfArg, pattern, extension, useVsync0, effectiveStart, effectiveEnd);
-                await RunFfmpegWithProgressAsync(baseArgs, effectiveDuration, onProgress, onLog, ct).ConfigureAwait(false);
+                var overlayRasterCleanup = new List<string>();
+                try
+                {
+                    var baseArgs = BuildExtractArgs(
+                        node,
+                        vfArg,
+                        pattern,
+                        extension,
+                        useVsync0,
+                        effectiveStart,
+                        effectiveEnd,
+                        overlayRasterCleanup,
+                        deferCanvasTextOverlayToWpfRaster: HasVisibleCanvasTextOverlays(node),
+                        overlayProbeSrcW: probeW,
+                        overlayProbeSrcH: probeH,
+                        overlayProbeSrcHForFontScale: probeHFont);
+                    await RunFfmpegWithProgressAsync(baseArgs, effectiveDuration, onProgress, onLog, ct).ConfigureAwait(false);
+                }
+                finally
+                {
+                    TryDeleteOverlayRasterFiles(overlayRasterCleanup);
+                }
             }
             else
             {
@@ -1043,18 +1229,38 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                     tasks.Add(Task.Run(async () =>
                     {
-                        var args = BuildExtractArgs(node, vfArg, chunkPattern, extension, useVsync0, chunkStart, chunkEnd);
-                        onLog($"▶ Chunk {idx + 1}/{jobCount}: {chunkStart:0.##}s -> {chunkEnd:0.##}s");
-                        await RunFfmpegWithProgressAsync(
-                            args,
-                            Math.Max(0.01, chunkEnd - chunkStart),
-                            (pct, status) =>
-                            {
-                                chunkProgress[idx] = pct;
-                                onProgress(chunkProgress.Average(), $"Extracting chunks... {status}");
-                            },
-                            line => onLog($"[C{idx + 1}] {line}"),
-                            ct).ConfigureAwait(false);
+                        var overlayRasterCleanup = new List<string>();
+                        try
+                        {
+                            var args = BuildExtractArgs(
+                                node,
+                                vfArg,
+                                chunkPattern,
+                                extension,
+                                useVsync0,
+                                chunkStart,
+                                chunkEnd,
+                                overlayRasterCleanup,
+                                deferCanvasTextOverlayToWpfRaster: HasVisibleCanvasTextOverlays(node),
+                                overlayProbeSrcW: probeW,
+                                overlayProbeSrcH: probeH,
+                                overlayProbeSrcHForFontScale: probeHFont);
+                            onLog($"▶ Chunk {idx + 1}/{jobCount}: {chunkStart:0.##}s -> {chunkEnd:0.##}s");
+                            await RunFfmpegWithProgressAsync(
+                                args,
+                                Math.Max(0.01, chunkEnd - chunkStart),
+                                (pct, status) =>
+                                {
+                                    chunkProgress[idx] = pct;
+                                    onProgress(chunkProgress.Average(), $"Extracting chunks... {status}");
+                                },
+                                line => onLog($"[C{idx + 1}] {line}"),
+                                ct).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            TryDeleteOverlayRasterFiles(overlayRasterCleanup);
+                        }
                     }, ct));
                 }
 
@@ -1077,9 +1283,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
+            var orderedStills = Directory.GetFiles(outputFolder, $"frame_*.{extension}")
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (orderedStills.Count > 0)
+            {
+                await ApplyCanvasTextOverlaysToStillFilesAsync(
+                        node,
+                        orderedStills,
+                        probeW,
+                        probeH,
+                        probeHFont,
+                        ct)
+                    .ConfigureAwait(false);
+            }
+
             if (node.FrameLabelEnabled)
             {
-                if (node.FrameLabelDebugSamplesEnabled)
+                if (node.FrameLabelDebugSamplesEnabled && orderedStills.Count > 0)
                 {
                     var dbgDir = CreateFrameLabelDebugFolder("extract", outputFolder);
                     var dbgCount = Math.Min(24, Math.Max(1, (int)Math.Ceiling(effectiveDuration * effectiveExtractFps)));
@@ -1091,25 +1313,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             effectiveStart,
                             effectiveExtractFps,
                             sourceFps,
-                            sourceWidth > 0 ? sourceWidth : 1920,
-                            sourceHeight > 0 ? sourceHeight : 1080,
-                            Math.Max(sourceHeight, 1)),
+                            probeW,
+                            probeH,
+                            probeHFont),
                         ct).ConfigureAwait(false);
                     onLog($"[DBG] FrameLabel samples: {dbgDir}");
                 }
 
-                var stills = Directory.GetFiles(outputFolder, $"frame_*.{extension}")
-                    .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                await ApplyRasterFrameLabelsToStillFilesAsync(
-                    node,
-                    stills,
-                    effectiveStart,
-                    effectiveExtractFps,
-                    sourceWidth,
-                    sourceHeight,
-                    Math.Max(sourceHeight, 1),
-                    ct).ConfigureAwait(false);
+                if (orderedStills.Count > 0)
+                {
+                    await ApplyRasterFrameLabelsToStillFilesAsync(
+                            node,
+                            orderedStills,
+                            effectiveStart,
+                            effectiveExtractFps,
+                            sourceWidth,
+                            sourceHeight,
+                            Math.Max(sourceHeight, 1),
+                            ct)
+                        .ConfigureAwait(false);
+                }
             }
 
             var count = Directory.GetFiles(outputFolder, $"frame_*.{extension}").Length;
@@ -1124,7 +1347,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             string extension,
             bool useVsync0,
             double startSec,
-            double endSec)
+            double endSec,
+            List<string>? collectDisposableOverlayRasters,
+            bool deferCanvasTextOverlayToWpfRaster,
+            int overlayProbeSrcW,
+            int overlayProbeSrcH,
+            int overlayProbeSrcHForFontScale)
         {
             var args = new List<string>
             {
@@ -1134,7 +1362,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 "-i", node.VideoPath
             };
 
-            AppendVisualFilterArgs(args, node, vfArg);
+            AppendVisualFilterArgs(
+                args,
+                node,
+                vfArg,
+                frameLabels: null,
+                collectDisposableOverlayRasters,
+                deferCanvasTextOverlayToWpfRaster,
+                overlayProbeSrcW,
+                overlayProbeSrcH,
+                overlayProbeSrcHForFontScale);
             if (extension == "jpg")
             {
                 var qv = Math.Max(1, 31 - (int)(node.JpegQuality / 3.35));
@@ -1272,6 +1509,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (dispatcher != null && !dispatcher.HasShutdownStarted && !dispatcher.HasShutdownFinished)
                 return dispatcher.InvokeAsync(work, DispatcherPriority.Normal, ct).Task;
             return Task.Run(work, ct);
+        }
+
+        private static async Task ApplyCanvasTextOverlaysToStillFilesAsync(
+            VideoProcessingNode node,
+            IReadOnlyList<string> framePathsOrdered,
+            int probeSrcW,
+            int probeSrcH,
+            int probeSrcHForFont,
+            CancellationToken ct)
+        {
+            if (!HasVisibleCanvasTextOverlays(node) || framePathsOrdered.Count == 0) return;
+
+            var wFall = probeSrcW > 0 ? probeSrcW : 1920;
+            var hFall = probeSrcH > 0 ? probeSrcH : 1080;
+            var hFontProbe = probeSrcHForFont > 0 ? probeSrcHForFont : hFall;
+
+            await RunWpfCompositorAsync(() =>
+            {
+                foreach (var path in framePathsOrdered)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    FrameLabelRasterComposer.CompositeCanvasTextOverlaysOntoStillFile(node, path, wFall, hFall, hFontProbe);
+                }
+            }, ct).ConfigureAwait(false);
         }
 
         private static async Task ApplyRasterFrameLabelsToStillFilesAsync(

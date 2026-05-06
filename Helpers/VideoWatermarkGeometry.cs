@@ -15,11 +15,14 @@ namespace FlowMy.Helpers
         public static double ClampInsetFraction(double value) =>
             Math.Clamp(double.IsNaN(value) || value < 0 ? 0.05 : value, 0, 0.25);
 
-        /// <summary>FFmpeg scale2ref width expression (reference = main video).</summary>
+        /// <summary>
+        /// FFmpeg scale2ref width expression: graph must be <c>[logo][mainVideo]scale2ref</c> so input[1] is ref;
+        /// <c>iw</c>/<c>ih</c> are the reference (main) frame size.
+        /// </summary>
         public static string BuildScaleWidthExpression(double widthFraction)
         {
             var wf = ClampWidthFraction(widthFraction).ToString("0.######", CultureInfo.InvariantCulture);
-            return $"max(1\\,trunc(main_w*{wf}))";
+            return $"max(1\\,trunc(iw*{wf}))";
         }
 
         /// <summary>overlay= x:y string using W,H,w,h; inset is fraction of width/height per edge.</summary>

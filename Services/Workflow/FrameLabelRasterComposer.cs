@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -268,5 +269,168 @@ internal static class FrameLabelRasterComposer
             using var fs = File.Create(path);
             enc.Save(fs);
         }
+    }
+
+    private static Color ParseOverlayItemColor(string? value, Color fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        try
+        {
+            var conv = new BrushConverter();
+            if (conv.ConvertFromString(value.Trim()) is SolidColorBrush scb)
+                return scb.Color;
+        }
+        catch { /* ignore */ }
+        return fallback;
+    }
+
+    /// <summary>
+    /// Renders canvas overlay text to a PBGRA strip (transparent background), same fit logic as FFmpeg overlay path preview.
+    /// </summary>
+    internal static BitmapSource RenderOverlayTextStripBitmap(
+        OverlayItem item,
+        int stripW,
+        int stripH,
+        double parentSurfaceHeightPx)
+    {
+        stripW = Math.Max(4, stripW);
+        stripH = Math.Max(4, stripH);
+        parentSurfaceHeightPx = Math.Max(1.0, parentSurfaceHeightPx);
+
+        var fg = ParseOverlayItemColor(item.FontColor, Colors.White);
+        var text = item.Source ?? string.Empty;
+        var family = string.IsNullOrWhiteSpace(item.FontFamily) ? "Arial" : item.FontFamily.Trim();
+        var typeface = new Typeface(new FontFamily(family), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+
+        // Match OverlayItemControl.AutoFitTextContent():
+        // - Available client area = ActualWidth/Height minus 8px
+        // - Base font size scales with parent surface height ( /1080 )
+        // - Fit requires both ft.Height and ft.Width within available area
+        // - TextAlignment = Center (see OverlayItemControl.xaml)
+        var availableW = Math.Max(1, stripW - 8);
+        var availableH = Math.Max(1, stripH - 8);
+        var baseSize = Math.Max(8.0, item.FontSize * (parentSurfaceHeightPx / 1080.0));
+        var fitSize = baseSize;
+
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, stripW, stripH));
+            for (var s = baseSize; s >= 6; s -= 0.5)
+            {
+                var ftTest = new FormattedText(
+                    text,
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    typeface,
+                    s,
+                    new SolidColorBrush(fg),
+                    pixelsPerDip: 1.0)
+                {
+                    MaxTextWidth = availableW,
+                    MaxTextHeight = availableH,
+                    Trimming = TextTrimming.None,
+                    TextAlignment = TextAlignment.Center
+                };
+
+                if (ftTest.Height <= availableH && ftTest.Width <= availableW)
+                {
+                    fitSize = s;
+                    break;
+                }
+            }
+
+            var ft = new FormattedText(
+                text,
+                CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                fitSize,
+                new SolidColorBrush(fg),
+                pixelsPerDip: 1.0)
+            {
+                MaxTextWidth = availableW,
+                MaxTextHeight = availableH,
+                Trimming = TextTrimming.None,
+                TextAlignment = TextAlignment.Center
+            };
+            dc.DrawText(ft, new Point(4, 4));
+        }
+
+        var rtb = new RenderTargetBitmap(stripW, stripH, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(visual);
+        rtb.Freeze();
+        return rtb;
+    }
+
+    /// <summary>
+    /// WPF composites visible canvas text layers onto an encoded still (like <see cref="CompositeLabelOntoStillFile"/>), pixel-aligned to decoded frame size.
+    /// Layers are painted in overlay list order (earlier entries below later ones).
+    /// </summary>
+    internal static void CompositeCanvasTextOverlaysOntoStillFile(
+        VideoProcessingNode node,
+        string imagePath,
+        int probeSrcW,
+        int probeSrcH,
+        int probeSrcHForFont)
+    {
+        var textLayers = node.Overlays.Where(o =>
+            o.IsVisible &&
+            string.Equals((o.Type ?? string.Empty).Trim(), "text", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (textLayers.Count == 0) return;
+
+        if (string.Equals(Path.GetExtension(imagePath), ".webp", StringComparison.OrdinalIgnoreCase) && GetWebpEncoder() is null)
+            return;
+
+        BitmapSource baseFrame;
+        using (var streamIn = File.OpenRead(imagePath))
+        {
+            var decoder = BitmapDecoder.Create(streamIn, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            baseFrame = BitmapFrame.Create(decoder.Frames[0]);
+        }
+
+        baseFrame.Freeze();
+        var wf = baseFrame.PixelWidth;
+        var hf = baseFrame.PixelHeight;
+        if (wf <= 0 || hf <= 0) return;
+
+        var (estW, estH) = GetEstimatedSourceFrameSize(probeSrcW, probeSrcH, node);
+        var hFontProbe = probeSrcHForFont > 0 ? probeSrcHForFont : (probeSrcH > 0 ? probeSrcH : estH);
+        var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(hFontProbe > 0 ? hFontProbe : (int?)null);
+
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawImage(baseFrame, new Rect(0, 0, wf, hf));
+
+            foreach (var item in textLayers)
+            {
+                var boxW = Math.Max(4, (int)Math.Round(wf * Math.Clamp(item.Width, 0.01, 1)));
+                var boxH = Math.Max(4, (int)Math.Round(hf * Math.Clamp(item.Height, 0.01, 1)));
+                var boxX = (int)Math.Round(wf * Math.Clamp(item.X, 0, 1));
+                var boxY = (int)Math.Round(hf * Math.Clamp(item.Y, 0, 1));
+
+                // Match OverlayItemControl.AutoFitTextContent(): base font size scales by parent surface height.
+                // Here parent surface = decoded/exported frame height (hf) to ensure exported still matches UI at this resolution.
+                var strip = RenderOverlayTextStripBitmap(item, boxW, boxH, parentSurfaceHeightPx: hf);
+                var opacity = Math.Clamp(item.Opacity, 0, 1);
+                if (opacity < 0.999)
+                {
+                    dc.PushOpacity(opacity);
+                    dc.DrawImage(strip, new Rect(boxX, boxY, boxW, boxH));
+                    dc.Pop();
+                }
+                else
+                {
+                    dc.DrawImage(strip, new Rect(boxX, boxY, boxW, boxH));
+                }
+            }
+        }
+
+        var composed = new RenderTargetBitmap(wf, hf, 96, 96, PixelFormats.Pbgra32);
+        composed.Render(visual);
+        composed.Freeze();
+
+        WriteBitmapToFile(imagePath, composed);
     }
 }

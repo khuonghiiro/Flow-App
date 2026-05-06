@@ -18,6 +18,7 @@
             <TextBlock x:Name="TextContent"
                        Visibility="Collapsed"
                        TextWrapping="Wrap"
+                       TextTrimming="None"
                        HorizontalAlignment="Stretch"
                        VerticalAlignment="Stretch"
                        TextAlignment="Center"/>
