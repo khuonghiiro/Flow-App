@@ -663,20 +663,32 @@ namespace FlowMy.Views.NodeControls
             OverlayCanvasControl.SelectionChanged += OverlayCanvasControl_SelectionChanged;
             ToggleBeforeAfterButton.Click += (_, _) => ToggleBeforeAfterPreview();
             OverlayTypeCombo.SelectionChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
-            OverlaySourceTextBox.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlaySourcePathTextBox.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlaySourceTextArea.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayXSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayYSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayWidthSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayHeightSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayOpacitySlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayRotationSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
-            OverlayFontFamilyTextBox.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayFontFamilyCombo.SelectionChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayFontFamilyCombo.LostKeyboardFocus += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayFontColorTextBox.TextChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayFontSizeSlider.ValueChanged += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayAlignLeftRadio.Checked += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayAlignCenterRadio.Checked += (_, _) => ApplyOverlayPropertyEditorChanges();
+            OverlayAlignRightRadio.Checked += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayVisibleCheckBox.Checked += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayVisibleCheckBox.Unchecked += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayLockedCheckBox.Checked += (_, _) => ApplyOverlayPropertyEditorChanges();
             OverlayLockedCheckBox.Unchecked += (_, _) => ApplyOverlayPropertyEditorChanges();
+
+            // Populate font families (once).
+            if (OverlayFontFamilyCombo.Items.Count == 0)
+            {
+                foreach (var ff in Fonts.SystemFontFamilies.OrderBy(f => f.Source, StringComparer.OrdinalIgnoreCase))
+                    OverlayFontFamilyCombo.Items.Add(ff.Source);
+            }
 
             FrameFormatCombo.SelectionChanged += (_, _) =>
             {
@@ -2692,6 +2704,7 @@ namespace FlowMy.Views.NodeControls
                     FontFamily = "Arial",
                     FontColor = "White",
                     FontSize = 28,
+                    TextAlignment = "Left",
                     Opacity = 1.0,
                     IsVisible = true
                 });
@@ -2841,23 +2854,28 @@ namespace FlowMy.Views.NodeControls
             {
                 var has = item != null;
                 OverlayTypeCombo.IsEnabled = has;
-                OverlaySourceTextBox.IsEnabled = has;
+                OverlaySourcePathTextBox.IsEnabled = has;
+                OverlaySourceTextArea.IsEnabled = has;
                 OverlayXSlider.IsEnabled = has;
                 OverlayYSlider.IsEnabled = has;
                 OverlayWidthSlider.IsEnabled = has;
                 OverlayHeightSlider.IsEnabled = has;
                 OverlayOpacitySlider.IsEnabled = has;
                 OverlayRotationSlider.IsEnabled = has;
-                OverlayFontFamilyTextBox.IsEnabled = has;
+                OverlayFontFamilyCombo.IsEnabled = has;
                 OverlayFontColorTextBox.IsEnabled = has;
                 OverlayFontSizeSlider.IsEnabled = has;
+                OverlayTextAlignRow.IsEnabled = has;
                 OverlayVisibleCheckBox.IsEnabled = has;
                 OverlayLockedCheckBox.IsEnabled = has;
 
                 if (!has)
                 {
                     OverlayTypeCombo.SelectedIndex = -1;
-                    OverlaySourceTextBox.Text = string.Empty;
+                    OverlaySourcePathTextBox.Text = string.Empty;
+                    OverlaySourceTextArea.Text = string.Empty;
+                    OverlayTextPropsPanel.Visibility = Visibility.Collapsed;
+                    OverlayImageSourcePanel.Visibility = Visibility.Collapsed;
                     return;
                 }
 
@@ -2867,16 +2885,29 @@ namespace FlowMy.Views.NodeControls
                     "logo" => 2,
                     _ => 0
                 };
-                OverlaySourceTextBox.Text = item.Source;
+
+                var isText = string.Equals((item.Type ?? "text").Trim(), "text", StringComparison.OrdinalIgnoreCase);
+                OverlayTextPropsPanel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
+                OverlayImageSourcePanel.Visibility = isText ? Visibility.Collapsed : Visibility.Visible;
+
+                if (isText)
+                    OverlaySourceTextArea.Text = item.Source;
+                else
+                    OverlaySourcePathTextBox.Text = item.Source;
+
                 OverlayXSlider.Value = item.X;
                 OverlayYSlider.Value = item.Y;
                 OverlayWidthSlider.Value = item.Width;
                 OverlayHeightSlider.Value = item.Height;
                 OverlayOpacitySlider.Value = item.Opacity;
                 OverlayRotationSlider.Value = item.Rotation;
-                OverlayFontFamilyTextBox.Text = item.FontFamily;
+                OverlayFontFamilyCombo.Text = item.FontFamily;
                 OverlayFontColorTextBox.Text = item.FontColor;
                 OverlayFontSizeSlider.Value = item.FontSize;
+                var align = (item.TextAlignment ?? "Left").Trim().ToLowerInvariant();
+                OverlayAlignLeftRadio.IsChecked = align != "center" && align != "right";
+                OverlayAlignCenterRadio.IsChecked = align == "center";
+                OverlayAlignRightRadio.IsChecked = align == "right";
                 OverlayVisibleCheckBox.IsChecked = item.IsVisible;
                 OverlayLockedCheckBox.IsChecked = item.IsLocked;
             }
@@ -2893,16 +2924,25 @@ namespace FlowMy.Views.NodeControls
 
             var selectedType = (OverlayTypeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "text";
             selected.Type = selectedType;
-            selected.Source = OverlaySourceTextBox.Text ?? string.Empty;
+            var isText = string.Equals(selectedType, "text", StringComparison.OrdinalIgnoreCase);
+            OverlayTextPropsPanel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
+            OverlayImageSourcePanel.Visibility = isText ? Visibility.Collapsed : Visibility.Visible;
+            selected.Source = isText ? (OverlaySourceTextArea.Text ?? string.Empty) : (OverlaySourcePathTextBox.Text ?? string.Empty);
             selected.X = OverlayXSlider.Value;
             selected.Y = OverlayYSlider.Value;
             selected.Width = OverlayWidthSlider.Value;
             selected.Height = OverlayHeightSlider.Value;
             selected.Opacity = OverlayOpacitySlider.Value;
             selected.Rotation = OverlayRotationSlider.Value;
-            selected.FontFamily = OverlayFontFamilyTextBox.Text;
-            selected.FontColor = OverlayFontColorTextBox.Text;
-            selected.FontSize = (int)OverlayFontSizeSlider.Value;
+            if (isText)
+            {
+                selected.FontFamily = OverlayFontFamilyCombo.Text;
+                selected.FontColor = OverlayFontColorTextBox.Text;
+                selected.FontSize = (int)OverlayFontSizeSlider.Value;
+                selected.TextAlignment = OverlayAlignCenterRadio.IsChecked == true ? "Center"
+                    : OverlayAlignRightRadio.IsChecked == true ? "Right"
+                    : "Left";
+            }
             selected.IsVisible = OverlayVisibleCheckBox.IsChecked == true;
             selected.IsLocked = OverlayLockedCheckBox.IsChecked == true;
             OverlayLayerList.Items.Refresh();

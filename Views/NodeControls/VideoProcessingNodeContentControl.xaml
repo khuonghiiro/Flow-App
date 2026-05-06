@@ -1519,7 +1519,63 @@
                                                     <ComboBoxItem Content="logo" Tag="logo"/>
                                                 </ComboBox>
                                             </Grid>
-                                            <TextBox x:Name="OverlaySourceTextBox" Height="24" Margin="0,0,0,6"/>
+                                            <!-- Source editor (image/logo path) -->
+                                            <StackPanel x:Name="OverlayImageSourcePanel" Margin="0,0,0,6">
+                                                <TextBox x:Name="OverlaySourcePathTextBox" Height="24" ToolTip="Đường dẫn ảnh (image/logo)"/>
+                                            </StackPanel>
+
+                                            <!-- Source editor + styling (text-only) -->
+                                            <StackPanel x:Name="OverlayTextPropsPanel" Margin="0,0,0,6">
+                                                <TextBox x:Name="OverlaySourceTextArea"
+                                                         Height="92"
+                                                         AcceptsReturn="True"
+                                                         TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         ToolTip="Nội dung text overlay"/>
+
+                                                <Grid x:Name="OverlayTextAlignRow" Margin="0,6,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Align" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <RadioButton x:Name="OverlayAlignLeftRadio" Content="Left" GroupName="OverlayTextAlign" Margin="0,0,10,0"/>
+                                                        <RadioButton x:Name="OverlayAlignCenterRadio" Content="Center" GroupName="OverlayTextAlign" Margin="0,0,10,0"/>
+                                                        <RadioButton x:Name="OverlayAlignRightRadio" Content="Right" GroupName="OverlayTextAlign"/>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <Grid Margin="0,6,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Font" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <ComboBox x:Name="OverlayFontFamilyCombo"
+                                                              Grid.Column="1"
+                                                              Height="24"
+                                                              IsEditable="True"
+                                                              Style="{StaticResource DarkComboBoxStyle}"
+                                                              ToolTip="Font family"/>
+                                                    <TextBlock Text="Color" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBox x:Name="OverlayFontColorTextBox" Grid.Column="4" Height="24"/>
+                                                    <Button x:Name="PickOverlayFontColorButton" Padding = "0" Grid.Column="5" Content="🎨" Width="28" Height="24" Margin="6,0,0,0" ToolTip="Chọn màu chữ overlay" Click="PickOverlayFontColor_Click"/>
+                                                </Grid>
+
+                                                <Grid Margin="0,6,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Font Size" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <Slider x:Name="OverlayFontSizeSlider" Grid.Column="1" Minimum="8" Maximum="200" Style="{StaticResource ModernSliderStyle}"/>
+                                                </Grid>
+                                            </StackPanel>
                                             <Grid Margin="0,0,0,6">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
@@ -1559,29 +1615,7 @@
                                                 <TextBlock Text="Rotation" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                                 <Slider x:Name="OverlayRotationSlider" Grid.Column="4" Minimum="-180" Maximum="180" Style="{StaticResource ModernSliderStyle}"/>
                                             </Grid>
-                                            <Grid Margin="0,0,0,6">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="8"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="Font" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox x:Name="OverlayFontFamilyTextBox" Grid.Column="1" Height="24"/>
-                                                <TextBlock Text="Color" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBox x:Name="OverlayFontColorTextBox" Grid.Column="4" Height="24"/>
-                                                <Button x:Name="PickOverlayFontColorButton" Grid.Column="5" Content="🎨" Width="28" Height="24" Margin="6,0,0,0" ToolTip="Chọn màu chữ overlay" Click="PickOverlayFontColor_Click"/>
-                                            </Grid>
-                                            <Grid Margin="0,0,0,6">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="Font Size" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <Slider x:Name="OverlayFontSizeSlider" Grid.Column="1" Minimum="8" Maximum="200" Style="{StaticResource ModernSliderStyle}"/>
-                                            </Grid>
+                                            <!-- (text-only props moved into OverlayTextPropsPanel) -->
                                             <StackPanel Orientation="Horizontal">
                                                 <CheckBox x:Name="OverlayVisibleCheckBox" Content="Visible" Margin="0,0,12,0" Style="{StaticResource ReadableCheckBoxStyle}"/>
                                                 <CheckBox x:Name="OverlayLockedCheckBox" Content="Locked" Style="{StaticResource ReadableCheckBoxStyle}"/>

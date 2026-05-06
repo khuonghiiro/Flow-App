@@ -157,6 +157,12 @@ namespace FlowMy.Controls
                 TextContent.Visibility = _isEditingText ? Visibility.Collapsed : Visibility.Visible;
                 TextContent.Text = Item.Source;
                 TextContent.FontFamily = new FontFamily(string.IsNullOrWhiteSpace(Item.FontFamily) ? "Arial" : Item.FontFamily);
+                TextContent.TextAlignment = (Item.TextAlignment ?? "Left").Trim().ToLowerInvariant() switch
+                {
+                    "center" => TextAlignment.Center,
+                    "right" => TextAlignment.Right,
+                    _ => TextAlignment.Left
+                };
                 try
                 {
                     TextContent.Foreground = (Brush)new BrushConverter().ConvertFromString(string.IsNullOrWhiteSpace(Item.FontColor) ? "White" : Item.FontColor);
@@ -194,7 +200,8 @@ namespace FlowMy.Controls
                 {
                     MaxTextWidth = availableW,
                     MaxTextHeight = availableH,
-                    Trimming = TextTrimming.None
+                    Trimming = TextTrimming.None,
+                    TextAlignment = TextContent.TextAlignment
                 };
 
                 if (ft.Height <= availableH && ft.Width <= availableW)

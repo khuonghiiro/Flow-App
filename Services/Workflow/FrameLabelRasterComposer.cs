@@ -306,11 +306,17 @@ internal static class FrameLabelRasterComposer
         // - Available client area = ActualWidth/Height minus 8px
         // - Base font size scales with parent surface height ( /1080 )
         // - Fit requires both ft.Height and ft.Width within available area
-        // - TextAlignment = Center (see OverlayItemControl.xaml)
+        // - TextAlignment comes from OverlayItem.TextAlignment
         var availableW = Math.Max(1, stripW - 8);
         var availableH = Math.Max(1, stripH - 8);
         var baseSize = Math.Max(8.0, item.FontSize * (parentSurfaceHeightPx / 1080.0));
         var fitSize = baseSize;
+        var align = (item.TextAlignment ?? "Left").Trim().ToLowerInvariant() switch
+        {
+            "center" => TextAlignment.Center,
+            "right" => TextAlignment.Right,
+            _ => TextAlignment.Left
+        };
 
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
@@ -330,7 +336,7 @@ internal static class FrameLabelRasterComposer
                     MaxTextWidth = availableW,
                     MaxTextHeight = availableH,
                     Trimming = TextTrimming.None,
-                    TextAlignment = TextAlignment.Center
+                    TextAlignment = align
                 };
 
                 if (ftTest.Height <= availableH && ftTest.Width <= availableW)
@@ -352,7 +358,7 @@ internal static class FrameLabelRasterComposer
                 MaxTextWidth = availableW,
                 MaxTextHeight = availableH,
                 Trimming = TextTrimming.None,
-                TextAlignment = TextAlignment.Center
+                TextAlignment = align
             };
             dc.DrawText(ft, new Point(4, 4));
         }

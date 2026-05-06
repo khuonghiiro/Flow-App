@@ -21,7 +21,7 @@
                        TextTrimming="None"
                        HorizontalAlignment="Stretch"
                        VerticalAlignment="Stretch"
-                       TextAlignment="Center"/>
+                       TextAlignment="Left"/>
             <TextBox x:Name="TextEditor"
                      Visibility="Collapsed"
                      AcceptsReturn="True"

@@ -17,6 +17,7 @@ namespace FlowMy.Models.Nodes
         private string _fontFamily = "Arial";
         private string _fontColor = "white";
         private int _fontSize = 32;
+        private string _textAlignment = "Left";
         private bool _isSelected;
         private bool _isVisible = true;
         private bool _isLocked;
@@ -127,6 +128,20 @@ namespace FlowMy.Models.Nodes
             {
                 var next = value < 8 ? 8 : (value > 400 ? 400 : value);
                 if (_fontSize != next) { _fontSize = next; OnPropertyChanged(); }
+            }
+        }
+
+        /// <summary>Only used when <see cref="Type"/> is "text". Values: Left, Center, Right.</summary>
+        public string TextAlignment
+        {
+            get => _textAlignment;
+            set
+            {
+                var next = string.IsNullOrWhiteSpace(value) ? "Left" : value.Trim();
+                next = next.Equals("center", StringComparison.OrdinalIgnoreCase) ? "Center"
+                    : next.Equals("right", StringComparison.OrdinalIgnoreCase) ? "Right"
+                    : "Left";
+                if (_textAlignment != next) { _textAlignment = next; OnPropertyChanged(); }
             }
         }
 
