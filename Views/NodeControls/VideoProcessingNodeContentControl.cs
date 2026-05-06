@@ -1513,8 +1513,50 @@ namespace FlowMy.Views.NodeControls
             var padPx = padVidX * (areaW / srcW);
             var padPy = padVidY * (areaH / srcH);
             FrameLabelPreviewOverlay.Padding = new Thickness(padPx, padPy, padPx, padPy);
+            AutoFitFrameLabelTextToBounds();
             FrameLabelPosLabel.Text = $"X {_node.FrameLabelX:0.###} | Y {_node.FrameLabelY:0.###}";
             FrameLabelSizeLabel.Text = $"W {_node.FrameLabelW:0.###} | H {_node.FrameLabelH:0.###}";
+        }
+
+        private void AutoFitFrameLabelTextToBounds()
+        {
+            if (FrameLabelPreviewOverlay == null || FrameLabelPreviewText == null)
+                return;
+
+            var availableW = Math.Max(1, FrameLabelPreviewOverlay.Width - FrameLabelPreviewOverlay.Padding.Left - FrameLabelPreviewOverlay.Padding.Right);
+            var availableH = Math.Max(1, FrameLabelPreviewOverlay.Height - FrameLabelPreviewOverlay.Padding.Top - FrameLabelPreviewOverlay.Padding.Bottom);
+            var text = FrameLabelPreviewText.Text ?? string.Empty;
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            var dpi = VisualTreeHelper.GetDpi(FrameLabelPreviewText);
+            var typeface = new Typeface(
+                FrameLabelPreviewText.FontFamily,
+                FrameLabelPreviewText.FontStyle,
+                FrameLabelPreviewText.FontWeight,
+                FrameLabelPreviewText.FontStretch);
+
+            var originalSize = Math.Max(4, FrameLabelPreviewText.FontSize);
+            var fitSize = originalSize;
+            for (var size = originalSize; size >= 7; size -= 0.5)
+            {
+                var ft = new FormattedText(
+                    text,
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    typeface,
+                    size,
+                    Brushes.Black,
+                    dpi.PixelsPerDip);
+
+                if (ft.Width <= availableW && ft.Height <= availableH)
+                {
+                    fitSize = size;
+                    break;
+                }
+            }
+
+            FrameLabelPreviewText.FontSize = fitSize;
         }
 
         /// <summary>
@@ -1527,40 +1569,57 @@ namespace FlowMy.Views.NodeControls
             if (VideoAreaGrid == null || VideoViewbox == null || PreviewMedia == null)
                 return new Rect(0, 0, 1, 1);
 
-            var containerW = Math.Max(1, VideoAreaGrid.ActualWidth);
-            var containerH = Math.Max(1, VideoAreaGrid.ActualHeight);
-            var viewboxW = Math.Max(1, VideoViewbox.ActualWidth);
-            var viewboxH = Math.Max(1, VideoViewbox.ActualHeight);
-            var offsetX = Math.Max(0, (containerW - viewboxW) / 2);
-            var offsetY = Math.Max(0, (containerH - viewboxH) / 2);
+            var mediaW = PreviewMedia.ActualWidth;
+            var mediaH = PreviewMedia.ActualHeight;
+            if (mediaW <= 0 || mediaH <= 0)
+            {
+                mediaW = double.IsNaN(PreviewMedia.Width) || PreviewMedia.Width <= 0 ? 1280 : PreviewMedia.Width;
+                mediaH = double.IsNaN(PreviewMedia.Height) || PreviewMedia.Height <= 0 ? 720 : PreviewMedia.Height;
+            }
 
-            var natW = PreviewMedia.NaturalVideoWidth;
-            var natH = PreviewMedia.NaturalVideoHeight;
-            if (natW <= 0 || natH <= 0 || PreviewMedia.Source == null)
-                return new Rect(offsetX, offsetY, viewboxW, viewboxH);
+            Rect mediaBounds;
+            try
+            {
+                var toArea = PreviewMedia.TransformToVisual(VideoAreaGrid);
+                mediaBounds = toArea.TransformBounds(new Rect(0, 0, mediaW, mediaH));
+            }
+            catch
+            {
+                var viewboxW = Math.Max(1, VideoViewbox.ActualWidth);
+                var viewboxH = Math.Max(1, VideoViewbox.ActualHeight);
+                var containerW = Math.Max(1, VideoAreaGrid.ActualWidth);
+                var containerH = Math.Max(1, VideoAreaGrid.ActualHeight);
+                mediaBounds = new Rect(
+                    Math.Max(0, (containerW - viewboxW) / 2),
+                    Math.Max(0, (containerH - viewboxH) / 2),
+                    viewboxW,
+                    viewboxH);
+            }
 
-            var childW = PreviewMedia.Width;
-            var childH = PreviewMedia.Height;
-            if (double.IsNaN(childW) || childW <= 0) childW = 1280;
-            if (double.IsNaN(childH) || childH <= 0) childH = 720;
+            if (PreviewMedia.Source == null || PreviewMedia.NaturalVideoWidth <= 0 || PreviewMedia.NaturalVideoHeight <= 0)
+                return mediaBounds;
 
-            var videoScaleInChild = Math.Min(childW / natW, childH / (double)natH);
-            var dispW = natW * videoScaleInChild;
-            var dispH = natH * videoScaleInChild;
-            var innerOx = (childW - dispW) / 2;
-            var innerOy = (childH - dispH) / 2;
+            var natW = (double)PreviewMedia.NaturalVideoWidth;
+            var natH = (double)PreviewMedia.NaturalVideoHeight;
+            var mediaRatio = mediaBounds.Width / Math.Max(1d, mediaBounds.Height);
+            var natRatio = natW / Math.Max(1d, natH);
 
-            var s = Math.Min(viewboxW / childW, viewboxH / childH);
-            var renderedChildW = childW * s;
-            var renderedChildH = childH * s;
-            var vbOx = (viewboxW - renderedChildW) / 2;
-            var vbOy = (viewboxH - renderedChildH) / 2;
+            double contentW;
+            double contentH;
+            if (natRatio >= mediaRatio)
+            {
+                contentW = mediaBounds.Width;
+                contentH = contentW / natRatio;
+            }
+            else
+            {
+                contentH = mediaBounds.Height;
+                contentW = contentH * natRatio;
+            }
 
-            var contentX = offsetX + vbOx + innerOx * s;
-            var contentY = offsetY + vbOy + innerOy * s;
-            var contentW = dispW * s;
-            var contentH = dispH * s;
-            return new Rect(contentX, contentY, contentW, contentH);
+            var contentX = mediaBounds.X + (mediaBounds.Width - contentW) / 2d;
+            var contentY = mediaBounds.Y + (mediaBounds.Height - contentH) / 2d;
+            return new Rect(contentX, contentY, Math.Max(1, contentW), Math.Max(1, contentH));
         }
 
         private void UpdateOverlayCanvasBounds()

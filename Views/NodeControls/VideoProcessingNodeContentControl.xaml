@@ -990,7 +990,7 @@
                                FontFamily="Segoe UI Semibold"
                                VerticalAlignment="Top"
                                HorizontalAlignment="Left"
-                               TextTrimming="CharacterEllipsis"
+                               TextTrimming="None"
                                TextWrapping="NoWrap"
                                Foreground="{DynamicResource ThemeFrameLabelPreviewFg}"/>
                 </Border>
