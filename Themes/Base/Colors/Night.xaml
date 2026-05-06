@@ -25,10 +25,10 @@
     <SolidColorBrush x:Key="BackgroundAll" Color="#FF2E3440"/>
 
     <!-- PRIMARY — Nord blue -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#7E9BBC"/>
-    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#8EABCA"/>
-    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#6F8CAF"/>
-    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#0F172A"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#81A1C1"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#88C0D0"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#6D8FAD"/>
+    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#2E3440"/>
 
     <!-- SECONDARY -->
     <SolidColorBrush x:Key="SecondaryBrush" Color="#64748B"/>

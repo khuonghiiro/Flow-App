@@ -151,8 +151,8 @@
 
     <!-- ===== DATAGRID ===== -->
     <SolidColorBrush x:Key="DataGridHeaderBrush">black</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridRowBackground">#08000000</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridAltRowBackground">#FFF9FAFB</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridRowBackground">#FFFFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridAltRowBackground">#FFF0F4F8</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHeaderBackground">#FFEBEBEB</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridBorderBrush">#FFD0D7DE</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHoverRowBackground">#200078D4</SolidColorBrush>
@@ -230,9 +230,9 @@
     <SolidColorBrush x:Key="OceanPressedBrush" Color="#005E84"/>
     <SolidColorBrush x:Key="TextOnOceanBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="BrightPowerBrush" Color="#D81B60"/>
-    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#BF1754"/>
-    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#A61449"/>
+    <SolidColorBrush x:Key="BrightPowerBrush" Color="#E91E63"/>
+    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#F06292"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#C2185B"/>
     <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="MagentaBloomBrush" Color="#C026D3"/>

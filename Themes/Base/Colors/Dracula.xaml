@@ -38,9 +38,9 @@
     <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#221B2E"/>
 
     <!-- === SECONDARY === -->
-    <SolidColorBrush x:Key="SecondaryBrush" Color="#7C8CC2"/>
-    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#93A3D6"/>
-    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#6878AC"/>
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#8892C8"/>
+    <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#9BA5D8"/>
+    <SolidColorBrush x:Key="SecondaryPressedBrush" Color="#7480B8"/>
     <SolidColorBrush x:Key="TextOnSecondaryBrush" Color="#F8F8F2"/>
 
     <!-- === SUCCESS — Dracula green === -->

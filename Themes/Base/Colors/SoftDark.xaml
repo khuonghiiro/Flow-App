@@ -185,8 +185,8 @@
     <!-- ===== SEMANTIC ALIASES ===== -->
     <SolidColorBrush x:Key="PrimaryColor" Color="#FF7AAB9E"/>
     <SolidColorBrush x:Key="PrimaryHover" Color="#FF92BCB2"/>
-    <SolidColorBrush x:Key="SecondaryColor" Color="#FF2DBE6C"/>
-    <SolidColorBrush x:Key="AccentColor" Color="#FF9775FA"/>
+    <SolidColorBrush x:Key="SecondaryColor" Color="#FF55A89B"/>
+    <SolidColorBrush x:Key="AccentColor" Color="#FFC89B6E"/>
     <SolidColorBrush x:Key="BackgroundColor" Color="#FF1E1D1B"/>
     <SolidColorBrush x:Key="SurfaceColor" Color="#FF32302C"/>
     <SolidColorBrush x:Key="TextPrimary" Color="#FFE8E4DE"/>
@@ -194,7 +194,7 @@
     <SolidColorBrush x:Key="TextMuted" Color="#FF9A9590"/>
     <SolidColorBrush x:Key="DangerColor" Color="#FFFA5252"/>
     <SolidColorBrush x:Key="SuccessColor" Color="#FF2DBE6C"/>
-    <SolidColorBrush x:Key="WarningColor" Color="#FFFAB005"/>
+    <SolidColorBrush x:Key="WarningColor" Color="#FFD4A857"/>
 
     <!-- ===== POPUP ===== -->
     <SolidColorBrush x:Key="PopupHoverBrush" Color="#FF403C38"/>
@@ -229,10 +229,10 @@
     <SolidColorBrush x:Key="OceanPressedBrush" Color="#63A6C4"/>
     <SolidColorBrush x:Key="TextOnOceanBrush" Color="#10212A"/>
 
-    <SolidColorBrush x:Key="BrightPowerBrush" Color="#E8729D"/>
-    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#EF8AAE"/>
-    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#D2608B"/>
-    <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#2A0F1A"/>
+    <SolidColorBrush x:Key="BrightPowerBrush" Color="#E91E63"/>
+    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#F06292"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#C2185B"/>
+    <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="MagentaBloomBrush" Color="#CF78CF"/>
     <SolidColorBrush x:Key="MagentaBloomHoverBrush" Color="#DB8ADB"/>

@@ -33,7 +33,7 @@
     <SolidColorBrush x:Key="PrimaryBrush" Color="#3AA0FF"/>
     <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#59B0FF"/>
     <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#238EE8"/>
-    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#0B2238"/>
+    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#FFFFFF"/>
 
     <!-- ===== SECONDARY ===== -->
     <SolidColorBrush x:Key="SecondaryBrush" Color="#5F6B7F"/>
@@ -45,7 +45,7 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="#41C97E"/>
     <SolidColorBrush x:Key="SuccessHoverBrush" Color="#5DD796"/>
     <SolidColorBrush x:Key="SuccessPressedBrush" Color="#31B36D"/>
-    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#092016"/>
+    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#E8FFF0"/>
 
     <!-- ===== DANGER ===== -->
     <SolidColorBrush x:Key="DangerBrush" Color="#FF6E6E"/>
@@ -202,8 +202,8 @@
     <SolidColorBrush x:Key="PopupSelectedBackground" Color="#FF25262B"/>
 
     <!-- ===== LAVENDER (ComboBox selection highlight) ===== -->
-    <SolidColorBrush x:Key="LavenderHoverBrush"   Color="#302DBE6C"/>
-    <SolidColorBrush x:Key="LavenderPressedBrush" Color="#602DBE6C"/>
+    <SolidColorBrush x:Key="LavenderHoverBrush"   Color="#302285E6"/>
+    <SolidColorBrush x:Key="LavenderPressedBrush" Color="#602285E6"/>
     <SolidColorBrush x:Key="TextOnLavenderBrush"  Color="#FFF1F3F5"/>
 
     <!-- ===== LISTVIEW HEADER ===== -->
@@ -230,10 +230,10 @@
     <SolidColorBrush x:Key="OceanPressedBrush" Color="#22AEC3"/>
     <SolidColorBrush x:Key="TextOnOceanBrush" Color="#082126"/>
 
-    <SolidColorBrush x:Key="BrightPowerBrush" Color="#FF5C93"/>
-    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#FF75A6"/>
-    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#E64C82"/>
-    <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#2A0B17"/>
+    <SolidColorBrush x:Key="BrightPowerBrush" Color="#E91E63"/>
+    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#F06292"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#C2185B"/>
+    <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="MagentaBloomBrush" Color="#E56BE5"/>
     <SolidColorBrush x:Key="MagentaBloomHoverBrush" Color="#EE85EE"/>

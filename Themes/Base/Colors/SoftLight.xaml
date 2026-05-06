@@ -26,7 +26,7 @@
     <!-- Overlay -->
     <SolidColorBrush x:Key="OverlayBackground" Color="#80FFFFFF"/>
     <SolidColorBrush x:Key="OverlayBackgroundReverse" Color="#80000000"/>
-    <SolidColorBrush x:Key="BackgroundAll" Color="#FFE8E6E1"/>
+    <SolidColorBrush x:Key="BackgroundAll" Color="#E0DDD7"/>
 
     <!-- ===== PRIMARY — teal sage dịu ===== -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="#4B978A"/>
@@ -59,9 +59,9 @@
     <SolidColorBrush x:Key="TextOnWarningBrush" Color="White"/>
 
     <!-- ===== INFO ===== -->
-    <SolidColorBrush x:Key="InfoBrush" Color="#4B978A"/>
-    <SolidColorBrush x:Key="InfoHoverBrush" Color="#3F8579"/>
-    <SolidColorBrush x:Key="InfoPressedBrush" Color="#336F64"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#2E7D9A"/>
+    <SolidColorBrush x:Key="InfoHoverBrush" Color="#276D87"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#1F5C72"/>
     <SolidColorBrush x:Key="TextOnInfoBrush" Color="White"/>
 
     <!-- ===== LIGHT / DARK variants ===== -->
@@ -228,9 +228,9 @@
     <SolidColorBrush x:Key="OceanPressedBrush" Color="#1F6F8B"/>
     <SolidColorBrush x:Key="TextOnOceanBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="BrightPowerBrush" Color="#D64274"/>
-    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#BE3A66"/>
-    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#A83258"/>
+    <SolidColorBrush x:Key="BrightPowerBrush" Color="#E91E63"/>
+    <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#F06292"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#C2185B"/>
     <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="MagentaBloomBrush" Color="#B53AAE"/>

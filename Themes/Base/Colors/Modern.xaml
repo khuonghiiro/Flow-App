@@ -39,9 +39,9 @@
     <SolidColorBrush x:Key="DangerPressedBrush" Color="#9F3434"/>
     <SolidColorBrush x:Key="TextOnDangerBrush" Color="#FFFFFF"/>
 
-    <SolidColorBrush x:Key="WarningBrush" Color="#CC8A2F"/>
-    <SolidColorBrush x:Key="WarningHoverBrush" Color="#B57927"/>
-    <SolidColorBrush x:Key="WarningPressedBrush" Color="#95631F"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+    <SolidColorBrush x:Key="WarningHoverBrush" Color="#B45309"/>
+    <SolidColorBrush x:Key="WarningPressedBrush" Color="#92400E"/>
     <SolidColorBrush x:Key="TextOnWarningBrush" Color="#FFFFFF"/>
 
     <SolidColorBrush x:Key="InfoBrush" Color="#2E9DCF"/>
@@ -132,7 +132,7 @@
 
     <SolidColorBrush x:Key="PrimaryColor" Color="#FF2563EB"/>
     <SolidColorBrush x:Key="PrimaryHover" Color="#FF1D4ED8"/>
-    <SolidColorBrush x:Key="SecondaryColor" Color="#FF16A34A"/>
+    <SolidColorBrush x:Key="SecondaryColor" Color="#FF7C3AED"/>
     <SolidColorBrush x:Key="AccentColor" Color="#FF7C3AED"/>
     <SolidColorBrush x:Key="BackgroundColor" Color="#FFF7FAFF"/>
     <SolidColorBrush x:Key="SurfaceColor" Color="#FFFFFFFF"/>

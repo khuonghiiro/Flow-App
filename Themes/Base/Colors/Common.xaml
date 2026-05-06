@@ -4,9 +4,9 @@
     <!-- Gradient Background -->
     <!--màu nền trong chỗ câu hỏi-->
     <LinearGradientBrush x:Key="GradientBlueBackground" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#0057E7" Offset="0.0" />
+        <GradientStop Color="#1A56DB" Offset="0.0" />
         <!-- Xanh đậm đầu -->
-        <GradientStop Color="#79C4FF" Offset="1.0" />
+        <GradientStop Color="#60A5FA" Offset="1.0" />
         <!-- Xanh nhạt cuối -->
     </LinearGradientBrush>
 
@@ -164,10 +164,10 @@
     <SolidColorBrush x:Key="TextOnVioletDeepBrush" Color="White"/>
 
     <!-- 26. Olive Green -->
-    <SolidColorBrush x:Key="OliveGreenBrush" Color="#84CC16"/>
-    <SolidColorBrush x:Key="OliveGreenHoverBrush" Color="#A3E635"/>
-    <SolidColorBrush x:Key="OliveGreenPressedBrush" Color="#65A30D"/>
-    <SolidColorBrush x:Key="TextOnOliveGreenBrush" Color="#1F2937"/>
+    <SolidColorBrush x:Key="OliveGreenBrush" Color="#6B7B2F"/>
+    <SolidColorBrush x:Key="OliveGreenHoverBrush" Color="#7D9138"/>
+    <SolidColorBrush x:Key="OliveGreenPressedBrush" Color="#566025"/>
+    <SolidColorBrush x:Key="TextOnOliveGreenBrush" Color="#FFFFFF"/>
 
     <!-- 27. Steel Blue -->
     <SolidColorBrush x:Key="SteelBlueBrush" Color="#0284C7"/>
@@ -347,10 +347,10 @@
 
 
     <!-- Gentle Button Theme (Pastel) -->
-    <SolidColorBrush x:Key="GentleBrush" Color="#B5B4D9"/>
-    <SolidColorBrush x:Key="GentleHoverBrush" Color="#9CD3D9"/>
-    <SolidColorBrush x:Key="GentlePressedBrush" Color="#E9F2A2"/>
-    <SolidColorBrush x:Key="TextOnGentleBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="GentleBrush" Color="#B8B5E0"/>
+    <SolidColorBrush x:Key="GentleHoverBrush" Color="#A8A5D4"/>
+    <SolidColorBrush x:Key="GentlePressedBrush" Color="#9895C8"/>
+    <SolidColorBrush x:Key="TextOnGentleBrush" Color="#1E1B4B"/>
 
     <!-- Bright Power Theme -->
     <SolidColorBrush x:Key="BrightPowerBrush" Color="#FF1D58"/>
@@ -380,10 +380,10 @@
     <SolidColorBrush x:Key="TextOnSpaceBrush" Color="White"/>
 
     <!-- 70’s Retro -->
-    <SolidColorBrush x:Key="RetroBrush" Color="#101357"/>
-    <SolidColorBrush x:Key="RetroHoverBrush" Color="#3F00A0"/>
-    <SolidColorBrush x:Key="RetroPressedBrush" Color="#0061AD"/>
-    <SolidColorBrush x:Key="TextOnRetroBrush" Color="White"/>
+    <SolidColorBrush x:Key="RetroBrush" Color="#1A1F5E"/>
+    <SolidColorBrush x:Key="RetroHoverBrush" Color="#252B82"/>
+    <SolidColorBrush x:Key="RetroPressedBrush" Color="#111444"/>
+    <SolidColorBrush x:Key="TextOnRetroBrush" Color="#FFFFFF"/>
 
     <!-- Easter Mix -->
     <SolidColorBrush x:Key="EggYolkBrush" Color="#FFDC6A"/>
