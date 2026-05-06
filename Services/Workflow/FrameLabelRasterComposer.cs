@@ -322,6 +322,7 @@ internal static class FrameLabelRasterComposer
         using (var dc = visual.RenderOpen())
         {
             dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, stripW, stripH));
+
             for (var s = baseSize; s >= 6; s -= 0.5)
             {
                 var ftTest = new FormattedText(
@@ -420,6 +421,10 @@ internal static class FrameLabelRasterComposer
                 // Here parent surface = decoded/exported frame height (hf) to ensure exported still matches UI at this resolution.
                 var strip = RenderOverlayTextStripBitmap(item, boxW, boxH, parentSurfaceHeightPx: hf);
                 var opacity = Math.Clamp(item.Opacity, 0, 1);
+                var angle = item.Rotation;
+                var hasRotation = Math.Abs(angle) > 0.0001;
+                if (hasRotation)
+                    dc.PushTransform(new RotateTransform(angle, boxX + (boxW / 2.0), boxY + (boxH / 2.0)));
                 if (opacity < 0.999)
                 {
                     dc.PushOpacity(opacity);
@@ -430,6 +435,8 @@ internal static class FrameLabelRasterComposer
                 {
                     dc.DrawImage(strip, new Rect(boxX, boxY, boxW, boxH));
                 }
+                if (hasRotation)
+                    dc.Pop();
             }
         }
 

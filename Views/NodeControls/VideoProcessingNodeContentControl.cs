@@ -2901,7 +2901,11 @@ namespace FlowMy.Views.NodeControls
                 OverlayHeightSlider.Value = item.Height;
                 OverlayOpacitySlider.Value = item.Opacity;
                 OverlayRotationSlider.Value = item.Rotation;
-                OverlayFontFamilyCombo.Text = item.FontFamily;
+                var desiredFont = string.IsNullOrWhiteSpace(item.FontFamily) ? "Arial" : item.FontFamily.Trim();
+                var match = OverlayFontFamilyCombo.Items.OfType<string>()
+                    .FirstOrDefault(s => string.Equals(s, desiredFont, StringComparison.OrdinalIgnoreCase));
+                OverlayFontFamilyCombo.SelectedItem = match;
+                OverlayFontFamilyCombo.Text = match ?? desiredFont;
                 OverlayFontColorTextBox.Text = item.FontColor;
                 OverlayFontSizeSlider.Value = item.FontSize;
                 var align = (item.TextAlignment ?? "Left").Trim().ToLowerInvariant();
@@ -2936,7 +2940,10 @@ namespace FlowMy.Views.NodeControls
             selected.Rotation = OverlayRotationSlider.Value;
             if (isText)
             {
-                selected.FontFamily = OverlayFontFamilyCombo.Text;
+                var family = (OverlayFontFamilyCombo.SelectedItem as string)
+                    ?? OverlayFontFamilyCombo.Text
+                    ?? "Arial";
+                selected.FontFamily = family;
                 selected.FontColor = OverlayFontColorTextBox.Text;
                 selected.FontSize = (int)OverlayFontSizeSlider.Value;
                 selected.TextAlignment = OverlayAlignCenterRadio.IsChecked == true ? "Center"
