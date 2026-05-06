@@ -3402,38 +3402,12 @@ namespace FlowMy.Views.NodeControls
             var topH = rowAspect.ActualHeight > 0 ? rowAspect.ActualHeight : 44;
             var timelineH = rowTimeline.ActualHeight > 0 ? rowTimeline.ActualHeight : 120;
             var available = containerHeight - topH - timelineH - 12;
-            if (available <= 80) return;
+            if (available <= 32) return;
 
-            var mediaW = PreviewMedia.Source != null && PreviewMedia.NaturalVideoWidth > 0
-                ? PreviewMedia.NaturalVideoWidth
-                : (_selectedAspectW > 0 ? _selectedAspectW : 16);
-            var mediaH = PreviewMedia.Source != null && PreviewMedia.NaturalVideoHeight > 0
-                ? PreviewMedia.NaturalVideoHeight
-                : (_selectedAspectH > 0 ? _selectedAspectH : 9);
-            if (mediaW <= 0 || mediaH <= 0) return;
-
-            var ratio = mediaW / mediaH;
-            var videoRatio = ratio >= 1.1 ? 0.56 : (ratio <= 0.9 ? 0.73 : 0.64);
-
-            const double minVideoH = 120;
-            const double minLogH = 80;
-
-            double targetVideoH;
-            double targetLogH;
-
-            // Widget mode can shrink the container a lot; keep a safe split when
-            // available height is smaller than the standard minimum budget.
-            if (available <= minVideoH + minLogH)
-            {
-                targetVideoH = Math.Max(16, available * videoRatio);
-                targetLogH = Math.Max(16, available - targetVideoH);
-            }
-            else
-            {
-                var maxVideoH = available - minLogH;
-                targetVideoH = Math.Clamp(available * videoRatio, minVideoH, maxVideoH);
-                targetLogH = Math.Clamp(available - targetVideoH, minLogH, Math.Min(260, available));
-            }
+            // Keep a stable 2/3 (video) + 1/3 (log) split so the log fills
+            // all remaining height and stays visually balanced.
+            var targetVideoH = Math.Max(16, available * (2.0 / 3.0));
+            var targetLogH = Math.Max(16, available - targetVideoH);
 
             rowVideo.Height = new GridLength(targetVideoH, GridUnitType.Pixel);
             rowLog.Height = new GridLength(targetLogH, GridUnitType.Pixel);
