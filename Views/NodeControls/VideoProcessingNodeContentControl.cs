@@ -78,7 +78,6 @@ namespace FlowMy.Views.NodeControls
         private readonly PropertyChangedEventHandler _propertyChangedHandler;
         private readonly DispatcherTimer _timelineTimer;
         private readonly DispatcherTimer _beforeAfterFlickerTimer;
-        private int _hoveredActionGroupIndex = -1;
 
         private bool _subscriptionsAttached;
         private bool _isProgressDragging;
@@ -177,6 +176,9 @@ namespace FlowMy.Views.NodeControls
         {
             TabNavList.SelectionChanged += TabNavList_SelectionChanged;
             TabNavList.SelectedIndex = 0;
+            /* Trước đây: hover vào từng BottomBarGroup* → bung label các nút trong nhóm đó (kèm đo width dòng trong UpdateActionButtonLabelVisibility).
+               Giữ lại chỉ bung theo tab active — không cần MouseEnter/MouseLeave. */
+            /*
             var actionGroups = new[]
             {
                 BottomBarGroupGeneral, BottomBarGroupGrading, BottomBarGroupFilters,
@@ -197,6 +199,8 @@ namespace FlowMy.Views.NodeControls
                 _hoveredActionGroupIndex = -1;
                 UpdateActionButtonLabelVisibility();
             };
+            */
+            ActionButtonsBorder.SizeChanged += (_, _) => UpdateActionButtonLabelVisibility();
             SizeChanged += (_, _) =>
             {
                 SyncUserControlRoundedClip();
@@ -920,6 +924,10 @@ namespace FlowMy.Views.NodeControls
             UpdateActionButtonLabelVisibility();
         }
 
+        /// <summary>
+        /// Chỉ nhóm nút của tab đang chọn (<see cref="TabNavList.SelectedIndex"/>) bung label và full-width nút;
+        /// hover không còn bung (logic hover + đo chiều rộng dòng đã được bỏ, xem khối comment trong InitializeInteractiveControls).
+        /// </summary>
         private void UpdateActionButtonLabelVisibility()
         {
             var activeIdx = Math.Max(0, TabNavList.SelectedIndex);
@@ -929,9 +937,17 @@ namespace FlowMy.Views.NodeControls
                 BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
             };
 
+            /*
+            Logic cũ (hover bung):
+            - availableWidth của ActionButtonsBorder → đo compact/expanded width từng nhóm → gán chỉ số “dòng” như WrapPanel compact.
+            - Nếu i == hovered index và không phải tab active: bung nếu tổng width dòng (1 nhóm expanded, còn lại compact) ≤ availableWidth.
+            Đã tắt; chỉ còn i == activeIdx bung.
+            for (...)
+            */
+
             for (var i = 0; i < groups.Length; i++)
             {
-                var showLabel = i == activeIdx || i == _hoveredActionGroupIndex;
+                var showLabel = i == activeIdx;
                 ToggleLabelsInGroup(groups[i], showLabel);
                 ToggleButtonsInGroup(groups[i], showLabel);
             }
