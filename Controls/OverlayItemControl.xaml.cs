@@ -30,12 +30,24 @@ namespace FlowMy.Controls
 
         private DragMode _dragMode = DragMode.None;
         private Point _startPoint;
+        private Point _startPointOnSurface;
         private double _startX;
         private double _startY;
         private double _startWidth;
         private double _startHeight;
         private double _startRotation;
         private bool _isEditingText;
+
+        private Canvas? GetSurfaceCanvas()
+        {
+            DependencyObject? p = this;
+            while (p != null)
+            {
+                if (p is Canvas c) return c;
+                p = VisualTreeHelper.GetParent(p);
+            }
+            return null;
+        }
 
         public OverlayItemControl()
         {
@@ -237,11 +249,12 @@ namespace FlowMy.Controls
         private void OnMove(object sender, MouseEventArgs e)
         {
             if (_dragMode != DragMode.Move || Item == null || !IsMouseCaptured) return;
-            var current = e.GetPosition(this);
-            var dx = current.X - _startPoint.X;
-            var dy = current.Y - _startPoint.Y;
+            var surface = GetSurfaceCanvas();
+            if (surface == null) return;
+            var currentOnSurface = e.GetPosition(surface);
+            var dx = currentOnSurface.X - _startPointOnSurface.X;
+            var dy = currentOnSurface.Y - _startPointOnSurface.Y;
             ApplyDrag(DragMode.Move, dx, dy, false);
-            _startPoint = current;
         }
 
         private void OnMoveEnd(object sender, MouseButtonEventArgs e)
@@ -257,6 +270,8 @@ namespace FlowMy.Controls
             if (Item == null || Item.IsLocked) return;
             _dragMode = mode;
             _startPoint = startPoint;
+            var surface = GetSurfaceCanvas();
+            _startPointOnSurface = surface != null ? Mouse.GetPosition(surface) : startPoint;
             _startX = Item.X;
             _startY = Item.Y;
             _startWidth = Item.Width;
@@ -277,8 +292,8 @@ namespace FlowMy.Controls
             switch (mode)
             {
                 case DragMode.Move:
-                    Item.X = Math.Clamp(Item.X + ndx, 0, Math.Max(0, 1 - Item.Width));
-                    Item.Y = Math.Clamp(Item.Y + ndy, 0, Math.Max(0, 1 - Item.Height));
+                    Item.X = Math.Clamp(_startX + ndx, 0, Math.Max(0, 1 - Item.Width));
+                    Item.Y = Math.Clamp(_startY + ndy, 0, Math.Max(0, 1 - Item.Height));
                     break;
                 case DragMode.ResizeSE:
                     ResizeTo(_startX, _startY, _startWidth + ndx, _startHeight + ndy, keepAspect);
@@ -311,8 +326,20 @@ namespace FlowMy.Controls
                     break;
             }
 
+            // Thumb DragDelta provides incremental deltas; for resize modes, advance the "start" so resizing stays smooth.
+            if (mode is not DragMode.Move and not DragMode.Rotate)
+            {
+                _startX = Item.X;
+                _startY = Item.Y;
+                _startWidth = Item.Width;
+                _startHeight = Item.Height;
+            }
+
             ItemChanged?.Invoke(this, EventArgs.Empty);
-            RefreshViewFromItem();
+            // Avoid expensive re-renders (image reload, text auto-fit) during drag move/resize.
+            // Only refresh visuals when rotation changes or selection state needs updating.
+            if (mode == DragMode.Rotate)
+                RefreshViewFromItem();
         }
 
         private void ResizeTo(double x, double y, double width, double height, bool keepAspect)

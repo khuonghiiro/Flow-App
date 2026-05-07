@@ -105,6 +105,10 @@ namespace FlowMy.Controls
             var control = PART_Surface.Children.OfType<OverlayItemControl>().FirstOrDefault(c => ReferenceEquals(c.Item, item));
             if (control == null) return;
             UpdateLayoutForItem(control);
+            // Layout-only changes should not trigger full visual refresh (e.g., reloading images) during drag.
+            var prop = e.PropertyName ?? string.Empty;
+            if (prop is nameof(OverlayItem.X) or nameof(OverlayItem.Y) or nameof(OverlayItem.Width) or nameof(OverlayItem.Height))
+                return;
             control.RefreshViewFromItem();
         }
 

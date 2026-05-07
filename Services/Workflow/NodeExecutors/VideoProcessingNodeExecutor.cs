@@ -663,6 +663,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var pw = overlayProbeSrcW > 0 ? overlayProbeSrcW : 1920;
             var ph = overlayProbeSrcH > 0 ? overlayProbeSrcH : 1080;
             var phf = overlayProbeSrcHForFontScale > 0 ? overlayProbeSrcHForFontScale : ph;
+            var (estW, estH) = FrameLabelRasterComposer.GetEstimatedSourceFrameSize(pw, ph, node);
 
             var filterChains = new List<string> { $"[0:v]{baseFilter}[v0]" };
             var imageInputs = new List<string>();
@@ -709,17 +710,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 var nextLabel = $"v{++stageIndex}";
                 var wfStr = Math.Clamp(item.Width, 0.01, 1).ToString("0.######", CultureInfo.InvariantCulture);
                 var hfStr = Math.Clamp(item.Height, 0.01, 1).ToString("0.######", CultureInfo.InvariantCulture);
-                // scale2ref: iw/ih = ref (main video) when graph is [overlay][main] — not main_w (that is input0 size).
-                var wScaledExpr = $"max(1\\,trunc(iw*{wfStr}))";
-                var hScaledExpr = $"max(1\\,trunc(ih*{hfStr}))";
-                var mainPass = $"ovmain{stageIndex}";
+                // Use explicit pixel scaling for overlay assets to avoid fragile scale2ref behavior/crashes.
+                var overlayPixelW = Math.Max(1, (int)Math.Round(estW * Math.Clamp(item.Width, 0.01, 1)));
+                var overlayPixelH = Math.Max(1, (int)Math.Round(estH * Math.Clamp(item.Height, 0.01, 1)));
                 var ovScaled = $"ovscl{stageIndex}";
+                var ovRgba = $"ovrgba{stageIndex}";
 
                 if ((type == "image" || type == "logo") && !string.IsNullOrWhiteSpace(item.Source) && File.Exists(item.Source))
                 {
                     imageInputs.Add(item.Source);
-                    filterChains.Add($"[{imageInputIndex}:v][{currentLabel}]scale2ref=w={wScaledExpr}:h={hScaledExpr}[{ovScaled}][{mainPass}]");
-                    filterChains.Add($"[{mainPass}][{ovScaled}]overlay=x='{xExpr}':y='{yExpr}':alpha={opacity}:format=auto[{nextLabel}]");
+                    filterChains.Add($"[{imageInputIndex}:v]scale=w={overlayPixelW}:h={overlayPixelH}[{ovScaled}]");
+                    filterChains.Add($"[{ovScaled}]format=rgba,colorchannelmixer=aa={opacity}[{ovRgba}]");
+                    filterChains.Add($"[{currentLabel}][{ovRgba}]overlay=x='{xExpr}':y='{yExpr}':format=auto[{nextLabel}]");
                     imageInputIndex++;
                     currentLabel = nextLabel;
                 }
@@ -728,7 +730,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     var rasterTextPath = RenderOverlayTextRasterPng(item, node, pw, ph, phf);
                     collectDisposableOverlayRasters?.Add(rasterTextPath);
 
-                    var ovRgba = $"ovrgba{stageIndex}";
                     imageInputs.Add(rasterTextPath);
                     // Text PNG is already rendered to the target box pixel size (matches OverlayItemControl AutoFit).
                     // Overlay directly to avoid any resampling that would drift font size/metrics from UI.
@@ -1602,6 +1603,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             Action<string>? onLogLine,
             CancellationToken ct)
         {
+            static string QuoteArg(string a)
+            {
+                if (string.IsNullOrEmpty(a)) return "\"\"";
+                if (a.IndexOfAny(new[] { ' ', '\t', '\n', '\r', '"', '\'' }) >= 0)
+                    return "\"" + a.Replace("\"", "\\\"") + "\"";
+                return a;
+            }
+
             var psi = new ProcessStartInfo
             {
                 FileName = ResolveBinary("ffmpeg"),
@@ -1617,9 +1626,35 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             using var p = Process.Start(psi);
             if (p == null) throw new InvalidOperationException("Cannot start ffmpeg.");
 
+            // Print the command once for debugging.
+            try
+            {
+                var cmd = string.Join(" ", new[] { psi.FileName }.Concat(psi.ArgumentList).Select(QuoteArg));
+                onLogLine?.Invoke($"[FFMPEG] {cmd}");
+            }
+            catch
+            {
+                /* best-effort */
+            }
+
+            var ring = new Queue<string>(256);
+            void Remember(string line)
+            {
+                if (string.IsNullOrWhiteSpace(line)) return;
+                if (ring.Count >= 200) ring.Dequeue();
+                ring.Enqueue(line);
+            }
+
+            p.OutputDataReceived += (_, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(e.Data)) return;
+                Remember(e.Data);
+                onLogLine?.Invoke(e.Data);
+            };
             p.ErrorDataReceived += (_, e) =>
             {
                 if (string.IsNullOrWhiteSpace(e.Data)) return;
+                Remember(e.Data);
                 if (!e.Data.StartsWith("frame=", StringComparison.OrdinalIgnoreCase) &&
                     !e.Data.StartsWith("fps=", StringComparison.OrdinalIgnoreCase) &&
                     !e.Data.StartsWith("progress=", StringComparison.OrdinalIgnoreCase) &&
@@ -1649,9 +1684,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     onProgress?.Invoke(pct, $"Processing... {elapsed:0}s / {totalDurationSec:0}s");
                 }
             };
+            p.BeginOutputReadLine();
             p.BeginErrorReadLine();
             await p.WaitForExitAsync(ct).ConfigureAwait(false);
-            if (p.ExitCode != 0) throw new InvalidOperationException("FFmpeg failed. Xem Log tab để biết chi tiết.");
+            if (p.ExitCode != 0)
+            {
+                onLogLine?.Invoke($"[FFMPEG] ExitCode={p.ExitCode}");
+                foreach (var line in ring.TakeLast(80))
+                    onLogLine?.Invoke(line);
+                throw new InvalidOperationException("FFmpeg failed. Xem Log tab để biết chi tiết.");
+            }
         }
 
         private static async Task<int> RunProcessExitCodeAsync(string fileName, IEnumerable<string> args, CancellationToken ct)
