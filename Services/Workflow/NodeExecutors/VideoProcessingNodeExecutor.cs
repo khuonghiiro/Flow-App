@@ -211,6 +211,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     : JsonSerializer.Serialize(producedFrames);
                 SetOutput(videoNode, "frames_output", framesOutput);
 
+                if (ShouldSkipVideoEncode(videoNode))
+                {
+                    // Frame-first mode for VideoProcessing node:
+                    // apply visual pipeline (filters/overlays/labels) and emit frames output,
+                    // skip video encode/audio merge for now.
+                    SetOutput(videoNode, "video_output", string.Empty);
+                    ProgressChanged?.Invoke(videoNode, 100, "Completed");
+                    return;
+                }
+
                 var (codecArgs, extension) = BuildOutputArgs(videoNode);
                 var outputBasePath = Path.Combine(tempRoot, $"video_base_{Guid.NewGuid():N}{extension}");
                 var mainFilter = BuildVideoFilterChain(videoNode, extractFps, includeTextOverlay: true, sourceHeight);
@@ -1822,6 +1832,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 stem = stem.Replace(c, '_');
 
             return stem;
+        }
+
+        private static bool ShouldSkipVideoEncode(VideoProcessingNode node)
+        {
+            _ = node;
+            return true;
         }
 
         private static void SetOutput(VideoProcessingNode node, string key, string value)
