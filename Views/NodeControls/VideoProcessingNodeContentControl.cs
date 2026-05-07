@@ -5,6 +5,7 @@ using FlowMy.Helpers;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Utilities;
+using FlowMy.Services.Workflow;
 using FlowMy.Services.Workflow.NodeExecutors;
 using Microsoft.Win32;
 using System.Collections.Specialized;
@@ -1562,21 +1563,33 @@ namespace FlowMy.Views.NodeControls
             var natH = PreviewMedia.NaturalVideoHeight;
             var srcW = Math.Max(1, natW);
             var srcH = Math.Max(1, natH);
+            var usePreset = FrameLabelRasterComposer.TryGetLabelPresetFractions(srcW, srcH, out var labelWFrac, out var labelHFrac);
+            if (!usePreset)
+            {
+                labelWFrac = _node.FrameLabelW;
+                labelHFrac = _node.FrameLabelH;
+            }
 
             FrameLabelPreviewOverlay.HorizontalAlignment = HorizontalAlignment.Left;
             FrameLabelPreviewOverlay.VerticalAlignment = VerticalAlignment.Top;
-            FrameLabelPreviewOverlay.Width = Math.Max(20, _node.FrameLabelW * areaW);
-            FrameLabelPreviewOverlay.Height = Math.Max(18, _node.FrameLabelH * areaH);
-            FrameLabelPreviewOverlay.Margin = new Thickness(rect.X + (_node.FrameLabelX * areaW), rect.Y + (_node.FrameLabelY * areaH), 0, 0);
+            FrameLabelPreviewOverlay.Width = Math.Max(20, labelWFrac * areaW);
+            FrameLabelPreviewOverlay.Height = Math.Max(18, labelHFrac * areaH);
             var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(natH > 0 ? natH : (int?)null);
             var padVidX = Math.Max(0, (int)Math.Round(_node.FrameLabelHorizontalPadding * sourceScale));
             var padVidY = Math.Max(0, (int)Math.Round(_node.FrameLabelVerticalPadding * sourceScale));
             var padPx = padVidX * (areaW / srcW);
             var padPy = padVidY * (areaH / srcH);
             FrameLabelPreviewOverlay.Padding = new Thickness(padPx, padPy, padPx, padPy);
+            var left = usePreset
+                ? rect.X + areaW - FrameLabelPreviewOverlay.Width - padPx
+                : rect.X + (_node.FrameLabelX * areaW);
+            var top = usePreset
+                ? rect.Y + padPy
+                : rect.Y + (_node.FrameLabelY * areaH);
+            FrameLabelPreviewOverlay.Margin = new Thickness(Math.Max(0, left), Math.Max(0, top), 0, 0);
             AutoFitFrameLabelTextToBounds();
-            FrameLabelPosLabel.Text = $"X {_node.FrameLabelX:0.###} | Y {_node.FrameLabelY:0.###}";
-            FrameLabelSizeLabel.Text = $"W {_node.FrameLabelW:0.###} | H {_node.FrameLabelH:0.###}";
+            FrameLabelPosLabel.Text = usePreset ? "X auto | Y auto" : $"X {_node.FrameLabelX:0.###} | Y {_node.FrameLabelY:0.###}";
+            FrameLabelSizeLabel.Text = $"W {labelWFrac:0.###} | H {labelHFrac:0.###}";
         }
 
         private void AutoFitFrameLabelTextToBounds()

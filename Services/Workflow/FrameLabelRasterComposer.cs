@@ -36,6 +36,32 @@ internal static class FrameLabelRasterComposer
         return rot is 1 or 3 ? (probeH, probeW) : (probeW, probeH);
     }
 
+    internal static bool TryGetLabelPresetFractions(int frameW, int frameH, out double wFrac, out double hFrac)
+    {
+        wFrac = 0;
+        hFrac = 0;
+        var ratio = frameW / (double)Math.Max(1, frameH);
+        // Portrait bucket (includes 9:16, 2:3 like 720x1080, and nearby resized variants)
+        if (frameH > frameW && ratio <= 0.80)
+        {
+            // 9:16 -> width ~35-40%, height ~5%
+            wFrac = 0.38;
+            hFrac = 0.05;
+            return true;
+        }
+
+        // Landscape bucket (includes 16:9 and close resized variants)
+        if (frameW >= frameH && ratio >= 1.25)
+        {
+            // 16:9 -> width ~20-25%, height ~10-15%
+            wFrac = 0.23;
+            hFrac = 0.12;
+            return true;
+        }
+
+        return false;
+    }
+
     internal static string FormatResolvedLabelText(
         VideoProcessingNode node,
         int outputIndexOneBased,
@@ -142,7 +168,6 @@ internal static class FrameLabelRasterComposer
             return;
 
         var (estW, estH) = GetEstimatedSourceFrameSize(probeSrcW, probeSrcH, node);
-        var labelBoxSrcH = Math.Max(4, (int)Math.Round(estH * node.FrameLabelH));
 
         var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null);
         var padVidX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
@@ -160,17 +185,25 @@ internal static class FrameLabelRasterComposer
         var hf = baseFrame.PixelHeight;
         if (wf <= 0 || hf <= 0) return;
 
-        var boxW = Math.Max(4, (int)Math.Round(wf * node.FrameLabelW));
-        var boxH = Math.Max(4, (int)Math.Round(hf * node.FrameLabelH));
-        var boxX = (int)Math.Round(wf * node.FrameLabelX);
-        var boxY = (int)Math.Round(hf * node.FrameLabelY);
+        var usePreset = TryGetLabelPresetFractions(wf, hf, out var labelWFrac, out var labelHFrac);
+        if (!usePreset)
+        {
+            labelWFrac = node.FrameLabelW;
+            labelHFrac = node.FrameLabelH;
+        }
+        var labelBoxSrcH = Math.Max(4, (int)Math.Round(estH * labelHFrac));
+
+        var padX = (int)Math.Round(padVidX * (wf / (double)Math.Max(1, estW)));
+        var padY = (int)Math.Round(padVidY * (hf / (double)Math.Max(1, estH)));
+
+        var boxW = Math.Max(4, (int)Math.Round(wf * labelWFrac));
+        var boxH = Math.Max(4, (int)Math.Round(hf * labelHFrac));
+        var boxX = usePreset ? Math.Max(0, wf - boxW - padX) : (int)Math.Round(wf * node.FrameLabelX);
+        var boxY = usePreset ? Math.Max(0, padY) : (int)Math.Round(hf * node.FrameLabelY);
 
         var fontPx = VideoProcessingNodeExecutor.ComputeFrameLabelDrawtextFontPixelSize(node, probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null)
             * (boxH / (double)Math.Max(1, labelBoxSrcH));
         fontPx = Math.Max(4, fontPx);
-
-        var padX = (int)Math.Round(padVidX * (wf / (double)Math.Max(1, estW)));
-        var padY = (int)Math.Round(padVidY * (hf / (double)Math.Max(1, estH)));
 
         RenderLabelStrip(node, text, boxW, boxH, padX, padY, padX, padY, fontPx, out var labelBmp);
 
@@ -241,8 +274,14 @@ internal static class FrameLabelRasterComposer
         if (sourceFps <= 0) sourceFps = 30;
 
         var (estW, estH) = GetEstimatedSourceFrameSize(probeSrcW, probeSrcH, node);
-        var labelBoxSrcW = Math.Max(4, (int)Math.Round(estW * node.FrameLabelW));
-        var labelBoxSrcH = Math.Max(4, (int)Math.Round(estH * node.FrameLabelH));
+        var usePreset = TryGetLabelPresetFractions(estW, estH, out var labelWFrac, out var labelHFrac);
+        if (!usePreset)
+        {
+            labelWFrac = node.FrameLabelW;
+            labelHFrac = node.FrameLabelH;
+        }
+        var labelBoxSrcW = Math.Max(4, (int)Math.Round(estW * labelWFrac));
+        var labelBoxSrcH = Math.Max(4, (int)Math.Round(estH * labelHFrac));
 
         var sourceScale = VideoProcessingNodeExecutor.ComputeFrameLabelSourceScale(probeSrcHForFontScale > 0 ? probeSrcHForFontScale : (int?)null);
         var padVidX = Math.Max(0, (int)Math.Round(node.FrameLabelHorizontalPadding * sourceScale));
