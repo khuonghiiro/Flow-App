@@ -38,13 +38,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     videoInput = videoNode.VideoPath;
                 if (string.IsNullOrWhiteSpace(videoInput))
                     throw new InvalidOperationException("VideoProcessingNode: thiếu input video.");
+                var videoSubfolderName = BuildOutputSubfolderNameFromVideoPath(videoInput);
 
                 var downloadsRoot = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Downloads");
 
-                var defaultFrameOutputFolder = Path.Combine(downloadsRoot, "flow-frame");
-                var defaultVideoOutputFolder = Path.Combine(downloadsRoot, "flow-video");
+                var defaultFrameOutputFolder = Path.Combine(downloadsRoot, "flow-frame", videoSubfolderName);
+                var defaultVideoOutputFolder = Path.Combine(downloadsRoot, "flow-video", videoSubfolderName);
 
                 string? frameOutputFolder;
                 if (videoNode.UseDialogVideoConfig)
@@ -354,6 +355,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 : string.IsNullOrWhiteSpace(outputFolder)
                     ? Path.Combine(Path.GetTempPath(), $"video_processed_{Guid.NewGuid():N}{extension}")
                     : Path.Combine(outputFolder, $"video_processed_{DateTime.Now:yyyyMMddHHmmss}{extension}");
+            var outputDir = Path.GetDirectoryName(outputVideo);
+            if (!string.IsNullOrWhiteSpace(outputDir))
+                Directory.CreateDirectory(outputDir);
 
             var audioInputs = new List<(string path, VideoAudioTrackConfig cfg)>();
             if (node.SourceAudioEnabled)
@@ -912,6 +916,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private static string BuildTailScaleFilter(VideoProcessingNode node)
         {
             var parts = new List<string>();
+            var requiresEvenDimensions = string.Equals(node.OutputFormat, "mp4_h264", StringComparison.OrdinalIgnoreCase) ||
+                                        string.Equals(node.OutputFormat, "mp4_h265", StringComparison.OrdinalIgnoreCase);
             if (node.FixedResolutionHeight.HasValue)
             {
                 parts.Add($"scale=-2:{node.FixedResolutionHeight.Value}");
@@ -919,12 +925,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             else if (Math.Abs(node.ResolutionScale - 1) > 0.01)
             {
                 var sc = node.ResolutionScale.ToString("0.###", CultureInfo.InvariantCulture);
-                parts.Add($"scale=iw*{sc}:ih*{sc}");
+                if (requiresEvenDimensions)
+                {
+                    parts.Add($"scale=trunc(iw*{sc}/2)*2:trunc(ih*{sc}/2)*2");
+                }
+                else
+                {
+                    parts.Add($"scale=iw*{sc}:ih*{sc}");
+                }
             }
             if (node.FrameResizeScale < 0.999)
             {
                 var sc = node.FrameResizeScale.ToString("0.###", CultureInfo.InvariantCulture);
-                parts.Add($"scale=iw*{sc}:ih*{sc}");
+                if (requiresEvenDimensions)
+                {
+                    parts.Add($"scale=trunc(iw*{sc}/2)*2:trunc(ih*{sc}/2)*2");
+                }
+                else
+                {
+                    parts.Add($"scale=iw*{sc}:ih*{sc}");
+                }
             }
             return string.Join(",", parts);
         }
@@ -1129,13 +1149,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             string? outputFolderOverride,
             CancellationToken ct)
         {
+            var videoSubfolderName = BuildOutputSubfolderNameFromVideoPath(node.VideoPath);
             var outputFolder = string.IsNullOrWhiteSpace(outputFolderOverride)
                 ? (node.UseDialogVideoConfig
                     ? (string.IsNullOrWhiteSpace(node.FrameOutputFolderPath)
                         ? Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                             "Downloads",
-                            "flow-frame")
+                            "flow-frame",
+                            videoSubfolderName)
                         : node.FrameOutputFolderPath!)
                     : (string.IsNullOrWhiteSpace(node.OutputPathOverride)
                         ? Path.Combine(Path.GetTempPath(), $"FlowMy_Frames_{DateTime.Now:yyyyMMddHHmmss}")
@@ -1591,9 +1613,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static async Task RunFfmpegAsync(IEnumerable<string> args, CancellationToken ct)
         {
-            var exit = await RunProcessExitCodeAsync(ResolveBinary("ffmpeg"), args, ct).ConfigureAwait(false);
+            var (exit, stderr) = await RunProcessExitCodeWithStderrAsync(ResolveBinary("ffmpeg"), args, ct).ConfigureAwait(false);
             if (exit != 0)
-                throw new InvalidOperationException("VideoProcessingNode: FFmpeg xử lý thất bại.");
+                throw new InvalidOperationException($"VideoProcessingNode: FFmpeg xử lý thất bại. {BuildCompactProcessError(stderr)}");
         }
 
         private static async Task RunFfmpegWithProgressAsync(
@@ -1733,9 +1755,73 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return await stdout.ConfigureAwait(false);
         }
 
+        private static async Task<(int ExitCode, string StandardError)> RunProcessExitCodeWithStderrAsync(
+            string fileName,
+            IEnumerable<string> args,
+            CancellationToken ct)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+            foreach (var a in args) psi.ArgumentList.Add(a);
+
+            using var p = Process.Start(psi);
+            if (p == null) return (-1, "Cannot start process.");
+            var stderrTask = p.StandardError.ReadToEndAsync();
+            await p.WaitForExitAsync(ct).ConfigureAwait(false);
+            return (p.ExitCode, (await stderrTask.ConfigureAwait(false)).Trim());
+        }
+
+        private static string BuildCompactProcessError(string? stderr)
+        {
+            if (string.IsNullOrWhiteSpace(stderr))
+                return "Không có stderr từ FFmpeg.";
+
+            var lines = stderr
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim())
+                .Where(l => l.Length > 0)
+                .TakeLast(4)
+                .ToArray();
+
+            if (lines.Length == 0)
+                return "Không có stderr từ FFmpeg.";
+
+            return string.Join(" | ", lines);
+        }
+
         private static string ResolveBinary(string binary)
         {
             return FfmpegPathPreferencesStore.ResolveBinaryPath(binary);
+        }
+
+        private static string BuildOutputSubfolderNameFromVideoPath(string? videoPath)
+        {
+            var stem = string.Empty;
+            if (!string.IsNullOrWhiteSpace(videoPath))
+            {
+                try
+                {
+                    stem = Path.GetFileNameWithoutExtension(videoPath.Trim());
+                }
+                catch
+                {
+                    stem = string.Empty;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(stem))
+                stem = "video";
+
+            foreach (var c in Path.GetInvalidFileNameChars())
+                stem = stem.Replace(c, '_');
+
+            return stem;
         }
 
         private static void SetOutput(VideoProcessingNode node, string key, string value)

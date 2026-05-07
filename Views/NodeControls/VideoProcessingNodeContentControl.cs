@@ -148,8 +148,9 @@ namespace FlowMy.Views.NodeControls
                 LoadPreviewFromPath(target, isAfterPath: _showAfterPreview);
             };
 
-            _audioTracksChangedHandler = (_, _) => RefreshInfoText();
-            _propertyChangedHandler = (_, e) => OnNodePropertyChanged(e.PropertyName ?? string.Empty);
+            _audioTracksChangedHandler = (_, _) => RunOnUiThread(RefreshInfoText);
+            _propertyChangedHandler = (_, e) =>
+                RunOnUiThread(() => OnNodePropertyChanged(e.PropertyName ?? string.Empty));
 
             InitializeInteractiveControls();
 
@@ -987,7 +988,7 @@ namespace FlowMy.Views.NodeControls
                 ToggleButtonsInGroup(VisualTreeHelper.GetChild(root, i), expanded);
         }
 
-        private void RunProcessingFlow()
+        private async void RunProcessingFlow()
         {
             if (_host == null) return;
             try
@@ -995,13 +996,16 @@ namespace FlowMy.Views.NodeControls
                 SyncRuntimeConfigFromUi();
                 _lastRunStartedAtUtc = DateTime.UtcNow;
                 ProgressStatusText.Text = "Running...";
+                var vm = _host.ViewModel;
+                if (vm == null) return;
                 if (!string.IsNullOrWhiteSpace(_node.VideoSourceNodeId))
                 {
-                    var sourceNode = _host.ViewModel?.Nodes?.FirstOrDefault(n =>
+                    var sourceNode = vm.Nodes?.FirstOrDefault(n =>
                         string.Equals(n.Id, _node.VideoSourceNodeId, StringComparison.OrdinalIgnoreCase));
-                    if (sourceNode != null) _host.RequestRunSingleNode(sourceNode);
+                    if (sourceNode != null)
+                        await vm.RunSingleNodeAsync(sourceNode);
                 }
-                _host.RequestRunSingleNode(_node);
+                await vm.RunWorkflowFromNodeAsync(_node);
             }
             catch (Exception ex)
             {
@@ -1142,6 +1146,17 @@ namespace FlowMy.Views.NodeControls
                 LogScrollViewer.ScrollToBottom();
                 LogLineReceived?.Invoke(line);
             }));
+        }
+
+        private void RunOnUiThread(Action action)
+        {
+            if (Dispatcher.CheckAccess())
+            {
+                action();
+                return;
+            }
+
+            _ = Dispatcher.BeginInvoke(action);
         }
 
         private void UpdateProgress(double percent, string status)
@@ -3605,7 +3620,7 @@ namespace FlowMy.Views.NodeControls
 
             if (string.IsNullOrWhiteSpace(outputVideoPath))
             {
-                OutputVideoPathText.Text = "Chưa đặt đường dẫn video đầu ra";
+                OutputVideoPathText.Text = GetDefaultVideoOutputFolder();
                 OpenOutputVideoButton.IsEnabled = false;
                 OpenOutputVideoActionButton.IsEnabled = false;
             }
@@ -3618,12 +3633,11 @@ namespace FlowMy.Views.NodeControls
                 OpenOutputVideoActionButton.IsEnabled = ready;
             }
 
-            var sourceDir = !string.IsNullOrWhiteSpace(_node.VideoPath) ? (System.IO.Path.GetDirectoryName(_node.VideoPath) ?? string.Empty) : string.Empty;
             var framesDir = (_node.UseDialogVideoConfig
                 ? (_node.FrameOutputFolderPath ?? string.Empty)
                 : (FrameOutputFolderText.Text ?? string.Empty)).Trim();
             if (string.IsNullOrWhiteSpace(framesDir))
-                framesDir = !string.IsNullOrWhiteSpace(sourceDir) ? System.IO.Path.Combine(sourceDir, "frames") : string.Empty;
+                framesDir = GetDefaultFrameOutputFolder();
             if (string.IsNullOrWhiteSpace(framesDir))
             {
                 OutputFramesFolderText.Text = "Chưa xác định thư mục frame";
@@ -3661,6 +3675,46 @@ namespace FlowMy.Views.NodeControls
             {
                 SetTextStyleIfExists("ConfigMissingSummaryText", $"⚠ Còn thiếu {missingCount} cấu hình cần thiết", new SolidColorBrush(Color.FromRgb(248, 113, 113)));
             }
+        }
+
+        private string GetDefaultFrameOutputFolder()
+        {
+            var downloadsRoot = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "flow-frame");
+            return System.IO.Path.Combine(downloadsRoot, GetVideoFileNameStem());
+        }
+
+        private string GetDefaultVideoOutputFolder()
+        {
+            var downloadsRoot = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "flow-video");
+            return System.IO.Path.Combine(downloadsRoot, GetVideoFileNameStem());
+        }
+
+        private string GetVideoFileNameStem()
+        {
+            var source = (_node.VideoPath ?? string.Empty).Trim();
+            var stem = string.Empty;
+            try
+            {
+                stem = System.IO.Path.GetFileNameWithoutExtension(source);
+            }
+            catch
+            {
+                stem = string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(stem))
+                stem = "video";
+
+            foreach (var c in System.IO.Path.GetInvalidFileNameChars())
+                stem = stem.Replace(c, '_');
+
+            return stem;
         }
 
         private void UpdateFrameExtractionPreview()

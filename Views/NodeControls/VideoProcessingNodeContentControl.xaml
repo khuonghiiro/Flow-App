@@ -1077,7 +1077,7 @@
                                 <Slider x:Name="SecondsPerFrameSlider"
                                          Minimum="1"
                                          Maximum="60"
-                                         Value="10"
+                                         Value="1"
                                          TickFrequency="1"
                                          IsSnapToTickEnabled="True"
                                          Style="{StaticResource ModernSliderStyle}"
@@ -1092,7 +1092,7 @@
                                 <Slider x:Name="FpsSlider"
                                          Minimum="1"
                                          Maximum="300"
-                                         Value="10"
+                                         Value="1"
                                          Style="{StaticResource ModernSliderStyle}"
                                          ToolTip="Số lượng frame cần lấy ra (≈ giây × FPS nguồn)."/>
                                 <Border Grid.Column="1" Style="{StaticResource ValueBadgeStyle}">
@@ -1848,7 +1848,7 @@
                             <TextBlock Text="Thư mục xuất ảnh frame" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Để trống = lưu cạnh video nguồn" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Để trống = lưu tại Downloads/flow-frame/&lt;tên-file-video&gt;" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -1863,7 +1863,7 @@
                             <TextBlock Text="Đường dẫn video đầu ra mặc định" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <Border Style="{StaticResource InnerCardStyle}" Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Để trống = tự sinh tên trong /Temp" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Để trống = lưu tại Downloads/flow-video/&lt;tên-file-video&gt;" FontSize="10" Opacity="0.6" Margin="0,0,0,6"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
