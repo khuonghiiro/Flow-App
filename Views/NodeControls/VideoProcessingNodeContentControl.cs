@@ -78,6 +78,7 @@ namespace FlowMy.Views.NodeControls
         private readonly PropertyChangedEventHandler _propertyChangedHandler;
         private readonly DispatcherTimer _timelineTimer;
         private readonly DispatcherTimer _beforeAfterFlickerTimer;
+        private int _hoveredActionGroupIndex = -1;
 
         private bool _subscriptionsAttached;
         private bool _isProgressDragging;
@@ -176,15 +177,26 @@ namespace FlowMy.Views.NodeControls
         {
             TabNavList.SelectionChanged += TabNavList_SelectionChanged;
             TabNavList.SelectedIndex = 0;
-            foreach (var group in new[]
+            var actionGroups = new[]
             {
                 BottomBarGroupGeneral, BottomBarGroupGrading, BottomBarGroupFilters,
                 BottomBarGroupAudio, BottomBarGroupExport, BottomBarGroupOutputs, BottomBarGroupSettings
-            })
+            };
+            for (var i = 0; i < actionGroups.Length; i++)
             {
-                group.MouseEnter += (_, _) => UpdateActionButtonLabelVisibility();
-                group.MouseLeave += (_, _) => UpdateActionButtonLabelVisibility();
+                var idx = i;
+                var group = actionGroups[i];
+                group.MouseEnter += (_, _) =>
+                {
+                    _hoveredActionGroupIndex = idx;
+                    UpdateActionButtonLabelVisibility();
+                };
             }
+            ActionButtonsBorder.MouseLeave += (_, _) =>
+            {
+                _hoveredActionGroupIndex = -1;
+                UpdateActionButtonLabelVisibility();
+            };
             SizeChanged += (_, _) =>
             {
                 SyncUserControlRoundedClip();
@@ -919,8 +931,9 @@ namespace FlowMy.Views.NodeControls
 
             for (var i = 0; i < groups.Length; i++)
             {
-                var showLabel = i == activeIdx || groups[i].IsMouseOver;
+                var showLabel = i == activeIdx || i == _hoveredActionGroupIndex;
                 ToggleLabelsInGroup(groups[i], showLabel);
+                ToggleButtonsInGroup(groups[i], showLabel);
             }
         }
 
@@ -935,6 +948,26 @@ namespace FlowMy.Views.NodeControls
             var count = VisualTreeHelper.GetChildrenCount(root);
             for (var i = 0; i < count; i++)
                 ToggleLabelsInGroup(VisualTreeHelper.GetChild(root, i), show);
+        }
+
+        private static void ToggleButtonsInGroup(DependencyObject root, bool expanded)
+        {
+            if (root is Button btn && btn.Visibility == Visibility.Visible)
+            {
+                if (expanded)
+                {
+                    btn.Width = double.NaN;
+                }
+                else
+                {
+                    btn.Width = 50;
+                    btn.MinWidth = 50;
+                }
+            }
+
+            var count = VisualTreeHelper.GetChildrenCount(root);
+            for (var i = 0; i < count; i++)
+                ToggleButtonsInGroup(VisualTreeHelper.GetChild(root, i), expanded);
         }
 
         private void RunProcessingFlow()
@@ -2327,7 +2360,7 @@ namespace FlowMy.Views.NodeControls
             };
             var latencyText = _lastSeekLatencyMs >= 0 ? $"{_lastSeekLatencyMs:0} ms" : "-- ms";
             SetTextIfExists("SeekPerfText", $"Preview: {configuredModeText}/{effectiveModeText} | Seek: {latencyText}");
-            PlayPauseButton.Content = CreateTransportIcon(_isPlaying ? "pause chisel-regular" : "play chisel-regular");
+            PlayPauseButton.Content = CreateTransportIcon(_isPlaying ? "pause regular" : "play regular");
             UpdateFrameLabelPreviewUi();
             UpdateTrimReviewUi();
         }
@@ -3104,15 +3137,15 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateVolumeIcon()
         {
-            MuteButton.Content = new TextBlock { Text = _isMuted ? "MUTE" : (PreviewMedia.Volume > 0.5 ? "VOL+" : "VOL") };
+            MuteButton.Content = CreateTransportIcon(_isMuted ? "volume-xmark duotone-light" : (PreviewMedia.Volume > 0.5 ? "volume-high duotone-light" : "volume-low duotone-light"));
         }
 
         private void SetTransportIcons()
         {
-            SkipBackButton.Content = CreateTransportIcon("backward-fast sharp-regular");
-            SkipForwardButton.Content = CreateTransportIcon("forward-fast sharp-regular");
-            PlayPauseButton.Content = CreateTransportIcon("play chisel-regular");
-            StopButton.Content = new TextBlock { Text = "⏹", Foreground = GetThemeIconBrush(), FontSize = 12 };
+            SkipBackButton.Content = CreateTransportIcon("backward regular");
+            SkipForwardButton.Content = CreateTransportIcon("forward sharp-regular");
+            PlayPauseButton.Content = CreateTransportIcon("play regular");
+            StopButton.Content = CreateTransportIcon("stop sharp-regular");
         }
 
         private SvgViewboxEx CreateTransportIcon(string iconKey)

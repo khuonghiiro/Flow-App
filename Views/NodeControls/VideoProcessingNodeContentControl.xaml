@@ -3,13 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:FlowMy.Controls"
              xmlns:models="clr-namespace:FlowMy.Models.Nodes"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:conv="clr-namespace:FlowMy.Converters"
              FontFamily="Segoe UI"
              TextOptions.TextFormattingMode="Display"
              UseLayoutRounding="True"
              SnapsToDevicePixels="True"
-             Background="#0E0E14"
-             Foreground="#ECECF4">
+             Background="{DynamicResource WindowBackgroundBrush}"
+             Foreground="{DynamicResource TextBrush}">
     <UserControl.Resources>
+        <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
+
         <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#ECECF4"/>
         <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#9CA3B8"/>
         <SolidColorBrush x:Key="ThemeCardBackgroundBrush" Color="#18181F"/>
@@ -70,7 +74,7 @@
         <SolidColorBrush x:Key="ThemeOpenVideoHoverBrush" Color="#EF4444"/>
         <SolidColorBrush x:Key="ThemeOpenVideoPressedBrush" Color="#B91C1C"/>
         <SolidColorBrush x:Key="ThemeTimelineTrackBrush" Color="#3A3A48"/>
-        <SolidColorBrush x:Key="ThemeTimelineProgressBrush" Color="#6366F1"/>
+        <SolidColorBrush x:Key="ThemeTimelineProgressBrush" Color="#EF4444"/>
         <SolidColorBrush x:Key="ThemeTimelineThumbStrokeBrush" Color="#E2E6EF"/>
         <SolidColorBrush x:Key="ThemeFrameLabelPreviewBg" Color="#F8FAFC"/>
         <SolidColorBrush x:Key="ThemeFrameLabelPreviewFg" Color="#151922"/>
@@ -93,13 +97,9 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
-                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
                                 <Setter TargetName="border" Property="Background" Value="{DynamicResource ThemeOpenVideoHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
-                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
                                 <Setter TargetName="border" Property="Background" Value="{DynamicResource ThemeOpenVideoPressedBrush}"/>
                                 <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
                                 <Setter TargetName="border" Property="RenderTransform">
@@ -148,23 +148,6 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="FillBd" Property="Background" Value="{DynamicResource ThemeVideoChromePrimaryHoverBgBrush}"/>
-                                <Setter TargetName="FillBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="WarmRing" Storyboard.TargetProperty="Opacity"
-                                                             To="0.92" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="WarmRing" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="FillBd" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
@@ -211,23 +194,6 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="FillBd2" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
-                                <Setter TargetName="FillBd2" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="WarmRing2" Storyboard.TargetProperty="Opacity"
-                                                             To="0.85" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="WarmRing2" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="FillBd2" Property="Opacity" Value="0.88"/>
@@ -396,7 +362,7 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Width="16" Height="16" Fill="{DynamicResource ThemeSliderThumbBrush}"/>
+                                                <Ellipse Width="14" Height="14" Fill="{DynamicResource ThemeSliderThumbBrush}"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -433,22 +399,6 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                                 <Setter TargetName="IbFill" Property="Background" Value="{DynamicResource ThemeTransportIconHoverBgBrush}"/>
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="IbRing" Storyboard.TargetProperty="Opacity"
-                                                             To="0.9" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="IbRing" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="IbFill" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
@@ -479,11 +429,9 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeQuickOverlayHoverBgBrush}"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -517,23 +465,6 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="PlayBd" Property="Background" Value="{DynamicResource ThemeTransportPlayHoverBgBrush}"/>
-                                <Setter TargetName="PlayBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="PlayRing" Storyboard.TargetProperty="Opacity"
-                                                             To="0.92" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="PlayRing" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="PlayBd" Property="Opacity" Value="0.9"/>
@@ -576,27 +507,9 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ChipBd" Property="Background" Value="{DynamicResource ThemePresetChipHoverBgBrush}"/>
-                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrushSoft}"/>
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="ChipWarm" Storyboard.TargetProperty="Opacity"
-                                                             To="0.82" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="ChipWarm" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.15"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="ChipBd" Property="Background" Value="{DynamicResource ThemePresetChipPressedBgBrush}"/>
-                                <Setter TargetName="ChipBd" Property="BorderBrush" Value="{DynamicResource ThemeWarmAccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
@@ -950,13 +863,19 @@
                             Orientation="Vertical"
                             Margin="0,0,8,8">
                     <Button x:Name="ToggleQuickGradeButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
-                        <TextBlock Text="🎨" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <controls:SvgViewboxEx Width="14" Height="14"
+                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='display-code duotone-light'}"/>
                     </Button>
                     <Button x:Name="QuickSnapshotButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}" Margin="0,0,0,4">
-                        <TextBlock Text="📷" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <controls:SvgViewboxEx Width="14" Height="14"
+                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='camera-retro duotone-light'}"/>
                     </Button>
                     <Button x:Name="QuickSetTrimButton" Width="30" Height="30" Style="{StaticResource QuickOverlayIconButtonStyle}" Background="{DynamicResource ThemeOverlayBackgroundBrush}">
-                        <TextBlock Text="✂" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <controls:SvgViewboxEx Width="14" Height="14"
+                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='scissors duotone-light'}"/>
                     </Button>
                 </StackPanel>
                 <Border x:Name="FrameInfoOverlay"
@@ -1015,7 +934,7 @@
                                 <Border Background="{DynamicResource ThemeTimelineTrackBrush}" CornerRadius="4" Height="8" VerticalAlignment="Center"/>
                                 <Border x:Name="ProgressBarFill" Background="{DynamicResource ThemeTimelineProgressBrush}" CornerRadius="4" Height="8" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
                                 <Canvas VerticalAlignment="Center" Height="28">
-                                    <Ellipse x:Name="ProgressThumb" Width="22" Height="22" Canvas.Top="3" Visibility="Collapsed"
+                                    <Ellipse x:Name="ProgressThumb" Width="12" Height="12" Canvas.Top="8" Visibility="Collapsed"
                                              Fill="{DynamicResource ThemeTimelineProgressBrush}"
                                              Stroke="{DynamicResource ThemeTimelineThumbStrokeBrush}" StrokeThickness="2">
                                         <Ellipse.RenderTransformOrigin>0.5,0.5</Ellipse.RenderTransformOrigin>
@@ -1046,11 +965,31 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="72"/>
                             </Grid.ColumnDefinitions>
-                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏮" FontSize="12" ToolTip="Lùi 5 giây"/>
-                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="34" Height="34" Style="{StaticResource PlayButtonStyle}"/>
-                            <Button x:Name="SkipForwardButton" Grid.Column="4" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏭" FontSize="12" ToolTip="Tiến 5 giây"/>
-                            <Button x:Name="StopButton" Grid.Column="6" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" Content="⏹" FontSize="12" ToolTip="Dừng"/>
-                            <Button x:Name="MuteButton" Grid.Column="8" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm"/>
+                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" ToolTip="Lùi 5 giây">
+                                <controls:SvgViewboxEx Width="14" Height="14"
+                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                       Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='backward regular'}"/>
+                            </Button>
+                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="34" Height="34" Style="{StaticResource PlayButtonStyle}">
+                                <controls:SvgViewboxEx Width="14" Height="14"
+                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                       Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play regular'}"/>
+                            </Button>
+                            <Button x:Name="SkipForwardButton" Grid.Column="4" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" ToolTip="Tiến 5 giây">
+                                <controls:SvgViewboxEx Width="14" Height="14"
+                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                       Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='forward sharp-regular'}"/>
+                            </Button>
+                            <Button x:Name="StopButton" Grid.Column="6" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" ToolTip="Dừng">
+                                <controls:SvgViewboxEx Width="14" Height="14"
+                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                       Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='stop sharp-regular'}"/>
+                            </Button>
+                            <Button x:Name="MuteButton" Grid.Column="8" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
+                                <controls:SvgViewboxEx Width="14" Height="14"
+                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                       Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='volume-high duotone-light'}"/>
+                            </Button>
                             <Slider x:Name="VolumeSlider" Grid.Column="9" Minimum="0" Maximum="1" Value="0.7" VerticalAlignment="Center" Margin="4,0" Style="{StaticResource ModernSliderStyle}"/>
                         </Grid>
                     </StackPanel>
@@ -1945,86 +1884,151 @@
                     </ScrollViewer>
                 </Grid>
             </Border>
-            <Border x:Name="ActionButtonsBorder" Grid.Row="2" Margin="0,10,0,0" Padding="10,12"
+            <Border x:Name="ActionButtonsBorder" Grid.Row="2" Margin="0,8,0,0" Padding="8,8"
                 HorizontalAlignment="Stretch"
-                Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="8"
+                Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="10"
                 BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="1">
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border x:Name="BottomBarGroupGeneral" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                        <Border x:Name="BottomBarGroupGeneral" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal">
-                                <Button x:Name="ExtractFramesButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" Margin="0,0,4,0"/><TextBlock x:Name="ExtractFramesButtonLabel" Text="Tách Frame" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="ExtractFramesButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-video duotone-light'}"/>
+                                        <TextBlock x:Name="ExtractFramesButtonLabel" Text="Tách Frame" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
-                                <Button x:Name="RunAllButton" Height="32" MinWidth="120" Padding="14,0" Margin="8,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="▶" Margin="0,0,6,0" FontSize="11"/><TextBlock x:Name="RunAllButtonLabel" Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="RunAllButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play duotone-light'}"/>
+                                        <TextBlock x:Name="RunAllButtonLabel" Text="Chạy tất cả" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                        <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GradingActionBar" Orientation="Horizontal">
-                                <Button x:Name="ApplyGradingButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🎨" Margin="0,0,6,0"/><TextBlock x:Name="ApplyGradingButtonLabel" Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="ApplyGradingButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='display-code duotone-light'}"/>
+                                        <TextBlock x:Name="ApplyGradingButtonLabel" Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
-                                <Button x:Name="ResetGradingButton2" Height="32" MinWidth="88" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="↺" Margin="0,0,6,0"/><TextBlock x:Name="ResetGradingButton2Label" Text="Đặt lại" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="ResetGradingButton2" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rotate-left duotone-light'}"/>
+                                        <TextBlock x:Name="ResetGradingButton2Label" Text="Đặt lại" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                        <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal">
-                                <Button x:Name="BurnSubtitleButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💬" Margin="0,0,6,0"/><TextBlock x:Name="BurnSubtitleButtonLabel" Text="Gắn phụ đề" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="BurnSubtitleButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='message-lines duotone-light'}"/>
+                                        <TextBlock x:Name="BurnSubtitleButtonLabel" Text="Gắn phụ đề" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
-                                <Button x:Name="QuickWatermarkButton" Height="32" MinWidth="108" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💧" Margin="0,0,6,0"/><TextBlock x:Name="QuickWatermarkButtonLabel" Text="Watermark" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="QuickWatermarkButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle-video duotone-light'}"/>
+                                        <TextBlock x:Name="QuickWatermarkButtonLabel" Text="Watermark" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
-                                <Button x:Name="ApplyOverlayToVideoActionButton" Height="32" MinWidth="120" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🧩" Margin="0,0,6,0"/><TextBlock x:Name="ApplyOverlayToVideoActionButtonLabel" Text="Áp dụng Overlay" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="ApplyOverlayToVideoActionButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='video-plus duotone-light'}"/>
+                                        <TextBlock x:Name="ApplyOverlayToVideoActionButtonLabel" Text="Áp dụng Overlay" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                        <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="AudioActionBar" Orientation="Horizontal">
-                                <Button x:Name="MixAudioButton" Height="32" MinWidth="112" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🔊" Margin="0,0,6,0"/><TextBlock x:Name="MixAudioButtonLabel" Text="Ghép Audio" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="MixAudioButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='mp3-player duotone-light'}"/>
+                                        <TextBlock x:Name="MixAudioButtonLabel" Text="Ghép Audio" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                        <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="ExportActionBar" Orientation="Horizontal">
-                                <Button x:Name="RunExportButton" Height="32" MinWidth="108" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="📤" Margin="0,0,6,0"/><TextBlock x:Name="RunExportButtonLabel" Text="Xuất video" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="RunExportButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='upload duotone-light'}"/>
+                                        <TextBlock x:Name="RunExportButtonLabel" Text="Xuất video" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
-                                <Button x:Name="SnapshotButton" Height="32" MinWidth="100" Padding="12,0" Margin="8,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="📷" Margin="0,0,6,0"/><TextBlock x:Name="SnapshotButtonLabel" Text="Chụp ảnh" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="SnapshotButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='camera-retro duotone-light'}"/>
+                                        <TextBlock x:Name="SnapshotButtonLabel" Text="Chụp ảnh" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
                                 <Button x:Name="ConvertFormatButton" Visibility="Collapsed"/>
                                 <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="8,6" Margin="0,0,8,8"
+                        <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal">
-                                <Button x:Name="OpenOutputVideoActionButton" Height="32" MinWidth="100" Padding="12,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="🎬" Margin="0,0,6,0"/><TextBlock x:Name="OpenOutputVideoActionButtonLabel" Text="Mở Video" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="OpenOutputVideoActionButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='video duotone-light'}"/>
+                                        <TextBlock x:Name="OpenOutputVideoActionButtonLabel" Text="Mở Video" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
-                                <Button x:Name="OpenFramesFolderActionButton" Height="32" MinWidth="124" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="📁" Margin="0,0,6,0"/><TextBlock x:Name="OpenFramesFolderActionButtonLabel" Text="Mở Folder Frame" FontSize="11" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="OpenFramesFolderActionButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open duotone-light'}"/>
+                                        <TextBlock x:Name="OpenFramesFolderActionButtonLabel" Text="Mở Folder Frame" FontSize="11" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
                                 <Button x:Name="OpenOutputVideoFolderQuickButton" Visibility="Collapsed"/>
                                 <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupSettings" CornerRadius="8" Padding="8,6" Margin="0,0,0,8"
+                        <Border x:Name="BottomBarGroupSettings" CornerRadius="8" Padding="6,5" Margin="0,0,0,6"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal">
-                                <Button x:Name="SaveSettingsButton" Height="32" MinWidth="120" Padding="14,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="💾" Margin="0,0,6,0"/><TextBlock x:Name="SaveSettingsButtonLabel" Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/></StackPanel>
+                                <Button x:Name="SaveSettingsButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='floppy-disk duotone-light'}"/>
+                                        <TextBlock x:Name="SaveSettingsButtonLabel" Text="Lưu cài đặt" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/>
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>

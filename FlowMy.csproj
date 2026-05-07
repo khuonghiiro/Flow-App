@@ -48,15 +48,19 @@
 		<Compile Remove="Localization\**" />
 		<Compile Remove="ViewModels\Admin\**" />
 		<Compile Remove="Views\Menus\GroupRolePermissions\**" />
+		<Compile Remove="examples\**" />
 		<EmbeddedResource Remove="Localization\**" />
 		<EmbeddedResource Remove="ViewModels\Admin\**" />
 		<EmbeddedResource Remove="Views\Menus\GroupRolePermissions\**" />
+		<EmbeddedResource Remove="examples\**" />
 		<None Remove="Localization\**" />
 		<None Remove="ViewModels\Admin\**" />
 		<None Remove="Views\Menus\GroupRolePermissions\**" />
+		<None Remove="examples\**" />
 		<Page Remove="Localization\**" />
 		<Page Remove="ViewModels\Admin\**" />
 		<Page Remove="Views\Menus\GroupRolePermissions\**" />
+		<Page Remove="examples\**" />
 	</ItemGroup>
 
 	<ItemGroup>
