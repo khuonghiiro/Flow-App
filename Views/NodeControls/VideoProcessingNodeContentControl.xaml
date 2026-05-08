@@ -14,16 +14,23 @@
     <UserControl.Resources>
         <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
 
+        <!-- Spacing tokens (4px grid) -->
+        <sys:Double x:Key="space-xs">4</sys:Double>
+        <sys:Double x:Key="space-sm">8</sys:Double>
+        <sys:Double x:Key="space-md">12</sys:Double>
+        <sys:Double x:Key="space-lg">16</sys:Double>
+        <sys:Double x:Key="space-xl">24</sys:Double>
+
         <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#ECECF4"/>
         <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#9CA3B8"/>
         <SolidColorBrush x:Key="ThemeCardBackgroundBrush" Color="#18181F"/>
         <SolidColorBrush x:Key="ThemeCardBorderBrush" Color="#2E2E3D"/>
-        <SolidColorBrush x:Key="ThemeInnerCardBackgroundBrush" Color="#14141A"/>
-        <SolidColorBrush x:Key="ThemeInnerCardBorderBrush" Color="#2A2A36"/>
+        <SolidColorBrush x:Key="ThemeInnerCardBackgroundBrush" Color="#1E1E28"/>
+        <SolidColorBrush x:Key="ThemeInnerCardBorderBrush" Color="#2A2A38"/>
         <SolidColorBrush x:Key="ThemeInputBackgroundBrush" Color="#22222C"/>
         <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#3A3A4A"/>
         <SolidColorBrush x:Key="ThemeInputForegroundBrush" Color="#F1F5FF"/>
-        <SolidColorBrush x:Key="ThemeOverlayBackgroundBrush" Color="#CC0E0E14"/>
+        <SolidColorBrush x:Key="ThemeOverlayBackgroundBrush" Color="#DD1A1A22"/>
         <SolidColorBrush x:Key="ThemeOverlayBorderBrush" Color="#404050"/>
         <SolidColorBrush x:Key="ThemeTimelinePanelBrush" Color="#12121A"/>
         <SolidColorBrush x:Key="ThemeTrackBackgroundBrush" Color="#353545"/>
@@ -119,8 +126,15 @@
         <Style x:Key="VideoChromePrimaryButtonStyle" TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeVideoChromePrimaryFgBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource ThemeVideoChromePrimaryBgBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeVideoChromePrimaryBorderBrush}"/>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#7C6BF8" Offset="0"/>
+                        <GradientStop Color="#6366F1" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="BorderBrush" Value="#8B85FF"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="14,0"/>
             <Setter Property="MinHeight" Value="32"/>
@@ -129,28 +143,34 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid SnapsToDevicePixels="True">
-                            <Border x:Name="FillBd"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="8"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <Border x:Name="WarmRing"
-                                    CornerRadius="8"
-                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="1"
-                                    Opacity="0"
-                                    Margin="-1"/>
-                        </Grid>
+                        <Border x:Name="FillBd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform x:Name="PrimaryScale" ScaleX="1" ScaleY="1"/>
+                                    <TranslateTransform x:Name="PrimaryTranslate" Y="0"/>
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="FillBd" Property="Background" Value="{DynamicResource ThemeVideoChromePrimaryHoverBgBrush}"/>
+                               
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="FillBd" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
+                                <Setter TargetName="FillBd" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TransformGroup>
+                                            <ScaleTransform ScaleX="1" ScaleY="0.97"/>
+                                            <TranslateTransform Y="1"/>
+                                        </TransformGroup>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="FillBd" Property="Opacity" Value="0.5"/>
@@ -165,8 +185,8 @@
         <Style x:Key="VideoChromeSecondaryButtonStyle" TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeVideoChromeSecondaryFgBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryBgBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeVideoChromeSecondaryBorderBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeInputBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,0"/>
             <Setter Property="MinHeight" Value="32"/>
@@ -175,28 +195,35 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid SnapsToDevicePixels="True">
-                            <Border x:Name="FillBd2"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="8"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <Border x:Name="WarmRing2"
-                                    CornerRadius="8"
-                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="1"
-                                    Opacity="0"
-                                    Margin="-1"/>
-                        </Grid>
+                        <Border x:Name="FillBd2"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform x:Name="SecondaryScale" ScaleX="1" ScaleY="1"/>
+                                    <TranslateTransform x:Name="SecondaryTranslate" Y="0"/>
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="FillBd2" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
+                                <Setter TargetName="FillBd2" Property="Background" Value="#2A2A38"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="FillBd2" Property="Opacity" Value="0.88"/>
+                                <Setter TargetName="FillBd2" Property="Background" Value="#222230"/>
+                                <Setter TargetName="FillBd2" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TransformGroup>
+                                            <ScaleTransform ScaleX="1" ScaleY="0.97"/>
+                                            <TranslateTransform Y="1"/>
+                                        </TransformGroup>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="FillBd2" Property="Opacity" Value="0.48"/>
@@ -210,25 +237,48 @@
         </Style>
 
         <Style x:Key="GlassCardStyle" TargetType="Border">
-            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeCardBorderBrush}"/>
             <Setter Property="Background" Value="{DynamicResource ThemeCardBackgroundBrush}"/>
             <Setter Property="Padding" Value="0"/>
+           
         </Style>
         <Style x:Key="InnerCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource ThemeInnerCardBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeInnerCardBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="Padding" Value="12,10"/>
             <Setter Property="TextElement.Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
         </Style>
         <Style x:Key="ValueBadgeStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource ThemeValueBadgeBackgroundBrush}"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#1E1E2A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#2E2E3D"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="HasDropShadow" Value="True"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="ReadableCheckBoxStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
@@ -240,6 +290,12 @@
                     <Setter Property="Foreground" Value="#88EAF2FF"/>
                 </Trigger>
             </Style.Triggers>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
         </Style>
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -319,6 +375,29 @@
                         <Setter Property="Background" Value="{DynamicResource ThemeComboPopupBackgroundBrush}"/>
                         <Setter Property="Padding" Value="10,6"/>
                         <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="ItemBd"
+                                            Background="{TemplateBinding Background}"
+                                            Padding="{TemplateBinding Padding}"
+                                            CornerRadius="4">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource ThemeComboItemHoverBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBd" Property="Background" Value="#554B556A"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Background" Value="{DynamicResource ThemeComboItemHoverBrush}"/>
@@ -350,19 +429,43 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid>
-                            <Border Height="4" CornerRadius="2" Background="{DynamicResource ThemeTrackBackgroundBrush}" VerticalAlignment="Center"/>
+                            <Border Height="5" CornerRadius="3" Background="{DynamicResource ThemeTrackBackgroundBrush}" VerticalAlignment="Center"/>
                             <Track x:Name="PART_Track">
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton Background="{DynamicResource ThemeAccentBrush}" BorderThickness="0" Height="4" VerticalAlignment="Center"/>
+                                    <RepeatButton Background="{DynamicResource ThemeAccentBrush}" Opacity="0.9" BorderThickness="0" Height="5" VerticalAlignment="Center"/>
                                 </Track.DecreaseRepeatButton>
                                 <Track.IncreaseRepeatButton>
-                                    <RepeatButton Background="Transparent" BorderThickness="0" Height="4" VerticalAlignment="Center"/>
+                                    <RepeatButton Background="Transparent" BorderThickness="0" Height="5" VerticalAlignment="Center"/>
                                 </Track.IncreaseRepeatButton>
                                 <Track.Thumb>
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Width="14" Height="14" Fill="{DynamicResource ThemeSliderThumbBrush}"/>
+                                                <Grid x:Name="ThumbRoot" Width="16" Height="16" RenderTransformOrigin="0.5,0.5">
+                                                    <Grid.RenderTransform>
+                                                        <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                                    </Grid.RenderTransform>
+                                                    <Ellipse Fill="{DynamicResource ThemeSliderThumbBrush}"
+                                                             Stroke="{DynamicResource ThemeAccentBrush}"
+                                                             StrokeThickness="2"/>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbRoot" Property="RenderTransform">
+                                                            <Setter.Value>
+                                                                <ScaleTransform ScaleX="1.2" ScaleY="1.2"/>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                      
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbRoot" Property="RenderTransform">
+                                                            <Setter.Value>
+                                                                <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -379,22 +482,25 @@
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="32"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="600"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <Border x:Name="IbFill"
-                                    Background="{TemplateBinding Background}"
-                                    CornerRadius="8"
-                                    Padding="0"/>
-                            <Border x:Name="IbRing"
-                                    CornerRadius="8"
-                                    BorderBrush="{DynamicResource ThemeWarmAccentBrush}"
-                                    BorderThickness="1"
-                                    Opacity="0"
-                                    Margin="-1"/>
+                        <Border x:Name="IbFill"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="0"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                    <TranslateTransform Y="0"/>
+                                </TransformGroup>
+                            </Border.RenderTransform>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Grid>
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
@@ -402,6 +508,14 @@
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="IbFill" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
+                                <Setter TargetName="IbFill" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TransformGroup>
+                                            <ScaleTransform ScaleX="1" ScaleY="0.97"/>
+                                            <TranslateTransform Y="1"/>
+                                        </TransformGroup>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
@@ -527,27 +641,45 @@
         <Style x:Key="PillTabNavStyle" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="ItemContainerStyle">
                 <Setter.Value>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Setter Property="Padding" Value="0,6"/>
-                        <Setter Property="FontSize" Value="12"/>
+                        <Setter Property="Padding" Value="0,4"/>
+                        <Setter Property="FontSize" Value="11.5"/>
                         <Setter Property="FontFamily" Value="Segoe UI"/>
                         <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
                         <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="ToolTipService.InitialShowDelay" Value="600"/>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
-                                    <Border x:Name="Bd" CornerRadius="8" Padding="12,8" Background="Transparent">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
+                                    <Grid>
+                                        <Border x:Name="Bd"
+                                                CornerRadius="8"
+                                                Padding="12,8"
+                                                Background="Transparent"
+                                                BorderBrush="Transparent"
+                                                BorderThickness="1">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <Border x:Name="Indicator"
+                                                Height="2"
+                                                VerticalAlignment="Bottom"
+                                                Margin="12,0,12,4"
+                                                CornerRadius="1"
+                                                Background="{DynamicResource ThemeAccentBrush}"
+                                                Opacity="0"/>
+                                    </Grid>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
+                                            <Setter TargetName="Bd" Property="Background" Value="#2A000000"/>
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
                                             <Setter TargetName="Bd" Property="Padding" Value="12,8"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
                                             <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter TargetName="Indicator" Property="Opacity" Value="1"/>
                                         </Trigger>
                                         <MultiTrigger>
                                             <MultiTrigger.Conditions>
@@ -629,31 +761,35 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,10" Padding="16,12">
+        <Border Grid.Row="0" x:Name="HeaderCardBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,0,8" Padding="12,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="6"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="6"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions> 
-                <controls:SvgViewboxEx Grid.Column="0" x:Name="IconView" Width="24" Height="24" Margin="0,0,14,0" VerticalAlignment="Center" Fill="White" />
-                <StackPanel Grid.Column="1">
-                    <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" FontFamily="Segoe UI" Foreground="White" />
-                    <TextBlock x:Name="VideoPathText" FontSize="11" Opacity="0.72" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" FontFamily="Segoe UI"/>
+                <controls:SvgViewboxEx Grid.Column="0" x:Name="IconView" Width="24" Height="24" Margin="0,0,12,0" VerticalAlignment="Center" Fill="White" />
+                <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                    <TextBlock x:Name="TitleText" FontSize="13" FontWeight="Medium" FontFamily="Segoe UI" Foreground="White" />
+                    <TextBlock x:Name="VideoPathText"
+                               FontSize="11"
+                               Opacity="0.72"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="520"
+                               Margin="0,4,0,0"
+                               FontFamily="Segoe UI"/>
                 </StackPanel>
-                <Button Grid.Column="2" x:Name="ThemeModeButton" Height="32" MinWidth="44" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Đổi sáng/tối">
-                    <TextBlock Text="☀"/>
-                </Button>
-                <Button Grid.Column="4" x:Name="ToggleNodeSizeButton" Height="32" MinWidth="44" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Phóng to/thu nhỏ node video">
-                    <TextBlock Text="⤢" FontSize="13"/>
-                </Button>
-                <Button Grid.Column="6" x:Name="RunProcessingButton" Height="32" MinWidth="92" Padding="18,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Chạy xử lý video qua FFmpeg">
-                    <TextBlock Text="Chạy" FontWeight="SemiBold"/>
-                </Button>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="ThemeModeButton" Height="32" MinWidth="44" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Đổi sáng/tối" Margin="0,0,4,0">
+                        <TextBlock Text="☀"/>
+                    </Button>
+                    <Button x:Name="ToggleNodeSizeButton" Height="32" MinWidth="44" Padding="12,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Phóng to/thu nhỏ node video" Margin="0,0,4,0">
+                        <TextBlock Text="⤢" FontSize="13"/>
+                    </Button>
+                    <Button x:Name="RunProcessingButton" Height="32" MinWidth="92" Padding="16,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Chạy xử lý video qua FFmpeg">
+                        <TextBlock Text="Chạy" FontWeight="SemiBold"/>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -752,17 +888,33 @@
                     <Grid x:Name="PreviewPlaceholder"
                           Panel.ZIndex="10"
                           Visibility="Visible">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="Chưa chọn video"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThemeTextPrimaryBrush}"
-                                   Opacity="0.55"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="Nhấn 'Mở video' để bắt đầu"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource ThemeTextSecondaryBrush}"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,6,0,0"/>
+                        <Border CornerRadius="12"
+                                BorderThickness="0"
+                                Background="#0AFFFFFF"
+                                Padding="24,18"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                            <Grid>
+                                <Rectangle RadiusX="12" RadiusY="12"
+                                           Stroke="{DynamicResource ThemeCardBorderBrush}"
+                                           StrokeThickness="2"
+                                           StrokeDashArray="6,4"
+                                           Opacity="0.9"/>
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="⭳" Margin="0" Padding="0" FontSize="48" Opacity="0.28" HorizontalAlignment="Center" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                <TextBlock Text="Kéo video vào đây"
+                                           FontSize="14"
+                                           FontWeight="Medium"
+                                           Foreground="{DynamicResource ThemeTextPrimaryBrush}"
+                                           Opacity="0.92"
+                                           Margin="0,8,0,0"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="hoặc nhấn nút Mở video"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                           Opacity="0.7"
+                                           HorizontalAlignment="Center"
+                                           Margin="10"/>
                         <!--<Button x:Name="OpenVideoInPlaceholderButton"
                                 Height="34"
                                 Margin="0,14,0,0"
@@ -775,7 +927,9 @@
                                 <TextBlock Text="Chọn video" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>-->
-                        </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Grid>
                 <Border x:Name="GradingOverlay"
@@ -965,27 +1119,27 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="72"/>
                             </Grid.ColumnDefinitions>
-                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" ToolTip="Lùi 5 giây">
+                            <Button x:Name="SkipBackButton" Grid.Column="0" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" ToolTip="Lùi 5 giây">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='backward regular'}"/>
                             </Button>
-                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="34" Height="34" Style="{StaticResource PlayButtonStyle}">
+                            <Button x:Name="PlayPauseButton" Grid.Column="2" Width="38" Height="38" Style="{StaticResource PlayButtonStyle}">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play regular'}"/>
                             </Button>
-                            <Button x:Name="SkipForwardButton" Grid.Column="4" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" ToolTip="Tiến 5 giây">
+                            <Button x:Name="SkipForwardButton" Grid.Column="4" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" ToolTip="Tiến 5 giây">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='forward sharp-regular'}"/>
                             </Button>
-                            <Button x:Name="StopButton" Grid.Column="6" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" ToolTip="Dừng">
+                            <Button x:Name="StopButton" Grid.Column="6" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" ToolTip="Dừng">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='stop sharp-regular'}"/>
                             </Button>
-                            <Button x:Name="MuteButton" Grid.Column="8" Width="26" Height="26" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
+                            <Button x:Name="MuteButton" Grid.Column="8" Width="28" Height="28" Style="{StaticResource IconButtonStyle}" FontSize="11" ToolTip="Bật/Tắt âm">
                                 <controls:SvgViewboxEx Width="14" Height="14"
                                                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                        Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='volume-high duotone-light'}"/>
@@ -1037,11 +1191,11 @@
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" x:Name="TabNavBorder" Margin="0,0,0,10" Padding="10,8" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="12">
+            <Border Grid.Row="0" x:Name="TabNavBorder" Margin="0,0,0,8" Padding="8" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="10" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1">
                 <ListBox x:Name="TabNavList" Style="{StaticResource PillTabNavStyle}" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <UniformGrid Rows="1"/>
+                            <WrapPanel Orientation="Horizontal"/>
                         </ItemsPanelTemplate>
                     </ListBox.ItemsPanel>
                     <ListBoxItem Content="Tổng quan" Tag="General"/>
@@ -1888,11 +2042,11 @@
                 HorizontalAlignment="Stretch"
                 Background="{DynamicResource ThemeActionBarBackgroundBrush}" CornerRadius="10"
                 BorderBrush="{DynamicResource ThemeActionBarBorderBrush}" BorderThickness="1">
-                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border x:Name="BottomBarGroupGeneral" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Top">
+                        <Border x:Name="BottomBarGroupGeneral" CornerRadius="8" Padding="6,5" Margin="0,0,8,8" MinHeight="42"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GeneralActionBar" Orientation="Horizontal">
-                                <Button x:Name="ExtractFramesButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}" ToolTip="Tách Frame">
+                                <Button x:Name="ExtractFramesButton" Height="30" MinWidth="44" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionExtractBrush}" ToolTip="Tách Frame">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1900,7 +2054,7 @@
                                         <TextBlock x:Name="ExtractFramesButtonLabel" Text="Tách Frame" FontSize="11" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="RunAllButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Chạy tất cả">
+                                <Button x:Name="RunAllButton" Height="30" MinWidth="44" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Chạy tất cả">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1910,10 +2064,10 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
+                        <Border x:Name="BottomBarGroupGrading" CornerRadius="8" Padding="6,5" Margin="0,0,8,8" MinHeight="42"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="GradingActionBar" Orientation="Horizontal">
-                                <Button x:Name="ApplyGradingButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Áp dụng màu">
+                                <Button x:Name="ApplyGradingButton" Height="30" MinWidth="44" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Áp dụng màu">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1921,7 +2075,7 @@
                                         <TextBlock x:Name="ApplyGradingButtonLabel" Text="Áp dụng màu" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="ResetGradingButton2" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Đặt lại">
+                                <Button x:Name="ResetGradingButton2" Height="30" MinWidth="44" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" ToolTip="Đặt lại">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1931,10 +2085,10 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
+                        <Border x:Name="BottomBarGroupFilters" CornerRadius="8" Padding="6,5" Margin="0,0,8,8" MinHeight="42"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="FiltersActionBar" Orientation="Horizontal">
-                                <Button x:Name="BurnSubtitleButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}" ToolTip="Gắn phụ đề">
+                                <Button x:Name="BurnSubtitleButton" Height="30" MinWidth="44" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSubtitleBrush}" ToolTip="Gắn phụ đề">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1942,7 +2096,7 @@
                                         <TextBlock x:Name="BurnSubtitleButtonLabel" Text="Gắn phụ đề" FontSize="11" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="QuickWatermarkButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}" ToolTip="Watermark">
+                                <Button x:Name="QuickWatermarkButton" Height="30" MinWidth="44" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}" ToolTip="Watermark">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1950,7 +2104,7 @@
                                         <TextBlock x:Name="QuickWatermarkButtonLabel" Text="Watermark" FontSize="11" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="ApplyOverlayToVideoActionButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}" ToolTip="Áp dụng Overlay">
+                                <Button x:Name="ApplyOverlayToVideoActionButton" Height="30" MinWidth="44" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionWatermarkBrush}" ToolTip="Áp dụng Overlay">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1960,10 +2114,10 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
+                        <Border x:Name="BottomBarGroupAudio" CornerRadius="8" Padding="6,5" Margin="0,0,8,8" MinHeight="42"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="AudioActionBar" Orientation="Horizontal">
-                                <Button x:Name="MixAudioButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Ghép Audio">
+                                <Button x:Name="MixAudioButton" Height="30" MinWidth="44" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Ghép Audio">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1973,10 +2127,10 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
+                        <Border x:Name="BottomBarGroupExport" CornerRadius="8" Padding="6,5" Margin="0,0,8,8" MinHeight="42"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="ExportActionBar" Orientation="Horizontal">
-                                <Button x:Name="RunExportButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Xuất video">
+                                <Button x:Name="RunExportButton" Height="30" MinWidth="44" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Xuất video">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1984,7 +2138,7 @@
                                         <TextBlock x:Name="RunExportButtonLabel" Text="Xuất video" FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="SnapshotButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}" ToolTip="Chụp ảnh">
+                                <Button x:Name="SnapshotButton" Height="30" MinWidth="44" Padding="10,0" Margin="6,0,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionSnapshotBrush}" ToolTip="Chụp ảnh">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -1996,10 +2150,10 @@
                                 <Button x:Name="QuickTrimButton" Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="6,5" Margin="0,0,6,6"
+                        <Border x:Name="BottomBarGroupOutputs" CornerRadius="8" Padding="6,5" Margin="0,0,8,8" MinHeight="42"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="OutputsActionBar" Orientation="Horizontal">
-                                <Button x:Name="OpenOutputVideoActionButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}" ToolTip="Mở Video">
+                                <Button x:Name="OpenOutputVideoActionButton" Height="30" MinWidth="44" Padding="10,0" Margin="0,0,6,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderVideoBrush}" ToolTip="Mở Video">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -2007,7 +2161,7 @@
                                         <TextBlock x:Name="OpenOutputVideoActionButtonLabel" Text="Mở Video" FontSize="11" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="OpenFramesFolderActionButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}" ToolTip="Mở Folder Frame">
+                                <Button x:Name="OpenFramesFolderActionButton" Height="30" MinWidth="44" Padding="10,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Background="{DynamicResource ThemeActionFolderFramesBrush}" ToolTip="Mở Folder Frame">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -2019,10 +2173,10 @@
                                 <Button x:Name="OpenFramesFolderQuickButton" Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
-                        <Border x:Name="BottomBarGroupSettings" CornerRadius="8" Padding="6,5" Margin="0,0,0,6"
+                        <Border x:Name="BottomBarGroupSettings" CornerRadius="8" Padding="6,5" Margin="0,0,0,8" MinHeight="42"
                                 BorderThickness="1" BorderBrush="{DynamicResource ThemeBottomBarGroupInactiveBorderBrush}" Background="Transparent">
                             <StackPanel x:Name="SettingsActionBar" Orientation="Horizontal">
-                                <Button x:Name="SaveSettingsButton" Width="50" Height="30" MinWidth="50" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Lưu cài đặt">
+                                <Button x:Name="SaveSettingsButton" Height="30" MinWidth="44" Padding="10,0" Style="{StaticResource VideoChromePrimaryButtonStyle}" ToolTip="Lưu cài đặt">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Width="14" Height="14" Margin="0,0,5,0"
                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
