@@ -2,19 +2,6 @@
                     xmlns:conv="clr-namespace:FlowMy.Converters"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!--  DEFAULT PasswordBox                                            -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <Style TargetType="PasswordBox">
-        <Setter Property="Foreground"                Value="{DynamicResource TextBrush}"/>
-        <Setter Property="Background"                Value="{DynamicResource TextBoxBackground}"/>
-        <Setter Property="BorderBrush"               Value="{DynamicResource ControlBorderBrush}"/>
-        <Setter Property="BorderThickness"           Value="1"/>
-        <Setter Property="Padding"                   Value="8,0"/>
-        <Setter Property="FontSize"                  Value="13"/>
-        <Setter Property="Height"                    Value="34"/>
-        <Setter Property="VerticalContentAlignment"  Value="Center"/>
-    </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!--  BASE TextBox — rounded border, hover + focus states           -->
@@ -182,40 +169,6 @@
     <Style x:Key="InputTextBox" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
         <Setter Property="Padding"    Value="10,0"/>
         <Setter Property="FontSize"   Value="13"/>
-    </Style>
-
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!--  QA-style TextBox / Label                                       -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <Style x:Key="QaTextBox" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Padding"  Value="8,0"/>
-        <Setter Property="Margin"   Value="0,0,0,4"/>
-    </Style>
-
-    <Style x:Key="QaTextBlock" TargetType="TextBlock">
-        <Setter Property="Foreground"  Value="{DynamicResource TextBrush}"/>
-        <Setter Property="FontSize"    Value="13"/>
-        <Setter Property="FontWeight"  Value="Medium"/>
-        <Setter Property="Margin"      Value="0,8,0,4"/>
-        <Setter Property="ToolTipService.InitialShowDelay" Value="800"/>
-        <Setter Property="ToolTipService.ShowDuration"     Value="8000"/>
-        <Setter Property="ToolTipService.BetweenShowDelay" Value="100"/>
-        <Setter Property="ToolTipService.Placement"        Value="Right"/>
-    </Style>
-
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!--  READ-ONLY TextBox                                              -->
-    <!-- ═══════════════════════════════════════════════════════════════ -->
-    <Style x:Key="ReadOnlyTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
-        <Setter Property="IsReadOnly"    Value="True"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding"       Value="10,6"/>
-        <Setter Property="FontSize"      Value="13"/>
-        <Setter Property="Height"        Value="NaN"/>
-        <Setter Property="TextWrapping"  Value="Wrap"/>
-        <Setter Property="Cursor"        Value="Arrow"/>
-        <Setter Property="VerticalContentAlignment" Value="Top"/>
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->

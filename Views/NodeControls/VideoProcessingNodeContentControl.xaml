@@ -68,7 +68,13 @@
         <SolidColorBrush x:Key="ThemeSliderThumbBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ThemeComboPopupBackgroundBrush" Color="#1E1E2A"/>
         <SolidColorBrush x:Key="ThemeComboItemHoverBrush" Color="#343448"/>
+        <SolidColorBrush x:Key="ThemeComboSelectedItemBrush" Color="#4B556A"/>
         <SolidColorBrush x:Key="ThemeTabHoverBrush" Color="#2A2A38"/>
+        <SolidColorBrush x:Key="ThemeTabSelectedBackgroundBrush" Color="#302A3446"/>
+        <SolidColorBrush x:Key="ThemeDefaultButtonBackgroundBrush" Color="#00000000"/>
+        <SolidColorBrush x:Key="ThemeDefaultButtonHoverBackgroundBrush" Color="#2A2A38"/>
+        <SolidColorBrush x:Key="ThemeDefaultButtonPressedBackgroundBrush" Color="#222230"/>
+        <SolidColorBrush x:Key="ThemeDefaultButtonBorderBrush" Color="#3A3A4A"/>
         <SolidColorBrush x:Key="ThemeActionExtractBrush" Color="#262E8FF9"/>
         <SolidColorBrush x:Key="ThemeActionSubtitleBrush" Color="#266366F1"/>
         <SolidColorBrush x:Key="ThemeActionWatermarkBrush" Color="#2614B8A6"/>
@@ -296,6 +302,36 @@
         </Style>
         <Style TargetType="Button">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeDefaultButtonBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeDefaultButtonBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeDefaultButtonHoverBackgroundBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeDefaultButtonPressedBackgroundBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.5"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -390,7 +426,7 @@
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                                         </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="ItemBd" Property="Background" Value="#554B556A"/>
+                                            <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource ThemeComboSelectedItemBrush}"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                         </Trigger>
@@ -404,8 +440,8 @@
                                 <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+                                <Setter Property="Background" Value="{DynamicResource ThemeComboSelectedItemBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -428,8 +464,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
-                        <Grid>
-                            <Border Height="5" CornerRadius="3" Background="{DynamicResource ThemeTrackBackgroundBrush}" VerticalAlignment="Center"/>
+                        <Grid x:Name="SliderRoot">
+                            <Border x:Name="TrackBase" Height="5" CornerRadius="3" Background="{DynamicResource ThemeTrackBackgroundBrush}" VerticalAlignment="Center"/>
                             <Track x:Name="PART_Track">
                                 <Track.DecreaseRepeatButton>
                                     <RepeatButton Background="{DynamicResource ThemeAccentBrush}" Opacity="0.9" BorderThickness="0" Height="5" VerticalAlignment="Center"/>
@@ -472,6 +508,12 @@
                                 </Track.Thumb>
                             </Track>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="SliderRoot" Property="Opacity" Value="0.72"/>
+                                <Setter TargetName="TrackBase" Property="Background" Value="{DynamicResource ThemeInputBorderBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -674,7 +716,7 @@
                                     </Grid>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="#2A000000"/>
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeTabSelectedBackgroundBrush}"/>
                                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
                                             <Setter TargetName="Bd" Property="Padding" Value="12,8"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
@@ -890,7 +932,7 @@
                           Visibility="Visible">
                         <Border CornerRadius="12"
                                 BorderThickness="0"
-                                Background="#0AFFFFFF"
+                                Background="{DynamicResource ThemeOverlayBackgroundBrush}"
                                 Padding="24,18"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center">
@@ -1835,7 +1877,7 @@
                                 <Border x:Name="TrimReviewTrackBorder"
                                         Background="{DynamicResource ThemeTrackBackgroundBrush}"
                                         CornerRadius="2" Height="4" VerticalAlignment="Center"/>
-                                <Border x:Name="TrimReviewRangeFill" Background="#4487A7FF" CornerRadius="2" Height="4" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
+                                <Border x:Name="TrimReviewRangeFill" Background="{DynamicResource ThemeAccentBrush}" Opacity="0.45" CornerRadius="2" Height="4" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
                                 <Canvas>
                                     <Ellipse x:Name="TrimReviewStartThumb" Width="13" Height="13" Fill="#4ADE80"/>
                                     <Ellipse x:Name="TrimReviewEndThumb" Width="13" Height="13" Fill="#FB7185"/>
@@ -1992,8 +2034,8 @@
                                         <TextBox x:Name="FfmpegFolderText" Height="28" FontSize="10.5"/>
                                         <Button x:Name="BrowseFfmpegFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                     </Grid>
-                                    <Border x:Name="FfmpegVerifyBadge" Margin="0,8,0,0" Padding="8,5" CornerRadius="7" Background="#1A4ADE80">
-                                        <TextBlock x:Name="FfmpegVerifyText" FontSize="10" Text="Chưa xác minh" Foreground="#4ADE80"/>
+                                    <Border x:Name="FfmpegVerifyBadge" Margin="0,8,0,0" Padding="8,5" CornerRadius="7" Background="{DynamicResource ThemeBottomBarActiveGroupBackgroundBrush}">
+                                        <TextBlock x:Name="FfmpegVerifyText" FontSize="10" Text="Chưa xác minh" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
                                     </Border>
                                     <Button x:Name="VerifyFfmpegButton" Content="Xác minh FFmpeg" Height="30" Margin="0,8,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                 </StackPanel>
