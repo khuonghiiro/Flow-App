@@ -23,12 +23,7 @@
                    FontSize="14"
                    FontWeight="SemiBold"/>
 
-        <Border Grid.Row="2"
-                Background="{DynamicResource WindowBackgroundBrush}"
-                BorderBrush="{DynamicResource ControlBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="12">
+        <Border Grid.Row="2" Style="{DynamicResource DialogSectionBorder}">
             <StackPanel>
                 <StackPanel Margin="0,0,0,10">
                     <TextBlock Text="Định dạng file"

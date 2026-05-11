@@ -133,7 +133,7 @@
                              VerticalScrollBarVisibility="Auto"
                              Margin="0,0,0,8"
                              Text="{Binding SubPathTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,16">
+                    <Border Style="{DynamicResource DialogSectionBorder}" Padding="12,10" Margin="0,0,0,16">
                         <StackPanel>
                             <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6">
                                 <Run Text="Placeholder trong path:"/>
@@ -165,7 +165,7 @@
                     <!-- Inputs: Node + Key + Value (mỗi dòng), nút + và - -->
                     <TextBlock Text="Inputs (key dùng trong path con):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <TextBlock Text="Mỗi dòng: chọn Node, Key, Value (xác nhận key để tránh trùng; trống = dùng key mặc định)." Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,12">
+                    <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
                         <StackPanel>
                             <StackPanel x:Name="KeyValueInputsPanel"/>
                             <Button x:Name="AddInputRowButton" Content="+ Thêm dòng" Height="36" Width="120" FontSize="13" FontWeight="SemiBold"
@@ -177,7 +177,7 @@
 
                     <!-- Outputs: folder, fullPath -->
                     <TextBlock Text="Outputs:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" x:Name="TextBlockOutputPanel"/>
-                    <Border Style="{DynamicResource DialogOuterBorder}" CornerRadius="8" Padding="12" Margin="0,0,0,16" x:Name="BorderOutputPanel">
+                    <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,16" x:Name="BorderOutputPanel">
                         <StackPanel x:Name="OutputsPanel"/>
                     </Border>
                     <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
@@ -234,10 +234,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,12"
-                                                Background="{DynamicResource WindowBackground}"
-                                                BorderBrush="{DynamicResource ControlBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="8"
+                                                Style="{DynamicResource DialogSectionBorder}"
                                                 Padding="10">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>

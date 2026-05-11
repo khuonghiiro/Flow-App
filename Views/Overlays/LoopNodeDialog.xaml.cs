@@ -117,20 +117,19 @@ namespace FlowMy.Views.Overlays
             
             textBox.TextChanged += (s, e) =>
             {
-                if (string.IsNullOrWhiteSpace(textBox.Text))
+                if (string.IsNullOrWhiteSpace(textBox.Text) || int.TryParse(textBox.Text, out _))
                 {
-                    textBox.Background = new SolidColorBrush(Colors.White);
+                    textBox.ClearValue(TextBox.BackgroundProperty);
                     return;
                 }
-                
-                if (int.TryParse(textBox.Text, out _))
+
+                if (Application.Current?.TryFindResource("DangerColor") is SolidColorBrush danger)
                 {
-                    textBox.Background = new SolidColorBrush(Colors.White);
+                    var c = danger.Color;
+                    textBox.Background = new SolidColorBrush(Color.FromArgb(48, c.R, c.G, c.B));
                 }
                 else
-                {
-                    textBox.Background = new SolidColorBrush(Color.FromRgb(255, 200, 200));
-                }
+                    textBox.Background = new SolidColorBrush(Color.FromArgb(48, 255, 68, 68));
             };
         }
 
@@ -309,10 +308,10 @@ namespace FlowMy.Views.Overlays
             {
                 Text = "↓",
                 FontSize = 20,
-                Foreground = new SolidColorBrush(Colors.White),
                 Margin = new Thickness(0, 4, 0, 4),
                 HorizontalAlignment = HorizontalAlignment.Center
             };
+            BindThemeResource(row2, TextBlock.ForegroundProperty, "TextBrush");
 
             // Dòng 3: Node đích + Key đích
             var row3 = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };

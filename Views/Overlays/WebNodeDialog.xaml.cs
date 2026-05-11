@@ -329,7 +329,8 @@ namespace FlowMy.Views.Overlays
         {
             var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
 
-            var matchLabel = new TextBlock { Text = "Match URL pattern:", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            var matchLabel = new TextBlock { Text = "Match URL pattern:", FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            BindThemeResource(matchLabel, TextBlock.ForegroundProperty, "TextBrush");
             var matchTb = new TextBox
             {
                 Height = 32,
@@ -364,13 +365,13 @@ namespace FlowMy.Views.Overlays
 
             var border = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(10),
                 Child = stack
             };
+            BindThemeResource(border, Border.BackgroundProperty, "CardHoverBackground");
+            BindThemeResource(border, Border.BorderBrushProperty, "ControlBorderBrush");
             return border;
         }
 
@@ -379,7 +380,8 @@ namespace FlowMy.Views.Overlays
             // Tạo container để có thể control visibility
             var container = new StackPanel { Margin = new Thickness(0, 0, 0, 0) };
 
-            var rowLabel = new TextBlock { Text = label + " (Node + Key hoặc giá trị tĩnh):", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 4, 0, 4) };
+            var rowLabel = new TextBlock { Text = label + " (Node + Key hoặc giá trị tĩnh):", FontSize = 11, Margin = new Thickness(0, 4, 0, 4) };
+            BindThemeResource(rowLabel, TextBlock.ForegroundProperty, "TextBrush");
             container.Children.Add(rowLabel);
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -429,17 +431,18 @@ namespace FlowMy.Views.Overlays
 
         private void AddReplaceUrlRow(StackPanel stack, WebRequestInterceptRule rule, UIElement? replaceParamsContainer, UIElement? replaceBodyContainer)
         {
-            var rowLabel = new TextBlock { Text = "Replace URL:", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 4, 0, 4) };
+            var rowLabel = new TextBlock { Text = "Replace URL:", FontSize = 11, Margin = new Thickness(0, 4, 0, 4) };
+            BindThemeResource(rowLabel, TextBlock.ForegroundProperty, "TextBrush");
             stack.Children.Add(rowLabel);
 
             // Checkbox để chọn dùng node+key (cURL) hay giá trị tĩnh
             var useNodeKeyCheckbox = new CheckBox
             {
                 Content = "Dùng Node + Key (cURL) để thay URL",
-                Foreground = Brushes.White,
                 FontSize = 11,
                 Margin = new Thickness(0, 0, 0, 4)
             };
+            BindThemeResource(useNodeKeyCheckbox, Control.ForegroundProperty, "TextBrush");
             useNodeKeyCheckbox.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(WebRequestInterceptRule.ReplaceUrlWithNodeKey))
             {
                 Source = rule,
@@ -617,7 +620,8 @@ namespace FlowMy.Views.Overlays
             };
 
             // Key và Remove Button cùng một dòng
-            var keyLabel = new TextBlock { Text = "Key:", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            var keyLabel = new TextBlock { Text = "Key:", FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            BindThemeResource(keyLabel, TextBlock.ForegroundProperty, "TextBrush");
             stack.Children.Add(keyLabel);
 
             var keyRowGrid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
@@ -660,7 +664,8 @@ namespace FlowMy.Views.Overlays
             stack.Children.Add(keyRowGrid);
 
             // URL
-            var urlLabel = new TextBlock { Text = "URL:", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            var urlLabel = new TextBlock { Text = "URL:", FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            BindThemeResource(urlLabel, TextBlock.ForegroundProperty, "TextBrush");
             var urlTb = new TextBox
             {
                 Height = 32,
@@ -684,7 +689,8 @@ namespace FlowMy.Views.Overlays
 
             // Request Method - ComboBox (cột đầu tiên)
             var methodContainer = new StackPanel();
-            var methodLabel = new TextBlock { Text = "Request Method:", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            var methodLabel = new TextBlock { Text = "Request Method:", FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            BindThemeResource(methodLabel, TextBlock.ForegroundProperty, "TextBrush");
             var methodCombo = new ComboBox
             {
                 Height = 36,
@@ -703,7 +709,8 @@ namespace FlowMy.Views.Overlays
 
             // Extract Type - ComboBox (cột thứ hai)
             var extractContainer = new StackPanel();
-            var extractLabel = new TextBlock { Text = "Lấy dữ liệu:", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            var extractLabel = new TextBlock { Text = "Lấy dữ liệu:", FontSize = 11, Margin = new Thickness(0, 0, 0, 4) };
+            BindThemeResource(extractLabel, TextBlock.ForegroundProperty, "TextBrush");
             var extractCombo = new ComboBox
             {
                 Height = 36,
@@ -747,10 +754,10 @@ namespace FlowMy.Views.Overlays
             var waitCheckBox = new CheckBox
             {
                 Content = "Đợi key này trước khi chạy node tiếp theo",
-                Foreground = Brushes.White,
                 FontSize = 11,
                 Margin = new Thickness(0, 0, 0, 4)
             };
+            BindThemeResource(waitCheckBox, Control.ForegroundProperty, "TextBrush");
             waitCheckBox.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(WebResponseOutput.WaitForCompletion))
             {
                 Source = output,
@@ -761,14 +768,14 @@ namespace FlowMy.Views.Overlays
             // Border bao ngoài mỗi output, có margin bottom để tạo khoảng cách với output kế tiếp
             var border = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(10),
                 Margin = new Thickness(0, 0, 0, 8),
                 Child = stack
             };
+            BindThemeResource(border, Border.BackgroundProperty, "CardHoverBackground");
+            BindThemeResource(border, Border.BorderBrushProperty, "ControlBorderBrush");
             return border;
         }
     }

@@ -19,10 +19,7 @@
 
         <!-- Header -->
         <Border Grid.Row="0"
-                Background="{DynamicResource CardColor}"
-                BorderBrush="{DynamicResource BorderColor}"
-                BorderThickness="1"
-                CornerRadius="10"
+                Style="{DynamicResource DialogCardStyle}"
                 Padding="14,12"
                 Margin="0,0,0,10">
             <StackPanel>

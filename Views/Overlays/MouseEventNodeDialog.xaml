@@ -18,11 +18,7 @@
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
     </Window.Resources>
-    <Border CornerRadius="12"
-            Padding="0"
-            Background="{DynamicResource WindowBodyBackground}"
-            BorderBrush="{DynamicResource ControlBorderBrush}"
-            BorderThickness="1">
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/> <!-- Header với title và nút X -->
@@ -30,10 +26,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" 
-                    Background="{DynamicResource HeaderBackgroundBrush}" 
-                    CornerRadius="12,12,0,0"
-                    Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -184,9 +177,7 @@
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
 
-                    <Border Background="{DynamicResource WindowBodyBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1"
+                    <Border Style="{DynamicResource DialogOuterBorder}"
                             CornerRadius="8"
                             Padding="12"
                             Margin="0,0,0,16">
@@ -202,12 +193,11 @@
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
 
-                    <Border Background="{DynamicResource WindowBodyBackground}" x:Name="BorderOutputPanel"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1"
+                    <Border Style="{DynamicResource DialogOuterBorder}"
                             CornerRadius="8"
                             Padding="12"
-                            Margin="0,0,0,16">
+                            Margin="0,0,0,16"
+                            x:Name="BorderOutputPanel">
                         <StackPanel x:Name="OutputsPanel">
                             <!-- Outputs sẽ được thêm động ở đây -->
                         </StackPanel>

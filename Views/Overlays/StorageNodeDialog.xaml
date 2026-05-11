@@ -204,9 +204,7 @@
                                             Command="{Binding AddDefaultOutputCommand}"/>
                                 </Grid>
 
-                                <Border Background="{DynamicResource WindowBodyBackground}"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"
+                                <Border Style="{DynamicResource DialogOuterBorder}"
                                         CornerRadius="8"
                                         Padding="12"
                                         Margin="0,0,0,16">
@@ -268,9 +266,7 @@
                                            FontWeight="SemiBold"
                                            Margin="0,0,0,8"/>
 
-                                <Border Background="{DynamicResource WindowBodyBackground}"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"
+                                <Border Style="{DynamicResource DialogOuterBorder}"
                                         CornerRadius="8"
                                         Padding="12"
                                         Margin="0,0,0,16">

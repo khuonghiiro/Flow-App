@@ -158,6 +158,13 @@ namespace FlowMy.Views.Overlays
             => (Application.Current?.TryFindResource(resourceKey) as SolidColorBrush)?.Color ?? fallback;
 
         /// <summary>
+        /// Gắn một DP với resource ứng dụng (giống DynamicResource) để control sinh trong code-behind
+        /// vẫn đổi màu đúng khi người dùng đổi theme.
+        /// </summary>
+        protected static void BindThemeResource(FrameworkElement element, DependencyProperty dp, string resourceKey)
+            => element.SetResourceReference(dp, resourceKey);
+
+        /// <summary>
         /// Override để xử lý các PropertyChanged events từ ViewModel.
         /// </summary>
         protected virtual void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e) { }

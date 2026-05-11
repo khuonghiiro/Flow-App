@@ -45,6 +45,7 @@ namespace FlowMy.Views.Overlays
                 Margin = new Thickness(0, 0, 8, 0),
                 ToolTip = "Checked = không xử lý output này"
             };
+            BindThemeResource(checkbox, Control.ForegroundProperty, "TextBrush");
 
             // Kiểm tra nếu key này có trong SkipOutputs thì checked = true
             var imageNode = _viewModel.Node as Models.Nodes.ImageProcessingNode;
@@ -68,12 +69,12 @@ namespace FlowMy.Views.Overlays
             var keyLabel = new TextBlock
             {
                 Text = $"Key: {outputVm.Key}",
-                Foreground = Brushes.White,
                 FontSize = 12,
                 Opacity = 0.9,
                 Margin = new Thickness(0, 0, 0, 4),
                 VerticalAlignment = VerticalAlignment.Center
             };
+            BindThemeResource(keyLabel, TextBlock.ForegroundProperty, "TextBrush");
             Grid.SetColumn(keyLabel, 1);
             grid.Children.Add(keyLabel);
 
@@ -81,11 +82,11 @@ namespace FlowMy.Views.Overlays
 
             var valueText = new TextBlock
             {
-                Foreground = Brushes.White,
                 FontSize = 11,
                 Opacity = 0.9,
                 Margin = new Thickness(0, 4, 0, 0)
             };
+            BindThemeResource(valueText, TextBlock.ForegroundProperty, "TextBrush");
 
             valueText.SetBinding(TextBlock.TextProperty,
                 new System.Windows.Data.Binding(nameof(ViewModels.OutputItemViewModel.Value))

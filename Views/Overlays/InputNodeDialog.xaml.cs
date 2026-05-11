@@ -203,12 +203,12 @@ namespace FlowMy.Views.Overlays
             {
                 Text = $"[{index}]",
                 FontSize = 13,
-                Foreground = Brushes.White,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 8, 0),
                 Opacity = 0.8,
                 MinWidth = 40
             };
+            BindThemeResource(indexTextBlock, TextBlock.ForegroundProperty, "TextBrush");
 
             var textBox = new TextBox
             {
@@ -475,7 +475,8 @@ namespace FlowMy.Views.Overlays
             var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
             
             // Sử dụng binding để key tự động cập nhật khi thay đổi
-            var keyText = new TextBlock { Foreground = Brushes.White, FontSize = 12, Opacity = 0.9, Margin = new Thickness(0, 0, 0, 4) };
+            var keyText = new TextBlock { FontSize = 12, Opacity = 0.9, Margin = new Thickness(0, 0, 0, 4) };
+            BindThemeResource(keyText, TextBlock.ForegroundProperty, "TextBrush");
             keyText.SetBinding(TextBlock.TextProperty,
                 new System.Windows.Data.Binding(nameof(OutputItemViewModel.Key)) 
                 { 
@@ -486,11 +487,11 @@ namespace FlowMy.Views.Overlays
 
             var valueText = new TextBlock
             {
-                Foreground = Brushes.White,
                 FontSize = 11,
                 Opacity = 0.9,
                 TextWrapping = TextWrapping.Wrap
             };
+            BindThemeResource(valueText, TextBlock.ForegroundProperty, "TextBrush");
             valueText.SetBinding(TextBlock.TextProperty,
                 new System.Windows.Data.Binding(nameof(OutputItemViewModel.Value)) { Source = outputVm });
             stack.Children.Add(valueText);

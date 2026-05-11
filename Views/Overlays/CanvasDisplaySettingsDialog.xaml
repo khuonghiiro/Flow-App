@@ -16,7 +16,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+        <Border Style="{DynamicResource DialogCardStyle}" Margin="0,0,0,10">
             <StackPanel>
                 <DockPanel Margin="0,0,0,10">
                     <TextBlock Text="Trung tâm cấu hình Canvas"

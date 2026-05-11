@@ -19,10 +19,7 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVisConverter"/>
     </local:BaseNodeDialog.Resources>
 
-    <Border CornerRadius="12" Padding="0"
-            Background="{DynamicResource WindowBodyBackground}"
-            BorderBrush="{DynamicResource ControlBorderBrush}"
-            BorderThickness="1">
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -266,9 +263,7 @@
                                        Text="Outputs (giá trị đã fetch):"
                                        Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
-                            <Border Background="{DynamicResource WindowBodyBackground}"
-                                    BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1"
+                            <Border Style="{DynamicResource DialogOuterBorder}"
                                     CornerRadius="8"
                                     Padding="12"
                                     Margin="0,0,0,8"

@@ -16,11 +16,8 @@
                    IsHitTestVisible="False"/>
         
         <!-- Dialog content ở giữa màn hình -->
-        <Border CornerRadius="12"
+        <Border Style="{DynamicResource DialogOuterBorder}"
                 Padding="20"
-                Background="{DynamicResource WindowBackground}"
-                BorderBrush="{DynamicResource ControlBorderBrush}"
-                BorderThickness="1"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 MinWidth="300"

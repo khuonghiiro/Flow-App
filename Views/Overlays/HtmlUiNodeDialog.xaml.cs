@@ -2280,8 +2280,8 @@ function out(msg) { document.getElementById('out').textContent = msg; }";
             if (AssetStatusText == null) return;
             AssetStatusText.Text = message;
             AssetStatusText.Foreground = isError
-                ? new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71))
-                : new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+                ? (TryFindResource("DangerBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71)))
+                : (TryFindResource("WarningBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B)));
         }
     }
 }

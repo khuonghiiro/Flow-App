@@ -43,11 +43,8 @@
         </Border>
 
         <!-- Dialog content centered -->
-        <Border CornerRadius="12"
+        <Border Style="{DynamicResource DialogOuterBorder}"
                 Padding="14"
-                Background="{DynamicResource WindowBackground}"
-                BorderBrush="{DynamicResource ControlBorderBrush}"
-                BorderThickness="1"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Margin="20">

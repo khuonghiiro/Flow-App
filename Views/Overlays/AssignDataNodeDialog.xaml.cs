@@ -55,16 +55,16 @@ namespace FlowMy.Views.Overlays
         {
             var baseCombo = Application.Current.TryFindResource("BaseComboBox") as Style;
 
-            // Card cho một nhóm gán
+            // Card cho một nhóm gán (resource-bound để đổi theme)
             var card = new Border
             {
-                Background = GetThemeBrush("WindowBackground", new SolidColorBrush(Color.FromRgb(0x1E, 0x29, 0x3B))),
-                BorderBrush = GetThemeBrush("ControlBorderBrush", new SolidColorBrush(Color.FromArgb(0x44, 0xFF, 0xFF, 0xFF))),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(12),
                 Margin = new Thickness(0, 0, 0, 12)
             };
+            BindThemeResource(card, Border.BackgroundProperty, "WindowBackground");
+            BindThemeResource(card, Border.BorderBrushProperty, "ControlBorderBrush");
 
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -76,11 +76,11 @@ namespace FlowMy.Views.Overlays
             var lblSource = new TextBlock
             {
                 Text = "Lấy giá trị từ",
-                Foreground = GetThemeBrush("TextBrush", new SolidColorBrush(Colors.White)),
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 0, 6)
             };
+            BindThemeResource(lblSource, TextBlock.ForegroundProperty, "TextBrush");
             var row1 = new Grid
             {
                 ColumnDefinitions =
@@ -124,11 +124,11 @@ namespace FlowMy.Views.Overlays
             var srcNodeLabel = new TextBlock
             {
                 Text = "Node:",
-                Foreground = GetThemeBrush("TextSecondary", new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5))),
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 6, 0)
             };
+            BindThemeResource(srcNodeLabel, TextBlock.ForegroundProperty, "TextMuted");
             srcNodeCombo.HorizontalAlignment = HorizontalAlignment.Stretch;
             Grid.SetColumn(srcNodeLabel, 0);
             Grid.SetColumn(srcNodeCombo, 1);
@@ -141,11 +141,11 @@ namespace FlowMy.Views.Overlays
             var srcKeyLabel = new TextBlock
             {
                 Text = "Key:",
-                Foreground = GetThemeBrush("TextSecondary", new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5))),
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 6, 0)
             };
+            BindThemeResource(srcKeyLabel, TextBlock.ForegroundProperty, "TextMuted");
             srcKeyCombo.HorizontalAlignment = HorizontalAlignment.Stretch;
             Grid.SetColumn(srcKeyLabel, 0);
             Grid.SetColumn(srcKeyCombo, 1);
@@ -163,13 +163,13 @@ namespace FlowMy.Views.Overlays
             var refreshCheck = new CheckBox
             {
                 Content = "Lấy giá trị mới nhất (chạy lại node nguồn trước khi gán)",
-                Foreground = GetThemeBrush("TextSecondary", new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5))),
                 FontSize = 11,
                 IsChecked = assignment.RefreshSourceBeforeUse,
                 Margin = new Thickness(0, 8, 0, 0),
                 VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = "Tích vào nếu node nguồn có giá trị cũ, cần chạy lại logic node đó để lấy giá trị mới nhất."
             };
+            BindThemeResource(refreshCheck, Control.ForegroundProperty, "TextMuted");
             refreshCheck.Checked += (s, e) => assignment.RefreshSourceBeforeUse = true;
             refreshCheck.Unchecked += (s, e) => assignment.RefreshSourceBeforeUse = false;
             left.Children.Add(refreshCheck);
@@ -179,21 +179,21 @@ namespace FlowMy.Views.Overlays
             {
                 Text = "↓ Gán vào",
                 FontSize = 14,
-                Foreground = GetThemeBrush("PrimaryBrush", new SolidColorBrush(Color.FromRgb(0x81, 0xD4, 0xFA))),
                 Margin = new Thickness(0, 10, 0, 6),
                 HorizontalAlignment = HorizontalAlignment.Left
             };
+            BindThemeResource(row2, TextBlock.ForegroundProperty, "PrimaryBrush");
             left.Children.Add(row2);
 
             // --- Dòng 3: Gán vào (đích)
             var lblTarget = new TextBlock
             {
                 Text = "Node + Key đích (sẽ nhận giá trị)",
-                Foreground = GetThemeBrush("TextBrush", new SolidColorBrush(Colors.White)),
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 0, 6)
             };
+            BindThemeResource(lblTarget, TextBlock.ForegroundProperty, "TextBrush");
             var row3 = new Grid
             {
                 ColumnDefinitions =
@@ -237,11 +237,11 @@ namespace FlowMy.Views.Overlays
             var tgtNodeLabel = new TextBlock
             {
                 Text = "Node:",
-                Foreground = GetThemeBrush("TextSecondary", new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5))),
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 6, 0)
             };
+            BindThemeResource(tgtNodeLabel, TextBlock.ForegroundProperty, "TextMuted");
             tgtNodeCombo.HorizontalAlignment = HorizontalAlignment.Stretch;
             Grid.SetColumn(tgtNodeLabel, 0);
             Grid.SetColumn(tgtNodeCombo, 1);
@@ -254,11 +254,11 @@ namespace FlowMy.Views.Overlays
             var tgtKeyLabel = new TextBlock
             {
                 Text = "Key:",
-                Foreground = GetThemeBrush("TextSecondary", new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5))),
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 6, 0)
             };
+            BindThemeResource(tgtKeyLabel, TextBlock.ForegroundProperty, "TextMuted");
             tgtKeyCombo.HorizontalAlignment = HorizontalAlignment.Stretch;
             Grid.SetColumn(tgtKeyLabel, 0);
             Grid.SetColumn(tgtKeyCombo, 1);

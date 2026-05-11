@@ -4,6 +4,7 @@ using FlowMy.ViewModels;
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using WinForms = System.Windows.Forms;
 
 namespace FlowMy.Views.Overlays
@@ -129,19 +130,22 @@ namespace FlowMy.Views.Overlays
                 if (ToastTitleColorPreview != null)
                 {
                     ToastTitleColorPreview.Background = ResolveBrush(_viewModel.ToastTitleColorKey,
-                        new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White));
+                        Application.Current.TryFindResource("CardColor") as Brush
+                        ?? new SolidColorBrush(Colors.White));
                 }
 
                 if (ToastContentColorPreview != null)
                 {
                     ToastContentColorPreview.Background = ResolveBrush(_viewModel.ToastContentColorKey,
-                        new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 231, 235)));
+                        Application.Current.TryFindResource("TextSecondary") as Brush
+                        ?? new SolidColorBrush(Color.FromRgb(229, 231, 235)));
                 }
 
                 if (ToastBackgroundColorPreview != null)
                 {
                     var bgBrush = ResolveBrush(_viewModel.ToastBackgroundColorKey,
-                        new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 23, 42)));
+                        Application.Current.TryFindResource("DarkBrush") as Brush
+                        ?? new SolidColorBrush(Color.FromRgb(15, 23, 42)));
                     bgBrush = bgBrush.Clone();
                     bgBrush.Opacity = _viewModel.ToastBackgroundOpacity;
                     ToastBackgroundColorPreview.Background = bgBrush;
@@ -152,7 +156,7 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private static System.Windows.Media.Brush ResolveBrush(string? key, System.Windows.Media.Brush fallback)
+        private static Brush ResolveBrush(string? key, Brush fallback)
         {
             if (string.IsNullOrWhiteSpace(key))
                 return fallback;
@@ -160,21 +164,21 @@ namespace FlowMy.Views.Overlays
             try
             {
                 if (key == "LimeGreen")
-                    return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LimeGreen);
+                    return new SolidColorBrush(Colors.LimeGreen);
 
                 if (key.StartsWith("#", StringComparison.OrdinalIgnoreCase))
                 {
-                    var converter = new System.Windows.Media.BrushConverter();
-                    var brush = converter.ConvertFromString(key) as System.Windows.Media.Brush;
+                    var converter = new BrushConverter();
+                    var brush = converter.ConvertFromString(key) as Brush;
                     if (brush != null)
                         return brush;
                 }
 
                 var resource = Application.Current.TryFindResource(key);
-                if (resource is System.Windows.Media.Brush b)
+                if (resource is Brush b)
                     return b;
-                if (resource is System.Windows.Media.Color c)
-                    return new System.Windows.Media.SolidColorBrush(c);
+                if (resource is Color c)
+                    return new SolidColorBrush(c);
             }
             catch
             {

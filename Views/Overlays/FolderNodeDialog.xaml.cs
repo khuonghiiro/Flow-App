@@ -61,13 +61,13 @@ namespace FlowMy.Views.Overlays
         {
             var card = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x29, 0x3B)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(0x44, 0xFF, 0xFF, 0xFF)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(12),
                 Margin = new Thickness(0, 0, 0, 12)
             };
+            BindThemeResource(card, Border.BackgroundProperty, "WindowBackground");
+            BindThemeResource(card, Border.BorderBrushProperty, "ControlBorderBrush");
 
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -125,32 +125,11 @@ namespace FlowMy.Views.Overlays
                 if (keyCombo.SelectedValue is string k) kv.SourceOutputKey = k;
             };
 
-            rowPanel.Children.Add(new TextBlock
-            {
-                Text = "Node:",
-                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5)),
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 6, 0)
-            });
+            rowPanel.Children.Add(CreateMutedLabel("Node:", new Thickness(0, 0, 6, 0)));
             rowPanel.Children.Add(nodeCombo);
-            rowPanel.Children.Add(new TextBlock
-            {
-                Text = "Key:",
-                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5)),
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(12, 0, 6, 0)
-            });
+            rowPanel.Children.Add(CreateMutedLabel("Key:", new Thickness(12, 0, 6, 0)));
             rowPanel.Children.Add(keyCombo);
-            rowPanel.Children.Add(new TextBlock
-            {
-                Text = "Value:",
-                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5)),
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(12, 0, 6, 0)
-            });
+            rowPanel.Children.Add(CreateMutedLabel("Value:", new Thickness(12, 0, 6, 0)));
             rowPanel.Children.Add(valueBox);
 
             var removeBtn = new Button
@@ -179,6 +158,20 @@ namespace FlowMy.Views.Overlays
             grid.Children.Add(removeBtn);
             card.Child = grid;
             return card;
+        }
+
+        /// <summary>Theme-bound label so contrast stays correct when switching light/dark palettes.</summary>
+        private static TextBlock CreateMutedLabel(string text, Thickness margin)
+        {
+            var tb = new TextBlock
+            {
+                Text = text,
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = margin
+            };
+            BindThemeResource(tb, TextBlock.ForegroundProperty, "TextMuted");
+            return tb;
         }
 
         private void AddInputRowButton_Click(object sender, RoutedEventArgs e)

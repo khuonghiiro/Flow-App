@@ -14,10 +14,7 @@
         MinWidth="460"
         MinHeight="620">
 
-    <Border CornerRadius="12" Padding="0"
-            Background="{DynamicResource WindowBodyBackground}"
-            BorderBrush="{DynamicResource ControlBorderBrush}"
-            BorderThickness="1">
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Border.Resources>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         </Border.Resources>

@@ -421,7 +421,6 @@ namespace FlowMy.Views.Overlays
                 Width = 24,
                 Height = 24,
                 Background = System.Windows.Media.Brushes.Transparent,
-                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184)),
                 BorderThickness = new Thickness(0),
                 Cursor = System.Windows.Input.Cursors.Hand,
                 FontSize = 16,
@@ -429,6 +428,7 @@ namespace FlowMy.Views.Overlays
                 Margin = new Thickness(4, 0, 0, 0),
                 Tag = item
             };
+            BindThemeResource(deleteButton, Control.ForegroundProperty, "TextMuted");
             deleteButton.Click += (s, e) =>
             {
                 if (s is Button btn && btn.Tag is HttpKeyValueItemViewModel itemToRemove)
@@ -451,11 +451,11 @@ namespace FlowMy.Views.Overlays
             var nodeLabel = new TextBlock
             {
                 Text = "Node:",
-                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184)),
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 4, 0)
             };
+            BindThemeResource(nodeLabel, TextBlock.ForegroundProperty, "TextMuted");
 
             var sourceNodeCombo = new ComboBox
             {
@@ -479,11 +479,11 @@ namespace FlowMy.Views.Overlays
             var keyLabel = new TextBlock
             {
                 Text = "Key:",
-                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184)),
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 4, 0)
             };
+            BindThemeResource(keyLabel, TextBlock.ForegroundProperty, "TextMuted");
 
             var outputKeyCombo = new ComboBox
             {
