@@ -188,6 +188,7 @@
     <SolidColorBrush x:Key="PrimaryHover" Color="#FF339AF0"/>
     <SolidColorBrush x:Key="SecondaryColor" Color="#FF2DBE6C"/>
     <SolidColorBrush x:Key="AccentColor" Color="#FF9775FA"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#FF9775FA"/>
     <SolidColorBrush x:Key="BackgroundColor" Color="#FF1A1B1E"/>
     <SolidColorBrush x:Key="SurfaceColor" Color="#FF25262B"/>
     <SolidColorBrush x:Key="TextPrimary" Color="#FFF1F3F5"/>

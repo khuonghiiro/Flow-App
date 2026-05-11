@@ -16,7 +16,7 @@
             Padding="12">
         <StackPanel>
             <TextBlock x:Name="TitleText"
-                       Foreground="White"
+                       Foreground="{DynamicResource TextBrush}"
                        FontSize="14"
                        FontWeight="Bold"
                        TextTrimming="CharacterEllipsis"/>
