@@ -139,7 +139,7 @@
 
     <!-- ===== SHADOW ===== -->
     <Color x:Key="ShadowColor">#AA000000</Color>
-    <Color x:Key="PrimaryShadowColor">#FF1A1B1E</Color>
+    <Color x:Key="PrimaryShadowColor">#501A1B1E</Color>
 
     <!-- ===== RADIO OPTIONS ===== -->
     <SolidColorBrush x:Key="OptionHoverBrush" Color="#FF373A40"/>
@@ -150,7 +150,7 @@
     <SolidColorBrush x:Key="TextNoteBrush" Color="#FF909296"/>
 
     <!-- ===== DATAGRID ===== -->
-    <SolidColorBrush x:Key="DataGridHeaderBrush">white</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridHeaderBrush" Color="#FFF1F3F5"/>
     <SolidColorBrush x:Key="DataGridRowBackground">Transparent</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridAltRowBackground">#0AFFFFFF</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHeaderBackground">#FF25262B</SolidColorBrush>

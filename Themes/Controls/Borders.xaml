@@ -9,18 +9,11 @@
         <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Padding" Value="24" />
         <Setter Property="Margin" Value="8" />
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect ShadowDepth="3" BlurRadius="20" Opacity="0.15" Color="{DynamicResource ShadowColor}" />
-            </Setter.Value>
-        </Setter>
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Effect">
-                    <Setter.Value>
-                        <DropShadowEffect ShadowDepth="5" BlurRadius="25" Opacity="0.25" Color="{DynamicResource ShadowColor}" />
-                    </Setter.Value>
-                </Setter>
+                <Setter Property="Background" Value="{DynamicResource CardHoverBackground}"/>
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -32,6 +25,8 @@
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="20"/>
         <Setter Property="Margin" Value="10"/>
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource CardHoverBackground}"/>
@@ -47,18 +42,11 @@
         <Setter Property="CornerRadius" Value="14" />
         <Setter Property="Padding" Value="20" />
         <Setter Property="Margin" Value="8" />
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect ShadowDepth="4" BlurRadius="20" Opacity="0.15" Color="{DynamicResource ShadowColor}" />
-            </Setter.Value>
-        </Setter>
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Effect">
-                    <Setter.Value>
-                        <DropShadowEffect ShadowDepth="6" BlurRadius="30" Opacity="0.25" Color="{DynamicResource ShadowColor}" />
-                    </Setter.Value>
-                </Setter>
+                <Setter Property="Background" Value="{DynamicResource CardHoverBackground}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
             </Trigger>
         </Style.Triggers>
@@ -80,6 +68,8 @@
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Margin" Value="0,4" />
         <Setter Property="Padding" Value="16" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource OptionHoverBrush}" />
@@ -139,6 +129,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="0"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
     </Style>
 
     <!-- Header cá»§a dialog (thanh tiÃªu Ä‘á») -->
@@ -146,6 +138,8 @@
         <Setter Property="Background" Value="{DynamicResource HeaderBackgroundBrush}"/>
         <Setter Property="CornerRadius" Value="12,12,0,0"/>
         <Setter Property="Padding" Value="16,12,12,12"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
     </Style>
 
     <!-- Section border bÃªn trong dialog (panels, khu vá»±c ná»™i dung) -->
@@ -155,6 +149,8 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="12"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
     </Style>
 
     <!-- Section border tá»‘i hÆ¡n (dÃ¹ng cho cÃ¡c item trong danh sÃ¡ch) -->
@@ -164,6 +160,8 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="10"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
     </Style>
 
     <!-- TextBlock label trong dialog (tiÃªu Ä‘á» section) -->

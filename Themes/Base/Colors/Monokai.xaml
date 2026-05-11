@@ -37,10 +37,10 @@
     <SolidColorBrush x:Key="TextOnSecondaryBrush" Color="#F8F8F2"/>
 
     <!-- SUCCESS — Monokai green -->
-    <SolidColorBrush x:Key="SuccessBrush" Color="#66D9E8"/>
-    <SolidColorBrush x:Key="SuccessHoverBrush" Color="#80E4EF"/>
-    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#52C5D3"/>
-    <SolidColorBrush x:Key="TextOnSuccessBrush" Color="#0E2025"/>
+    <SolidColorBrush x:Key="SuccessBrush"        Color="#A6E22E"/>
+    <SolidColorBrush x:Key="SuccessHoverBrush"   Color="#B8F24B"/>
+    <SolidColorBrush x:Key="SuccessPressedBrush" Color="#8CC420"/>
+    <SolidColorBrush x:Key="TextOnSuccessBrush"  Color="#1E2416"/>
 
     <!-- DANGER — Monokai red/pink -->
     <SolidColorBrush x:Key="DangerBrush" Color="#FF4F93"/>
@@ -54,11 +54,11 @@
     <SolidColorBrush x:Key="WarningPressedBrush" Color="#E89833"/>
     <SolidColorBrush x:Key="TextOnWarningBrush" Color="#2C2215"/>
 
-    <!-- INFO — Monokai cyan -->
-    <SolidColorBrush x:Key="InfoBrush" Color="#7DE5F2"/>
-    <SolidColorBrush x:Key="InfoHoverBrush" Color="#98ECF6"/>
-    <SolidColorBrush x:Key="InfoPressedBrush" Color="#63CFDD"/>
-    <SolidColorBrush x:Key="TextOnInfoBrush" Color="#1A2A2C"/>
+    <!-- INFO — Monokai cyan / teal -->
+    <SolidColorBrush x:Key="InfoBrush"        Color="#66D9E8"/>
+    <SolidColorBrush x:Key="InfoHoverBrush"   Color="#80E4EF"/>
+    <SolidColorBrush x:Key="InfoPressedBrush" Color="#52C5D3"/>
+    <SolidColorBrush x:Key="TextOnInfoBrush"  Color="#082126"/>
 
     <!-- LIGHT / DARK -->
     <SolidColorBrush x:Key="LightBrush" Color="#3E3D32"/>
@@ -141,9 +141,9 @@
     <SolidColorBrush x:Key="TextNoteBrush" Color="#FF98937F"/>
 
     <!-- DATAGRID -->
-    <SolidColorBrush x:Key="DataGridHeaderBrush">white</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridHeaderBrush" Color="#FFF8F8F2"/>
     <SolidColorBrush x:Key="DataGridRowBackground">Transparent</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridAltRowBackground">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridAltRowBackground">#0AFFFFFF</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHeaderBackground">#FF2B2A22</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridBorderBrush">#FF98937F</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHoverRowBackground">#40A6E22E</SolidColorBrush>

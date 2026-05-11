@@ -62,9 +62,9 @@
     <SolidColorBrush x:Key="TextOnTealCyanBrush" Color="White"/>
 
     <!-- 9. Lavender Dream -->
-    <SolidColorBrush x:Key="LavenderDreamBrush" Color="#A78BFA"/>
-    <SolidColorBrush x:Key="LavenderDreamHoverBrush" Color="#C4B5FD"/>
-    <SolidColorBrush x:Key="LavenderDreamPressedBrush" Color="#8B5CF6"/>
+    <SolidColorBrush x:Key="LavenderDreamBrush"        Color="#7C5EDF"/>
+    <SolidColorBrush x:Key="LavenderDreamHoverBrush"   Color="#8B6EEA"/>
+    <SolidColorBrush x:Key="LavenderDreamPressedBrush" Color="#6A4FCC"/>
     <SolidColorBrush x:Key="TextOnLavenderDreamBrush" Color="White"/>
 
     <!-- 10. Crimson Rose -->
@@ -81,8 +81,8 @@
 
     <!-- 12. Mint Fresh -->
     <SolidColorBrush x:Key="MintFreshBrush" Color="#6EE7B7"/>
-    <SolidColorBrush x:Key="MintFreshHoverBrush" Color="#A7F3D0"/>
-    <SolidColorBrush x:Key="MintFreshPressedBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="MintFreshHoverBrush"   Color="#34D399"/>
+    <SolidColorBrush x:Key="MintFreshPressedBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="TextOnMintFreshBrush" Color="#1F2937"/>
 
     <!-- 13. Indigo Night -->
@@ -258,13 +258,13 @@
     <SolidColorBrush x:Key="OceanBrush" Color="#00B4D8"/>
     <SolidColorBrush x:Key="OceanHoverBrush" Color="#0096C7"/>
     <SolidColorBrush x:Key="OceanPressedBrush" Color="#0077B6"/>
-    <SolidColorBrush x:Key="TextOnOceanBrush" Color="Beige"/>
+    <SolidColorBrush x:Key="TextOnOceanBrush" Color="#FFFFFF"/>
 
     <!--Emerald Forest – Xanh ngọc bích sang trọng-->
     <SolidColorBrush x:Key="EmeraldBrush" Color="#2ECC71"/>
     <SolidColorBrush x:Key="EmeraldHoverBrush" Color="#27AE60"/>
     <SolidColorBrush x:Key="EmeraldPressedBrush" Color="#1E8449"/>
-    <SolidColorBrush x:Key="TextOnEmeraldBrush" Color="Black"/>
+    <SolidColorBrush x:Key="TextOnEmeraldBrush" Color="#FFFFFF"/>
 
 
     <!-- Amethyst -->
@@ -339,10 +339,10 @@
 
 
     <!-- Digital Fluidity -->
-    <SolidColorBrush x:Key="FluidityBrush" Color="#A2D2FF"/>
-    <SolidColorBrush x:Key="FluidityHoverBrush" Color="#9CD3E9"/>
-    <SolidColorBrush x:Key="FluidityPressedBrush" Color="#91C4E0"/>
-    <SolidColorBrush x:Key="TextOnFluidityBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="FluidityBrush"        Color="#60A5FA"/>
+    <SolidColorBrush x:Key="FluidityHoverBrush"   Color="#3B82F6"/>
+    <SolidColorBrush x:Key="FluidityPressedBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="TextOnFluidityBrush"  Color="#FFFFFF"/>
 
 
 
@@ -355,7 +355,7 @@
     <!-- Bright Power Theme -->
     <SolidColorBrush x:Key="BrightPowerBrush" Color="#FF1D58"/>
     <SolidColorBrush x:Key="BrightPowerHoverBrush" Color="#F75990"/>
-    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#FFF685"/>
+    <SolidColorBrush x:Key="BrightPowerPressedBrush" Color="#AD1457"/>
     <SolidColorBrush x:Key="TextOnBrightPowerBrush" Color="White"/>
 
   
@@ -388,7 +388,7 @@
     <!-- Easter Mix -->
     <SolidColorBrush x:Key="EggYolkBrush" Color="#FFDC6A"/>
     <SolidColorBrush x:Key="EggYolkHoverBrush" Color="#FFEB8A"/>
-    <SolidColorBrush x:Key="EggYolkPressedBrush" Color="#FFEFAB"/>
+    <SolidColorBrush x:Key="EggYolkPressedBrush" Color="#F0C040"/>
     <SolidColorBrush x:Key="TextOnEggYolkBrush" Color="#333333"/>
 
 
@@ -484,8 +484,8 @@
 
     <!-- 14. Glacier Blue -->
     <SolidColorBrush x:Key="GlacierBlueBrush" Color="#CDDAFD"/>
-    <SolidColorBrush x:Key="GlacierBlueHoverBrush" Color="#B8C9FB"/>
-    <SolidColorBrush x:Key="GlacierBluePressedBrush" Color="#A3B8F9"/>
+    <SolidColorBrush x:Key="GlacierBlueHoverBrush"   Color="#BBCCFC"/>
+    <SolidColorBrush x:Key="GlacierBluePressedBrush" Color="#A8BCFB"/>
     <SolidColorBrush x:Key="TextOnGlacierBlueBrush" Color="#1F2937"/>
 
     <!-- 15. Mango Tango -->
@@ -591,9 +591,9 @@
     <SolidColorBrush x:Key="TextOnCrimsonVelvetBrush" Color="White"/>
 
     <!-- 32. Lemon Lime -->
-    <SolidColorBrush x:Key="LemonLimeBrush" Color="#D4FF00"/>
-    <SolidColorBrush x:Key="LemonLimeHoverBrush" Color="#DEFF33"/>
-    <SolidColorBrush x:Key="LemonLimePressedBrush" Color="#C4EF00"/>
+    <SolidColorBrush x:Key="LemonLimeBrush"        Color="#BEF264"/>
+    <SolidColorBrush x:Key="LemonLimeHoverBrush"   Color="#A3E635"/>
+    <SolidColorBrush x:Key="LemonLimePressedBrush" Color="#84CC16"/>
     <SolidColorBrush x:Key="TextOnLemonLimeBrush" Color="#1F2937"/>
 
     <!-- 33. Prussian Blue -->
@@ -603,10 +603,10 @@
     <SolidColorBrush x:Key="TextOnPrussianBlueBrush" Color="White"/>
 
     <!-- 34. Flamingo Pink -->
-    <SolidColorBrush x:Key="FlamingoPinkBrush" Color="#FC74FD"/>
-    <SolidColorBrush x:Key="FlamingoPinkHoverBrush" Color="#FD8FFE"/>
-    <SolidColorBrush x:Key="FlamingoPinkPressedBrush" Color="#FB59FC"/>
-    <SolidColorBrush x:Key="TextOnFlamingoPinkBrush" Color="White"/>
+    <SolidColorBrush x:Key="FlamingoPinkBrush"        Color="#F472B6"/>
+    <SolidColorBrush x:Key="FlamingoPinkHoverBrush"   Color="#F9A8D4"/>
+    <SolidColorBrush x:Key="FlamingoPinkPressedBrush" Color="#EC4899"/>
+    <SolidColorBrush x:Key="TextOnFlamingoPinkBrush"  Color="#4A0520"/>
 
     <!-- 35. Bamboo Green -->
     <SolidColorBrush x:Key="BambooGreenBrush" Color="#556B2F"/>
@@ -675,10 +675,10 @@
     <SolidColorBrush x:Key="TextOnCaramelBrownBrush" Color="White"/>
 
     <!-- 46. Magenta Bloom -->
-    <SolidColorBrush x:Key="MagentaBloomBrush" Color="#FF00FF"/>
-    <SolidColorBrush x:Key="MagentaBloomHoverBrush" Color="#FF33FF"/>
-    <SolidColorBrush x:Key="MagentaBloomPressedBrush" Color="#CC00CC"/>
-    <SolidColorBrush x:Key="TextOnMagentaBloomBrush" Color="White"/>
+    <SolidColorBrush x:Key="MagentaBloomBrush"        Color="#D946EF"/>
+    <SolidColorBrush x:Key="MagentaBloomHoverBrush"   Color="#E879F9"/>
+    <SolidColorBrush x:Key="MagentaBloomPressedBrush" Color="#C026D3"/>
+    <SolidColorBrush x:Key="TextOnMagentaBloomBrush"  Color="#FFFFFF"/>
 
     <!-- 47. Moss Green -->
     <SolidColorBrush x:Key="MossGreenBrush" Color="#8A9A5B"/>

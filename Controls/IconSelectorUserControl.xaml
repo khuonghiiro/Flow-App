@@ -174,12 +174,26 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
                AllowsTransparency="True"
                PopupAnimation="Fade">
 
-            <!-- Container chính với shadow và border -->
-            <Border Style="{DynamicResource CardBorderBase}"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Margin="8">
-
+            <!-- Hai lớp: shadow (không text) + border nội dung -->
+            <Grid Margin="8"
+                  SnapsToDevicePixels="True"
+                  UseLayoutRounding="True">
+                <Border CornerRadius="12"
+                        Background="Transparent"
+                        Margin="0,0,2,4"
+                        SnapsToDevicePixels="True"
+                        UseLayoutRounding="True">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="2"
+                                          BlurRadius="8"
+                                          Opacity="0.12"
+                                          Direction="270"
+                                          Color="{DynamicResource ShadowColor}"/>
+                    </Border.Effect>
+                </Border>
+                <Border Style="{DynamicResource CardBorderBase}"
+                        BorderThickness="1"
+                        CornerRadius="12">
                 <!-- Nội dung popup -->
                 <StackPanel Margin="20">
 
@@ -286,7 +300,8 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
                                Margin="0,10,0,0"/>
 
                 </StackPanel>
-            </Border>
+                </Border>
+            </Grid>
         </Popup>
     </Grid>
 </UserControl>

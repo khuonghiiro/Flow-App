@@ -124,9 +124,9 @@
     <SolidColorBrush x:Key="ButtonBorderBrush" Color="#FFB8C4D3"/>
 
     <!-- ===== SCROLLBAR ===== -->
-    <Color x:Key="ScrollBarThumbColor">#A00078D4</Color>
-    <Color x:Key="ScrollBarThumbHoverColor">#C00078D4</Color>
-    <Color x:Key="ScrollBarThumbPressedColor">#E00078D4</Color>
+    <Color x:Key="ScrollBarThumbColor">#880078D4</Color>
+    <Color x:Key="ScrollBarThumbHoverColor">#AA0078D4</Color>
+    <Color x:Key="ScrollBarThumbPressedColor">#CC0078D4</Color>
     <Color x:Key="ScrollBarTrackColor">Transparent</Color>
     <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{StaticResource ScrollBarThumbColor}"/>
     <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="{StaticResource ScrollBarThumbHoverColor}"/>
@@ -150,7 +150,7 @@
     <SolidColorBrush x:Key="TextNoteBrush" Color="#FF555D66"/>
 
     <!-- ===== DATAGRID ===== -->
-    <SolidColorBrush x:Key="DataGridHeaderBrush">black</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridHeaderBrush" Color="#FF111827"/>
     <SolidColorBrush x:Key="DataGridRowBackground">#FFFFFFFF</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridAltRowBackground">#FFF0F4F8</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHeaderBackground">#FFEBEBEB</SolidColorBrush>

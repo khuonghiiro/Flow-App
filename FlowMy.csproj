@@ -182,5 +182,11 @@
 	  <Folder Include="Assets\Icons\" />
 	</ItemGroup>
 
+	<!-- Đảm bảo Themes/Controls/Borders.xaml luôn được MarkupCompile → BAML (tránh lỗi runtime Cannot locate resource 'themes/controls/borders.xaml'). -->
+	<ItemGroup>
+	  <Page Update="Themes\Controls\Borders.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
 
 </Project>

@@ -76,6 +76,20 @@
                             <Grid Margin="8,4,10,12"
                                   UseLayoutRounding="True"
                                   SnapsToDevicePixels="True">
+                                <Border CornerRadius="8"
+                                        Background="Transparent"
+                                        Margin="0,0,2,4"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        SnapsToDevicePixels="True"
+                                        UseLayoutRounding="True">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="{DynamicResource ShadowColor}"
+                                                          BlurRadius="8"
+                                                          ShadowDepth="2"
+                                                          Direction="270"
+                                                          Opacity="0.12"/>
+                                    </Border.Effect>
+                                </Border>
                                 <Border MinWidth="{TemplateBinding ActualWidth}"
                                         Background="{DynamicResource ComboBoxPopupBackground}"
                                         BorderBrush="{DynamicResource ComboBoxPopupBorderBrush}"
@@ -84,13 +98,6 @@
                                         Padding="4"
                                         SnapsToDevicePixels="True"
                                         UseLayoutRounding="True">
-                                    <Border.Effect>
-                                        <DropShadowEffect Color="{DynamicResource ShadowColor}"
-                                                          BlurRadius="20"
-                                                          ShadowDepth="2"
-                                                          Direction="270"
-                                                          Opacity="0.34"/>
-                                    </Border.Effect>
                                     <ScrollViewer Margin="0"
                                                   SnapsToDevicePixels="True"
                                                   VerticalScrollBarVisibility="Auto"
@@ -248,6 +255,20 @@
                 <Grid Margin="8,4,10,12"
                       UseLayoutRounding="True"
                       SnapsToDevicePixels="True">
+                    <Border CornerRadius="8"
+                            Background="Transparent"
+                            Margin="0,0,2,4"
+                            MinWidth="{TemplateBinding ActualWidth}"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True">
+                        <Border.Effect>
+                            <DropShadowEffect Color="{DynamicResource ShadowColor}"
+                                              BlurRadius="8"
+                                              ShadowDepth="2"
+                                              Direction="270"
+                                              Opacity="0.12"/>
+                        </Border.Effect>
+                    </Border>
                     <Border MinWidth="{TemplateBinding ActualWidth}"
                             Background="{DynamicResource ComboBoxPopupBackground}"
                             BorderBrush="{DynamicResource ComboBoxPopupBorderBrush}"
@@ -256,13 +277,6 @@
                             Padding="4"
                             SnapsToDevicePixels="True"
                             UseLayoutRounding="True">
-                        <Border.Effect>
-                            <DropShadowEffect Color="{DynamicResource ShadowColor}"
-                                              BlurRadius="20"
-                                              ShadowDepth="2"
-                                              Direction="270"
-                                              Opacity="0.34"/>
-                        </Border.Effect>
                         <ScrollViewer Margin="0"
                                       SnapsToDevicePixels="True"
                                       VerticalScrollBarVisibility="Auto"
