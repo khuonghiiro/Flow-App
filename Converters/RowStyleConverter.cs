@@ -104,7 +104,7 @@ namespace FlowMy.Converters
 
                 try
                 {
-                    return DynamicColorHelper.GetResourceBrush(style.HoverBackground, "DataGridHoverRowBackground");
+                    return DynamicColorHelper.GetResourceBrush(style.HoverBackground, "DataGridRowHoverBackground");
                 }
                 catch
                 {
@@ -134,7 +134,7 @@ namespace FlowMy.Converters
                 try
                 {
 
-                    return DynamicColorHelper.GetResourceBrush(style.SelectedBackground, "DataGridSelectedRowBackground");
+                    return DynamicColorHelper.GetResourceBrush(style.SelectedBackground, "DataGridSelectionBackground");
                 }
                 catch
                 {

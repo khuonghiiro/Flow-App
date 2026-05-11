@@ -4,6 +4,7 @@
 
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Base/Colors/Common.xaml"/>
+        <ResourceDictionary Source="Base/SemanticTokens.xaml"/>
         <ResourceDictionary Source="Base/Colors/Night.xaml"/>
         <ResourceDictionary Source="Base/Fonts.xaml"/>
         <ResourceDictionary Source="Base/Animations.xaml"/>

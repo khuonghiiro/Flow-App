@@ -25,54 +25,33 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,0,1">
-                            <Border.Effect>
-                                <DropShadowEffect ShadowDepth="1"
-                                                  BlurRadius="4"
-                                                  Opacity="0.10"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="bd"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
+                    <Border x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="bd" Property="Background"  Value="{DynamicResource ButtonHoverBrush}"/>
                             <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorderBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="2" BlurRadius="8" Opacity="0.18" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="bd" Property="Background"  Value="{DynamicResource ButtonPressedBrush}"/>
                             <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="0" BlurRadius="2" Opacity="0.05" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
+                            <Setter TargetName="bd" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                            <Setter TargetName="bd" Property="RenderTransform">
+                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
                             </Setter>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="bd" Property="Background"  Value="{DynamicResource DisabledBackground}"/>
                             <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
                             <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
@@ -145,57 +124,24 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.20"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                        </Border>
-                    </Grid>
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                    </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.90"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.35" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.85"/>
                             <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
                             <Setter TargetName="border" Property="RenderTransform">
                                 <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
                             </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -207,378 +153,108 @@
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ContextualButtonBase}">
         <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                                  ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.20"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.35" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
-                            <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                            <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ─── SECONDARY ───────────────────────────── -->
     <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource ContextualButtonBase}">
         <Setter Property="Background" Value="{DynamicResource SecondaryBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextOnSecondaryBrush}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                                  ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.20"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SecondaryHoverBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.35" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SecondaryPressedBrush}"/>
-                            <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                            <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SecondaryHoverBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SecondaryPressedBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ─── SUCCESS ─────────────────────────────── -->
     <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource ContextualButtonBase}">
         <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextOnSuccessBrush}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                                  ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.20"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SuccessHoverBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.35" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SuccessPressedBrush}"/>
-                            <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                            <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SuccessHoverBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SuccessPressedBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ─── DANGER ──────────────────────────────── -->
     <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ContextualButtonBase}">
         <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextOnDangerBrush}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                                  ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.20"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource DangerHoverBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.35" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource DangerPressedBrush}"/>
-                            <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                            <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource DangerHoverBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource DangerPressedBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ─── WARNING ─────────────────────────────── -->
     <Style x:Key="WarningButton" TargetType="Button" BasedOn="{StaticResource ContextualButtonBase}">
         <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextOnWarningBrush}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                                  ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.20"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource WarningHoverBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.35" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource WarningPressedBrush}"/>
-                            <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                            <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource WarningHoverBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource WarningPressedBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ─── INFO ────────────────────────────────── -->
     <Style x:Key="InfoButton" TargetType="Button" BasedOn="{StaticResource ContextualButtonBase}">
         <Setter Property="Background" Value="{DynamicResource InfoBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextOnInfoBrush}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                                  ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.20"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource InfoHoverBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.35" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource InfoPressedBrush}"/>
-                            <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                            <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource InfoHoverBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource InfoPressedBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -591,63 +267,6 @@
         <Setter Property="UseLayoutRounding" Value="True"/>
         <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                Margin="0,0,2,2">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                                  ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.15"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.22" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
-                            <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                            <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="shadowLayer" Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1264,63 +883,39 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <!-- Shadow Layer -->
-                        <Border x:Name="shadowBorder"
-                            CornerRadius="16"
-                            Background="Transparent"
-                            Margin="0,0,4,4">
-                            <Border.Width>
-                                <MultiBinding Converter="{StaticResource HeightBasedWidthConverter}">
-                                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Width"/>
-                                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Height"/>
-                                </MultiBinding>
-                            </Border.Width>
-                            <Border.Effect>
-                                <DropShadowEffect ShadowDepth="2"
-                                            BlurRadius="8"
-                                            Opacity="0.15"
-                                            Direction="270"
-                                            Color="{DynamicResource ShadowColor}" />
-                            </Border.Effect>
-                        </Border>
-
-                        <!-- Main Button -->
-                        <Border x:Name="border"
+                    <Border x:Name="border"
                             CornerRadius="16"
                             Background="{TemplateBinding Background}"
                             SnapsToDevicePixels="True"
                             UseLayoutRounding="True">
-                            <Border.Width>
-                                <MultiBinding Converter="{StaticResource HeightBasedWidthConverter}">
-                                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Width"/>
-                                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Height"/>
-                                </MultiBinding>
-                            </Border.Width>
+                        <Border.Width>
+                            <MultiBinding Converter="{StaticResource HeightBasedWidthConverter}">
+                                <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Width"/>
+                                <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Height"/>
+                            </MultiBinding>
+                        </Border.Width>
 
-                            <ContentPresenter x:Name="contentPresenter"
-                                        Content="{TemplateBinding Content}"
-                                        ContentTemplate="{TemplateBinding ContentTemplate}"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        SnapsToDevicePixels="True"
-                                        UseLayoutRounding="True"
-                                        TextOptions.TextFormattingMode="Display"
-                                        TextOptions.TextRenderingMode="ClearType"
-                                        TextOptions.TextHintingMode="Fixed"
-                                        RenderOptions.ClearTypeHint="Enabled">
-                                <ContentPresenter.Margin>
-                                    <MultiBinding Converter="{StaticResource HeightBasedPaddingConverter}">
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Height"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Padding"/>
-                                    </MultiBinding>
-                                </ContentPresenter.Margin>
-                            </ContentPresenter>
-                        </Border>
-                    </Grid>
+                        <ContentPresenter x:Name="contentPresenter"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    SnapsToDevicePixels="True"
+                                    UseLayoutRounding="True"
+                                    TextOptions.TextFormattingMode="Display"
+                                    TextOptions.TextRenderingMode="ClearType"
+                                    TextOptions.TextHintingMode="Fixed"
+                                    RenderOptions.ClearTypeHint="Enabled">
+                            <ContentPresenter.Margin>
+                                <MultiBinding Converter="{StaticResource HeightBasedPaddingConverter}">
+                                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Height"/>
+                                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Padding"/>
+                                </MultiBinding>
+                            </ContentPresenter.Margin>
+                        </ContentPresenter>
+                    </Border>
 
                     <ControlTemplate.Triggers>
-                        <!-- Hover -->
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="Background">
                                 <Setter.Value>
@@ -1338,14 +933,8 @@
                                          ConverterParameter="TextOn" />
                                 </Setter.Value>
                             </Setter>
-                            <Setter TargetName="shadowBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.22" Direction="270" Color="{DynamicResource ShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
 
-                        <!-- Pressed -->
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="border" Property="Background">
                                 <Setter.Value>
@@ -1360,17 +949,10 @@
                                     <TranslateTransform Y="1" />
                                 </Setter.Value>
                             </Setter>
-                            <Setter TargetName="shadowBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
 
-                        <!-- Disabled -->
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Opacity" Value="0.5" />
-                            <Setter TargetName="shadowBorder" Property="Visibility" Value="Collapsed" />
                             <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -1431,38 +1013,24 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
-                        <Border x:Name="shadowLayer"
-                                CornerRadius="16"
-                                Background="Transparent"
-                                Margin="0,0,4,4">
-                            <Border.Effect>
-                                <DropShadowEffect ShadowDepth="2"
-                                                  BlurRadius="8"
-                                                  Opacity="0.15"
-                                                  Direction="270"
-                                                  Color="{DynamicResource ShadowColor}"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border x:Name="border"
-                                CornerRadius="16"
-                                Background="{TemplateBinding Background}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <TextBlock x:Name="textBlock"
-                                 Text="{TemplateBinding Content}"
-                                 HorizontalAlignment="Center"
-                                 VerticalAlignment="Center"
-                                 Margin="{TemplateBinding Padding}"
-                                 Foreground="{TemplateBinding Foreground}"
-                                 FontWeight="{TemplateBinding FontWeight}"
-                                 FontSize="{TemplateBinding FontSize}"
-                                 FontFamily="{TemplateBinding FontFamily}"
-                                 TextOptions.TextFormattingMode="Display"
-                                 TextOptions.TextRenderingMode="ClearType"
-                                 TextOptions.TextHintingMode="Fixed" />
-                        </Border>
-                    </Grid>
+                    <Border x:Name="border"
+                            CornerRadius="16"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True">
+                        <TextBlock x:Name="textBlock"
+                             Text="{TemplateBinding Content}"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             Margin="{TemplateBinding Padding}"
+                             Foreground="{TemplateBinding Foreground}"
+                             FontWeight="{TemplateBinding FontWeight}"
+                             FontSize="{TemplateBinding FontSize}"
+                             FontFamily="{TemplateBinding FontFamily}"
+                             TextOptions.TextFormattingMode="Display"
+                             TextOptions.TextRenderingMode="ClearType"
+                             TextOptions.TextHintingMode="Fixed" />
+                    </Border>
 
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -1472,11 +1040,6 @@
                                          Path="(helper:ButtonHelper.ColorTheme)"
                                          Converter="{StaticResource ColorResourceConverter}"
                                          ConverterParameter="Hover" />
-                                </Setter.Value>
-                            </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="4" BlurRadius="12" Opacity="0.22" Direction="270" Color="{DynamicResource ShadowColor}"/>
                                 </Setter.Value>
                             </Setter>
                         </Trigger>
@@ -1489,9 +1052,9 @@
                                          ConverterParameter="Pressed" />
                                 </Setter.Value>
                             </Setter>
-                            <Setter TargetName="shadowLayer" Property="Effect">
+                            <Setter TargetName="border" Property="RenderTransform">
                                 <Setter.Value>
-                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.10" Direction="270" Color="{DynamicResource ShadowColor}"/>
+                                    <TranslateTransform Y="1"/>
                                 </Setter.Value>
                             </Setter>
                         </Trigger>

@@ -183,12 +183,12 @@
         <Style.Triggers>
             <!-- Hover -->
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{DynamicResource DataGridHoverRowBackground}" />
+                <Setter Property="Background" Value="{DynamicResource DataGridRowHoverBackground}" />
             </Trigger>
 
             <!-- Selected -->
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="{DynamicResource DataGridSelectedRowBackground}" />
+                <Setter Property="Background" Value="{DynamicResource DataGridSelectionBackground}" />
                 <Setter Property="Foreground" Value="{DynamicResource DataGridSelectedTextBrush}" />
             </Trigger>
 
@@ -247,7 +247,7 @@
                     <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True"/>
                     <Condition Binding="{Binding StyleType}" Value="Default"/>
                 </MultiDataTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource DataGridHoverRowBackground}"/>
+                <Setter Property="Background" Value="{DynamicResource DataGridRowHoverBackground}"/>
             </MultiDataTrigger>
 
             <!-- SELECTED - Custom -->
@@ -266,7 +266,7 @@
                     <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsSelected}" Value="True"/>
                     <Condition Binding="{Binding StyleType}" Value="Default"/>
                 </MultiDataTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource DataGridSelectedRowBackground}"/>
+                <Setter Property="Background" Value="{DynamicResource DataGridSelectionBackground}"/>
                 <Setter Property="Foreground" Value="{DynamicResource DataGridSelectedTextBrush}"/>
             </MultiDataTrigger>
 

@@ -5,6 +5,7 @@
     <ResourceDictionary.MergedDictionaries>
         <!-- 1. Colors - Load colors first (Common then theme-specific) -->
         <ResourceDictionary Source="Base/Colors/Common.xaml"/>
+        <ResourceDictionary Source="Base/SemanticTokens.xaml"/>
         <ResourceDictionary Source="Base/Colors/SoftDark.xaml"/>
 
         <!-- 2. Base Resources - Fonts, animations, common styles -->

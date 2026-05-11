@@ -5,6 +5,7 @@
     <ResourceDictionary.MergedDictionaries>
         <!-- 1. Colors -->
         <ResourceDictionary Source="Base/Colors/Common.xaml"/>
+        <ResourceDictionary Source="Base/SemanticTokens.xaml"/>
         <ResourceDictionary Source="Base/Colors/Dracula.xaml"/>
 
         <!-- 2. Base Resources -->

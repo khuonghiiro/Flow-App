@@ -153,8 +153,8 @@
     <SolidColorBrush x:Key="DataGridAltRowBackground">#FFF7F5F1</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHeaderBackground">#FFE6E3DE</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridBorderBrush">#FFCFC7BF</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridHoverRowBackground">#25458B7E</SolidColorBrush>
-    <SolidColorBrush x:Key="DataGridSelectedRowBackground">#60458B7E</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridRowHoverBackground">#25458B7E</SolidColorBrush>
+    <SolidColorBrush x:Key="DataGridSelectionBackground">#60458B7E</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridSelectedCellBackground">#60458B7E</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridSelectedTextBrush">#FFFFFFFF</SolidColorBrush>
     <SolidColorBrush x:Key="DataGridHoverCellBackground" Color="#40458B7E"/>

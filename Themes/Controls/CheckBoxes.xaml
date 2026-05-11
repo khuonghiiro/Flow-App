@@ -27,12 +27,12 @@
                                 Grid.Column="0"
                                 Width="18" Height="18"
                                 Background="{DynamicResource ButtonBackgroundBrush}"
-                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderBrush="{DynamicResource CheckBoxBorderBrush}"
                                 BorderThickness="1.5"
                                 CornerRadius="3">
                             <Path x:Name="CheckMark"
                                   Data="M 2 8 L 6 12 L 14 4"
-                                  Stroke="{DynamicResource PrimaryBrush}"
+                                  Stroke="{DynamicResource CheckBoxCheckMarkBrush}"
                                   StrokeThickness="2"
                                   StrokeStartLineCap="Round"
                                   StrokeEndLineCap="Round"
@@ -49,15 +49,15 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="CheckBoxBorder" Property="Background"   Value="Transparent"/>
-                            <Setter TargetName="CheckBoxBorder" Property="BorderBrush"  Value="{DynamicResource PrimaryBrush}"/>
+                            <Setter TargetName="CheckBoxBorder" Property="Background"   Value="{DynamicResource CheckBoxCheckedBackground}"/>
+                            <Setter TargetName="CheckBoxBorder" Property="BorderBrush"  Value="{DynamicResource CheckBoxCheckedBackground}"/>
                             <Setter TargetName="CheckMark"      Property="Visibility"   Value="Visible"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="CheckBoxBorder" Property="BorderBrush"  Value="{DynamicResource PrimaryBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="CheckBoxBorder" Property="Background" Value="{DynamicResource PrimaryGlowBrush}"/>
+                            <Setter TargetName="CheckBoxBorder" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="CheckBoxBorder" Property="Background"   Value="{DynamicResource DisabledBackground}"/>

@@ -22,24 +22,12 @@
         </Setter>
     </Style>
 
-    <!-- Drop Shadow Effect -->
-    <DropShadowEffect x:Key="DropShadowEffect" 
-                  Color="#000000" Opacity="0.1" 
-                  ShadowDepth="2" BlurRadius="8"/>
-    
-    <!--Hiệu ứng bóng đổ-->
-    <DropShadowEffect x:Key="ButtonShadowEffect"
-                  ShadowDepth="4"
-                  BlurRadius="12"
-                  Opacity="0.3"
-                  Color="#000000" />
-    
-    <!--Hiệu ứng bóng đổ-->
-    <DropShadowEffect x:Key="ButtonShadowHoverEffect"
-                  ShadowDepth="6"
-                  BlurRadius="18"
-                  Opacity="0.5"
-                  Color="#000000" />
+    <!-- Light card/popup shadow (keep subtle: avoid large BlurRadius on UI near text) -->
+    <DropShadowEffect x:Key="DropShadowEffect"
+                      Color="#000000"
+                      Opacity="0.1"
+                      ShadowDepth="1"
+                      BlurRadius="3"/>
 
     <!-- Style cho Button có thể select như RadioButton -->
     <Style x:Key="SelectableOptionButtonStyle" TargetType="Button">

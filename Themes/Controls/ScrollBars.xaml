@@ -8,13 +8,7 @@
     <!-- MÃ u track (ná»n) -->
     <SolidColorBrush x:Key="ScrollBarTrackBackground" Color="Transparent"/>
 
-    <!-- MÃ u thumb (thanh kÃ©o) - cÃ¡c tráº¡ng thÃ¡i -->
-    <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#60888888"/>
-    <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#80888888"/>
-    <SolidColorBrush x:Key="ScrollBarThumbPressedBrush" Color="#A0888888"/>
-
-    <Color x:Key="ScrollBarThumbColor">#60888888</Color>
-    <Color x:Key="ScrollBarThumbHoverColor">#80888888</Color>
+    <!-- Thumb / track colors: Base/SemanticTokens.xaml + Base/Colors/{Theme}.xaml -->
 
     <!-- ============================================ -->
     <!-- INVISIBLE BUTTON STYLE - Must be defined before use -->
@@ -55,35 +49,12 @@
                     </Border>
 
                     <ControlTemplate.Triggers>
-                        <!-- Hover: mÃ u Ä‘áº­m hÆ¡n rÃµ rÃ ng -->
-                        <EventTrigger RoutedEvent="MouseEnter">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <ColorAnimation Storyboard.TargetName="ThumbBorder"
-                                                  Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                  To="{StaticResource ScrollBarThumbHoverColor}" Duration="0:0:0.1"/>
-                                    <ThicknessAnimation Storyboard.TargetName="ThumbBorder"
-                                                      Storyboard.TargetProperty="Margin"
-                                                      To="1.5" Duration="0:0:0.1"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-
-                        <!-- Leave: quay vá» mÃ u ban Ä‘áº§u (váº«n rÃµ rÃ ng) -->
-                        <EventTrigger RoutedEvent="MouseLeave">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <ColorAnimation Storyboard.TargetName="ThumbBorder"
-                                                  Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                  To="{StaticResource ScrollBarThumbColor}" Duration="0:0:0.15"/>
-                                    <ThicknessAnimation Storyboard.TargetName="ThumbBorder"
-                                                      Storyboard.TargetProperty="Margin"
-                                                      To="2" Duration="0:0:0.15"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-
-                        <!-- Pressed: mÃ u tá»‘i nháº¥t -->
+                        <!-- Dùng brush tokens (DynamicResource), không dùng StaticResource Color —
+                             tránh lỗi khi dictionary chỉ có SemanticTokens / không merge Color từ palette. -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+                            <Setter TargetName="ThumbBorder" Property="Margin" Value="1.5"/>
+                        </Trigger>
                         <Trigger Property="IsDragging" Value="True">
                             <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollBarThumbPressedBrush}"/>
                             <Setter TargetName="ThumbBorder" Property="Margin" Value="1"/>
@@ -294,85 +265,21 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Grid>
-                        <!-- Glow effect -->
-                        <Border x:Name="GlowBorder"
-                                Background="#667eea"
-                                CornerRadius="4"
-                                Margin="0"
-                                Opacity="0">
-                            <Border.Effect>
-                                <BlurEffect Radius="6"/>
-                            </Border.Effect>
-                        </Border>
-
-                        <!-- Main thumb vá»›i gradient Ä‘áº¹p -->
-                        <Border x:Name="ThumbBorder"
-                                CornerRadius="4"
-                                Margin="1"
-                                MinHeight="24"
-                                MinWidth="8"
-                                SnapsToDevicePixels="True"
-                                BorderThickness="0">
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Color="#999999" Offset="0.0"/>
-                                    <GradientStop Color="#AAAAAA" Offset="0.5"/>
-                                    <GradientStop Color="#999999" Offset="1.0"/>
-                                </LinearGradientBrush>
-                            </Border.Background>
-                        </Border>
-                    </Grid>
+                    <Border x:Name="ThumbBorder"
+                            Background="{DynamicResource ScrollBarThumbBrush}"
+                            CornerRadius="4"
+                            Margin="1"
+                            MinHeight="24"
+                            MinWidth="8"
+                            SnapsToDevicePixels="True"
+                            BorderThickness="0"/>
 
                     <ControlTemplate.Triggers>
-                        <!-- Hover: hiá»ƒn thá»‹ glow vÃ  Ä‘á»•i mÃ u -->
-                        <EventTrigger RoutedEvent="MouseEnter">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="GlowBorder"
-                                                   Storyboard.TargetProperty="Opacity"
-                                                   To="0.5" Duration="0:0:0.2"/>
-                                    <ThicknessAnimation Storyboard.TargetName="ThumbBorder"
-                                                      Storyboard.TargetProperty="Margin"
-                                                      To="0.5" Duration="0:0:0.15">
-                                        <ThicknessAnimation.EasingFunction>
-                                            <CubicEase EasingMode="EaseOut"/>
-                                        </ThicknessAnimation.EasingFunction>
-                                    </ThicknessAnimation>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-
-                        <!-- Leave: áº©n glow nhÆ°ng giá»¯ mÃ u rÃµ rÃ ng -->
-                        <EventTrigger RoutedEvent="MouseLeave">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="GlowBorder"
-                                                   Storyboard.TargetProperty="Opacity"
-                                                   To="0" Duration="0:0:0.25"/>
-                                    <ThicknessAnimation Storyboard.TargetName="ThumbBorder"
-                                                      Storyboard.TargetProperty="Margin"
-                                                      To="1" Duration="0:0:0.2">
-                                        <ThicknessAnimation.EasingFunction>
-                                            <CubicEase EasingMode="EaseInOut"/>
-                                        </ThicknessAnimation.EasingFunction>
-                                    </ThicknessAnimation>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-
-                        <!-- Dragging: gradient mÃ u Ä‘áº­m -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+                        </Trigger>
                         <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="ThumbBorder" Property="Background">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                        <GradientStop Color="#667eea" Offset="0.0"/>
-                                        <GradientStop Color="#764ba2" Offset="1.0"/>
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
-                            <Setter TargetName="GlowBorder" Property="Opacity" Value="0.7"/>
-                            <Setter TargetName="ThumbBorder" Property="Margin" Value="0"/>
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

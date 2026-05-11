@@ -84,8 +84,8 @@
                                         UseLayoutRounding="True">
                                     <Border.Effect>
                                         <DropShadowEffect Color="{DynamicResource ShadowColor}"
-                                                          BlurRadius="8"
-                                                          ShadowDepth="2"
+                                                          BlurRadius="3"
+                                                          ShadowDepth="1"
                                                           Direction="270"
                                                           Opacity="0.12"/>
                                     </Border.Effect>
@@ -263,8 +263,8 @@
                             UseLayoutRounding="True">
                         <Border.Effect>
                             <DropShadowEffect Color="{DynamicResource ShadowColor}"
-                                              BlurRadius="8"
-                                              ShadowDepth="2"
+                                              BlurRadius="3"
+                                              ShadowDepth="1"
                                               Direction="270"
                                               Opacity="0.12"/>
                         </Border.Effect>
