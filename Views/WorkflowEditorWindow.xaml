@@ -306,8 +306,8 @@ Cursor="Hand"
                                 <Setter Property="Padding" Value="5"/>
                                 <Setter Property="Margin" Value="2"/>
                                 <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="BorderBrush" Value="White"/>
+                                <Setter Property="BorderThickness" Value="1.5"/>
                                 <Setter Property="HorizontalAlignment" Value="Left"/>
                                 <Setter Property="VerticalAlignment" Value="Top"/>
                                 <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
@@ -322,7 +322,7 @@ Cursor="Hand"
                                 <!-- Effect mặc định QUAN TRỌNG -->
                                 <Setter Property="Effect">
                                     <Setter.Value>
-                                        <DropShadowEffect Color="Black" Direction="270" ShadowDepth="1" BlurRadius="5" Opacity="0.18"/>
+                                        <DropShadowEffect Color="Black" Direction="270" ShadowDepth="2" BlurRadius="6" Opacity="0.25"/>
                                     </Setter.Value>
                                 </Setter>
                                 <EventSetter Event="MouseDown" Handler="NodeTemplate_MouseDown"/>
@@ -331,8 +331,9 @@ Cursor="Hand"
                                 <EventSetter Event="MouseEnter" Handler="NodeTemplate_MouseEnter"/>
                                 <EventSetter Event="MouseLeave" Handler="NodeTemplate_MouseLeave"/>
                                 <Style.Triggers>
+                                    <!-- Hover: giữ viền trắng + shadow đậm hơn (logic cũ) -->
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                        <Setter Property="BorderBrush" Value="White"/>
                                         <Setter Property="BorderThickness" Value="1.5"/>
                                         <Setter Property="RenderTransform">
                                             <Setter.Value>
@@ -341,7 +342,7 @@ Cursor="Hand"
                                         </Setter>
                                         <Setter Property="Effect">
                                             <Setter.Value>
-                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="2" BlurRadius="8" Opacity="0.22"/>
+                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="3" BlurRadius="10" Opacity="0.35"/>
                                             </Setter.Value>
                                         </Setter>
                                     </Trigger>
@@ -353,11 +354,11 @@ Cursor="Hand"
                                         </Setter>
                                         <Setter Property="Effect">
                                             <Setter.Value>
-                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="1" BlurRadius="5" Opacity="0.18"/>
+                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="2" BlurRadius="6" Opacity="0.25"/>
                                             </Setter.Value>
                                         </Setter>
-                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
-                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="BorderBrush" Value="White"/>
+                                        <Setter Property="BorderThickness" Value="1.5"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>

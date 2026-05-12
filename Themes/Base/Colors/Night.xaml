@@ -216,6 +216,8 @@
     <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FF88C0D0"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FF343C4E"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FF343C4E"/>
+    <!-- Toolbar / editor header — darkest Nord bg -->
+    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF161C28"/>
 
     <!-- Common palette overrides (fine-tuned for Night contrast) -->
     <SolidColorBrush x:Key="OceanBrush" Color="#88C0D0"/>

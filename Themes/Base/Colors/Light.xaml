@@ -222,6 +222,8 @@
     <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FF0067C0"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FFEEF2F8"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FFEEF2F8"/>
+    <!-- Toolbar / editor header — deep navy for contrast on light theme -->
+    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF1A2540"/>
 
     <!-- Common palette overrides -->
     <SolidColorBrush x:Key="OceanBrush" Color="#0078A8"/>

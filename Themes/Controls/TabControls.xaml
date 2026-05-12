@@ -28,7 +28,7 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Foreground"                     Value="{DynamicResource TextOnPrimaryBrush}"/>
-                            <Setter TargetName="Border" Property="BorderBrush"  Value="{DynamicResource PrimaryPressedBrush}"/>
+                            <Setter TargetName="Border" Property="BorderBrush"  Value="{DynamicResource TabIndicatorBrush}"/>
                             <Setter TargetName="Border" Property="Background"   Value="{DynamicResource PrimaryBrush}"/>
                         </Trigger>
                         <MultiTrigger>

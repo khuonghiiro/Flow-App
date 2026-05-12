@@ -216,6 +216,8 @@
     <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FFF92672"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FF303028"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FF303028"/>
+    <!-- Toolbar / editor header — darkest Monokai bg -->
+    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF121210"/>
 
     <!-- Common palette overrides -->
     <SolidColorBrush x:Key="OceanBrush" Color="#66D9E8"/>

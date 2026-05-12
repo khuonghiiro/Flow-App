@@ -220,15 +220,7 @@
         <Style.Triggers>
             <!-- Hover Animation - chỉ giữ shadow và border -->
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush">
-                    <Setter.Value>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="red" Offset="0"/>
-                            <GradientStop Color="#FF2563EB" Offset="0.5"/>
-                            <GradientStop Color="Orange" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Setter.Value>
-                </Setter>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
                 <Setter Property="BorderThickness" Value="1" />
                 <Trigger.EnterActions>
                     <BeginStoryboard>
@@ -354,13 +346,13 @@
                                     </Border.Background>
 
                                     <Grid>
-                                        <!-- left selection indicator với màu retro -->
+                                        <!-- left selection indicator -->
                                         <Rectangle x:Name="SelectionIndicator"
                                            Width="4"
                                            HorizontalAlignment="Left"
                                            Margin="-4,2,0,2"
                                            RadiusX="2" RadiusY="2"
-                                           Fill="#0061AD"
+                                           Fill="{DynamicResource PrimaryBrush}"
                                            Visibility="Collapsed"/>
 
                                         <ContentPresenter Margin="8,6,8,6"
@@ -370,59 +362,22 @@
                                 </Border>
 
                                 <ControlTemplate.Triggers>
-                                    <!-- Hover: animate background color với retro hover -->
+                                    <!-- Hover -->
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Trigger.EnterActions>
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <ColorAnimation Storyboard.TargetName="ItemBorder"
-                                                            Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                            To="#3F00A0" Duration="0:0:0.15"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </Trigger.EnterActions>
-                                        <Trigger.ExitActions>
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <ColorAnimation Storyboard.TargetName="ItemBorder"
-                                                            Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                            To="Transparent" Duration="0:0:0.2"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </Trigger.ExitActions>
+                                        <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource LavenderHoverBrush}"/>
                                     </Trigger>
 
-                                    <!-- Selected: animate to retro background, show indicator, set text color -->
+                                    <!-- Selected -->
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Trigger.EnterActions>
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <ColorAnimation Storyboard.TargetName="ItemBorder"
-                                                            Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                            To="#101357" Duration="0:0:0.15"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </Trigger.EnterActions>
-                                        <Trigger.ExitActions>
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <ColorAnimation Storyboard.TargetName="ItemBorder"
-                                                            Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                            To="Transparent" Duration="0:0:0.2"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </Trigger.ExitActions>
-
-                                        <!-- immediate setters -->
+                                        <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource LavenderPressedBrush}"/>
                                         <Setter TargetName="SelectionIndicator" Property="Visibility" Value="Visible"/>
-                                        <!-- text màu trắng khi selected với retro background -->
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextOnLavenderBrush}"/>
                                     </Trigger>
 
-                                    <!-- Focus visual (keyboard focus) với retro pressed color -->
+                                    <!-- Focus visual -->
                                     <Trigger Property="IsFocused" Value="True">
-                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#0061AD"/>
-                                        <Setter TargetName="ItemBorder" Property="BorderThickness" Value="1" />
+                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                        <Setter TargetName="ItemBorder" Property="BorderThickness" Value="1"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>

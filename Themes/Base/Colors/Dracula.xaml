@@ -225,6 +225,8 @@
     <SolidColorBrush x:Key="TabIndicatorBrush" Color="#FFBD93F9"/>
     <SolidColorBrush x:Key="DataGridHeaderHoverBackground" Color="#FF303348"/>
     <SolidColorBrush x:Key="MenuItemHoverBackgroundBrush" Color="#FF303348"/>
+    <!-- Toolbar / editor header — deepest Dracula bg -->
+    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF14151E"/>
 
     <!-- Common palette overrides (fine-tuned for Dracula contrast) -->
     <SolidColorBrush x:Key="OceanBrush" Color="#8BE9FD"/>
