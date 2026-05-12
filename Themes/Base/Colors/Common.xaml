@@ -715,7 +715,7 @@
     <SolidColorBrush x:Key="WindowBackgroundMainBrush" Color="#FFF8FAFC"/>
     <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#FF1E293B"/>
     <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF0F172A"/>
+    <SolidColorBrush x:Key="HeaderBackgroundMainBrush" Color="#FF131B2C"/>
     <!-- ComboBox chrome (each theme overrides; calmer than generic TextBox on dark header) -->
     <SolidColorBrush x:Key="ComboBoxFieldBackground" Color="#FF1E293B"/>
     <SolidColorBrush x:Key="ComboBoxFieldBorderBrush" Color="#FF5C697E"/>

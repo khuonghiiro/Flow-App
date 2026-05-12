@@ -204,8 +204,9 @@
     <SolidColorBrush x:Key="HoverBackground"      Color="#40403F34"/>
 
     <!-- CANVAS -->
-    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FF1A1A16"/>
-    <SolidColorBrush x:Key="CanvasGridBrush" Color="#7075715E"/>
+    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FF1B1B17"/>
+    <SolidColorBrush x:Key="CanvasGridBrush" Color="#AE787468"/>
+    <SolidColorBrush x:Key="ExecutionTraceGuideBrush" Color="#AA8A8270"/>
     <Color x:Key="NodeShadowColor">#88000000</Color>
 
     <!-- FOCUS & INTERACTION -->

@@ -179,8 +179,9 @@
     <SolidColorBrush x:Key="ListViewItemBrush"    Color="#FF0F172A"/>
     <SolidColorBrush x:Key="HoverBackground"      Color="#EEF2F7"/>
 
-    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FFF8FAFD"/>
-    <SolidColorBrush x:Key="CanvasGridBrush" Color="#C094A8C4"/>
+    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FFF7F9FC"/>
+    <SolidColorBrush x:Key="CanvasGridBrush" Color="#D096A2BC"/>
+    <SolidColorBrush x:Key="ExecutionTraceGuideBrush" Color="#C8788FA8"/>
     <Color x:Key="NodeShadowColor">#28000000</Color>
 
     <!-- FOCUS & INTERACTION -->

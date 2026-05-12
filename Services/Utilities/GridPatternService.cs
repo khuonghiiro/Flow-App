@@ -31,7 +31,8 @@ namespace FlowMy.Services.Utilities
 
             // Keep opacity from theme resource color itself to avoid double-fading.
             var gridBrush = new SolidColorBrush(gridColor);
-            double gridSize = 50;
+            // Slightly larger tile + marks: fewer repeats, easier to read without squinting.
+            const double gridSize = 56;
 
             if (_gridType == "Dots")
             {
@@ -39,7 +40,7 @@ namespace FlowMy.Services.Utilities
                 var geometryDrawing = new GeometryDrawing
                 {
                     Brush = gridBrush,
-                    Geometry = new EllipseGeometry(new Point(gridSize / 2, gridSize / 2), 2.2, 2.2)
+                    Geometry = new EllipseGeometry(new Point(gridSize / 2, gridSize / 2), 2.65, 2.65)
                 };
                 drawingGroup.Children.Add(geometryDrawing);
 
@@ -68,14 +69,14 @@ namespace FlowMy.Services.Utilities
                 drawingGroup.Children.Add(new GeometryDrawing
                 {
                     Brush = gridBrush,
-                    Pen = new Pen(gridBrush, 1.2),
+                    Pen = new Pen(gridBrush, 1.05) { DashCap = PenLineCap.Flat, StartLineCap = PenLineCap.Flat, EndLineCap = PenLineCap.Flat },
                     Geometry = new LineGeometry(new Point(0, 0), new Point(0, gridSize))
                 });
 
                 drawingGroup.Children.Add(new GeometryDrawing
                 {
                     Brush = gridBrush,
-                    Pen = new Pen(gridBrush, 1.2),
+                    Pen = new Pen(gridBrush, 1.05) { DashCap = PenLineCap.Flat, StartLineCap = PenLineCap.Flat, EndLineCap = PenLineCap.Flat },
                     Geometry = new LineGeometry(new Point(0, 0), new Point(gridSize, 0))
                 });
 

@@ -30,9 +30,9 @@
     <SolidColorBrush x:Key="BackgroundAll" Color="#FF1A1918"/>
 
     <!-- ===== PRIMARY — jade teal (more vivid) ===== -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#6BBFB0"/>
-    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#84CFC2"/>
-    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#56ADA0"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#5FB0A4"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#78C4B8"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#52A396"/>
     <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="#0A1E1C"/>
 
     <!-- ===== SECONDARY ===== -->
@@ -211,8 +211,9 @@
     <SolidColorBrush x:Key="HoverBackground"      Color="#40383430"/>
 
     <!-- ===== CANVAS ===== -->
-    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FF181716"/>
-    <SolidColorBrush x:Key="CanvasGridBrush" Color="#70504A42"/>
+    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FF1A1918"/>
+    <SolidColorBrush x:Key="CanvasGridBrush" Color="#B080786E"/>
+    <SolidColorBrush x:Key="ExecutionTraceGuideBrush" Color="#AA8F8780"/>
     <Color x:Key="NodeShadowColor">#80000000</Color>
 
     <!-- ===== FOCUS & INTERACTION ===== -->

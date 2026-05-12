@@ -46,10 +46,10 @@
                 x:Name="TopToolbarBorder"
                 Visibility="{Binding IsExecutionTracePanelMaximized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                 Background="{DynamicResource HeaderBackgroundMainBrush}"
-                Padding="16,8"
+                Padding="14,10"
                 BorderBrush="{DynamicResource BorderColor}"
                 BorderThickness="0,0,0,1"
-                MinHeight="50">
+                MinHeight="52">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" MinWidth="200"/> <!-- Workflow Management -->
@@ -77,7 +77,7 @@
                         </StackPanel>
                     </Button>
 
-                    <Rectangle x:Name="ResetSeparator" Width="1" Height="24" Fill="White" Opacity="0.2" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                    <Rectangle x:Name="ResetSeparator" Width="1" Height="24" Fill="White" Opacity="0.12" Margin="0,0,16,0" VerticalAlignment="Center"/>
 
                     <StackPanel Orientation="Horizontal">
                         <TextBlock x:Name="WorkflowLabel" Text="Workflow:" VerticalAlignment="Center" Margin="0,0,10,0" 
@@ -226,7 +226,7 @@ Cursor="Hand"
 
 
 
-                    <Rectangle Width="1" Height="24" Fill="White" Opacity="0.2" Margin="12,0,12,0" VerticalAlignment="Center"/>
+                    <Rectangle Width="1" Height="24" Fill="White" Opacity="0.12" Margin="12,0,12,0" VerticalAlignment="Center"/>
 
                     <!-- Theme Selector ComboBox -->
                     <ComboBox x:Name="ThemeSelector"
@@ -265,8 +265,8 @@ Cursor="Hand"
         <!-- Canvas cho workflow với zoom và pan -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="LeftMenuColumn" Width="200" MinWidth="150" MaxWidth="400"/>
-                <ColumnDefinition x:Name="LeftSplitterColumn" Width="5" MinWidth="5" MaxWidth="5"/>
+                <ColumnDefinition x:Name="LeftMenuColumn" Width="220" MinWidth="160" MaxWidth="420"/>
+                <ColumnDefinition x:Name="LeftSplitterColumn" Width="6" MinWidth="6" MaxWidth="6"/>
                 <ColumnDefinition Width="*" MinWidth="300"/>
             </Grid.ColumnDefinitions>
 
@@ -275,8 +275,8 @@ Cursor="Hand"
                          Grid.Column="1"
                          HorizontalAlignment="Stretch"
                          VerticalAlignment="Stretch"
-                         Background="{DynamicResource BorderColor}"
-                         Width="2"
+                         Background="Transparent"
+                         Width="6"
                          ResizeDirection="Columns"
                          ShowsPreview="True"
                          Cursor="SizeWE"/>
@@ -286,13 +286,13 @@ Cursor="Hand"
                     x:Name="LeftMenuBorder"
                     Background="{DynamicResource WindowBodyBackground}"
                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                    BorderThickness="0,0,0,0"
-                    Padding="10,8, 0, 8"
+                    BorderThickness="0,0,1,0"
+                    Padding="12,10,0,10"
                     SnapsToDevicePixels="True"
-                    MinWidth="150">
+                    MinWidth="160">
                 <Grid>
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="2,0,2,8" x:Name="NodeTemplatesPanel">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,2,0">
+                    <StackPanel Margin="0,0,0,8" x:Name="NodeTemplatesPanel">
                         <StackPanel.Resources>
                             <!-- Icon-only palette item (drag from templates) -->
                             <Style x:Key="PaletteIconNodeStyle" TargetType="Border">
@@ -306,8 +306,8 @@ Cursor="Hand"
                                 <Setter Property="Padding" Value="5"/>
                                 <Setter Property="Margin" Value="2"/>
                                 <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="BorderBrush" Value="White"/>
-                                <Setter Property="BorderThickness" Value="1.5"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+                                <Setter Property="BorderThickness" Value="1"/>
                                 <Setter Property="HorizontalAlignment" Value="Left"/>
                                 <Setter Property="VerticalAlignment" Value="Top"/>
                                 <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
@@ -322,7 +322,7 @@ Cursor="Hand"
                                 <!-- Effect mặc định QUAN TRỌNG -->
                                 <Setter Property="Effect">
                                     <Setter.Value>
-                                        <DropShadowEffect Color="Black" Direction="270" ShadowDepth="2" BlurRadius="6" Opacity="0.25"/>
+                                        <DropShadowEffect Color="Black" Direction="270" ShadowDepth="1" BlurRadius="5" Opacity="0.18"/>
                                     </Setter.Value>
                                 </Setter>
                                 <EventSetter Event="MouseDown" Handler="NodeTemplate_MouseDown"/>
@@ -331,9 +331,8 @@ Cursor="Hand"
                                 <EventSetter Event="MouseEnter" Handler="NodeTemplate_MouseEnter"/>
                                 <EventSetter Event="MouseLeave" Handler="NodeTemplate_MouseLeave"/>
                                 <Style.Triggers>
-                                    <!-- Hover effect: giữ viền trắng và shadow khi hover -->
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="BorderBrush" Value="White"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
                                         <Setter Property="BorderThickness" Value="1.5"/>
                                         <Setter Property="RenderTransform">
                                             <Setter.Value>
@@ -342,11 +341,10 @@ Cursor="Hand"
                                         </Setter>
                                         <Setter Property="Effect">
                                             <Setter.Value>
-                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="3" BlurRadius="10" Opacity="0.35"/>
+                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="2" BlurRadius="8" Opacity="0.22"/>
                                             </Setter.Value>
                                         </Setter>
                                     </Trigger>
-                                    <!-- Trigger khi KHÔNG hover - đảm bảo quay về trạng thái ban đầu -->
                                     <Trigger Property="IsMouseOver" Value="False">
                                         <Setter Property="RenderTransform">
                                             <Setter.Value>
@@ -355,11 +353,11 @@ Cursor="Hand"
                                         </Setter>
                                         <Setter Property="Effect">
                                             <Setter.Value>
-                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="2" BlurRadius="6" Opacity="0.25"/>
+                                                <DropShadowEffect Color="Black" Direction="270" ShadowDepth="1" BlurRadius="5" Opacity="0.18"/>
                                             </Setter.Value>
                                         </Setter>
-                                        <Setter Property="BorderBrush" Value="White"/>
-                                        <Setter Property="BorderThickness" Value="1.5"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -367,9 +365,9 @@ Cursor="Hand"
                             <Style x:Key="PaletteGroupHeaderStyle" TargetType="TextBlock">
                                 <Setter Property="FontSize" Value="11"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
-                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                                <Setter Property="Margin" Value="0,10,0,6"/>
-                                <Setter Property="Opacity" Value="0.85"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                <Setter Property="Margin" Value="0,14,0,8"/>
+                                <Setter Property="Opacity" Value="1"/>
                             </Style>
 
                             <Style x:Key="PaletteSvgIconStyle" TargetType="controls:SvgViewboxEx">
@@ -388,15 +386,15 @@ Cursor="Hand"
 
                         </StackPanel.Resources>
 
-                        <Grid Margin="0,0,0,8">
+                        <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0"
                                        Text="Node Templates"
-                                       FontWeight="Bold"
-                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
                                        VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextBrush}"/>
                             <Button x:Name="NodePaletteCollapseButton"
@@ -416,7 +414,7 @@ Cursor="Hand"
                                         BorderBrush="{DynamicResource BorderColor}"
                                         BorderThickness="1">
                                     <controls:SvgViewboxEx Width="14" Height="14"
-                                                           Fill="{DynamicResource SecondaryBrush}"
+                                                           Fill="{DynamicResource TextBrush}"
                                                            Opacity="0.95"
                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='angles-left duotone'}"/>
                                 </Border>
@@ -3054,10 +3052,10 @@ Cursor="Hand"
                                                         </Style>
                                                     </Grid.Style>
                                                     <Line X1="0" Y1="0" X2="0"
-                                                          Stroke="{DynamicResource BorderColor}"
-                                                          StrokeThickness="1"
-                                                          StrokeDashArray="4,3"
-                                                          StrokeDashCap="Flat"
+                                                          Stroke="{DynamicResource ExecutionTraceGuideBrush}"
+                                                          StrokeThickness="1.25"
+                                                          StrokeDashArray="5,4"
+                                                          StrokeDashCap="Round"
                                                           HorizontalAlignment="Left"
                                                           VerticalAlignment="Top"
                                                           SnapsToDevicePixels="True"
@@ -3786,7 +3784,7 @@ Cursor="Hand"
                     </Border.Effect>
                     <controls:SvgViewboxEx x:Name="NodePaletteExpandIcon"
                                            Width="16" Height="16"
-                                           Fill="{DynamicResource SecondaryBrush}"
+                                           Fill="{DynamicResource TextBrush}"
                                            Opacity="0.95"
                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='angles-right duotone'}"/>
                 </Border>
