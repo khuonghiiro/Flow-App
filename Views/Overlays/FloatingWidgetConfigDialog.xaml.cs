@@ -325,6 +325,8 @@ namespace FlowMy.Views.Overlays
             _loadingValues = true;
             try
             {
+                ApplyNodeMinSizeDefaults(cfg);
+
                 IsEnabledCheckBox.IsChecked = cfg.IsEnabled;
                 WidgetNameTextBox.Text = string.IsNullOrWhiteSpace(cfg.WidgetName)
                     ? (_selectedNode?.Title ?? string.Empty)
@@ -415,6 +417,58 @@ namespace FlowMy.Views.Overlays
             {
                 _loadingValues = false;
             }
+        }
+
+        private (double MinW, double MinH) ResolveNodeMinSizePx()
+        {
+            if (_selectedNode?.Border is Border b)
+            {
+                var minW = b.MinWidth > 0 ? b.MinWidth : 0;
+                var minH = b.MinHeight > 0 ? b.MinHeight : 0;
+                if (minW > 0 && minH > 0) return (minW, minH);
+            }
+
+            return _selectedNode switch
+            {
+                ImageProcessingNode => (800, 600),
+                VideoProcessingNode => (540, 340),
+                HtmlUiNode => (600, 600),
+                WebNode => (600, 600),
+                MediaGalleryNode => (200, 180),
+                _ => (200, 150),
+            };
+        }
+
+        private static (double Width, double Height) GetPrimaryWorkAreaSize()
+        {
+            try
+            {
+                var area = Screen.PrimaryScreen?.WorkingArea;
+                if (area != null && area.Value.Width > 0 && area.Value.Height > 0)
+                    return (area.Value.Width, area.Value.Height);
+            }
+            catch { }
+
+            return (1920, 1080);
+        }
+
+        private void ApplyNodeMinSizeDefaults(FloatingWidgetConfig cfg)
+        {
+            var (nodeMinW, nodeMinH) = ResolveNodeMinSizePx();
+
+            cfg.MinExpandedWidth = Math.Max(nodeMinW, cfg.MinExpandedWidth);
+            cfg.MinExpandedHeight = Math.Max(nodeMinH, cfg.MinExpandedHeight);
+            cfg.ExpandedWidth = Math.Max(cfg.MinExpandedWidth, cfg.ExpandedWidth);
+            cfg.ExpandedHeight = Math.Max(cfg.MinExpandedHeight, cfg.ExpandedHeight);
+
+            var (areaW, areaH) = GetPrimaryWorkAreaSize();
+            var minWRatioFromNode = Math.Max(0.05, Math.Min(1.0, nodeMinW / areaW));
+            var minHRatioFromNode = Math.Max(0.05, Math.Min(1.0, nodeMinH / areaH));
+
+            cfg.MinWidthRatio = Math.Max(minWRatioFromNode, cfg.MinWidthRatio);
+            cfg.MinHeightRatio = Math.Max(minHRatioFromNode, cfg.MinHeightRatio);
+            cfg.WidthRatio = Math.Max(cfg.MinWidthRatio, cfg.WidthRatio);
+            cfg.HeightRatio = Math.Max(cfg.MinHeightRatio, cfg.HeightRatio);
         }
 
         private static void SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag)
@@ -722,6 +776,7 @@ namespace FlowMy.Views.Overlays
             }
 
             cfg.UseRatioSize = switchingToRatio;
+            ApplyNodeMinSizeDefaults(cfg);
 
             _loadingValues = true;
             try
