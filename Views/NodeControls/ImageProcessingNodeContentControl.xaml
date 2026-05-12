@@ -115,27 +115,27 @@
                 <StackPanel Width="48" Orientation="Vertical"
                             HorizontalAlignment="Center" VerticalAlignment="Top">
                     <Button x:Name="BtnOpenImage" Content="📁" ToolTip="Mở ảnh"
-                            Width="40" Height="40" Style="{DynamicResource PrimaryButton}"
-                            FontSize="18" Padding="0" Margin="0,0,0,10"
+                            Width="30" Height="30" Style="{DynamicResource PrimaryButton}"
+                            FontSize="16" Padding="0" Margin="0,0,0,10"
                             PreviewMouseLeftButtonDown="CommonButton_StopBubbling_MouseLeftButtonDown"
                             Click="BtnOpenImage_Click"/>
                     <Border BorderBrush="#78FFFFFF" BorderThickness="1" CornerRadius="4"
-                            Padding="2" Margin="0,0,0,6">
+                            Padding="2" Margin="4,0,4,6">
                         <StackPanel Orientation="Vertical"
                                     HorizontalAlignment="Center" VerticalAlignment="Top">
-                            <Button x:Name="ColorCropButton" Width="40" Height="40"
+                            <Button x:Name="ColorCropButton" Width="30" Height="30"
                                     Margin="0,0,0,10" BorderThickness="0" Cursor="Hand"
                                     Padding="0" ToolTip="Chọn màu viền/background vùng crop"
                                     Click="ColorCropButton_Click"/>
                             <Button x:Name="CropToolButton" Content="✂"
                                     ToolTip="Crop ảnh (Alt + click trái trên ảnh để tạo điểm)"
                                     Style="{DynamicResource WarningButton}"
-                                    Width="40" Height="40" FontSize="18" Padding="0"
+                                    Width="30" Height="30" FontSize="16" Padding="0"
                                     PreviewMouseLeftButtonDown="CommonButton_StopBubbling_MouseLeftButtonDown"
                                     Click="CropToolButton_Click"/>
                         </StackPanel>
                     </Border>
-                    <Border Background="Transparent" Width="22" Height="40" Margin="0,0,0,6"/>
+                    <Border Background="Transparent" Width="22" Height="30" Margin="0,0,0,6"/>
                 </StackPanel>
             </Viewbox>
         </Border>
@@ -156,7 +156,7 @@
                            HorizontalAlignment="Left" VerticalAlignment="Top"/>
                     <TextBlock x:Name="PlaceholderTextBlock"
                                Text="Chưa có ảnh. Mở dialog (chuột phải hoặc nút Mở) để dán link/base64."
-                               Foreground="#B0BEC5" FontSize="12" TextWrapping="Wrap"
+                               Foreground="#B0BEC5" FontSize="16" TextWrapping="Wrap"
                                Margin="10" VerticalAlignment="Center" HorizontalAlignment="Center"
                                Opacity="0.85"/>
                 </Grid>
@@ -177,7 +177,7 @@
                              HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <StackPanel Width="200" Orientation="Vertical" HorizontalAlignment="Stretch">
                             <TextBlock x:Name="CropsLabelText" Text="Danh sách ảnh cắt"
-                                       Foreground="White" FontSize="9" Opacity="0.7"
+                                       Foreground="White" FontSize="11" Opacity="0.7"
                                        Margin="0,0,0,4" HorizontalAlignment="Left"/>
                             <ItemsControl x:Name="CropsListControl"
                                           HorizontalAlignment="Stretch">
@@ -196,7 +196,7 @@
                              HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <StackPanel Width="200" Orientation="Vertical" HorizontalAlignment="Stretch">
                             <TextBlock x:Name="RenderLabelText" Text="Ảnh render"
-                                       Foreground="White" FontSize="9" Opacity="0.7"
+                                       Foreground="White" FontSize="11" Opacity="0.7"
                                        Margin="0,4,0,4" HorizontalAlignment="Left"/>
                             <ItemsControl x:Name="RenderGroupsControl"
                                           ItemTemplate="{StaticResource RenderGroupTemplate}"/>

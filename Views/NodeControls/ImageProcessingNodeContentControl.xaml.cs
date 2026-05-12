@@ -1,4 +1,4 @@
-using FlowMy.Helpers;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
@@ -73,6 +73,7 @@ namespace FlowMy.Views.NodeControls
             RenderGroupsControl.ItemsSource = _node.Crops;
 
             ApplyGpuRenderOptions();
+            ApplyHostBackground();
 
             UpdateColorCropButtonBackground();
 
@@ -97,6 +98,18 @@ namespace FlowMy.Views.NodeControls
                 RenderOptions.SetCachingHint(MainScrollViewer, CachingHint.Unspecified);
             }
             RenderOptions.SetBitmapScalingMode(MagZoomImage, BitmapScalingMode.NearestNeighbor);
+        }
+
+        private void ApplyHostBackground()
+        {
+            // Canvas đã có shadow plate riêng từ ImageProcessingNodeControl.
+            // Widget không có plate đó, nên dùng NodeBrush trực tiếp để tránh nền trắng.
+            if (_chromeBorder == null)
+            {
+                RootLayout.Background = _node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x2E));
+                return;
+            }
+            RootLayout.Background = Brushes.Transparent;
         }
 
         private void ToggleIPColumn()
@@ -473,6 +486,10 @@ namespace FlowMy.Views.NodeControls
                     _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
                     ImageAreaGrid, MainScrollViewer, ImageTitleTextBlock,
                     _onCropClickForIp);
+            }
+            else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
+            {
+                ApplyHostBackground();
             }
         }
 
