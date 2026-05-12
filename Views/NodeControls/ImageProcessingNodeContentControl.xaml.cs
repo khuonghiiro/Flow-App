@@ -26,6 +26,7 @@ namespace FlowMy.Views.NodeControls
         private readonly Border? _chromeBorder;
         private readonly Grid _handleOverlay;
         private readonly Func<bool>? _isNodeResizing;
+        private readonly bool _freezeScaleInWidget;
 
         private PropertyChangedEventHandler? _nodePropertyChanged;
         private NotifyCollectionChangedEventHandler? _cropsChangedHandler;
@@ -47,7 +48,8 @@ namespace FlowMy.Views.NodeControls
             Border? chromeBorder,
             Window? ownerWindow,
             Grid handleOverlay,
-            Func<bool>? isNodeResizing = null)
+            Func<bool>? isNodeResizing = null,
+            bool freezeScaleInWidget = true)
         {
             _node = node ?? throw new ArgumentNullException(nameof(node));
             _host = host ?? throw new ArgumentNullException(nameof(host));
@@ -55,6 +57,7 @@ namespace FlowMy.Views.NodeControls
             _ownerWindow = ownerWindow;
             _handleOverlay = handleOverlay ?? throw new ArgumentNullException(nameof(handleOverlay));
             _isNodeResizing = isNodeResizing;
+            _freezeScaleInWidget = freezeScaleInWidget;
 
             if (_chromeBorder == null)
             {
@@ -85,6 +88,7 @@ namespace FlowMy.Views.NodeControls
             WireScrollPanZoomMagnifier();
 
             AttachSubscriptions();
+            SizeChanged += (_, _) => ApplyResponsiveScale();
         }
 
         private void ApplyGpuRenderOptions()
@@ -435,6 +439,35 @@ namespace FlowMy.Views.NodeControls
                 MouseRightButtonUp += ChromeOrSelf_MouseRightButtonUp;
         }
 
+        private void ApplyResponsiveScale()
+        {
+            if (_chromeBorder == null && _freezeScaleInWidget)
+            {
+                TopMenuBorder.LayoutTransform = Transform.Identity;
+                CropsLabelText.LayoutTransform = Transform.Identity;
+                LeftMenuBorder.LayoutTransform = Transform.Identity;
+                return;
+            }
+
+            double heightBaseline = WidthSyncTarget.MinHeight > 0 ? WidthSyncTarget.MinHeight : 600.0;
+            var heightScaleFactor = Math.Max(0.8, Math.Min(1.8, _node.Height / heightBaseline));
+            var menuHeightScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
+            TopMenuBorder.LayoutTransform = menuHeightScale;
+            CropsLabelText.LayoutTransform = menuHeightScale;
+
+            double widthBaseline = WidthSyncTarget.MinWidth > 0 ? WidthSyncTarget.MinWidth : 800.0;
+            const double leftMenuWidthRatio = 0.8 / 10.0;
+            var leftMenuBaselineWidth = widthBaseline * leftMenuWidthRatio;
+            var leftMenuCurrentWidth = _node.Width * leftMenuWidthRatio;
+            var leftMenuScaleFactor = leftMenuBaselineWidth > 0
+                ? leftMenuCurrentWidth / leftMenuBaselineWidth
+                : 1.0;
+            LeftMenuBorder.LayoutTransform = new ScaleTransform(leftMenuScaleFactor, leftMenuScaleFactor);
+
+            var interactionScale = Math.Max(heightScaleFactor, leftMenuScaleFactor);
+            ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, interactionScale);
+        }
+
         private void ChromeOrSelf_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
             var src = e.OriginalSource as DependencyObject;
@@ -455,24 +488,7 @@ namespace FlowMy.Views.NodeControls
             {
                 if (_isNodeResizing?.Invoke() == true)
                     return;
-
-                double heightBaseline = WidthSyncTarget.MinHeight > 0 ? WidthSyncTarget.MinHeight : 600.0;
-                var heightScaleFactor = Math.Max(0.8, Math.Min(1.8, _node.Height / heightBaseline));
-                var menuHeightScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
-                TopMenuBorder.LayoutTransform = menuHeightScale;
-                CropsLabelText.LayoutTransform = menuHeightScale;
-
-                double widthBaseline = WidthSyncTarget.MinWidth > 0 ? WidthSyncTarget.MinWidth : 800.0;
-                const double leftMenuWidthRatio = 0.8 / 10.0;
-                var leftMenuBaselineWidth = widthBaseline * leftMenuWidthRatio;
-                var leftMenuCurrentWidth = _node.Width * leftMenuWidthRatio;
-                var leftMenuScaleFactor = leftMenuBaselineWidth > 0
-                    ? leftMenuCurrentWidth / leftMenuBaselineWidth
-                    : 1.0;
-                LeftMenuBorder.LayoutTransform = new ScaleTransform(leftMenuScaleFactor, leftMenuScaleFactor);
-
-                var interactionScale = Math.Max(heightScaleFactor, leftMenuScaleFactor);
-                ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, interactionScale);
+                ApplyResponsiveScale();
             }
             else if (e.PropertyName == nameof(ImageProcessingNode.InputMode) ||
                      e.PropertyName == nameof(ImageProcessingNode.ImageUrl) ||
@@ -495,22 +511,7 @@ namespace FlowMy.Views.NodeControls
 
         private void ImageProcessingNodeContentControl_Loaded(object sender, RoutedEventArgs e)
         {
-            var initHeightBaseline = WidthSyncTarget.MinHeight > 0 ? WidthSyncTarget.MinHeight : 600.0;
-            var initHeightScaleFactor = Math.Max(0.8, Math.Min(1.8, _node.Height / initHeightBaseline));
-            var initMenuHeightScale = new ScaleTransform(initHeightScaleFactor, initHeightScaleFactor);
-            TopMenuBorder.LayoutTransform = initMenuHeightScale;
-            CropsLabelText.LayoutTransform = initMenuHeightScale;
-
-            var initWidthBaseline = WidthSyncTarget.MinWidth > 0 ? WidthSyncTarget.MinWidth : 800.0;
-            const double initLeftMenuWidthRatio = 0.8 / 10.0;
-            var initLeftMenuBaselineWidth = initWidthBaseline * initLeftMenuWidthRatio;
-            var initLeftMenuCurrentWidth = _node.Width * initLeftMenuWidthRatio;
-            var initLeftMenuScaleFactor = initLeftMenuBaselineWidth > 0
-                ? initLeftMenuCurrentWidth / initLeftMenuBaselineWidth
-                : 1.0;
-            LeftMenuBorder.LayoutTransform = new ScaleTransform(initLeftMenuScaleFactor, initLeftMenuScaleFactor);
-            var initInteractionScale = Math.Max(initHeightScaleFactor, initLeftMenuScaleFactor);
-            ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, initInteractionScale);
+            ApplyResponsiveScale();
 
             _ = ImageProcessingNodeControl.UpdatePreviewAsync(
                 _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,
