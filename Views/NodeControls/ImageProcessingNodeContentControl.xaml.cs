@@ -119,6 +119,18 @@ namespace FlowMy.Views.NodeControls
         private void ToggleIPColumn()
         {
             _ipColumnVisible = !_ipColumnVisible;
+            bool isWidgetHost = _chromeBorder == null;
+
+            if (isWidgetHost)
+            {
+                // Widget: chỉ ẩn/hiện cột IP, không đổi kích thước cửa sổ/widget.
+                IpColumnDefinition.Width = _ipColumnVisible
+                    ? new GridLength(IpColStar, GridUnitType.Star)
+                    : new GridLength(0);
+                return;
+            }
+
+            // Canvas node: giữ hành vi cũ (mở rộng/thu hẹp node theo cột IP).
             double totalStar = BaseStarWidth + IpColStar;
             if (_ipColumnVisible)
             {
