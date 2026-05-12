@@ -4,6 +4,7 @@ using FlowMy.Services.Rendering;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
+using FlowMy.Views.NodeControls;
 using FlowMy.Properties;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -463,13 +464,7 @@ namespace FlowMy.Services.Interaction
         {
             if (node?.Border == null) return;
 
-            GpuOptimizationHelper.ApplyToBorder(
-                node.Border,
-                isDragging: false,
-                forceCache: Host.CacheNodeEnabled);
-
-            // Respect quality preset: Low/Medium => null shadow, High/Best => shadow.
-            node.Border.Effect = GpuOptimizationHelper.CreateDropShadowEffect();
+            ImageProcessingNodeControl.ApplyEditorGpuChrome(node, node.Border, Host.CacheNodeEnabled);
         }
 
         private void TrackNodeNotifier(WorkflowNode node)

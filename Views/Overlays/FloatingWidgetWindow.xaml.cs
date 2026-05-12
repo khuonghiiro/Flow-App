@@ -70,6 +70,7 @@ public partial class FloatingWidgetWindow : Window
     private bool _webViewInitialized;
     private bool _webViewContentLoaded;
     private VideoProcessingNodeContentControl? _videoNodeContent;
+    private ImageProcessingNodeContentControl? _imageNodeContent;
     private bool _htmlRuntimeReady;
     private string? _lastContentSignature;
     private readonly List<(string SessionId, string Key, string Value)> _pendingAsyncBuffer = new();
@@ -173,6 +174,10 @@ public partial class FloatingWidgetWindow : Window
         else if (_node is VideoProcessingNode)
         {
             EnsureNativeNodeContent();
+        }
+        else if (_node is ImageProcessingNode)
+        {
+            EnsureNativeImageNodeContent();
         }
 
         AttachManualRunObservers();
@@ -430,6 +435,8 @@ public partial class FloatingWidgetWindow : Window
             _webView.Visibility = Visibility.Collapsed;
         if (_videoNodeContent != null)
             _videoNodeContent.Visibility = Visibility.Collapsed;
+        if (_imageNodeContent != null)
+            _imageNodeContent.Visibility = Visibility.Collapsed;
 
         ApplyIdleAnimation();
     }
@@ -504,6 +511,12 @@ public partial class FloatingWidgetWindow : Window
             EnsureNativeNodeContent();
             if (_videoNodeContent != null)
                 _videoNodeContent.Visibility = Visibility.Visible;
+        }
+        else if (_node is ImageProcessingNode)
+        {
+            EnsureNativeImageNodeContent();
+            if (_imageNodeContent != null)
+                _imageNodeContent.Visibility = Visibility.Visible;
         }
 
         // Đặt lại vị trí theo cạnh dock (expanded body không bị khuất ra ngoài màn).
@@ -1640,6 +1653,33 @@ public partial class FloatingWidgetWindow : Window
         catch (Exception ex)
         {
             Debug.WriteLine($"[FloatingWidget] WebView2 init error: {ex.Message}");
+        }
+    }
+
+    private void EnsureNativeImageNodeContent()
+    {
+        if (_imageNodeContent != null || _node is not ImageProcessingNode imageNode) return;
+        try
+        {
+            var contentGrid = ContentArea.Child as Grid;
+            if (contentGrid == null)
+            {
+                contentGrid = new Grid();
+                ContentArea.Child = contentGrid;
+            }
+
+            var resizeOverlay = new Grid();
+            _imageNodeContent = new ImageProcessingNodeContentControl(imageNode, _host, chromeBorder: null, ownerWindow: this, resizeOverlay)
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed
+            };
+            contentGrid.Children.Add(_imageNodeContent);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Native image content init error: {ex.Message}");
         }
     }
 

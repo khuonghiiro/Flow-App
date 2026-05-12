@@ -11,6 +11,7 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Interaction;
+using FlowMy.Views.NodeControls;
 using System.Windows.Shapes;
 
 namespace FlowMy.Services.Interaction
@@ -941,10 +942,10 @@ namespace FlowMy.Services.Interaction
                     // Re-apply cache cho node đã drag
                     if (host.DraggedNode?.Border != null)
                     {
-                        GpuOptimizationHelper.ApplyToBorder(
+                        ImageProcessingNodeControl.ApplyEditorGpuChrome(
+                            host.DraggedNode,
                             host.DraggedNode.Border,
-                            isDragging: false,
-                            forceCache: host.CacheNodeEnabled);
+                            host.CacheNodeEnabled);
                     }
                     
                     // Re-apply cache cho connections liên quan (nếu không có animation)

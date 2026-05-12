@@ -31,13 +31,13 @@ namespace FlowMy.Views.NodeControls
         private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
 
         private static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, int> _previewVersion = new();
-        private static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, ImageCropRegion?> _activeCropRegion = new();
-        private static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, int> _activeCropColorIndex = new();
+        internal static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, ImageCropRegion?> _activeCropRegion = new();
+        internal static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, int> _activeCropColorIndex = new();
         private static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, int> _cropOrderCounter = new();
-        private static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, ImageCropRegion?> _currentCropRegionForIp = new();
+        internal static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, ImageCropRegion?> _currentCropRegionForIp = new();
         // Lưu polygon overlay trên imageGrid theo từng vùng crop để xoá/cập nhật đúng khi cần
-        private static readonly System.Collections.Generic.Dictionary<ImageCropRegion, System.Windows.Shapes.Polygon> _polygonMap = new();
-        private static readonly Color[] _cropColors = new[]
+        internal static readonly System.Collections.Generic.Dictionary<ImageCropRegion, System.Windows.Shapes.Polygon> _polygonMap = new();
+        internal static readonly Color[] _cropColors = new[]
         {
             Colors.Gold,
             Colors.DeepSkyBlue,
@@ -60,21 +60,35 @@ namespace FlowMy.Views.NodeControls
                 _cropOrderCounter[node] = node.Crops.Max(c => c.Order);
             }
 
+            // Viền ngoài không gắn Effect — DropShadow trên cùng visual với nội dung làm mờ toàn node.
+            // Bóng chỉ trên shadowPlate (nền); grid nội dung là lớp trên, vẽ sắc hơn.
             var border = new Border
             {
                 Width = initW,
                 Height = initH,
                 MinWidth = 800,
                 MinHeight = 600,
-                Background = node.NodeBrush,
+                Background = Brushes.Transparent,
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
                 CornerRadius = new CornerRadius(10),
                 Cursor = Cursors.Hand,
-                Effect = GpuOptimizationHelper.CreateDropShadowEffect(),
+                Effect = null,
                 Tag = node,
                 CacheMode = null
             };
+
+            var shadowPlate = new Border
+            {
+                Background = node.NodeBrush,
+                CornerRadius = new CornerRadius(8),
+                Effect = GpuOptimizationHelper.CreateDropShadowEffect(),
+                IsHitTestVisible = false,
+                SnapsToDevicePixels = true,
+                UseLayoutRounding = true,
+                ClipToBounds = false
+            };
+            GpuOptimizationHelper.ApplyToElement(shadowPlate);
 
             // Force layout refresh on Loaded to ensure Grid Star columns render correctly
             border.Loaded += (s, e) =>
@@ -84,935 +98,26 @@ namespace FlowMy.Views.NodeControls
                 border.UpdateLayout();
             };
 
-            GpuOptimizationHelper.ApplyToBorder(border);
+            bool isResizing = false;
 
-            // ===== Layout: Top/Left/Right menus + image area =====
-            var root = new Grid();
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            // Menu trái: tỉ lệ 0.8* (8% của tổng width)
-            // Image area: tỉ lệ 6* (60% của tổng width)
-            // Menu phải: tỉ lệ 3.2* (32% của tổng width)
-            // Tổng: 10* → khi node width tăng 10px:
-            //   - Menu trái tăng 0.8px
-            //   - Image area tăng 6px
-            //   - Menu phải tăng 3.2px
-            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.8, GridUnitType.Star) });
-            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6, GridUnitType.Star) });
-            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3.2, GridUnitType.Star) });
-            // Column 3: Image Processor (ẩn mặc định, width=0)
-            var ipColumnDef = new ColumnDefinition { Width = new GridLength(0) };
-            root.ColumnDefinitions.Add(ipColumnDef);
-
-            bool ipColumnVisible = false;
-            const double IP_COL_STAR = 3.5;
-            const double BASE_STAR = 10.0; // 0.8 + 6 + 3.2
-            double originalMinWidth = border.MinWidth;
-            Action<ImageCropRegion>? onCropClickForIP = null;
-
-            void ToggleIPColumn()
-            {
-                ipColumnVisible = !ipColumnVisible;
-                double totalStar = BASE_STAR + IP_COL_STAR; // 13.5
-                if (ipColumnVisible)
-                {
-                    // Mở rộng node: giữ phần content gốc nguyên, thêm phần IP
-                    double currentContentWidth = node.Width;
-                    double newWidth = currentContentWidth * totalStar / BASE_STAR;
-                    ipColumnDef.Width = new GridLength(IP_COL_STAR, GridUnitType.Star);
-                    node.Width = newWidth;
-                    border.Width = newWidth;
-                    border.MinWidth = originalMinWidth * totalStar / BASE_STAR;
-                }
-                else
-                {
-                    // Thu hẹp node: bỏ phần IP
-                    double newWidth = node.Width * BASE_STAR / totalStar;
-                    ipColumnDef.Width = new GridLength(0);
-                    node.Width = Math.Max(originalMinWidth, newWidth);
-                    border.Width = node.Width;
-                    border.MinWidth = originalMinWidth;
-                }
-            }
-
-            // --- Top menu: hiển thị title ảnh ---
-            var topMenu = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(45, 255, 255, 255)),
-                Padding = new Thickness(8, 4, 8, 4)
-            };
-            Grid.SetRow(topMenu, 0);
-            Grid.SetColumnSpan(topMenu, 3);
-
-            // TextBlock hiển thị title với text truncation
-            var imageTitleTextBlock = new TextBlock
-            {
-                Text = "Chưa có ảnh",
-                Foreground = Application.Current.TryFindResource("WhiteBrush") as Brush ?? new SolidColorBrush(Colors.White),
-                FontSize = 11,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                TextWrapping = TextWrapping.NoWrap,
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-
-            // Toggle button for Image Processor column (góc phải trên)
-            var ipToggleBtn = new Button
-            {
-                Content = "📐",
-                ToolTip = "Ẩn/hiện Image Processor",
-                Width = 28,
-                Height = 22,
-                FontSize = 12,
-                Padding = new Thickness(0),
-                Cursor = Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center,
-                Style = Application.Current.TryFindResource("DangerButton") as Style,
-            };
-            ipToggleBtn.MouseLeftButtonDown += (s, e) => e.Handled = true;
-            ipToggleBtn.Click += (s, e) =>
-            {
-                ToggleIPColumn();
-                e.Handled = true;
-            };
-
-            var topContent = new DockPanel();
-            DockPanel.SetDock(ipToggleBtn, Dock.Right);
-            topContent.Children.Add(ipToggleBtn);
-            topContent.Children.Add(imageTitleTextBlock);
-
-            var topDragLayer = new Border
-            {
-                Background = Brushes.Transparent,
-                IsHitTestVisible = true,
-                Child = topContent
-            };
-            topMenu.Child = topDragLayer;
-            root.Children.Add(topMenu);
-
-            // --- Left menu: chứa nút Mở, Crop + vùng kéo node ---
-            var leftMenu = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-                Padding = new Thickness(4, 0, 4, 6) // Sát top: padding top = 0
-            };
-            var leftStack = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top,
-                Width = 48 // Fixed reference width — Viewbox sẽ scale tỉ lệ
-            };
-
-            // Button Mở (icon folder) - đặt đầu tiên, sát top
-            var btnOpen = new Button
-            {
-                Content = "📁", // Icon folder Unicode
-                ToolTip = "Mở ảnh",
-                Width = 40,
-                Height = 40,
-                Style = Application.Current.TryFindResource("PrimaryButton") as Style,
-                FontSize = 18,
-                Padding = new Thickness(0),
-                Margin = new Thickness(0, 0, 0, 10)
-            };
-            // Chặn bubble lên Border để không kéo node khi bấm nút,
-            // nhưng vẫn cho Button nhận mouse để raise Click.
-            btnOpen.MouseLeftButtonDown += (s, e) => e.Handled = true;
-            btnOpen.Click += (s, e) =>
-            {
-                e.Handled = true;
-                OpenImageFilePicker(node);
-            };
-            leftStack.Children.Add(btnOpen);
-
-            // Nhóm nút màu + crop chung một khung để user biết cùng chức năng
-            var colorCropGroupBorder = new Border
-            {
-                BorderBrush = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(2),
-                Margin = new Thickness(0, 0, 0, 6)
-            };
-            var colorCropStack = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-
-            // Nút chọn màu crop (chọn mã màu tuỳ ý hoặc cycle khi ColorDialog lỗi)
-            var colorButton = new Button
-            {
-                Width = 40,
-                Height = 40,
-                Margin = new Thickness(0, 0, 0, 10),
-                BorderThickness = new Thickness(0),
-                Cursor = Cursors.Hand,
-                Padding = new Thickness(0),
-                ToolTip = "Chọn màu viền/background vùng crop"
-            };
-            void UpdateColorButtonBackground()
-            {
-                if (!_activeCropColorIndex.TryGetValue(node, out var idx))
-                    idx = 0;
-                idx = ((idx % _cropColors.Length) + _cropColors.Length) % _cropColors.Length;
-                colorButton.Background = new SolidColorBrush(_cropColors[idx]);
-            }
-            colorButton.Click += (s, e) =>
-            {
-                try
-                {
-                    using var dlg = new WinForms.ColorDialog();
-                    if (dlg.ShowDialog() == WinForms.DialogResult.OK)
-                    {
-                        var c = dlg.Color;
-                        var mediaColor = Color.FromArgb(255, c.R, c.G, c.B);
-                        // Lưu màu tuỳ chỉnh vào slot 0 cho node hiện tại
-                        if (_cropColors.Length > 0)
-                        {
-                            _cropColors[0] = mediaColor;
-                            _activeCropColorIndex[node] = 0;
-                        }
-                        colorButton.Background = new SolidColorBrush(mediaColor);
-                        e.Handled = true;
-                        return;
-                    }
-                }
-                catch
-                {
-                    // Nếu ColorDialog lỗi thì rơi xuống phần cycle
-                }
-
-                // Fallback: cycle qua palette có sẵn
-                if (!_activeCropColorIndex.TryGetValue(node, out var idxFallback))
-                    idxFallback = 0;
-                idxFallback = (idxFallback + 1) % _cropColors.Length;
-                _activeCropColorIndex[node] = idxFallback;
-                UpdateColorButtonBackground();
-                e.Handled = true;
-            };
-            UpdateColorButtonBackground();
-            colorCropStack.Children.Add(colorButton);
-
-            // Nút Crop (gợi ý Alt + Click) – mỗi lần nhấn sẽ bắt đầu một crop mới
-            var cropButton = new Button
-            {
-                Content = "✂",
-                ToolTip = "Crop ảnh (Alt + click trái trên ảnh để tạo điểm)",
-                Style = Application.Current.TryFindResource("WarningButton") as Style,
-                Width = 40,
-                Height = 40,
-                Margin = new Thickness(0, 0, 0, 0),
-                FontSize = 18,
-                Padding = new Thickness(0)
-            };
-            // Không cho nút làm node bị kéo
-            cropButton.MouseLeftButtonDown += (s, e) => e.Handled = true;
-            cropButton.Click += (s, e) =>
-            {
-                // Mỗi lần nhấn: bắt đầu một vùng crop mới (không tái sử dụng vùng cũ)
-                _activeCropRegion[node] = null;
-                e.Handled = true;
-            };
-            colorCropStack.Children.Add(cropButton);
-
-            colorCropGroupBorder.Child = colorCropStack;
-            leftStack.Children.Add(colorCropGroupBorder);
-
-            // Vùng drag (transparent) để kéo node khi giữ chuột trên menu trái
-            var leftDragArea = new Border
-            {
-                Background = Brushes.Transparent,
-                Width = 22,
-                Height = 40,
-                Margin = new Thickness(0, 0, 0, 6)
-            };
-            leftStack.Children.Add(leftDragArea);
-
-            // Wrap leftStack trong Viewbox để buttons scale tỉ lệ với column width
-            var leftViewbox = new Viewbox
-            {
-                Stretch = Stretch.Uniform,
-                StretchDirection = StretchDirection.Both,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-            leftViewbox.Child = leftStack;
-            leftMenu.Child = leftViewbox;
-            Grid.SetRow(leftMenu, 1);
-            Grid.SetColumn(leftMenu, 0);
-            root.Children.Add(leftMenu);
-
-            // --- Right menu: danh sách ảnh cắt + logic render ảnh ---
-            var rightMenu = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)),
-                Padding = new Thickness(4, 4, 4, 4)
-            };
-
-            var cropsLabel = new TextBlock
-            {
-                Text = "Danh sách ảnh cắt",
-                Foreground = new SolidColorBrush(Colors.White),
-                FontSize = 9,
-                Opacity = 0.7,
-                Margin = new Thickness(0, 0, 0, 4),
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-
-            var cropsList = new ItemsControl
-            {
-                ItemsSource = node.Crops,
-                Margin = new Thickness(0),
-                HorizontalAlignment = HorizontalAlignment.Stretch
-            };
-
-            // Danh sách crop: mỗi item 1 dòng (StackPanel dọc)
-            var itemsPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
-            itemsPanelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
-            itemsPanelFactory.SetValue(StackPanel.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-            cropsList.ItemsPanel = new ItemsPanelTemplate(itemsPanelFactory);
-
-            // Biến tham chiếu tới imageGrid (sẽ được gán sau khi imageGrid được khai báo)
-            Grid? imageGridRef = null;
-
-            // Mỗi item: số thứ tự + ảnh crop + nút xử lý
-            var itemFactory = new FrameworkElementFactory(typeof(StackPanel));
-            itemFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
-            itemFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(1, 0, 1, 4));
-            itemFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-
-            // Số thứ tự crop (bên trái ảnh thumbnail)
-            var orderFactory = new FrameworkElementFactory(typeof(TextBlock));
-            orderFactory.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ImageCropRegion.Order)));
-            orderFactory.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Colors.White));
-            orderFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
-            orderFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-            orderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-            orderFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 4, 0));
-            orderFactory.SetValue(TextBlock.OpacityProperty, 0.7);
-            itemFactory.AppendChild(orderFactory);
-
-            var imgBorderFactory = new FrameworkElementFactory(typeof(Border));
-            // Bind BorderBrush theo màu của từng vùng crop (StrokeBrush từ ColorHex)
-            imgBorderFactory.SetBinding(Border.BorderBrushProperty,
-                new System.Windows.Data.Binding(nameof(ImageCropRegion.StrokeBrush)));
-            imgBorderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(2));
-            imgBorderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(3));
-            imgBorderFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, 1));
-            imgBorderFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(30, 0, 0, 0)));
-            // Đặt width cố định cho thumbnail để phần nút có không gian
-            imgBorderFactory.SetValue(FrameworkElement.WidthProperty, 64.0);
-
-            var imgFactory = new FrameworkElementFactory(typeof(System.Windows.Controls.Image));
-            imgFactory.SetValue(System.Windows.Controls.Image.StretchProperty, Stretch.Uniform);
-            imgFactory.SetValue(FrameworkElement.MaxHeightProperty, 64.0);
-            imgFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
-            imgFactory.SetBinding(System.Windows.Controls.Image.SourceProperty, new System.Windows.Data.Binding(nameof(ImageCropRegion.Thumbnail)));
-
-            imgBorderFactory.AppendChild(imgFactory);
-            imgBorderFactory.SetValue(FrameworkElement.CursorProperty, Cursors.Hand);
-            imgBorderFactory.SetValue(FrameworkElement.ToolTipProperty, "Click để mở Image Processor");
-            imgBorderFactory.AddHandler(UIElement.MouseLeftButtonDownEvent, new MouseButtonEventHandler((s, e) =>
-            {
-                if (s is FrameworkElement fe && fe.DataContext is ImageCropRegion reg)
-                {
-                    onCropClickForIP?.Invoke(reg);
-                    e.Handled = true;
-                }
-            }));
-            itemFactory.AppendChild(imgBorderFactory);
-
-            // Cột phải: StackPanel ngang chứa các nút xử lý (từ trái sang phải)
-            var rightPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
-            rightPanelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
-            rightPanelFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
-            rightPanelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-            rightPanelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 0, 0, 0));
-
-            // Checkbox 1: Ẩn/hiện vùng crop – màu vàng (Gold)
-            var chkFactory = new FrameworkElementFactory(typeof(CheckBox));
-            chkFactory.SetValue(CheckBox.ToolTipProperty, "Bật/tắt hiển thị vùng crop");
-            chkFactory.SetValue(CheckBox.FontSizeProperty, 8.0);
-            chkFactory.SetValue(CheckBox.ForegroundProperty, new SolidColorBrush(Colors.Gold));
-            chkFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-            chkFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 3, 0));
-            chkFactory.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(ImageCropRegion.IsVisible)) { Mode = System.Windows.Data.BindingMode.TwoWay });
-            rightPanelFactory.AppendChild(chkFactory);
-
-            // Checkbox 2: Ẩn nền + viền nét đứt – màu primary
-            var chkOutlineFactory = new FrameworkElementFactory(typeof(CheckBox));
-            chkOutlineFactory.SetValue(CheckBox.ToolTipProperty, "Ẩn nền polygon, đổi viền sang nét đứt");
-            chkOutlineFactory.SetValue(CheckBox.FontSizeProperty, 8.0);
-            chkOutlineFactory.SetValue(CheckBox.ForegroundProperty,
-                Application.Current.TryFindResource("PrimaryBrush") as Brush
-                ?? new SolidColorBrush(Color.FromRgb(0x42, 0x96, 0xD0)));
-            chkOutlineFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-            chkOutlineFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 3, 0));
-            chkOutlineFactory.SetBinding(CheckBox.IsCheckedProperty, new System.Windows.Data.Binding(nameof(ImageCropRegion.IsOutlineOnly)) { Mode = System.Windows.Data.BindingMode.TwoWay });
-            rightPanelFactory.AppendChild(chkOutlineFactory);
-
-            var btnDelFactory = new FrameworkElementFactory(typeof(Button));
-            // Hiển thị text "X" với tooltip giải thích, dùng DangerButton style
-            btnDelFactory.SetValue(FrameworkElement.StyleProperty, Application.Current.TryFindResource("DangerButton"));
-            btnDelFactory.SetValue(Button.ContentProperty, "X");
-            btnDelFactory.SetValue(Button.WidthProperty, 18.0);
-            btnDelFactory.SetValue(Button.HeightProperty, 18.0);
-            btnDelFactory.SetValue(Button.FontSizeProperty, 9.0);
-            btnDelFactory.SetValue(Button.PaddingProperty, new Thickness(0));
-            btnDelFactory.SetValue(Button.MarginProperty, new Thickness(0));
-            btnDelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-            btnDelFactory.SetValue(Button.ToolTipProperty, "Xoá vùng crop này");
-            // Thêm PreviewMouseLeftButtonUp (tunneling) để đảm bảo xoá chạy kể cả khi outer handler bắt event
-            btnDelFactory.AddHandler(UIElement.PreviewMouseLeftButtonUpEvent, new MouseButtonEventHandler((s, e) =>
-            {
-                if (s is Button b && b.DataContext is ImageCropRegion reg)
-                {
-                    if (imageGridRef != null && _polygonMap.TryGetValue(reg, out var poly))
-                    {
-                        imageGridRef.Children.Remove(poly);
-                        _polygonMap.Remove(reg);
-                    }
-                    node.Crops.Remove(reg);
-                    if (_activeCropRegion.TryGetValue(node, out var active) && ReferenceEquals(active, reg))
-                    {
-                        _activeCropRegion[node] = null;
-                        cropButton.IsEnabled = true;
-                    }
-                    e.Handled = true;
-                }
-            }));
-            btnDelFactory.AddHandler(Button.ClickEvent, new RoutedEventHandler((s, e) =>
-            {
-                // Fallback: nếu PreviewMouseLeftButtonUp không chạy được
-                if (s is Button b && b.DataContext is ImageCropRegion reg)
-                {
-                    if (imageGridRef != null && _polygonMap.TryGetValue(reg, out var poly))
-                    {
-                        imageGridRef.Children.Remove(poly);
-                        _polygonMap.Remove(reg);
-                    }
-                    node.Crops.Remove(reg);
-                    if (_activeCropRegion.TryGetValue(node, out var active) && ReferenceEquals(active, reg))
-                    {
-                        _activeCropRegion[node] = null;
-                        cropButton.IsEnabled = true;
-                    }
-                    e.Handled = true;
-                }
-            }));
-            rightPanelFactory.AppendChild(btnDelFactory);
-
-            itemFactory.AppendChild(rightPanelFactory);
-
-            cropsList.ItemTemplate = new DataTemplate(typeof(ImageCropRegion)) { VisualTree = itemFactory };
-
-            // ── Phần trên (50%): danh sách crop ──
-            var cropsContentStack = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                Width = 200,
-                HorizontalAlignment = HorizontalAlignment.Stretch
-            };
-            cropsContentStack.Children.Add(cropsLabel);
-            cropsContentStack.Children.Add(cropsList);
-
-            var cropsViewbox = new Viewbox
-            {
-                Stretch = Stretch.Uniform,
-                StretchDirection = StretchDirection.Both,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-            cropsViewbox.Child = cropsContentStack;
-
-            var cropsScroll = new ScrollViewer
-            {
-                Content = cropsViewbox,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
-            };
-
-            // ── Phần dưới (50%): danh sách ảnh render ──
-            // Label
-            var renderLabel = new TextBlock
-            {
-                Text = "Ảnh render",
-                Foreground = new SolidColorBrush(Colors.White),
-                FontSize = 9,
-                Opacity = 0.7,
-                Margin = new Thickness(0, 4, 0, 4),
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-
-            // Danh sách nhóm ảnh render theo crop: #Order + list ảnh
-            var renderGroups = new ItemsControl
-            {
-                ItemsSource = node.Crops
-            };
-
-            var groupTemplate = new DataTemplate(typeof(ImageCropRegion));
-            var groupRoot = new FrameworkElementFactory(typeof(StackPanel));
-            groupRoot.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
-            groupRoot.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, 6));
-
-            // Header: #Order
-            var headerText = new FrameworkElementFactory(typeof(TextBlock));
-            headerText.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Colors.White));
-            headerText.SetValue(TextBlock.FontSizeProperty, 9.0);
-            headerText.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-            headerText.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, 2));
-            headerText.SetBinding(TextBlock.TextProperty,
-                new System.Windows.Data.Binding(nameof(ImageCropRegion.Order))
-                {
-                    Converter = new IntToHashLabelConverter()
-                });
-            groupRoot.AppendChild(headerText);
-
-            // Danh sách ảnh render trong nhóm (WrapPanel - 3 ảnh/dòng)
-            var imagesItemsControl = new FrameworkElementFactory(typeof(ItemsControl));
-            imagesItemsControl.SetBinding(ItemsControl.ItemsSourceProperty,
-                new System.Windows.Data.Binding(nameof(ImageCropRegion.RenderedImages)));
-
-            var imagesPanel = new ItemsPanelTemplate(new FrameworkElementFactory(typeof(System.Windows.Controls.WrapPanel)));
-            imagesPanel.VisualTree.SetValue(System.Windows.Controls.WrapPanel.OrientationProperty, Orientation.Horizontal);
-            imagesItemsControl.SetValue(ItemsControl.ItemsPanelProperty, imagesPanel);
-
-            var imageItemTemplate = new DataTemplate();
-            var imageBorder = new FrameworkElementFactory(typeof(Border));
-            imageBorder.SetValue(Border.BorderBrushProperty,
-                new SolidColorBrush(Color.FromArgb(120, 148, 163, 184)));
-            imageBorder.SetValue(Border.BorderThicknessProperty, new Thickness(1));
-            imageBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(3));
-            imageBorder.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 2, 4, 2));
-            imageBorder.SetValue(FrameworkElement.WidthProperty, 55.0);
-
-            var imageInGroup = new FrameworkElementFactory(typeof(System.Windows.Controls.Image));
-            imageInGroup.SetValue(System.Windows.Controls.Image.StretchProperty, Stretch.Uniform);
-            imageInGroup.SetValue(FrameworkElement.MaxHeightProperty, 55.0);
-            imageInGroup.SetBinding(System.Windows.Controls.Image.SourceProperty, new System.Windows.Data.Binding());
-
-            imageBorder.AppendChild(imageInGroup);
-            imageItemTemplate.VisualTree = imageBorder;
-            imagesItemsControl.SetValue(ItemsControl.ItemTemplateProperty, imageItemTemplate);
-
-            groupRoot.AppendChild(imagesItemsControl);
-            groupTemplate.VisualTree = groupRoot;
-            renderGroups.ItemTemplate = groupTemplate;
-
-            var renderContentStack = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                Width = 200,
-                HorizontalAlignment = HorizontalAlignment.Stretch
-            };
-            renderContentStack.Children.Add(renderLabel);
-            renderContentStack.Children.Add(renderGroups);
-
-            var renderViewbox = new Viewbox
-            {
-                Stretch = Stretch.Uniform,
-                StretchDirection = StretchDirection.Both,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-            renderViewbox.Child = renderContentStack;
-
-            var renderScroll = new ScrollViewer
-            {
-                Content = renderViewbox,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
-            };
-
-            // ── Chia đôi cột phải: Grid 2 dòng * bằng nhau ──
-            var rightSplitGrid = new Grid();
-            rightSplitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            rightSplitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            Grid.SetRow(cropsScroll, 0);
-            Grid.SetRow(renderScroll, 1);
-            rightSplitGrid.Children.Add(cropsScroll);
-            rightSplitGrid.Children.Add(renderScroll);
-
-            rightMenu.Child = rightSplitGrid;
-            Grid.SetRow(rightMenu, 1);
-            Grid.SetColumn(rightMenu, 2);
-            root.Children.Add(rightMenu);
-
-            // --- Image Processor column (Column 3, ẩn mặc định) ---
-            var (ipColumnBorder, setIpImage) = BuildImageProcessorColumn(node, host);
-            Grid.SetRow(ipColumnBorder, 0);
-            Grid.SetRowSpan(ipColumnBorder, 2);
-            Grid.SetColumn(ipColumnBorder, 3);
-            root.Children.Add(ipColumnBorder);
-
-            // --- Image area ---
-            var image = new System.Windows.Controls.Image
-            {
-                Stretch = Stretch.Uniform,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
-            if (GpuDetectionHelper.IsGpuAvailable)
-            {
-                RenderOptions.SetCachingHint(image, CachingHint.Unspecified);
-                image.CacheMode = null;
-            }
-
-            var scale = new ScaleTransform(1.0, 1.0);
-
-            var placeholder = new TextBlock
-            {
-                Text = "Chưa có ảnh. Mở dialog (chuột phải hoặc nút Mở) để dán link/base64.",
-                Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xBE, 0xC5)),
-                FontSize = 12,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(10),
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Opacity = 0.85
-            };
-
-            // imageGrid chứa image + polygon, scale chung qua LayoutTransform
-            var imageGrid = new Grid();
-            imageGridRef = imageGrid; // Gán cho biến tham chiếu dùng trong btnDelFactory handlers
-            imageGrid.Children.Add(image);
-            imageGrid.Children.Add(placeholder);
-            imageGrid.LayoutTransform = scale;
-            imageGrid.HorizontalAlignment = HorizontalAlignment.Center;
-            imageGrid.VerticalAlignment = VerticalAlignment.Center;
-
-            // Wrapper để center imageGrid khi nhỏ hơn viewport
-            var scrollContent = new Grid();
-            scrollContent.Children.Add(imageGrid);
-
-            var scrollViewer = new ScrollViewer
-            {
-                Content = scrollContent,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Padding = new Thickness(0),
-                CacheMode = null,
-                Focusable = true
-            };
-
-            // Bind MinWidth/MinHeight sau khi scrollViewer tạo xong
-            scrollContent.SetBinding(FrameworkElement.MinWidthProperty,
-                new System.Windows.Data.Binding("ViewportWidth") { Source = scrollViewer });
-            scrollContent.SetBinding(FrameworkElement.MinHeightProperty,
-                new System.Windows.Data.Binding("ViewportHeight") { Source = scrollViewer });
-            if (GpuDetectionHelper.IsGpuAvailable)
-            {
-                RenderOptions.SetBitmapScalingMode(scrollViewer, BitmapScalingMode.Unspecified);
-                RenderOptions.SetCachingHint(scrollViewer, CachingHint.Unspecified);
-            }
-
-            // Khi xoá crop khỏi danh sách → xoá cả polygon overlay trên imageGrid
-            // Lưu handler vào biến local để có thể huỷ đăng ký khi border Unloaded
-            NotifyCollectionChangedEventHandler cropsChangedHandler = (s, e) =>
-            {
-                if (e.OldItems == null) return;
-                foreach (ImageCropRegion removedReg in e.OldItems)
-                {
-                    if (_polygonMap.TryGetValue(removedReg, out var poly))
-                    {
-                        imageGrid.Children.Remove(poly);
-                        _polygonMap.Remove(removedReg);
-                    }
-                }
-            };
-            node.Crops.CollectionChanged += cropsChangedHandler;
-
-            Grid.SetRow(scrollViewer, 1);
-            Grid.SetColumn(scrollViewer, 1);
-            root.Children.Add(scrollViewer);
-
-            // Wire crop click → mở Image Processor column với ảnh crop đó
-            onCropClickForIP = (reg) =>
-            {
-                if (!ipColumnVisible) ToggleIPColumn();
-
-                // Lưu crop region hiện tại để dùng khi nhấn "Bắt đầu"
-                _currentCropRegionForIp[node] = reg;
-
-                // Dùng Thumbnail (ảnh đã crop theo polygon) — giống hiển thị ở cột crop
-                if (reg.Thumbnail is BitmapSource thumb)
-                {
-                    setIpImage(thumb);
-                }
-            };
-
-            // Zoom: Ctrl + wheel, keep cursor point stable
-            scrollViewer.PreviewMouseWheel += (s, e) =>
-            {
-                if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
-                    return; // allow workflow zoom / normal scroll
-
-                e.Handled = true;
-
-                var position = e.GetPosition(scrollViewer);
-                var oldScale = scale.ScaleX;
-                double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
-                var newScale = oldScale * zoomFactor;
-                if (newScale < 0.01) newScale = 0.01;
-                if (newScale > 100.0) newScale = 100.0;
-                if (Math.Abs(newScale - oldScale) < 0.0001) return;
-
-                var extentWidth = scrollViewer.ExtentWidth;
-                var extentHeight = scrollViewer.ExtentHeight;
-                double relativeX = 0.5;
-                double relativeY = 0.5;
-                if (extentWidth > 0 && extentHeight > 0)
-                {
-                    relativeX = (scrollViewer.HorizontalOffset + position.X) / extentWidth;
-                    relativeY = (scrollViewer.VerticalOffset + position.Y) / extentHeight;
-                }
-
-                scale.ScaleX = newScale;
-                scale.ScaleY = newScale;
-
-                scrollViewer.UpdateLayout();
-
-                extentWidth = scrollViewer.ExtentWidth;
-                extentHeight = scrollViewer.ExtentHeight;
-                if (extentWidth > 0 && extentHeight > 0)
-                {
-                    var targetX = relativeX * extentWidth - position.X;
-                    var targetY = relativeY * extentHeight - position.Y;
-                    scrollViewer.ScrollToHorizontalOffset(Math.Max(0, Math.Min(targetX, extentWidth)));
-                    scrollViewer.ScrollToVerticalOffset(Math.Max(0, Math.Min(targetY, extentHeight)));
-                }
-            };
-
-            // --- Magnifier overlay (góc phải dưới, hiện khi Alt) ---
-            const int magSize = 120;
-            const int magZoom = 4;
-            var magImage = new System.Windows.Controls.Image
-            {
-                Width = magSize,
-                Height = magSize,
-                Stretch = Stretch.Uniform,
-                IsHitTestVisible = false
-            };
-            RenderOptions.SetBitmapScalingMode(magImage, BitmapScalingMode.NearestNeighbor);
-            // Crosshair ở tâm magnifier
-            var magCrosshair = new Ellipse
-            {
-                Width = 10,
-                Height = 10,
-                Stroke = new SolidColorBrush(Colors.Red),
-                StrokeThickness = 1.5,
-                Fill = Brushes.Transparent,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                IsHitTestVisible = false
-            };
-            var magCrossH = new System.Windows.Shapes.Line
-            {
-                X1 = 0,
-                Y1 = magSize / 2.0,
-                X2 = magSize,
-                Y2 = magSize / 2.0,
-                Stroke = new SolidColorBrush(Color.FromArgb(120, 255, 0, 0)),
-                StrokeThickness = 0.8,
-                IsHitTestVisible = false
-            };
-            var magCrossV = new System.Windows.Shapes.Line
-            {
-                X1 = magSize / 2.0,
-                Y1 = 0,
-                X2 = magSize / 2.0,
-                Y2 = magSize,
-                Stroke = new SolidColorBrush(Color.FromArgb(120, 255, 0, 0)),
-                StrokeThickness = 0.8,
-                IsHitTestVisible = false
-            };
-            var magContent = new Grid
-            {
-                Width = magSize,
-                Height = magSize,
-                ClipToBounds = true,
-                IsHitTestVisible = false
-            };
-            magContent.Children.Add(magImage);
-            magContent.Children.Add(magCrossH);
-            magContent.Children.Add(magCrossV);
-            magContent.Children.Add(magCrosshair);
-
-            var magBorder = new Border
-            {
-                Width = magSize + 4,
-                Height = magSize + 4,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x00)),
-                BorderThickness = new Thickness(2),
-                Background = new SolidColorBrush(Color.FromArgb(200, 0x1E, 0x1E, 0x2E)),
-                CornerRadius = new CornerRadius(4),
-                Child = magContent,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 8, 8),
-                Visibility = Visibility.Collapsed,
-                IsHitTestVisible = false
-            };
-            // Crosshair + magnifier khi Alt
-            var magCoordText = new TextBlock
-            {
-                Foreground = new SolidColorBrush(Colors.White),
-                FontSize = 9,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 0, 2),
-                IsHitTestVisible = false
-            };
-            var magPanel = new Grid
-            {
-                Width = magSize + 4,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 8, 8),
-                Visibility = Visibility.Collapsed,
-                IsHitTestVisible = false
-            };
-            magPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            magPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            Grid.SetRow(magBorder, 0); // move magBorder into panel instead
-            magPanel.Children.Add(magBorder);
-            magBorder.HorizontalAlignment = HorizontalAlignment.Center;
-            magBorder.VerticalAlignment = VerticalAlignment.Top;
-            magBorder.Margin = new Thickness(0);
-            magBorder.Visibility = Visibility.Visible;
-            Grid.SetRow(magCoordText, 1);
-            magPanel.Children.Add(magCoordText);
-            Grid.SetRow(magPanel, 1);
-            Grid.SetColumn(magPanel, 1);
-            System.Windows.Controls.Panel.SetZIndex(magPanel, 100);
-            root.Children.Add(magPanel);
-
-            void UpdateMagnifier(Point imgPos)
-            {
-                if (image.Source is not BitmapSource bmp) return;
-                int px = (int)Math.Round(imgPos.X);
-                int py = (int)Math.Round(imgPos.Y);
-                magCoordText.Text = $"{px}, {py}";
-
-                int halfRegion = magSize / (magZoom * 2);
-                int srcX = Math.Max(0, px - halfRegion);
-                int srcY = Math.Max(0, py - halfRegion);
-                int srcW = halfRegion * 2;
-                int srcH = halfRegion * 2;
-                if (srcX + srcW > bmp.PixelWidth) srcW = bmp.PixelWidth - srcX;
-                if (srcY + srcH > bmp.PixelHeight) srcH = bmp.PixelHeight - srcY;
-                if (srcW <= 0 || srcH <= 0) return;
-
-                try
-                {
-                    var cb = new CroppedBitmap(bmp, new Int32Rect(srcX, srcY, srcW, srcH));
-                    magImage.Source = cb;
-                }
-                catch { /* ignore */ }
-            }
-
-            // Pan: only when content overflows viewport
-            bool isPanning = false;
-            Point panStart = default;
-            double panOriginX = 0, panOriginY = 0;
-
-            scrollViewer.PreviewMouseLeftButtonDown += (s, e) =>
-            {
-                scrollViewer.Focus();
-
-                // ALT + left click: thêm point cho crop polygon thay vì pan.
-                if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
-                {
-                    e.Handled = true;
-                    AddCropPointFromClick(node, image, scale, e.GetPosition(image), imageGrid, cropButton, onCropClickForIP);
-                    return;
-                }
-
-                if (scrollViewer.ExtentWidth <= scrollViewer.ViewportWidth &&
-                    scrollViewer.ExtentHeight <= scrollViewer.ViewportHeight) return;
-                isPanning = true;
-                panStart = e.GetPosition(scrollViewer);
-                panOriginX = scrollViewer.HorizontalOffset;
-                panOriginY = scrollViewer.VerticalOffset;
-                scrollViewer.Cursor = Cursors.SizeAll;
-                scrollViewer.CaptureMouse();
-                e.Handled = true;
-            };
-            scrollViewer.PreviewMouseLeftButtonUp += (s, e) =>
-            {
-                if (!isPanning) return;
-                isPanning = false;
-                scrollViewer.Cursor = Cursors.Arrow;
-                scrollViewer.ReleaseMouseCapture();
-                e.Handled = true;
-            };
-            scrollViewer.PreviewMouseMove += (s, e) =>
-            {
-                if (isPanning)
-                {
-                    var pos = e.GetPosition(scrollViewer);
-                    var dx = pos.X - panStart.X;
-                    var dy = pos.Y - panStart.Y;
-                    scrollViewer.ScrollToHorizontalOffset(panOriginX - dx);
-                    scrollViewer.ScrollToVerticalOffset(panOriginY - dy);
-                    e.Handled = true;
-                    return;
-                }
-
-                // Khi Alt: hiện crosshair + magnifier
-                if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt && image.Source is BitmapSource)
-                {
-                    scrollViewer.Cursor = Cursors.Cross;
-                    magPanel.Visibility = Visibility.Visible;
-                    UpdateMagnifier(e.GetPosition(image));
-                }
-                else
-                {
-                    if (magPanel.Visibility == Visibility.Visible)
-                        magPanel.Visibility = Visibility.Collapsed;
-                    if (scrollViewer.Cursor == Cursors.Cross)
-                        scrollViewer.Cursor = Cursors.Arrow;
-                }
-            };
-
-            // Ẩn magnifier khi chuột rời vùng ảnh
-            scrollViewer.MouseLeave += (s, e) =>
-            {
-                magPanel.Visibility = Visibility.Collapsed;
-                if (scrollViewer.Cursor == Cursors.Cross)
-                    scrollViewer.Cursor = Cursors.Arrow;
-            };
-
-            // Enter: hoàn thành crop hiện tại (nối end → start hoặc huỷ nếu < 3 điểm)
-            scrollViewer.PreviewKeyDown += (s, e) =>
-            {
-                if (e.Key == Key.Enter)
-                {
-                    if (CompleteActiveCrop(node, cropButton))
-                    {
-                        e.Handled = true;
-                    }
-                }
-            };
-
-            // --- Resize handles overlay (same pattern as MediaGallery) ---
             var handleOverlay = new Grid();
+            var imageContent = new ImageProcessingNodeContentControl(node, host, border, ownerWindow, handleOverlay, () => isResizing);
             AddResizeHandle(handleOverlay, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, 2, 2, 0));
             AddResizeHandle(handleOverlay, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(2, 0, 0, 2));
             AddResizeHandle(handleOverlay, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
             AddResizeHandle(handleOverlay, ResizeDirection.Top, HorizontalAlignment.Center, VerticalAlignment.Top, new Thickness(0, 2, 0, 0));
 
             var outerGrid = new Grid();
-            outerGrid.Children.Add(root);
+            outerGrid.Children.Add(imageContent);
             outerGrid.Children.Add(handleOverlay);
+            Panel.SetZIndex(outerGrid, 1);
             GpuOptimizationHelper.ApplyToElement(outerGrid);
-            border.Child = outerGrid;
 
-            bool isResizing = false;
+            var chromeFillGrid = new Grid();
+            chromeFillGrid.Children.Add(shadowPlate);
+            chromeFillGrid.Children.Add(outerGrid);
+            border.Child = chromeFillGrid;
+
             ResizeDirection currentDir = ResizeDirection.None;
             Point resizeStart = default;
             double origW = 0, origH = 0, origX = 0, origY = 0;
@@ -1121,7 +226,8 @@ namespace FlowMy.Views.NodeControls
                     }
                     else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
                     {
-                        border.Background = node.NodeBrush;
+                        border.Background = Brushes.Transparent;
+                        shadowPlate.Background = node.NodeBrush;
                         titleTextBlock.Foreground = GetTitleBrush(node);
                     }
                     else if (e.PropertyName == nameof(ImageProcessingNode.TitleDisplayMode))
@@ -1142,56 +248,6 @@ namespace FlowMy.Views.NodeControls
                             border.Width = node.Width;
                             border.Height = node.Height;
                         }
-
-                        // Scale UI elements theo Height, baseline = MinHeight
-                        var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 600.0;
-                        var heightScaleFactor = Math.Max(0.8, Math.Min(1.8, node.Height / heightBaseline));
-                        var menuHeightScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
-                        topMenu.LayoutTransform = menuHeightScale;
-                        // Không scale leftStack theo height vì button trong menu trái chỉ scale theo width
-                        cropsLabel.LayoutTransform = menuHeightScale;
-
-                        // Scale UI elements theo Width, baseline = MinWidth
-                        var widthBaseline = border.MinWidth > 0 ? border.MinWidth : 800.0;
-
-                        // Menu trái chiếm 0.8/10 = 8% của tổng width
-                        // Tính scale factor dựa trên width thực tế của menu trái
-                        // Button sẽ scale tỉ lệ 1:1 với width của menu trái
-                        // Khi menu trái width tăng 1px → button scale theo tỉ lệ đó
-                        const double leftMenuWidthRatio = 0.8 / 10.0; // 8%
-                        var leftMenuBaselineWidth = widthBaseline * leftMenuWidthRatio;
-                        // Tính width hiện tại của menu trái từ node.Width
-                        var leftMenuCurrentWidth = node.Width * leftMenuWidthRatio;
-                        // Scale factor = tỉ lệ width hiện tại / width baseline của menu trái
-                        // Điều này đảm bảo button scale đúng theo tỉ lệ width của menu trái
-                        var leftMenuScaleFactor = leftMenuBaselineWidth > 0
-                            ? leftMenuCurrentWidth / leftMenuBaselineWidth
-                            : 1.0;
-
-                        // Scale menu trái theo tỉ lệ width thực tế của menu trái
-                        // Khi menu trái tăng 1px, button sẽ scale theo tỉ lệ tương ứng
-                        var leftMenuScale = new ScaleTransform(leftMenuScaleFactor, leftMenuScaleFactor);
-                        leftMenu.LayoutTransform = leftMenuScale;
-
-                        // Scale factor cho menu phải dựa trên width của toàn node
-                        var widthScaleFactor = node.Width / widthBaseline;
-                        var interactionScale = Math.Max(heightScaleFactor, leftMenuScaleFactor);
-                        UpdateInteractionVisualScale(handleOverlay, node, interactionScale);
-
-
-                    }
-                    else if (e.PropertyName == nameof(ImageProcessingNode.InputMode) ||
-                             e.PropertyName == nameof(ImageProcessingNode.ImageUrl) ||
-                             e.PropertyName == nameof(ImageProcessingNode.ImageBase64) ||
-                             e.PropertyName == nameof(ImageProcessingNode.ImageUrlSourceNodeId) ||
-                             e.PropertyName == nameof(ImageProcessingNode.ImageUrlSourceOutputKey) ||
-                             e.PropertyName == nameof(ImageProcessingNode.ImageBase64SourceNodeId) ||
-                             e.PropertyName == nameof(ImageProcessingNode.ImageBase64SourceOutputKey))
-                    {
-                        _ = UpdatePreviewAsync(
-                            node, host, image, placeholder, scale,
-                            imageGrid, scrollViewer, imageTitleTextBlock,
-                            onCropClickForIP);
                     }
                 };
             }
@@ -1250,32 +306,6 @@ namespace FlowMy.Views.NodeControls
                     Panel.SetZIndex(titleTextBlock, 20000);
                     UpdateTitlePosition(titleTextBlock, border, host);
                 }
-
-                // Áp dụng scale ban đầu dựa trên node.Width/Height để khôi phục đúng kích thước khi load workflow
-                // (ActualWidth/ActualHeight có thể là 0 tại thời điểm Loaded, nên dùng node.Width/Height trực tiếp)
-                var initHeightBaseline = border.MinHeight > 0 ? border.MinHeight : 600.0;
-                var initHeightScaleFactor = Math.Max(0.8, Math.Min(1.8, node.Height / initHeightBaseline));
-                var initMenuHeightScale = new ScaleTransform(initHeightScaleFactor, initHeightScaleFactor);
-                topMenu.LayoutTransform = initMenuHeightScale;
-                cropsLabel.LayoutTransform = initMenuHeightScale;
-
-                var initWidthBaseline = border.MinWidth > 0 ? border.MinWidth : 800.0;
-                const double initLeftMenuWidthRatio = 0.8 / 10.0;
-                var initLeftMenuBaselineWidth = initWidthBaseline * initLeftMenuWidthRatio;
-                var initLeftMenuCurrentWidth = node.Width * initLeftMenuWidthRatio;
-                var initLeftMenuScaleFactor = initLeftMenuBaselineWidth > 0
-                    ? initLeftMenuCurrentWidth / initLeftMenuBaselineWidth
-                    : 1.0;
-                leftMenu.LayoutTransform = new ScaleTransform(initLeftMenuScaleFactor, initLeftMenuScaleFactor);
-                var initInteractionScale = Math.Max(initHeightScaleFactor, initLeftMenuScaleFactor);
-                UpdateInteractionVisualScale(handleOverlay, node, initInteractionScale);
-
-
-
-                _ = UpdatePreviewAsync(
-                    node, host, image, placeholder, scale,
-                    imageGrid, scrollViewer, imageTitleTextBlock,
-                    onCropClickForIP);
             };
 
             border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
@@ -1289,12 +319,6 @@ namespace FlowMy.Views.NodeControls
                         host.WorkflowCanvas.Children.Remove(titleTextBlock);
                     if (ReferenceEquals(node.TitleTextBlockUI, titleTextBlock))
                         node.TitleTextBlockUI = null;
-                    // Huỷ đăng ký CollectionChanged để handler không giữ reference đến imageGrid cũ
-                    node.Crops.CollectionChanged -= cropsChangedHandler;
-                    // Dọn sạch polygon map khi node unload
-                    foreach (var reg in node.Crops)
-                        _polygonMap.Remove(reg);
-                    _activeCropRegion.Remove(node);
                 }
                 catch { }
             };
@@ -1315,35 +339,10 @@ namespace FlowMy.Views.NodeControls
                     ThrottledUpdateTitlePosition(titleTextBlock, border, host);
             };
 
-            // Chặn context menu mặc định trên vùng ảnh
-            scrollViewer.ContextMenu = new ContextMenu { Visibility = Visibility.Collapsed };
-
-            // Chuột phải trên ảnh → hoàn thành crop (thay cho Enter)
-            scrollViewer.PreviewMouseRightButtonDown += (s, e) =>
-            {
-                e.Handled = true;
-                CompleteActiveCrop(node, cropButton);
-            };
-
-            // Chuột phải trên các vùng khác của node → mở dialog
-            border.MouseRightButtonUp += (s, e) =>
-            {
-                var src = e.OriginalSource as DependencyObject;
-                bool IsInside(FrameworkElement fe)
-                    => src != null && fe != null && VisualTreeHelper.GetParent(src) != null &&
-                       fe.IsAncestorOf(src);
-
-                if (!IsInside(scrollViewer))
-                {
-                    e.Handled = true;
-                    OpenNodeDialog(node, host, ownerWindow);
-                }
-            };
-
             return border;
         }
 
-        private static void OpenImageFilePicker(ImageProcessingNode node)
+        internal static void OpenImageFilePicker(ImageProcessingNode node)
         {
             try
             {
@@ -1372,7 +371,7 @@ namespace FlowMy.Views.NodeControls
         /// <summary>
         /// Thêm một point polygon từ click ALT+chuột trái, tính bounding box + tạo overlay polygon với màu tuỳ chọn.
         /// </summary>
-        private static void AddCropPointFromClick(
+        internal static void AddCropPointFromClick(
             ImageProcessingNode node,
             System.Windows.Controls.Image image,
             ScaleTransform scale,
@@ -1560,7 +559,7 @@ namespace FlowMy.Views.NodeControls
         /// Hoàn thành vùng crop hiện tại: nếu đủ 3 điểm → nối end→start, nếu không thì huỷ.
         /// Đồng thời enable lại nút crop và tạo tên crop theo format Image_{Order}_{DateTime}.
         /// </summary>
-        private static bool CompleteActiveCrop(ImageProcessingNode node, Button cropButton)
+        internal static bool CompleteActiveCrop(ImageProcessingNode node, Button cropButton)
         {
             if (!_activeCropRegion.TryGetValue(node, out var region) || region == null)
                 return false;
@@ -1589,7 +588,7 @@ namespace FlowMy.Views.NodeControls
             return true;
         }
 
-        private static (FrameworkElement, Action<BitmapSource?>) BuildImageProcessorColumn(ImageProcessingNode node, IWorkflowEditorHost host)
+        internal static (FrameworkElement, Action<BitmapSource?>) BuildImageProcessorColumn(ImageProcessingNode node, IWorkflowEditorHost host)
         {
             // ── State ──
             BitmapSource? currentSource = null;
@@ -2305,7 +1304,7 @@ namespace FlowMy.Views.NodeControls
             grid.Children.Add(handle);
         }
 
-        private static void UpdateInteractionVisualScale(Grid handleOverlay, WorkflowNode node, double rawScale)
+        internal static void UpdateInteractionVisualScale(Grid handleOverlay, WorkflowNode node, double rawScale)
         {
             var visualScale = Math.Max(1.0, Math.Min(2.8, rawScale * 1.2));
 
@@ -2406,7 +1405,7 @@ namespace FlowMy.Views.NodeControls
             Canvas.SetTop(tb, titleTop);
         }
 
-        private static void OpenNodeDialog(ImageProcessingNode node, IWorkflowEditorHost host, Window? ownerWindow)
+        internal static void OpenNodeDialog(ImageProcessingNode node, IWorkflowEditorHost host, Window? ownerWindow)
         {
             try
             {
@@ -2602,7 +1601,7 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private static async System.Threading.Tasks.Task UpdatePreviewAsync(
+        internal static async System.Threading.Tasks.Task UpdatePreviewAsync(
             ImageProcessingNode node,
             IWorkflowEditorHost host,
             System.Windows.Controls.Image image,
@@ -3011,6 +2010,61 @@ namespace FlowMy.Views.NodeControls
                 }
                 catch { }
             }
+        }
+
+        /// <summary>Chrome node ảnh: lớp nền có DropShadow. Sau NodeChrome bọc, <c>Child</c> là overlay có Tag NodeChromeRoot.</summary>
+        internal static Border? TryGetImageWorkflowShadowPlate(Border chromeBorder)
+        {
+            if (chromeBorder?.Child is not Grid top)
+                return null;
+
+            const string nodeChromeRootTag = "NodeChromeRoot";
+            if (string.Equals(top.Tag as string, nodeChromeRootTag, StringComparison.Ordinal)
+                && top.Children.Count > 0
+                && top.Children[0] is Grid chromeFill
+                && chromeFill.Children.Count > 0
+                && chromeFill.Children[0] is Border wrappedPlate)
+                return wrappedPlate;
+
+            if (top.Children.Count > 0 && top.Children[0] is Border plate)
+                return plate;
+
+            return null;
+        }
+
+        internal static void SyncWorkflowChromeNodeBrush(Border chromeBorder, Brush brush)
+        {
+            if (chromeBorder == null) return;
+            if (TryGetImageWorkflowShadowPlate(chromeBorder) is { } plate)
+            {
+                chromeBorder.Background = Brushes.Transparent;
+                plate.Background = brush;
+                return;
+            }
+            chromeBorder.Background = brush;
+        }
+
+        internal static void RefreshImageWorkflowChromeDropShadow(Border chromeBorder)
+        {
+            if (TryGetImageWorkflowShadowPlate(chromeBorder) is not { } plate) return;
+            plate.Effect = GpuOptimizationHelper.CreateDropShadowEffect();
+            GpuOptimizationHelper.ApplyToElement(plate);
+        }
+
+        /// <summary>Bóng trên shadowPlate; không cache cả khối Border (tránh mờ toolbar/ảnh).</summary>
+        internal static void ApplyEditorGpuChrome(WorkflowNode node, Border border, bool hostWantsNodeCache)
+        {
+            if (border == null) return;
+            if (node is ImageProcessingNode)
+            {
+                border.Effect = null;
+                GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: false);
+                RefreshImageWorkflowChromeDropShadow(border);
+                return;
+            }
+
+            GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: hostWantsNodeCache);
+            border.Effect = GpuOptimizationHelper.CreateDropShadowEffect();
         }
     }
 

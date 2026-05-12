@@ -2,6 +2,7 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
+using FlowMy.Views.NodeControls;
 using System.Globalization;
 using System.Text.Json;
 using System.Windows;
@@ -49,8 +50,10 @@ namespace FlowMy.Services.Rendering
             // Không gắn chrome cho LoopBody container (node ảo)
             if (node is LoopBodyNode) return;
 
-            // GPU-friendly options for node border - enable GPU rendering
-            GpuOptimizationHelper.ApplyToBorder(border, isDragging: false);
+            if (node is ImageProcessingNode)
+                ImageProcessingNodeControl.ApplyEditorGpuChrome(node, border, host.CacheNodeEnabled);
+            else
+                GpuOptimizationHelper.ApplyToBorder(border, isDragging: false);
 
             // Chống apply nhiều lần (re-render/import)
             if (border.Child is Grid existingRoot && Equals(existingRoot.Tag, RootTag))

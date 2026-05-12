@@ -3,6 +3,7 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utilities;
 using FlowMy.ViewModels;
+using FlowMy.Views.NodeControls;
 using FlowMy.Workflow;
 using FlowMy.Properties;
 using Microsoft.Web.WebView2.Wpf;
@@ -560,13 +561,7 @@ namespace FlowMy.Views
                     foreach (var node in ViewModel.Nodes)
                     {
                         if (node.Border != null && node != _draggedNode)
-                        {
-                            // Chỉ apply cache cho nodes không di chuyển
-                            GpuOptimizationHelper.ApplyToBorder(node.Border, isDragging: false, forceCache: _cacheNodeEnabled);
-                            
-                            // CRITICAL: Re-apply drop shadow effect based on quality
-                            node.Border.Effect = GpuOptimizationHelper.CreateDropShadowEffect();
-                        }
+                            ImageProcessingNodeControl.ApplyEditorGpuChrome(node, node.Border, _cacheNodeEnabled);
                         
                         // Re-apply cho ports
                         foreach (var port in node.Ports.Where(p => p.PortUI != null))
