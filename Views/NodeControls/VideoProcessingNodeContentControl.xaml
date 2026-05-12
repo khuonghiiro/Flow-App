@@ -68,13 +68,10 @@
         <SolidColorBrush x:Key="ThemeSliderThumbBrush" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ThemeComboPopupBackgroundBrush" Color="#1E1E2A"/>
         <SolidColorBrush x:Key="ThemeComboItemHoverBrush" Color="#343448"/>
-        <SolidColorBrush x:Key="ThemeComboSelectedItemBrush" Color="#4B556A"/>
+        <SolidColorBrush x:Key="ThemeComboSelectedItemBrush" Color="#554B556A"/>
         <SolidColorBrush x:Key="ThemeTabHoverBrush" Color="#2A2A38"/>
-        <SolidColorBrush x:Key="ThemeTabSelectedBackgroundBrush" Color="#302A3446"/>
-        <SolidColorBrush x:Key="ThemeDefaultButtonBackgroundBrush" Color="#00000000"/>
-        <SolidColorBrush x:Key="ThemeDefaultButtonHoverBackgroundBrush" Color="#2A2A38"/>
-        <SolidColorBrush x:Key="ThemeDefaultButtonPressedBackgroundBrush" Color="#222230"/>
-        <SolidColorBrush x:Key="ThemeDefaultButtonBorderBrush" Color="#3A3A4A"/>
+        <SolidColorBrush x:Key="ThemeTabSelectedBackgroundBrush" Color="#CC6366F1"/>
+        <SolidColorBrush x:Key="ThemeVideoLogSegmentTrackBrush" Color="#252530"/>
         <SolidColorBrush x:Key="ThemeActionExtractBrush" Color="#262E8FF9"/>
         <SolidColorBrush x:Key="ThemeActionSubtitleBrush" Color="#266366F1"/>
         <SolidColorBrush x:Key="ThemeActionWatermarkBrush" Color="#2614B8A6"/>
@@ -166,7 +163,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                               
+                                <Setter TargetName="FillBd" Property="Background" Value="{DynamicResource ThemeVideoChromePrimaryHoverBgBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="FillBd" Property="RenderTransform">
@@ -218,10 +215,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="FillBd2" Property="Background" Value="#2A2A38"/>
+                                <Setter TargetName="FillBd2" Property="Background" Value="{DynamicResource ThemeVideoChromeSecondaryHoverBgBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="FillBd2" Property="Background" Value="#222230"/>
+                                <Setter TargetName="FillBd2" Property="Background" Value="{DynamicResource ThemePresetChipPressedBgBrush}"/>
                                 <Setter TargetName="FillBd2" Property="RenderTransform">
                                     <Setter.Value>
                                         <TransformGroup>
@@ -264,10 +261,23 @@
             <Setter Property="Margin" Value="8,0,0,0"/>
             <Setter Property="Padding" Value="6,4"/>
         </Style>
+        <Style x:Key="VideoLogTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeInputForegroundBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource ThemeInputForegroundBrush}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource ThemeAccentBrush}"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+        </Style>
         <Style TargetType="ToolTip">
-            <Setter Property="Background" Value="#1E1E2A"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#2E2E3D"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeInnerCardBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeCardBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,5"/>
             <Setter Property="HasDropShadow" Value="True"/>
@@ -293,7 +303,8 @@
             <Setter Property="Margin" Value="0,3,0,3"/>
             <Style.Triggers>
                 <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Foreground" Value="#88EAF2FF"/>
+                    <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+                    <Setter Property="Opacity" Value="0.55"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -302,36 +313,6 @@
         </Style>
         <Style TargetType="Button">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource ThemeDefaultButtonBackgroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeDefaultButtonBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Root"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeDefaultButtonHoverBackgroundBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ThemeDefaultButtonPressedBackgroundBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Root" Property="Opacity" Value="0.5"/>
-                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -440,8 +421,8 @@
                                 <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="{DynamicResource ThemeComboSelectedItemBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -464,8 +445,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
-                        <Grid x:Name="SliderRoot">
-                            <Border x:Name="TrackBase" Height="5" CornerRadius="3" Background="{DynamicResource ThemeTrackBackgroundBrush}" VerticalAlignment="Center"/>
+                        <Grid>
+                            <Border Height="5" CornerRadius="3" Background="{DynamicResource ThemeTrackBackgroundBrush}" VerticalAlignment="Center"/>
                             <Track x:Name="PART_Track">
                                 <Track.DecreaseRepeatButton>
                                     <RepeatButton Background="{DynamicResource ThemeAccentBrush}" Opacity="0.9" BorderThickness="0" Height="5" VerticalAlignment="Center"/>
@@ -508,12 +489,6 @@
                                 </Track.Thumb>
                             </Track>
                         </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="SliderRoot" Property="Opacity" Value="0.72"/>
-                                <Setter TargetName="TrackBase" Property="Background" Value="{DynamicResource ThemeInputBorderBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -680,6 +655,78 @@
             <Setter Property="Background" Value="{DynamicResource ThemePresetChipResetBgBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemePresetChipResetBorderBrush}"/>
         </Style>
+        <!-- Portrait column: two equal segments (50/50), headers centered in each cell -->
+        <Style x:Key="VideoPortraitTabItemStyle" TargetType="TabItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Padding" Value="8,10"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="ItemRoot"
+                                Background="Transparent"
+                                CornerRadius="8"
+                                Margin="2"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter x:Name="ContentSite"
+                                              ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource ThemeTabHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource ThemeTabSelectedBackgroundBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="VideoPortraitEqualTabControlStyle" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource VideoPortraitTabItemStyle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local" ClipToBounds="True" SnapsToDevicePixels="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0"
+                                    Margin="12,4,12,10"
+                                    Padding="3"
+                                    HorizontalAlignment="Stretch"
+                                    CornerRadius="10"
+                                    Background="{DynamicResource ThemeVideoLogSegmentTrackBrush}"
+                                    BorderBrush="{DynamicResource ThemeCardBorderBrush}"
+                                    BorderThickness="1">
+                                <UniformGrid Rows="1" Columns="2" IsItemsHost="True"/>
+                            </Border>
+                            <Border Grid.Row="1" Background="Transparent">
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                  Margin="0"
+                                                  ContentSource="SelectedContent"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="PillTabNavStyle" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -716,7 +763,7 @@
                                     </Grid>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeTabSelectedBackgroundBrush}"/>
+                                            <Setter TargetName="Bd" Property="Background" Value="#2A000000"/>
                                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}"/>
                                             <Setter TargetName="Bd" Property="Padding" Value="12,8"/>
                                             <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentTextBrush}"/>
@@ -810,9 +857,9 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions> 
-                <controls:SvgViewboxEx Grid.Column="0" x:Name="IconView" Width="24" Height="24" Margin="0,0,12,0" VerticalAlignment="Center" Fill="White" />
+                <controls:SvgViewboxEx Grid.Column="0" x:Name="IconView" Width="24" Height="24" Margin="0,0,12,0" VerticalAlignment="Center" Fill="{DynamicResource ThemeTextPrimaryBrush}" />
                 <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                    <TextBlock x:Name="TitleText" FontSize="13" FontWeight="Medium" FontFamily="Segoe UI" Foreground="White" />
+                    <TextBlock x:Name="TitleText" FontSize="13" FontWeight="Medium" FontFamily="Segoe UI" Foreground="{DynamicResource ThemeTextPrimaryBrush}" />
                     <TextBlock x:Name="VideoPathText"
                                FontSize="11"
                                Opacity="0.72"
@@ -846,12 +893,19 @@
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" x:Name="PreviewContainerBorder" Style="{StaticResource GlassCardStyle}" Margin="0,0,10,0" Padding="0" ClipToBounds="True" VerticalAlignment="Stretch">
+                <Grid x:Name="PreviewColumnShellGrid">
                 <Grid x:Name="VideoContainerGrid">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="2*"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid x:Name="VideoTopPackGrid" Grid.Row="0" Grid.RowSpan="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Border Grid.Row="0" Margin="12,12,12,8" Padding="10,8" Background="{DynamicResource ThemeTabNavBackgroundBrush}" CornerRadius="10">
                     <Grid>
@@ -888,7 +942,7 @@
                                     Background="{DynamicResource ThemeAccentBrush}" BorderBrush="{DynamicResource ThemeOverlayBorderBrush}"
                                     BorderThickness="1" CornerRadius="10"
                                     Padding="7,3" Margin="0,0,6,0" VerticalAlignment="Center">
-                                <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                <TextBlock x:Name="HwBadgeText" FontSize="9" FontWeight="Medium" Foreground="{DynamicResource ThemeOnAccentTextBrush}"/>
                             </Border>
                             <Border Padding="7,8" CornerRadius="8"
                                     Background="{DynamicResource ThemeOverlayBackgroundBrush}"
@@ -1190,7 +1244,8 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border Grid.Row="3" Margin="0,8,0,12" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
+                </Grid>
+                <Border x:Name="LogPanelBorder" Grid.Row="3" Margin="0,8,0,12" Background="{DynamicResource ThemeLogContainerBackgroundBrush}" BorderBrush="{DynamicResource ThemeCardBorderBrush}" BorderThickness="1" CornerRadius="10">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1201,7 +1256,7 @@
                             <Grid>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock x:Name="ProgressStatusText" Text="Chưa chạy" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
-                                    <TextBlock x:Name="ProgressPercentText" Margin="8,0,0,0" FontSize="11" FontFamily="Consolas" Opacity="0.8"/>
+                                    <TextBlock x:Name="ProgressPercentText" Margin="8,0,0,0" FontSize="11" FontFamily="Consolas" Opacity="0.9" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                     <Button x:Name="ClearLogButton" Content="Xóa" Height="22" Padding="8,0" FontSize="10" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
@@ -1216,14 +1271,26 @@
                             </Grid>
                         </Border>
                         <ScrollViewer Grid.Row="1" x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
-                            <TextBox x:Name="LogTextBox" IsReadOnly="True" Background="Transparent" BorderThickness="0" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource ThemeTextPrimaryBrush}" Padding="8,6" TextWrapping="Wrap" AcceptsReturn="True"/>
+                            <TextBox x:Name="LogTextBox" Style="{StaticResource VideoLogTextBoxStyle}"/>
                         </ScrollViewer>
                         <Grid Grid.Row="2" Margin="10,4,10,6">
-                            <TextBlock x:Name="ElapsedTimeText" FontSize="10.5" Opacity="0.7" Text="Elapsed: --"/>
-                            <TextBlock x:Name="EstimatedTimeText" HorizontalAlignment="Right" FontSize="10.5" Opacity="0.7" Text="ETA: --"/>
+                            <TextBlock x:Name="ElapsedTimeText" FontSize="10.5" Opacity="0.85" Text="Elapsed: --" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
+                            <TextBlock x:Name="EstimatedTimeText" HorizontalAlignment="Right" FontSize="10.5" Opacity="0.85" Text="ETA: --" Foreground="{DynamicResource ThemeTextSecondaryBrush}"/>
                         </Grid>
                     </Grid>
                 </Border>
+                </Grid>
+                <TabControl x:Name="PortraitVideoLogTabControl"
+                            Style="{StaticResource VideoPortraitEqualTabControlStyle}"
+                            Visibility="Collapsed"
+                            Margin="0">
+                    <TabItem Header="Video">
+                        <Grid x:Name="PortraitVideoHostPanel" Margin="0,2,0,0"/>
+                    </TabItem>
+                    <TabItem Header="Log">
+                        <Grid x:Name="PortraitLogHostPanel" Margin="0,2,0,0"/>
+                    </TabItem>
+                </TabControl>
                 </Grid>
             </Border>
 
@@ -1877,7 +1944,7 @@
                                 <Border x:Name="TrimReviewTrackBorder"
                                         Background="{DynamicResource ThemeTrackBackgroundBrush}"
                                         CornerRadius="2" Height="4" VerticalAlignment="Center"/>
-                                <Border x:Name="TrimReviewRangeFill" Background="{DynamicResource ThemeAccentBrush}" Opacity="0.45" CornerRadius="2" Height="4" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
+                                <Border x:Name="TrimReviewRangeFill" Background="#4487A7FF" CornerRadius="2" Height="4" VerticalAlignment="Center" HorizontalAlignment="Left" Width="0"/>
                                 <Canvas>
                                     <Ellipse x:Name="TrimReviewStartThumb" Width="13" Height="13" Fill="#4ADE80"/>
                                     <Ellipse x:Name="TrimReviewEndThumb" Width="13" Height="13" Fill="#FB7185"/>
@@ -2034,8 +2101,8 @@
                                         <TextBox x:Name="FfmpegFolderText" Height="28" FontSize="10.5"/>
                                         <Button x:Name="BrowseFfmpegFolderButton" Grid.Column="1" Content="..." Width="32" Height="28" Style="{StaticResource VideoChromeSecondaryButtonStyle}" Margin="4,0,0,0"/>
                                     </Grid>
-                                    <Border x:Name="FfmpegVerifyBadge" Margin="0,8,0,0" Padding="8,5" CornerRadius="7" Background="{DynamicResource ThemeBottomBarActiveGroupBackgroundBrush}">
-                                        <TextBlock x:Name="FfmpegVerifyText" FontSize="10" Text="Chưa xác minh" Foreground="{DynamicResource ThemeTextPrimaryBrush}"/>
+                                    <Border x:Name="FfmpegVerifyBadge" Margin="0,8,0,0" Padding="8,5" CornerRadius="7" Background="#1A4ADE80">
+                                        <TextBlock x:Name="FfmpegVerifyText" FontSize="10" Text="Chưa xác minh" Foreground="#4ADE80"/>
                                     </Border>
                                     <Button x:Name="VerifyFfmpegButton" Content="Xác minh FFmpeg" Height="30" Margin="0,8,0,0" Style="{StaticResource VideoChromeSecondaryButtonStyle}"/>
                                 </StackPanel>

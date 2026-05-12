@@ -87,6 +87,7 @@ namespace FlowMy.Views.NodeControls
         private bool _suppressControlSync;
         private double _frameResizeScale = 1.0;
         private bool _isLightTheme;
+        private bool _portraitVideoLogLayout;
         private bool _isNodeZoomed;
         private double _prevNodeWidth;
         private double _prevNodeHeight;
@@ -162,7 +163,6 @@ namespace FlowMy.Views.NodeControls
                 RefreshVideoPreview();
                 UpdatePlaybackUi();
                 ApplyLocalTheme();
-                RefreshResponsiveLayout();
                 SyncUserControlRoundedClip();
                 RefreshLargeNodeUiScale();
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
@@ -170,7 +170,7 @@ namespace FlowMy.Views.NodeControls
                     SyncUserControlRoundedClip();
                     RefreshLargeNodeUiScale();
                     UpdatePreviewAspectRatio();
-                    RefreshResponsiveLayout();
+                    UpdateVideoLogColumnLayout();
                 }));
             };
             Unloaded += (_, _) => DetachSubscriptions();
@@ -210,7 +210,7 @@ namespace FlowMy.Views.NodeControls
                 SyncUserControlRoundedClip();
                 RefreshLargeNodeUiScale();
                 UpdatePreviewAspectRatio();
-                RefreshResponsiveLayout();
+                UpdateVideoLogColumnLayout();
             };
             VideoViewbox.SizeChanged += (_, _) =>
             {
@@ -850,11 +850,14 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyThemeBrushes(Brush textBrush)
         {
-            var headerBrush = _isLightTheme ? Brushes.Black : Brushes.White;
-            TitleText.Foreground = headerBrush;
-            IconView.Fill = headerBrush;
-            VideoPathText.Foreground = textBrush;
-            HwBadgeText.Foreground = textBrush;
+            var primary = TryFindResource("ThemeTextPrimaryBrush") as Brush
+                          ?? (_isLightTheme ? Brushes.Black : Brushes.White);
+            var secondary = TryFindResource("ThemeTextSecondaryBrush") as Brush ?? textBrush;
+            var onAccent = TryFindResource("ThemeOnAccentTextBrush") as Brush ?? Brushes.White;
+            TitleText.Foreground = primary;
+            IconView.Fill = primary;
+            VideoPathText.Foreground = secondary;
+            HwBadgeText.Foreground = onAccent;
         }
 
         private void InitializeIcon()
@@ -863,7 +866,8 @@ namespace FlowMy.Views.NodeControls
             var iconUri = iconConverter.Convert(string.Empty, typeof(Uri), "circle-video sharp-light",
                 System.Globalization.CultureInfo.CurrentCulture) as Uri;
             if (iconUri != null) IconView.Source = iconUri;
-            IconView.Fill = _isLightTheme ? Brushes.Black : Brushes.White;
+            IconView.Fill = TryFindResource("ThemeTextPrimaryBrush") as Brush
+                            ?? (_isLightTheme ? Brushes.Black : Brushes.White);
         }
 
         private void TabNavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -3128,15 +3132,16 @@ namespace FlowMy.Views.NodeControls
                         // UI capture fallback if FFmpeg fails.
                         await Dispatcher.InvokeAsync(() =>
                         {
-                            VideoContainerGrid.UpdateLayout();
+                            var root = GetVideoColumnRenderRoot();
+                            root.UpdateLayout();
                             VideoAreaGrid.UpdateLayout();
-                            var dpi = VisualTreeHelper.GetDpi(VideoContainerGrid);
-                            var containerW = Math.Max(1, (int)Math.Round(VideoContainerGrid.ActualWidth * dpi.DpiScaleX));
-                            var containerH = Math.Max(1, (int)Math.Round(VideoContainerGrid.ActualHeight * dpi.DpiScaleY));
+                            var dpi = VisualTreeHelper.GetDpi(root);
+                            var containerW = Math.Max(1, (int)Math.Round(root.ActualWidth * dpi.DpiScaleX));
+                            var containerH = Math.Max(1, (int)Math.Round(root.ActualHeight * dpi.DpiScaleY));
                             var rtb = new RenderTargetBitmap(containerW, containerH, 96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
-                            rtb.Render(VideoContainerGrid);
+                            rtb.Render(root);
                             var displayedRect = GetDisplayedVideoRect();
-                            var topLeft = VideoAreaGrid.TranslatePoint(new Point(displayedRect.X, displayedRect.Y), VideoContainerGrid);
+                            var topLeft = VideoAreaGrid.TranslatePoint(new Point(displayedRect.X, displayedRect.Y), root);
                             var cropX = Math.Max(0, (int)Math.Floor(topLeft.X * dpi.DpiScaleX));
                             var cropY = Math.Max(0, (int)Math.Floor(topLeft.Y * dpi.DpiScaleY));
                             var cropW = Math.Max(1, Math.Min(containerW - cropX, (int)Math.Round(displayedRect.Width * dpi.DpiScaleX)));
@@ -3223,151 +3228,151 @@ namespace FlowMy.Views.NodeControls
 
         private void ApplyLocalTheme()
         {
-            var L = _isLightTheme;
-
-            var shellBg = L ? Color.FromRgb(238, 242, 247) : Color.FromRgb(31, 35, 42);
+            var isLight = _isLightTheme;
+            var shellBg = isLight ? Color.FromRgb(242, 245, 252) : Color.FromRgb(15, 15, 23);
             Background = new SolidColorBrush(shellBg);
             Foreground = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(shellBg));
 
-            Resources["ThemeTextPrimaryBrush"] = Brush(L ? 0xFF1A2030 : 0xFFECECF4);
-            Resources["ThemeTextSecondaryBrush"] = Brush(L ? 0xFF4B5A72 : 0xFF9CA3B8);
-            Resources["ThemeOnAccentTextBrush"] = Brush(0xFFFFFFFF);
+            Color accentColor = Color.FromRgb(124, 107, 248);
+            if (Application.Current?.TryFindResource("PrimaryBrush") is SolidColorBrush appPrimary && appPrimary.Color.A > 0)
+                accentColor = appPrimary.Color;
 
-            Resources["ThemeCardBackgroundBrush"] = BrushA(L ? 0xF7FAFCFF : 0xFF2A2F38);
-            Resources["ThemeCardBorderBrush"] = BrushA(L ? 0x4D8796AB : 0xFF49505C);
-            Resources["ThemeInnerCardBackgroundBrush"] = BrushA(L ? 0xEAF2F5F9 : 0xFF323844);
-            Resources["ThemeInnerCardBorderBrush"] = BrushA(L ? 0x669AA9BC : 0xFF474F5E);
+            Color cardTop = isLight ? Color.FromArgb(245, 255, 255, 255) : Color.FromArgb(26, 255, 255, 255);
+            Color cardEffective = SurfaceContrast.CompositeOver(cardTop, shellBg);
+            Color innerTop = isLight ? Color.FromArgb(216, 242, 245, 250) : Color.FromArgb(24, 0, 0, 0);
+            Color innerEffective = SurfaceContrast.CompositeOver(innerTop, shellBg);
 
-            Resources["ThemeInputBackgroundBrush"] = Brush(L ? 0xFFF7FAFD : 0xFF3A4250);
-            Resources["ThemeInputBorderBrush"] = Brush(L ? 0xFFAAB9CE : 0xFF5A6373);
-            Resources["ThemeInputForegroundBrush"] = Brush(L ? 0xFF1A2030 : 0xFFF1F5FF);
+            Color primaryText = SurfaceContrast.TextPrimaryOnSurface(cardEffective);
+            Color secondaryText = SurfaceContrast.TextSecondaryOnSurface(innerEffective);
 
-            Resources["ThemeOverlayBackgroundBrush"] = BrushA(L ? 0xCCE8EEF5 : 0xD9303642);
-            Resources["ThemeOverlayBorderBrush"] = BrushA(L ? 0x5897A9BF : 0xFF5A6170);
-
-            Resources["ThemeTimelinePanelBrush"] = BrushA(L ? 0xF0E5ECF6 : 0xEE232A34);
-            Resources["ThemeTrackBackgroundBrush"] = Brush(L ? 0x80A7B5C8 : 0xFF4A5361);
-            Resources["ThemeTimelineTrackBrush"] = Brush(L ? 0xFFD0D8E4 : 0xFF3A3A48);
-            Resources["ThemeTimelineProgressBrush"] = Brush(L ? 0xFFDC2626 : 0xFFEF4444);
-            Resources["ThemeTimelineThumbStrokeBrush"] = Brush(L ? 0xFF48526A : 0xFFE2E6EF);
-            Resources["ThemeSliderThumbBrush"] = Brush(L ? 0xFF3A4662 : 0xFFFFFFFF);
-
-            var accentColor = L ? Color.FromRgb(86, 84, 221) : Color.FromRgb(99, 102, 241);
-            Resources["ThemeAccentBrush"] = new SolidColorBrush(accentColor);
+            Resources["ThemeTextPrimaryBrush"] = new SolidColorBrush(primaryText);
+            Resources["ThemeTextSecondaryBrush"] = new SolidColorBrush(secondaryText);
+            Resources["ThemeCardBackgroundBrush"] = new SolidColorBrush(cardTop);
+            Resources["ThemeCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x4A, 0x6B, 0x7A, 0x8A) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInnerCardBackgroundBrush"] = new SolidColorBrush(innerTop);
+            Resources["ThemeInnerCardBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x52, 0x9C, 0xAA, 0xBC) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(248, 251, 255) : Color.FromArgb(0x15, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(178, 191, 212) : Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeInputForegroundBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(
+                SurfaceContrast.CompositeOver(isLight ? Color.FromRgb(248, 251, 255) : Color.FromRgb(34, 36, 46), shellBg)));
+            Resources["ThemeOverlayBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xEC, 0xF1, 0xF8) : Color.FromArgb(0xAA, 0x00, 0x00, 0x00));
+            Resources["ThemeOverlayBorderBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x58, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelinePanelBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xF0, 0xE9, 0xEF, 0xF8) : Color.FromArgb(0xEE, 0x0A, 0x0A, 0x18));
+            Resources["ThemeTrackBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x60, 0x95, 0xA4, 0xBA) : Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTimelineTrackBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(208, 216, 228) : Color.FromRgb(52, 54, 66));
+            Resources["ThemeTimelineProgressBrush"] = new SolidColorBrush(accentColor);
+            Resources["ThemeTimelineThumbStrokeBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(72, 82, 98) : Color.FromRgb(226, 232, 245));
             Resources["ThemeAccentGlowColor"] = accentColor;
+            Resources["ThemeAccentBrush"] = new SolidColorBrush(accentColor);
 
-            var warmColor = L ? Color.FromRgb(217, 119, 6) : Color.FromRgb(245, 158, 11);
-            Resources["ThemeWarmAccentBrush"] = new SolidColorBrush(warmColor);
-            Resources["ThemeWarmAccentBrushSoft"] = new SolidColorBrush(
-                Color.FromArgb(L ? (byte)64 : (byte)102, warmColor.R, warmColor.G, warmColor.B));
+            Color warmAmber = Color.FromRgb(0xF5, 0x9E, 0x0B);
+            Resources["ThemeWarmAccentBrush"] = new SolidColorBrush(warmAmber);
+            Resources["ThemeWarmAccentBrushSoft"] = new SolidColorBrush(Color.FromArgb(0x66, warmAmber.R, warmAmber.G, warmAmber.B));
+            Resources["ThemeBottomBarGroupInactiveBorderBrush"] = new SolidColorBrush(
+                isLight ? Color.FromArgb(0x90, 0x9A, 0xAA, 0xBC) : Color.FromArgb(0x42, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeBottomBarActiveGroupBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(0x2A, warmAmber.R, warmAmber.G, warmAmber.B));
 
-            Resources["ThemeTabNavBackgroundBrush"] = BrushA(L ? 0xDCE4ECF6 : 0xFF2B323D);
-            Resources["ThemeLogContainerBackgroundBrush"] = BrushA(L ? 0xE8F2F6FB : 0xFF252C36);
-            Resources["ThemeActionBarBackgroundBrush"] = BrushA(L ? 0xEBE3EAF4 : 0xFF2A313C);
+            Color chromePrimaryBg = isLight ? Color.FromRgb(226, 232, 246) : Color.FromRgb(48, 50, 64);
+            Color chromePrimaryHover = isLight ? Color.FromRgb(210, 218, 238) : Color.FromRgb(58, 61, 78);
+            Color chromeSecondaryBg = isLight ? Color.FromRgb(236, 240, 250) : Color.FromRgb(40, 42, 54);
+            Color chromeSecondaryHover = isLight ? Color.FromRgb(220, 228, 244) : Color.FromRgb(50, 52, 68);
+            Resources["ThemeVideoChromePrimaryBgBrush"] = new SolidColorBrush(chromePrimaryBg);
+            Resources["ThemeVideoChromePrimaryHoverBgBrush"] = new SolidColorBrush(chromePrimaryHover);
+            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromePrimaryBg, shellBg)));
+            Resources["ThemeVideoChromePrimaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 200) : Color.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeVideoChromeSecondaryBgBrush"] = new SolidColorBrush(chromeSecondaryBg);
+            Resources["ThemeVideoChromeSecondaryHoverBgBrush"] = new SolidColorBrush(chromeSecondaryHover);
+            Resources["ThemeVideoChromeSecondaryFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromeSecondaryBg, shellBg)));
+            Resources["ThemeVideoChromeSecondaryBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(150, 168, 192) : Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF));
+            Resources["ThemePresetChipBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(230, 234, 244) : Color.FromRgb(36, 37, 48));
+            Resources["ThemePresetChipBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(160, 175, 198) : Color.FromRgb(58, 60, 76));
+            Resources["ThemePresetChipHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(212, 220, 238) : Color.FromRgb(48, 50, 66));
+            Resources["ThemePresetChipPressedBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(198, 208, 230) : Color.FromRgb(44, 46, 60));
+            Resources["ThemePresetChipResetBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 224, 234) : Color.FromRgb(40, 44, 56));
+            Resources["ThemePresetChipResetBorderBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(140, 155, 180) : Color.FromRgb(70, 74, 90));
+            Color transportPlayBg = isLight ? Color.FromRgb(86, 78, 220) : Color.FromRgb(99, 102, 241);
+            Color transportPlayHoverBg = isLight ? Color.FromRgb(72, 64, 200) : Color.FromRgb(79, 82, 220);
+            Resources["ThemeTransportPlayBgBrush"] = new SolidColorBrush(transportPlayBg);
+            Resources["ThemeTransportPlayHoverBgBrush"] = new SolidColorBrush(transportPlayHoverBg);
+            Resources["ThemeTransportPlayFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(transportPlayBg));
+            Resources["ThemeTransportIconHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(210, 218, 235) : Color.FromRgb(48, 50, 64));
+            Resources["ThemeQuickOverlayHoverBgBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(214, 222, 238) : Color.FromRgb(52, 54, 70));
+            Resources["ThemeVideoOpenButtonFgBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(Color.FromRgb(220, 38, 38)));
+            Resources["ThemeValueBadgeBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(220, 228, 240) : Color.FromRgb(42, 43, 56));
+
+            Color framePreviewBg = isLight ? Color.FromArgb(250, 255, 255, 255) : Color.FromArgb(235, 28, 30, 38);
+            Color framePreviewFg = SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(framePreviewBg, shellBg));
+            Resources["ThemeFrameLabelPreviewBg"] = new SolidColorBrush(framePreviewBg);
+            Resources["ThemeFrameLabelPreviewFg"] = new SolidColorBrush(framePreviewFg);
+            Resources["ThemeTabNavBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xCC, 0xE8, 0xEE, 0xF7) : Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeLogContainerBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xD8, 0xF5, 0xF8, 0xFD) : Color.FromArgb(0x0C, 0x00, 0x00, 0x00));
+            Resources["ThemeActionBarBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0xEF, 0xEA, 0xF1, 0xFB) : Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
             Resources["ThemeActionBarBorderBrush"] = new SolidColorBrush(
-                Color.FromArgb(L ? (byte)170 : (byte)90, warmColor.R, warmColor.G, warmColor.B));
+                isLight ? Color.FromArgb(0xAA, warmAmber.R, warmAmber.G, warmAmber.B) : Color.FromArgb(0x5A, warmAmber.R, warmAmber.G, warmAmber.B));
+            Resources["ThemeOnAccentTextBrush"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(accentColor));
+            Resources["ThemeSliderThumbBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(57, 69, 88) : Color.FromRgb(255, 255, 255));
+            Resources["ThemeComboPopupBackgroundBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(242, 246, 252) : Color.FromRgb(30, 30, 48));
+            Resources["ThemeComboItemHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabHoverBrush"] = new SolidColorBrush(isLight ? Color.FromRgb(221, 232, 247) : Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["ThemeTabSelectedBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)210 : (byte)200, accentColor.R, accentColor.G, accentColor.B));
+            Resources["ThemeVideoLogSegmentTrackBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x95, 236, 240, 248) : Color.FromArgb(0x55, 24, 26, 34));
+            Resources["ThemeComboSelectedItemBrush"] = new SolidColorBrush(Color.FromArgb(isLight ? (byte)180 : (byte)90, accentColor.R, accentColor.G, accentColor.B));
+            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
+            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
+            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
+            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
+            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
+            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionExtractBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x5B, 0x8F, 0xF9) : Color.FromArgb(0x20, 0x5B, 0x8F, 0xF9));
+            Resources["ThemeActionSubtitleBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x7C, 0x6B, 0xF8) : Color.FromArgb(0x20, 0x7C, 0x6B, 0xF8));
+            Resources["ThemeActionWatermarkBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x14, 0xB8, 0xA6) : Color.FromArgb(0x20, 0x14, 0xB8, 0xA6));
+            Resources["ThemeActionConvertBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xA7, 0x8B, 0xFA) : Color.FromArgb(0x20, 0xA7, 0x8B, 0xFA));
+            Resources["ThemeActionTrimBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xEF, 0x44, 0x44) : Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+            Resources["ThemeActionSnapshotBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
+            Resources["ThemeActionFolderVideoBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0x4A, 0xDE, 0x80) : Color.FromArgb(0x20, 0x4A, 0xDE, 0x80));
+            Resources["ThemeActionFolderFramesBrush"] = new SolidColorBrush(isLight ? Color.FromArgb(0x66, 0xF5, 0x9E, 0x0B) : Color.FromArgb(0x20, 0xF5, 0x9E, 0x0B));
 
-            Resources["ThemeBottomBarGroupInactiveBorderBrush"] = BrushA(L ? 0x909AAABC : 0x42909AA8);
-            Resources["ThemeBottomBarActiveGroupBackgroundBrush"] = new SolidColorBrush(
-                Color.FromArgb(L ? (byte)42 : (byte)40, warmColor.R, warmColor.G, warmColor.B));
+            // Secondary button chips — contrast checked against real fill colors.
+            Color secBgTop = isLight ? Color.FromArgb(221, 210, 220, 235) : Color.FromArgb(37, 255, 255, 255);
+            Color secEffective = SurfaceContrast.CompositeOver(secBgTop, shellBg);
+            Resources["SecondaryButtonBackground"] = new SolidColorBrush(secBgTop);
+            Resources["SecondaryButtonForeground"] = new SolidColorBrush(SurfaceContrast.TextPrimaryOnSurface(secEffective));
+            Resources["SecondaryButtonBorder"] = new SolidColorBrush(
+                isLight ? Color.FromRgb(160, 175, 195) : Color.FromArgb(0x40, 255, 255, 255));
 
-            var chromePrimBg = L ? Color.FromRgb(224, 232, 245) : Color.FromRgb(58, 65, 78);
-            var chromePrimHover = L ? Color.FromRgb(208, 218, 237) : Color.FromRgb(70, 78, 92);
-            var chromeSecBg = L ? Color.FromRgb(234, 239, 248) : Color.FromRgb(52, 59, 71);
-            var chromeSecHover = L ? Color.FromRgb(219, 227, 241) : Color.FromRgb(66, 74, 88);
-            Resources["ThemeVideoChromePrimaryBgBrush"] = new SolidColorBrush(chromePrimBg);
-            Resources["ThemeVideoChromePrimaryHoverBgBrush"] = new SolidColorBrush(chromePrimHover);
-            Resources["ThemeVideoChromePrimaryFgBrush"] = new SolidColorBrush(
-                SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromePrimBg, shellBg)));
-            Resources["ThemeVideoChromePrimaryBorderBrush"] = BrushA(L ? 0xFFA0AFC8 : 0x458B85FF);
-            Resources["ThemeVideoChromeSecondaryBgBrush"] = new SolidColorBrush(chromeSecBg);
-            Resources["ThemeVideoChromeSecondaryHoverBgBrush"] = new SolidColorBrush(chromeSecHover);
-            Resources["ThemeVideoChromeSecondaryFgBrush"] = new SolidColorBrush(
-                SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(chromeSecBg, shellBg)));
-            Resources["ThemeVideoChromeSecondaryBorderBrush"] = BrushA(L ? 0xFF96A8C0 : 0x383A3A4A);
+            var textPrimary = (Brush)Resources["ThemeTextPrimaryBrush"];
+            var textSecondary = (Brush)Resources["ThemeTextSecondaryBrush"];
+            SetForegroundIfExists("TimeCurrentText", textSecondary);
+            SetForegroundIfExists("TimeTotalText", textSecondary);
+            SetForegroundIfExists("SeekPerfText", textSecondary);
+            SetForegroundIfExists("FrameInfoText", textPrimary);
+            SetForegroundIfExists("VideoPathText", textSecondary);
+            SetForegroundIfExists("CodecInfoText", textSecondary);
+            SetForegroundIfExists("AudioSummaryText", textSecondary);
+            SetForegroundIfExists("ConfigMissingSummaryText", textPrimary);
+            SetForegroundIfExists("ProgressPercentText", textSecondary);
+            SetForegroundIfExists("ElapsedTimeText", textSecondary);
+            SetForegroundIfExists("EstimatedTimeText", textSecondary);
+            TitleText.Foreground = textPrimary;
+            if (IconView != null)
+                IconView.Fill = textPrimary;
+            if (HwBadgeText != null)
+                HwBadgeText.Foreground = (Brush)Resources["ThemeOnAccentTextBrush"];
 
-            Resources["ThemeOpenVideoBrush"] = Brush(0xFFDC2626);
-            Resources["ThemeOpenVideoHoverBrush"] = Brush(L ? 0xFFB91C1C : 0xFFEF4444);
-            Resources["ThemeOpenVideoPressedBrush"] = Brush(L ? 0xFF991B1B : 0xFFB91C1C);
-            Resources["ThemeVideoOpenButtonFgBrush"] = Brush(0xFFFFFFFF);
-
-            var playBg = L ? Color.FromRgb(86, 84, 221) : Color.FromRgb(99, 102, 241);
-            var playHover = L ? Color.FromRgb(72, 64, 200) : Color.FromRgb(79, 82, 220);
-            Resources["ThemeTransportPlayBgBrush"] = new SolidColorBrush(playBg);
-            Resources["ThemeTransportPlayHoverBgBrush"] = new SolidColorBrush(playHover);
-            Resources["ThemeTransportPlayFgBrush"] = Brush(0xFFFFFFFF);
-            Resources["ThemeTransportIconHoverBgBrush"] = Brush(L ? 0xFFD2DAEE : 0xFF303240);
-            Resources["ThemeQuickOverlayHoverBgBrush"] = Brush(L ? 0xFFD6DEEE : 0xFF343644);
-
-            Resources["ThemePresetChipBgBrush"] = Brush(L ? 0xFFE6EAF4 : 0xFF242530);
-            Resources["ThemePresetChipBorderBrush"] = Brush(L ? 0xFFA0AFD2 : 0xFF3A3C4C);
-            Resources["ThemePresetChipHoverBgBrush"] = Brush(L ? 0xFFD4DCEE : 0xFF303242);
-            Resources["ThemePresetChipPressedBgBrush"] = Brush(L ? 0xFFC8D4EA : 0xFF2C2E3C);
-            Resources["ThemePresetChipResetBgBrush"] = Brush(L ? 0xFFDCE0EA : 0xFF282C38);
-            Resources["ThemePresetChipResetBorderBrush"] = Brush(L ? 0xFF8C9BB4 : 0xFF464A5A);
-
-            Resources["ThemeValueBadgeBackgroundBrush"] = Brush(L ? 0xFFDCE4F0 : 0xFF2A2B38);
-            Resources["ThemeComboPopupBackgroundBrush"] = Brush(L ? 0xFFF2F6FC : 0xFF1E1E2A);
-            Resources["ThemeComboItemHoverBrush"] = Brush(L ? 0xFFDDE8F7 : 0xFF343448);
-            Resources["ThemeComboSelectedItemBrush"] = Brush(L ? 0xFFC9D8EE : 0xFF455063);
-            Resources["ThemeTabHoverBrush"] = Brush(L ? 0xFFD5E1F2 : 0xFF3A4352);
-            Resources["ThemeTabSelectedBackgroundBrush"] = Brush(L ? 0xFFE2EAF7 : 0xFF343D4C);
-            Resources["ThemeDefaultButtonBackgroundBrush"] = BrushA(0x00000000U);
-            Resources["ThemeDefaultButtonHoverBackgroundBrush"] = Brush(L ? 0xFFD7E2F2 : 0xFF3C4656);
-            Resources["ThemeDefaultButtonPressedBackgroundBrush"] = Brush(L ? 0xFFC5D2E8 : 0xFF313A49);
-            Resources["ThemeDefaultButtonBorderBrush"] = Brush(L ? 0xFF9FAFCA : 0xFF5A6475);
-
-            Resources["ThemeActionExtractBrush"] = BrushA(L ? 0x665B8FF9U : 0x262E8FF9U);
-            Resources["ThemeActionSubtitleBrush"] = BrushA(L ? 0x667C6BF8U : 0x266366F1U);
-            Resources["ThemeActionWatermarkBrush"] = BrushA(L ? 0x660D9488U : 0x2614B8A6U);
-            Resources["ThemeActionConvertBrush"] = BrushA(L ? 0x66A78BFAU : 0x26A78BFAU);
-            Resources["ThemeActionTrimBrush"] = BrushA(L ? 0x66EF4444U : 0x26EF4444U);
-            Resources["ThemeActionSnapshotBrush"] = BrushA(L ? 0x66D97706U : 0x26F59E0BU);
-            Resources["ThemeActionFolderVideoBrush"] = BrushA(L ? 0x6616A34AU : 0x264ADE80U);
-            Resources["ThemeActionFolderFramesBrush"] = BrushA(L ? 0x66D97706U : 0x26F59E0BU);
-
-            var frameLabelBg = L ? Color.FromArgb(250, 255, 255, 255) : Color.FromArgb(235, 28, 30, 38);
-            Resources["ThemeFrameLabelPreviewBg"] = new SolidColorBrush(frameLabelBg);
-            Resources["ThemeFrameLabelPreviewFg"] = new SolidColorBrush(
-                SurfaceContrast.TextPrimaryOnSurface(SurfaceContrast.CompositeOver(frameLabelBg, shellBg)));
-
-            ThemeModeButton.Content = CreateThemeModeIcon(L ? "moon regular" : "sun-bright duotone-thin", L);
+            ThemeModeButton.Content = CreateThemeModeIcon(isLight ? "moon regular" : "sun-bright duotone-thin", isLight);
             SetTransportIcons();
-            UpdateVolumeIcon();
             SyncUserControlRoundedClip();
             UpdateBottomBarGroupHighlight(Math.Max(0, TabNavList.SelectedIndex));
+            ApplyThemeBrushes(GetTextBrush(_node.ColorKey));
         }
-
-        private static SolidColorBrush Brush(uint argb) =>
-            new(Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb));
-
-        private static SolidColorBrush BrushA(uint argb) => Brush(argb);
 
         private void SetForegroundIfExists(string elementName, Brush brush)
         {
             if (FindName(elementName) is TextBlock tb)
             {
                 tb.Foreground = brush;
-            }
-        }
-
-        private void RefreshResponsiveLayout()
-        {
-            var w = ActualWidth;
-            if (TabNavList != null)
-            {
-                foreach (var item in TabNavList.Items)
-                {
-                    if (item is ListBoxItem lbi)
-                    {
-                        lbi.Padding = w < 560 ? new Thickness(8, 6, 8, 6) : new Thickness(12, 8, 12, 8);
-                    }
-                }
-            }
-
-            if (VideoPathText != null)
-            {
-                VideoPathText.MaxWidth = Math.Max(160, w - 280);
             }
         }
 
@@ -3517,6 +3522,71 @@ namespace FlowMy.Views.NodeControls
             SuggestedNodeSizeReady?.Invoke(suggestedWidth, suggestedHeight);
         }
 
+        /// <summary>Khi cột preview cao hơn rộng: tab Video (toolbar + preview + timeline) và tab Log. Ngược lại giữ layout xếp dọc.</summary>
+        private void UpdateVideoLogColumnLayout()
+        {
+            if (PreviewColumnShellGrid == null || VideoContainerGrid == null || VideoTopPackGrid == null ||
+                LogPanelBorder == null || PortraitVideoLogTabControl == null ||
+                PortraitVideoHostPanel == null || PortraitLogHostPanel == null)
+                return;
+
+            var w = PreviewColumnShellGrid.ActualWidth;
+            var h = PreviewColumnShellGrid.ActualHeight;
+            if (w < 40 || h < 40 || double.IsNaN(w) || double.IsNaN(h)) return;
+
+            var portrait = h > w;
+            if (portrait == _portraitVideoLogLayout) return;
+
+            _portraitVideoLogLayout = portrait;
+
+            if (portrait)
+            {
+                VideoContainerGrid.Children.Remove(VideoTopPackGrid);
+                Grid.SetRow(VideoTopPackGrid, 0);
+                Grid.SetRowSpan(VideoTopPackGrid, 1);
+                PortraitVideoHostPanel.Children.Clear();
+                PortraitVideoHostPanel.Children.Add(VideoTopPackGrid);
+
+                VideoContainerGrid.Children.Remove(LogPanelBorder);
+                Grid.SetRow(LogPanelBorder, 0);
+                PortraitLogHostPanel.Children.Clear();
+                PortraitLogHostPanel.Children.Add(LogPanelBorder);
+
+                VideoContainerGrid.Visibility = Visibility.Collapsed;
+                PortraitVideoLogTabControl.Visibility = Visibility.Visible;
+                PortraitVideoLogTabControl.SelectedIndex = 0;
+
+                if (VideoTopPackGrid.RowDefinitions.Count > 1)
+                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
+            }
+            else
+            {
+                PortraitVideoHostPanel.Children.Remove(VideoTopPackGrid);
+                Grid.SetRow(VideoTopPackGrid, 0);
+                Grid.SetRowSpan(VideoTopPackGrid, 3);
+                VideoContainerGrid.Children.Insert(0, VideoTopPackGrid);
+
+                PortraitLogHostPanel.Children.Remove(LogPanelBorder);
+                Grid.SetRow(LogPanelBorder, 3);
+                VideoContainerGrid.Children.Add(LogPanelBorder);
+
+                PortraitVideoLogTabControl.Visibility = Visibility.Collapsed;
+                VideoContainerGrid.Visibility = Visibility.Visible;
+
+                if (VideoTopPackGrid.RowDefinitions.Count > 1)
+                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(2, GridUnitType.Star);
+                if (VideoContainerGrid.RowDefinitions.Count > 3)
+                    VideoContainerGrid.RowDefinitions[3].Height = new GridLength(1, GridUnitType.Star);
+            }
+
+            UpdatePreviewAspectRatio();
+        }
+
+        private FrameworkElement GetVideoColumnRenderRoot()
+        {
+            return (_portraitVideoLogLayout && PreviewColumnShellGrid != null) ? PreviewColumnShellGrid : VideoContainerGrid;
+        }
+
         private void UpdatePreviewAspectRatio()
         {
             if (PreviewContainerBorder == null || VideoContainerGrid == null) return;
@@ -3589,11 +3659,18 @@ namespace FlowMy.Views.NodeControls
 
         private void UpdateAdaptivePreviewRows(double containerHeight)
         {
-            if (VideoContainerGrid.RowDefinitions.Count < 4) return;
+            if (VideoContainerGrid.RowDefinitions.Count < 4 || VideoTopPackGrid.RowDefinitions.Count < 3) return;
 
-            var rowAspect = VideoContainerGrid.RowDefinitions[0];
-            var rowVideo = VideoContainerGrid.RowDefinitions[1];
-            var rowTimeline = VideoContainerGrid.RowDefinitions[2];
+            if (_portraitVideoLogLayout)
+            {
+                if (VideoTopPackGrid.RowDefinitions.Count > 1)
+                    VideoTopPackGrid.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
+                return;
+            }
+
+            var rowAspect = VideoTopPackGrid.RowDefinitions[0];
+            var rowVideo = VideoTopPackGrid.RowDefinitions[1];
+            var rowTimeline = VideoTopPackGrid.RowDefinitions[2];
             var rowLog = VideoContainerGrid.RowDefinitions[3];
 
             var topH = rowAspect.ActualHeight > 0 ? rowAspect.ActualHeight : 44;
