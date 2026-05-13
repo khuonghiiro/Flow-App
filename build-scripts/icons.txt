@@ -36,3 +36,5 @@ moon regular
 volume-xmark duotone-light
 volume-low duotone-light
 stop sharp-regular
+angles-right sharp-solid
+angles-left sharp-solid

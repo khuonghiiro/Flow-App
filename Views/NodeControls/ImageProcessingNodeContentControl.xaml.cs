@@ -1,3 +1,5 @@
+using FlowMy.Controls;
+using FlowMy.Converters;
 using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -5,6 +7,7 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -39,6 +42,8 @@ namespace FlowMy.Views.NodeControls
         private bool _ipColumnVisible;
         private Storyboard? _ipColumnWidthStoryboard;
         private int _widgetIpExpandLayoutAttempts;
+        private Uri? _ipToggleGlyphHiddenUri;
+        private Uri? _ipToggleGlyphVisibleUri;
         private double _originalMinWidthSnapshot;
         private Action<BitmapSource?>? _setIpImage;
 
@@ -72,6 +77,12 @@ namespace FlowMy.Views.NodeControls
             }
 
             InitializeComponent();
+
+            var iconConv = new IconKeyToPathConverter();
+            var culture = CultureInfo.InvariantCulture;
+            _ipToggleGlyphHiddenUri = iconConv.Convert(null, typeof(Uri), "angles-right sharp-solid", culture) as Uri;
+            _ipToggleGlyphVisibleUri = iconConv.Convert(null, typeof(Uri), "angles-left sharp-solid", culture) as Uri;
+            SyncIpToggleIcon();
 
             _originalMinWidthSnapshot = WidthSyncTarget.MinWidth;
             var (ipFe, setIp) = ImageProcessingNodeControl.BuildImageProcessorColumn(_node, _host);
@@ -130,28 +141,37 @@ namespace FlowMy.Views.NodeControls
             if (isWidgetHost)
             {
                 PlayWidgetIpColumnAnimation(_ipColumnVisible);
-                return;
-            }
-
-            // Canvas node: giữ hành vi cũ (mở rộng/thu hẹp node theo cột IP).
-            double totalStar = BaseStarWidth + IpColStar;
-            if (_ipColumnVisible)
-            {
-                double currentContentWidth = _node.Width;
-                double newWidth = currentContentWidth * totalStar / BaseStarWidth;
-                IpColumnDefinition.Width = new GridLength(IpColStar, GridUnitType.Star);
-                _node.Width = newWidth;
-                WidthSyncTarget.Width = newWidth;
-                WidthSyncTarget.MinWidth = _originalMinWidthSnapshot * totalStar / BaseStarWidth;
             }
             else
             {
-                double newWidth = _node.Width * BaseStarWidth / totalStar;
-                IpColumnDefinition.Width = new GridLength(0);
-                _node.Width = Math.Max(_originalMinWidthSnapshot, newWidth);
-                WidthSyncTarget.Width = _node.Width;
-                WidthSyncTarget.MinWidth = _originalMinWidthSnapshot;
+                // Canvas node: giữ hành vi cũ (mở rộng/thu hẹp node theo cột IP).
+                double totalStar = BaseStarWidth + IpColStar;
+                if (_ipColumnVisible)
+                {
+                    double currentContentWidth = _node.Width;
+                    double newWidth = currentContentWidth * totalStar / BaseStarWidth;
+                    IpColumnDefinition.Width = new GridLength(IpColStar, GridUnitType.Star);
+                    _node.Width = newWidth;
+                    WidthSyncTarget.Width = newWidth;
+                    WidthSyncTarget.MinWidth = _originalMinWidthSnapshot * totalStar / BaseStarWidth;
+                }
+                else
+                {
+                    double newWidth = _node.Width * BaseStarWidth / totalStar;
+                    IpColumnDefinition.Width = new GridLength(0);
+                    _node.Width = Math.Max(_originalMinWidthSnapshot, newWidth);
+                    WidthSyncTarget.Width = _node.Width;
+                    WidthSyncTarget.MinWidth = _originalMinWidthSnapshot;
+                }
             }
+
+            SyncIpToggleIcon();
+        }
+
+        private void SyncIpToggleIcon()
+        {
+            if (IpToggleIcon == null) return;
+            IpToggleIcon.Source = _ipColumnVisible ? _ipToggleGlyphVisibleUri : _ipToggleGlyphHiddenUri;
         }
 
         private double GetWidgetIpColumnTargetPixelWidth()
@@ -639,6 +659,7 @@ namespace FlowMy.Views.NodeControls
         private void ImageProcessingNodeContentControl_Loaded(object sender, RoutedEventArgs e)
         {
             ApplyResponsiveScale();
+            SyncIpToggleIcon();
 
             _ = ImageProcessingNodeControl.UpdatePreviewAsync(
                 _node, _host, MainImage, PlaceholderTextBlock, ImageZoomScale,

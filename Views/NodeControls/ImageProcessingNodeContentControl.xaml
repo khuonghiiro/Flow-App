@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:FlowMy.Models.Nodes"
+             xmlns:controls="clr-namespace:FlowMy.Controls"
              xmlns:local="clr-namespace:FlowMy.Views.NodeControls"
              mc:Ignorable="d"
              d:DesignWidth="900"
@@ -90,11 +91,16 @@
             <Border Background="Transparent" IsHitTestVisible="True">
                 <DockPanel LastChildFill="True">
                     <Button x:Name="IpToggleButton" DockPanel.Dock="Right"
-                            Content="📐" ToolTip="Ẩn/hiện Image Processor"
-                            Width="28" Height="22" FontSize="12" Padding="0"
+                            ToolTip="Ẩn/hiện Image Processor"
+                            Width="28" Height="22" Padding="0"
                             Cursor="Hand" VerticalAlignment="Center"
                             Style="{DynamicResource DangerButton}"
-                            Click="IpToggleButton_Click"/>
+                            Click="IpToggleButton_Click">
+                        <controls:SvgViewboxEx x:Name="IpToggleIcon"
+                                                Width="14" Height="14"
+                                                VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                Fill="{DynamicResource WhiteBrush}"/>
+                    </Button>
                     <TextBlock x:Name="ImageTitleTextBlock"
                                Text="Chưa có ảnh"
                                Foreground="{DynamicResource WhiteBrush}"
