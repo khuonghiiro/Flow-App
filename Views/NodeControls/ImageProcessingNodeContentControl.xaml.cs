@@ -22,8 +22,13 @@ namespace FlowMy.Views.NodeControls
     public partial class ImageProcessingNodeContentControl : UserControl
     {
         private const double IpColStar = 3.5;
-        private const double OtherSiblingStars = 0.8 + 6.0 + 3.2;
+        private const double OtherSiblingStars = 0.6 + 6.2 + 3.2;
         private const double BaseStarWidth = 10.0;
+        private const double ChromeScaleCapWidth = 1920.0;
+        private const double ChromeScaleCapHeight = 1080.0;
+        private const double ChromeScaleGamma = 0.52;
+        private const double ChromeScaleMin = 0.88;
+        private const double ChromeScaleMax = 1.32;
         private const int MagSize = 120;
         private const int MagZoom = 4;
 
@@ -586,32 +591,52 @@ namespace FlowMy.Views.NodeControls
                 MouseRightButtonUp += ChromeOrSelf_MouseRightButtonUp;
         }
 
+        private static double CurvedChromeScale(double effDimension, double baseline)
+        {
+            if (baseline <= 0 || effDimension <= 0) return 1.0;
+            var ratio = effDimension / baseline;
+            var s = Math.Pow(ratio, ChromeScaleGamma);
+            return Math.Max(ChromeScaleMin, Math.Min(ChromeScaleMax, s));
+        }
+
         private void ApplyResponsiveScale()
         {
             if (_chromeBorder == null && _freezeScaleInWidget)
             {
                 TopMenuBorder.LayoutTransform = Transform.Identity;
-                CropsLabelText.LayoutTransform = Transform.Identity;
+                RightMenuBorder.LayoutTransform = Transform.Identity;
+                IpProcessorHost.LayoutTransform = Transform.Identity;
                 LeftMenuBorder.LayoutTransform = Transform.Identity;
+                PlaceholderTextBlock.LayoutTransform = Transform.Identity;
+                CropsLabelText.LayoutTransform = Transform.Identity;
+                RenderLabelText.LayoutTransform = Transform.Identity;
                 return;
             }
 
             double heightBaseline = WidthSyncTarget.MinHeight > 0 ? WidthSyncTarget.MinHeight : 600.0;
-            var heightScaleFactor = Math.Max(0.8, Math.Min(1.8, _node.Height / heightBaseline));
-            var menuHeightScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
-            TopMenuBorder.LayoutTransform = menuHeightScale;
-            CropsLabelText.LayoutTransform = menuHeightScale;
-
             double widthBaseline = WidthSyncTarget.MinWidth > 0 ? WidthSyncTarget.MinWidth : 800.0;
-            const double leftMenuWidthRatio = 0.8 / 10.0;
-            var leftMenuBaselineWidth = widthBaseline * leftMenuWidthRatio;
-            var leftMenuCurrentWidth = _node.Width * leftMenuWidthRatio;
-            var leftMenuScaleFactor = leftMenuBaselineWidth > 0
-                ? leftMenuCurrentWidth / leftMenuBaselineWidth
-                : 1.0;
-            LeftMenuBorder.LayoutTransform = new ScaleTransform(leftMenuScaleFactor, leftMenuScaleFactor);
 
-            var interactionScale = Math.Max(heightScaleFactor, leftMenuScaleFactor);
+            double effH = Math.Min(_node.Height, ChromeScaleCapHeight);
+            double effW = Math.Min(_node.Width, ChromeScaleCapWidth);
+
+            double heightScaleFactor = CurvedChromeScale(effH, heightBaseline);
+            double widthScaleFactor = CurvedChromeScale(effW, widthBaseline);
+            double ipBaselineWidth = widthBaseline * (IpColStar / (OtherSiblingStars + IpColStar));
+            double ipCurrentWidth = effW * (IpColStar / (OtherSiblingStars + IpColStar));
+            double ipTextScaleFactor = CurvedChromeScale(ipCurrentWidth, ipBaselineWidth);
+
+            var topBarScale = new ScaleTransform(heightScaleFactor, heightScaleFactor);
+            TopMenuBorder.LayoutTransform = topBarScale;
+            IpProcessorHost.LayoutTransform = topBarScale;
+            RightMenuBorder.LayoutTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
+            var textScale = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
+            PlaceholderTextBlock.LayoutTransform = textScale;
+            CropsLabelText.LayoutTransform = textScale;
+            RenderLabelText.LayoutTransform = textScale;
+
+            LeftMenuBorder.LayoutTransform = new ScaleTransform(widthScaleFactor, widthScaleFactor);
+
+            var interactionScale = Math.Max(Math.Max(heightScaleFactor, widthScaleFactor), ipTextScaleFactor);
             ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, interactionScale);
         }
 

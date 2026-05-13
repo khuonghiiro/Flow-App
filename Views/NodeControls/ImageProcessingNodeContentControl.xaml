@@ -178,36 +178,30 @@
                 </Grid.RowDefinitions>
                 <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <Viewbox Stretch="Uniform" StretchDirection="Both"
-                             HorizontalAlignment="Stretch" VerticalAlignment="Top">
-                        <StackPanel Width="200" Orientation="Vertical" HorizontalAlignment="Stretch">
-                            <TextBlock x:Name="CropsLabelText" Text="Danh sách ảnh cắt"
-                                       Foreground="White" FontSize="11" Opacity="0.7"
-                                       Margin="0,0,0,4" HorizontalAlignment="Left"/>
-                            <ItemsControl x:Name="CropsListControl"
-                                          ItemTemplate="{StaticResource CropListItemTemplate}"
-                                          HorizontalAlignment="Stretch">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Viewbox>
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch">
+                        <TextBlock x:Name="CropsLabelText" Text="Danh sách ảnh cắt"
+                                   Foreground="White" FontSize="11" Opacity="0.7"
+                                   Margin="0,0,0,4" HorizontalAlignment="Left"/>
+                        <ItemsControl x:Name="CropsListControl"
+                                      ItemTemplate="{StaticResource CropListItemTemplate}"
+                                      HorizontalAlignment="Stretch">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
                 </ScrollViewer>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"> 
-                    <Viewbox Stretch="Uniform" StretchDirection="Both"
-                             HorizontalAlignment="Stretch" VerticalAlignment="Top">
-                        <StackPanel Width="200" Orientation="Vertical" HorizontalAlignment="Stretch">
-                            <TextBlock x:Name="RenderLabelText" Text="Ảnh render"
-                                       Foreground="White" FontSize="11" Opacity="0.7"
-                                       Margin="0,4,0,4" HorizontalAlignment="Left"/>
-                            <ItemsControl x:Name="RenderGroupsControl"
-                                          ItemTemplate="{StaticResource RenderGroupTemplate}"/>
-                        </StackPanel>
-                    </Viewbox>
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch">
+                        <TextBlock x:Name="RenderLabelText" Text="Ảnh render"
+                                   Foreground="White" FontSize="11" Opacity="0.7"
+                                   Margin="0,4,0,4" HorizontalAlignment="Left"/>
+                        <ItemsControl x:Name="RenderGroupsControl"
+                                      ItemTemplate="{StaticResource RenderGroupTemplate}"/>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
         </Border>

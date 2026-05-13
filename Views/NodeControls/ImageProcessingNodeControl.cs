@@ -1040,7 +1040,7 @@ namespace FlowMy.Views.NodeControls
                 Stretch = Stretch.Uniform,
                 StretchDirection = StretchDirection.Both,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
                 Child = contentStack
             };
             var ipScroll = new ScrollViewer
