@@ -51,6 +51,7 @@ namespace FlowMy.Views.NodeControls
         private Uri? _ipToggleGlyphVisibleUri;
         private double _originalMinWidthSnapshot;
         private Action<BitmapSource?>? _setIpImage;
+        private Window? _widgetHostWindowSubscribed;
 
         private bool _isPanning;
         private Point _panStart;
@@ -77,8 +78,8 @@ namespace FlowMy.Views.NodeControls
 
             if (_chromeBorder == null)
             {
-                MinWidth = 800;
-                MinHeight = 600;
+                MinWidth = 0;
+                MinHeight = 0;
             }
 
             InitializeComponent();
@@ -93,7 +94,7 @@ namespace FlowMy.Views.NodeControls
             var (ipFe, setIp) = ImageProcessingNodeControl.BuildImageProcessorColumn(
                 _node,
                 _host,
-                preventScaleUp: _chromeBorder == null && _freezeScaleInWidget);
+                preventScaleUp: false);
             IpProcessorHost.Content = ipFe;
             _setIpImage = setIp;
 
@@ -594,6 +595,8 @@ namespace FlowMy.Views.NodeControls
                 MouseRightButtonUp += ChromeOrSelf_MouseRightButtonUp;
         }
 
+        private void WidgetHostWindow_StateChanged(object? sender, EventArgs e) => ApplyResponsiveScale();
+
         private static double CurvedChromeScale(double effDimension, double baseline)
         {
             if (baseline <= 0 || effDimension <= 0) return 1.0;
@@ -606,13 +609,33 @@ namespace FlowMy.Views.NodeControls
         {
             if (_chromeBorder == null && _freezeScaleInWidget)
             {
-                TopMenuBorder.LayoutTransform = Transform.Identity;
-                RightMenuBorder.LayoutTransform = Transform.Identity;
-                IpProcessorHost.LayoutTransform = Transform.Identity;
-                LeftMenuBorder.LayoutTransform = Transform.Identity;
-                PlaceholderTextBlock.LayoutTransform = Transform.Identity;
-                CropsLabelText.LayoutTransform = Transform.Identity;
-                RenderLabelText.LayoutTransform = Transform.Identity;
+                var hostWindow = Window.GetWindow(this) ?? _ownerWindow;
+                bool isMaximizedWidget = hostWindow?.WindowState == WindowState.Maximized;
+
+                double widgetW = ActualWidth > 1 ? ActualWidth : WidthSyncTarget.ActualWidth;
+                double widgetH = ActualHeight > 1 ? ActualHeight : WidthSyncTarget.ActualHeight;
+                if (widgetW <= 1) widgetW = 1000;
+                if (widgetH <= 1) widgetH = 650;
+
+                double hScale = CurvedChromeScale(Math.Min(widgetH, ChromeScaleCapHeight), 640.0);
+                double wScale = CurvedChromeScale(Math.Min(widgetW, ChromeScaleCapWidth), 900.0);
+                double widgetChromeScale = Math.Max(hScale, wScale);
+                widgetChromeScale = Math.Max(0.78, Math.Min(1.4, widgetChromeScale));
+                if (isMaximizedWidget)
+                    widgetChromeScale = Math.Max(widgetChromeScale, 1.06);
+
+                var chromeT = new ScaleTransform(widgetChromeScale, widgetChromeScale);
+                TopMenuBorder.LayoutTransform = chromeT;
+                RightMenuBorder.LayoutTransform = chromeT;
+                IpProcessorHost.LayoutTransform = chromeT;
+                PlaceholderTextBlock.LayoutTransform = chromeT;
+                CropsLabelText.LayoutTransform = chromeT;
+                RenderLabelText.LayoutTransform = chromeT;
+
+                double leftMenuScale = widgetChromeScale * (isMaximizedWidget ? 0.62 : 1.0);
+                LeftMenuBorder.LayoutTransform = new ScaleTransform(leftMenuScale, leftMenuScale);
+
+                ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, widgetChromeScale);
                 return;
             }
 
@@ -632,10 +655,10 @@ namespace FlowMy.Views.NodeControls
             TopMenuBorder.LayoutTransform = topBarScale;
             IpProcessorHost.LayoutTransform = topBarScale;
             RightMenuBorder.LayoutTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
-            var textScale = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
-            PlaceholderTextBlock.LayoutTransform = textScale;
-            CropsLabelText.LayoutTransform = textScale;
-            RenderLabelText.LayoutTransform = textScale;
+            var canvasIpTextTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
+            PlaceholderTextBlock.LayoutTransform = canvasIpTextTransform;
+            CropsLabelText.LayoutTransform = canvasIpTextTransform;
+            RenderLabelText.LayoutTransform = canvasIpTextTransform;
 
             LeftMenuBorder.LayoutTransform = new ScaleTransform(widthScaleFactor, widthScaleFactor);
 
@@ -686,6 +709,26 @@ namespace FlowMy.Views.NodeControls
 
         private void ImageProcessingNodeContentControl_Loaded(object sender, RoutedEventArgs e)
         {
+            if (_chromeBorder == null && _freezeScaleInWidget)
+            {
+                var w = Window.GetWindow(this) ?? _ownerWindow;
+                if (w != null)
+                {
+                    if (_widgetHostWindowSubscribed != null &&
+                        !ReferenceEquals(_widgetHostWindowSubscribed, w))
+                    {
+                        _widgetHostWindowSubscribed.StateChanged -= WidgetHostWindow_StateChanged;
+                        _widgetHostWindowSubscribed = null;
+                    }
+
+                    if (_widgetHostWindowSubscribed == null)
+                    {
+                        _widgetHostWindowSubscribed = w;
+                        w.StateChanged += WidgetHostWindow_StateChanged;
+                    }
+                }
+            }
+
             ApplyResponsiveScale();
             SyncIpToggleIcon();
 
@@ -701,6 +744,12 @@ namespace FlowMy.Views.NodeControls
             {
                 _ipColumnWidthStoryboard?.Stop();
                 _ipColumnWidthStoryboard = null;
+
+                if (_widgetHostWindowSubscribed != null)
+                {
+                    _widgetHostWindowSubscribed.StateChanged -= WidgetHostWindow_StateChanged;
+                    _widgetHostWindowSubscribed = null;
+                }
 
                 if (_node is INotifyPropertyChanged npc && _nodePropertyChanged != null)
                     npc.PropertyChanged -= _nodePropertyChanged;
