@@ -78,8 +78,8 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.8*"/>
-            <ColumnDefinition Width="6*"/>
+            <ColumnDefinition Width="0.6*"/>
+            <ColumnDefinition Width="6.2*"/>
             <ColumnDefinition Width="3.2*"/>
             <ColumnDefinition x:Name="IpColumnDefinition" Width="0"/>
         </Grid.ColumnDefinitions>
@@ -94,7 +94,6 @@
                             Width="28" Height="22" FontSize="12" Padding="0"
                             Cursor="Hand" VerticalAlignment="Center"
                             Style="{DynamicResource DangerButton}"
-                            PreviewMouseLeftButtonDown="IpToggleButton_PreviewMouseLeftButtonDown"
                             Click="IpToggleButton_Click"/>
                     <TextBlock x:Name="ImageTitleTextBlock"
                                Text="Chưa có ảnh"
@@ -112,7 +111,7 @@
                 Background="#28FFFFFF" Padding="4,0,4,6">
             <Viewbox Stretch="Uniform" StretchDirection="Both"
                      HorizontalAlignment="Stretch" VerticalAlignment="Top">
-                <StackPanel Width="48" Orientation="Vertical"
+                <StackPanel Width="auto" Orientation="Vertical"
                             HorizontalAlignment="Center" VerticalAlignment="Top">
                     <Button x:Name="BtnOpenImage" Content="📁" ToolTip="Mở ảnh"
                             Width="30" Height="30" Style="{DynamicResource PrimaryButton}"
@@ -192,7 +191,7 @@
                     </Viewbox>
                 </ScrollViewer>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
+                              HorizontalScrollBarVisibility="Disabled"> 
                     <Viewbox Stretch="Uniform" StretchDirection="Both"
                              HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <StackPanel Width="200" Orientation="Vertical" HorizontalAlignment="Stretch">

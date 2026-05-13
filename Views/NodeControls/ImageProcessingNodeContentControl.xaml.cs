@@ -1,3 +1,4 @@
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
@@ -8,7 +9,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using WinForms = System.Windows.Forms;
 
 namespace FlowMy.Views.NodeControls
@@ -16,6 +19,7 @@ namespace FlowMy.Views.NodeControls
     public partial class ImageProcessingNodeContentControl : UserControl
     {
         private const double IpColStar = 3.5;
+        private const double OtherSiblingStars = 0.8 + 6.0 + 3.2;
         private const double BaseStarWidth = 10.0;
         private const int MagSize = 120;
         private const int MagZoom = 4;
@@ -33,6 +37,8 @@ namespace FlowMy.Views.NodeControls
         private Action<ImageCropRegion>? _onCropClickForIp;
 
         private bool _ipColumnVisible;
+        private Storyboard? _ipColumnWidthStoryboard;
+        private int _widgetIpExpandLayoutAttempts;
         private double _originalMinWidthSnapshot;
         private Action<BitmapSource?>? _setIpImage;
 
@@ -123,10 +129,7 @@ namespace FlowMy.Views.NodeControls
 
             if (isWidgetHost)
             {
-                // Widget: chỉ ẩn/hiện cột IP, không đổi kích thước cửa sổ/widget.
-                IpColumnDefinition.Width = _ipColumnVisible
-                    ? new GridLength(IpColStar, GridUnitType.Star)
-                    : new GridLength(0);
+                PlayWidgetIpColumnAnimation(_ipColumnVisible);
                 return;
             }
 
@@ -151,6 +154,119 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
+        private double GetWidgetIpColumnTargetPixelWidth()
+        {
+            double gridW = RootLayout.ActualWidth;
+            if (gridW <= 0 || double.IsNaN(gridW))
+                return 0;
+            double starSum = OtherSiblingStars + IpColStar;
+            return Math.Max(0, gridW * (IpColStar / starSum));
+        }
+
+        private void PlayWidgetIpColumnAnimation(bool expand)
+        {
+            _ipColumnWidthStoryboard?.Stop();
+            _ipColumnWidthStoryboard = null;
+
+            RootLayout.UpdateLayout();
+
+            const double durationMs = 240;
+
+            if (expand)
+            {
+                double targetPx = GetWidgetIpColumnTargetPixelWidth();
+                if (targetPx < 0.5)
+                {
+                    if (_widgetIpExpandLayoutAttempts < 10)
+                    {
+                        _widgetIpExpandLayoutAttempts++;
+                        Dispatcher.BeginInvoke(() => PlayWidgetIpColumnAnimation(true), DispatcherPriority.Loaded);
+                        return;
+                    }
+
+                    _widgetIpExpandLayoutAttempts = 0;
+                    IpColumnDefinition.Width = new GridLength(IpColStar, GridUnitType.Star);
+                    return;
+                }
+
+                _widgetIpExpandLayoutAttempts = 0;
+
+                IpColumnDefinition.Width = new GridLength(0);
+
+                var anim = new GridLengthAnimation
+                {
+                    From = new GridLength(0),
+                    To = new GridLength(targetPx),
+                    Duration = TimeSpan.FromMilliseconds(durationMs),
+                    FillBehavior = FillBehavior.HoldEnd,
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+
+                var sb = new Storyboard();
+                Storyboard.SetTarget(anim, IpColumnDefinition);
+                Storyboard.SetTargetProperty(anim, new PropertyPath(ColumnDefinition.WidthProperty));
+                sb.Children.Add(anim);
+
+                void OnCompleted(object? sender, EventArgs args)
+                {
+                    if (sender is Storyboard s)
+                        s.Completed -= OnCompleted;
+                    _ipColumnWidthStoryboard = null;
+                    IpColumnDefinition.Width = new GridLength(IpColStar, GridUnitType.Star);
+                }
+
+                sb.Completed += OnCompleted;
+                _ipColumnWidthStoryboard = sb;
+                sb.Begin();
+            }
+            else
+            {
+                _widgetIpExpandLayoutAttempts = 0;
+
+                double fromPx = IpProcessorHost.ActualWidth;
+                if (fromPx < 0.5 &&
+                    IpColumnDefinition.Width.GridUnitType == GridUnitType.Star &&
+                    IpColumnDefinition.Width.Value > 0)
+                {
+                    fromPx = GetWidgetIpColumnTargetPixelWidth();
+                }
+
+                if (fromPx < 0.5)
+                {
+                    IpColumnDefinition.Width = new GridLength(0);
+                    return;
+                }
+
+                IpColumnDefinition.Width = new GridLength(fromPx);
+
+                var anim = new GridLengthAnimation
+                {
+                    From = new GridLength(fromPx),
+                    To = new GridLength(0),
+                    Duration = TimeSpan.FromMilliseconds(durationMs),
+                    FillBehavior = FillBehavior.HoldEnd,
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+
+                var sb = new Storyboard();
+                Storyboard.SetTarget(anim, IpColumnDefinition);
+                Storyboard.SetTargetProperty(anim, new PropertyPath(ColumnDefinition.WidthProperty));
+                sb.Children.Add(anim);
+
+                void OnCompleted(object? sender, EventArgs args)
+                {
+                    if (sender is Storyboard s)
+                        s.Completed -= OnCompleted;
+                    _ipColumnWidthStoryboard = null;
+                    IpColumnDefinition.Width = new GridLength(0);
+                }
+
+                sb.Completed += OnCompleted;
+                _ipColumnWidthStoryboard = sb;
+                sb.Begin();
+            }
+        }
+
         private void OnCropRegionSelectedForIp(ImageCropRegion reg)
         {
             if (!_ipColumnVisible)
@@ -165,13 +281,7 @@ namespace FlowMy.Views.NodeControls
         {
             if (e.OldItems == null) return;
             foreach (ImageCropRegion removedReg in e.OldItems)
-            {
-                if (ImageProcessingNodeControl._polygonMap.TryGetValue(removedReg, out var poly))
-                {
-                    ImageAreaGrid.Children.Remove(poly);
-                    ImageProcessingNodeControl._polygonMap.Remove(removedReg);
-                }
-            }
+                ImageProcessingNodeControl.DetachCropPolygon(removedReg, ImageAreaGrid);
         }
 
         private void UpdateColorCropButtonBackground()
@@ -333,8 +443,6 @@ namespace FlowMy.Views.NodeControls
             catch { /* ignore */ }
         }
 
-        private void IpToggleButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) => e.Handled = true;
-
         private void IpToggleButton_Click(object sender, RoutedEventArgs e)
         {
             ToggleIPColumn();
@@ -395,11 +503,18 @@ namespace FlowMy.Views.NodeControls
 
         private void RemoveCropItem(ImageCropRegion reg)
         {
-            if (ImageProcessingNodeControl._polygonMap.TryGetValue(reg, out var poly))
+            reg.RenderedImages.Clear();
+            reg.Thumbnail = null;
+
+            if (ImageProcessingNodeControl._currentCropRegionForIp.TryGetValue(_node, out var ipSel) &&
+                ReferenceEquals(ipSel, reg))
             {
-                ImageAreaGrid.Children.Remove(poly);
-                ImageProcessingNodeControl._polygonMap.Remove(reg);
+                ImageProcessingNodeControl._currentCropRegionForIp[_node] = null;
+                _setIpImage?.Invoke(null);
             }
+
+            ImageProcessingNodeControl.DetachCropPolygon(reg, ImageAreaGrid);
+
             _node.Crops.Remove(reg);
             if (ImageProcessingNodeControl._activeCropRegion.TryGetValue(_node, out var active) &&
                 ReferenceEquals(active, reg))
@@ -535,6 +650,9 @@ namespace FlowMy.Views.NodeControls
         {
             try
             {
+                _ipColumnWidthStoryboard?.Stop();
+                _ipColumnWidthStoryboard = null;
+
                 if (_node is INotifyPropertyChanged npc && _nodePropertyChanged != null)
                     npc.PropertyChanged -= _nodePropertyChanged;
                 if (_cropsChangedHandler != null)
@@ -542,6 +660,7 @@ namespace FlowMy.Views.NodeControls
                 foreach (var reg in _node.Crops)
                     ImageProcessingNodeControl._polygonMap.Remove(reg);
                 ImageProcessingNodeControl._activeCropRegion.Remove(_node);
+                ImageProcessingNodeControl._currentCropRegionForIp.Remove(_node);
             }
             catch { /* ignore */ }
         }

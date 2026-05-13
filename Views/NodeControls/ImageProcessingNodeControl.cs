@@ -37,6 +37,28 @@ namespace FlowMy.Views.NodeControls
         internal static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, ImageCropRegion?> _currentCropRegionForIp = new();
         // Lưu polygon overlay trên imageGrid theo từng vùng crop để xoá/cập nhật đúng khi cần
         internal static readonly System.Collections.Generic.Dictionary<ImageCropRegion, System.Windows.Shapes.Polygon> _polygonMap = new();
+
+        internal static void DetachCropPolygon(ImageCropRegion reg, Panel? searchPanel = null)
+        {
+            if (_polygonMap.TryGetValue(reg, out var poly))
+            {
+                if (poly.Parent is Panel p)
+                    p.Children.Remove(poly);
+                _polygonMap.Remove(reg);
+                return;
+            }
+
+            if (searchPanel == null) return;
+            for (int i = searchPanel.Children.Count - 1; i >= 0; i--)
+            {
+                if (searchPanel.Children[i] is Polygon pg && ReferenceEquals(pg.Tag, reg))
+                {
+                    searchPanel.Children.RemoveAt(i);
+                    return;
+                }
+            }
+        }
+
         internal static readonly Color[] _cropColors = new[]
         {
             Colors.Gold,
@@ -579,6 +601,7 @@ namespace FlowMy.Views.NodeControls
             }
             else
             {
+                DetachCropPolygon(region);
                 node.Crops.Remove(region);
             }
 
