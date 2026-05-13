@@ -611,7 +611,10 @@ namespace FlowMy.Views.NodeControls
             return true;
         }
 
-        internal static (FrameworkElement, Action<BitmapSource?>) BuildImageProcessorColumn(ImageProcessingNode node, IWorkflowEditorHost host)
+        internal static (FrameworkElement, Action<BitmapSource?>) BuildImageProcessorColumn(
+            ImageProcessingNode node,
+            IWorkflowEditorHost host,
+            bool preventScaleUp = false)
         {
             // ── State ──
             BitmapSource? currentSource = null;
@@ -1023,7 +1026,7 @@ namespace FlowMy.Views.NodeControls
             btnStart.Template = MakeDarkButtonTemplate();
             btnStart.MouseLeftButtonDown += (s, e) => e.Handled = true;
 
-            var actionGrid = new Grid { Margin = new Thickness(0, 8, 0, 4) };
+            var actionGrid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
             actionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             actionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
             actionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -1031,14 +1034,13 @@ namespace FlowMy.Views.NodeControls
             Grid.SetColumn(btnStart, 2);
             actionGrid.Children.Add(btnProcess);
             actionGrid.Children.Add(btnStart);
-            contentStack.Children.Add(actionGrid);
 
             // Viewbox + ScrollViewer: scale nội dung tỉ lệ theo column width
             // contentStack có Width cố định = 240, Viewbox scale uniform để vừa column
             var ipViewbox = new Viewbox
             {
                 Stretch = Stretch.Uniform,
-                StretchDirection = StretchDirection.Both,
+                StretchDirection = preventScaleUp ? StretchDirection.DownOnly : StretchDirection.Both,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Top,
                 Child = contentStack
@@ -1049,6 +1051,32 @@ namespace FlowMy.Views.NodeControls
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
             };
+            var bottomActionsViewbox = new Viewbox
+            {
+                Stretch = Stretch.Uniform,
+                StretchDirection = preventScaleUp ? StretchDirection.DownOnly : StretchDirection.Both,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new Border
+                {
+                    Padding = new Thickness(10, 8, 10, 10),
+                    Child = new StackPanel
+                    {
+                        Width = 240,
+                        Orientation = Orientation.Vertical,
+                        Children = { actionGrid }
+                    }
+                }
+            };
+            var bottomActionsHost = new Border
+            {
+                Background = ipBg,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0x2a, 0x2e, 0x3a)),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Child = bottomActionsViewbox
+            };
+            DockPanel.SetDock(bottomActionsHost, Dock.Bottom);
+            columnDock.Children.Add(bottomActionsHost);
             columnDock.Children.Add(ipScroll);
             columnBorder.Child = columnDock;
 

@@ -90,7 +90,10 @@ namespace FlowMy.Views.NodeControls
             SyncIpToggleIcon();
 
             _originalMinWidthSnapshot = WidthSyncTarget.MinWidth;
-            var (ipFe, setIp) = ImageProcessingNodeControl.BuildImageProcessorColumn(_node, _host);
+            var (ipFe, setIp) = ImageProcessingNodeControl.BuildImageProcessorColumn(
+                _node,
+                _host,
+                preventScaleUp: _chromeBorder == null && _freezeScaleInWidget);
             IpProcessorHost.Content = ipFe;
             _setIpImage = setIp;
 
