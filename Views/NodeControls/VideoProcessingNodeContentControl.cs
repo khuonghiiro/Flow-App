@@ -3495,16 +3495,9 @@ namespace FlowMy.Views.NodeControls
         {
             if (RootContentGrid == null) return;
 
-            const double baseH = 1080.0;
-            const double minScaleActivation = 1.05;
-            var nodeH = _node?.Height ?? 0;
-            var factor = Math.Max(1.0, nodeH / baseH);
-            if (factor < minScaleActivation)
-                factor = 1.0;
-
-            RootContentGrid.LayoutTransform = factor <= 1.001
-                ? Transform.Identity
-                : new ScaleTransform(factor, factor);
+            // Trước: ScaleTransform theo node.Height/1080 trên cả RootContentGrid → chữ/control WPF bị mờ (canvas + widget).
+            // Giống hướng Image node: không dùng LayoutTransform scale toàn UI; layout DIP trong grid (row *, stretch).
+            RootContentGrid.LayoutTransform = Transform.Identity;
         }
 
         private void EmitAutoFitSizeSuggestion()
