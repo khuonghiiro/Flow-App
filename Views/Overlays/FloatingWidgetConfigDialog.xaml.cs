@@ -441,17 +441,7 @@ namespace FlowMy.Views.Overlays
         }
 
         private static (double Width, double Height) GetPrimaryWorkAreaSize()
-        {
-            try
-            {
-                var area = Screen.PrimaryScreen?.WorkingArea;
-                if (area != null && area.Value.Width > 0 && area.Value.Height > 0)
-                    return (area.Value.Width, area.Value.Height);
-            }
-            catch { }
-
-            return (1920, 1080);
-        }
+            => FloatingWidgetConfig.GetPrimaryWorkAreaSize();
 
         private void ApplyNodeMinSizeDefaults(FloatingWidgetConfig cfg)
         {

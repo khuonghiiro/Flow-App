@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 
 namespace FlowMy.Models
 {
@@ -50,6 +51,42 @@ namespace FlowMy.Models
     /// </summary>
     public class FloatingWidgetConfig : INotifyPropertyChanged
     {
+        /// <summary>Lấy kích thước work area màn hình chính (fallback khi không đọc được).</summary>
+        public static (double Width, double Height) GetPrimaryWorkAreaSize()
+        {
+            try
+            {
+                var ps = Screen.PrimaryScreen;
+                if (ps != null)
+                {
+                    var a = ps.WorkingArea;
+                    if (a.Width > 0 && a.Height > 0)
+                        return (a.Width, a.Height);
+                }
+            }
+            catch { /* ignore */ }
+
+            return (1920, 1080);
+        }
+
+        public FloatingWidgetConfig()
+        {
+            ApplyDefaultExpandedMaxFromPrimaryWorkArea();
+        }
+
+        /// <summary>
+        /// Gán Max expanded (px) và max tỉ lệ theo work area màn hình chính — gọi từ ctor khi tạo widget mới
+        /// (thay cho max mặc định 1200×900). Giá trị vẫn bị ghi đè khi deserialize JSON nếu workflow đã lưu Max.
+        /// </summary>
+        public void ApplyDefaultExpandedMaxFromPrimaryWorkArea()
+        {
+            var (w, h) = GetPrimaryWorkAreaSize();
+            _maxExpandedWidth = Math.Max(200, w - 8);
+            _maxExpandedHeight = Math.Max(150, h - 8);
+            _maxWidthRatio = 1.0;
+            _maxHeightRatio = 1.0;
+        }
+
         // ── Kích hoạt ──
         private bool _isEnabled;
         /// <summary>Bật/tắt chế độ floating widget cho node này.</summary>
