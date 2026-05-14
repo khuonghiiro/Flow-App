@@ -1280,6 +1280,9 @@ namespace FlowMy.Views.NodeControls
                 // Lấy crop region hiện tại và set cropName, cropWidth, cropHeight
                 if (_currentCropRegionForIp.TryGetValue(node, out var cropRegion) && cropRegion != null)
                 {
+                    // Lưu executionId vào crop để map ảnh render về đúng crop sau này
+                    cropRegion.LastExecutionId = execId;
+                    
                     // Set cropName
                     var cropNamePort = node.DynamicOutputs?.FirstOrDefault(o =>
                         string.Equals(o.Key, "cropName", StringComparison.OrdinalIgnoreCase));
@@ -1964,26 +1967,48 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                // Xác định crop đang active (crop mà user đã click trước khi nhấn Bắt đầu)
-                ImageCropRegion? activeCrop = null;
-                _currentCropRegionForIp.TryGetValue(node, out activeCrop);
-
-                // Nếu không có crop active, fallback lấy crop đầu tiên
-                if (activeCrop == null && node.Crops.Count > 0)
+                // Lấy executionId từ node để map đúng ảnh về crop
+                var execId = node.LastExecutionId;
+                
+                // Lấy danh sách crops có LastExecutionId khớp với executionId hiện tại
+                // Đây là các crops đã được xử lý trong lần chạy workflow này
+                var targetCrops = node.Crops
+                    .Where(c => !string.IsNullOrWhiteSpace(c.LastExecutionId) && 
+                                string.Equals(c.LastExecutionId, execId, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(c => c.Order)
+                    .ToList();
+                
+                // Fallback: nếu không tìm thấy crop theo executionId, dùng crop đang active
+                if (targetCrops.Count == 0)
                 {
-                    activeCrop = node.Crops.OrderBy(c => c.Order).FirstOrDefault();
+                    ImageCropRegion? activeCrop = null;
+                    _currentCropRegionForIp.TryGetValue(node, out activeCrop);
+                    
+                    if (activeCrop != null)
+                    {
+                        targetCrops.Add(activeCrop);
+                    }
+                }
+                
+                // Fallback cuối: lấy tất cả crops theo thứ tự
+                if (targetCrops.Count == 0 && node.Crops.Count > 0)
+                {
+                    targetCrops = node.Crops.OrderBy(c => c.Order).ToList();
                 }
 
-                if (activeCrop == null)
+                if (targetCrops.Count == 0)
                 {
                     MessageBox.Show("Không tìm thấy vùng crop để gán ảnh render.",
                         "Image Processor", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
-                // Load ảnh trong background, gán TẤT CẢ ảnh render vào crop đang active
-                // Không clear ảnh cũ của crop khác — mỗi crop tích luỹ ảnh qua các lần nhấn Bắt đầu
-                var targetCrop = activeCrop;
+                // Map ảnh render vào crops theo thứ tự:
+                // - Nếu có 1 ảnh: gán vào crop đầu tiên
+                // - Nếu có nhiều ảnh: map theo thứ tự crop (ảnh 0 → crop 0, ảnh 1 → crop 1, ...)
+                // - Nếu số ảnh > số crop: ảnh thừa gán vào crop cuối
+                // - Nếu số ảnh < số crop: chỉ gán vào các crop đầu
+                
                 await System.Threading.Tasks.Task.Run(() =>
                 {
                     for (int i = 0; i < list.Count; i++)
@@ -2000,6 +2025,12 @@ namespace FlowMy.Views.NodeControls
                         }
 
                         if (bmp == null) continue;
+
+                        // Xác định crop target cho ảnh này:
+                        // - Nếu i < số crop: gán vào crop thứ i
+                        // - Nếu i >= số crop: gán vào crop cuối (tích luỹ ảnh thừa)
+                        var cropIndex = Math.Min(i, targetCrops.Count - 1);
+                        var targetCrop = targetCrops[cropIndex];
 
                         Application.Current.Dispatcher.Invoke(() =>
                         {

@@ -140,7 +140,8 @@
                                     <ComboBox x:Name="UrlKeyComboBox" Height="36"
                                               Style="{DynamicResource BaseComboBox}"
                                               SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding ImageUrlSourceOutputKey, Mode=TwoWay}"/>
+                                              SelectedValue="{Binding ImageUrlSourceOutputKey, Mode=TwoWay}"
+                                              ItemsSource="{Binding UrlKeyOptions, Mode=OneWay}"/>
                                 </StackPanel>
                             </Grid>
 
@@ -185,7 +186,8 @@
                                     <ComboBox x:Name="Base64KeyComboBox" Height="36"
                                               Style="{DynamicResource BaseComboBox}"
                                               SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding ImageBase64SourceOutputKey, Mode=TwoWay}"/>
+                                              SelectedValue="{Binding ImageBase64SourceOutputKey, Mode=TwoWay}"
+                                              ItemsSource="{Binding Base64KeyOptions, Mode=OneWay}"/>
                                 </StackPanel>
                             </Grid>
 
@@ -514,7 +516,8 @@
                                               Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding RenderNodeOutputKey, Mode=TwoWay}"/>
+                                              SelectedValue="{Binding RenderNodeOutputKey, Mode=TwoWay}"
+                                              ItemsSource="{Binding RenderNodeKeyOptions, Mode=OneWay}"/>
                                 </StackPanel>
                             </Grid>
 
@@ -676,7 +679,8 @@
                                               Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding CroppedFolderSourceOutputKey, Mode=TwoWay}"/>
+                                              SelectedValue="{Binding CroppedFolderSourceOutputKey, Mode=TwoWay}"
+                                              ItemsSource="{Binding CroppedFolderKeyOptions, Mode=OneWay}"/>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>

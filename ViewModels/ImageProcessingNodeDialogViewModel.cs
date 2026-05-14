@@ -24,6 +24,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _imageUrl = string.Empty;
         [ObservableProperty] private string? _imageUrlSourceNodeId;
         [ObservableProperty] private string? _imageUrlSourceOutputKey;
+        public ObservableCollection<WorkflowOutputKeyOption> UrlKeyOptions { get; } = new();
         
         private static readonly HttpClient _httpClient = CreateHttpClient();
         private bool _isDownloadingUrl = false;
@@ -50,6 +51,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _imageBase64 = string.Empty;
         [ObservableProperty] private string? _imageBase64SourceNodeId;
         [ObservableProperty] private string? _imageBase64SourceOutputKey;
+        public ObservableCollection<WorkflowOutputKeyOption> Base64KeyOptions { get; } = new();
 
         [ObservableProperty] private ImageInputMode _inputMode = ImageInputMode.Url;
 
@@ -62,6 +64,8 @@ namespace FlowMy.ViewModels
 
         [ObservableProperty] private string? _renderNodeId;
         [ObservableProperty] private string? _renderNodeOutputKey;
+        public ObservableCollection<WorkflowOutputKeyOption> RenderNodeKeyOptions { get; } = new();
+        public ObservableCollection<WorkflowOutputKeyOption> CroppedFolderKeyOptions { get; } = new();
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
         public ObservableCollection<WorkflowDataSourceOption> RenderNodeOptions { get; } = new();
@@ -97,6 +101,19 @@ namespace FlowMy.ViewModels
             {
                 npc.PropertyChanged += (s, e) => OnNodePropertyChanged(e.PropertyName ?? string.Empty);
             }
+            
+            // Subscribe vào các property thay đổi để refresh key options
+            this.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(ImageUrlSourceNodeId))
+                    RefreshUrlKeyOptions();
+                else if (e.PropertyName == nameof(ImageBase64SourceNodeId))
+                    RefreshBase64KeyOptions();
+                else if (e.PropertyName == nameof(RenderNodeId))
+                    RefreshRenderNodeKeyOptions();
+                else if (e.PropertyName == nameof(CroppedFolderSourceNodeId))
+                    RefreshCroppedFolderKeyOptions();
+            };
         }
 
         protected override string GetDefaultTitle() => "Xử lý ảnh";
@@ -111,6 +128,12 @@ namespace FlowMy.ViewModels
                 if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
                 AvailableNodeOptions.Add(CreateDataSourceOption(n));
             }
+            
+            // Refresh key options khi danh sách node thay đổi
+            RefreshUrlKeyOptions();
+            RefreshBase64KeyOptions();
+            RefreshRenderNodeKeyOptions();
+            RefreshCroppedFolderKeyOptions();
         }
 
         public void RefreshRenderNodeOptions()
@@ -155,10 +178,14 @@ namespace FlowMy.ViewModels
                 .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0)
                 .ToList();
 
+            RenderNodeOptions.Clear();
             foreach (var n in candidates)
             {
                 RenderNodeOptions.Add(CreateDataSourceOption(n));
             }
+            
+            // Refresh key options khi danh sách node thay đổi
+            RefreshRenderNodeKeyOptions();
         }
 
         public ObservableCollection<WorkflowOutputKeyOption> GetOutputKeysForNode(string? nodeId)
@@ -178,6 +205,38 @@ namespace FlowMy.ViewModels
                 });
             }
             return list;
+        }
+
+        public void RefreshUrlKeyOptions()
+        {
+            UrlKeyOptions.Clear();
+            var options = GetOutputKeysForNode(ImageUrlSourceNodeId);
+            foreach (var o in options)
+                UrlKeyOptions.Add(o);
+        }
+
+        public void RefreshBase64KeyOptions()
+        {
+            Base64KeyOptions.Clear();
+            var options = GetOutputKeysForNode(ImageBase64SourceNodeId);
+            foreach (var o in options)
+                Base64KeyOptions.Add(o);
+        }
+
+        public void RefreshRenderNodeKeyOptions()
+        {
+            RenderNodeKeyOptions.Clear();
+            var options = GetOutputKeysForNode(RenderNodeId);
+            foreach (var o in options)
+                RenderNodeKeyOptions.Add(o);
+        }
+
+        public void RefreshCroppedFolderKeyOptions()
+        {
+            CroppedFolderKeyOptions.Clear();
+            var options = GetOutputKeysForNode(CroppedFolderSourceNodeId);
+            foreach (var o in options)
+                CroppedFolderKeyOptions.Add(o);
         }
 
         [RelayCommand]

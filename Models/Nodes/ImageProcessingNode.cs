@@ -127,6 +127,12 @@ namespace FlowMy.Models.Nodes
         /// <summary>Danh sách ảnh render tương ứng với crop (preview kết quả từ node render ảnh, có thể nhiều ảnh).</summary>
         public ObservableCollection<System.Windows.Media.ImageSource> RenderedImages { get; } = new();
 
+        /// <summary>
+        /// ExecutionId của lần chạy workflow gần nhất mà crop này được xử lý.
+        /// Dùng để map ảnh render về đúng crop (thay vì map theo thứ tự).
+        /// </summary>
+        public string LastExecutionId { get; set; } = string.Empty;
+
         public event PropertyChangedEventHandler? PropertyChanged;
     }
 

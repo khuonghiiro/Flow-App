@@ -129,7 +129,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 SetOutput(imageNode, "imageBase64", outBase64);
 
                 // Tạo danh sách base64 cho từng vùng crop đã được định nghĩa
-                var cropList = await GenerateCropBase64ListAsync(imageNode, inputBytes, env.CancellationToken).ConfigureAwait(false);
+                // Đồng thời set LastExecutionId cho từng crop để map ảnh render về đúng crop
+                var cropList = await GenerateCropBase64ListAsync(imageNode, inputBytes, env.ExecutionId, env.CancellationToken).ConfigureAwait(false);
                 SetOutput(imageNode, "cropListBase64", JsonSerializer.Serialize(cropList));
 
                 // Thêm các key mới: cropBase64 (đã được set từ Image Processor), aspectRatio, promptSize, prompt
@@ -261,12 +262,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         /// <summary>
         /// Tạo danh sách base64 PNG cho mỗi vùng crop đã định nghĩa trong node.
-        /// Mỗi phần tử trong list tương ứng với 1 ImageCropRegion (theo thứ tự trong node.Crops).
+        /// Mỗi phần tử trong list tương ứng với 1 ImageCropRegion (theo thứ tự Order trong node.Crops).
         /// Crop theo bounding box polygon (rectangle bao quanh). Các region thiếu điểm bị bỏ qua.
+        /// 
+        /// QUAN TRỌNG: Tất cả crops hợp lệ được set LastExecutionId = executionId để:
+        /// - UI có thể map ảnh render về đúng crops của lần chạy này
+        /// - Map theo thứ tự: ảnh render[0] → crop[0], ảnh render[1] → crop[1], ...
+        /// - Tránh nhầm lẫn khi có nhiều lần chạy workflow với số lượng crop khác nhau
         /// </summary>
         private static Task<List<string>> GenerateCropBase64ListAsync(
             ImageProcessingNode node,
             byte[] inputBytes,
+            string executionId,
             CancellationToken ct)
         {
             return Task.Run(() =>
@@ -293,6 +300,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     foreach (var region in validCrops)
                     {
                         ct.ThrowIfCancellationRequested();
+
+                        // Set LastExecutionId cho crop này để map ảnh render về đúng crop
+                        region.LastExecutionId = executionId;
 
                         var bb = region.BoundingBox;
                         int x = Math.Max(0, (int)Math.Round(bb.X));

@@ -21,10 +21,8 @@ namespace FlowMy.Views.Overlays
             InitializeBase(_viewModel, owner);
 
             // Ensure node options loaded (workflow can change titles)
+            // Key options sẽ tự động refresh qua PropertyChanged handler trong ViewModel
             _viewModel.RefreshAvailableNodes();
-            RefreshUrlKeyOptions();
-            RefreshBase64KeyOptions();
-            RefreshRenderNodeKeyOptions();
         }
 
         protected override Panel? GetInputsPanel() => null;
@@ -133,32 +131,24 @@ namespace FlowMy.Views.Overlays
 
         private void UrlNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            RefreshUrlKeyOptions();
+            // ViewModel đã tự động refresh qua PropertyChanged handler
+            // Không cần set ItemsSource trực tiếp vì đã bind trong XAML
         }
 
         private void Base64NodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            RefreshBase64KeyOptions();
+            // ViewModel đã tự động refresh qua PropertyChanged handler
+            // Không cần set ItemsSource trực tiếp vì đã bind trong XAML
         }
 
         private void RefreshUrlKeyOptions()
         {
-            try
-            {
-                if (UrlKeyComboBox == null) return;
-                UrlKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.ImageUrlSourceNodeId);
-            }
-            catch { }
+            // Không cần thiết nữa - ViewModel tự động refresh qua binding
         }
 
         private void RefreshBase64KeyOptions()
         {
-            try
-            {
-                if (Base64KeyComboBox == null) return;
-                Base64KeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.ImageBase64SourceNodeId);
-            }
-            catch { }
+            // Không cần thiết nữa - ViewModel tự động refresh qua binding
         }
 
         private void FilterExample_Click(object sender, RoutedEventArgs e)
@@ -171,22 +161,18 @@ namespace FlowMy.Views.Overlays
 
         private void CroppedFolderNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            try
+            // ViewModel đã tự động refresh qua PropertyChanged handler
+            // Clear selected key khi node thay đổi
+            if (e.RemovedItems.Count > 0 && e.AddedItems.Count > 0)
             {
-                if (CroppedFolderKeyComboBox == null) return;
-                var nodeId = _viewModel.CroppedFolderSourceNodeId;
-                CroppedFolderKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(nodeId);
-                if (e.RemovedItems.Count > 0 && e.AddedItems.Count > 0)
-                {
-                    _viewModel.CroppedFolderSourceOutputKey = null;
-                }
+                _viewModel.CroppedFolderSourceOutputKey = null;
             }
-            catch { }
         }
 
         private void RenderNodeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            RefreshRenderNodeKeyOptions();
+            // ViewModel đã tự động refresh qua PropertyChanged handler
+            // Clear selected key khi node thay đổi
             if (e.RemovedItems.Count > 0 && e.AddedItems.Count > 0)
             {
                 _viewModel.RenderNodeOutputKey = null;
@@ -195,12 +181,7 @@ namespace FlowMy.Views.Overlays
 
         private void RefreshRenderNodeKeyOptions()
         {
-            try
-            {
-                if (RenderNodeKeyComboBox == null) return;
-                RenderNodeKeyComboBox.ItemsSource = _viewModel.GetOutputKeysForNode(_viewModel.RenderNodeId);
-            }
-            catch { }
+            // Không cần thiết nữa - ViewModel tự động refresh qua binding
         }
     }
 }
