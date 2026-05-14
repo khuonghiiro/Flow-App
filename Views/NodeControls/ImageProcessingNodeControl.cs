@@ -2161,7 +2161,10 @@ namespace FlowMy.Views.NodeControls
             GpuOptimizationHelper.ApplyToElement(plate);
         }
 
-        /// <summary>Bóng trên shadowPlate; không cache cả khối Border (tránh mờ toolbar/ảnh).</summary>
+        /// <summary>
+        /// Image: bóng trên shadowPlate; không cache Border ngoài (tránh mờ toolbar/ảnh).
+        /// Video: cùng nguyên tắc — không gắn DropShadow/BitmapCache lên Border bọc toàn bộ UI (làm mờ như design vs canvas).
+        /// </summary>
         internal static void ApplyEditorGpuChrome(WorkflowNode node, Border border, bool hostWantsNodeCache)
         {
             if (border == null) return;
@@ -2170,6 +2173,13 @@ namespace FlowMy.Views.NodeControls
                 border.Effect = null;
                 GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: false);
                 RefreshImageWorkflowChromeDropShadow(border);
+                return;
+            }
+
+            if (node is VideoProcessingNode)
+            {
+                border.Effect = null;
+                GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: false);
                 return;
             }
 

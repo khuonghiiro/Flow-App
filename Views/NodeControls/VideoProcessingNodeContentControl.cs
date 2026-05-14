@@ -75,16 +75,12 @@ namespace FlowMy.Views.NodeControls
 
         private readonly VideoProcessingNode _node;
         private readonly IWorkflowEditorHost? _host;
-        /// <summary>Non-null khi control nằm trong node trên workflow canvas; null khi nhúng floating widget.</summary>
-        private readonly Border? _chromeBorder;
         private readonly NotifyCollectionChangedEventHandler _audioTracksChangedHandler;
         private readonly PropertyChangedEventHandler _propertyChangedHandler;
         private readonly DispatcherTimer _timelineTimer;
         private readonly DispatcherTimer _beforeAfterFlickerTimer;
 
         private bool _subscriptionsAttached;
-        private bool _hostCanvasZoomListenerAttached;
-        private EventHandler? _hostScaleTransformChangedHandler;
         private bool _isProgressDragging;
         private bool _isPlaying;
         private bool _isMuted;
@@ -134,11 +130,10 @@ namespace FlowMy.Views.NodeControls
         public event Action<double, double>? SuggestedNodeSizeReady;
         public event Action<string>? LogLineReceived;
 
-        public VideoProcessingNodeContentControl(VideoProcessingNode node, IWorkflowEditorHost? host = null, Border? chromeBorder = null)
+        public VideoProcessingNodeContentControl(VideoProcessingNode node, IWorkflowEditorHost? host = null)
         {
             _node = node ?? throw new ArgumentNullException(nameof(node));
             _host = host;
-            _chromeBorder = chromeBorder;
 
             InitializeComponent();
             ApplyThemeBrushes(GetTextBrush(_node.ColorKey));
@@ -1117,57 +1112,11 @@ namespace FlowMy.Views.NodeControls
             VideoProcessingNodeExecutor.ProgressChanged += HandleExecutorProgress;
             VideoProcessingNodeExecutor.LogLine += HandleExecutorLog;
             _subscriptionsAttached = true;
-            TryAttachHostCanvasZoomCompensation();
-        }
-
-        private void TryAttachHostCanvasZoomCompensation()
-        {
-            if (_chromeBorder == null || _hostCanvasZoomListenerAttached) return;
-            var st = _host?.ScaleTransform;
-            if (st == null) return;
-
-            if (_hostScaleTransformChangedHandler == null)
-            {
-                _hostScaleTransformChangedHandler = (_, _) =>
-                    Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshLargeNodeUiScale));
-            }
-
-            try
-            {
-                DependencyPropertyDescriptor.FromProperty(ScaleTransform.ScaleXProperty, typeof(ScaleTransform))
-                    ?.AddValueChanged(st, _hostScaleTransformChangedHandler);
-                _hostCanvasZoomListenerAttached = true;
-            }
-            catch
-            {
-                /* ignore */
-            }
-        }
-
-        private void DetachHostCanvasZoomCompensation()
-        {
-            if (!_hostCanvasZoomListenerAttached || _hostScaleTransformChangedHandler == null) return;
-            var st = _host?.ScaleTransform;
-            if (st != null)
-            {
-                try
-                {
-                    DependencyPropertyDescriptor.FromProperty(ScaleTransform.ScaleXProperty, typeof(ScaleTransform))
-                        ?.RemoveValueChanged(st, _hostScaleTransformChangedHandler);
-                }
-                catch
-                {
-                    /* ignore */
-                }
-            }
-
-            _hostCanvasZoomListenerAttached = false;
         }
 
         private void DetachSubscriptions()
         {
             if (!_subscriptionsAttached) return;
-            DetachHostCanvasZoomCompensation();
             _node.AudioTracks.CollectionChanged -= _audioTracksChangedHandler;
             _node.PropertyChanged -= _propertyChangedHandler;
             OverlayCanvasControl.ItemsSource = null;
@@ -3546,27 +3495,8 @@ namespace FlowMy.Views.NodeControls
         {
             if (RootContentGrid == null) return;
 
-            // Widget: không có canvas zoom của editor — giữ Identity (đã nét ở floating widget).
-            if (_chromeBorder == null)
-            {
-                RootContentGrid.LayoutTransform = Transform.Identity;
-                return;
-            }
-
-            // Canvas: WorkflowCanvas áp RenderTransform Scale(z). Với z>1, vector/text WPF dễ mờ;
-            // LayoutTransform 1/z trên nội dung gần khử phóng đại đo layout (giống ý tưởng “pre-scale” trước zoom canvas).
-            var z = _host?.ScaleTransform?.ScaleX ?? 1.0;
-            if (z <= 0.0001 || double.IsNaN(z) || double.IsInfinity(z)) z = 1.0;
-            if (z <= 1.002)
-            {
-                RootContentGrid.LayoutTransform = Transform.Identity;
-                return;
-            }
-
-            var inv = 1.0 / z;
-            const double minInv = 0.35;
-            if (inv < minInv) inv = minInv;
-            RootContentGrid.LayoutTransform = new ScaleTransform(inv, inv);
+            // Giống hướng Image node: không LayoutTransform scale toàn UI (tránh mờ khi kết hợp zoom canvas / effect).
+            RootContentGrid.LayoutTransform = Transform.Identity;
         }
 
         private void EmitAutoFitSizeSuggestion()

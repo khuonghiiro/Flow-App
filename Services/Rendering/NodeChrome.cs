@@ -50,7 +50,7 @@ namespace FlowMy.Services.Rendering
             // Không gắn chrome cho LoopBody container (node ảo)
             if (node is LoopBodyNode) return;
 
-            if (node is ImageProcessingNode)
+            if (node is ImageProcessingNode or VideoProcessingNode)
                 ImageProcessingNodeControl.ApplyEditorGpuChrome(node, border, host.CacheNodeEnabled);
             else
                 GpuOptimizationHelper.ApplyToBorder(border, isDragging: false);

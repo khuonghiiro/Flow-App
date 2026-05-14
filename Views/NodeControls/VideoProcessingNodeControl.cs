@@ -59,11 +59,12 @@ namespace FlowMy.Views.NodeControls
                 CornerRadius = new CornerRadius(NodeChromeCornerRadius),
                 Cursor = Cursors.Hand,
                 Effect = null,
+                CacheMode = null,
                 Tag = node,
                 SnapsToDevicePixels = true,
                 UseLayoutRounding = true
             };
-            var contentControl = new VideoProcessingNodeContentControl(node, host, border);
+            var contentControl = new VideoProcessingNodeContentControl(node, host);
             var overlayGrid = new Grid();
             overlayGrid.Children.Add(contentControl);
 
@@ -74,6 +75,7 @@ namespace FlowMy.Views.NodeControls
             AddResizeHandle(handlesLayer, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, 2, 2));
             AddResizeHandle(handlesLayer, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, 2));
             overlayGrid.Children.Add(handlesLayer);
+            GpuOptimizationHelper.ApplyToElement(overlayGrid);
             border.Child = overlayGrid;
             AttachResizeLogic(border, node);
             SyncNodeRoundedClip(border);
