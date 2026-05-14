@@ -29,7 +29,6 @@ namespace FlowMy.Views.NodeControls
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
 
-            var contentControl = new VideoProcessingNodeContentControl(node, host);
             void RefreshPortsAndConnections()
             {
                 if (node.Ports != null)
@@ -60,8 +59,11 @@ namespace FlowMy.Views.NodeControls
                 CornerRadius = new CornerRadius(NodeChromeCornerRadius),
                 Cursor = Cursors.Hand,
                 Effect = null,
-                Tag = node
+                Tag = node,
+                SnapsToDevicePixels = true,
+                UseLayoutRounding = true
             };
+            var contentControl = new VideoProcessingNodeContentControl(node, host, border);
             var overlayGrid = new Grid();
             overlayGrid.Children.Add(contentControl);
 

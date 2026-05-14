@@ -263,6 +263,7 @@ namespace FlowMy.ViewModels
 
         /// <summary>
         /// Chỉ mở widget (headless): workflow được load nhưng cửa sổ editor bị ẩn.
+        /// MainWindow vẫn hiển thị (không Hide) để người dùng tiếp tục dùng launcher.
         /// Giảm tải render canvas/nodes/connections. Widget vẫn hoạt động,
         /// khi đóng widget cuối → đóng luôn workflow editor.
         /// </summary>
@@ -284,7 +285,7 @@ namespace FlowMy.ViewModels
                     item.WorkflowName,
                     new List<string> { item.NodeId },
                     headless: true,
-                    hideMainWindowWhenHeadless: true);
+                    hideMainWindowWhenHeadless: false);
                 item.IsWidgetOpen = await WaitUntilWidgetOpenAsync(item.NodeId, timeoutMs: 4000);
             }
             finally
