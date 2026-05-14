@@ -61,6 +61,12 @@ public partial class FloatingWidgetWindow : Window
     /// </summary>
     private const double DragThreshold = 6.0;
 
+    /// <summary>Độ rộng vùng bắt resize (px logic) — WM_NCHITTEST; giữ dày khi hover dù viền nội dung nhỏ hơn.</summary>
+    private const double ResizeBorderLogicalPx = 8.0;
+
+    /// <summary>Viền trống phải/dưới trong ContentArea (px logic) — chừa WebView2; chỉ phần nhìn thấy, nhỏ hơn vùng hit resize.</summary>
+    private const double ContentResizeGutterDp = 1.5;
+
     // ── Timers ──
     private DispatcherTimer? _idleTimer;
     private DispatcherTimer? _titleBarHideTimer;
@@ -439,6 +445,7 @@ public partial class FloatingWidgetWindow : Window
             _imageNodeContent.Visibility = Visibility.Collapsed;
 
         ApplyIdleAnimation();
+        ApplyNativeResizeChromeSettings();
     }
 
     public void ExpandWidget()
@@ -477,8 +484,7 @@ public partial class FloatingWidgetWindow : Window
         IdleContainer.Visibility = Visibility.Collapsed;
         ExpandedContainer.Visibility = Visibility.Visible;
 
-        // Show/hide resize grip
-        ResizeGrip.Visibility = Config.AllowResize ? Visibility.Visible : Visibility.Collapsed;
+        ApplyNativeResizeChromeSettings();
         ApplyTitleBarBehavior(forceShowTitleBar: false);
 
         // Show WebView2
@@ -1523,21 +1529,101 @@ public partial class FloatingWidgetWindow : Window
     }
 
     // ═══════════════════════════════════════════
-    //  RESIZE
+    //  RESIZE (native: WM_NCHITTEST + WS_THICKFRAME; tránh WebView2 HWND “cướp” Thumb WPF)
     // ═══════════════════════════════════════════
 
-    private void ResizeGrip_DragDelta(object sender, DragDeltaEventArgs e)
+    /// <summary>
+    /// Padding nội dung + WS_THICKFRAME: resize theo hệ điều hành khi hover cạnh/góc (giống cửa sổ thường).
+    /// </summary>
+    private void ApplyNativeResizeChromeSettings()
     {
-        if (!Config.AllowResize) return;
+        try
+        {
+            if (ContentArea != null)
+            {
+                if (_isExpanded && Config.AllowResize && !_isWidgetMaximized)
+                {
+                    ContentArea.Padding = new Thickness(0, 0, ContentResizeGutterDp, ContentResizeGutterDp);
+                }
+                else
+                {
+                    ContentArea.Padding = new Thickness(0);
+                }
+            }
 
-        var (minW, minH, maxW, maxH) = ResolveSizeBounds();
-        var newW = Math.Max(minW, Math.Min(maxW, Width + e.HorizontalChange));
-        var newH = Math.Max(minH, Math.Min(maxH, Height + e.VerticalChange));
+            SyncWindowThickFrameStyle();
+        }
+        catch { }
+    }
 
-        Width = newW;
-        Height = newH;
+    private void SyncWindowThickFrameStyle()
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return;
 
-        MarkActivity();
+            var style = GetWindowLong(hwnd, GWL_STYLE);
+            var wantFrame = _isExpanded && Config.AllowResize && !_isWidgetMaximized;
+            if (wantFrame)
+                style |= WS_THICKFRAME;
+            else
+                style &= ~WS_THICKFRAME;
+
+            SetWindowLong(hwnd, GWL_STYLE, style);
+            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        }
+        catch { }
+    }
+
+    /// <summary>Trả về mã HT* cho WM_NCHITTEST khi chuột ở gần cạnh/góc (tọa độ logic của cửa sổ).</summary>
+    private bool TryComputeNcHit(IntPtr lParam, out int hitTest)
+    {
+        hitTest = 0;
+        if (!_isExpanded || !Config.AllowResize || _isWidgetMaximized)
+            return false;
+
+        try
+        {
+            var packed = lParam.ToInt32();
+            var screenX = unchecked((short)(packed & 0xFFFF));
+            var screenY = unchecked((short)(packed >> 16));
+            var client = PointFromScreen(new Point(screenX, screenY));
+
+            var bw = ResizeBorderLogicalPx;
+            var w = ActualWidth;
+            var h = ActualHeight;
+            if (double.IsNaN(w) || double.IsNaN(h) || w < bw * 2 || h < bw * 2)
+                return false;
+
+            var innerLeft = bw;
+            var innerRight = w - bw;
+            var innerTop = bw;
+            var innerBottom = h - bw;
+            if (client.X > innerLeft && client.X < innerRight && client.Y > innerTop && client.Y < innerBottom)
+                return false;
+
+            var left = client.X <= bw;
+            var right = client.X >= w - bw;
+            var top = client.Y <= bw;
+            var bottom = client.Y >= h - bw;
+
+            if (top && left) { hitTest = HTTOPLEFT; return true; }
+            if (top && right) { hitTest = HTTOPRIGHT; return true; }
+            if (bottom && left) { hitTest = HTBOTTOMLEFT; return true; }
+            if (bottom && right) { hitTest = HTBOTTOMRIGHT; return true; }
+            if (top) { hitTest = HTTOP; return true; }
+            if (bottom) { hitTest = HTBOTTOM; return true; }
+            if (left) { hitTest = HTLEFT; return true; }
+            if (right) { hitTest = HTRIGHT; return true; }
+        }
+        catch
+        {
+            return false;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -1800,7 +1886,7 @@ public partial class FloatingWidgetWindow : Window
                 var (w, h) = ResolveExpandedSize();
                 Width = w;
                 Height = h;
-                ResizeGrip.Visibility = Config.AllowResize ? Visibility.Visible : Visibility.Collapsed;
+                ApplyNativeResizeChromeSettings();
                 ApplyIdleChrome();
                 ApplyTitleBarBehavior(forceShowTitleBar: false);
             }
@@ -3427,6 +3513,7 @@ window.hostAsync.values = window.hostAsync.values || {};
         UpdateTitleRevealButtonPlacement();
         UpdateTitleMaxRestoreVisualState();
         _imageNodeContent?.SyncWidgetExpandedFullscreen(_isWidgetMaximized);
+        ApplyNativeResizeChromeSettings();
     }
 
     private void UpdateTitleMaxRestoreVisualState()
@@ -3947,6 +4034,7 @@ window.hostAsync.values = window.hostAsync.values || {};
             {
                 EnsureTaskbarToggleWindowStyle(source.Handle);
                 source.AddHook(WndProc);
+                ApplyNativeResizeChromeSettings();
             }
         }
         catch { }
@@ -4079,15 +4167,80 @@ window.hostAsync.values = window.hostAsync.values || {};
         return bmp;
     }
 
+    private const int WM_NCHITTEST = 0x0084;
+    private const int WM_GETMINMAXINFO = 0x0024;
+    private const int HTLEFT = 10;
+    private const int HTRIGHT = 11;
+    private const int HTTOP = 12;
+    private const int HTTOPLEFT = 13;
+    private const int HTTOPRIGHT = 14;
+    private const int HTBOTTOM = 15;
+    private const int HTBOTTOMLEFT = 16;
+    private const int HTBOTTOMRIGHT = 17;
+
     private const int WM_SYSCOMMAND = 0x0112;
     private const int SC_MINIMIZE = 0xF020;
     private const int SC_RESTORE = 0xF120;
     private static readonly TimeSpan TaskbarToggleDebounce = TimeSpan.FromMilliseconds(280);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Win32Point
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Win32MinMaxInfo
+    {
+        public Win32Point ptReserved;
+        public Win32Point ptMaxSize;
+        public Win32Point ptMaxPosition;
+        public Win32Point ptMinTrackSize;
+        public Win32Point ptMaxTrackSize;
+    }
+
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         try
         {
+            if (msg == WM_GETMINMAXINFO && _isExpanded && Config.AllowResize && !_isWidgetMaximized)
+            {
+                try
+                {
+                    var mm = Marshal.PtrToStructure<Win32MinMaxInfo>(lParam);
+                    var (minW, minH, maxW, maxH) = ResolveSizeBounds();
+                    double sx = 1, sy = 1;
+                    if (PresentationSource.FromVisual(this) is HwndSource hs && hs.CompositionTarget != null)
+                    {
+                        var m = hs.CompositionTarget.TransformToDevice;
+                        sx = m.M11;
+                        sy = m.M22;
+                    }
+
+                    var minTx = (int)Math.Ceiling(minW * sx);
+                    var minTy = (int)Math.Ceiling(minH * sy);
+                    mm.ptMinTrackSize.X = Math.Max(mm.ptMinTrackSize.X, minTx);
+                    mm.ptMinTrackSize.Y = Math.Max(mm.ptMinTrackSize.Y, minTy);
+
+                    var maxTx = (int)Math.Floor(maxW * sx);
+                    var maxTy = (int)Math.Floor(maxH * sy);
+                    if (maxTx > 0 && (mm.ptMaxTrackSize.X == 0 || mm.ptMaxTrackSize.X > maxTx))
+                        mm.ptMaxTrackSize.X = maxTx;
+                    if (maxTy > 0 && (mm.ptMaxTrackSize.Y == 0 || mm.ptMaxTrackSize.Y > maxTy))
+                        mm.ptMaxTrackSize.Y = maxTy;
+
+                    Marshal.StructureToPtr(mm, lParam, false);
+                }
+                catch { }
+            }
+
+            if (msg == WM_NCHITTEST && TryComputeNcHit(lParam, out var hit))
+            {
+                handled = true;
+                return (IntPtr)hit;
+            }
+
             if (msg == WM_SYSCOMMAND)
             {
                 int command = wParam.ToInt32() & 0xFFF0;
@@ -4154,6 +4307,7 @@ window.hostAsync.values = window.hostAsync.values || {};
     private const int GWL_STYLE = -16;
     private const int WS_SYSMENU = 0x00080000;
     private const int WS_MINIMIZEBOX = 0x00020000;
+    private const int WS_THICKFRAME = 0x00040000;
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;

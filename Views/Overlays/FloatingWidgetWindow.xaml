@@ -619,29 +619,12 @@
                         </Border>
                     </Popup>
 
-                    <!-- ── Content Area ── -->
+                    <!-- ── Content Area (padding phải/dưới gán code-behind: viền nhỏ, vùng hit resize OS vẫn rộng hơn) ── -->
                     <Border Grid.Row="1" x:Name="ContentArea" ClipToBounds="True"
                             Background="{DynamicResource CardColor}"
                             CornerRadius="0">
                         <!-- WebView2 hoặc content sẽ được thêm programmatically -->
                     </Border>
-
-                    <!-- ── Resize Grip (bottom-right) ── -->
-                    <Thumb x:Name="ResizeGrip" Grid.Row="1"
-                           Width="16" Height="16"
-                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                           Cursor="SizeNWSE" Opacity="0.5"
-                           DragDelta="ResizeGrip_DragDelta">
-                        <Thumb.Template>
-                            <ControlTemplate>
-                                <Canvas Width="16" Height="16">
-                                    <Line X1="12" Y1="16" X2="16" Y2="12" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
-                                    <Line X1="8" Y1="16" X2="16" Y2="8" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
-                                    <Line X1="4" Y1="16" X2="16" Y2="4" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
-                                </Canvas>
-                            </ControlTemplate>
-                        </Thumb.Template>
-                    </Thumb>
                     </Grid>
             </Border>
         </Grid>

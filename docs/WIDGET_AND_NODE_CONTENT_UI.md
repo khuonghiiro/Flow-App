@@ -1,9 +1,9 @@
 # Node content + Floating Widget — UI không nhoè & cấu trúc dễ bảo trì
 
-> **Mục đích**: Hướng dẫn khi **thêm/sửa node** có hiển thị trên **canvas** và trong **Floating Widget**, để sau này AI/dev chỉnh sửa nhất quán, tránh chữ/control **nhoè** do scale kép.  
+> **Mục đích**: Hướng dẫn khi **thêm/sửa node** có hiển thị trên **canvas** và trong **Floating Widget**, để sau này AI/dev chỉnh sửa nhất quán, tránh chữ/control **nhoè** do scale kép, **effect/cache GPU** trên `Border` node, và chênh lệch **designer vs runtime**.
 > **Đối tượng**: Agent + dev C#/WPF.  
 > **Tham chiếu thực tế**: `ImageProcessingNode` + `ImageProcessingNodeContentControl` + `ImageProcessingNodeControl.BuildImageProcessorColumn`.  
-> **Cập nhật**: 2026-05-14
+> **Cập nhật**: 2026-05-14 (bổ sung mục 8: canvas + GPU + XAML tránh mờ)
 
 ---
 
@@ -11,10 +11,13 @@
 
 | Ngữ cảnh | Đặc điểm | Gợi ý nhận biết trong code |
 |----------|----------|-----------------------------|
-| **Canvas (node trên workflow)** | Có `Border` chrome, thường `LayoutTransform` / `Viewbox` để “responsive” theo kích thước node | `chromeBorder != null` khi tạo `*ContentControl` |
-| **Floating Widget** | Cùng `UserControl` nhưng host trong `FloatingWidgetWindow`; **không** nên phóng to/thu nhỏ UI bằng `LayoutTransform` trên toàn bộ chrome | `chromeBorder == null` (và thường kèm flag như `freezeScaleInWidget`) |
+| **Designer / XAML preview** | Không có zoom canvas editor, không chạy `NodeChrome` / `ApplyEditorGpuChrome` như runtime — dễ **ảo giác “nét”** trong khi trên canvas vẫn mờ | So sánh luôn với bản build trên workflow |
+| **Canvas (node trên workflow)** | Có `Border` node + `WorkflowCanvas` zoom (`RenderTransform`), `NodeChrome` bọc `Child`, và áp dụng **GPU / cache / effect** lên `node.Border` | `ImageProcessingNodeContentControl`: tham số `Border? chromeBorder` + `freezeScaleInWidget`. `VideoProcessingNodeContentControl`: hiện chỉ `(node, host)` — phân biệt widget vs canvas xử lý ở lớp chrome/GPU (mục **8**), không bắt buộc truyền `Border` vào `UserControl`. |
+| **Floating Widget** | Cùng `UserControl` nhưng host trong `FloatingWidgetWindow`; **không** nên phóng to/thu nhỏ UI bằng `LayoutTransform` trên toàn bộ chrome | `chromeBorder == null` + `freezeScaleInWidget` (Image); widget không áp `DropShadowEffect` / `BitmapCache` lên cùng lớp với toàn bộ XAML (xem **8**). |
 
-Một `UserControl` nội dung node (`FooNodeContentControl`) thường được dùng **cả hai chỗ**: truyền `Border` khi embed canvas, truyền `null` khi nhúng widget.
+**Image node (chuẩn tham khảo)**: `FooNodeContentControl` có thể nhận `Border? chromeBorder` — `null` khi nhúng widget, non-null khi nằm trong chrome trên canvas để nhánh `ApplyResponsiveScale()` biết ngữ cảnh.
+
+**Video node**: `UserControl` không cần tham chiếu `Border` chrome để phân nhánh; tránh “fix” mờ bằng `LayoutTransform` scale **cả** `RootContentGrid` theo nghịch zoom canvas — dễ xung đột với render và không phải pattern của Image.
 
 ### 1.1 Cờ phân nhánh — chỉ widget mới dùng logic DIP; canvas giữ scaling như cũ
 
@@ -49,7 +52,7 @@ Các bước dưới đây **chỉ áp dụng khi cờ widget đúng** (mục **
 
 1. **`LayoutTransform = Identity`** trên các vùng toolbar / cột phụ / nhãn cần nét.  
 2. Điều chỉnh **kích thước thật (DIP)**: `FontSize`, `Width`/`Height`, `Padding`, `Margin` theo một **hệ số suy ra từ viewport** (vd. `ActualWidth`/`ActualHeight` hoặc độ rộng cột star).  
-3. Phần UI phức tạp build code-behind: thêm cờ **`dipNativeLayout`** (hoặc tương đương) để **bỏ `Viewbox`** — chỉ dùng font/size DIP (vd. helper `Zi`/`Zd`), kèm `TextOptions.TextFormattingMode = Display`, `UseLayoutRounding`, `SnapsToDevicePixels`.  
+3. Phần UI phức tạp build code-behind: thêm cờ **`dipNativeLayout`** (hoặc tương đương) để **bỏ `Viewbox`** — chỉ dùng font/size DIP (vd. helper `Zi`/`Zd`), kèm `UseLayoutRounding`, `SnapsToDevicePixels`, và `TextOptions` theo mục **8.3** (tránh mặc định `Display` nếu chữ trông mềm so với canvas).  
 4. **`DynamicResource`** cho font trong `ItemTemplate` (XAML) khi cần đồng bộ list với code-behind (`SetResource` / `PutFontResource`).
 
 ---
@@ -79,12 +82,11 @@ Mẫu tham số (tham khảo `ImageProcessingNodeContentControl`):
 1. **Model**: `FloatingWidgetConfig` trên node (đã có pattern trong codebase).  
 2. **Min kích thước widget**: `FloatingWidgetWindow` dùng `Config.MinExpandedWidth` / `MinWidthRatio` — đừng đặt `Border.MinWidth` node quá lớn nếu muốn widget thu nhỏ sâu (tham khảo `ImageProcessingNodeControl.ImageNodeMinWidthPx`).  
 3. **Dialog cấu hình widget** (`FloatingWidgetConfigDialog`): cập nhật `ResolveNodeMinSizePx()` cho node mới nếu cần default min an toàn.  
-4. **Content host**: `FloatingWidgetWindow` nhúng `FooNodeContentControl` với `chromeBorder: null`.  
+4. **Content host**: `FloatingWidgetWindow` nhúng `FooNodeContentControl` — với Image: `chromeBorder: null` (và cờ widget); với node không dùng `chromeBorder` trên `UserControl`, chỉ cần host + `null` border nếu constructor hỗ trợ.
 5. **Pseudo-fullscreen widget** (nếu có): API kiểu `SyncWidgetExpandedFullscreen(bool)` để chỉnh cột star / typo — không nhầm với `WindowState.Maximized`.  
 6. **Không** bọc toàn bộ content widget trong một `Viewbox` chỉ để “vừa cửa sổ” — thay bằng scroll + DIP.  
-7. **Ẩn visual trên canvas** khi widget mở: nếu node có UI nặng / cần một host duy nhất, thêm loại node vào `FloatingWidgetManager.HideNodeVisualWhenWidgetOpened` (xem mục **6** bên dưới).
-
----
+7. **Ẩn visual trên canvas** khi widget mở: nếu node có UI nặng / cần một host duy nhất, thêm loại node vào `FloatingWidgetManager.HideNodeVisualWhenWidgetOpened` (xem mục **6** bên dưới).  
+8. **Co dãn kích thước widget**: `FloatingWidgetWindow.ResolveSizeBounds` dùng min/max từ config + làm mềm min + **nới sàn max** (`nearFull`) để vẫn kéo rộng gần hết work area khi Max trong config nhỏ (logic gốc commit `892447cc`). `FloatingWidgetConfig` **mới** (`new FloatingWidgetConfig()`): constructor gọi `ApplyDefaultExpandedMaxFromPrimaryWorkArea()` — Max px và max tỉ lệ theo **màn hình chính**, thay cho default 1200×900 cố định.
 
 ## 5. Tham chiếu nhanh — Image Processing (chuẩn thực tế)
 
@@ -128,6 +130,53 @@ Các node không có WebView2 / queue tương tự (vd. **Image Processing**) ch
 
 ---
 
-## 8. Tóm tắt một dòng cho agent
+## 8. Canvas + GPU + XAML — tránh UI **mờ / nhoè** (runtime khác design/widget)
 
-**Dùng cờ (`chromeBorder == null` + `freezeScaleInWidget`) để phân nhánh: nếu widget thì `LayoutTransform = Identity`, chỉnh DIP (`FontSize`/size), rebuild phần con với `dipNativeLayout: true` (bỏ Viewbox nội bộ); nếu canvas thì giữ `LayoutTransform`/`Viewbox` scaling như cũ. Khi widget mở, `FloatingWidgetManager` ẩn Border/title/port trên canvas cho các loại node đã whitelist. XAML + `DynamicResource` cho template; đồng bộ min size với `FloatingWidgetConfig` + `Border` node.**
+### 8.1 Triệu chứng
+
+- Trong **designer** hoặc **floating widget** chữ và viền **nét**, nhưng cùng file `.xaml` trên **node canvas** thì **mờ**, đặc biệt sau zoom / kéo thả / bật cache node.
+
+### 8.2 Nguyên nhân chính (WPF) — ưu tiên kiểm tra trước khi “scale thêm” trong XAML
+
+1. **`DropShadowEffect` gắn trên cùng `Border` bọc toàn bộ nội dung**  
+   WPF render effect vào texture; mọi thứ bên trong (toolbar, `TextBlock`, preview) đều đi qua lớp làm mềm → **toàn node** trông nhoè.  
+   **Chuẩn Image node**: comment + code trong `ImageProcessingNodeControl.CreateBorder` — viền ngoài `Effect = null`, bóng chỉ trên **`shadowPlate`** (lớp nền phía sau, `IsHitTestVisible = false`), grid nội dung nằm **trên**.
+
+2. **`BitmapCache` trên `node.Border` + vị trí `Canvas.Left/Top` lệch pixel**  
+   `GpuOptimizationHelper.ApplyToBorder` (khi `forceCache: true`) có logic snap tọa độ canvas về số nguyên — cache ở offset subpixel bị **resample bilinear** → mờ. Node rich UI (video, ảnh) **không** nên cache cả khối border bọc UI.
+
+3. **`ApplyEditorGpuChrome` — nhánh theo loại node** (`Views/NodeControls/ImageProcessingNodeControl.cs`)  
+   - **`ImageProcessingNode`** và **`VideoProcessingNode`**: `border.Effect = null`, `ApplyToBorder(..., forceCache: false)` — **không** `DropShadowEffect` + **không** bitmap cache trên border bọc toàn UI.  
+   - Các node khác: vẫn có thể bật shadow + cache theo `hostWantsNodeCache` (cân nhắc nếu node có XAML phức tạp).  
+   **`NodeChrome.Apply`** (`Services/Rendering/NodeChrome.cs`) phải gọi `ApplyEditorGpuChrome` cho **cả Image và Video** (đồng bộ với `WorkflowEditorWindow.ApplyGpuSettings` / sau drag).
+
+4. **Đừng “chữa” mờ canvas bằng `LayoutTransform` scale cả `RootContentGrid` theo `1/ZoomLevel`**  
+   Image không làm vậy; họ dùng **scale có chọn lọc** trên vùng chrome (`TopMenuBorder`, `LeftMenuBorder`, …) trong `ApplyResponsiveScale()`. Scale toàn cây + zoom canvas dễ tạo **scale kép** và hinting xấu.
+
+### 8.3 XAML — checklist nhanh (bổ sung cho `.xaml` nội dung node)
+
+| Việc nên làm | Ghi chú |
+|--------------|---------|
+| `UseLayoutRounding="True"` / `SnapsToDevicePixels="True"` trên `UserControl` hoặc grid gốc | Giống `ImageProcessingNodeContentControl` |
+| `TextOptions.TextFormattingMode` | `Display` đôi khi làm chữ “mềm” hơn `Ideal` trên UI dày; cân nhắc **`Ideal`** để gần mặc định Image |
+| `TextOptions.TextHintingMode="Fixed"` | Hữu ích khi có transform / resize thường xuyên |
+| Tránh **`FontSize` lẻ** (9.5, 10.5, …) | Làm glyph lệch subpixel; ưu tiên số nguyên |
+| `Viewbox` bọc panel có nhiều text | Chỉ dùng khi thật sự cần; widget thường cần nhánh **bỏ Viewbox** + DIP (mục 2) |
+| `GlassCardStyle` / `Border` lớn | Có thể bật `SnapsToDevicePixels` / `UseLayoutRounding` trên style thẻ |
+
+### 8.4 Tham chiếu file (sau chỉnh sửa 2026-05)
+
+| Chủ đề | File |
+|--------|------|
+| Nhánh GPU/sharp cho Image + Video | `ImageProcessingNodeControl.ApplyEditorGpuChrome` |
+| Gọi GPU khi bọc chrome | `Services/Rendering/NodeChrome.Apply` |
+| Helper cache / scaling / snap | `Services/Rendering/GpuOptimizationHelper.cs` |
+| Cấu trúc bóng tách lớp (Image) | `ImageProcessingNodeControl.CreateBorder` (`shadowPlate` + `outerGrid`) |
+| Content video + `ApplyToElement` trên grid overlay | `VideoProcessingNodeControl.CreateBorder` |
+| Không scale cả root content theo zoom | `VideoProcessingNodeContentControl.RefreshLargeNodeUiScale` → `Identity` |
+
+---
+
+## 9. Tóm tắt một dòng cho agent
+
+**Widget vs canvas (Image): dùng `chromeBorder == null` + `freezeScaleInWidget` — widget thì `LayoutTransform = Identity`, chỉnh DIP / `dipNativeLayout`, bỏ Viewbox nội bộ; canvas thì responsive theo vùng (không scale cả cây vô tội vạ). Trên canvas: đừng gắn `DropShadowEffect` + `BitmapCache` lên `Border` bọc toàn XAML — dùng cùng nhánh `ApplyEditorGpuChrome` như Image/Video, cấu trúc `shadowPlate` nếu cần bóng. XAML: layout rounding, snap pixel, font nguyên, `TextOptions` hợp lý. `FloatingWidgetManager` whitelist khi cần ẩn node canvas.**
