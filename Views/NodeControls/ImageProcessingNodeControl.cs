@@ -1244,6 +1244,17 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
+                // Clear UserValueOverride cho các key bị skip trước khi set output mới,
+                // tránh giá trị cũ từ lần chạy trước vẫn bị resolve.
+                if (node.SkipOutputs != null && node.SkipOutputs.Count > 0 && node.DynamicOutputs != null)
+                {
+                    foreach (var skippedPort in node.DynamicOutputs)
+                    {
+                        if (node.SkipOutputs.Contains(skippedPort.Key ?? string.Empty))
+                            skippedPort.UserValueOverride = string.Empty;
+                    }
+                }
+
                 // Lưu base64 của processedBitmap vào cropBase64 output
                 var b64 = await System.Threading.Tasks.Task.Run(() =>
                     ImageProcessorHelper.ToBase64(processedBitmap));

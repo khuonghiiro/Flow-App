@@ -38,28 +38,31 @@ namespace FlowMy.Views.Overlays
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // Checkbox để skip output
+            // Checkbox: checked = bật output key này (không skip), unchecked = tắt (skip)
             var checkbox = new CheckBox
             {
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 8, 0),
-                ToolTip = "Checked = không xử lý output này"
+                ToolTip = "Checked = output key này khi chạy node"
             };
             BindThemeResource(checkbox, Control.ForegroundProperty, "TextBrush");
 
-            // Kiểm tra nếu key này có trong SkipOutputs thì checked = true
             var imageNode = _viewModel.Node as Models.Nodes.ImageProcessingNode;
             if (imageNode != null)
             {
-                checkbox.IsChecked = imageNode.SkipOutputs.Contains(outputVm.Key);
+                // Checked = không bị skip = đang được output
+                checkbox.IsChecked = !imageNode.SkipOutputs.Contains(outputVm.Key);
+
                 checkbox.Checked += (s, e) =>
                 {
-                    if (!imageNode.SkipOutputs.Contains(outputVm.Key))
-                        imageNode.SkipOutputs.Add(outputVm.Key);
+                    // Bỏ skip → key này sẽ được output
+                    imageNode.SkipOutputs.Remove(outputVm.Key);
                 };
                 checkbox.Unchecked += (s, e) =>
                 {
-                    imageNode.SkipOutputs.Remove(outputVm.Key);
+                    // Thêm vào skip → key này không output
+                    if (!imageNode.SkipOutputs.Contains(outputVm.Key))
+                        imageNode.SkipOutputs.Add(outputVm.Key);
                 };
             }
 

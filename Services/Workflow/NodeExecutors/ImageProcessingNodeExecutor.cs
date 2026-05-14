@@ -52,6 +52,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // để UI/logic khác có thể biết kết quả nào thuộc lần chạy nào.
                 imageNode.LastExecutionId = env.ExecutionId;
 
+                // Clear UserValueOverride cho các key bị skip để tránh giá trị cũ từ lần chạy trước
+                // vẫn bị resolve bởi NodeDataPanelService/downstream nodes.
+                if (imageNode.SkipOutputs != null && imageNode.SkipOutputs.Count > 0 && imageNode.DynamicOutputs != null)
+                {
+                    foreach (var port in imageNode.DynamicOutputs)
+                    {
+                        if (imageNode.SkipOutputs.Contains(port.Key ?? string.Empty))
+                            port.UserValueOverride = string.Empty;
+                    }
+                }
+
                 // Resolve input và lưu original path
                 var inputResult = await ResolveInputImageBytesAsync(imageNode, env).ConfigureAwait(false);
                 byte[] inputBytes = inputResult.Bytes;

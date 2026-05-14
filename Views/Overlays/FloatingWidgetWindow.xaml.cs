@@ -65,7 +65,7 @@ public partial class FloatingWidgetWindow : Window
     private const double ResizeBorderLogicalPx = 8.0;
 
     /// <summary>Viền trống phải/dưới trong ContentArea (px logic) — chừa WebView2; chỉ phần nhìn thấy, nhỏ hơn vùng hit resize.</summary>
-    private const double ContentResizeGutterDp = 1.5;
+    private const double ContentResizeGutterDp = 1.0;
 
     // ── Timers ──
     private DispatcherTimer? _idleTimer;

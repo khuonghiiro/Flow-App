@@ -196,7 +196,7 @@
                                     Command="{Binding ApplyBase64ToNodeCommand}"/>
 
                             <!-- Outputs Section -->
-                            <TextBlock Text="Outputs:"
+                            <TextBlock Text="Outputs (Tích là key được output):"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
