@@ -172,9 +172,10 @@ public sealed class FloatingWidgetManager
 
     private void HideNodeVisualWhenWidgetOpened(WorkflowNode node)
     {
-        // "Chuyển host" visual cho các node có nội dung nặng khi mở widget,
-        // để widget hiển thị thay cho node trên canvas.
-        if (node is not HtmlUiNode && node is not WebNode && node is not VideoProcessingNode) return;
+        // "Chuyển host" visual: ẩn node trên canvas khi widget đang hiển thị cùng node
+        // (tránh hai bản UI; với HtmlUi/Web còn tránh tranh WebView2 / drain queue).
+        if (node is not HtmlUiNode && node is not WebNode && node is not VideoProcessingNode && node is not ImageProcessingNode)
+            return;
 
         if (_hiddenNodeVisuals.ContainsKey(node.Id)) return;
 

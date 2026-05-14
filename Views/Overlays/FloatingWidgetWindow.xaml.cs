@@ -1546,11 +1546,12 @@ public partial class FloatingWidgetWindow : Window
     /// </summary>
     private (double Width, double Height) ResolveExpandedSize()
     {
+        var (minW, minH, maxW, maxH) = ResolveSizeBounds();
         if (!Config.UseRatioSize)
         {
             return (
-                Math.Max(Config.MinExpandedWidth, Math.Min(Config.MaxExpandedWidth, Config.ExpandedWidth)),
-                Math.Max(Config.MinExpandedHeight, Math.Min(Config.MaxExpandedHeight, Config.ExpandedHeight))
+                Math.Max(minW, Math.Min(maxW, Config.ExpandedWidth)),
+                Math.Max(minH, Math.Min(maxH, Config.ExpandedHeight))
             );
         }
 
@@ -1558,33 +1559,76 @@ public partial class FloatingWidgetWindow : Window
         var w = Math.Round(area.Width * Config.WidthRatio);
         var h = Math.Round(area.Height * Config.HeightRatio);
 
-        // Clamp theo min/max ratio bounds cũng tính theo work area
-        var minW = area.Width * Config.MinWidthRatio;
-        var minH = area.Height * Config.MinHeightRatio;
-        var maxW = area.Width * Config.MaxWidthRatio;
-        var maxH = area.Height * Config.MaxHeightRatio;
-
         return (
             Math.Max(minW, Math.Min(maxW, w)),
             Math.Max(minH, Math.Min(maxH, h))
         );
     }
 
-    /// <summary>Trả về (minW, minH, maxW, maxH) tính theo mode hiện tại (px hoặc ratio).</summary>
+    /// <summary>
+    /// Trả về (minW, minH, maxW, maxH) cho resize / expand.
+    /// Min trong config (hoặc MinWidthRatio lớn) có thể quá cao — làm mềm trần min theo work area.
+    /// Max trong config (vd. 1200px) hoặc MaxWidthRatio thấp có thể chặn kéo rộng dù màn hình còn rất nhiều — nới sàn max theo work area.
+    /// </summary>
     private (double MinW, double MinH, double MaxW, double MaxH) ResolveSizeBounds()
     {
+        var area = GetTargetWorkArea();
+        double aw = Math.Max(1.0, area.Width);
+        double ah = Math.Max(1.0, area.Height);
+
+        double minW, minH, maxW, maxH;
         if (!Config.UseRatioSize)
         {
-            return (Config.MinExpandedWidth, Config.MinExpandedHeight, Config.MaxExpandedWidth, Config.MaxExpandedHeight);
+            minW = Config.MinExpandedWidth;
+            minH = Config.MinExpandedHeight;
+            maxW = Config.MaxExpandedWidth;
+            maxH = Config.MaxExpandedHeight;
+        }
+        else
+        {
+            minW = aw * Config.MinWidthRatio;
+            minH = ah * Config.MinHeightRatio;
+            maxW = aw * Config.MaxWidthRatio;
+            maxH = ah * Config.MaxHeightRatio;
         }
 
-        var area = GetTargetWorkArea();
-        return (
-            area.Width * Config.MinWidthRatio,
-            area.Height * Config.MinHeightRatio,
-            area.Width * Config.MaxWidthRatio,
-            area.Height * Config.MaxHeightRatio
-        );
+        // Trần mềm cho min: tránh legacy / node-min ép (vd. 800px) khiến không kéo nhỏ dù desktop rộng.
+        // softCap = max(sàn tối thiểu, workArea * tỉ lệ) với tỉ lệ đủ thấp để min(configMin, softCap) thực sự giảm.
+        const double absFloorW = 200;
+        const double absFloorH = 140;
+        const double minCapFracW = 0.19;
+        const double minCapFracH = 0.22;
+        double softCapW = Math.Max(absFloorW, aw * minCapFracW);
+        double softCapH = Math.Max(absFloorH, ah * minCapFracH);
+        minW = Math.Min(minW, softCapW);
+        minH = Math.Min(minH, softCapH);
+
+        const double minSpan = 32;
+        if (maxW < minW + minSpan)
+            maxW = minW + minSpan;
+        if (maxH < minH + minSpan)
+            maxH = minH + minSpan;
+
+        maxW = Math.Min(maxW, aw - 8);
+        maxH = Math.Min(maxH, ah - 8);
+
+        if (maxW < minW + minSpan)
+            minW = Math.Max(120, maxW - minSpan);
+        if (maxH < minH + minSpan)
+            minH = Math.Max(80, maxH - minSpan);
+
+        // Sàn max: MaxExpandedWidth / MaxHeight hoặc MaxWidthRatio nhỏ không được chặn kéo rộng gần hết màn hình.
+        const double workMargin = 20;
+        double nearFullW = Math.Max(minW + minSpan, aw - workMargin);
+        double nearFullH = Math.Max(minH + minSpan, ah - workMargin);
+        maxW = Math.Min(aw - 8, Math.Max(maxW, nearFullW));
+        maxH = Math.Min(ah - 8, Math.Max(maxH, nearFullH));
+        if (maxW < minW + minSpan)
+            maxW = minW + minSpan;
+        if (maxH < minH + minSpan)
+            maxH = minH + minSpan;
+
+        return (minW, minH, maxW, maxH);
     }
 
     // ═══════════════════════════════════════════
