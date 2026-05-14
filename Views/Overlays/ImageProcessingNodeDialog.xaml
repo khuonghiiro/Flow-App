@@ -101,26 +101,37 @@
 
                             <!-- URL -->
                             <TextBlock Text="Ảnh từ link/file:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-
-                            <Button x:Name="OpenImageButton"
-                                    Content="Mở ảnh..."
-                                    Style="{DynamicResource PrimaryButton}"
-                                    Height="34"
-                                    HorizontalAlignment="Left"
-                                    Padding="12,0"
-                                    Margin="0,0,0,10"
-                                    Click="OpenImageButton_Click"/>
+Foreground="{DynamicResource TextBrush}"
+FontSize="14"
+                                VerticalAlignment="Center"
+FontWeight="SemiBold"
+Margin="0,0,0,8"/>
+                            
 
                             <TextBlock Text="Link / đường dẫn / Link Url online:"
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding ImageUrl, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Height="36"
-                                     Margin="0,0,0,10"/>
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="5*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Text="{Binding ImageUrl, UpdateSourceTrigger=PropertyChanged}"
+Style="{DynamicResource BaseTextBoxV2}"
+Height="36"
+Margin="0,0,0,10"/>
+
+                                <Button x:Name="OpenImageButton" Grid.Column="1"
+                           Content="Mở ảnh"
+                           Style="{DynamicResource PrimaryButton}"
+                           Height="34"
+                           HorizontalAlignment="Right"
+                           Padding="12,0"
+                           Margin="0,0,0,10"
+                           Click="OpenImageButton_Click"/>
+                            </Grid>
 
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
@@ -162,7 +173,7 @@
                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding ImageBase64, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
-                                     Height="140"
+                                     Height="100"
                                      TextWrapping="Wrap"
                                      AcceptsReturn="True"
                                      VerticalScrollBarVisibility="Auto"
@@ -214,6 +225,93 @@
                     </ScrollViewer>
                 </TabItem>
 
+                <!-- Tab 3: Lưu ảnh cắt -->
+                <TabItem Header="Cài đặt" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- Node render ảnh -->
+                            <TextBlock Text="Node render ảnh:"
+Foreground="{DynamicResource TextBrush}"
+FontSize="14"
+FontWeight="SemiBold"
+Margin="0,0,0,8"/>
+                            <TextBlock Text="Chọn node nhận kết quả render (dùng ExecutionId để map ảnh về crop)"
+Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,6"/>
+
+                            <Grid Margin="0,0,0,42">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <controls:NodeSearchComboBoxUserControl x:Name="RenderNodeComboBox"
+       Height="32"
+       ItemsSource="{Binding RenderNodeOptions}"
+       SelectedValuePath="NodeId" DisplayMemberPath="Title"
+       SelectedValue="{Binding RenderNodeId, Mode=TwoWay}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="RenderNodeKeyComboBox"
+       Height="32"
+       Style="{DynamicResource BaseComboBox}"
+       SelectedValuePath="Key" DisplayMemberPath="Key"
+       SelectedValue="{Binding RenderNodeOutputKey, Mode=TwoWay}"
+       ItemsSource="{Binding RenderNodeKeyOptions, Mode=OneWay}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Folder lưu ảnh cắt:"
+                           Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+
+                            <TextBlock Text="Nếu không chọn Node+Key, sẽ dùng thư mục Downloads của user."
+                           Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,6"/>
+
+                            <TextBlock Text="Folder mặc định (tùy chọn):"
+                           Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding CroppedFolderPath, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{DynamicResource BaseTextBoxV2}"
+                         Height="32"
+                         Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Hoặc lấy từ Node + Key (string folder path):"
+                           Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                           Margin="0,4,0,6"/>
+
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <controls:NodeSearchComboBoxUserControl x:Name="CroppedFolderNodeComboBox"
+                                  Height="32"
+                                  ItemsSource="{Binding AvailableNodeOptions}"
+                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                  SelectedValue="{Binding CroppedFolderSourceNodeId, Mode=TwoWay}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="CroppedFolderKeyComboBox"
+                                  Height="32"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  SelectedValuePath="Key" DisplayMemberPath="Key"
+                                  SelectedValue="{Binding CroppedFolderSourceOutputKey, Mode=TwoWay}"
+                                  ItemsSource="{Binding CroppedFolderKeyOptions, Mode=OneWay}"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                
                 <!-- Tab 2: FFmpeg -->
                 <TabItem Header="FFmpeg" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
@@ -487,40 +585,6 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Node render ảnh -->
-                            <TextBlock Text="Node render ảnh:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,16,0,8"/>
-                            <TextBlock Text="Chọn node nhận kết quả render (dùng ExecutionId để map ảnh về crop)"
-                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,6"/>
-
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <controls:NodeSearchComboBoxUserControl x:Name="RenderNodeComboBox"
-                                              Height="32"
-                                              ItemsSource="{Binding RenderNodeOptions}"
-                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                              SelectedValue="{Binding RenderNodeId, Mode=TwoWay}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <ComboBox x:Name="RenderNodeKeyComboBox"
-                                              Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding RenderNodeOutputKey, Mode=TwoWay}"
-                                              ItemsSource="{Binding RenderNodeKeyOptions, Mode=OneWay}"/>
-                                </StackPanel>
-                            </Grid>
-
                             <!-- Tái sử dụng flow (ReuseRoutes) -->
                             <TextBlock Text="Tái sử dụng flow:"
                                        Foreground="{DynamicResource TextBrush}"
@@ -635,57 +699,6 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 3: Lưu ảnh cắt -->
-                <TabItem Header="Lưu ảnh cắt" Style="{StaticResource HttpTabItemStyle}">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
-                        <StackPanel>
-                            <TextBlock Text="Folder lưu ảnh cắt:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-
-                            <TextBlock Text="Nếu không chọn Node+Key, sẽ dùng thư mục Downloads của user."
-                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,6"/>
-
-                            <TextBlock Text="Folder mặc định (tùy chọn):"
-                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding CroppedFolderPath, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Height="32"
-                                     Margin="0,0,0,12"/>
-
-                            <TextBlock Text="Hoặc lấy từ Node + Key (string folder path):"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
-                                       Margin="0,4,0,6"/>
-
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <controls:NodeSearchComboBoxUserControl x:Name="CroppedFolderNodeComboBox"
-                                              Height="32"
-                                              ItemsSource="{Binding AvailableNodeOptions}"
-                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                              SelectedValue="{Binding CroppedFolderSourceNodeId, Mode=TwoWay}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <ComboBox x:Name="CroppedFolderKeyComboBox"
-                                              Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding CroppedFolderSourceOutputKey, Mode=TwoWay}"
-                                              ItemsSource="{Binding CroppedFolderKeyOptions, Mode=OneWay}"/>
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
             </TabControl>
         </Grid>
     </Border>
