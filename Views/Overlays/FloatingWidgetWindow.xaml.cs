@@ -516,7 +516,10 @@ public partial class FloatingWidgetWindow : Window
         {
             EnsureNativeImageNodeContent();
             if (_imageNodeContent != null)
+            {
                 _imageNodeContent.Visibility = Visibility.Visible;
+                _imageNodeContent.SyncWidgetExpandedFullscreen(_isWidgetMaximized);
+            }
         }
 
         // Đặt lại vị trí theo cạnh dock (expanded body không bị khuất ra ngoài màn).
@@ -3423,6 +3426,7 @@ window.hostAsync.values = window.hostAsync.values || {};
         ClampToWorkArea();
         UpdateTitleRevealButtonPlacement();
         UpdateTitleMaxRestoreVisualState();
+        _imageNodeContent?.SyncWidgetExpandedFullscreen(_isWidgetMaximized);
     }
 
     private void UpdateTitleMaxRestoreVisualState()

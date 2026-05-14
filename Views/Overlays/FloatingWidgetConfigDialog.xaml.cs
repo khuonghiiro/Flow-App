@@ -3,6 +3,7 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
+using FlowMy.Views.NodeControls;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -430,7 +431,7 @@ namespace FlowMy.Views.Overlays
 
             return _selectedNode switch
             {
-                ImageProcessingNode => (800, 600),
+                ImageProcessingNode => (ImageProcessingNodeControl.ImageNodeMinWidthPx, ImageProcessingNodeControl.ImageNodeMinHeightPx),
                 VideoProcessingNode => (540, 340),
                 HtmlUiNode => (600, 600),
                 WebNode => (600, 600),

@@ -68,13 +68,20 @@ namespace FlowMy.Views.NodeControls
             Colors.MediumOrchid
         };
 
+        /// <summary>Min kích thước node ảnh (canvas + floating widget); đồng bộ khi chỉnh min trong dialog widget.</summary>
+        public const double ImageNodeMinWidthPx = 480;
+        /// <summary>Min chiều cao node ảnh (canvas + floating widget).</summary>
+        public const double ImageNodeMinHeightPx = 360;
+        private const double ImageNodeDefaultWidthPx = 800;
+        private const double ImageNodeDefaultHeightPx = 600;
+
         public static Border CreateBorder(ImageProcessingNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
 
             // Đảm bảo node có Width/Height hợp lệ (không NaN) để Grid Star columns tính đúng
-            double initW = double.IsNaN(node.Width) ? 800 : Math.Max(node.Width, 800);
-            double initH = double.IsNaN(node.Height) ? 600 : Math.Max(node.Height, 600);
+            double initW = double.IsNaN(node.Width) ? ImageNodeDefaultWidthPx : Math.Max(node.Width, ImageNodeMinWidthPx);
+            double initH = double.IsNaN(node.Height) ? ImageNodeDefaultHeightPx : Math.Max(node.Height, ImageNodeMinHeightPx);
 
             // Khởi tạo bộ đếm Order từ các crop đã load sẵn (để crop mới tiếp nối đúng số)
             if (!_cropOrderCounter.ContainsKey(node) && node.Crops.Count > 0)
@@ -88,8 +95,8 @@ namespace FlowMy.Views.NodeControls
             {
                 Width = initW,
                 Height = initH,
-                MinWidth = 800,
-                MinHeight = 600,
+                MinWidth = ImageNodeMinWidthPx,
+                MinHeight = ImageNodeMinHeightPx,
                 Background = Brushes.Transparent,
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
@@ -614,12 +621,22 @@ namespace FlowMy.Views.NodeControls
         internal static (FrameworkElement, Action<BitmapSource?>) BuildImageProcessorColumn(
             ImageProcessingNode node,
             IWorkflowEditorHost host,
-            bool preventScaleUp = false)
+            bool preventScaleUp = false,
+            double widgetDipScale = 1.0,
+            bool dipNativeLayout = false)
         {
             // ── State ──
             BitmapSource? currentSource = null;
             BitmapSource? processedBitmap = null;
             bool isVerticalMode = node.IsVerticalMode; // Khôi phục từ node
+
+            if (widgetDipScale < 0.5 || double.IsNaN(widgetDipScale) || double.IsInfinity(widgetDipScale))
+                widgetDipScale = 1.0;
+
+            // Widget DIP: bỏ Viewbox — chỉ scale bằng Zi/Zd; nhẹ nhàng tăng thêm để chữ/control dễ đọc.
+            double sharpMul = dipNativeLayout ? 1.05 : 1.0;
+            int Zi(double pts) => Math.Max(1, (int)Math.Round(pts * widgetDipScale * sharpMul));
+            double Zd(double px) => Math.Max(1.0, Math.Round(px * widgetDipScale * sharpMul, MidpointRounding.AwayFromZero));
 
             // ── Colors (dark theme tokens) ──
             var ipAccent = new SolidColorBrush(Color.FromRgb(0x4f, 0xff, 0xb0));
@@ -638,6 +655,12 @@ namespace FlowMy.Views.NodeControls
                 BorderBrush = new SolidColorBrush(Color.FromRgb(0x2a, 0x2e, 0x3a)),
                 BorderThickness = new Thickness(1, 0, 0, 0)
             };
+            if (dipNativeLayout)
+            {
+                TextOptions.SetTextFormattingMode(columnBorder, TextFormattingMode.Display);
+                columnBorder.SnapsToDevicePixels = true;
+                columnBorder.UseLayoutRounding = true;
+            }
             var columnDock = new DockPanel();
 
             // Header – gradient accent bar
@@ -649,7 +672,7 @@ namespace FlowMy.Views.NodeControls
                     new Point(0, 0), new Point(0, 1)),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(0x2a, 0x2e, 0x3a)),
                 BorderThickness = new Thickness(0, 0, 0, 1),
-                Padding = new Thickness(10, 8, 10, 8)
+                Padding = new Thickness(Zd(10), Zd(8), Zd(10), Zd(8))
             };
             var headerStack = new StackPanel { Orientation = Orientation.Horizontal };
             // Accent bar bên trái header
@@ -665,7 +688,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Text = "IMAGE PROCESSOR",
                 Foreground = ipAccent,
-                FontSize = 10,
+                FontSize = Zi(10),
                 FontWeight = FontWeights.Bold,
                 VerticalAlignment = VerticalAlignment.Center
             });
@@ -673,15 +696,22 @@ namespace FlowMy.Views.NodeControls
             DockPanel.SetDock(ipHeader, Dock.Top);
             columnDock.Children.Add(ipHeader);
 
-            // Buttons at bottom (sẽ được thêm vào contentStack bên dưới để scale cùng Viewbox)
+            // Buttons ở đáy (canvas: scale theo Viewbox; widget DIP: cùng border, không Viewbox)
 
-            // Scrollable content
+            // Scrollable content (canvas: width cố định + Viewbox scale; widget DIP: stretch, không Viewbox)
             var contentStack = new StackPanel
             {
                 Orientation = Orientation.Vertical,
-                Margin = new Thickness(10, 6, 10, 6),
-                Width = 240 // Fixed reference width — Viewbox sẽ scale tỉ lệ theo column
+                Margin = new Thickness(Zd(10), Zd(6), Zd(10), Zd(6)),
             };
+            if (!dipNativeLayout)
+                contentStack.Width = Zd(240);
+            else
+            {
+                contentStack.HorizontalAlignment = HorizontalAlignment.Stretch;
+                contentStack.SnapsToDevicePixels = true;
+                contentStack.UseLayoutRounding = true;
+            }
 
             // Helper: tạo custom button template tránh hover WPF mặc định che text
             ControlTemplate MakeDarkButtonTemplate()
@@ -718,7 +748,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     Text = text,
                     Foreground = ipMuted,
-                    FontSize = 9,
+                    FontSize = Zi(9),
                     FontWeight = FontWeights.Bold
                 }
             };
@@ -746,9 +776,9 @@ namespace FlowMy.Views.NodeControls
             var btnOrientation = new Button
             {
                 Cursor = Cursors.Hand,
-                FontSize = 10,
+                FontSize = Zi(10),
                 FontWeight = FontWeights.SemiBold,
-                Padding = new Thickness(0, 6, 0, 6),
+                Padding = new Thickness(0, Zd(6), 0, Zd(6)),
                 BorderThickness = new Thickness(1),
                 HorizontalContentAlignment = HorizontalAlignment.Center
             };
@@ -805,9 +835,9 @@ namespace FlowMy.Views.NodeControls
                 BorderBrush = new SolidColorBrush(Color.FromRgb(0x2a, 0x2e, 0x3a)),
                 BorderThickness = new Thickness(1),
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 10,
+                FontSize = Zi(10),
                 FontWeight = FontWeights.SemiBold,
-                Padding = new Thickness(0, 6, 0, 6),
+                Padding = new Thickness(0, Zd(6), 0, Zd(6)),
                 Cursor = Cursors.Hand,
                 HorizontalContentAlignment = HorizontalAlignment.Center
             };
@@ -831,13 +861,13 @@ namespace FlowMy.Views.NodeControls
                 Text = "Chuẩn: 1920×1080",
                 Foreground = ipMuted,
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 9
+                FontSize = Zi(9)
             };
             var txtRatioInfo = new TextBlock
             {
                 Foreground = ipAccent2,
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 9,
+                FontSize = Zi(9),
                 Margin = new Thickness(0, 2, 0, 0)
             };
             var infoStack = new StackPanel();
@@ -861,7 +891,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Foreground = ipMuted,
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 9,
+                FontSize = Zi(9),
                 Margin = new Thickness(0, 0, 0, 2)
             };
             contentStack.Children.Add(txtImgInfo);
@@ -872,12 +902,12 @@ namespace FlowMy.Views.NodeControls
                 Foreground = ipMuted,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 10
+                FontSize = Zi(10)
             };
             var imgPreview = new System.Windows.Controls.Image
             {
                 Stretch = Stretch.Uniform,
-                MaxHeight = 240,
+                MaxHeight = Zd(240),
                 Margin = new Thickness(2)
             };
             RenderOptions.SetBitmapScalingMode(imgPreview, BitmapScalingMode.HighQuality);
@@ -900,7 +930,7 @@ namespace FlowMy.Views.NodeControls
                 ViewportUnits = BrushMappingMode.Absolute
             };
 
-            var previewGrid = new Grid { MinHeight = 80 };
+            var previewGrid = new Grid { MinHeight = Zd(80) };
             previewGrid.Children.Add(txtPreviewHint);
             previewGrid.Children.Add(imgPreview);
             contentStack.Children.Add(new Border
@@ -936,7 +966,7 @@ namespace FlowMy.Views.NodeControls
                         Text = text,
                         Foreground = ipAccent2,
                         FontFamily = new FontFamily("Consolas"),
-                        FontSize = 8
+                        FontSize = Zi(8)
                     }
                 });
             }
@@ -951,9 +981,9 @@ namespace FlowMy.Views.NodeControls
                 BorderBrush = new SolidColorBrush(Color.FromRgb(0x1e, 0x22, 0x2c)),
                 BorderThickness = new Thickness(1),
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 10,
-                Padding = new Thickness(6, 4, 6, 4),
-                Height = 32,
+                FontSize = Zi(10),
+                Padding = new Thickness(Zd(6), Zd(4), Zd(6), Zd(4)),
+                Height = Zd(32),
                 Margin = new Thickness(0, 0, 0, 4)
             };
             comboPromptSize.Items.Add("1");
@@ -980,9 +1010,9 @@ namespace FlowMy.Views.NodeControls
                 BorderBrush = new SolidColorBrush(Color.FromRgb(0x1e, 0x22, 0x2c)),
                 BorderThickness = new Thickness(1),
                 FontFamily = new FontFamily("Consolas"),
-                FontSize = 10,
-                Padding = new Thickness(6, 4, 6, 4),
-                Height = 120,
+                FontSize = Zi(10),
+                Padding = new Thickness(Zd(6), Zd(4), Zd(6), Zd(4)),
+                Height = Zd(120),
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -1003,10 +1033,10 @@ namespace FlowMy.Views.NodeControls
                 Content = "✨ Lưu ảnh",
                 Style = Application.Current.TryFindResource("SuccessButton") as Style,
                 FontWeight = FontWeights.Bold,
-                Width = 90,
-                Height = 30,
-                FontSize = 11,
-                Padding = new Thickness(0, 7, 0, 7),
+                Width = Zd(90),
+                Height = Zd(30),
+                FontSize = Zi(11),
+                Padding = new Thickness(0, Zd(7), 0, Zd(7)),
                 Cursor = Cursors.Hand
             };
             btnProcess.Template = MakeDarkButtonTemplate();
@@ -1017,10 +1047,10 @@ namespace FlowMy.Views.NodeControls
                 Content = "▶ Bắt đầu",
                 Style = Application.Current.TryFindResource("PrimaryButton") as Style,
                 FontWeight = FontWeights.Bold,
-                Width = 90,
-                Height = 30,
-                FontSize = 11,
-                Padding = new Thickness(0, 7, 0, 7),
+                Width = Zd(90),
+                Height = Zd(30),
+                FontSize = Zi(11),
+                Padding = new Thickness(0, Zd(7), 0, Zd(7)),
                 Cursor = Cursors.Hand
             };
             btnStart.Template = MakeDarkButtonTemplate();
@@ -1035,46 +1065,75 @@ namespace FlowMy.Views.NodeControls
             actionGrid.Children.Add(btnProcess);
             actionGrid.Children.Add(btnStart);
 
-            // Viewbox + ScrollViewer: scale nội dung tỉ lệ theo column width
-            // contentStack có Width cố định = 240, Viewbox scale uniform để vừa column
-            var ipViewbox = new Viewbox
+            var bottomStack = new StackPanel { Orientation = Orientation.Vertical };
+            bottomStack.Children.Add(actionGrid);
+            if (!dipNativeLayout)
+                bottomStack.Width = Zd(240);
+            else
             {
-                Stretch = Stretch.Uniform,
-                StretchDirection = preventScaleUp ? StretchDirection.DownOnly : StretchDirection.Both,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Top,
-                Child = contentStack
+                bottomStack.HorizontalAlignment = HorizontalAlignment.Stretch;
+                bottomStack.SnapsToDevicePixels = true;
+                bottomStack.UseLayoutRounding = true;
+            }
+
+            var bottomActionsPaddingBorder = new Border
+            {
+                Padding = new Thickness(Zd(10), Zd(8), Zd(10), Zd(10)),
+                Child = bottomStack
             };
-            var ipScroll = new ScrollViewer
+
+            ScrollViewer ipScroll;
+            Border bottomActionsHost;
+            if (dipNativeLayout)
             {
-                Content = ipViewbox,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
-            };
-            var bottomActionsViewbox = new Viewbox
-            {
-                Stretch = Stretch.Uniform,
-                StretchDirection = preventScaleUp ? StretchDirection.DownOnly : StretchDirection.Both,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new Border
+                ipScroll = new ScrollViewer
                 {
-                    Padding = new Thickness(10, 8, 10, 10),
-                    Child = new StackPanel
-                    {
-                        Width = 240,
-                        Orientation = Orientation.Vertical,
-                        Children = { actionGrid }
-                    }
-                }
-            };
-            var bottomActionsHost = new Border
+                    Content = contentStack,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
+                };
+                bottomActionsHost = new Border
+                {
+                    Background = ipBg,
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(0x2a, 0x2e, 0x3a)),
+                    BorderThickness = new Thickness(0, 1, 0, 0),
+                    Child = bottomActionsPaddingBorder
+                };
+            }
+            else
             {
-                Background = ipBg,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x2a, 0x2e, 0x3a)),
-                BorderThickness = new Thickness(0, 1, 0, 0),
-                Child = bottomActionsViewbox
-            };
+                // Canvas / node: Viewbox scale nội dung design-width 240 theo cột
+                var ipViewbox = new Viewbox
+                {
+                    Stretch = Stretch.Uniform,
+                    StretchDirection = preventScaleUp ? StretchDirection.DownOnly : StretchDirection.Both,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Child = contentStack
+                };
+                ipScroll = new ScrollViewer
+                {
+                    Content = ipViewbox,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+                };
+                var bottomActionsViewbox = new Viewbox
+                {
+                    Stretch = Stretch.Uniform,
+                    StretchDirection = preventScaleUp ? StretchDirection.DownOnly : StretchDirection.Both,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Child = bottomActionsPaddingBorder
+                };
+                bottomActionsHost = new Border
+                {
+                    Background = ipBg,
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(0x2a, 0x2e, 0x3a)),
+                    BorderThickness = new Thickness(0, 1, 0, 0),
+                    Child = bottomActionsViewbox
+                };
+            }
+
             DockPanel.SetDock(bottomActionsHost, Dock.Bottom);
             columnDock.Children.Add(bottomActionsHost);
             columnDock.Children.Add(ipScroll);
@@ -1784,8 +1843,8 @@ namespace FlowMy.Views.NodeControls
                     if (imageWidth <= 0 || imageHeight <= 0) return;
 
                     // Tính scale từ kích thước node (pattern giống MediaGallery)
-                    var borderW = Math.Max(node.Width, node.Border?.MinWidth ?? 800);
-                    var borderH = Math.Max(node.Height, node.Border?.MinHeight ?? 400);
+                    var borderW = Math.Max(node.Width, node.Border?.MinWidth ?? ImageNodeMinWidthPx);
+                    var borderH = Math.Max(node.Height, node.Border?.MinHeight ?? ImageNodeMinHeightPx);
                     double availW = borderW - 56 - 190;
                     double availH = borderH - 30;
 

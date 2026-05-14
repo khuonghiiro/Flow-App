@@ -51,7 +51,8 @@ namespace FlowMy.Views.NodeControls
         private Uri? _ipToggleGlyphVisibleUri;
         private double _originalMinWidthSnapshot;
         private Action<BitmapSource?>? _setIpImage;
-        private Window? _widgetHostWindowSubscribed;
+        /// <summary>Widget: trạng thái phóng full work area (FloatingWidgetWindow._isWidgetMaximized), không phải WPF WindowState.</summary>
+        private bool _widgetExpandedFullscreen;
 
         private bool _isPanning;
         private Point _panStart;
@@ -83,6 +84,7 @@ namespace FlowMy.Views.NodeControls
             }
 
             InitializeComponent();
+            TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
             var iconConv = new IconKeyToPathConverter();
             var culture = CultureInfo.InvariantCulture;
@@ -115,6 +117,14 @@ namespace FlowMy.Views.NodeControls
 
             AttachSubscriptions();
             SizeChanged += (_, _) => ApplyResponsiveScale();
+        }
+
+        /// <summary>Gọi từ FloatingWidgetWindow khi bật/tắt phóng to widget (work area).</summary>
+        public void SyncWidgetExpandedFullscreen(bool expandedFullscreen)
+        {
+            _widgetExpandedFullscreen = expandedFullscreen;
+            if (_chromeBorder == null && _freezeScaleInWidget)
+                ApplyResponsiveScale();
         }
 
         private void ApplyGpuRenderOptions()
@@ -595,7 +605,45 @@ namespace FlowMy.Views.NodeControls
                 MouseRightButtonUp += ChromeOrSelf_MouseRightButtonUp;
         }
 
-        private void WidgetHostWindow_StateChanged(object? sender, EventArgs e) => ApplyResponsiveScale();
+        private double _lastWidgetIpDipScale = -1.0;
+
+        private const double BaseTitleFontSize = 11;
+        private const double BasePlaceholderFontSize = 16;
+        private const double BaseCropLabelFontSize = 11;
+        /// <summary>Widget: nhãn “Danh sách ảnh cắt” / “Ảnh render” to hơn một chút so với chỉ typoMul.</summary>
+        private const double WidgetSectionLabelFontBoost = 1.2;
+        /// <summary>Widget: order/check/delete + tiêu đề nhóm render trong list.</summary>
+        private const double WidgetListTemplateFontBoost = 1.12;
+        /// <summary>Widget: nhân thêm lên ipDip trước khi build cột Image Processor (font/size DIP).</summary>
+        private const double WidgetIpColumnScaleBoost = 1.1;
+        private const double WidgetIpColumnScaleMin = 0.94;
+        private const double WidgetIpColumnScaleMax = 1.68;
+
+        private static void PutFontResource(ResourceDictionary r, string key, double px) =>
+            r[key] = px;
+
+        private void ApplyWidgetTypographyResources(double typoMul)
+        {
+            double m = typoMul * WidgetListTemplateFontBoost;
+            int F(double b) => Math.Max(1, (int)Math.Round(b * m));
+            PutFontResource(Resources, "WidgetCropOrderFontSize", F(10));
+            PutFontResource(Resources, "WidgetCropCheckFontSize", F(8));
+            PutFontResource(Resources, "WidgetCropDeleteFontSize", F(9));
+            PutFontResource(Resources, "WidgetRenderGroupTitleFontSize", F(9));
+        }
+
+        private void RebuildWidgetImageProcessorIfNeeded(double widgetIpDip)
+        {
+            if (_chromeBorder != null || !_freezeScaleInWidget) return;
+            if (Math.Abs(widgetIpDip - _lastWidgetIpDipScale) < 0.06 && IpProcessorHost.Content != null)
+                return;
+            _lastWidgetIpDipScale = widgetIpDip;
+            var (fe, setIp) = ImageProcessingNodeControl.BuildImageProcessorColumn(
+                _node, _host, preventScaleUp: false, widgetDipScale: widgetIpDip, dipNativeLayout: true);
+            IpProcessorHost.Content = fe;
+            _setIpImage = setIp;
+            SyncIpToggleIcon();
+        }
 
         private static double CurvedChromeScale(double effDimension, double baseline)
         {
@@ -609,35 +657,99 @@ namespace FlowMy.Views.NodeControls
         {
             if (_chromeBorder == null && _freezeScaleInWidget)
             {
-                var hostWindow = Window.GetWindow(this) ?? _ownerWindow;
-                bool isMaximizedWidget = hostWindow?.WindowState == WindowState.Maximized;
+                LeftMenuViewbox.StretchDirection = StretchDirection.DownOnly;
 
                 double widgetW = ActualWidth > 1 ? ActualWidth : WidthSyncTarget.ActualWidth;
                 double widgetH = ActualHeight > 1 ? ActualHeight : WidthSyncTarget.ActualHeight;
                 if (widgetW <= 1) widgetW = 1000;
                 if (widgetH <= 1) widgetH = 650;
 
+                bool ipOpen = IpColumnDefinition.Width.GridUnitType == GridUnitType.Star
+                               && IpColumnDefinition.Width.Value > 0.0001;
+                double denom = OtherSiblingStars + (ipOpen ? IpColStar : 0);
+                double ipPxApprox = ipOpen && widgetW > 20
+                    ? widgetW * (IpColStar / denom)
+                    : 260.0;
+                double ipDipRaw = Math.Clamp(ipPxApprox / 260.0, 0.92, 1.55);
+                double ipDip = Math.Clamp(ipDipRaw * WidgetIpColumnScaleBoost, WidgetIpColumnScaleMin, WidgetIpColumnScaleMax);
+                ipDip = Math.Round(ipDip * 8) / 8.0;
+
                 double hScale = CurvedChromeScale(Math.Min(widgetH, ChromeScaleCapHeight), 640.0);
                 double wScale = CurvedChromeScale(Math.Min(widgetW, ChromeScaleCapWidth), 900.0);
-                double widgetChromeScale = Math.Max(hScale, wScale);
-                widgetChromeScale = Math.Max(0.78, Math.Min(1.4, widgetChromeScale));
-                if (isMaximizedWidget)
-                    widgetChromeScale = Math.Max(widgetChromeScale, 1.06);
+                double typoMul = Math.Clamp(Math.Max(hScale, wScale), 0.92, 1.38);
+                typoMul = Math.Round(typoMul * 8) / 8.0;
+                if (_widgetExpandedFullscreen)
+                    typoMul = Math.Max(typoMul, 1.04);
 
-                var chromeT = new ScaleTransform(widgetChromeScale, widgetChromeScale);
-                TopMenuBorder.LayoutTransform = chromeT;
-                RightMenuBorder.LayoutTransform = chromeT;
-                IpProcessorHost.LayoutTransform = chromeT;
-                PlaceholderTextBlock.LayoutTransform = chromeT;
-                CropsLabelText.LayoutTransform = chromeT;
-                RenderLabelText.LayoutTransform = chromeT;
+                double leftStarMul = _widgetExpandedFullscreen ? 0.68 : 0.92;
+                RootLayout.ColumnDefinitions[0].Width = new GridLength(0.6 * leftStarMul, GridUnitType.Star);
 
-                double leftMenuScale = widgetChromeScale * (isMaximizedWidget ? 0.62 : 1.0);
-                LeftMenuBorder.LayoutTransform = new ScaleTransform(leftMenuScale, leftMenuScale);
+                var identity = Transform.Identity;
+                TopMenuBorder.LayoutTransform = identity;
+                RightMenuBorder.LayoutTransform = identity;
+                IpProcessorHost.LayoutTransform = identity;
+                LeftMenuBorder.LayoutTransform = identity;
+                PlaceholderTextBlock.LayoutTransform = identity;
+                CropsLabelText.LayoutTransform = identity;
+                RenderLabelText.LayoutTransform = identity;
 
-                ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, widgetChromeScale);
+                int Sz(double b) => Math.Max(1, (int)Math.Round(b * typoMul));
+                double leftBtnMul = typoMul * (_widgetExpandedFullscreen ? 0.78 : 1.0);
+                int B(double x) => Math.Max(1, (int)Math.Round(x * leftBtnMul));
+
+                ImageTitleTextBlock.FontSize = Sz(BaseTitleFontSize);
+                PlaceholderTextBlock.FontSize = Sz(BasePlaceholderFontSize);
+                CropsLabelText.FontSize = Sz(BaseCropLabelFontSize * WidgetSectionLabelFontBoost);
+                RenderLabelText.FontSize = Sz(BaseCropLabelFontSize * WidgetSectionLabelFontBoost);
+                MagCoordTextBlock.FontSize = Sz(9);
+
+                BtnOpenImage.Width = B(30);
+                BtnOpenImage.Height = B(30);
+                BtnOpenImage.FontSize = B(16);
+                CropToolButton.Width = B(30);
+                CropToolButton.Height = B(30);
+                CropToolButton.FontSize = B(16);
+                ColorCropButton.Width = B(30);
+                ColorCropButton.Height = B(30);
+
+                IpToggleButton.Width = B(28);
+                IpToggleButton.Height = B(22);
+                IpToggleIcon.Width = B(14);
+                IpToggleIcon.Height = B(14);
+
+                ApplyWidgetTypographyResources(typoMul);
+                RebuildWidgetImageProcessorIfNeeded(ipDip);
+
+                ImageProcessingNodeControl.UpdateInteractionVisualScale(_handleOverlay, _node, typoMul);
                 return;
             }
+
+            LeftMenuViewbox.StretchDirection = StretchDirection.Both;
+            RootLayout.ColumnDefinitions[0].Width = new GridLength(0.6, GridUnitType.Star);
+
+            PutFontResource(Resources, "WidgetCropOrderFontSize", 10);
+            PutFontResource(Resources, "WidgetCropCheckFontSize", 8);
+            PutFontResource(Resources, "WidgetCropDeleteFontSize", 9);
+            PutFontResource(Resources, "WidgetRenderGroupTitleFontSize", 9);
+
+            ImageTitleTextBlock.FontSize = BaseTitleFontSize;
+            PlaceholderTextBlock.FontSize = BasePlaceholderFontSize;
+            CropsLabelText.FontSize = BaseCropLabelFontSize;
+            RenderLabelText.FontSize = BaseCropLabelFontSize;
+            MagCoordTextBlock.FontSize = 9;
+
+            BtnOpenImage.Width = 30;
+            BtnOpenImage.Height = 30;
+            BtnOpenImage.FontSize = 16;
+            CropToolButton.Width = 30;
+            CropToolButton.Height = 30;
+            CropToolButton.FontSize = 16;
+            ColorCropButton.Width = 30;
+            ColorCropButton.Height = 30;
+            IpToggleButton.Width = 28;
+            IpToggleButton.Height = 22;
+            IpToggleIcon.Width = 14;
+            IpToggleIcon.Height = 14;
 
             double heightBaseline = WidthSyncTarget.MinHeight > 0 ? WidthSyncTarget.MinHeight : 600.0;
             double widthBaseline = WidthSyncTarget.MinWidth > 0 ? WidthSyncTarget.MinWidth : 800.0;
@@ -657,8 +769,8 @@ namespace FlowMy.Views.NodeControls
             RightMenuBorder.LayoutTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
             var canvasIpTextTransform = new ScaleTransform(ipTextScaleFactor, ipTextScaleFactor);
             PlaceholderTextBlock.LayoutTransform = canvasIpTextTransform;
-            CropsLabelText.LayoutTransform = canvasIpTextTransform;
-            RenderLabelText.LayoutTransform = canvasIpTextTransform;
+            CropsLabelText.LayoutTransform = Transform.Identity;
+            RenderLabelText.LayoutTransform = Transform.Identity;
 
             LeftMenuBorder.LayoutTransform = new ScaleTransform(widthScaleFactor, widthScaleFactor);
 
@@ -709,26 +821,6 @@ namespace FlowMy.Views.NodeControls
 
         private void ImageProcessingNodeContentControl_Loaded(object sender, RoutedEventArgs e)
         {
-            if (_chromeBorder == null && _freezeScaleInWidget)
-            {
-                var w = Window.GetWindow(this) ?? _ownerWindow;
-                if (w != null)
-                {
-                    if (_widgetHostWindowSubscribed != null &&
-                        !ReferenceEquals(_widgetHostWindowSubscribed, w))
-                    {
-                        _widgetHostWindowSubscribed.StateChanged -= WidgetHostWindow_StateChanged;
-                        _widgetHostWindowSubscribed = null;
-                    }
-
-                    if (_widgetHostWindowSubscribed == null)
-                    {
-                        _widgetHostWindowSubscribed = w;
-                        w.StateChanged += WidgetHostWindow_StateChanged;
-                    }
-                }
-            }
-
             ApplyResponsiveScale();
             SyncIpToggleIcon();
 
@@ -744,12 +836,6 @@ namespace FlowMy.Views.NodeControls
             {
                 _ipColumnWidthStoryboard?.Stop();
                 _ipColumnWidthStoryboard = null;
-
-                if (_widgetHostWindowSubscribed != null)
-                {
-                    _widgetHostWindowSubscribed.StateChanged -= WidgetHostWindow_StateChanged;
-                    _widgetHostWindowSubscribed = null;
-                }
 
                 if (_node is INotifyPropertyChanged npc && _nodePropertyChanged != null)
                     npc.PropertyChanged -= _nodePropertyChanged;

@@ -6,6 +6,7 @@
              xmlns:models="clr-namespace:FlowMy.Models.Nodes"
              xmlns:controls="clr-namespace:FlowMy.Controls"
              xmlns:local="clr-namespace:FlowMy.Views.NodeControls"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d"
              d:DesignWidth="900"
              d:DesignHeight="640"
@@ -14,13 +15,17 @@
              SnapsToDevicePixels="True">
     <UserControl.Resources>
         <local:IntToHashLabelConverter x:Key="IntToHashLabelConverter"/>
+        <sys:Double x:Key="WidgetCropOrderFontSize">10</sys:Double>
+        <sys:Double x:Key="WidgetCropCheckFontSize">8</sys:Double>
+        <sys:Double x:Key="WidgetCropDeleteFontSize">9</sys:Double>
+        <sys:Double x:Key="WidgetRenderGroupTitleFontSize">9</sys:Double>
 
         <!-- Một dòng trong danh sách crop -->
         <DataTemplate x:Key="CropListItemTemplate" DataType="{x:Type models:ImageCropRegion}">
             <StackPanel Margin="1,0,1,4" Orientation="Horizontal" HorizontalAlignment="Stretch">
                 <TextBlock Margin="0,0,4,0"
                            VerticalAlignment="Center" Opacity="0.7"
-                           FontSize="10" FontWeight="Bold" Foreground="White"
+                           FontSize="{DynamicResource WidgetCropOrderFontSize}" FontWeight="Bold" Foreground="White"
                            Text="{Binding Order}"/>
                 <Border Width="64" Margin="0,0,0,1"
                         Cursor="Hand" ToolTip="Click để mở Image Processor"
@@ -34,14 +39,14 @@
                 <StackPanel Margin="4,0,0,0" Orientation="Horizontal"
                             VerticalAlignment="Center" HorizontalAlignment="Left">
                     <CheckBox Margin="0,0,3,0" VerticalAlignment="Center"
-                              FontSize="8" Foreground="Gold" ToolTip="Bật/tắt hiển thị vùng crop"
+                              FontSize="{DynamicResource WidgetCropCheckFontSize}" Foreground="Gold" ToolTip="Bật/tắt hiển thị vùng crop"
                               IsChecked="{Binding IsVisible, Mode=TwoWay}"/>
                     <CheckBox Margin="0,0,3,0" VerticalAlignment="Center"
-                              FontSize="8" Foreground="{DynamicResource PrimaryBrush}"
+                              FontSize="{DynamicResource WidgetCropCheckFontSize}" Foreground="{DynamicResource PrimaryBrush}"
                               ToolTip="Ẩn nền polygon, đổi viền sang nét đứt"
                               IsChecked="{Binding IsOutlineOnly, Mode=TwoWay}"/>
                     <Button Content="X" Style="{DynamicResource DangerButton}"
-                            Width="18" Height="18" FontSize="9" Padding="0" Margin="0"
+                            Width="18" Height="18" FontSize="{DynamicResource WidgetCropDeleteFontSize}" Padding="0" Margin="0"
                             VerticalAlignment="Center" ToolTip="Xoá vùng crop này"
                             PreviewMouseLeftButtonUp="DeleteCropButton_PreviewMouseLeftButtonUp"
                             Click="DeleteCropButton_Click"/>
@@ -52,7 +57,7 @@
         <!-- Nhóm ảnh render theo crop -->
         <DataTemplate x:Key="RenderGroupTemplate">
             <StackPanel Margin="0,0,0,6" Orientation="Vertical">
-                <TextBlock Margin="0,0,0,2" FontSize="9" FontWeight="Bold" Foreground="White"
+                <TextBlock Margin="0,0,0,2" FontSize="{DynamicResource WidgetRenderGroupTitleFontSize}" FontWeight="Bold" Foreground="White"
                            Text="{Binding Order, Converter={StaticResource IntToHashLabelConverter}}"/>
                 <ItemsControl ItemsSource="{Binding RenderedImages}">
                     <ItemsControl.ItemsPanel>
@@ -115,7 +120,7 @@
         <!-- Left toolbar -->
         <Border x:Name="LeftMenuBorder" Grid.Row="1" Grid.Column="0"
                 Background="#28FFFFFF" Padding="4,0,4,6">
-            <Viewbox Stretch="Uniform" StretchDirection="Both"
+            <Viewbox x:Name="LeftMenuViewbox" Stretch="Uniform" StretchDirection="Both"
                      HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <StackPanel Width="auto" Orientation="Vertical"
                             HorizontalAlignment="Center" VerticalAlignment="Top">
