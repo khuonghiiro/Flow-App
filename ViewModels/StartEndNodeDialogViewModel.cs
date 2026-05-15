@@ -85,11 +85,6 @@ namespace FlowMy.ViewModels
 
         protected override bool SupportsReuseRoutes => false;
 
-        protected override void LoadReuseRoutes()
-        {
-            ReuseRoutes.Clear();
-        }
-
         protected override void OnSaveTitle()
         {
             _node.FlowScopeKey = string.IsNullOrWhiteSpace(FlowScopeKey) ? null : FlowScopeKey.Trim();

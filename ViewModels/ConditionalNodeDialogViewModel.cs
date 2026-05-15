@@ -74,12 +74,6 @@ namespace FlowMy.ViewModels
         /// </summary>
         protected override bool SupportsReuseRoutes => false;
 
-        protected override void LoadReuseRoutes()
-        {
-            ReuseRoutes.Clear();
-            Node.ReuseRoutes?.Clear();
-        }
-
         /// <summary>
         /// Chỉ lấy các node upstream: đi ngược theo connection vào port in của node If-Else.
         /// Ví dụ: A → B → C → IfElse → D → E thì combobox chỉ hiển thị A, B, C (không lấy D, E).

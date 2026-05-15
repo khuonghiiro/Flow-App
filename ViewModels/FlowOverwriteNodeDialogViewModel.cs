@@ -61,13 +61,6 @@ public partial class FlowOverwriteNodeDialogViewModel : BaseNodeDialogViewModel
     public ObservableCollection<FlowOverwriteSourceItemViewModel> Sources { get; } = new();
     [ObservableProperty] private ObservableCollection<WorkflowDataSourceOption> _availableSourceOptions = new();
 
-    public ObservableCollection<TitleDisplayModeOption> TitleDisplayModeOptions { get; } = new()
-    {
-        new TitleDisplayModeOption(TitleDisplayMode.Hidden, "Ẩn tiêu đề"),
-        new TitleDisplayModeOption(TitleDisplayMode.Hover, "Hiện khi hover"),
-        new TitleDisplayModeOption(TitleDisplayMode.Always, "Luôn hiện")
-    };
-
     public FlowOverwriteNodeDialogViewModel(FlowOverwriteNode node, IWorkflowEditorHost host)
         : base(node, host)
     {

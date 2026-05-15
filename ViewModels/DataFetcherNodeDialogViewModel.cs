@@ -76,13 +76,6 @@ namespace FlowMy.ViewModels
         // ===== Options =====
         public List<string> TimerUnitOptions { get; } = new() { "ms", "s", "m" };
 
-        public ObservableCollection<TitleDisplayModeOption> TitleDisplayModeOptions { get; } = new()
-        {
-            new TitleDisplayModeOption(TitleDisplayMode.Hidden,  "Ẩn tiêu đề"),
-            new TitleDisplayModeOption(TitleDisplayMode.Hover,   "Hiện khi hover"),
-            new TitleDisplayModeOption(TitleDisplayMode.Always,  "Luôn hiện")
-        };
-
         // ===== Constructor =====
         public DataFetcherNodeDialogViewModel(DataFetcherNode node, IWorkflowEditorHost host)
             : base(node, host)

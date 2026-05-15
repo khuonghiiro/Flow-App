@@ -262,13 +262,6 @@ namespace FlowMy.ViewModels
 
         #region Options for ComboBoxes
 
-        public ObservableCollection<TitleDisplayModeOption> TitleDisplayModeOptions { get; } = new()
-        {
-            new TitleDisplayModeOption(TitleDisplayMode.Hidden, "Ẩn tiêu đề"),
-            new TitleDisplayModeOption(TitleDisplayMode.Hover, "Hiện khi hover"),
-            new TitleDisplayModeOption(TitleDisplayMode.Always, "Luôn hiện")
-        };
-
         public IEnumerable<NodeHttpMethod> HttpMethodOptions => Enum.GetValues(typeof(NodeHttpMethod)).Cast<NodeHttpMethod>();
         public IEnumerable<HttpAuthType> AuthTypeOptions => Enum.GetValues(typeof(HttpAuthType)).Cast<HttpAuthType>();
         public IEnumerable<HttpBodyType> BodyTypeOptions => Enum.GetValues(typeof(HttpBodyType)).Cast<HttpBodyType>();

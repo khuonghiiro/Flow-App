@@ -41,13 +41,6 @@ namespace FlowMy.ViewModels
 
         // ===== OPTIONS =====
         
-        public ObservableCollection<TitleDisplayModeOption> TitleDisplayModeOptions { get; } = new()
-        {
-            new TitleDisplayModeOption(TitleDisplayMode.Hidden, "Ẩn tiêu đề"),
-            new TitleDisplayModeOption(TitleDisplayMode.Hover, "Hiện khi hover"),
-            new TitleDisplayModeOption(TitleDisplayMode.Always, "Luôn hiện")
-        };
-
         /// <summary>
         /// Danh sách các node có thể callback (tất cả node trừ Start, End, và chính node này)
         /// </summary>

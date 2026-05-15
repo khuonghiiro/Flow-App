@@ -28,13 +28,6 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private string _inputErrorMessage = string.Empty;
 
-        public ObservableCollection<TitleDisplayModeOption> TitleDisplayModeOptions { get; } = new()
-        {
-            new TitleDisplayModeOption(TitleDisplayMode.Hidden, "Ẩn tiêu đề"),
-            new TitleDisplayModeOption(TitleDisplayMode.Hover, "Hiện khi hover"),
-            new TitleDisplayModeOption(TitleDisplayMode.Always, "Luôn hiện")
-        };
-
         public StringSplitNodeDialogViewModel(StringSplitNode node, IWorkflowEditorHost host)
             : base(node, host)
         {

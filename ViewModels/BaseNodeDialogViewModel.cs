@@ -479,6 +479,7 @@ namespace FlowMy.ViewModels
         {
             ReuseRoutes.Clear();
 
+            if (!SupportsReuseRoutes) return;
             if (_host.ViewModel == null) return;
             var vm = _host.ViewModel;
             var connections = vm.Connections;
@@ -1068,6 +1069,76 @@ namespace FlowMy.ViewModels
             if (cleaned.EndsWith("Brush", StringComparison.OrdinalIgnoreCase))
                 cleaned = cleaned[..^"Brush".Length];
             return cleaned;
+        }
+
+        // ===== Shared helpers — output key / node list helpers =====
+
+        /// <summary>
+        /// Lấy danh sách output key của một node theo nodeId.
+        /// Dùng chung cho tất cả dialog VMs — KHÔNG tự viết lại trong derived class.
+        /// </summary>
+        public ObservableCollection<WorkflowOutputKeyOption> GetOutputKeysForNode(string? nodeId)
+        {
+            var list = new ObservableCollection<WorkflowOutputKeyOption>();
+            if (string.IsNullOrWhiteSpace(nodeId) || _host.ViewModel?.Nodes == null) return list;
+
+            var node = _host.ViewModel.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
+            if (node?.DynamicOutputs == null) return list;
+
+            foreach (var o in node.DynamicOutputs)
+            {
+                list.Add(new WorkflowOutputKeyOption
+                {
+                    Key = o.Key ?? string.Empty,
+                    Type = o.OutputType ?? o.ConvertType,
+                    DisplayName = o.DisplayName ?? o.Key
+                });
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Điền danh sách output key của một node vào collection target.
+        /// Dùng chung cho tất cả dialog VMs — KHÔNG tự viết lại trong derived class.
+        /// </summary>
+        protected void FillOutputKeys(string? nodeId, ObservableCollection<WorkflowOutputKeyOption> target)
+        {
+            target.Clear();
+            if (string.IsNullOrWhiteSpace(nodeId) || _host.ViewModel?.Nodes == null) return;
+
+            var src = _host.ViewModel.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, nodeId, StringComparison.OrdinalIgnoreCase));
+            if (src?.DynamicOutputs == null) return;
+
+            foreach (var o in src.DynamicOutputs)
+            {
+                var key = o.Key ?? string.Empty;
+                target.Add(new WorkflowOutputKeyOption
+                {
+                    Key = key,
+                    DisplayName = o.DisplayName ?? key,
+                    Type = o.OutputType ?? o.ConvertType
+                });
+            }
+        }
+
+        /// <summary>
+        /// Làm mới danh sách tất cả nodes có DynamicOutputs vào collection target.
+        /// Loại bỏ chính node hiện tại (_node). Dùng chung cho dialog VMs cần combobox chọn node nguồn.
+        /// KHÔNG dùng cho các node cần filter đặc biệt (WebNode, HtmlUiNode, StorageNode).
+        /// </summary>
+        protected void RefreshAllNodesWithOutputs(ObservableCollection<WorkflowDataSourceOption> target)
+        {
+            target.Clear();
+            if (_host.ViewModel?.Nodes == null) return;
+
+            foreach (var n in _host.ViewModel.Nodes)
+            {
+                if (ReferenceEquals(n, _node)) continue;
+                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                target.Add(CreateDataSourceOption(n));
+            }
         }
     }
 }
