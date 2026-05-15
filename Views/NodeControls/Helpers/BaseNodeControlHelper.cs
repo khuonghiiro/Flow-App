@@ -7,6 +7,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -106,6 +107,57 @@ namespace FlowMy.Views.NodeControls.Helpers
             }
         }
 
+        #endregion
+
+        #region Reflection-Based Node Property Accessors
+
+        // Cache PropertyInfo lookups to avoid repeated reflection overhead.
+        private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> _propCache = new();
+
+        private static PropertyInfo? GetCachedProperty(Type type, string name)
+        {
+            return _propCache.GetOrAdd((type, name), key =>
+                key.Item1.GetProperty(key.Item2, BindingFlags.Public | BindingFlags.Instance));
+        }
+
+        /// <summary>
+        /// Gets the TitleDisplayMode from a node using reflection.
+        /// Returns TitleDisplayMode.Always as default if the property is not found.
+        /// </summary>
+        internal static TitleDisplayMode GetTitleDisplayMode(WorkflowNode node)
+        {
+            var prop = GetCachedProperty(node.GetType(), "TitleDisplayMode");
+            if (prop != null && prop.GetValue(node) is TitleDisplayMode mode)
+                return mode;
+            return TitleDisplayMode.Always;
+        }
+
+        /// <summary>
+        /// Gets the TitleColorMode from a node using reflection.
+        /// Returns TitleColorMode.NodeColor as default if the property is not found.
+        /// </summary>
+        internal static TitleColorMode GetTitleColorMode(WorkflowNode node)
+        {
+            var prop = GetCachedProperty(node.GetType(), "TitleColorMode");
+            if (prop != null && prop.GetValue(node) is TitleColorMode mode)
+                return mode;
+            return TitleColorMode.NodeColor;
+        }
+
+        /// <summary>
+        /// Gets the TitleColorKey from a node using reflection.
+        /// Returns null if the property is not found.
+        /// </summary>
+        internal static string? GetTitleColorKey(WorkflowNode node)
+        {
+            var prop = GetCachedProperty(node.GetType(), "TitleColorKey");
+            return prop?.GetValue(node) as string;
+        }
+
+        #endregion
+
+        #region Public API (continued)
+
         /// <summary>
         /// Creates a configured TitleTextBlock for a node with initial visibility based on TitleDisplayMode.
         /// </summary>
@@ -136,8 +188,8 @@ namespace FlowMy.Views.NodeControls.Helpers
                 _ => Visibility.Collapsed
             };
 
-            // Resolve the foreground brush using TitleColorMode and TitleColorKey
-            var foreground = ResolveTitleBrush(node.TitleColorMode, node.TitleColorKey, node.NodeBrush);
+            // Resolve the foreground brush using TitleColorMode and TitleColorKey (via reflection)
+            var foreground = ResolveTitleBrush(GetTitleColorMode(node), GetTitleColorKey(node), node.NodeBrush);
 
             return new TextBlock
             {
@@ -509,53 +561,83 @@ namespace FlowMy.Views.NodeControls.Helpers
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
 
-            // Create default handlers dictionary
+            // Create default handlers dictionary for common node properties.
+            // Custom handlers passed by the caller will override these defaults,
+            // allowing node-specific logic (e.g. updating an icon fill for ColorKey).
             var handlers = new Dictionary<string, Action<NodeControlContext>>
             {
-                [nameof(WorkflowNode.ColorKey)] = ctx =>
-                {
-                    // Update icon fill color when ColorKey changes
-                    // This will be implemented by node-specific code or default handler
-                },
+                // ColorKey: no default UI action — node-specific code handles icon fill updates.
+                // Providing an empty entry ensures the key is present so custom handlers can override it.
+                [nameof(WorkflowNode.ColorKey)] = ctx => { },
+
+                // NodeBrush: update border background AND resolve the title foreground brush.
+                // The title foreground must be resolved via ResolveTitleBrush so that TitleColorMode
+                // and TitleColorKey are respected rather than blindly using NodeBrush.
                 [nameof(WorkflowNode.NodeBrush)] = ctx =>
                 {
-                    // Update border background and title foreground when NodeBrush changes
                     if (ctx.Border != null)
                     {
                         ctx.Border.Background = ctx.Node.NodeBrush;
                     }
                     if (ctx.TitleTextBlock != null)
                     {
-                        ctx.TitleTextBlock.Foreground = ctx.Node.NodeBrush;
+                        ctx.TitleTextBlock.Foreground = ResolveTitleBrush(
+                            GetTitleColorMode(ctx.Node),
+                            GetTitleColorKey(ctx.Node),
+                            ctx.Node.NodeBrush);
                     }
                 },
+
+                // Title: update the displayed text and recalculate position.
                 [nameof(WorkflowNode.Title)] = ctx =>
                 {
-                    // Update title text and position when Title changes
                     if (ctx.TitleTextBlock != null)
                     {
-                        ctx.TitleTextBlock.Text = ctx.Node.Title ?? "Output";
-                        UpdateTitlePosition(ctx);
+                        ctx.TitleTextBlock.Text = ctx.Node.Title ?? string.Empty;
+                        if (ctx.IsBorderVisible())
+                        {
+                            UpdateTitlePosition(ctx);
+                        }
                     }
                 },
-                [nameof(WorkflowNode.TitleDisplayMode)] = ctx =>
+
+                // TitleDisplayMode: update title visibility when the mode changes.
+                // Only update when the border is visible (requirement 8.9).
+                ["TitleDisplayMode"] = ctx =>
                 {
-                    // Update title visibility when TitleDisplayMode changes
-                    UpdateTitleVisibility(ctx, ctx.Node.TitleDisplayMode, ctx.IsHovered);
+                    if (ctx.IsBorderVisible())
+                    {
+                        UpdateTitleVisibility(ctx, GetTitleDisplayMode(ctx.Node), ctx.IsHovered);
+                    }
                 },
-                [nameof(WorkflowNode.TitleColorMode)] = ctx =>
+
+                // TitleColorMode: re-resolve the title foreground brush using the new mode.
+                ["TitleColorMode"] = ctx =>
                 {
-                    // Update title foreground when TitleColorMode changes
-                    // This will be implemented by node-specific code or default handler
+                    if (ctx.TitleTextBlock != null)
+                    {
+                        ctx.TitleTextBlock.Foreground = ResolveTitleBrush(
+                            GetTitleColorMode(ctx.Node),
+                            GetTitleColorKey(ctx.Node),
+                            ctx.Node.NodeBrush);
+                    }
                 },
-                [nameof(WorkflowNode.TitleColorKey)] = ctx =>
+
+                // TitleColorKey: re-resolve the title foreground brush using the new key.
+                ["TitleColorKey"] = ctx =>
                 {
-                    // Update title foreground when TitleColorKey changes
-                    // This will be implemented by node-specific code or default handler
+                    if (ctx.TitleTextBlock != null)
+                    {
+                        ctx.TitleTextBlock.Foreground = ResolveTitleBrush(
+                            GetTitleColorMode(ctx.Node),
+                            GetTitleColorKey(ctx.Node),
+                            ctx.Node.NodeBrush);
+                    }
                 }
             };
 
-            // Merge custom handlers with default handlers
+            // Merge custom handlers with default handlers.
+            // Custom handlers take precedence — they completely replace the default for that key.
             if (customHandlers != null)
             {
                 foreach (var kvp in customHandlers)
@@ -564,27 +646,27 @@ namespace FlowMy.Views.NodeControls.Helpers
                 }
             }
 
-            // Look up handler for propertyName and invoke if found
+            // Look up handler for propertyName and invoke if found.
             if (propertyName != null && handlers.TryGetValue(propertyName, out var handler))
             {
-                // Use Dispatcher for thread safety when updating UI
+                // Use Dispatcher for thread safety when updating UI.
                 var dispatcher = context.GetDispatcher();
                 if (dispatcher != null)
                 {
                     if (dispatcher.CheckAccess())
                     {
-                        // Already on UI thread, execute directly
+                        // Already on UI thread — execute directly.
                         handler(context);
                     }
                     else
                     {
-                        // Marshal to UI thread
+                        // Marshal to UI thread.
                         dispatcher.BeginInvoke(() => handler(context), DispatcherPriority.Normal);
                     }
                 }
                 else
                 {
-                    // No dispatcher available, execute directly (best effort)
+                    // No dispatcher available — execute directly as best effort.
                     handler(context);
                 }
             }
@@ -608,7 +690,7 @@ namespace FlowMy.Views.NodeControls.Helpers
             Canvas.SetZIndex(context.TitleTextBlock, 20000);
 
             // Update title visibility based on TitleDisplayMode and hover state
-            UpdateTitleVisibility(context, context.Node.TitleDisplayMode, context.IsHovered);
+            UpdateTitleVisibility(context, GetTitleDisplayMode(context.Node), context.IsHovered);
 
             // Update title position
             UpdateTitlePosition(context);
@@ -620,16 +702,161 @@ namespace FlowMy.Views.NodeControls.Helpers
         /// <param name="context">The NodeControlContext containing all required state.</param>
         internal static void HandleSizeChanged(NodeControlContext context)
         {
-            // TODO: Implement HandleSizeChanged logic
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            // Update title position when the border size changes
+            UpdateTitlePosition(context);
         }
 
         /// <summary>
         /// Handles the LayoutUpdated event with zoom handling and throttled position updates.
         /// </summary>
         /// <param name="context">The NodeControlContext containing all required state.</param>
+        /// <remarks>
+        /// This method implements the following logic per Requirements 9.1–9.9:
+        /// 1. If border is not visible, collapse title and return early.
+        /// 2. If NodeChrome.IsZooming is true: collapse title, set context.IsZooming = true,
+        ///    mark TitleUpdatedAfterZoom = false, and return.
+        /// 3. If zoom just ended (context.IsZooming was true, NodeChrome.IsZooming is now false):
+        ///    set context.IsZooming = false, restore title visibility/position if border is visible,
+        ///    mark TitleUpdatedAfterZoom = true, then fall through to pan/drag check.
+        /// 4. If IsPanning or DraggedNode == current node: skip throttled update.
+        /// 5. Otherwise: schedule throttled title update.
+        ///
+        /// Thread safety: LayoutUpdated can fire from a background thread, so all UI work
+        /// is marshalled to the UI thread via Dispatcher.BeginInvoke when needed.
+        /// </remarks>
         internal static void HandleLayoutUpdated(NodeControlContext context)
         {
-            // TODO: Implement HandleLayoutUpdated logic
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            var dispatcher = context.GetDispatcher();
+            if (dispatcher == null) return;
+
+            if (!dispatcher.CheckAccess())
+            {
+                // Marshal to UI thread and re-invoke
+                dispatcher.BeginInvoke(new Action(() => HandleLayoutUpdated(context)),
+                    DispatcherPriority.Normal);
+                return;
+            }
+
+            // --- All code below runs on the UI thread ---
+
+            // If border is not visible, collapse title and return
+            if (context.Border?.Visibility != Visibility.Visible)
+            {
+                context.TitleTextBlock.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            bool isZooming = NodeChrome.IsZooming;
+
+            // Requirement 9.2 & 9.3: While zooming, hide title and mark not updated after zoom.
+            // Also track zoom state in context.IsZooming so we can detect the zoom-end transition.
+            if (isZooming)
+            {
+                if (context.TitleTextBlock.Visibility != Visibility.Collapsed)
+                {
+                    context.TitleTextBlock.Visibility = Visibility.Collapsed;
+                }
+                context.TitleUpdatedAfterZoom = false;
+                context.IsZooming = true;
+                return;
+            }
+
+            // Requirement 9.4, 9.5, 9.6: Zoom just ended (context.IsZooming was true, now NodeChrome.IsZooming is false).
+            // Restore title visibility and position, then mark zoom as complete.
+            if (context.IsZooming)
+            {
+                context.IsZooming = false;
+                if (context.IsBorderVisible())
+                {
+                    UpdateTitleVisibility(context, GetTitleDisplayMode(context.Node), context.IsHovered);
+                    if (context.TitleTextBlock.Visibility == Visibility.Visible)
+                    {
+                        UpdateTitlePosition(context);
+                    }
+                }
+                context.TitleUpdatedAfterZoom = true;
+                // Fall through to check pan/drag below
+            }
+            else if (!context.TitleUpdatedAfterZoom)
+            {
+                // Fallback: handle the case where zoom ended but context.IsZooming wasn't set
+                // (e.g. first LayoutUpdated after initialization). Restore title state.
+                context.TitleUpdatedAfterZoom = true;
+                UpdateTitleVisibility(context, GetTitleDisplayMode(context.Node), context.IsHovered);
+                if (context.TitleTextBlock.Visibility == Visibility.Visible)
+                {
+                    UpdateTitlePosition(context);
+                }
+                // Fall through to check pan/drag below
+            }
+
+            // Requirement 9.7 & 9.8: Skip throttled update when panning or dragging this node
+            if (context.Host.IsPanning || context.Host.DraggedNode == context.Node)
+            {
+                return;
+            }
+
+            // Requirement 9.9: Schedule throttled title position update
+            if (context.TitleTextBlock.Visibility == Visibility.Visible)
+            {
+                ScheduleThrottledTitleUpdate(context);
+            }
+        }
+
+        /// <summary>
+        /// Handles the Unloaded event to clean up resources and prevent memory leaks.
+        /// </summary>
+        /// <param name="context">The NodeControlContext containing all required state.</param>
+        /// <remarks>
+        /// This method performs best-effort cleanup when a node's Border is unloaded:
+        /// - Stops and disposes the TitleUpdateTimer to prevent further UI updates
+        /// - Removes the TitleTextBlock from the WorkflowCanvas
+        /// - Clears the node's TitleTextBlockUI reference if it still points to this TextBlock
+        /// - Calls context.Dispose() to unregister all tracked event handlers
+        /// - Removes the context from the centralized dictionary
+        ///
+        /// All operations are wrapped in a single try-catch to suppress exceptions and avoid
+        /// crashing the unload path (Requirement 10.6).
+        /// </remarks>
+        internal static void HandleUnloaded(NodeControlContext context)
+        {
+            if (context == null) return;
+
+            try
+            {
+                // Stop and dispose TitleUpdateTimer (Requirement 10.2)
+                if (context.TitleUpdateTimer != null)
+                {
+                    context.TitleUpdateTimer.Stop();
+                    context.TitleUpdateTimer = null;
+                }
+
+                // Remove TitleTextBlock from WorkflowCanvas (Requirement 10.4)
+                if (context.Host?.WorkflowCanvas?.Children.Contains(context.TitleTextBlock) == true)
+                {
+                    context.Host.WorkflowCanvas.Children.Remove(context.TitleTextBlock);
+                }
+
+                // Clear node's TitleTextBlockUI reference if it matches (Requirement 10.5)
+                if (ReferenceEquals(context.Node?.TitleTextBlockUI, context.TitleTextBlock))
+                {
+                    context.Node.TitleTextBlockUI = null;
+                }
+
+                // Dispose context to unregister all event handlers (Requirement 10.7)
+                context.Dispose();
+
+                // Remove context from centralized dictionary (Requirement 10.3)
+                RemoveContext(context.Border);
+            }
+            catch
+            {
+                // Best-effort cleanup; suppress exceptions to avoid crashing the unload path (Requirement 10.6)
+            }
         }
 
         /// <summary>
@@ -656,7 +883,7 @@ namespace FlowMy.Views.NodeControls.Helpers
             if (context.IsBorderVisible())
             {
                 // Update title visibility based on TitleDisplayMode
-                UpdateTitleVisibility(context, context.Node.TitleDisplayMode, context.IsHovered);
+                UpdateTitleVisibility(context, GetTitleDisplayMode(context.Node), context.IsHovered);
 
                 // Update title position
                 UpdateTitlePosition(context);
@@ -694,7 +921,7 @@ namespace FlowMy.Views.NodeControls.Helpers
             // If border is visible, update title visibility based on TitleDisplayMode
             if (context.IsBorderVisible())
             {
-                UpdateTitleVisibility(context, context.Node.TitleDisplayMode, context.IsHovered);
+                UpdateTitleVisibility(context, GetTitleDisplayMode(context.Node), context.IsHovered);
             }
         }
 
@@ -1010,7 +1237,7 @@ namespace FlowMy.Views.NodeControls.Helpers
             }
 
             // When border is visible, update title visibility based on TitleDisplayMode and hover state
-            UpdateTitleVisibility(context, context.Node.TitleDisplayMode, context.IsHovered);
+            UpdateTitleVisibility(context, GetTitleDisplayMode(context.Node), context.IsHovered);
         }
 
         /// <summary>

@@ -160,8 +160,8 @@ The implementation follows a phased approach:
     - Invoke dialogFactory to create dialog and open it
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9_
 
-- [ ] 6. Implement property change and lifecycle handlers
-  - [ ] 6.1 Implement HandlePropertyChanged method
+- [x] 6. Implement property change and lifecycle handlers
+  - [x] 6.1 Implement HandlePropertyChanged method
     - Create static method that accepts NodeControlContext, propertyName, optional customHandlers
     - Create default handlers dictionary for ColorKey, NodeBrush, Title, TitleDisplayMode, TitleColorMode, TitleColorKey
     - Merge custom handlers with default handlers
@@ -169,13 +169,13 @@ The implementation follows a phased approach:
     - Use Dispatcher for thread safety when updating UI
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.10, 8.11, 8.12, 19.1, 19.2, 19.3_
   
-  - [ ] 6.2 Implement RegisterPropertyEvents method
+  - [x] 6.2 Implement RegisterPropertyEvents method
     - Create static method that accepts NodeControlContext and optional customHandlers
     - Check if node implements INotifyPropertyChanged
     - Register PropertyChanged event handler that calls HandlePropertyChanged
     - _Requirements: 3.4, 8.11_
   
-  - [ ] 6.3 Implement HandleLayoutUpdated method
+  - [x] 6.3 Implement HandleLayoutUpdated method
     - Create static method that accepts NodeControlContext
     - Check if NodeChrome.IsZooming is true; if so, set title visibility to Collapsed and mark not updated after zoom
     - Check if NodeChrome.IsZooming transitioned from true to false; if so, update title visibility and position, mark updated after zoom
@@ -183,14 +183,14 @@ The implementation follows a phased approach:
     - Otherwise, schedule throttled title update
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9_
   
-  - [ ] 6.4 Implement HandleVisibilityChanged method
+  - [x] 6.4 Implement HandleVisibilityChanged method
     - Create static method that accepts NodeControlContext
     - Check border visibility; if not Visible, set title visibility to Collapsed
     - If border visibility is Visible, update title visibility based on TitleDisplayMode and hover state
     - Use Dispatcher for thread safety
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 19.1, 19.2, 19.3_
   
-  - [ ] 6.5 Implement HandleLoaded method
+  - [x] 6.5 Implement HandleLoaded method
     - Create static method that accepts NodeControlContext
     - Check if TitleTextBlock is already in WorkflowCanvas; if not, add it
     - Set Canvas.ZIndex to 20000
@@ -198,12 +198,12 @@ The implementation follows a phased approach:
     - Update title position
     - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6_
   
-  - [ ] 6.6 Implement HandleSizeChanged method
+  - [x] 6.6 Implement HandleSizeChanged method
     - Create static method that accepts NodeControlContext
     - Update title position
     - _Requirements: 14.1, 14.2, 14.3_
   
-  - [ ] 6.7 Implement HandleUnloaded method
+  - [x] 6.7 Implement HandleUnloaded method
     - Create static method that accepts NodeControlContext
     - Wrap all cleanup in try-catch to suppress exceptions
     - Stop and dispose TitleUpdateTimer
@@ -217,14 +217,14 @@ The implementation follows a phased approach:
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement utility methods
-  - [ ] 8.1 Implement ResolveTextOnColorBrush method
+  - [-] 8.1 Implement ResolveTextOnColorBrush method
     - Create static method that accepts colorKey string
     - Try to find resource with key "TextOnColor_{colorKey}"
     - If found and is Brush, return it
     - Otherwise return default SolidColorBrush with RGB(148, 163, 184)
     - _Requirements: 15.1, 15.7_
   
-  - [ ] 8.2 Implement ResolveTitleBrush method
+  - [-] 8.2 Implement ResolveTitleBrush method
     - Create static method that accepts TitleColorMode, titleColorKey, nodeBrush
     - If mode is CustomColor and key is "LimeGreen", return SolidColorBrush with Colors.LimeGreen
     - If mode is CustomColor and key is valid resource, return brush from Application.Current.TryFindResource
@@ -232,7 +232,7 @@ The implementation follows a phased approach:
     - If mode is NodeColor, return nodeBrush
     - _Requirements: 15.2, 15.3, 15.4, 15.5, 15.6_
   
-  - [ ] 8.3 Implement CalculateTitlePosition method
+  - [-] 8.3 Implement CalculateTitlePosition method
     - Create static method that accepts Border, TextBlock, IWorkflowEditorHost
     - Get borderLeft from Canvas.GetLeft; if NaN, use node.X or 0
     - Get borderTop from Canvas.GetTop; if NaN, use node.Y or 0
@@ -243,7 +243,7 @@ The implementation follows a phased approach:
     - Return (titleLeft, titleTop)
     - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7, 16.8_
   
-  - [ ] 8.4 Implement GetOrCreateDialogManager method
+  - [-] 8.4 Implement GetOrCreateDialogManager method
     - Create static method that accepts IWorkflowEditorHost
     - Check if host is WorkflowEditorWindow
     - Use reflection to access private _nodeDialogManager field
@@ -252,7 +252,7 @@ The implementation follows a phased approach:
     - _Requirements: 17.1, 17.2, 17.3, 17.4_
 
 - [ ] 9. Pilot migration - OutputNodeControl
-  - [ ] 9.1 Refactor OutputNodeControl to use BaseNodeControlHelper
+  - [x] 9.1 Refactor OutputNodeControl to use BaseNodeControlHelper
     - Keep UI element creation code (grid, icon, title, border)
     - Replace all event handler registrations with fluent API initialization
     - Define custom property handler for ColorKey to update icon fill
@@ -261,7 +261,7 @@ The implementation follows a phased approach:
     - Verify file size reduced from ~500 lines to ~150 lines
     - _Requirements: 1.11, 18.1, 18.2, 18.3, 18.4, 18.5, 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8, 21.1, 22.1, 22.2, 22.3, 22.4_
   
-  - [ ] 9.2 Test OutputNodeControl refactored implementation
+  - [-] 9.2 Test OutputNodeControl refactored implementation
     - Manually test title visibility in Hidden, Hover, Always modes
     - Test hover behavior (MouseEnter/MouseLeave)
     - Test keyboard port positioning with arrow keys
@@ -272,7 +272,7 @@ The implementation follows a phased approach:
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
 - [ ] 10. Pilot migration - CodeNodeControl
-  - [ ] 10.1 Refactor CodeNodeControl to use BaseNodeControlHelper
+  - [-] 10.1 Refactor CodeNodeControl to use BaseNodeControlHelper
     - Keep UI element creation code (grid, icon, title, border)
     - Replace all event handler registrations with fluent API initialization
     - Define custom property handler for ColorKey to update icon fill
