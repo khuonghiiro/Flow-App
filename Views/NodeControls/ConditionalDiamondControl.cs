@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using System;
 using System.Windows;
@@ -181,35 +182,16 @@ namespace FlowMy.Views.NodeControls
                 ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
             };
 
-            // Right-click to open dialog
-            border.MouseRightButtonUp += (_, e) =>
-            {
-                e.Handled = true;
-                OpenNodeDialog(node, host, ownerWindow);
-            };
-
-            // Add title to canvas when border loads (giống LoopNode)
-            border.Loaded += (s, e) =>
-            {
-                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                {
-                    host.WorkflowCanvas.Children.Add(titleTextBlock);
-                    UpdateTitlePosition(node, titleTextBlock, border);
-                }
-            };
-
-            border.Unloaded += (s, e) =>
-            {
-                if (host.WorkflowCanvas != null && host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                {
-                    host.WorkflowCanvas.Children.Remove(titleTextBlock);
-                }
-
-                if (ReferenceEquals(node.TitleTextBlockUI, titleTextBlock))
-                {
-                    node.TitleTextBlockUI = null;
-                }
-            };
+            // --- Use BaseNodeControlHelper for dialog support and cleanup ---
+            // Note: WithTitleManagement, WithHoverBehavior, WithPropertySync are NOT used here
+            // because the diamond has specialized transparent-background hover behavior and
+            // its own title management (always visible, positioned above diamond apex).
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithDialogSupport(ctx => new ConditionalNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithCanvasIntegration()
+                .Build();
 
             return border;
         }
@@ -694,41 +676,6 @@ namespace FlowMy.Views.NodeControls
             };
         }
 
-        private static void OpenNodeDialog(WorkflowNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            try
-            {
-                if (node.Border != null && node.Border.IsMouseCaptured)
-                    node.Border.ReleaseMouseCapture();
-                host.DraggedNode = null;
-                if (host.ViewModel != null)
-                    host.ViewModel.SelectedNode = null;
-
-                var dialogManager = GetOrCreateDialogManager(host);
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
-                    dialogManager.CloseCurrentDialog();
-
-                var dialog = new ConditionalNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
-                dialogManager.OpenDialog(node, dialog, host);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            if (host is WorkflowEditorWindow window)
-            {
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
-            }
-            return new NodeDialogManager();
-        }
-
         private static Color? GetColorFromTheme(string resourceKey)
         {
             try
@@ -757,6 +704,31 @@ namespace FlowMy.Views.NodeControls
             ellipse.SnapsToDevicePixels = false;
             RenderOptions.SetEdgeMode(ellipse, EdgeMode.Unspecified);
             RenderOptions.SetBitmapScalingMode(ellipse, BitmapScalingMode.HighQuality);
+        }
+
+        /// <summary>
+        /// Opens the ConditionalNode dialog. Used by context menu items on satellite circles.
+        /// </summary>
+        private static void OpenNodeDialog(WorkflowNode node, IWorkflowEditorHost host, Window? ownerWindow)
+        {
+            try
+            {
+                host.DraggedNode = null;
+                if (host.ViewModel != null)
+                    host.ViewModel.SelectedNode = null;
+
+                var dialogManager = BaseNodeControlHelper.GetOrCreateDialogManager(host);
+                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
+                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
+                    dialogManager.CloseCurrentDialog();
+
+                var dialog = new ConditionalNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
+                dialogManager.OpenDialog(node, dialog, host);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         /// <summary>

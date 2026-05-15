@@ -1,12 +1,13 @@
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
+using FlowMy.Views.NodeControls.Helpers;
+using FlowMy.Views.Overlays;
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using FlowMy.Views.Overlays;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -57,7 +58,7 @@ namespace FlowMy.Views.NodeControls
                 Foreground = new SolidColorBrush(Colors.White)
             };
 
-            // ✅ Cho phép nút "✎ sửa tiêu đề" update được UI
+            // Allow "✎ edit title" button to update the UI
             node.TitleTextBlockUI = headerTitle;
 
             var headerBorder = new Border
@@ -127,43 +128,31 @@ namespace FlowMy.Views.NodeControls
 
             border.Child = mainGrid;
 
-            // Keyboard Port Position
+            // --- Use fluent API for hover behavior and keyboard ports ---
+            // This node has an embedded title (not a floating canvas title), so we skip
+            // WithTitleManagement() and WithCanvasIntegration(). We use a dummy TextBlock
+            // for the fluent API context but keep the real title management inline above.
             if (host != null)
             {
-                border.Focusable = true;
-                border.FocusVisualStyle = null;
-
-                bool isHovering = false;
-                border.MouseEnter += (s, e) =>
+                // Node-specific property handlers for NodeBrush changes
+                var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
                 {
-                    isHovering = true;
-
-                    Application.Current.Dispatcher.BeginInvoke(
-
-                        System.Windows.Threading.DispatcherPriority.Input,
-
-                        new Action(() => { if (isHovering) border.Focus(); }));
-                };
-                border.MouseLeave += (s, e) =>
-                {
-                    isHovering = false;
-                };
-                border.PreviewKeyDown += (s, e) =>
-                {
-                    if (!isHovering) return;
-                    bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                    PortPosition? newPos = e.Key switch
+                    [nameof(WorkflowNode.NodeBrush)] = ctx =>
                     {
-                        Key.Left  => PortPosition.Left,
-                        Key.Up    => PortPosition.Top,
-                        Key.Right => PortPosition.Right,
-                        Key.Down  => PortPosition.Bottom,
-                        _ => null
-                    };
-                    if (newPos == null) return;
-                    e.Handled = true;
-                    ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
+                        border.Background = node.NodeBrush;
+                    }
                 };
+
+                // Use a placeholder TextBlock for the fluent API (this node manages its own title inline)
+                var dummyTitle = new TextBlock { Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+
+                BaseNodeControlHelper
+                    .Initialize(border, dummyTitle, node, host)
+                    .WithHoverBehavior()
+                    .WithKeyboardPorts()
+                    .WithPropertySync(customPropertyHandlers)
+                    .WithCleanup()
+                    .Build();
             }
 
             return border;
@@ -191,12 +180,10 @@ namespace FlowMy.Views.NodeControls
         private static void ShowPositionPicker(ScreenPositionPickerNode node, Window ownerWindow, TextBox coordinateTextBox)
         {
             ownerWindow.Hide();
-
             try
             {
                 var overlay = new ScreenPositionPickerOverlay();
                 var result = overlay.ShowDialog();
-
                 if (result == true && overlay.SelectedPosition.HasValue)
                 {
                     node.SelectedPosition = overlay.SelectedPosition.Value;
@@ -212,28 +199,6 @@ namespace FlowMy.Views.NodeControls
             {
                 ownerWindow.Show();
                 ownerWindow.Activate();
-            }
-        }
-
-        private static void ChangePortPosition(
-            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            if (node.Ports == null || node.Ports.Count == 0) return;
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                try
-                {
-                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-                }
-                catch { }
             }
         }
     }

@@ -2,15 +2,14 @@ using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
-using FlowMy.Services.Rendering;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using System.ComponentModel;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
-using System.Linq;
+using System.Windows.Media.Effects;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -19,18 +18,12 @@ namespace FlowMy.Views.NodeControls
     /// </summary>
     public static class MouseEventNodeControl
     {
-        // Throttle title position updates để tránh giật khi pan/zoom
-        private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
-        private const int TitleUpdateThrottleMs = 50; // Throttle updates khi đang pan/zoom
-
-        // Track xem đã update sau khi zoom kết thúc chưa để tránh update nhiều lần không cần thiết
-        private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
-
         public static Border CreateBorder(MouseEventNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
 
-            // Grid chỉ chứa icon
+            // --- Create UI elements (node-specific) ---
+
             var grid = new Grid
             {
                 MinWidth = 60,
@@ -39,7 +32,6 @@ namespace FlowMy.Views.NodeControls
                 Height = 60
             };
 
-            // Icon SVG sử dụng SvgViewboxEx - mặc định là computer-mouse
             var iconConverter = new IconKeyToPathConverter();
             var defaultIconUri = iconConverter.Convert(null, typeof(Uri), "computer-mouse duotone", System.Globalization.CultureInfo.CurrentCulture) as Uri;
 
@@ -54,8 +46,28 @@ namespace FlowMy.Views.NodeControls
             };
             grid.Children.Add(iconSvg);
 
-            // Cập nhật icon dựa trên MouseButton
+            // Update icon based on initial MouseButton value
             UpdateIcon(iconSvg, node.MouseButton ?? "Left");
+
+            var titleTextBlock = new TextBlock
+            {
+                Text = node.Title ?? "Mouse Event",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    node.TitleColorMode,
+                    node.TitleColorKey,
+                    node.NodeBrush),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false,
+                Visibility = node.TitleDisplayMode == TitleDisplayMode.Always
+                    ? Visibility.Visible
+                    : Visibility.Collapsed
+            };
+
+            node.TitleTextBlockUI = titleTextBlock;
 
             var border = new Border
             {
@@ -65,7 +77,7 @@ namespace FlowMy.Views.NodeControls
                 BorderThickness = new Thickness(2),
                 CornerRadius = new CornerRadius(10),
                 Cursor = Cursors.Hand,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
                     Direction = 270,
@@ -76,375 +88,48 @@ namespace FlowMy.Views.NodeControls
                 Tag = node
             };
 
-            // Tạo TextBlock cho tiêu đề - Foreground từ TitleColorMode/TitleColorKey
-            var titleTextBlock = new TextBlock
+            // --- Node-specific property handlers ---
+            var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                Text = node.Title ?? "Mouse Event",
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = GetTitleBrush(node),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top,
-                TextAlignment = TextAlignment.Center,
-                Visibility = GetTitleVisibility(node.TitleDisplayMode, false),
-                IsHitTestVisible = false // Không block mouse events
-            };
-
-            // Lưu reference để có thể cập nhật sau
-            node.TitleTextBlockUI = titleTextBlock;
-
-            // Xử lý hover để hiển thị/ẩn tiêu đề
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
-
-            bool isHovering = false;
-            border.MouseEnter += (s, e) =>
-            {
-                isHovering = true;
-                // ✅ Chỉ update visibility nếu node border đang visible (trong viewport)
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
+                [nameof(WorkflowNode.ColorKey)] = ctx =>
                 {
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    UpdateTitlePosition(titleTextBlock, border, host);
-                }
-                Application.Current.Dispatcher.BeginInvoke(
-                    System.Windows.Threading.DispatcherPriority.Input,
-                    new Action(() => { if (isHovering) border.Focus(); }));
-            };
-            border.MouseLeave += (s, e) =>
-            {
-                isHovering = false;
-                // ✅ Chỉ update visibility nếu node border đang visible (trong viewport)
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
+                    iconSvg.Fill = GetTextBrush(node.ColorKey);
+                },
+                [nameof(MouseEventNode.MouseButton)] = ctx =>
                 {
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
+                    UpdateIcon(iconSvg, node.MouseButton ?? "Left");
                 }
             };
 
-            // Keyboard Port Position: Arrow = Port IN, Shift+Arrow = Port OUT
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
-                {
-                    Key.Left  => PortPosition.Left,
-                    Key.Up    => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down  => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-            };
-
-            // Sync title và icon khi node thay đổi
-            if (node is INotifyPropertyChanged npc)
-            {
-                npc.PropertyChanged += (s, e) =>
-                {
-                    if (e.PropertyName == nameof(WorkflowNode.Title))
-                    {
-                        titleTextBlock.Text = node.Title ?? "Mouse Event";
-                        // ✅ Chỉ update position nếu node visible
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                        {
-                            UpdateTitlePosition(titleTextBlock, border, host);
-                        }
-                    }
-                    else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
-                    {
-                        border.Background = node.NodeBrush;
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(MouseEventNode.TitleColorMode) || e.PropertyName == nameof(MouseEventNode.TitleColorKey))
-                    {
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(MouseEventNode.TitleDisplayMode))
-                    {
-                        // ✅ Chỉ update visibility nếu node visible
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                        {
-                            UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                        }
-                    }
-                    else if (e.PropertyName == nameof(MouseEventNode.MouseButton))
-                    {
-                        // Cập nhật icon khi MouseButton thay đổi
-                        UpdateIcon(iconSvg, node.MouseButton ?? "Left");
-                    }
-                };
-            }
-
-            // ✅ Sync title visibility với border visibility khi border visibility thay đổi (viewport culling)
-            var visibilityDescriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty, typeof(Border));
-            visibilityDescriptor?.AddValueChanged(border, (s, e) =>
-            {
-                if (border.Visibility != Visibility.Visible)
-                {
-                    titleTextBlock.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                }
-            });
-
-            // Đảm bảo titleTextBlock được thêm vào Canvas sau khi border được render
-            border.Loaded += (s, e) =>
-            {
-                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                {
-                    host.WorkflowCanvas.Children.Add(titleTextBlock);
-                    UpdateTitlePosition(titleTextBlock, border, host);
-                }
-            };
-
-            // Update position khi border di chuyển hoặc resize
-            border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
-
-            // Sync position khi node di chuyển (sử dụng LayoutUpdated giống ExecutionStatusBadge)
-            border.LayoutUpdated += (s, e) =>
-            {
-                // ✅ Sync visibility với border trước
-                if (border.Visibility != Visibility.Visible)
-                {
-                    titleTextBlock.Visibility = Visibility.Collapsed;
-                    return;
-                }
-
-                bool isZooming = NodeChrome.IsZooming;
-
-                // ✅ Nếu đang zoom, ẩn title để tránh xử lý và đánh dấu chưa update
-                if (isZooming)
-                {
-                    if (titleTextBlock.Visibility != Visibility.Collapsed)
-                    {
-                        titleTextBlock.Visibility = Visibility.Collapsed;
-                    }
-                    _titleUpdatedAfterZoom[border] = false;
-                    return;
-                }
-
-                // ✅ Nếu zoom vừa kết thúc (không còn zooming) và chưa update -> update ngay lập tức
-                bool hasUpdatedAfterZoom = _titleUpdatedAfterZoom.TryGetValue(border, out var updated) && updated;
-                if (!hasUpdatedAfterZoom && border.Visibility == Visibility.Visible)
-                {
-                    _titleUpdatedAfterZoom[border] = true;
-
-                    // Update visibility theo TitleDisplayMode
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-
-                    // Nếu title visible, update position ngay lập tức (không throttle)
-                    if (titleTextBlock.Visibility == Visibility.Visible)
-                    {
-                        UpdateTitlePosition(titleTextBlock, border, host);
-                    }
-                }
-
-                // Skip updates khi đang pan hoặc drag để tránh giật
-                if (host.IsPanning || host.DraggedNode == node)
-                {
-                    return;
-                }
-
-                // Throttle updates bằng DispatcherTimer cho các trường hợp khác
-                if (titleTextBlock.Visibility == Visibility.Visible)
-                {
-                    ThrottledUpdateTitlePosition(titleTextBlock, border, host);
-                }
-            };
-
-            // Xử lý chuột phải để mở dialog
-            border.MouseRightButtonUp += (s, e) =>
-            {
-                e.Handled = true;
-                OpenNodeDialog(node, host, ownerWindow);
-            };
+            // --- Initialize with fluent API ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync(customPropertyHandlers)
+                .WithDialogSupport(ctx => new MouseEventNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
             return border;
-        }
-
-        private static Brush GetTitleBrush(MouseEventNode node)
-        {
-            if (node.TitleColorMode == TitleColorMode.CustomColor && !string.IsNullOrEmpty(node.TitleColorKey))
-            {
-                if (node.TitleColorKey == "LimeGreen")
-                    return new SolidColorBrush(Colors.LimeGreen);
-                var brush = Application.Current.TryFindResource(node.TitleColorKey) as Brush;
-                if (brush != null) return brush;
-            }
-            return node.NodeBrush;
-        }
-
-        private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)
-        {
-            return mode switch
-            {
-                TitleDisplayMode.Hidden => Visibility.Collapsed,
-                TitleDisplayMode.Hover => isHovering ? Visibility.Visible : Visibility.Collapsed,
-                TitleDisplayMode.Always => Visibility.Visible,
-                _ => Visibility.Collapsed
-            };
-        }
-
-        private static void UpdateTitleVisibility(TextBlock titleTextBlock, TitleDisplayMode mode, bool isHovering, Border? nodeBorder = null)
-        {
-            // ✅ Nếu node border bị ẩn (không trong viewport), ẩn title luôn
-            if (nodeBorder != null && nodeBorder.Visibility != Visibility.Visible)
-            {
-                titleTextBlock.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            // Nếu node visible, áp dụng TitleDisplayMode
-            titleTextBlock.Visibility = GetTitleVisibility(mode, isHovering);
         }
 
         private static void UpdateIcon(SvgViewboxEx iconSvg, string mouseButton)
         {
             var iconConverter = new IconKeyToPathConverter();
-            string iconKey;
-
-            switch (mouseButton)
+            string iconKey = mouseButton switch
             {
-                case "Left":
-                    iconKey = "computer-mouse-button-left duotone-light";
-                    break;
-                case "Right":
-                    iconKey = "computer-mouse-button-right duotone-light";
-                    break;
-                case "Middle":
-                case "ScrollUp":
-                case "ScrollDown":
-                    iconKey = "computer-mouse-scrollwheel duotone";
-                    break;
-                default:
-                    iconKey = "computer-mouse duotone";
-                    break;
-            }
+                "Left"   => "computer-mouse-button-left duotone-light",
+                "Right"  => "computer-mouse-button-right duotone-light",
+                "Middle" or "ScrollUp" or "ScrollDown" => "computer-mouse-scrollwheel duotone",
+                _        => "computer-mouse duotone"
+            };
 
             var iconUri = iconConverter.Convert(null, typeof(Uri), iconKey, System.Globalization.CultureInfo.CurrentCulture) as Uri;
             iconSvg.Source = iconUri;
-        }
-
-        private static void ThrottledUpdateTitlePosition(TextBlock titleTextBlock, Border border, IWorkflowEditorHost host)
-        {
-            if (!_titleUpdateTimers.TryGetValue(border, out var timer))
-            {
-                timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TitleUpdateThrottleMs) };
-                timer.Tick += (s, e) =>
-                {
-                    timer.Stop();
-                    UpdateTitlePosition(titleTextBlock, border, host);
-                };
-                _titleUpdateTimers[border] = timer;
-            }
-
-            timer.Stop();
-            timer.Start();
-        }
-
-        private static void UpdateTitlePosition(TextBlock titleTextBlock, Border border, IWorkflowEditorHost host)
-        {
-            if (host.WorkflowCanvas == null || border == null || !host.WorkflowCanvas.Children.Contains(titleTextBlock)) return;
-
-            var left = Canvas.GetLeft(border);
-            var top = Canvas.GetTop(border);
-
-            // Fallback to node position nếu Canvas position chưa được set
-            if (double.IsNaN(left) && border.Tag is WorkflowNode node)
-            {
-                left = node.X;
-            }
-            if (double.IsNaN(top) && border.Tag is WorkflowNode node2)
-            {
-                top = node2.Y;
-            }
-
-            if (double.IsNaN(left)) left = 0;
-            if (double.IsNaN(top)) top = 0;
-
-            // Đảm bảo ActualWidth và ActualHeight đã được tính toán
-            if (titleTextBlock.ActualWidth == 0 || titleTextBlock.ActualHeight == 0)
-            {
-                titleTextBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                titleTextBlock.Arrange(new Rect(titleTextBlock.DesiredSize));
-            }
-
-            // Đặt titleTextBlock phía trên border (center horizontally)
-            var titleLeft = left + (border.ActualWidth / 2) - (titleTextBlock.ActualWidth / 2);
-            var titleTop = top - titleTextBlock.ActualHeight - 4; // 4px spacing
-
-            Canvas.SetLeft(titleTextBlock, titleLeft);
-            Canvas.SetTop(titleTextBlock, titleTop);
-            Panel.SetZIndex(titleTextBlock, 20000); // Đảm bảo hiển thị trên cùng
-        }
-
-        private static void OpenNodeDialog(MouseEventNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            try
-            {
-                // Release mouse capture và clear drag state để tránh node nhảy đến vị trí chuột
-                if (node.Border != null && node.Border.IsMouseCaptured)
-                {
-                    node.Border.ReleaseMouseCapture();
-                }
-
-                // Clear DraggedNode để đảm bảo dialog có thể đóng ngay lập tức
-                host.DraggedNode = null;
-
-                // Deselect node ngay khi click chuột phải để tránh node nhảy đến vị trí chuột
-                if (host.ViewModel != null)
-                {
-                    host.ViewModel.SelectedNode = null;
-                }
-
-                var dialogManager = GetOrCreateDialogManager(host);
-
-                // Nếu đã có dialog mở cho node này thì không mở lại
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node)
-                {
-                    return;
-                }
-
-                // Đóng dialog hiện tại nếu đang mở node khác
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
-                {
-                    dialogManager.CloseCurrentDialog();
-                }
-
-                var owner = ownerWindow ?? Application.Current?.MainWindow;
-                if (owner != null)
-                {
-                    var dialog = new MouseEventNodeDialog(node, host, owner);
-                    dialogManager.OpenDialog(node, dialog, host);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Lỗi khi mở dialog: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            // Lấy từ WorkflowEditorWindow nếu có thể
-            if (host is WorkflowEditorWindow window)
-            {
-                // Sử dụng reflection để lấy NodeDialogManager từ private field
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager)
-                {
-                    return manager;
-                }
-            }
-
-            // Fallback: tạo mới (tạm thời)
-            return new NodeDialogManager();
         }
 
         private static Brush GetTextBrush(string? colorKey)
@@ -459,28 +144,6 @@ namespace FlowMy.Views.NodeControls
                 catch { }
             }
             return Brushes.White;
-        }
-
-        private static void ChangePortPosition(
-            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            if (node.Ports == null || node.Ports.Count == 0) return;
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                try
-                {
-                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-                }
-                catch { }
-            }
         }
     }
 }

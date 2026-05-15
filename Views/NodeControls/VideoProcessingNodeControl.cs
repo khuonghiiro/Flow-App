@@ -2,16 +2,16 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using System;
-using System.ComponentModel;
-using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Linq;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -20,10 +20,6 @@ namespace FlowMy.Views.NodeControls
         private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Bottom }
         /// <summary>Phải trùng <see cref="Border.CornerRadius"/> bên dưới — clip nền/control con (vuông mặc định).</summary>
         private const double NodeChromeCornerRadius = 10;
-
-        private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
-        private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
-        private const int TitleUpdateThrottleMs = 50;
 
         public static Border CreateBorder(VideoProcessingNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
@@ -77,7 +73,7 @@ namespace FlowMy.Views.NodeControls
             overlayGrid.Children.Add(handlesLayer);
             GpuOptimizationHelper.ApplyToElement(overlayGrid);
             border.Child = overlayGrid;
-            AttachResizeLogic(border, node);
+            AttachResizeLogic(border, node, RefreshPortsAndConnections);
             SyncNodeRoundedClip(border);
 
             if (node.Width < border.MinWidth) node.Width = border.MinWidth;
@@ -85,19 +81,25 @@ namespace FlowMy.Views.NodeControls
             border.Width = node.Width;
             border.Height = node.Height;
 
-            var titleText = new TextBlock
+            // --- Create title TextBlock (node-specific initial text and color) ---
+            var titleTextBlock = new TextBlock
             {
                 Text = string.IsNullOrWhiteSpace(node.Title) ? "Video Processing" : node.Title,
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = GetTitleBrush(node),
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    node.TitleColorMode,
+                    node.TitleColorKey,
+                    node.NodeBrush),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 TextAlignment = TextAlignment.Center,
-                Visibility = GetTitleVisibility(node.TitleDisplayMode, false),
-                IsHitTestVisible = false
+                IsHitTestVisible = false,
+                Visibility = node.TitleDisplayMode == TitleDisplayMode.Always
+                    ? Visibility.Visible
+                    : Visibility.Collapsed
             };
-            node.TitleTextBlockUI = titleText;
+            node.TitleTextBlockUI = titleTextBlock;
 
             contentControl.SuggestedNodeSizeReady += (suggestedWidth, suggestedHeight) =>
             {
@@ -112,7 +114,7 @@ namespace FlowMy.Views.NodeControls
                 border.Width = node.Width;
                 border.Height = node.Height;
                 RefreshPortsAndConnections();
-                UpdateTitlePosition(titleText, border, host);
+                // Title position will be updated automatically via LayoutUpdated in BaseNodeControlHelper
             };
 
             border.SizeChanged += (_, _) =>
@@ -138,123 +140,43 @@ namespace FlowMy.Views.NodeControls
                 node.Height = border.Height;
             };
 
-            bool isHovering = false;
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
-            border.MouseEnter += (_, _) =>
+            // --- Node-specific custom property handlers ---
+            var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                isHovering = true;
-                UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
-                UpdateTitlePosition(titleText, border, host);
-                Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => border.Focus()));
-            };
-            border.MouseLeave += (_, _) =>
-            {
-                isHovering = false;
-                UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
-            };
-
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
+                // NodeBrush: update border background and title foreground
+                [nameof(WorkflowNode.NodeBrush)] = ctx =>
                 {
-                    Key.Left => PortPosition.Left,
-                    Key.Up => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-            };
-
-            if (node is INotifyPropertyChanged npc)
-            {
-                npc.PropertyChanged += (_, e) =>
+                    border.Background = node.NodeBrush;
+                    ctx.TitleTextBlock.Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                        BaseNodeControlHelper.GetTitleColorMode(node),
+                        BaseNodeControlHelper.GetTitleColorKey(node),
+                        node.NodeBrush);
+                },
+                // Width/Height: sync border size when changed externally
+                [nameof(VideoProcessingNode.Width)] = ctx =>
                 {
-                    if (e.PropertyName == nameof(WorkflowNode.Title))
-                    {
-                        titleText.Text = string.IsNullOrWhiteSpace(node.Title) ? "Video Processing" : node.Title;
-                    }
-                    else if (e.PropertyName == nameof(VideoProcessingNode.TitleDisplayMode))
-                    {
-                        UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
-                    }
-                    else if (e.PropertyName == nameof(VideoProcessingNode.TitleColorMode) ||
-                             e.PropertyName == nameof(VideoProcessingNode.TitleColorKey) ||
-                             e.PropertyName == nameof(WorkflowNode.NodeBrush))
-                    {
-                        border.Background = node.NodeBrush;
-                        titleText.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(VideoProcessingNode.Width) ||
-                             e.PropertyName == nameof(VideoProcessingNode.Height))
-                    {
-                        border.Width = node.Width;
-                        border.Height = node.Height;
-                        RefreshPortsAndConnections();
-                        UpdateTitlePosition(titleText, border, host);
-                    }
-                };
-            }
-
-            border.MouseRightButtonUp += (_, e) =>
-            {
-                e.Handled = true;
-                OpenNodeDialog(node, host, ownerWindow);
-            };
-
-            border.Loaded += (_, _) =>
-            {
-                SyncNodeRoundedClip(border);
-                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleText))
+                    border.Width = node.Width;
+                    RefreshPortsAndConnections();
+                },
+                [nameof(VideoProcessingNode.Height)] = ctx =>
                 {
-                    host.WorkflowCanvas.Children.Add(titleText);
-                    Panel.SetZIndex(titleText, 20000);
-                    UpdateTitlePosition(titleText, border, host);
+                    border.Height = node.Height;
+                    RefreshPortsAndConnections();
                 }
             };
 
-            border.LayoutUpdated += (_, _) =>
-            {
-                if (border.Visibility != Visibility.Visible)
-                {
-                    titleText.Visibility = Visibility.Collapsed;
-                    return;
-                }
-                if (NodeChrome.IsZooming)
-                {
-                    titleText.Visibility = Visibility.Collapsed;
-                    _titleUpdatedAfterZoom[border] = false;
-                    return;
-                }
-                var hasUpdated = _titleUpdatedAfterZoom.TryGetValue(border, out var v) && v;
-                if (!hasUpdated)
-                {
-                    _titleUpdatedAfterZoom[border] = true;
-                    UpdateTitleVisibility(titleText, node.TitleDisplayMode, isHovering, border);
-                    UpdateTitlePosition(titleText, border, host);
-                }
-                if (titleText.Visibility == Visibility.Visible && !host.IsPanning && host.DraggedNode != node)
-                    ThrottledUpdateTitlePosition(titleText, border, host);
-            };
-
-            border.Unloaded += (_, _) =>
-            {
-                if (_titleUpdateTimers.TryGetValue(border, out var timer))
-                {
-                    timer.Stop();
-                    _titleUpdateTimers.Remove(border);
-                }
-                _titleUpdatedAfterZoom.Remove(border);
-                if (host.WorkflowCanvas?.Children.Contains(titleText) == true)
-                    host.WorkflowCanvas.Children.Remove(titleText);
-                if (ReferenceEquals(node.TitleTextBlockUI, titleText))
-                    node.TitleTextBlockUI = null;
-            };
+            // --- Initialize with fluent API (replaces ~200 lines of duplicated event handler code) ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync(customPropertyHandlers)
+                .WithDialogSupport(ctx => new VideoProcessingNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
             return border;
         }
@@ -296,116 +218,7 @@ namespace FlowMy.Views.NodeControls
             grid.Children.Add(handle);
         }
 
-        private static Brush GetTitleBrush(VideoProcessingNode node)
-        {
-            if (node.TitleColorMode == TitleColorMode.CustomColor && !string.IsNullOrWhiteSpace(node.TitleColorKey))
-                return Application.Current.TryFindResource(node.TitleColorKey) as Brush ?? node.NodeBrush;
-            return node.NodeBrush;
-        }
-
-        private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)
-            => mode switch
-            {
-                TitleDisplayMode.Hidden => Visibility.Collapsed,
-                TitleDisplayMode.Hover => isHovering ? Visibility.Visible : Visibility.Collapsed,
-                TitleDisplayMode.Always => Visibility.Visible,
-                _ => Visibility.Collapsed
-            };
-
-        private static void UpdateTitleVisibility(TextBlock tb, TitleDisplayMode mode, bool isHovering, Border? nodeBorder = null)
-        {
-            if (nodeBorder != null && nodeBorder.Visibility != Visibility.Visible)
-            {
-                tb.Visibility = Visibility.Collapsed;
-                return;
-            }
-            tb.Visibility = GetTitleVisibility(mode, isHovering);
-        }
-
-        private static void ThrottledUpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (!_titleUpdateTimers.TryGetValue(border, out var timer))
-            {
-                timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TitleUpdateThrottleMs) };
-                timer.Tick += (_, _) =>
-                {
-                    timer.Stop();
-                    UpdateTitlePosition(tb, border, host);
-                };
-                _titleUpdateTimers[border] = timer;
-            }
-            timer.Stop();
-            timer.Start();
-        }
-
-        private static void UpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (host.WorkflowCanvas == null || !host.WorkflowCanvas.Children.Contains(tb)) return;
-            var left = Canvas.GetLeft(border);
-            var top = Canvas.GetTop(border);
-            if (double.IsNaN(left) || double.IsNaN(top)) return;
-
-            if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
-            {
-                tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                tb.Arrange(new Rect(tb.DesiredSize));
-            }
-
-            Canvas.SetLeft(tb, left + (border.ActualWidth / 2) - (tb.ActualWidth / 2));
-            Canvas.SetTop(tb, top - tb.ActualHeight - 4);
-        }
-
-        private static void OpenNodeDialog(VideoProcessingNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            try
-            {
-                if (node.Border?.IsMouseCaptured == true) node.Border.ReleaseMouseCapture();
-                host.DraggedNode = null;
-                if (host.ViewModel != null) host.ViewModel.SelectedNode = null;
-
-                var dialogManager = GetOrCreateDialogManager(host);
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
-                    dialogManager.CloseCurrentDialog();
-
-                var dialog = new VideoProcessingNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
-                dialogManager.OpenDialog(node, dialog, host);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            if (host is WorkflowEditorWindow window)
-            {
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
-            }
-            return new NodeDialogManager();
-        }
-
-        private static void ChangePortPosition(WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-            }
-        }
-
-        private static void AttachResizeLogic(Border border, VideoProcessingNode node)
+        private static void AttachResizeLogic(Border border, VideoProcessingNode node, Action refreshPortsAndConnections)
         {
             bool isResizing = false;
             ResizeDirection currentDirection = ResizeDirection.None;

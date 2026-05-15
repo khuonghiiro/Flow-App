@@ -3,8 +3,10 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using Microsoft.Win32;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -25,10 +27,6 @@ namespace FlowMy.Views.NodeControls
     public static class ImageProcessingNodeControl
     {
         private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Left, Right, Top, Bottom }
-
-        private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
-        private const int TitleUpdateThrottleMs = 50;
-        private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
 
         private static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, int> _previewVersion = new();
         internal static readonly System.Collections.Generic.Dictionary<ImageProcessingNode, ImageCropRegion?> _activeCropRegion = new();
@@ -89,6 +87,8 @@ namespace FlowMy.Views.NodeControls
                 _cropOrderCounter[node] = node.Crops.Max(c => c.Order);
             }
 
+            // --- Create UI elements (node-specific) ---
+
             // Viền ngoài không gắn Effect — DropShadow trên cùng visual với nội dung làm mờ toàn node.
             // Bóng chỉ trên shadowPlate (nền); grid nội dung là lớp trên, vẽ sắc hơn.
             var border = new Border
@@ -147,6 +147,7 @@ namespace FlowMy.Views.NodeControls
             chromeFillGrid.Children.Add(outerGrid);
             border.Child = chromeFillGrid;
 
+            // --- Resize handle logic (node-specific) ---
             ResizeDirection currentDir = ResizeDirection.None;
             Point resizeStart = default;
             double origW = 0, origH = 0, origX = 0, origY = 0;
@@ -224,149 +225,62 @@ namespace FlowMy.Views.NodeControls
                 }
             };
 
-            // ===== TitleTextBlock (follow Node_Dialog_V2) =====
+            // --- Create title TextBlock (node-specific initial text) ---
             var titleTextBlock = new TextBlock
             {
                 Text = node.Title ?? "Xử lý ảnh",
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = GetTitleBrush(node),
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    node.TitleColorMode,
+                    node.TitleColorKey,
+                    node.NodeBrush),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 TextAlignment = TextAlignment.Center,
-                Visibility = GetTitleVisibility(node.TitleDisplayMode, false),
-                IsHitTestVisible = false
+                IsHitTestVisible = false,
+                Visibility = node.TitleDisplayMode == TitleDisplayMode.Always
+                    ? Visibility.Visible
+                    : Visibility.Collapsed
             };
             node.TitleTextBlockUI = titleTextBlock;
 
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
-
-            bool isHovering = false;
-            if (node is INotifyPropertyChanged npc)
+            // --- Node-specific custom property handlers ---
+            var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                npc.PropertyChanged += (s, e) =>
+                // NodeBrush: image node uses shadowPlate for background (not border.Background directly)
+                [nameof(WorkflowNode.NodeBrush)] = ctx =>
                 {
-                    if (e.PropertyName == nameof(WorkflowNode.Title))
-                    {
-                        titleTextBlock.Text = node.Title ?? "Xử lý ảnh";
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitlePosition(titleTextBlock, border, host);
-                    }
-                    else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
-                    {
-                        border.Background = Brushes.Transparent;
-                        shadowPlate.Background = node.NodeBrush;
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(ImageProcessingNode.TitleDisplayMode))
-                    {
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    }
-                    else if (e.PropertyName == nameof(ImageProcessingNode.TitleColorMode) ||
-                             e.PropertyName == nameof(ImageProcessingNode.TitleColorKey))
-                    {
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(ImageProcessingNode.Width) ||
-                             e.PropertyName == nameof(ImageProcessingNode.Height))
-                    {
-                        if (!isResizing)
-                        {
-                            border.Width = node.Width;
-                            border.Height = node.Height;
-                        }
-                    }
-                };
-            }
-
-            border.MouseEnter += (s, e) =>
-            {
-                isHovering = true;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
+                    border.Background = Brushes.Transparent;
+                    shadowPlate.Background = node.NodeBrush;
+                    ctx.TitleTextBlock.Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                        BaseNodeControlHelper.GetTitleColorMode(node),
+                        BaseNodeControlHelper.GetTitleColorKey(node),
+                        node.NodeBrush);
+                },
+                // Width/Height: sync border size when changed externally (not during resize)
+                [nameof(ImageProcessingNode.Width)] = ctx =>
                 {
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    UpdateTitlePosition(titleTextBlock, border, host);
-                }
-                Application.Current.Dispatcher.BeginInvoke(
-                    System.Windows.Threading.DispatcherPriority.Input,
-                    new Action(() => { if (isHovering) border.Focus(); }));
-            };
-            border.MouseLeave += (s, e) =>
-            {
-                isHovering = false;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-            };
-
-            // Keyboard Port Position: Arrow = Port IN, Shift+Arrow = Port OUT
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
+                    if (!isResizing) border.Width = node.Width;
+                },
+                [nameof(ImageProcessingNode.Height)] = ctx =>
                 {
-                    Key.Left  => PortPosition.Left,
-                    Key.Up    => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down  => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-            };
-
-            var visibilityDescriptor = DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty, typeof(Border));
-            visibilityDescriptor?.AddValueChanged(border, (s, e) =>
-            {
-                if (border.Visibility != Visibility.Visible)
-                    titleTextBlock.Visibility = Visibility.Collapsed;
-                else
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-            });
-
-            border.Loaded += (s, e) =>
-            {
-                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                {
-                    host.WorkflowCanvas.Children.Add(titleTextBlock);
-                    Panel.SetZIndex(titleTextBlock, 20000);
-                    UpdateTitlePosition(titleTextBlock, border, host);
+                    if (!isResizing) border.Height = node.Height;
                 }
             };
 
-            border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
-            border.Unloaded += (s, e) =>
-            {
-                try
-                {
-                    if (_titleUpdateTimers.TryGetValue(border, out var t)) { t.Stop(); _titleUpdateTimers.Remove(border); }
-                    _titleUpdatedAfterZoom.Remove(border);
-                    if (host.WorkflowCanvas != null && host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                        host.WorkflowCanvas.Children.Remove(titleTextBlock);
-                    if (ReferenceEquals(node.TitleTextBlockUI, titleTextBlock))
-                        node.TitleTextBlockUI = null;
-                }
-                catch { }
-            };
-
-            border.LayoutUpdated += (s, e) =>
-            {
-                if (border.Visibility != Visibility.Visible) { titleTextBlock.Visibility = Visibility.Collapsed; return; }
-                if (NodeChrome.IsZooming) { titleTextBlock.Visibility = Visibility.Collapsed; _titleUpdatedAfterZoom[border] = false; return; }
-                if (!_titleUpdatedAfterZoom.TryGetValue(border, out var up) || !up)
-                {
-                    _titleUpdatedAfterZoom[border] = true;
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    if (titleTextBlock.Visibility == Visibility.Visible)
-                        UpdateTitlePosition(titleTextBlock, border, host);
-                }
-                if (host.IsPanning || host.DraggedNode == node) return;
-                if (titleTextBlock.Visibility == Visibility.Visible)
-                    ThrottledUpdateTitlePosition(titleTextBlock, border, host);
-            };
+            // --- Initialize with fluent API (replaces ~200 lines of duplicated event handler code) ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync(customPropertyHandlers)
+                .WithDialogSupport(ctx => new ImageProcessingNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
             return border;
         }
@@ -1469,66 +1383,6 @@ namespace FlowMy.Views.NodeControls
             };
         }
 
-        private static Brush GetTitleBrush(ImageProcessingNode node)
-        {
-            if (node.TitleColorMode != TitleColorMode.CustomColor ||
-                string.IsNullOrEmpty(node.TitleColorKey) ||
-                node.TitleColorKey == "NodeColor")
-                return node.NodeBrush;
-            if (node.TitleColorKey == "LimeGreen") return new SolidColorBrush(Colors.LimeGreen);
-            var brush = Application.Current.TryFindResource(node.TitleColorKey) as Brush;
-            return brush ?? node.NodeBrush;
-        }
-
-        private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)
-        {
-            return mode switch
-            {
-                TitleDisplayMode.Hidden => Visibility.Collapsed,
-                TitleDisplayMode.Hover => isHovering ? Visibility.Visible : Visibility.Collapsed,
-                TitleDisplayMode.Always => Visibility.Visible,
-                _ => Visibility.Collapsed
-            };
-        }
-
-        private static void UpdateTitleVisibility(TextBlock tb, TitleDisplayMode mode, bool isHovering, Border? nodeBorder = null)
-        {
-            if (nodeBorder != null && nodeBorder.Visibility != Visibility.Visible) { tb.Visibility = Visibility.Collapsed; return; }
-            tb.Visibility = GetTitleVisibility(mode, isHovering);
-        }
-
-        private static void ThrottledUpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (!_titleUpdateTimers.TryGetValue(border, out var timer))
-            {
-                timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TitleUpdateThrottleMs) };
-                timer.Tick += (s, e) => { timer.Stop(); UpdateTitlePosition(tb, border, host); };
-                _titleUpdateTimers[border] = timer;
-            }
-            timer.Stop();
-            timer.Start();
-        }
-
-        private static void UpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (host.WorkflowCanvas == null || !host.WorkflowCanvas.Children.Contains(tb)) return;
-            var left = Canvas.GetLeft(border);
-            var top = Canvas.GetTop(border);
-            if (double.IsNaN(left) && border.Tag is WorkflowNode n) left = n.X;
-            if (double.IsNaN(top) && border.Tag is WorkflowNode n2) top = n2.Y;
-            if (double.IsNaN(left)) left = 0;
-            if (double.IsNaN(top)) top = 0;
-            if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
-            {
-                tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                tb.Arrange(new Rect(tb.DesiredSize));
-            }
-            var titleLeft = left + (border.ActualWidth / 2) - (tb.ActualWidth / 2);
-            var titleTop = top - tb.ActualHeight - 4;
-            Canvas.SetLeft(tb, titleLeft);
-            Canvas.SetTop(tb, titleTop);
-        }
-
         internal static void OpenNodeDialog(ImageProcessingNode node, IWorkflowEditorHost host, Window? ownerWindow)
         {
             try
@@ -2142,29 +1996,7 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private static void ChangePortPosition(
-            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            if (node.Ports == null || node.Ports.Count == 0) return;
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                try
-                {
-                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-                }
-                catch { }
-            }
-        }
-
-        /// <summary>Chrome node ảnh: lớp nền có DropShadow. Sau NodeChrome bọc, <c>Child</c> là overlay có Tag NodeChromeRoot.</summary>
+        /// <summary>Chrome node ảnh: lớp nền có DropShadow.
         internal static Border? TryGetImageWorkflowShadowPlate(Border chromeBorder)
         {
             if (chromeBorder?.Child is not Grid top)

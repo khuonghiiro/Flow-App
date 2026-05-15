@@ -2,13 +2,12 @@ using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
-using FlowMy.Views;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Linq;
+using System.Windows.Media.Effects;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -17,11 +16,14 @@ namespace FlowMy.Views.NodeControls
     /// </summary>
     public static class EndNodeControl
     {
-        public const double NodeSize = 100; // Kích thước hình tròn
-        private const double TitleOffset = 8; // Khoảng cách từ top node đến bottom title
+        public const double NodeSize = 100;
 
         public static Border CreateBorder(WorkflowNode node, Window? ownerWindow, IWorkflowEditorHost? host = null)
         {
+            if (host == null) throw new ArgumentNullException(nameof(host));
+
+            // --- Create UI elements (node-specific) ---
+
             var grid = new Grid
             {
                 Width = NodeSize,
@@ -30,21 +32,6 @@ namespace FlowMy.Views.NodeControls
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            // Icon SVG sử dụng SvgViewboxEx
-            var iconConverter = new IconKeyToPathConverter();
-            var iconUri = iconConverter.Convert(null, typeof(Uri), "flag-checkered sharp-duotone-solid", System.Globalization.CultureInfo.CurrentCulture) as Uri;
-
-            var iconSvg = new SvgViewboxEx
-            {
-                Source = iconUri,
-                Width = 55,
-                Height = 55,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Fill = new SolidColorBrush(Colors.White)
-            };
-            grid.Children.Add(iconSvg);
-
             var border = new Border
             {
                 Child = grid,
@@ -52,14 +39,14 @@ namespace FlowMy.Views.NodeControls
                 Height = NodeSize,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(231, 76, 60)), // Default: Danger Red
+                Background = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(231, 76, 60)),
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(NodeSize / 2), // Hình tròn hoàn hảo
-                Cursor = Cursors.Hand,
+                CornerRadius = new CornerRadius(NodeSize / 2),
+                Cursor = System.Windows.Input.Cursors.Hand,
                 Padding = new Thickness(0),
                 Margin = new Thickness(0),
-                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
                     Direction = 270,
@@ -69,52 +56,39 @@ namespace FlowMy.Views.NodeControls
                 Tag = node
             };
 
+            // Populate node-specific visuals (shape + icon + mode badge)
             PopulateVisuals(node, grid, border);
 
-            // Keyboard Port Position
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
-
-            bool isHovering = false;
-            border.MouseEnter += (s, e) =>
+            // Create title TextBlock
+            var titleTextBlock = new TextBlock
             {
-                isHovering = true;
-
-                Application.Current.Dispatcher.BeginInvoke(
-
-                    System.Windows.Threading.DispatcherPriority.Input,
-
-                    new Action(() => { if (isHovering) border.Focus(); }));
+                Text = node.Title ?? "End",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    BaseNodeControlHelper.GetTitleColorMode(node),
+                    BaseNodeControlHelper.GetTitleColorKey(node),
+                    node.NodeBrush),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
             };
-            border.MouseLeave += (s, e) =>
-            {
-                isHovering = false;
-            };
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
-                {
-                    Key.Left  => PortPosition.Left,
-                    Key.Up    => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down  => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-            };
+            node.TitleTextBlockUI = titleTextBlock;
 
-            if (host != null)
-            {
-                border.MouseRightButtonUp += (s, e) =>
-                {
-                    e.Handled = true;
-                    OpenNodeDialog(node, host, ownerWindow);
-                };
-            }
+            // --- Initialize with fluent API ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync()
+                .WithDialogSupport(ctx => new StartEndNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
             return border;
         }
@@ -126,6 +100,69 @@ namespace FlowMy.Views.NodeControls
             PopulateVisuals(node, grid, node.Border);
         }
 
+        /// <summary>
+        /// Compatibility shim: returns the node's existing TitleTextBlockUI or creates a new one.
+        /// Called by legacy rendering code (_NodeRenderer, ZoomPanHandler, etc.).
+        /// With BaseNodeControlHelper, the title TextBlock is created in CreateBorder and managed automatically.
+        /// </summary>
+        public static TextBlock CreateTitleTextBlock(WorkflowNode node)
+        {
+            if (node.TitleTextBlockUI != null)
+                return node.TitleTextBlockUI;
+
+            var titleTextBlock = new TextBlock
+            {
+                Text = node.Title ?? "End",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    BaseNodeControlHelper.GetTitleColorMode(node),
+                    BaseNodeControlHelper.GetTitleColorKey(node),
+                    node.NodeBrush),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false,
+                Visibility = System.Windows.Visibility.Collapsed
+            };
+            node.TitleTextBlockUI = titleTextBlock;
+            return titleTextBlock;
+        }
+
+        /// <summary>
+        /// Compatibility shim: updates the title position using BaseNodeControlHelper.
+        /// Called by legacy rendering code (_NodeRenderer, ZoomPanHandler, etc.).
+        /// </summary>
+        public static void UpdateTitlePosition(WorkflowNode node, System.Windows.Controls.Canvas canvas)
+        {
+            if (node.TitleTextBlockUI == null || node.Border == null) return;
+            var border = node.Border;
+            var titleTextBlock = node.TitleTextBlockUI;
+
+            var borderLeft = System.Windows.Controls.Canvas.GetLeft(border);
+            var borderTop = System.Windows.Controls.Canvas.GetTop(border);
+            if (double.IsNaN(borderLeft)) borderLeft = node.X;
+            if (double.IsNaN(borderTop)) borderTop = node.Y;
+
+            var borderWidth = border.ActualWidth > 0 ? border.ActualWidth : border.Width;
+            var borderHeight = border.ActualHeight > 0 ? border.ActualHeight : border.Height;
+
+            if (titleTextBlock.ActualWidth == 0)
+            {
+                titleTextBlock.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+                titleTextBlock.Arrange(new System.Windows.Rect(titleTextBlock.DesiredSize));
+            }
+
+            var titleWidth = titleTextBlock.ActualWidth > 0 ? titleTextBlock.ActualWidth : titleTextBlock.DesiredSize.Width;
+            var titleHeight = titleTextBlock.ActualHeight > 0 ? titleTextBlock.ActualHeight : titleTextBlock.DesiredSize.Height;
+
+            var titleLeft = borderLeft + (borderWidth / 2) - (titleWidth / 2);
+            var titleTop = borderTop - titleHeight - 4;
+
+            System.Windows.Controls.Canvas.SetLeft(titleTextBlock, titleLeft);
+            System.Windows.Controls.Canvas.SetTop(titleTextBlock, titleTop);
+        }
+
         private static void PopulateVisuals(WorkflowNode node, Grid grid, Border border)
         {
             grid.Children.Clear();
@@ -134,7 +171,8 @@ namespace FlowMy.Views.NodeControls
             ApplyShape(node, node.EndBehavior, border, grid);
 
             var iconConverter = new IconKeyToPathConverter();
-            var iconUri = iconConverter.Convert(null, typeof(Uri), "flag-checkered sharp-duotone-solid", System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            var iconUri = iconConverter.Convert(null, typeof(Uri), "flag-checkered sharp-duotone-solid",
+                System.Globalization.CultureInfo.CurrentCulture) as Uri;
 
             var iconSvg = new SvgViewboxEx
             {
@@ -214,146 +252,12 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        private static double GetSharpnessScaleY(DiamondSharpness sharpness)
+        private static double GetSharpnessScaleY(DiamondSharpness sharpness) => sharpness switch
         {
-            return sharpness switch
-            {
-                DiamondSharpness.Soft => 0.88,
-                DiamondSharpness.Medium => 1.0,
-                DiamondSharpness.Sharp => 1.15,
-                _ => 1.0
-            };
-        }
-
-        private static void OpenNodeDialog(WorkflowNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            if (node.Border?.IsMouseCaptured == true) node.Border.ReleaseMouseCapture();
-            host.DraggedNode = null;
-            if (host.ViewModel != null) host.ViewModel.SelectedNode = null;
-
-            var dialogManager = GetOrCreateDialogManager(host);
-            if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
-            if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node) dialogManager.CloseCurrentDialog();
-
-            var dialog = new StartEndNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
-            dialogManager.OpenDialog(node, dialog, host);
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            if (host is WorkflowEditorWindow window)
-            {
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
-            }
-            return new NodeDialogManager();
-        }
-
-        /// <summary>
-        /// Tạo TextBlock để hiển thị title trên top của node
-        /// </summary>
-        public static TextBlock CreateTitleTextBlock(WorkflowNode node)
-        {
-            var titleTextBlock = new TextBlock
-            {
-                Text = node.Title ?? "End",
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = node.NodeBrush ?? new SolidColorBrush(Color.FromRgb(231, 76, 60)),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                TextAlignment = TextAlignment.Center,
-                Background = Brushes.Transparent,
-                Padding = new Thickness(4, 2, 4, 2),
-                Visibility = Visibility.Visible
-            };
-
-            // Lưu reference vào node
-            node.TitleTextBlockUI = titleTextBlock;
-
-            // Đăng ký Loaded event để cập nhật vị trí sau khi render
-            titleTextBlock.Loaded += (s, e) =>
-            {
-                if (node.TitleTextBlockUI != null)
-                {
-                    var parent = titleTextBlock.Parent as Canvas;
-                    UpdateTitlePosition(node, parent);
-                }
-            };
-
-            // Đăng ký SizeChanged để cập nhật vị trí khi kích thước thay đổi
-            titleTextBlock.SizeChanged += (s, e) =>
-            {
-                if (node.TitleTextBlockUI != null)
-                {
-                    var parent = titleTextBlock.Parent as Canvas;
-                    UpdateTitlePosition(node, parent);
-                }
-            };
-
-            return titleTextBlock;
-        }
-
-        /// <summary>
-        /// Cập nhật vị trí title khi node di chuyển hoặc sau khi zoom
-        /// </summary>
-        public static void UpdateTitlePosition(WorkflowNode node, Canvas? canvas)
-        {
-            if (node.TitleTextBlockUI == null) return;
-
-            var titleTextBlock = node.TitleTextBlockUI;
-            
-            // Đảm bảo title visible
-            if (titleTextBlock.Visibility != Visibility.Visible)
-            {
-                titleTextBlock.Visibility = Visibility.Visible;
-            }
-
-            // Sử dụng ActualWidth/Height nếu có, fallback về DesiredSize
-            double titleWidth = titleTextBlock.ActualWidth;
-            double titleHeight = titleTextBlock.ActualHeight;
-
-            if (titleWidth <= 0 || titleHeight <= 0)
-            {
-                titleTextBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                titleWidth = titleTextBlock.DesiredSize.Width;
-                titleHeight = titleTextBlock.DesiredSize.Height;
-            }
-
-            // Fallback nếu vẫn không có kích thước
-            if (titleWidth <= 0) titleWidth = 40;
-            if (titleHeight <= 0) titleHeight = 18;
-
-            // Tính toán vị trí title ở trên node, căn giữa theo chiều ngang
-            var titleX = node.X + (NodeSize / 2) - (titleWidth / 2);
-            var extraDiamondOffset = node.EndBehavior == EndNodeBehavior.ReturnToParent ? 14 : 0;
-            var titleY = node.Y - titleHeight - TitleOffset - extraDiamondOffset;
-
-            Canvas.SetLeft(titleTextBlock, titleX);
-            Canvas.SetTop(titleTextBlock, titleY);
-            Panel.SetZIndex(titleTextBlock, 20000); // Đảm bảo title luôn hiển thị trên cùng
-        }
-
-        private static void ChangePortPosition(
-            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            if (node.Ports == null || node.Ports.Count == 0) return;
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                try
-                {
-                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-                }
-                catch { }
-            }
-        }
+            DiamondSharpness.Soft => 0.88,
+            DiamondSharpness.Medium => 1.0,
+            DiamondSharpness.Sharp => 1.15,
+            _ => 1.0
+        };
     }
 }

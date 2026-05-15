@@ -1,12 +1,12 @@
-using FlowMy.Models;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
 using FlowMy.Controls;
 using FlowMy.Converters;
+using FlowMy.Models;
 using FlowMy.Services.Interaction;
-using System.Linq;
+using FlowMy.Views.NodeControls.Helpers;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -14,7 +14,9 @@ namespace FlowMy.Views.NodeControls
     {
         public static Border CreateBorder(WorkflowNode node, Window ownerWindow, IWorkflowEditorHost? host = null)
         {
-            const double size = 60; // Kích thước hình tròn
+            if (host == null) throw new ArgumentNullException(nameof(host));
+
+            const double size = 60;
 
             var grid = new Grid
             {
@@ -24,9 +26,9 @@ namespace FlowMy.Views.NodeControls
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            // Icon SVG sử dụng SvgViewboxEx
             var iconConverter = new IconKeyToPathConverter();
-            var iconUri = iconConverter.Convert(null, typeof(Uri), "circle-stop duotone", System.Globalization.CultureInfo.CurrentCulture) as Uri;
+            var iconUri = iconConverter.Convert(null, typeof(Uri), "circle-stop duotone",
+                System.Globalization.CultureInfo.CurrentCulture) as Uri;
 
             var iconSvg = new SvgViewboxEx
             {
@@ -39,6 +41,24 @@ namespace FlowMy.Views.NodeControls
             };
             grid.Children.Add(iconSvg);
 
+            // Create title TextBlock (required by BaseNodeControlHelper)
+            var titleTextBlock = new TextBlock
+            {
+                Text = node.Title ?? "Break",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    BaseNodeControlHelper.GetTitleColorMode(node),
+                    BaseNodeControlHelper.GetTitleColorKey(node),
+                    node.NodeBrush),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
+            };
+            node.TitleTextBlockUI = titleTextBlock;
+
             var border = new Border
             {
                 Child = grid,
@@ -46,14 +66,14 @@ namespace FlowMy.Views.NodeControls
                 Height = size,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Background = new SolidColorBrush(Color.FromRgb(255, 100, 100)), // Redish
+                Background = new SolidColorBrush(Color.FromRgb(255, 100, 100)),
                 BorderBrush = new SolidColorBrush(Colors.White),
                 BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(size / 2), // Hình tròn hoàn hảo
-                Cursor = Cursors.Hand,
+                CornerRadius = new CornerRadius(size / 2),
+                Cursor = System.Windows.Input.Cursors.Hand,
                 Padding = new Thickness(0),
                 Margin = new Thickness(0),
-                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
                     Direction = 270,
@@ -62,68 +82,20 @@ namespace FlowMy.Views.NodeControls
                 },
                 Tag = node
             };
-            // Keyboard Port Position
-            if (host != null)
-            {
-                border.Focusable = true;
-                border.FocusVisualStyle = null;
 
-                bool isHovering = false;
-                border.MouseEnter += (s, e) =>
-                {
-                    isHovering = true;
-
-                    Application.Current.Dispatcher.BeginInvoke(
-
-                        System.Windows.Threading.DispatcherPriority.Input,
-
-                        new Action(() => { if (isHovering) border.Focus(); }));
-                };
-                border.MouseLeave += (s, e) =>
-                {
-                    isHovering = false;
-                };
-                border.PreviewKeyDown += (s, e) =>
-                {
-                    if (!isHovering) return;
-                    bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                    PortPosition? newPos = e.Key switch
-                    {
-                        Key.Left  => PortPosition.Left,
-                        Key.Up    => PortPosition.Top,
-                        Key.Right => PortPosition.Right,
-                        Key.Down  => PortPosition.Bottom,
-                        _ => null
-                    };
-                    if (newPos == null) return;
-                    e.Handled = true;
-                    ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-                };
-            }
+            // --- Initialize with fluent API ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync()
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
             return border;
-        }
-
-        private static void ChangePortPosition(
-            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            if (node.Ports == null || node.Ports.Count == 0) return;
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                try
-                {
-                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-                }
-                catch { }
-            }
         }
     }
 }

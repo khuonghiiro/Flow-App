@@ -1,13 +1,14 @@
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
 using FlowMy.Views;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Linq;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -85,84 +86,31 @@ namespace FlowMy.Views.NodeControls
             mainGrid.Children.Add(branchesStack);
             border.Child = mainGrid;
 
-            // Keyboard Port Position
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
+            // This node uses an internal header TextBlock for the title (not a canvas-floating title).
+            // We create a minimal dummy TextBlock to satisfy BaseNodeControlHelper.Initialize,
+            // but skip WithTitleManagement() and WithCanvasIntegration() so it is never added to the canvas.
+            var dummyTitle = new TextBlock { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
 
-            bool isHovering = false;
-            border.MouseEnter += (s, e) =>
+            // --- Node-specific property handlers ---
+            var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                isHovering = true;
-
-                Application.Current.Dispatcher.BeginInvoke(
-
-                    System.Windows.Threading.DispatcherPriority.Input,
-
-                    new Action(() => { if (isHovering) border.Focus(); }));
-            };
-            border.MouseLeave += (s, e) =>
-            {
-                isHovering = false;
-            };
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
+                [nameof(WorkflowNode.NodeBrush)] = ctx =>
                 {
-                    Key.Left  => PortPosition.Left,
-                    Key.Up    => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down  => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
+                    border.Background = node.NodeBrush;
+                }
             };
 
-            border.MouseRightButtonUp += (s, e) =>
-            {
-                e.Handled = true;
-                OpenNodeDialog(node, host, ownerWindow);
-            };
+            // --- Initialize with fluent API (hover, keyboard ports, dialog, cleanup) ---
+            BaseNodeControlHelper
+                .Initialize(border, dummyTitle, node, host)
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync(customPropertyHandlers)
+                .WithDialogSupport(ctx => new AsyncTaskNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .Build();
 
             return border;
-        }
-
-        private static void OpenNodeDialog(WorkflowNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            try
-            {
-                if (node.Border != null && node.Border.IsMouseCaptured)
-                    node.Border.ReleaseMouseCapture();
-                host.DraggedNode = null;
-                if (host.ViewModel != null)
-                    host.ViewModel.SelectedNode = null;
-
-                var dialogManager = GetOrCreateDialogManager(host);
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
-                    dialogManager.CloseCurrentDialog();
-
-                var dialog = new AsyncTaskNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
-                dialogManager.OpenDialog(node, dialog, host);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            if (host is WorkflowEditorWindow window)
-            {
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
-            }
-            return new NodeDialogManager();
         }
 
         private static Border CreateBranchUI(
@@ -225,7 +173,7 @@ namespace FlowMy.Views.NodeControls
                 Margin = new Thickness(5, 0, 0, 0)
             };
 
-            // Nút thêm task ở branch cuối cùng
+            // Add button on the last branch
             if (index == node.AsyncTaskBranches.Count - 1)
             {
                 var addButton = new Button
@@ -269,19 +217,6 @@ namespace FlowMy.Views.NodeControls
             return branchBorder;
         }
 
-        private static Color? GetColorFromTheme(string resourceKey)
-        {
-            try
-            {
-                var brush = Application.Current.TryFindResource(resourceKey) as SolidColorBrush;
-                return brush?.Color;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
         private static Brush? GetBrushFromTheme(string resourceKey)
         {
             try
@@ -291,28 +226,6 @@ namespace FlowMy.Views.NodeControls
             catch
             {
                 return null;
-            }
-        }
-
-        private static void ChangePortPosition(
-            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            if (node.Ports == null || node.Ports.Count == 0) return;
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                try
-                {
-                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-                }
-                catch { }
             }
         }
     }

@@ -4,9 +4,11 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Text;
@@ -27,7 +29,6 @@ namespace FlowMy.Views.NodeControls
     {
         private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Left, Right, Top, Bottom }
         private static readonly Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
-        private const int TitleUpdateThrottleMs = 50;
         private static readonly Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
         private static readonly Dictionary<Border, (double x, double y, double w, double h)> _viewportExpandRestore = new();
         private static readonly FontFamily ViewportExpandIconFont = new("Segoe MDL2 Assets");
@@ -4679,149 +4680,65 @@ if (window.__elementInspector) {
                 Text = node.Title ?? "Web",
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = GetTitleBrush(node),
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    node.TitleColorMode,
+                    node.TitleColorKey,
+                    node.NodeBrush),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 TextAlignment = TextAlignment.Center,
-                Visibility = GetTitleVisibility(node.TitleDisplayMode, false),
+                Visibility = node.TitleDisplayMode == TitleDisplayMode.Always
+                    ? Visibility.Visible
+                    : Visibility.Collapsed,
                 IsHitTestVisible = false
             };
             node.TitleTextBlockUI = titleTextBlock;
 
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
-
-            bool isHovering = false;
-            if (node is INotifyPropertyChanged npc)
+            // --- Node-specific property handlers for WebNode-specific properties ---
+            var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                npc.PropertyChanged += (s, e) =>
+                // Width/Height: sync border size and scale UI elements
+                [nameof(WebNode.Width)] = ctx =>
                 {
-                    if (e.PropertyName == nameof(WorkflowNode.Title))
+                    if (!isResizing)
                     {
-                        titleTextBlock.Text = node.Title ?? "Web";
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitlePosition(titleTextBlock, border, host);
+                        border.Width = node.Width;
+                        border.Height = node.Height;
                     }
-                    else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
-                    {
-                        border.Background = node.NodeBrush;
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(WebNode.TitleDisplayMode))
-                    {
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    }
-                    else if (e.PropertyName == nameof(WebNode.TitleColorMode) || e.PropertyName == nameof(WebNode.TitleColorKey))
-                    {
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(WebNode.Width) || e.PropertyName == nameof(WebNode.Height))
-                    {
-                        if (s == node && !isResizing)
-                        {
-                            border.Width = node.Width;
-                            border.Height = node.Height;
-                        }
-                        
-                        // Scale UI elements ở topBar và bottomBar theo Height
-                        // Dùng công thức tuyệt đối: scale = node.Height / heightBaseline
-                        // Chạy cả khi đang resize (PropertyChanged do PreviewMouseMove trigger) để scale liên tục
-                        if (e.PropertyName == nameof(WebNode.Height))
-                        {
-                            var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
-                            
-                            // Scale factor tuyệt đối: tỉ lệ height hiện tại / height baseline
-                            // Dùng Math.Max(1.0, ...) để tránh items thu nhỏ khi node.Height < MinHeight
-                            // (có thể xảy ra với dữ liệu cũ lưu height < MinHeight)
-                            var rawScale = heightBaseline > 0 ? node.Height / heightBaseline : 1.0;
-                            var topBottomScaleFactor = Math.Max(1.0, rawScale);
-                            
-                            // Scale topBarGrid để các item bên trong (urlBox, buttons, etc.) scale theo
-                            var topBarScale = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
-                            topBarGrid.LayoutTransform = topBarScale;
-                            
-                            // Scale bottomGrid để các item bên trong (zoomPanel, buttons, etc.) scale theo
-                            var bottomBarScale = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
-                            bottomGrid.LayoutTransform = bottomBarScale;
-
-                            // Scale resize handles + ports để dễ thao tác khi node lớn.
-                            UpdateInteractionVisualScale(handleOverlay, node, topBottomScaleFactor);
-                        }
-                    }
-                    // Không tự động navigate khi ExtractUrl thay đổi
-                    // Chỉ navigate khi người dùng nhấn Enter hoặc click Go button
-                    // else if (e.PropertyName == nameof(WebNode.ExtractUrl))
-                    // {
-                    //     EnsureWebViewAndNavigate();
-                    // }
-                };
-            }
-
-            border.MouseEnter += (s, e) =>
-            {
-                isHovering = true;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
+                },
+                [nameof(WebNode.Height)] = ctx =>
                 {
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    UpdateTitlePosition(titleTextBlock, border, host);
+                    if (!isResizing)
+                    {
+                        border.Width = node.Width;
+                        border.Height = node.Height;
+                    }
+
+                    // Scale UI elements ở topBar và bottomBar theo Height
+                    var heightBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
+                    var rawScale = heightBaseline > 0 ? node.Height / heightBaseline : 1.0;
+                    var topBottomScaleFactor = Math.Max(1.0, rawScale);
+
+                    topBarGrid.LayoutTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
+                    bottomGrid.LayoutTransform = new ScaleTransform(topBottomScaleFactor, topBottomScaleFactor);
+                    UpdateInteractionVisualScale(handleOverlay, node, topBottomScaleFactor);
                 }
-                Application.Current.Dispatcher.BeginInvoke(
-                    System.Windows.Threading.DispatcherPriority.Input,
-                    new Action(() => { if (isHovering) border.Focus(); }));
-            };
-            border.MouseLeave += (s, e) =>
-            {
-                isHovering = false;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
             };
 
-            // Keyboard Port Position: Arrow = Port IN, Shift+Arrow = Port OUT
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
-                {
-                    Key.Left  => PortPosition.Left,
-                    Key.Up    => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down  => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-            };
+            // --- Initialize with fluent API (replaces duplicated title/hover/keyboard/property/visibility/canvas event handlers) ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync(customPropertyHandlers)
+                .WithDialogSupport(ctx => new WebNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
-            var visibilityDescriptor = DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty, typeof(Border));
-            visibilityDescriptor?.AddValueChanged(border, (s, e) =>
-            {
-                if (border.Visibility != Visibility.Visible)
-                    titleTextBlock.Visibility = Visibility.Collapsed;
-                else
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-            });
-
-            border.Loaded += (s, e) =>
-            {
-                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                {
-                    host.WorkflowCanvas.Children.Add(titleTextBlock);
-                    Panel.SetZIndex(titleTextBlock, 20000);
-                    UpdateTitlePosition(titleTextBlock, border, host);
-                }
-                // Áp dụng scale ban đầu dựa trên node.Height (dùng trực tiếp để tránh ActualHeight = 0 khi load workflow)
-                // Math.Max(1.0, ...) đảm bảo không thu nhỏ khi node.Height < MinHeight từ dữ liệu cũ
-                var loadedBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
-                var loadedRawScale = loadedBaseline > 0 ? node.Height / loadedBaseline : 1.0;
-                var loadedScale = Math.Max(1.0, loadedRawScale);
-                topBarGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
-                bottomGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
-                UpdateInteractionVisualScale(handleOverlay, node, loadedScale);
-            };
-            border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
+            // --- WebView2-specific Unloaded cleanup (in addition to BaseNodeControlHelper cleanup) ---
             border.Unloaded += (s, e) =>
             {
                 isDisposed = true;
@@ -4846,19 +4763,15 @@ if (window.__elementInspector) {
                     translateXDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
                     translateYDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
                     System.Windows.Media.CompositionTarget.Rendering -= renderingHandler;
-                    if (host.WorkflowCanvas != null && host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                        host.WorkflowCanvas.Children.Remove(titleTextBlock);
-                    if (ReferenceEquals(node.TitleTextBlockUI, titleTextBlock))
-                        node.TitleTextBlockUI = null;
                 }
                 catch { }
             };
 
+            // --- WebView2-specific LayoutUpdated handler (manages WebView2 visibility during zoom/pan/drag) ---
             border.LayoutUpdated += (s, e) =>
             {
                 if (border.Visibility != Visibility.Visible)
                 {
-                    titleTextBlock.Visibility = Visibility.Collapsed;
                     // Ẩn WebView2 khi border không visible
                     if (webView.Visibility != Visibility.Collapsed)
                         webView.Visibility = Visibility.Collapsed;
@@ -4870,7 +4783,6 @@ if (window.__elementInspector) {
                 // Xử lý zoom: ẩn WebView2 và title để tránh nháy
                 if (isZooming)
                 {
-                    titleTextBlock.Visibility = Visibility.Collapsed;
                     _titleUpdatedAfterZoom[border] = false;
                     // Ẩn WebView2 khi đang zoom để tránh nháy
                     if (webView.Visibility != Visibility.Collapsed)
@@ -4887,14 +4799,9 @@ if (window.__elementInspector) {
                         webView.Visibility = Visibility.Visible;
                     // Sync WebView2 sau khi zoom xong
                     SyncWebViewPosition();
-
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    if (titleTextBlock.Visibility == Visibility.Visible)
-                        UpdateTitlePosition(titleTextBlock, border, host);
                 }
 
                 // Xử lý panning/dragging: ẩn WebView2 khi đang di chuyển, hiển thị lại khi dừng
-                // Khi di chuyển node, giữ nguyên zoom level mà user đã set (không thay đổi)
                 bool isPanningOrDragging = host.DraggedNode == node || host.IsPanning;
 
                 if (isPanningOrDragging)
@@ -4913,15 +4820,17 @@ if (window.__elementInspector) {
                         SyncWebViewPosition();
                     }
                 }
-
-                if (titleTextBlock.Visibility == Visibility.Visible)
-                    ThrottledUpdateTitlePosition(titleTextBlock, border, host);
             };
 
-            border.MouseRightButtonUp += (s, e) =>
+            // --- Extra Loaded initialization (scale UI elements based on node height) ---
+            border.Loaded += (s, e) =>
             {
-                e.Handled = true;
-                OpenNodeDialog(node, host, ownerWindow);
+                var loadedBaseline = border.MinHeight > 0 ? border.MinHeight : 200.0;
+                var loadedRawScale = loadedBaseline > 0 ? node.Height / loadedBaseline : 1.0;
+                var loadedScale = Math.Max(1.0, loadedRawScale);
+                topBarGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
+                bottomGrid.LayoutTransform = new ScaleTransform(loadedScale, loadedScale);
+                UpdateInteractionVisualScale(handleOverlay, node, loadedScale);
             };
 
             return border;
@@ -4990,64 +4899,6 @@ if (window.__elementInspector) {
                 ResizeDirection.Top or ResizeDirection.Bottom => Cursors.SizeNS,
                 _ => Cursors.Arrow
             };
-        }
-
-        private static Brush GetTitleBrush(WebNode node)
-        {
-            if (node.TitleColorMode != TitleColorMode.CustomColor || string.IsNullOrEmpty(node.TitleColorKey) || node.TitleColorKey == "NodeColor")
-                return node.NodeBrush;
-            if (node.TitleColorKey == "LimeGreen") return new SolidColorBrush(Colors.LimeGreen);
-            var brush = Application.Current.TryFindResource(node.TitleColorKey) as Brush;
-            return brush ?? node.NodeBrush;
-        }
-
-        private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)
-        {
-            return mode switch
-            {
-                TitleDisplayMode.Hidden => Visibility.Collapsed,
-                TitleDisplayMode.Hover => isHovering ? Visibility.Visible : Visibility.Collapsed,
-                TitleDisplayMode.Always => Visibility.Visible,
-                _ => Visibility.Collapsed
-            };
-        }
-
-        private static void UpdateTitleVisibility(TextBlock tb, TitleDisplayMode mode, bool isHovering, Border? nodeBorder = null)
-        {
-            if (nodeBorder != null && nodeBorder.Visibility != Visibility.Visible) { tb.Visibility = Visibility.Collapsed; return; }
-            tb.Visibility = GetTitleVisibility(mode, isHovering);
-        }
-
-        private static void ThrottledUpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (!_titleUpdateTimers.TryGetValue(border, out var timer))
-            {
-                timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TitleUpdateThrottleMs) };
-                timer.Tick += (s, e) => { timer.Stop(); UpdateTitlePosition(tb, border, host); };
-                _titleUpdateTimers[border] = timer;
-            }
-            timer.Stop();
-            timer.Start();
-        }
-
-        private static void UpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (host.WorkflowCanvas == null || !host.WorkflowCanvas.Children.Contains(tb)) return;
-            var left = Canvas.GetLeft(border);
-            var top = Canvas.GetTop(border);
-            if (double.IsNaN(left) && border.Tag is WorkflowNode n) left = n.X;
-            if (double.IsNaN(top) && border.Tag is WorkflowNode n2) top = n2.Y;
-            if (double.IsNaN(left)) left = 0;
-            if (double.IsNaN(top)) top = 0;
-            if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
-            {
-                tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                tb.Arrange(new Rect(tb.DesiredSize));
-            }
-            var titleLeft = left + (border.ActualWidth / 2) - (tb.ActualWidth / 2);
-            var titleTop = top - tb.ActualHeight - 4;
-            Canvas.SetLeft(tb, titleLeft);
-            Canvas.SetTop(tb, titleTop);
         }
 
         private static Rect GetWorkflowViewportCanvasRect(IWorkflowEditorHost host)
@@ -5181,38 +5032,6 @@ if (window.__elementInspector) {
                     }
                 }
             }
-        }
-
-        private static void OpenNodeDialog(WebNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            try
-            {
-                if (node.Border != null && node.Border.IsMouseCaptured)
-                    node.Border.ReleaseMouseCapture();
-                host.DraggedNode = null;
-                if (host.ViewModel != null)
-                    host.ViewModel.SelectedNode = null;
-                var dialogManager = GetOrCreateDialogManager(host);
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
-                    dialogManager.CloseCurrentDialog();
-                var dialog = new WebNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
-                dialogManager.OpenDialog(node, dialog, host);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            if (host is WorkflowEditorWindow window)
-            {
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
-            }
-            return new NodeDialogManager();
         }
 
         private static void ChangePortPosition(

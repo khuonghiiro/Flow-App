@@ -84,7 +84,7 @@ The implementation follows a phased approach:
     - Return this for method chaining
     - _Requirements: 3.3_
 
-- [ ] 3. Checkpoint - Verify fluent API structure
+- [x] 3. Checkpoint - Verify fluent API structure
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 4. Implement title management event handlers
@@ -213,7 +213,7 @@ The implementation follows a phased approach:
     - Remove context from centralized dictionary
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
 
-- [ ] 7. Checkpoint - Verify event handlers
+- [x] 7. Checkpoint - Verify event handlers
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement utility methods
@@ -224,7 +224,7 @@ The implementation follows a phased approach:
     - Otherwise return default SolidColorBrush with RGB(148, 163, 184)
     - _Requirements: 15.1, 15.7_
   
-  - [-] 8.2 Implement ResolveTitleBrush method
+  - [x] 8.2 Implement ResolveTitleBrush method
     - Create static method that accepts TitleColorMode, titleColorKey, nodeBrush
     - If mode is CustomColor and key is "LimeGreen", return SolidColorBrush with Colors.LimeGreen
     - If mode is CustomColor and key is valid resource, return brush from Application.Current.TryFindResource
@@ -232,7 +232,7 @@ The implementation follows a phased approach:
     - If mode is NodeColor, return nodeBrush
     - _Requirements: 15.2, 15.3, 15.4, 15.5, 15.6_
   
-  - [-] 8.3 Implement CalculateTitlePosition method
+  - [x] 8.3 Implement CalculateTitlePosition method
     - Create static method that accepts Border, TextBlock, IWorkflowEditorHost
     - Get borderLeft from Canvas.GetLeft; if NaN, use node.X or 0
     - Get borderTop from Canvas.GetTop; if NaN, use node.Y or 0
@@ -243,7 +243,7 @@ The implementation follows a phased approach:
     - Return (titleLeft, titleTop)
     - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7, 16.8_
   
-  - [-] 8.4 Implement GetOrCreateDialogManager method
+  - [x] 8.4 Implement GetOrCreateDialogManager method
     - Create static method that accepts IWorkflowEditorHost
     - Check if host is WorkflowEditorWindow
     - Use reflection to access private _nodeDialogManager field
@@ -251,7 +251,7 @@ The implementation follows a phased approach:
     - Otherwise create and return new NodeDialogManager instance
     - _Requirements: 17.1, 17.2, 17.3, 17.4_
 
-- [ ] 9. Pilot migration - OutputNodeControl
+- [x] 9. Pilot migration - OutputNodeControl
   - [x] 9.1 Refactor OutputNodeControl to use BaseNodeControlHelper
     - Keep UI element creation code (grid, icon, title, border)
     - Replace all event handler registrations with fluent API initialization
@@ -261,7 +261,7 @@ The implementation follows a phased approach:
     - Verify file size reduced from ~500 lines to ~150 lines
     - _Requirements: 1.11, 18.1, 18.2, 18.3, 18.4, 18.5, 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8, 21.1, 22.1, 22.2, 22.3, 22.4_
   
-  - [-] 9.2 Test OutputNodeControl refactored implementation
+  - [x] 9.2 Test OutputNodeControl refactored implementation
     - Manually test title visibility in Hidden, Hover, Always modes
     - Test hover behavior (MouseEnter/MouseLeave)
     - Test keyboard port positioning with arrow keys
@@ -271,8 +271,8 @@ The implementation follows a phased approach:
     - Verify visual appearance matches original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 10. Pilot migration - CodeNodeControl
-  - [-] 10.1 Refactor CodeNodeControl to use BaseNodeControlHelper
+- [x] 10. Pilot migration - CodeNodeControl
+  - [x] 10.1 Refactor CodeNodeControl to use BaseNodeControlHelper
     - Keep UI element creation code (grid, icon, title, border)
     - Replace all event handler registrations with fluent API initialization
     - Define custom property handler for ColorKey to update icon fill
@@ -281,7 +281,7 @@ The implementation follows a phased approach:
     - Verify file size reduced from ~400 lines to ~120 lines
     - _Requirements: 1.11, 18.1, 18.2, 18.3, 18.4, 18.5, 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8, 21.2, 22.1, 22.2, 22.3, 22.4_
   
-  - [ ] 10.2 Test CodeNodeControl refactored implementation
+  - [x] 10.2 Test CodeNodeControl refactored implementation
     - Manually test title visibility in Hidden, Hover, Always modes
     - Test hover behavior (MouseEnter/MouseLeave)
     - Test keyboard port positioning with arrow keys
@@ -291,8 +291,8 @@ The implementation follows a phased approach:
     - Verify visual appearance matches original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 11. Pilot migration - ImageProcessingNodeControl
-  - [ ] 11.1 Refactor ImageProcessingNodeControl to use BaseNodeControlHelper
+- [x] 11. Pilot migration - ImageProcessingNodeControl
+  - [x] 11.1 Refactor ImageProcessingNodeControl to use BaseNodeControlHelper
     - Keep UI element creation code (grid, icon, title, border, resize handles)
     - Replace all event handler registrations with fluent API initialization
     - Define custom property handler for ColorKey to update icon fill
@@ -302,7 +302,7 @@ The implementation follows a phased approach:
     - Verify file size reduced from ~450 lines to ~135 lines
     - _Requirements: 1.11, 18.1, 18.2, 18.3, 18.4, 18.5, 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8, 21.3, 22.1, 22.2, 22.3, 22.4_
   
-  - [ ] 11.2 Test ImageProcessingNodeControl refactored implementation
+  - [x] 11.2 Test ImageProcessingNodeControl refactored implementation
     - Manually test title visibility in Hidden, Hover, Always modes
     - Test hover behavior (MouseEnter/MouseLeave)
     - Test keyboard port positioning with arrow keys
@@ -313,14 +313,14 @@ The implementation follows a phased approach:
     - Verify visual appearance matches original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 12. Checkpoint - Review pilot migration results
+- [x] 12. Checkpoint - Review pilot migration results
   - Ensure all tests pass, ask the user if questions arise.
   - Gather feedback on fluent API usability
   - Verify code reduction metrics (60-70%)
   - Confirm backward compatibility
 
-- [ ] 13. Incremental migration - Batch 1 (5 NodeControl classes)
-  - [ ] 13.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
+- [x] 13. Incremental migration - Batch 1 (5 NodeControl classes)
+  - [x] 13.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
     - Select 5 NodeControl classes from remaining 37+ classes
     - Apply same refactoring pattern as pilot classes
     - Define custom property handlers for node-specific properties
@@ -328,90 +328,90 @@ The implementation follows a phased approach:
     - Remove helper methods
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 13.2 Test Batch 1 NodeControl classes
+  - [x] 13.2 Test Batch 1 NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - Check for memory leaks
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 14. Incremental migration - Batch 2 (5 NodeControl classes)
-  - [ ] 14.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
+- [x] 14. Incremental migration - Batch 2 (5 NodeControl classes)
+  - [x] 14.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
     - Select next 5 NodeControl classes
     - Apply same refactoring pattern
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 14.2 Test Batch 2 NodeControl classes
+  - [x] 14.2 Test Batch 2 NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 15. Incremental migration - Batch 3 (5 NodeControl classes)
-  - [ ] 15.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
+- [x] 15. Incremental migration - Batch 3 (5 NodeControl classes)
+  - [x] 15.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
     - Select next 5 NodeControl classes
     - Apply same refactoring pattern
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 15.2 Test Batch 3 NodeControl classes
+  - [x] 15.2 Test Batch 3 NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 16. Incremental migration - Batch 4 (5 NodeControl classes)
-  - [ ] 16.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
+- [x] 16. Incremental migration - Batch 4 (5 NodeControl classes)
+  - [x] 16.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
     - Select next 5 NodeControl classes
     - Apply same refactoring pattern
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 16.2 Test Batch 4 NodeControl classes
+  - [x] 16.2 Test Batch 4 NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 17. Incremental migration - Batch 5 (5 NodeControl classes)
-  - [ ] 17.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
+- [x] 17. Incremental migration - Batch 5 (5 NodeControl classes)
+  - [x] 17.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
     - Select next 5 NodeControl classes
     - Apply same refactoring pattern
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 17.2 Test Batch 5 NodeControl classes
+  - [x] 17.2 Test Batch 5 NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 18. Incremental migration - Batch 6 (5 NodeControl classes)
-  - [ ] 18.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
+- [x] 18. Incremental migration - Batch 6 (5 NodeControl classes)
+  - [x] 18.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
     - Select next 5 NodeControl classes
     - Apply same refactoring pattern
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 18.2 Test Batch 6 NodeControl classes
+  - [x] 18.2 Test Batch 6 NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 19. Incremental migration - Batch 7 (5 NodeControl classes)
-  - [ ] 19.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
+- [x] 19. Incremental migration - Batch 7 (5 NodeControl classes)
+  - [x] 19.1 Migrate 5 NodeControl classes to use BaseNodeControlHelper
     - Select next 5 NodeControl classes
     - Apply same refactoring pattern
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 19.2 Test Batch 7 NodeControl classes
+  - [x] 19.2 Test Batch 7 NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 20. Incremental migration - Remaining NodeControl classes
-  - [ ] 20.1 Migrate all remaining NodeControl classes to use BaseNodeControlHelper
+- [x] 20. Incremental migration - Remaining NodeControl classes
+  - [x] 20.1 Migrate all remaining NodeControl classes to use BaseNodeControlHelper
     - Identify remaining unmigrated NodeControl classes (approximately 7+ classes)
     - Apply same refactoring pattern to each
     - _Requirements: 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3_
   
-  - [ ] 20.2 Test remaining NodeControl classes
+  - [x] 20.2 Test remaining NodeControl classes
     - Manually test each migrated class
     - Verify visual appearance and behavior match original
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 20.7, 20.8_
 
-- [ ] 21. Final checkpoint and documentation
+- [x] 21. Final checkpoint and documentation
   - Ensure all tests pass, ask the user if questions arise.
   - Verify all 40+ NodeControl classes have been migrated
   - Confirm code reduction metrics achieved (60-70%)

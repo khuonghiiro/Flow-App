@@ -8,10 +8,10 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Workflow;
 using FlowMy.Views;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -23,7 +23,6 @@ using System.Windows;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System.Windows.Data;
-using System.Collections.Specialized;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -36,10 +35,7 @@ namespace FlowMy.Views.NodeControls
     public static class MediaGalleryNodeControl
     {
         private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Left, Right, Top, Bottom }
-        private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
-        private const int TitleUpdateThrottleMs = 50;
-        private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
-        
+
         // Cache cho BitmapImage để tránh tải lại nhiều lần
         private static readonly System.Collections.Generic.Dictionary<string, BitmapImage> _imageCache = new();
         private static readonly object _cacheLock = new object();
@@ -325,161 +321,77 @@ namespace FlowMy.Views.NodeControls
                 Text = node.Title ?? "Gallery ảnh/video",
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = GetTitleBrush(node),
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    node.TitleColorMode,
+                    node.TitleColorKey,
+                    node.NodeBrush),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 TextAlignment = TextAlignment.Center,
-                Visibility = GetTitleVisibility(node.TitleDisplayMode, false),
-                IsHitTestVisible = false
+                IsHitTestVisible = false,
+                Visibility = node.TitleDisplayMode == TitleDisplayMode.Always
+                    ? Visibility.Visible
+                    : Visibility.Collapsed
             };
             node.TitleTextBlockUI = titleTextBlock;
 
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
-
-            bool isHovering = false;
-            if (node is INotifyPropertyChanged npc)
+            // --- Node-specific property handlers ---
+            var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                npc.PropertyChanged += (s, e) =>
+                // Gallery-specific: sync border size when Width/Height changes externally
+                [nameof(MediaGalleryNode.Width)] = ctx =>
                 {
-                    if (e.PropertyName == nameof(WorkflowNode.Title))
-                    {
-                        titleTextBlock.Text = node.Title ?? "Gallery ảnh/video";
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitlePosition(titleTextBlock, border, host);
-                    }
-                    else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
-                    {
-                        border.Background = node.NodeBrush;
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(MediaGalleryNode.TitleDisplayMode))
-                    {
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    }
-                    else if (e.PropertyName == nameof(MediaGalleryNode.TitleColorMode) || e.PropertyName == nameof(MediaGalleryNode.TitleColorKey))
-                    {
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(MediaGalleryNode.Width) || e.PropertyName == nameof(MediaGalleryNode.Height))
-                    {
-                        if (s == node && !isResizing)
-                        {
-                            border.Width = node.Width;
-                            border.Height = node.Height;
-                        }
-
-                        var baseline = border.MinHeight > 0 ? border.MinHeight : 180.0;
-                        var rawScale = baseline > 0 ? node.Height / baseline : 1.0;
-                        UpdateInteractionVisualScale(handleOverlay, node, rawScale);
-                    }
-                    else if (e.PropertyName == nameof(MediaGalleryNode.FrameDisplayWidth) || e.PropertyName == nameof(MediaGalleryNode.FrameDisplayHeight))
-                    {
-                        itemsControl.ItemTemplate = CreateGalleryItemTemplate(node);
-                        groupsControl.ItemTemplate = CreateGroupTemplate(node);
-                    }
-                    else if (e.PropertyName == nameof(MediaGalleryNode.DisplayMode))
-                    {
-                        UpdatePlaceholderAndMode();
-                    }
-                };
-            }
-
-            border.MouseEnter += (s, e) =>
-            {
-                isHovering = true;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
+                    if (!isResizing)
+                        border.Width = node.Width;
+                    var baseline = border.MinHeight > 0 ? border.MinHeight : 180.0;
+                    var rawScale = baseline > 0 ? node.Height / baseline : 1.0;
+                    UpdateInteractionVisualScale(handleOverlay, node, rawScale);
+                },
+                [nameof(MediaGalleryNode.Height)] = ctx =>
                 {
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    UpdateTitlePosition(titleTextBlock, border, host);
+                    if (!isResizing)
+                        border.Height = node.Height;
+                    var baseline = border.MinHeight > 0 ? border.MinHeight : 180.0;
+                    var rawScale = baseline > 0 ? node.Height / baseline : 1.0;
+                    UpdateInteractionVisualScale(handleOverlay, node, rawScale);
+                },
+                // Gallery-specific: rebuild item templates when frame size changes
+                [nameof(MediaGalleryNode.FrameDisplayWidth)] = ctx =>
+                {
+                    itemsControl.ItemTemplate = CreateGalleryItemTemplate(node);
+                    groupsControl.ItemTemplate = CreateGroupTemplate(node);
+                },
+                [nameof(MediaGalleryNode.FrameDisplayHeight)] = ctx =>
+                {
+                    itemsControl.ItemTemplate = CreateGalleryItemTemplate(node);
+                    groupsControl.ItemTemplate = CreateGroupTemplate(node);
+                },
+                // Gallery-specific: update placeholder/mode visibility when DisplayMode changes
+                [nameof(MediaGalleryNode.DisplayMode)] = ctx =>
+                {
+                    UpdatePlaceholderAndMode();
                 }
-                Application.Current.Dispatcher.BeginInvoke(
-                    System.Windows.Threading.DispatcherPriority.Input,
-                    new Action(() => { if (isHovering) border.Focus(); }));
-            };
-            border.MouseLeave += (s, e) =>
-            {
-                isHovering = false;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
             };
 
-            // Keyboard Port Position: Arrow = Port IN, Shift+Arrow = Port OUT
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
-                {
-                    Key.Left  => PortPosition.Left,
-                    Key.Up    => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down  => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-            };
+            // --- Initialize with fluent API ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync(customPropertyHandlers)
+                .WithDialogSupport(ctx => new MediaGalleryNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
-            var visibilityDescriptor = DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty, typeof(Border));
-            visibilityDescriptor?.AddValueChanged(border, (s, e) =>
-            {
-                if (border.Visibility != Visibility.Visible)
-                    titleTextBlock.Visibility = Visibility.Collapsed;
-                else
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-            });
-
+            // Gallery-specific: initialize resize handle scale on load
             border.Loaded += (s, e) =>
             {
-                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                {
-                    host.WorkflowCanvas.Children.Add(titleTextBlock);
-                    Panel.SetZIndex(titleTextBlock, 20000);
-                    UpdateTitlePosition(titleTextBlock, border, host);
-                }
-
                 var loadedBaseline = border.MinHeight > 0 ? border.MinHeight : 180.0;
                 var loadedScale = loadedBaseline > 0 ? node.Height / loadedBaseline : 1.0;
                 UpdateInteractionVisualScale(handleOverlay, node, loadedScale);
-            };
-            border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
-            border.Unloaded += (s, e) =>
-            {
-                try
-                {
-                    if (_titleUpdateTimers.TryGetValue(border, out var t)) { t.Stop(); _titleUpdateTimers.Remove(border); }
-                    _titleUpdatedAfterZoom.Remove(border);
-                    if (host.WorkflowCanvas != null && host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                        host.WorkflowCanvas.Children.Remove(titleTextBlock);
-                    if (ReferenceEquals(node.TitleTextBlockUI, titleTextBlock))
-                        node.TitleTextBlockUI = null;
-                }
-                catch { }
-            };
-
-            border.LayoutUpdated += (s, e) =>
-            {
-                if (border.Visibility != Visibility.Visible) { titleTextBlock.Visibility = Visibility.Collapsed; return; }
-                if (NodeChrome.IsZooming) { titleTextBlock.Visibility = Visibility.Collapsed; _titleUpdatedAfterZoom[border] = false; return; }
-                if (!_titleUpdatedAfterZoom.TryGetValue(border, out var up) || !up)
-                {
-                    _titleUpdatedAfterZoom[border] = true;
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    if (titleTextBlock.Visibility == Visibility.Visible)
-                        UpdateTitlePosition(titleTextBlock, border, host);
-                }
-                if (host.IsPanning || host.DraggedNode == node) return;
-                if (titleTextBlock.Visibility == Visibility.Visible)
-                    ThrottledUpdateTitlePosition(titleTextBlock, border, host);
-            };
-
-            border.MouseRightButtonUp += (s, e) =>
-            {
-                e.Handled = true;
-                OpenNodeDialog(node, host, ownerWindow);
             };
 
             return border;
@@ -1350,120 +1262,10 @@ namespace FlowMy.Views.NodeControls
             };
         }
 
-        private static Brush GetTitleBrush(MediaGalleryNode node)
+        private static Brush? GetBrushFromTheme(string resourceKey)
         {
-            // Màu theo node: mode NodeColor hoặc key rỗng/"NodeColor" (theo NODE_DIALOG_GUIDE)
-            if (node.TitleColorMode != TitleColorMode.CustomColor ||
-                string.IsNullOrEmpty(node.TitleColorKey) ||
-                node.TitleColorKey == "NodeColor")
-                return node.NodeBrush;
-            if (node.TitleColorKey == "LimeGreen") return new SolidColorBrush(Colors.LimeGreen);
-            var brush = Application.Current.TryFindResource(node.TitleColorKey) as Brush;
-            return brush ?? node.NodeBrush;
-        }
-
-        private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)
-        {
-            return mode switch
-            {
-                TitleDisplayMode.Hidden => Visibility.Collapsed,
-                TitleDisplayMode.Hover => isHovering ? Visibility.Visible : Visibility.Collapsed,
-                TitleDisplayMode.Always => Visibility.Visible,
-                _ => Visibility.Collapsed
-            };
-        }
-
-        private static void UpdateTitleVisibility(TextBlock tb, TitleDisplayMode mode, bool isHovering, Border? nodeBorder = null)
-        {
-            if (nodeBorder != null && nodeBorder.Visibility != Visibility.Visible) { tb.Visibility = Visibility.Collapsed; return; }
-            tb.Visibility = GetTitleVisibility(mode, isHovering);
-        }
-
-        private static void ThrottledUpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (!_titleUpdateTimers.TryGetValue(border, out var timer))
-            {
-                timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TitleUpdateThrottleMs) };
-                timer.Tick += (s, e) => { timer.Stop(); UpdateTitlePosition(tb, border, host); };
-                _titleUpdateTimers[border] = timer;
-            }
-            timer.Stop();
-            timer.Start();
-        }
-
-        private static void UpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (host.WorkflowCanvas == null || !host.WorkflowCanvas.Children.Contains(tb)) return;
-            var left = Canvas.GetLeft(border);
-            var top = Canvas.GetTop(border);
-            if (double.IsNaN(left) && border.Tag is WorkflowNode n) left = n.X;
-            if (double.IsNaN(top) && border.Tag is WorkflowNode n2) top = n2.Y;
-            if (double.IsNaN(left)) left = 0;
-            if (double.IsNaN(top)) top = 0;
-            if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
-            {
-                tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                tb.Arrange(new Rect(tb.DesiredSize));
-            }
-            var titleLeft = left + (border.ActualWidth / 2) - (tb.ActualWidth / 2);
-            var titleTop = top - tb.ActualHeight - 4;
-            Canvas.SetLeft(tb, titleLeft);
-            Canvas.SetTop(tb, titleTop);
-        }
-
-        private static void OpenNodeDialog(MediaGalleryNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            try
-            {
-                if (node.Border != null && node.Border.IsMouseCaptured)
-                    node.Border.ReleaseMouseCapture();
-                host.DraggedNode = null;
-                if (host.ViewModel != null)
-                    host.ViewModel.SelectedNode = null;
-                var dialogManager = GetOrCreateDialogManager(host);
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
-                    dialogManager.CloseCurrentDialog();
-                var dialog = new MediaGalleryNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
-                dialogManager.OpenDialog(node, dialog, host);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            if (host is WorkflowEditorWindow window)
-            {
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
-            }
-            return new NodeDialogManager();
-        }
-
-        private static void ChangePortPosition(
-            WorkflowNode node, PortPosition newPosition, bool isInputPort, IWorkflowEditorHost host)
-        {
-            if (node.Ports == null || node.Ports.Count == 0) return;
-            var port = isInputPort
-                ? node.Ports.FirstOrDefault(p => p.IsInput)
-                : node.Ports.FirstOrDefault(p => !p.IsInput);
-            if (port == null || port.Position == newPosition) return;
-            port.Position = newPosition;
-            host.UpdatePortsPositionOnSide(node, newPosition);
-            var cons = host.ViewModel?.Connections;
-            if (cons != null && cons.Count > 0)
-            {
-                try
-                {
-                    host.ConnectionRenderer.UpdateAllConnectionPaths(cons);
-                    host.ConnectionRenderer.UpdateAllConnectionAnimations(cons);
-                }
-                catch { }
-            }
+            try { return Application.Current.TryFindResource(resourceKey) as Brush; }
+            catch { return null; }
         }
     }
 }

@@ -4,9 +4,11 @@ using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utils;
 using FlowMy.Services.Workflow;
+using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Text;
@@ -27,7 +29,6 @@ namespace FlowMy.Views.NodeControls
     {
         private enum ResizeDirection { None, TopLeft, TopRight, BottomLeft, BottomRight, Left, Right, Top, Bottom }
         private static readonly System.Collections.Generic.Dictionary<Border, DispatcherTimer> _titleUpdateTimers = new();
-        private const int TitleUpdateThrottleMs = 50;
         private static readonly System.Collections.Generic.Dictionary<Border, bool> _titleUpdatedAfterZoom = new();
         /// <summary>Lưu X,Y,W,H trước khi phóng to khung nhìn — mỗi border một mục.</summary>
         private static readonly System.Collections.Generic.Dictionary<Border, (double x, double y, double w, double h)> _viewportExpandRestore = new();
@@ -4058,11 +4059,16 @@ namespace FlowMy.Views.NodeControls
                 Text = node.Title ?? "HTML UI",
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = GetTitleBrush(node),
+                Foreground = BaseNodeControlHelper.ResolveTitleBrush(
+                    node.TitleColorMode,
+                    node.TitleColorKey,
+                    node.NodeBrush),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 TextAlignment = TextAlignment.Center,
-                Visibility = GetTitleVisibility(node.TitleDisplayMode, false),
+                Visibility = node.TitleDisplayMode == TitleDisplayMode.Always
+                    ? Visibility.Visible
+                    : Visibility.Collapsed,
                 IsHitTestVisible = false
             };
             node.TitleTextBlockUI = titleTextBlock;
@@ -4111,116 +4117,49 @@ namespace FlowMy.Views.NodeControls
                 UpdateInteractionVisualScale(handleOverlay, node, topBottomScaleFactor);
             }
 
-            border.Focusable = true;
-            border.FocusVisualStyle = null;
-
-            bool isHovering = false;
-            if (node is INotifyPropertyChanged npc)
+            // --- Node-specific property handlers for HtmlUiNode-specific properties ---
+            var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
             {
-                npc.PropertyChanged += (s, e) =>
+                // IsViewportExpanded: update chrome look and scale
+                [nameof(HtmlUiNode.IsViewportExpanded)] = ctx =>
                 {
-                    if (e.PropertyName == nameof(WorkflowNode.Title))
-                    {
-                        titleTextBlock.Text = node.Title ?? "HTML UI";
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitlePosition(titleTextBlock, border, host);
-                    }
-                    else if (e.PropertyName == nameof(WorkflowNode.NodeBrush))
-                    {
-                        border.Background = node.NodeBrush;
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(HtmlUiNode.TitleDisplayMode))
-                    {
-                        if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                            UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    }
-                    else if (e.PropertyName == nameof(HtmlUiNode.TitleColorMode) || e.PropertyName == nameof(HtmlUiNode.TitleColorKey))
-                    {
-                        titleTextBlock.Foreground = GetTitleBrush(node);
-                    }
-                    else if (e.PropertyName == nameof(HtmlUiNode.IsViewportExpanded))
-                    {
-                        ApplyHtmlUiTopBarExpandedLook(node.IsViewportExpanded);
-                        RefreshHtmlUiChromeScale();
-                    }
-                    else if (e.PropertyName == nameof(HtmlUiNode.Width) || e.PropertyName == nameof(HtmlUiNode.Height))
-                    {
-                        if (s == node && !isResizing)
-                        {
-                            border.Width = node.Width;
-                            border.Height = node.Height;
-                        }
-
-                        // Scale UI elements ở topBar và bottomBar theo Height
-                        // Dùng công thức tuyệt đối: scale = node.Height / heightBaseline
-                        // Chạy cả khi đang resize (PropertyChanged do PreviewMouseMove trigger) để scale liên tục
-                        if (e.PropertyName == nameof(HtmlUiNode.Height))
-                        {
-                            RefreshHtmlUiChromeScale();
-                        }
-                    }
-                };
-            }
-
-            border.MouseEnter += (s, e) =>
-            {
-                isHovering = true;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
+                    ApplyHtmlUiTopBarExpandedLook(node.IsViewportExpanded);
+                    RefreshHtmlUiChromeScale();
+                },
+                // Width/Height: sync border size when changed externally (not during resize)
+                [nameof(HtmlUiNode.Width)] = ctx =>
                 {
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    UpdateTitlePosition(titleTextBlock, border, host);
+                    if (!isResizing)
+                    {
+                        border.Width = node.Width;
+                        border.Height = node.Height;
+                    }
+                },
+                [nameof(HtmlUiNode.Height)] = ctx =>
+                {
+                    if (!isResizing)
+                    {
+                        border.Width = node.Width;
+                        border.Height = node.Height;
+                    }
+                    RefreshHtmlUiChromeScale();
                 }
-                Application.Current.Dispatcher.BeginInvoke(
-                    System.Windows.Threading.DispatcherPriority.Input,
-                    new Action(() => { if (isHovering) border.Focus(); }));
-            };
-            border.MouseLeave += (s, e) =>
-            {
-                isHovering = false;
-                if (node.Border != null && node.Border.Visibility == Visibility.Visible)
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
             };
 
-            // Keyboard Port Position: Arrow = Port IN, Shift+Arrow = Port OUT
-            border.PreviewKeyDown += (s, e) =>
-            {
-                if (!isHovering) return;
-                bool isShift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                PortPosition? newPos = e.Key switch
-                {
-                    Key.Left  => PortPosition.Left,
-                    Key.Up    => PortPosition.Top,
-                    Key.Right => PortPosition.Right,
-                    Key.Down  => PortPosition.Bottom,
-                    _ => null
-                };
-                if (newPos == null) return;
-                e.Handled = true;
-                ChangePortPosition(node, newPos.Value, isShift ? false : true, host);
-            };
+            // --- Initialize with fluent API (replaces duplicated title/hover/keyboard/property/visibility/canvas event handlers) ---
+            BaseNodeControlHelper
+                .Initialize(border, titleTextBlock, node, host)
+                .WithTitleManagement()
+                .WithHoverBehavior()
+                .WithKeyboardPorts()
+                .WithPropertySync(customPropertyHandlers)
+                .WithDialogSupport(ctx => new HtmlUiNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
+                .WithCleanup()
+                .WithVisibilitySync()
+                .WithCanvasIntegration()
+                .Build();
 
-            var visibilityDescriptor = DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty, typeof(Border));
-            visibilityDescriptor?.AddValueChanged(border, (s, e) =>
-            {
-                if (border.Visibility != Visibility.Visible)
-                    titleTextBlock.Visibility = Visibility.Collapsed;
-                else
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-            });
-
-            border.Loaded += (s, e) =>
-            {
-                if (host.WorkflowCanvas != null && !host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                {
-                    host.WorkflowCanvas.Children.Add(titleTextBlock);
-                    Panel.SetZIndex(titleTextBlock, 20000);
-                    UpdateTitlePosition(titleTextBlock, border, host);
-                }
-                ApplyHtmlUiTopBarExpandedLook(node.IsViewportExpanded);
-                RefreshHtmlUiChromeScale();
-            };
-            border.SizeChanged += (s, e) => UpdateTitlePosition(titleTextBlock, border, host);
+            // --- WebView2-specific Unloaded cleanup (in addition to BaseNodeControlHelper cleanup) ---
             border.Unloaded += (s, e) =>
             {
                 try
@@ -4253,19 +4192,15 @@ namespace FlowMy.Views.NodeControls
                     translateXDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
                     translateYDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
                     System.Windows.Media.CompositionTarget.Rendering -= renderingHandler;
-                    if (host.WorkflowCanvas != null && host.WorkflowCanvas.Children.Contains(titleTextBlock))
-                        host.WorkflowCanvas.Children.Remove(titleTextBlock);
-                    if (ReferenceEquals(node.TitleTextBlockUI, titleTextBlock))
-                        node.TitleTextBlockUI = null;
                 }
                 catch { }
             };
 
+            // --- WebView2-specific LayoutUpdated handler (manages WebView2 visibility during zoom/pan/drag) ---
             border.LayoutUpdated += (s, e) =>
             {
                 if (border.Visibility != Visibility.Visible)
                 {
-                    titleTextBlock.Visibility = Visibility.Collapsed;
                     if (webView.Visibility != Visibility.Collapsed)
                         webView.Visibility = Visibility.Collapsed;
                     return;
@@ -4275,7 +4210,6 @@ namespace FlowMy.Views.NodeControls
 
                 if (isZooming)
                 {
-                    titleTextBlock.Visibility = Visibility.Collapsed;
                     _titleUpdatedAfterZoom[border] = false;
                     if (webView.Visibility != Visibility.Collapsed)
                         webView.Visibility = Visibility.Collapsed;
@@ -4300,10 +4234,6 @@ namespace FlowMy.Views.NodeControls
                     if (webView.Visibility != Visibility.Visible)
                         webView.Visibility = Visibility.Visible;
                     SyncWebViewPosition();
-
-                    UpdateTitleVisibility(titleTextBlock, node.TitleDisplayMode, isHovering, border);
-                    if (titleTextBlock.Visibility == Visibility.Visible)
-                        UpdateTitlePosition(titleTextBlock, border, host);
                 }
                 else
                 {
@@ -4314,21 +4244,13 @@ namespace FlowMy.Views.NodeControls
                         SyncWebViewPosition();
                     }
                 }
-
-                if (titleTextBlock.Visibility == Visibility.Visible)
-                    ThrottledUpdateTitlePosition(titleTextBlock, border, host);
             };
 
-            border.MouseRightButtonUp += (s, e) =>
+            // --- Extra Loaded initialization (chrome scale and viewport expanded look) ---
+            border.Loaded += (s, e) =>
             {
-                e.Handled = true;
-                // ✅ Clear DraggedNode ngay lập tức khi chuột phải để WebView2 không bị ẩn
-                if (node.Border != null && node.Border.IsMouseCaptured)
-                    node.Border.ReleaseMouseCapture();
-                host.DraggedNode = null;
-                if (host.ViewModel != null)
-                    host.ViewModel.SelectedNode = null;
-                OpenNodeDialog(node, host, ownerWindow);
+                ApplyHtmlUiTopBarExpandedLook(node.IsViewportExpanded);
+                RefreshHtmlUiChromeScale();
             };
 
             RestartSleepModeTimer();
@@ -4405,78 +4327,6 @@ namespace FlowMy.Views.NodeControls
                 ResizeDirection.Top or ResizeDirection.Bottom => Cursors.SizeNS,
                 _ => Cursors.Arrow
             };
-        }
-
-        private static Brush GetTitleBrush(HtmlUiNode node)
-        {
-            if (node.TitleColorMode != TitleColorMode.CustomColor || string.IsNullOrEmpty(node.TitleColorKey) || node.TitleColorKey == "NodeColor")
-                return node.NodeBrush;
-            if (node.TitleColorKey == "LimeGreen") return new SolidColorBrush(Colors.LimeGreen);
-            var brush = Application.Current.TryFindResource(node.TitleColorKey) as Brush;
-            return brush ?? node.NodeBrush;
-        }
-
-        private static Visibility GetTitleVisibility(TitleDisplayMode mode, bool isHovering)
-        {
-            return mode switch
-            {
-                TitleDisplayMode.Hidden => Visibility.Collapsed,
-                TitleDisplayMode.Hover => isHovering ? Visibility.Visible : Visibility.Collapsed,
-                TitleDisplayMode.Always => Visibility.Visible,
-                _ => Visibility.Collapsed
-            };
-        }
-
-        private static void UpdateTitleVisibility(TextBlock tb, TitleDisplayMode mode, bool isHovering, Border? nodeBorder = null)
-        {
-            if (nodeBorder != null && nodeBorder.Visibility != Visibility.Visible) { tb.Visibility = Visibility.Collapsed; return; }
-            tb.Visibility = GetTitleVisibility(mode, isHovering);
-        }
-
-        private static void ThrottledUpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (!_titleUpdateTimers.TryGetValue(border, out var timer))
-            {
-                timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TitleUpdateThrottleMs) };
-                timer.Tick += (s, e) => { timer.Stop(); UpdateTitlePosition(tb, border, host); };
-                _titleUpdateTimers[border] = timer;
-            }
-            timer.Stop();
-            timer.Start();
-        }
-
-        private static void UpdateTitlePosition(TextBlock tb, Border border, IWorkflowEditorHost host)
-        {
-            if (host.WorkflowCanvas == null || !host.WorkflowCanvas.Children.Contains(tb)) return;
-            if (border == null) return;
-
-            var left = Canvas.GetLeft(border);
-            var top = Canvas.GetTop(border);
-
-            // Fallback: lấy từ node nếu Canvas position chưa được set
-            if (double.IsNaN(left) && border.Tag is WorkflowNode n) left = n.X;
-            if (double.IsNaN(top) && border.Tag is WorkflowNode n2) top = n2.Y;
-
-            // Fallback cuối cùng: dùng 0 nếu vẫn không có giá trị
-            if (double.IsNaN(left)) left = 0;
-            if (double.IsNaN(top)) top = 0;
-
-            // Measure nếu chưa có kích thước
-            if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
-            {
-                tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                tb.Arrange(new Rect(tb.DesiredSize));
-            }
-
-            // Tính toán và set position
-            var titleLeft = left + (border.ActualWidth / 2) - (tb.ActualWidth / 2);
-            var titleTop = top - tb.ActualHeight - 4;
-
-            Canvas.SetLeft(tb, titleLeft);
-            Canvas.SetTop(tb, titleTop);
-
-            // Force update để đảm bảo hiển thị ngay lập tức
-            tb.InvalidateVisual();
         }
 
         private static Rect GetWorkflowViewportCanvasRect(IWorkflowEditorHost host)
@@ -4584,56 +4434,6 @@ namespace FlowMy.Views.NodeControls
                         win1.SetViewportExpandedUiHidden(false);
                 }
             }));
-        }
-
-        private static void OpenNodeDialog(HtmlUiNode node, IWorkflowEditorHost host, Window? ownerWindow)
-        {
-            try
-            {
-                if (node.Border != null && node.Border.IsMouseCaptured)
-                    node.Border.ReleaseMouseCapture();
-                host.DraggedNode = null;
-                if (host.ViewModel != null)
-                    host.ViewModel.SelectedNode = null;
-
-                var dialogManager = GetOrCreateDialogManager(host);
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode == node) return;
-                if (dialogManager.IsDialogOpen && dialogManager.CurrentNode != node)
-                    dialogManager.CloseCurrentDialog();
-                var dialog = new HtmlUiNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow);
-                dialogManager.OpenDialog(node, dialog, host);
-
-                // ✅ Đảm bảo WebView2 được hiển thị lại ngay sau khi dialog mở
-                // Dùng Dispatcher.BeginInvoke với priority cao để đảm bảo chạy ngay lập tức
-                host.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    // Tìm WebView2 trong border và hiển thị lại
-                    if (node.Border?.Child is Grid outerGrid && outerGrid.Children.Count > 0)
-                    {
-                        if (outerGrid.Children[0] is Grid innerGrid && innerGrid.Children.Count > 1)
-                        {
-                            if (innerGrid.Children[1] is Microsoft.Web.WebView2.Wpf.WebView2 webView)
-                            {
-                                webView.Visibility = Visibility.Visible;
-                            }
-                        }
-                    }
-                }), DispatcherPriority.Render);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Dialog error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private static NodeDialogManager GetOrCreateDialogManager(IWorkflowEditorHost host)
-        {
-            if (host is WorkflowEditorWindow window)
-            {
-                var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field?.GetValue(window) is NodeDialogManager manager) return manager;
-            }
-            return new NodeDialogManager();
         }
 
         /// <summary>
