@@ -96,11 +96,6 @@ namespace FlowMy.Views.Overlays
             return item;
         }
 
-        protected override void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            base.ViewModel_PropertyChanged(sender, e);
-        }
-
         private void UpdatePanelVisibility()
         {
             var loopType = _viewModel.LoopType;
@@ -131,38 +126,6 @@ namespace FlowMy.Views.Overlays
                 else
                     textBox.Background = new SolidColorBrush(Color.FromArgb(48, 255, 68, 68));
             };
-        }
-
-        private void TitleColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateTitleColorPreview();
-        }
-
-        private void UpdateTitleColorPreview()
-        {
-            if (TitleColorPreview == null || TitleColorComboBox?.SelectedValue == null) return;
-
-            var colorKey = TitleColorComboBox.SelectedValue.ToString();
-            Brush? brush = null;
-
-            if (string.IsNullOrEmpty(colorKey) || colorKey == "NodeColor")
-            {
-                // Màu theo node - lấy từ node hiện tại
-                if (_viewModel?.Node != null)
-                {
-                    brush = _viewModel.Node.NodeBrush;
-                }
-            }
-            else if (colorKey == "LimeGreen")
-            {
-                brush = new SolidColorBrush(Colors.LimeGreen);
-            }
-            else
-            {
-                brush = Application.Current.TryFindResource(colorKey) as Brush;
-            }
-
-            TitleColorPreview.Background = brush ?? new SolidColorBrush(Colors.Gray);
         }
 
         private void BuildCustomOutputsPanel()

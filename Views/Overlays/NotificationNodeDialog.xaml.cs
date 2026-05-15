@@ -30,11 +30,6 @@ namespace FlowMy.Views.Overlays
 
         protected override Panel? GetOutputsPanel() => null;
 
-        protected override void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            base.ViewModel_PropertyChanged(sender, e);
-        }
-
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.SaveTitleCommand.Execute(null);

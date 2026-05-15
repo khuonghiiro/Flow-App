@@ -530,5 +530,96 @@ namespace FlowMy.Views.Overlays
             ViewModel.SaveTitleCommand.Execute(null);
             Close();
         }
+
+        /// <summary>
+        /// Event handler for TitleColorComboBox.SelectionChanged — updates the color preview.
+        /// Derived classes wire this in XAML: SelectionChanged="TitleColorComboBox_SelectionChanged"
+        /// </summary>
+        protected virtual void TitleColorComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            UpdateTitleColorPreview();
+        }
+
+        /// <summary>
+        /// Updates the TitleColorPreview border background based on the selected color key.
+        /// Call this from the constructor after InitializeBase() and from TitleColorComboBox_SelectionChanged.
+        /// Requires XAML controls named TitleColorPreview (Border) and TitleColorComboBox (ComboBox).
+        /// </summary>
+        protected void UpdateTitleColorPreview()
+        {
+            // Find controls by name — derived classes may have these in their XAML
+            var preview = FindName("TitleColorPreview") as System.Windows.Controls.Border;
+            var combo = FindName("TitleColorComboBox") as System.Windows.Controls.ComboBox;
+
+            if (preview == null) return;
+
+            // If combo not found or no selection, try to get colorKey from ViewModel
+            string? colorKey = combo?.SelectedValue?.ToString();
+            if (colorKey == null && ViewModel != null)
+                colorKey = (ViewModel.GetType().GetProperty("TitleColorKey")?.GetValue(ViewModel) as string);
+
+            System.Windows.Media.Brush? brush = null;
+            if (string.IsNullOrEmpty(colorKey) || colorKey == "NodeColor")
+            {
+                // Get NodeBrush from ViewModel.Node via reflection
+                var node = ViewModel?.GetType().GetProperty("Node")?.GetValue(ViewModel);
+                brush = node?.GetType().GetProperty("NodeBrush")?.GetValue(node) as System.Windows.Media.Brush;
+            }
+            else if (colorKey == "LimeGreen")
+            {
+                brush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LimeGreen);
+            }
+            else
+            {
+                brush = Application.Current.TryFindResource(colorKey) as System.Windows.Media.Brush;
+            }
+
+            preview.Background = brush ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+        }
+
+        /// <summary>
+        /// Opens a WinForms ColorDialog and returns the selected color as #RRGGBB hex string, or null if cancelled.
+        /// </summary>
+        protected static string? ShowColorPicker(string? currentHex)
+        {
+            try
+            {
+                using var dialog = new System.Windows.Forms.ColorDialog { FullOpen = true };
+                if (!string.IsNullOrWhiteSpace(currentHex) &&
+                    currentHex.StartsWith("#", StringComparison.OrdinalIgnoreCase))
+                {
+                    try { dialog.Color = System.Drawing.ColorTranslator.FromHtml(currentHex); } catch { }
+                }
+                return dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
+                    ? $"#{dialog.Color.R:X2}{dialog.Color.G:X2}{dialog.Color.B:X2}"
+                    : null;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Resolves a brush from a hex color string (#RRGGBB), "LimeGreen", or a resource key.
+        /// Falls back to the provided fallback brush if resolution fails.
+        /// </summary>
+        protected static System.Windows.Media.Brush ResolveBrush(string? key, System.Windows.Media.Brush fallback)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return fallback;
+            try
+            {
+                if (key == "LimeGreen")
+                    return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LimeGreen);
+                if (key.StartsWith("#", StringComparison.OrdinalIgnoreCase))
+                {
+                    var bc = new System.Windows.Media.BrushConverter();
+                    if (bc.ConvertFromString(key) is System.Windows.Media.Brush fromHex) return fromHex;
+                }
+                var resource = Application.Current.TryFindResource(key);
+                if (resource is System.Windows.Media.Brush b) return b;
+                if (resource is System.Windows.Media.Color c)
+                    return new System.Windows.Media.SolidColorBrush(c);
+            }
+            catch { }
+            return fallback;
+        }
     }
 }

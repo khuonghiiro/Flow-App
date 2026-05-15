@@ -21,12 +21,6 @@ public partial class FlowOverwriteNodeDialog : BaseNodeDialog
     protected override Panel? GetInputsPanel() => InputsPanel;
     protected override Panel? GetOutputsPanel() => OutputsPanel;
 
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.SaveTitleCommand.Execute(null);
-        Close();
-    }
-
     private void AddSource_Click(object sender, RoutedEventArgs e) => _viewModel.AddSource();
 
     private void RemoveSource_Click(object sender, RoutedEventArgs e)

@@ -68,11 +68,6 @@ public partial class KeyValueBridgeNodeDialog : BaseNodeDialog
         Close();
     }
 
-    private void TitleColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        UpdateTitleColorPreview();
-    }
-
     private void AddAdditionalAppendSource_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.AddAdditionalAppendSource();
@@ -83,23 +78,6 @@ public partial class KeyValueBridgeNodeDialog : BaseNodeDialog
         if (sender is not FrameworkElement fe) return;
         if (fe.DataContext is not KeyValueBridgeAppendSourceItemViewModel item) return;
         _viewModel.RemoveAdditionalAppendSource(item);
-    }
-
-    private void UpdateTitleColorPreview()
-    {
-        if (TitleColorPreview == null) return;
-
-        var colorKey = _viewModel.TitleColorKey;
-        Brush? brush = null;
-
-        if (string.IsNullOrEmpty(colorKey) || colorKey == "NodeColor")
-            brush = _viewModel.Node?.NodeBrush;
-        else if (colorKey == "LimeGreen")
-            brush = new SolidColorBrush(Colors.LimeGreen);
-        else
-            brush = Application.Current.TryFindResource(colorKey) as Brush;
-
-        TitleColorPreview.Background = brush ?? new SolidColorBrush(Colors.Gray);
     }
 
     protected override FrameworkElement CreateInputItemUI(InputItemViewModel inputVm)

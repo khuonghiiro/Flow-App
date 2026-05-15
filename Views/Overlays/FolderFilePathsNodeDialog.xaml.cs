@@ -24,12 +24,6 @@ namespace FlowMy.Views.Overlays
         protected override Panel? GetInputsPanel() => null;
         protected override Panel? GetOutputsPanel() => OutputsPanel;
 
-        private new void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            ViewModel.SaveTitleCommand.Execute(null);
-            Close();
-        }
-
         private void BrowseFolder_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new OpenFolderDialog
@@ -39,29 +33,6 @@ namespace FlowMy.Views.Overlays
             };
             if (dlg.ShowDialog(this) == true && !string.IsNullOrWhiteSpace(dlg.FolderName))
                 _vm.FolderPath = dlg.FolderName;
-        }
-
-        private void TitleColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateTitleColorPreview();
-        }
-
-        private void UpdateTitleColorPreview()
-        {
-            if (TitleColorPreview == null || TitleColorComboBox?.SelectedValue == null) return;
-
-            var colorKey = TitleColorComboBox.SelectedValue.ToString();
-            System.Windows.Media.Brush? brush = null;
-
-            if (string.IsNullOrEmpty(colorKey) || colorKey == "NodeColor")
-                brush = _vm?.Node?.NodeBrush;
-            else if (colorKey == "LimeGreen")
-                brush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LimeGreen);
-            else
-                brush = Application.Current.TryFindResource(colorKey) as System.Windows.Media.Brush
-                     ?? Application.Current.TryFindResource($"{colorKey}Brush") as System.Windows.Media.Brush;
-
-            TitleColorPreview.Background = brush ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
         }
     }
 }

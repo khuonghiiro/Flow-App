@@ -75,42 +75,6 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void TitleColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateTitleColorPreview();
-        }
-
-        private void UpdateTitleColorPreview()
-        {
-            if (TitleColorPreview == null || TitleColorComboBox?.SelectedValue == null) return;
-
-            var colorKey = TitleColorComboBox.SelectedValue.ToString();
-            System.Windows.Media.Brush? brush = null;
-
-            if (string.IsNullOrEmpty(colorKey) || colorKey == "NodeColor")
-            {
-                if (_viewModel?.Node != null)
-                {
-                    brush = _viewModel.Node.NodeBrush;
-                }
-            }
-            else if (colorKey == "LimeGreen")
-            {
-                brush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LimeGreen);
-            }
-            else
-            {
-                brush = Application.Current.TryFindResource(colorKey) as System.Windows.Media.Brush;
-            }
-
-            TitleColorPreview.Background = brush ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            ViewModel.SaveTitleCommand.Execute(null);
-            Close();
-        }
     }
 }
 

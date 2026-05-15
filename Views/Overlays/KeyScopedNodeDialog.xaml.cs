@@ -23,32 +23,4 @@ public partial class KeyScopedNodeDialog : BaseNodeDialog
 
     protected override Panel? GetInputsPanel() => InputsPanel;
     protected override Panel? GetOutputsPanel() => OutputsPanel;
-
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.SaveTitleCommand.Execute(null);
-        Close();
-    }
-
-    private void TitleColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        UpdateTitleColorPreview();
-    }
-
-    private void UpdateTitleColorPreview()
-    {
-        if (TitleColorPreview == null) return;
-
-        var colorKey = _viewModel.TitleColorKey;
-        Brush? brush = null;
-
-        if (string.IsNullOrEmpty(colorKey) || colorKey == "NodeColor")
-            brush = _viewModel.Node?.NodeBrush;
-        else if (colorKey == "LimeGreen")
-            brush = new SolidColorBrush(Colors.LimeGreen);
-        else
-            brush = Application.Current.TryFindResource(colorKey) as Brush;
-
-        TitleColorPreview.Background = brush ?? new SolidColorBrush(Colors.Gray);
-    }
 }
