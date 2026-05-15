@@ -444,8 +444,14 @@ namespace FlowMy.Views.NodeControls.Helpers
                 {
                     var descriptor = DependencyPropertyDescriptor.FromProperty(
                         UIElement.VisibilityProperty, typeof(Border));
-                    descriptor?.AddValueChanged(_context.Border, (s, e) =>
-                        HandleVisibilityChanged(_context));
+                    if (descriptor != null)
+                    {
+                        EventHandler handler = (s, e) => HandleVisibilityChanged(_context);
+                        descriptor.AddValueChanged(_context.Border, handler);
+                        // Track for cleanup — DependencyPropertyDescriptor handlers are NOT
+                        // standard CLR events and must be removed via RemoveValueChanged.
+                        _context.TrackDpDescriptorHandler(descriptor, _context.Border, handler);
+                    }
                 });
                 return this;
             }
@@ -1373,6 +1379,24 @@ namespace FlowMy.Views.NodeControls.Helpers
             /// </summary>
             private readonly List<(object target, Delegate handler)> _eventHandlers = new();
 
+            /// <summary>
+            /// Tracks DependencyPropertyDescriptor value-changed handlers for cleanup.
+            /// These are NOT standard CLR events and must be removed via RemoveValueChanged.
+            /// </summary>
+            private readonly List<(DependencyPropertyDescriptor descriptor, DependencyObject target, EventHandler handler)> _dpDescriptorHandlers = new();
+
+            /// <summary>
+            /// Registers a DependencyPropertyDescriptor value-changed handler for later cleanup.
+            /// </summary>
+            internal void TrackDpDescriptorHandler(
+                DependencyPropertyDescriptor descriptor,
+                DependencyObject target,
+                EventHandler handler)
+            {
+                if (descriptor != null && target != null && handler != null)
+                    _dpDescriptorHandlers.Add((descriptor, target, handler));
+            }
+
             #endregion
 
             #region Constructor
@@ -1446,32 +1470,40 @@ namespace FlowMy.Views.NodeControls.Helpers
                 {
                     try
                     {
-                        // Attempt to unregister using reflection
-                        // Find the event that matches the handler
+                        // Find the specific event that matches this handler's delegate type,
+                        // then remove only from that event. Avoids ArgumentException from
+                        // trying to remove a handler from an incompatible event signature.
                         var targetType = target.GetType();
+                        var handlerType = handler.GetType();
                         var events = targetType.GetEvents(
-                            System.Reflection.BindingFlags.Public | 
+                            System.Reflection.BindingFlags.Public |
                             System.Reflection.BindingFlags.Instance);
-                        
+
                         foreach (var eventInfo in events)
                         {
-                            try
+                            // Only attempt removal when the event's handler type is assignable
+                            // from the delegate type — avoids ArgumentException on type mismatch.
+                            if (eventInfo.EventHandlerType != null &&
+                                eventInfo.EventHandlerType.IsAssignableFrom(handlerType))
                             {
-                                // Try to remove the handler
-                                eventInfo.RemoveEventHandler(target, handler);
-                            }
-                            catch
-                            {
-                                // Continue trying other events
+                                try { eventInfo.RemoveEventHandler(target, handler); }
+                                catch { }
                             }
                         }
                     }
-                    catch
-                    {
-                        // Best-effort cleanup; suppress exceptions
-                    }
+                    catch { }
                 }
                 _eventHandlers.Clear();
+
+                // Remove DependencyPropertyDescriptor value-changed handlers.
+                // These are NOT standard CLR events — they must be removed via RemoveValueChanged,
+                // otherwise they leak and fire on unloaded borders causing ArgumentException.
+                foreach (var (descriptor, target, handler) in _dpDescriptorHandlers)
+                {
+                    try { descriptor.RemoveValueChanged(target, handler); }
+                    catch { }
+                }
+                _dpDescriptorHandlers.Clear();
             }
 
             #endregion

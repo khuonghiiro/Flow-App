@@ -1314,6 +1314,7 @@ namespace FlowMy.Views.NodeControls
             // Handler khi zoom thay đổi - ẩn WebView2 khi đang zoom và update zoom sau khi zoom xong
             EventHandler? scaleChangedHandler = (_, _) =>
             {
+                if (isDisposed) return; // Guard: node đã unload, bỏ qua
                 if (NodeChrome.IsZooming)
                 {
                     // Ẩn WebView2 khi đang zoom để tránh nháy
@@ -1340,6 +1341,7 @@ namespace FlowMy.Views.NodeControls
             // Handler khi pan canvas - ẩn WebView2 khi đang pan để tránh nháy
             EventHandler? translateChangedHandler = (_, _) =>
             {
+                if (isDisposed) return; // Guard: node đã unload, bỏ qua
                 if (host.IsPanning)
                 {
                     // Ẩn WebView2 khi đang pan để tránh nháy
@@ -1364,6 +1366,7 @@ namespace FlowMy.Views.NodeControls
             // Đồng bộ WebView2 mỗi frame khi pan canvas hoặc kéo node — ẩn khi di chuyển, hiển thị khi dừng
             EventHandler? renderingHandler = (_, _) =>
             {
+                if (isDisposed) return; // Guard: node đã unload, bỏ qua
                 // Không sync khi đang zoom để tránh nháy
                 if (NodeChrome.IsZooming)
                     return;

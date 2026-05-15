@@ -150,6 +150,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Visibility = Visibility.Collapsed
             };
+            var isDisposed = false; // Guard flag: set to true in Unloaded to stop deferred handlers
             Grid.SetRow(webView, 1);
 
             // ✅ Khai báo sớm để các lambda/closure trong PropertyChanged có thể capture
@@ -2124,6 +2125,7 @@ namespace FlowMy.Views.NodeControls
 
             EventHandler? scaleChangedHandler = (_, _) =>
             {
+                if (isDisposed) return; // Guard: node đã unload, bỏ qua
                 if (NodeChrome.IsZooming)
                 {
                     if (webView.Visibility != Visibility.Collapsed)
@@ -2154,6 +2156,7 @@ namespace FlowMy.Views.NodeControls
 
             EventHandler? translateChangedHandler = (_, _) =>
             {
+                if (isDisposed) return; // Guard: node đã unload, bỏ qua
                 // ✅ Chỉ xử lý khi đang pan canvas, KHÔNG xử lý khi đang drag node để tránh lag
                 if (host.IsPanning)
                 {
@@ -2188,6 +2191,7 @@ namespace FlowMy.Views.NodeControls
 
             EventHandler? renderingHandler = (_, _) =>
             {
+                if (isDisposed) return; // Guard: node đã unload, bỏ qua
                 if (NodeChrome.IsZooming)
                     return;
 
@@ -4162,6 +4166,7 @@ namespace FlowMy.Views.NodeControls
             // --- WebView2-specific Unloaded cleanup (in addition to BaseNodeControlHelper cleanup) ---
             border.Unloaded += (s, e) =>
             {
+                isDisposed = true; // Stop all deferred handlers immediately
                 try
                 {
                     // ✅ Dừng tất cả auto-refresh timers
