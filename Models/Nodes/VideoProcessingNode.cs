@@ -67,11 +67,8 @@ namespace FlowMy.Models.Nodes
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public sealed class VideoProcessingNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class VideoProcessingNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private double _width = 1360;
         private double _height = 768;
 
@@ -170,8 +167,6 @@ namespace FlowMy.Models.Nodes
             Overlays = new ObservableCollection<OverlayItem>();
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
         public new TextBlock? TitleTextBlockUI { get; set; }
 
         public double Width
@@ -192,24 +187,6 @@ namespace FlowMy.Models.Nodes
                 var clamped = value < 340 ? 340 : value;
                 if (Math.Abs(_height - clamped) > 0.01) { _height = clamped; OnPropertyChanged(); }
             }
-        }
-
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
         }
 
         public string? VideoSourceNodeId
@@ -980,10 +957,6 @@ namespace FlowMy.Models.Nodes
         public ObservableCollection<VideoAudioTrackConfig> AudioTracks { get; }
         public ObservableCollection<OverlayItem> Overlays { get; }
 
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
         public void RaisePropertyChanged(string propertyName) => OnPropertyChanged(propertyName);
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

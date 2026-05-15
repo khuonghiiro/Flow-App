@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using FlowMy.Models;
 
@@ -70,11 +69,8 @@ namespace FlowMy.Models.Nodes
     /// Node hiển thị gallery ảnh/video, co dãn chiều ngang (kéo từ góc), có checkbox chọn, nút tải ảnh/video, xem video, phóng to ảnh.
     /// Cấu hình: size khung, tiêu đề (key JSON), url ảnh (key), url video (key), folder lưu ảnh; có thể dùng combobox node+key để lấy folder từ node khác.
     /// </summary>
-    public sealed class MediaGalleryNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class MediaGalleryNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private double _width = 320;
         private double _height = 280;
         private double _frameDisplayWidth = 120;
@@ -97,8 +93,6 @@ namespace FlowMy.Models.Nodes
         private GalleryDisplayMode _displayMode = GalleryDisplayMode.Grid;
         private string? _lastJson;
         private bool _canReexecuteSourceNode = false;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>JSON lần parse gần nhất (để re-parse khi đổi DisplayMode).</summary>
         public string? LastJson { get => _lastJson; set => _lastJson = value; }
@@ -285,24 +279,6 @@ namespace FlowMy.Models.Nodes
             set { if (_canReexecuteSourceNode != value) { _canReexecuteSourceNode = value; OnPropertyChanged(); } }
         }
 
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
-
         /// <summary>Reference đến TextBlock hiển thị title trên canvas.</summary>
         public TextBlock? TitleTextBlockUI { get; set; }
 
@@ -329,10 +305,5 @@ namespace FlowMy.Models.Nodes
                 ColorKey = "SunsetOrange"   // Port OUT: dùng màu SunsetOrange theo guideline
             });
         }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
     }
 }

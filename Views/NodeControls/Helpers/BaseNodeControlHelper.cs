@@ -121,38 +121,22 @@ namespace FlowMy.Views.NodeControls.Helpers
         }
 
         /// <summary>
-        /// Gets the TitleDisplayMode from a node using reflection.
-        /// Returns TitleDisplayMode.Always as default if the property is not found.
+        /// Gets the TitleDisplayMode from a node.
         /// </summary>
         internal static TitleDisplayMode GetTitleDisplayMode(WorkflowNode node)
-        {
-            var prop = GetCachedProperty(node.GetType(), "TitleDisplayMode");
-            if (prop != null && prop.GetValue(node) is TitleDisplayMode mode)
-                return mode;
-            return TitleDisplayMode.Always;
-        }
+            => node.TitleDisplayMode;
 
         /// <summary>
-        /// Gets the TitleColorMode from a node using reflection.
-        /// Returns TitleColorMode.NodeColor as default if the property is not found.
+        /// Gets the TitleColorMode from a node.
         /// </summary>
         internal static TitleColorMode GetTitleColorMode(WorkflowNode node)
-        {
-            var prop = GetCachedProperty(node.GetType(), "TitleColorMode");
-            if (prop != null && prop.GetValue(node) is TitleColorMode mode)
-                return mode;
-            return TitleColorMode.NodeColor;
-        }
+            => node.TitleColorMode;
 
         /// <summary>
-        /// Gets the TitleColorKey from a node using reflection.
-        /// Returns null if the property is not found.
+        /// Gets the TitleColorKey from a node.
         /// </summary>
         internal static string? GetTitleColorKey(WorkflowNode node)
-        {
-            var prop = GetCachedProperty(node.GetType(), "TitleColorKey");
-            return prop?.GetValue(node) as string;
-        }
+            => node.TitleColorKey;
 
         #endregion
 
@@ -535,9 +519,9 @@ namespace FlowMy.Views.NodeControls.Helpers
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
 
-            // Check if node implements INotifyPropertyChanged
-            if (context.Node is INotifyPropertyChanged npc)
+            // WorkflowNode implements INotifyPropertyChanged directly
             {
+                var npc = context.Node; // WorkflowNode now implements INotifyPropertyChanged directly
                 // Register PropertyChanged event handler
                 PropertyChangedEventHandler propertyChangedHandler = (s, e) =>
                     HandlePropertyChanged(context, e.PropertyName, customHandlers);

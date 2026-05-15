@@ -310,11 +310,8 @@ namespace FlowMy.Models.Nodes
     /// Node Web (WebView2): hiển thị web, output cookie/bearer/access_token từ response,
     /// input cookie từ node+key, chặn/thay request theo rule, chặn request sau khi request nào đó thành công.
     /// </summary>
-    public sealed class WebNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class WebNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private double _width = 420;
         private double _height = 320;
         private bool _isViewportExpanded;
@@ -432,39 +429,10 @@ namespace FlowMy.Models.Nodes
             _inputMappings.Add(new WebInputMapping());
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
         public void RaisePropertyChanged(string propertyName) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
-
-        #region TitleDisplayMode / TitleColor
-
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
+            OnPropertyChanged(propertyName);
 
         public TextBlock? TitleTextBlockUI { get; set; }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
-
-        #endregion
 
         #region JS injection (from other node -> execute in WebView2)
 

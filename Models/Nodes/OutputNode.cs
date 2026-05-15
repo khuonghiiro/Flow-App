@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Windows.Controls;
 
 namespace FlowMy.Models.Nodes
 {
@@ -77,11 +76,8 @@ namespace FlowMy.Models.Nodes
     /// Node để tạo output text từ format string và các biến input.
     /// Ví dụ: FormatString = "{input1} abc {input2}" sẽ tạo chuỗi từ các biến input1, input2.
     /// </summary>
-    public sealed class OutputNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class OutputNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private string _outputKey = "output";
         private List<InputVariable> _inputVariables = new();
         private string _formatString = string.Empty;
@@ -179,69 +175,6 @@ namespace FlowMy.Models.Nodes
                     OnPropertyChanged();
                 }
             }
-        }
-
-        /// <summary>
-        /// Chế độ hiển thị tiêu đề (mặc định Always).
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode != value)
-                {
-                    _titleDisplayMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu sắc tiêu đề (mặc định NodeColor - theo màu node).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode != value)
-                {
-                    _titleColorMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Key của màu tùy chọn cho tiêu đề (khi TitleColorMode = CustomColor).
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey != value)
-                {
-                    _titleColorKey = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Helper để notify PropertyChanged khi Title thay đổi từ bên ngoài.
-        /// </summary>
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
         }
 
         /// <summary>

@@ -1,6 +1,4 @@
 using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Linq;
 
 namespace FlowMy.Models
@@ -9,13 +7,10 @@ namespace FlowMy.Models
     /// Node sự kiện nhấn tổ hợp phím (hotkey): chờ đến khi nhấn đúng tổ hợp (global) rồi mới đi tiếp.
     /// Hotkey được lưu ở base property <see cref="WorkflowNode.Key"/> để tận dụng persistence/duplicate sẵn có.
     /// </summary>
-    public sealed class HotkeyPressEventNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class HotkeyPressEventNode : WorkflowNode
     {
         private int _repeatCount = 1;
         private int _pressDelayMs = 100;
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
 
         public HotkeyPressEventNode()
         {
@@ -79,55 +74,6 @@ namespace FlowMy.Models
         }
 
         /// <summary>
-        /// Chế độ hiển thị tiêu đề của node (mặc định Hover).
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode == value) return;
-                _titleDisplayMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu sắc tiêu đề (mặc định NodeColor - theo màu node).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode == value) return;
-                _titleColorMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Key của màu tùy chọn cho tiêu đề (khi TitleColorMode = CustomColor).
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey == value) return;
-                _titleColorKey = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
         /// Cập nhật Key của DynamicOutputs khi Key thay đổi
         /// </summary>
         private void UpdateDynamicOutputsKey()
@@ -153,4 +99,3 @@ namespace FlowMy.Models
         }
     }
 }
-

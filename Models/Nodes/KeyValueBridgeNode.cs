@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 namespace FlowMy.Models.Nodes;
 
 public enum KeyValueBridgePollUnit
@@ -20,16 +18,13 @@ public sealed class KeyValueBridgeAppendSource
 /// <summary>
 /// Pass: truyền key trong flow. Get: đọc giá trị từ kho runtime theo key (có poll interval).
 /// </summary>
-public sealed class KeyValueBridgeNode : WorkflowNode, INotifyPropertyChanged
+public sealed class KeyValueBridgeNode : WorkflowNode
 {
     private bool _isPassKeyModeH = true;
     private string _kvChannelKey = string.Empty;
     private string? _selectedSourceBridgeNodeId;
     private int _pollIntervalValue;
     private KeyValueBridgePollUnit _pollIntervalUnit = KeyValueBridgePollUnit.Milliseconds;
-    private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-    private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-    private string? _titleColorKey;
     private bool _enableDataCleanup;
     private string? _cleanupTargetBridgeNodeId;
     private string _cleanupTargetKey = string.Empty;
@@ -46,8 +41,6 @@ public sealed class KeyValueBridgeNode : WorkflowNode, INotifyPropertyChanged
     private string? _cleanupTriggerSourceNodeId;
     private string? _cleanupTriggerSourceOutputKey;
     private string _cleanupTriggerExpectedValue = "true";
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public KeyValueBridgeNode()
     {
@@ -130,39 +123,6 @@ public sealed class KeyValueBridgeNode : WorkflowNode, INotifyPropertyChanged
         {
             if (_pollIntervalUnit == value) return;
             _pollIntervalUnit = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public TitleDisplayMode TitleDisplayMode
-    {
-        get => _titleDisplayMode;
-        set
-        {
-            if (_titleDisplayMode == value) return;
-            _titleDisplayMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public TitleColorMode TitleColorMode
-    {
-        get => _titleColorMode;
-        set
-        {
-            if (_titleColorMode == value) return;
-            _titleColorMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string? TitleColorKey
-    {
-        get => _titleColorKey;
-        set
-        {
-            if (_titleColorKey == value) return;
-            _titleColorKey = value;
             OnPropertyChanged();
         }
     }
@@ -429,9 +389,4 @@ public sealed class KeyValueBridgeNode : WorkflowNode, INotifyPropertyChanged
             });
         }
     }
-
-    public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

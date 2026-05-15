@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -272,8 +274,55 @@ namespace FlowMy.Models
     /// <summary>
     /// Model đại diện cho một Node trong workflow editor
     /// </summary>
-    public class WorkflowNode
+    public class WorkflowNode : INotifyPropertyChanged
     {
+        // ===== INotifyPropertyChanged =====
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        /// <summary>
+        /// Notify khi Title thay đổi từ bên ngoài (ViewModel, copy/paste, edit).
+        /// Gọi sau khi set Title để canvas cập nhật TitleTextBlock.
+        /// </summary>
+        public virtual void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
+
+        // ===== TITLE DISPLAY / COLOR (chung cho mọi node) =====
+
+        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
+        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
+        private string? _titleColorKey;
+
+        /// <summary>
+        /// Chế độ hiển thị tiêu đề: Hidden / Hover / Always.
+        /// Mặc định Always. Các node cụ thể có thể override default trong constructor.
+        /// </summary>
+        public virtual TitleDisplayMode TitleDisplayMode
+        {
+            get => _titleDisplayMode;
+            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Chế độ màu tiêu đề: NodeColor (theo màu node) hoặc CustomColor (theo TitleColorKey).
+        /// </summary>
+        public virtual TitleColorMode TitleColorMode
+        {
+            get => _titleColorMode;
+            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Resource key màu tiêu đề khi TitleColorMode = CustomColor.
+        /// Ví dụ: "LimeGreen", "PrimaryBrush", "#FF0000".
+        /// </summary>
+        public virtual string? TitleColorKey
+        {
+            get => _titleColorKey;
+            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
+        }
         public string Id { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public double X { get; set; }

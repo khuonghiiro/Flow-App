@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -63,64 +63,13 @@ namespace FlowMy.ViewModels
         /// Set TitleColorMode trực tiếp cho các node types cụ thể.
         /// </summary>
         private static void SetTitleColorModeDirectly(WorkflowNode node, TitleColorMode mode)
-        {
-            switch (node)
-            {
-                case Models.Nodes.StringSplitNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.HttpRequestNode n: n.TitleColorMode = mode; break;
-                case MouseEventNode n: n.TitleColorMode = mode; break;
-                case LoopNode n: n.TitleColorMode = mode; break;
-                case InputNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.OutputNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.ListOutNode n: n.TitleColorMode = mode; break;
-                case HotkeyPressEventNode n: n.TitleColorMode = mode; break;
-                case KeyPressEventNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.AssignDataNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.MediaGalleryNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.ImageProcessingNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.VideoProcessingNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.CodeNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.FolderNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.FileDownloadNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.FolderFilePathsNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.WebNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.HtmlUiNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.StorageNode n: n.TitleColorMode = mode; break;
-                case Models.Nodes.BodyContainerNode n: n.TitleColorMode = mode; break;
-                case DelayNode n: n.TitleColorMode = mode; break;
-            }
-        }
+            => node.TitleColorMode = mode;
 
         /// <summary>
         /// Set TitleColorKey trực tiếp cho các node types cụ thể.
         /// </summary>
         private static void SetTitleColorKeyDirectly(WorkflowNode node, string? key)
-        {
-            switch (node)
-            {
-                case Models.Nodes.StringSplitNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.HttpRequestNode n: n.TitleColorKey = key; break;
-                case MouseEventNode n: n.TitleColorKey = key; break;
-                case LoopNode n: n.TitleColorKey = key; break;
-                case InputNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.OutputNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.ListOutNode n: n.TitleColorKey = key; break;
-                case HotkeyPressEventNode n: n.TitleColorKey = key; break;
-                case KeyPressEventNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.AssignDataNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.MediaGalleryNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.CodeNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.FolderNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.FileDownloadNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.FolderFilePathsNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.WebNode n: n.TitleColorKey = key; break;
-                case DelayNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.StorageNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.BodyContainerNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.ImageProcessingNode n: n.TitleColorKey = key; break;
-                case Models.Nodes.VideoProcessingNode n: n.TitleColorKey = key; break;
-            }
-        }
+            => node.TitleColorKey = key;
 
         /// <summary>
         /// Cập nhật màu title ngay lập tức trên canvas.
@@ -256,10 +205,8 @@ namespace FlowMy.ViewModels
             LoadReuseRoutes(); // override có thể clear khi SupportsReuseRoutes=false
 
             // Sync title khi node thay đổi
-            if (node is INotifyPropertyChanged npc)
+            node.PropertyChanged += (s, e) =>
             {
-                npc.PropertyChanged += (s, e) =>
-                {
                     if (e.PropertyName == nameof(WorkflowNode.Title))
                     {
                         NodeTitle = node.Title ?? GetDefaultTitle();
@@ -277,8 +224,7 @@ namespace FlowMy.ViewModels
                         TitleColorKey = GetTitleColorKey(node);
                     }
                     OnNodePropertyChanged(e.PropertyName);
-                };
-            }
+            };
         }
 
         /// <summary>
@@ -770,150 +716,36 @@ namespace FlowMy.ViewModels
         /// Helper method để lấy TitleDisplayMode từ node nếu có.
         /// </summary>
         private static TitleDisplayMode GetTitleDisplayMode(WorkflowNode node)
-        {
-            // Kiểm tra các node types cụ thể có TitleDisplayMode
-            if (node is KeyPressEventNode keyNode)
-                return keyNode.TitleDisplayMode;
-            if (node is MouseEventNode mouseNode)
-                return mouseNode.TitleDisplayMode;
-            if (node is LoopNode loopNode)
-                return loopNode.TitleDisplayMode;
-            if (node is InputNode inputNode)
-                return inputNode.TitleDisplayMode;
-            if (node is HotkeyPressEventNode hotkeyNode)
-                return hotkeyNode.TitleDisplayMode;
-            if (node is ListOutNode listOutNode)
-                return listOutNode.TitleDisplayMode;
-            if (node is Models.Nodes.WebNode webNode)
-                return webNode.TitleDisplayMode;
-            if (node is Models.Nodes.HtmlUiNode htmlUiNode)
-                return htmlUiNode.TitleDisplayMode;
-            if (node is Models.Nodes.StorageNode storageNode)
-                return storageNode.TitleDisplayMode;
-
-            // Fallback: sử dụng reflection để kiểm tra property
-            var property = node.GetType().GetProperty("TitleDisplayMode", BindingFlags.Public | BindingFlags.Instance);
-            if (property != null && property.PropertyType == typeof(TitleDisplayMode))
-            {
-                var value = property.GetValue(node);
-                if (value is TitleDisplayMode mode)
-                    return mode;
-            }
-
-            // Default value nếu node không hỗ trợ TitleDisplayMode
-            return TitleDisplayMode.Always;
-        }
+            => node.TitleDisplayMode;
 
         /// <summary>
         /// Helper method để set TitleDisplayMode cho node nếu có.
         /// </summary>
         private static void SetTitleDisplayMode(WorkflowNode node, TitleDisplayMode value)
-        {
-            // Kiểm tra các node types cụ thể có TitleDisplayMode
-            if (node is KeyPressEventNode keyNode)
-            {
-                keyNode.TitleDisplayMode = value;
-                return;
-            }
-            if (node is MouseEventNode mouseNode)
-            {
-                mouseNode.TitleDisplayMode = value;
-                return;
-            }
-            if (node is LoopNode loopNode)
-            {
-                loopNode.TitleDisplayMode = value;
-                return;
-            }
-            if (node is InputNode inputNode)
-            {
-                inputNode.TitleDisplayMode = value;
-                return;
-            }
-            if (node is HotkeyPressEventNode hotkeyNode)
-            {
-                hotkeyNode.TitleDisplayMode = value;
-                return;
-            }
-            if (node is ListOutNode listOutNode)
-            {
-                listOutNode.TitleDisplayMode = value;
-                return;
-            }
-            if (node is Models.Nodes.WebNode webNode)
-            {
-                webNode.TitleDisplayMode = value;
-                return;
-            }
-            if (node is Models.Nodes.HtmlUiNode htmlUiNode)
-            {
-                htmlUiNode.TitleDisplayMode = value;
-                return;
-            }
-
-            // Fallback: sử dụng reflection để set property
-            var property = node.GetType().GetProperty("TitleDisplayMode", BindingFlags.Public | BindingFlags.Instance);
-            if (property != null && property.PropertyType == typeof(TitleDisplayMode) && property.CanWrite)
-            {
-                property.SetValue(node, value);
-            }
-        }
-
+            => node.TitleDisplayMode = value;
         /// <summary>
         /// Helper method để lấy TitleColorMode từ node nếu có.
         /// </summary>
         private static TitleColorMode GetTitleColorMode(WorkflowNode node)
-        {
-            // Fallback: sử dụng reflection để kiểm tra property
-            var property = node.GetType().GetProperty("TitleColorMode", BindingFlags.Public | BindingFlags.Instance);
-            if (property != null && property.PropertyType == typeof(TitleColorMode))
-            {
-                var value = property.GetValue(node);
-                if (value is TitleColorMode mode)
-                    return mode;
-            }
-
-            // Default value nếu node không hỗ trợ TitleColorMode
-            return TitleColorMode.NodeColor;
-        }
+            => node.TitleColorMode;
 
         /// <summary>
         /// Helper method để set TitleColorMode cho node nếu có.
         /// </summary>
         private static void SetTitleColorMode(WorkflowNode node, TitleColorMode value)
-        {
-            var property = node.GetType().GetProperty("TitleColorMode", BindingFlags.Public | BindingFlags.Instance);
-            if (property != null && property.PropertyType == typeof(TitleColorMode) && property.CanWrite)
-            {
-                property.SetValue(node, value);
-            }
-        }
+            => node.TitleColorMode = value;
 
         /// <summary>
         /// Helper method để lấy TitleColorKey từ node nếu có.
         /// </summary>
         private static string? GetTitleColorKey(WorkflowNode node)
-        {
-            var property = node.GetType().GetProperty("TitleColorKey", BindingFlags.Public | BindingFlags.Instance);
-            if (property != null && property.PropertyType == typeof(string))
-            {
-                return property.GetValue(node) as string;
-            }
-            return null;
-        }
+            => node.TitleColorKey;
 
         /// <summary>
         /// Helper method để set TitleColorKey cho node nếu có.
         /// </summary>
         private static void SetTitleColorKey(WorkflowNode node, string? value)
-        {
-            var property = node.GetType().GetProperty("TitleColorKey", BindingFlags.Public | BindingFlags.Instance);
-            if (property != null && property.PropertyType == typeof(string) && property.CanWrite)
-            {
-                property.SetValue(node, value);
-            }
-        }
-
+            => node.TitleColorKey = value;
         // ===== Shared helpers cho tạo WorkflowDataSourceOption với đầy đủ icon/brush =====
 
         /// <summary>

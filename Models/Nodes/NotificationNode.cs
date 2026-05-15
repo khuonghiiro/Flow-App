@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 
 namespace FlowMy.Models.Nodes
@@ -8,12 +6,8 @@ namespace FlowMy.Models.Nodes
     /// Node hiển thị thông báo dạng toast (giống React-Toastify).
     /// Lấy title/content/duration từ upstream nodes qua mapping.
     /// </summary>
-    public sealed class NotificationNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class NotificationNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
-
         private InputVariable _titleInput = new() { VariableKey = "title" };
         private InputVariable _contentInput = new() { VariableKey = "content" };
         private InputVariable _durationInput = new() { VariableKey = "duration" };
@@ -52,45 +46,6 @@ namespace FlowMy.Models.Nodes
                 IsVisible = true,
                 ColorKey = "SunsetOrange"
             });
-        }
-
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode != value)
-                {
-                    _titleDisplayMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode != value)
-                {
-                    _titleColorMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey != value)
-                {
-                    _titleColorKey = value;
-                    OnPropertyChanged();
-                }
-            }
         }
 
         /// <summary>Mapping cho tiêu đề thông báo.</summary>
@@ -251,18 +206,5 @@ namespace FlowMy.Models.Nodes
 
         // TitleDisplayMode + TitleColorMode support
         public TextBlock? TitleTextBlockUI { get; set; }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
-        }
     }
 }
-

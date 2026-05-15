@@ -17,7 +17,8 @@
 7. [Lỗi thường gặp (bổ sung)](#7-lỗi-thường-gặp-bổ-sung)
 8. [Dialog Code-behind — Quy tắc tránh trùng lặp](#8-dialog-code-behind--quy-tắc-tránh-trùng-lặp)
 9. [ViewModel — Quy tắc tránh trùng lặp](#9-viewmodel--quy-tắc-tránh-trùng-lặp)
-10. [Các phần còn lại giữ nguyên từ V1](#10-các-phần-còn-lại-giữ-nguyên-từ-v1)
+10. [Node Model — Quy tắc tránh trùng lặp](#10-node-model--quy-tắc-tránh-trùng-lặp)
+11. [Các phần còn lại giữ nguyên từ V1](#11-các-phần-còn-lại-giữ-nguyên-từ-v1)
 
 ---
 
@@ -727,15 +728,13 @@ public partial class YourNodeDialogViewModel : BaseNodeDialogViewModel
         RefreshAllNodesWithOutputs(AvailableNodeOptions);
 
         // ✅ Subscribe node PropertyChanged cho properties ĐẶC THÙ
-        if (node is INotifyPropertyChanged npc)
+        // WorkflowNode implement INotifyPropertyChanged trực tiếp — không cần cast
+        node.PropertyChanged += (s, e) =>
         {
-            npc.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(YourNode.SomeProperty))
-                    SomeProperty = _yourNode.SomeProperty;
-                OnNodePropertyChanged(e.PropertyName ?? string.Empty);
-            };
-        }
+            if (e.PropertyName == nameof(YourNode.SomeProperty))
+                SomeProperty = _yourNode.SomeProperty;
+            OnNodePropertyChanged(e.PropertyName ?? string.Empty);
+        };
     }
 
     // ✅ BẮT BUỘC
@@ -828,11 +827,165 @@ private void RefreshStorageNodes(ObservableCollection<WorkflowDataSourceOption> 
 
 ---
 
-## 10. Các phần còn lại giữ nguyên từ V1
+## 10. Node Model — Quy tắc tránh trùng lặp
+
+> **Bối cảnh**: `WorkflowNode` base class đã được nâng cấp để implement `INotifyPropertyChanged` và chứa các properties/methods chung. Mọi node mới phải kế thừa từ đây mà không khai báo lại.
+
+### 10.1 WorkflowNode đã có sẵn — KHÔNG khai báo lại trong derived class
+
+#### INotifyPropertyChanged (đã có trong base)
+
+`WorkflowNode` implement `INotifyPropertyChanged` trực tiếp. Derived class **KHÔNG** cần:
+- Khai báo lại `public event PropertyChangedEventHandler? PropertyChanged`
+- Khai báo lại `private void OnPropertyChanged([CallerMemberName] string? name = null)`
+- Thêm `: INotifyPropertyChanged` vào class declaration
+
+Chỉ cần gọi `OnPropertyChanged()` trong setter — method này đã có trong base.
+
+#### Title properties (đã có trong base)
+
+| Property/Method | Kiểu | Default | Ghi chú |
+|----------------|------|---------|---------|
+| `TitleDisplayMode` | `TitleDisplayMode` | `Always` | `virtual` — override nếu cần default khác |
+| `TitleColorMode` | `TitleColorMode` | `NodeColor` | `virtual` |
+| `TitleColorKey` | `string?` | `null` | `virtual` |
+| `NotifyTitleChanged()` | `void` | `OnPropertyChanged(nameof(Title))` | `virtual` — override nếu cần thêm logic |
+
+> ⚠️ **Lỗi phổ biến nhất**: Khai báo lại `TitleDisplayMode`, `TitleColorMode`, `TitleColorKey` trong derived class. Xóa đi — base đã có.
+
+### 10.2 Template Node Model chuẩn
+
+```csharp
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using FlowMy.Models;
+
+namespace FlowMy.Models.Nodes
+{
+    public sealed class YourNode : WorkflowNode  // ✅ KHÔNG thêm INotifyPropertyChanged
+    {
+        // ✅ Chỉ khai báo backing fields cho properties ĐẶC THÙ của node này
+        private string _someProperty = string.Empty;
+        private int _someCount;
+
+        public YourNode()
+        {
+            Type = NodeType.YourType;
+            Title = "Your Node";
+
+            // ✅ Nếu muốn default TitleDisplayMode khác Always:
+            TitleDisplayMode = TitleDisplayMode.Hidden;
+
+            // ✅ Thêm ports
+            Ports.Add(new NodePort { IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = "Info" });
+            Ports.Add(new NodePort { IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
+        }
+
+        // ✅ Properties đặc thù — dùng OnPropertyChanged() từ base
+        public string SomeProperty
+        {
+            get => _someProperty;
+            set { if (_someProperty != value) { _someProperty = value; OnPropertyChanged(); } }
+        }
+
+        public int SomeCount
+        {
+            get => _someCount;
+            set { if (_someCount != value) { _someCount = value; OnPropertyChanged(); } }
+        }
+
+        // ✅ CHỈ override NotifyTitleChanged nếu cần thêm logic sau khi title thay đổi
+        // public override void NotifyTitleChanged()
+        // {
+        //     base.NotifyTitleChanged();
+        //     // extra logic...
+        // }
+
+        // ❌ KHÔNG khai báo: PropertyChanged event
+        // ❌ KHÔNG khai báo: OnPropertyChanged method
+        // ❌ KHÔNG khai báo: TitleDisplayMode property
+        // ❌ KHÔNG khai báo: TitleColorMode property
+        // ❌ KHÔNG khai báo: TitleColorKey property
+        // ❌ KHÔNG khai báo: NotifyTitleChanged() nếu chỉ gọi OnPropertyChanged(nameof(Title))
+    }
+}
+```
+
+### 10.3 Checklist bắt buộc khi tạo Node Model mới
+
+```yaml
+Node Model:
+  - [ ] Kế thừa WorkflowNode (KHÔNG thêm INotifyPropertyChanged)
+  - [ ] KHÔNG khai báo lại PropertyChanged event
+  - [ ] KHÔNG khai báo lại OnPropertyChanged method
+  - [ ] KHÔNG khai báo lại TitleDisplayMode property
+  - [ ] KHÔNG khai báo lại TitleColorMode property
+  - [ ] KHÔNG khai báo lại TitleColorKey property
+  - [ ] KHÔNG khai báo lại NotifyTitleChanged() nếu chỉ gọi OnPropertyChanged(nameof(Title))
+  - [ ] Nếu muốn default TitleDisplayMode khác Always: set trong constructor
+  - [ ] Dùng OnPropertyChanged() (từ base) trong setter của mọi property
+  - [ ] Thêm NodeType enum value (Models/Nodes/NodeType.cs)
+```
+
+### 10.4 Tác động lên Services — không cần if-is chain nữa
+
+Vì `WorkflowNode` giờ có `TitleDisplayMode`, `TitleColorMode`, `TitleColorKey` trực tiếp:
+
+**Persistence (FileWorkflowPersistenceService)**:
+```csharp
+// ✅ Serialize — dùng trực tiếp, không cần if node is XxxNode
+dict["TitleDisplayMode"] = node.TitleDisplayMode.ToString();
+dict["TitleColorMode"] = node.TitleColorMode.ToString();
+if (!string.IsNullOrEmpty(node.TitleColorKey))
+    dict["TitleColorKey"] = node.TitleColorKey;
+
+// ✅ Deserialize — dùng trực tiếp
+if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) &&
+    Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
+    node.TitleDisplayMode = tdm;
+if (properties.TryGetValue("TitleColorMode", out var tcmObj) &&
+    Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
+    node.TitleColorMode = tcm;
+if (properties.TryGetValue("TitleColorKey", out var tckObj))
+    node.TitleColorKey = tckObj?.ToString();
+```
+
+**PropertyChanged subscription**:
+```csharp
+// ✅ WorkflowNode implement INotifyPropertyChanged — không cần cast
+node.PropertyChanged += (s, e) => { ... };
+
+// ❌ Không cần nữa:
+// if (node is INotifyPropertyChanged npc) npc.PropertyChanged += ...
+```
+
+**NotifyTitleChanged**:
+```csharp
+// ✅ Gọi trực tiếp trên WorkflowNode
+node.NotifyTitleChanged();
+
+// ❌ Không cần nữa:
+// if (node is XxxNode xxx) xxx.NotifyTitleChanged();
+```
+
+### 10.5 Lỗi thường gặp trong Node Model (bổ sung)
+
+| # | Lỗi | Nguyên nhân | Cách tránh |
+|---|-----|-------------|-----------|
+| M1 | Compiler error: ambiguous `PropertyChanged` | Derived class khai báo lại `PropertyChanged` event | Xóa — base đã có |
+| M2 | Compiler error: ambiguous `OnPropertyChanged` | Derived class khai báo lại `OnPropertyChanged` method | Xóa — base đã có |
+| M3 | `TitleDisplayMode` luôn là `Always` dù muốn `Hidden` | Quên set trong constructor | Thêm `TitleDisplayMode = TitleDisplayMode.Hidden;` trong constructor |
+| M4 | `if node is XxxNode` chain trong service | Không biết base đã có property | Dùng `node.TitleDisplayMode` trực tiếp |
+| M5 | `if (node is INotifyPropertyChanged npc)` | Không biết WorkflowNode đã implement | Dùng `node.PropertyChanged +=` trực tiếp |
+| M6 | `node.NotifyTitleChanged()` không compile | Node cũ chưa có method | Đã có trong base — gọi trực tiếp |
+
+---
+
+## 11. Các phần còn lại giữ nguyên từ V1
 
 Đọc `NODE_CREATION_SPEC.md` cho các phần sau (không thay đổi):
 
-- **§4.1** Node Model (`sealed class`, `INotifyPropertyChanged`, `NotifyTitleChanged`)
+- **§4.1** Node Model (`sealed class`, `WorkflowNode` base, `NotifyTitleChanged`)
 - **§4.2** Palette XAML (`WorkflowEditorWindow.xaml`)
 - **§4.3** TemplateFactory (switch case + `CreateYourNode`)
 - **§4.4** Dialog XAML + Code-behind + ViewModel

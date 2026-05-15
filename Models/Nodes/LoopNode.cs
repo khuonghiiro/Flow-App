@@ -1,6 +1,4 @@
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using FlowMy.Models.Nodes;
 
@@ -35,7 +33,7 @@ namespace FlowMy.Models
         public string TargetKey { get; set; } = string.Empty;
     }
 
-    public sealed class LoopNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class LoopNode : WorkflowNode
     {
         private LoopType _loopType = LoopType.RepeatN;
         private int _repeatCount = 5;
@@ -43,9 +41,6 @@ namespace FlowMy.Models
         private int _endIndex = 10;
         private string _arrayInputKey = "array";
         private WorkflowDataType _inputType = WorkflowDataType.Integer;
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
 
         /// <summary>
         /// Output tùy chỉnh: chọn node + key trong body để expose ra output của Loop (dùng trong loop body).
@@ -260,70 +255,6 @@ namespace FlowMy.Models
                     _ => "Loop"
                 };
             }
-        }
-
-        /// <summary>
-        /// Chế độ hiển thị tiêu đề của node (mặc định Always).
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode != value)
-                {
-                    _titleDisplayMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu sắc tiêu đề (mặc định NodeColor - theo màu node).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode != value)
-                {
-                    _titleColorMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Key của màu tùy chọn cho tiêu đề (khi TitleColorMode = CustomColor).
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey != value)
-                {
-                    _titleColorKey = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Method helper để notify PropertyChanged khi Title thay đổi từ bên ngoài
-        /// (ví dụ: từ ViewModel hoặc khi copy node)
-        /// </summary>
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
         }
 
         /// <summary>

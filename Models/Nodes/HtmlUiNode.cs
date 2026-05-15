@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Windows.Controls;
 using FlowMy.Models;
@@ -11,11 +9,8 @@ namespace FlowMy.Models.Nodes
     /// Node hiển thị HTML UI được cấu hình từ 4 phần: Html/Js/Css/Params.
     /// Inputs lấy value từ các node khác (Node + Key), outputs động giống CodeNode (dựa trên OutputKeys).
     /// </summary>
-    public sealed class HtmlUiNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class HtmlUiNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private double _width = 420;
         private double _height = 320;
 
@@ -480,24 +475,6 @@ namespace FlowMy.Models.Nodes
             }
         }
 
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
-
         /// <summary>Chiều rộng của node (dùng cho WebView2).</summary>
         public double Width
         {
@@ -796,13 +773,6 @@ namespace FlowMy.Models.Nodes
 
         /// <summary>Reference đến TextBlock hiển thị title trên canvas (được tạo trong HtmlUiNodeControl).</summary>
         public new TextBlock? TitleTextBlockUI { get; set; }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
 
         public void RebuildDynamicOutputs()
         {

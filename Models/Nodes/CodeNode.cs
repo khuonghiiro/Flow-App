@@ -65,11 +65,8 @@ namespace FlowMy.Models.Nodes
     /// Node chạy đoạn code (JavaScript) với input từ nhiều node + key, trả về outputs theo cấu hình.
     /// Mỗi input mapping → một biến trong code (EffectiveInputKey).
     /// </summary>
-    public sealed class CodeNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class CodeNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private List<CodeInputMapping> _inputMappings = new();
         private string _scriptCode = "// Nhập code JavaScript. Biến từ input dùng tên key (ví dụ: jsonData).\n// return { key1: value1, key2: value2 }; để trả về outputs.\n// Tip: Nếu muốn điều khiển WebNode (WebView2), hãy trả về output key 'js' chứa script.\n// Ví dụ (dùng parameter từ input):\n// function main() {\n//   const textToInput = JSON.stringify(prompt); // prompt là biến từ input mapping\n//   return {\n//     js: 'await ac.waitForSelector(\\'#btnLogin\\', 15000);\\n' +\n//         'await ac.retryClick(\\'#btnLogin\\', { timeoutMs: 15000, intervalMs: 250 });\\n' +\n//         'const textarea = document.querySelector(\\'#input\\');\\n' +\n//         'textarea.value = ' + textToInput + ';\\n' +\n//         'await ac.waitNetworkIdle({ idleMs: 800, timeoutMs: 15000 });'\n//   };\n// }\nreturn {};";
         private List<string> _outputKeys = new() { "result" };
@@ -173,33 +170,8 @@ namespace FlowMy.Models.Nodes
         [JsonIgnore]
         public object ResolvedOutputsSyncRoot { get; } = new object();
 
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
-
         /// <summary>Reference đến TextBlock hiển thị title trên canvas (được tạo trong CodeNodeControl).</summary>
         public TextBlock? TitleTextBlockUI { get; set; }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
 
         public void RebuildDynamicOutputs()
         {

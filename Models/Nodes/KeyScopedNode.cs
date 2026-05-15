@@ -1,6 +1,4 @@
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 namespace FlowMy.Models.Nodes;
 
 public enum KeyScopedPollUnit
@@ -13,18 +11,13 @@ public enum KeyScopedPollUnit
 /// <summary>
 /// Kho key→giá trị scoped theo <c>ExecutionId</c>. Ghi: port IN+OUT; đọc: chỉ OUT, optional delay.
 /// </summary>
-public sealed class KeyScopedNode : WorkflowNode, INotifyPropertyChanged
+public sealed class KeyScopedNode : WorkflowNode
 {
     private bool _isWriteMode = true;
     private string _staticKey = string.Empty;
     private int _pollTimeValue;
     private KeyScopedPollUnit _pollUnit = KeyScopedPollUnit.Milliseconds;
-    private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-    private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-    private string? _titleColorKey;
     private string _storeJson = "{}";
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public KeyScopedNode()
     {
@@ -112,39 +105,6 @@ public sealed class KeyScopedNode : WorkflowNode, INotifyPropertyChanged
         }
     }
 
-    public TitleDisplayMode TitleDisplayMode
-    {
-        get => _titleDisplayMode;
-        set
-        {
-            if (_titleDisplayMode == value) return;
-            _titleDisplayMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public TitleColorMode TitleColorMode
-    {
-        get => _titleColorMode;
-        set
-        {
-            if (_titleColorMode == value) return;
-            _titleColorMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string? TitleColorKey
-    {
-        get => _titleColorKey;
-        set
-        {
-            if (_titleColorKey == value) return;
-            _titleColorKey = value;
-            OnPropertyChanged();
-        }
-    }
-
     /// <summary>JSON kho sau ghi/đọc (runtime + có thể lưu workflow).</summary>
     public string StoreJson
     {
@@ -170,9 +130,4 @@ public sealed class KeyScopedNode : WorkflowNode, INotifyPropertyChanged
         if (port != null)
             port.UserValueOverride = StoreJson;
     }
-
-    public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

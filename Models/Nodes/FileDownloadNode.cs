@@ -1,6 +1,4 @@
 using FlowMy.Models;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 
 namespace FlowMy.Models.Nodes
@@ -9,12 +7,8 @@ namespace FlowMy.Models.Nodes
     /// Tải file (ảnh, video, …) từ URL hoặc lệnh curl, lưu vào thư mục cấu hình.
     /// Hỗ trợ placeholder trong tên file: {time}, {date}, {datetime}, {index} và giới hạn độ dài tên.
     /// </summary>
-    public sealed class FileDownloadNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class FileDownloadNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
-
         private string _fileNameTemplate = "download_{datetime}";
         private int _maxFileNameLength = 200;
         private bool _autoIncrementIfExists = true;
@@ -108,24 +102,6 @@ namespace FlowMy.Models.Nodes
         }
 
         public TextBlock? TitleTextBlockUI { get; set; }
-
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
 
         /// <summary>Mẫu tên file (có thể dùng {time}, {date}, {datetime}, {index}).</summary>
         public string FileNameTemplate
@@ -251,13 +227,6 @@ namespace FlowMy.Models.Nodes
                 OnPropertyChanged();
             }
         }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
 
         /// <summary>Gọi sau khi executor cập nhật <see cref="ResolvedOutputs"/> để UI dialog refresh preview.</summary>
         public void NotifyRuntimeOutputsChanged() => OnPropertyChanged(nameof(ResolvedOutputs));

@@ -82,11 +82,8 @@ namespace FlowMy.Models.Nodes
     /// - Node Z chỉ thấy ListOut (không thấy A, B, D)
     /// - Node L thấy ListOut và Z (nếu Z có output)
     /// </summary>
-    public sealed class ListOutNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class ListOutNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private List<OutputMapping> _outputMappings = new();
 
         public ListOutNode()
@@ -117,74 +114,11 @@ namespace FlowMy.Models.Nodes
         }
 
         /// <summary>
-        /// Chế độ hiển thị tiêu đề (mặc định Always).
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode != value)
-                {
-                    _titleDisplayMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu sắc tiêu đề (mặc định NodeColor - theo màu node).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode != value)
-                {
-                    _titleColorMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Key của màu tùy chọn cho tiêu đề (khi TitleColorMode = CustomColor).
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey != value)
-                {
-                    _titleColorKey = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
         /// Runtime cache for resolved output values (không serialize).
         /// Key = NewKey, Value = resolved value from source node.
         /// </summary>
         [JsonIgnore]
         public Dictionary<string, object?> ResolvedOutputs { get; set; } = new();
-
-        public new event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Helper để notify PropertyChanged khi Title thay đổi từ bên ngoài.
-        /// </summary>
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
-        }
 
         /// <summary>
         /// Notify khi OutputMappings thay đổi để UI có thể refresh.

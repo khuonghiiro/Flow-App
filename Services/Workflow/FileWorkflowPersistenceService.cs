@@ -917,46 +917,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         {
             if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
                 keyPressNode.PressDelayMs = pd;
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                if (Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
-                    keyPressNode.TitleDisplayMode = tdm;
-            }
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    keyPressNode.TitleColorMode = tcm;
-            }
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                keyPressNode.TitleColorKey = tckObj?.ToString();
-            }
+
         }
         // HotkeyPressEventNode deserialization
         else if (node is HotkeyPressEventNode hotkeyPressNode)
         {
             if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
                 hotkeyPressNode.PressDelayMs = pd;
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                if (Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
-                    hotkeyPressNode.TitleDisplayMode = tdm;
-            }
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    hotkeyPressNode.TitleColorMode = tcm;
-            }
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                hotkeyPressNode.TitleColorKey = tckObj?.ToString();
-            }
+
         }
         // StringSplitNode deserialization
         else if (node is StringSplitNode stringSplitNode)
@@ -965,23 +933,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 stringSplitNode.RegexPattern = regexObj?.ToString() ?? @"\r?\n";
             if (properties.TryGetValue("OutputKey", out var outputKeyObj))
                 stringSplitNode.OutputKey = outputKeyObj?.ToString() ?? "ListItems";
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                if (Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
-                    stringSplitNode.TitleDisplayMode = tdm;
-            }
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    stringSplitNode.TitleColorMode = tcm;
-            }
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                stringSplitNode.TitleColorKey = tckObj?.ToString();
-            }
+
         }
 
         if (node is LoopNode loop)
@@ -1001,23 +953,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 if (Enum.TryParse<WorkflowDataType>(it?.ToString(), out var inputType))
                     loop.InputType = inputType;
             }
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                if (Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
-                    loop.TitleDisplayMode = tdm;
-            }
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    loop.TitleColorMode = tcm;
-            }
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                loop.TitleColorKey = tckObj?.ToString();
-            }
+
             // CustomOutputMappings
             if (properties.TryGetValue("CustomOutputMappings", out var comObj) && comObj != null)
             {
@@ -1061,23 +997,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("ScrollSpeed", out var speed) && int.TryParse(speed?.ToString(), out var speedVal))
                 mouseNode.ScrollSpeed = speedVal;
 
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                if (Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
-                    mouseNode.TitleDisplayMode = tdm;
-            }
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    mouseNode.TitleColorMode = tcm;
-            }
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                mouseNode.TitleColorKey = tckObj?.ToString();
-            }
         }
         else if (node is ScreenPositionPickerNode pos)
         {
@@ -1232,26 +1151,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is StorageNode storageNode)
         {
-            // TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var sTdmObj) &&
-                Enum.TryParse<TitleDisplayMode>(sTdmObj?.ToString(), out var sTdm))
-            {
-                storageNode.TitleDisplayMode = sTdm;
-            }
-
-            // TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var sTcmObj) &&
-                Enum.TryParse<TitleColorMode>(sTcmObj?.ToString(), out var sTcm))
-            {
-                storageNode.TitleColorMode = sTcm;
-            }
-
-            // TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var sTckObj))
-            {
-                storageNode.TitleColorKey = sTckObj?.ToString();
-            }
-
             // StoredOutputs
             if (properties.TryGetValue("StoredOutputs", out var soObj) && soObj != null)
             {
@@ -1590,23 +1489,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
             }
 
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                if (Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
-                    inputNode.TitleDisplayMode = tdm;
-            }
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    inputNode.TitleColorMode = tcm;
-            }
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                inputNode.TitleColorKey = tckObj?.ToString();
-            }
         }
         else if (node is DelayNode delayNode)
         {
@@ -1651,24 +1533,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 delayNode.DelayValue = multiplier <= 0 ? 0 : delayNode.DelayMilliseconds / multiplier;
             }
 
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) &&
-                tcmObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-            {
-                delayNode.TitleColorMode = tcm;
-            }
-
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                delayNode.TitleColorKey = tckObj?.ToString();
-            }
-
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmDelayObj) &&
-                Enum.TryParse<TitleDisplayMode>(tdmDelayObj?.ToString(), out var tdmDelay))
-            {
-                delayNode.TitleDisplayMode = tdmDelay;
-            }
-
             if (properties.TryGetValue("TimingMode", out var tmObj) &&
                 Enum.TryParse<DelayTimingMode>(tmObj?.ToString(), out var tm))
             {
@@ -1706,28 +1570,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 int.TryParse(maxCountObj?.ToString(), out var maxCount))
             {
                 callbackNode.MaxCallbackCount = maxCount;
-            }
-
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmCallbackObj))
-            {
-                var tdmStr = tdmCallbackObj?.ToString();
-                if (!string.IsNullOrWhiteSpace(tdmStr) &&
-                    Enum.TryParse<TitleDisplayMode>(tdmStr, out var parsedTdm))
-                {
-                    callbackNode.TitleDisplayMode = parsedTdm;
-                }
-            }
-
-            if (properties.TryGetValue("TitleColorMode", out var tcmCallbackObj) &&
-                tcmCallbackObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmCallbackObj.ToString(), out var tcmCallback))
-            {
-                callbackNode.TitleColorMode = tcmCallback;
-            }
-
-            if (properties.TryGetValue("TitleColorKey", out var tckCallbackObj))
-            {
-                callbackNode.TitleColorKey = tckCallbackObj?.ToString();
             }
 
             if (properties.TryGetValue("FlowBehavior", out var flowBehaviorObj))
@@ -1811,29 +1653,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
             }
 
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                var tdmStr = tdmObj?.ToString();
-                if (!string.IsNullOrWhiteSpace(tdmStr) &&
-                    Enum.TryParse<TitleDisplayMode>(tdmStr, out var titleDisplayMode))
-                {
-                    listOutNode.TitleDisplayMode = titleDisplayMode;
-                }
-            }
-
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    listOutNode.TitleColorMode = tcm;
-            }
-
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                listOutNode.TitleColorKey = tckObj?.ToString();
-            }
         }
         else if (node is AssignDataNode assignDataNode)
         {
@@ -1854,11 +1673,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
                 catch { }
             }
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null
-                && Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                assignDataNode.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                assignDataNode.TitleColorKey = tckObj?.ToString();
+
         }
         else if (node is MediaGalleryNode mediaGalleryNode)
         {
@@ -1902,10 +1717,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 mediaGalleryNode.ItemClickPreviewMode = icpm;
             if (properties.TryGetValue("DisplayMode", out var dmObj) && dmObj != null && Enum.TryParse<GalleryDisplayMode>(dmObj.ToString(), out var dm))
                 mediaGalleryNode.DisplayMode = dm;
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null && Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                mediaGalleryNode.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                mediaGalleryNode.TitleColorKey = tckObj?.ToString();
             if (properties.TryGetValue("CanReexecuteSourceNode", out var crsnObj) && crsnObj != null &&
                 bool.TryParse(crsnObj.ToString(), out var crsn))
                 mediaGalleryNode.CanReexecuteSourceNode = crsn;
@@ -2077,16 +1888,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 catch { /* Không crash khi đọc crops - bỏ qua nếu lỗi format */ }
             }
 
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null &&
-                Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-                imageNode.TitleDisplayMode = tdm;
-
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                imageNode.TitleColorMode = tcm;
-
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                imageNode.TitleColorKey = tckObj?.ToString();
         }
         else if (node is VideoProcessingNode videoNode)
         {
@@ -2296,14 +2097,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 catch { }
             }
 
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null &&
-                Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-                videoNode.TitleDisplayMode = tdm;
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                videoNode.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                videoNode.TitleColorKey = tckObj?.ToString();
         }
         else if (node is DataFetcherNode fetcherNode)
         {
@@ -2362,14 +2155,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
                 catch { }
             }
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmFetcherObj) && tdmFetcherObj != null &&
-                Enum.TryParse<TitleDisplayMode>(tdmFetcherObj.ToString(), out var tdmFetcher))
-                fetcherNode.TitleDisplayMode = tdmFetcher;
-            if (properties.TryGetValue("TitleColorMode", out var tcmFetcherObj) && tcmFetcherObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmFetcherObj.ToString(), out var tcmFetcher))
-                fetcherNode.TitleColorMode = tcmFetcher;
-            if (properties.TryGetValue("TitleColorKey", out var tckFetcherObj))
-                fetcherNode.TitleColorKey = tckFetcherObj?.ToString();
+
         }
             else if (node is WebNode webNode)
         {
@@ -2454,12 +2240,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
                 catch { }
             }
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null && Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-                webNode.TitleDisplayMode = tdm;
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null && Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                webNode.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                webNode.TitleColorKey = tckObj?.ToString();
+
             if (properties.TryGetValue("EnableSleepMode", out var esmObj) && esmObj != null &&
                 bool.TryParse(esmObj.ToString(), out var esm))
                 webNode.EnableSleepMode = esm;
@@ -2964,12 +2745,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is CodeNode codeNode)
         {
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null && Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-                codeNode.TitleDisplayMode = tdm;
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null && Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                codeNode.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                codeNode.TitleColorKey = tckObj?.ToString();
+
             var loadedMappings = false;
             if (properties.TryGetValue("InputMappings", out var imObj) && imObj != null)
             {
@@ -3084,12 +2860,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is FolderNode folderNode)
         {
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null && Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-                folderNode.TitleDisplayMode = tdm;
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null && Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                folderNode.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                folderNode.TitleColorKey = tckObj?.ToString();
+
             if (properties.TryGetValue("RootFolderPath", out var rfpObj))
                 folderNode.RootFolderPath = rfpObj?.ToString() ?? string.Empty;
             if (properties.TryGetValue("RootFolderPresetKey", out var rfpkObj))
@@ -3161,12 +2932,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is HtmlUiNode htmlUiNode)
         {
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null && Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-                htmlUiNode.TitleDisplayMode = tdm;
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null && Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                htmlUiNode.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                htmlUiNode.TitleColorKey = tckObj?.ToString();
+
             if (properties.TryGetValue("EnableSleepMode", out var hsmObj) && hsmObj != null &&
                 bool.TryParse(hsmObj.ToString(), out var hsm))
                 htmlUiNode.EnableSleepMode = hsm;
@@ -3494,21 +3260,11 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
             if (properties.TryGetValue("RunSourceNodeFirst", out var rsnfObj) && rsnfObj != null && bool.TryParse(rsnfObj.ToString(), out var rsnf))
                 fetcherNodeRestore.RunSourceNodeFirst = rsnf;
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) && tdmObj != null && Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-                fetcherNodeRestore.TitleDisplayMode = tdm;
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) && tcmObj != null && Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-                fetcherNodeRestore.TitleColorMode = tcm;
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                fetcherNodeRestore.TitleColorKey = tckObj?.ToString();
+
         }
         else if (node is FileDownloadNode fdRestore)
         {
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmFd) && tdmFd != null && Enum.TryParse<TitleDisplayMode>(tdmFd.ToString(), out var tdmF))
-                fdRestore.TitleDisplayMode = tdmF;
-            if (properties.TryGetValue("TitleColorMode", out var tcmFd) && tcmFd != null && Enum.TryParse<TitleColorMode>(tcmFd.ToString(), out var tcmF))
-                fdRestore.TitleColorMode = tcmF;
-            if (properties.TryGetValue("TitleColorKey", out var tckFd))
-                fdRestore.TitleColorKey = tckFd?.ToString();
+
             if (properties.TryGetValue("FileNameTemplate", out var fnt))
                 fdRestore.FileNameTemplate = fnt?.ToString() ?? fdRestore.FileNameTemplate;
             if (properties.TryGetValue("MaxFileNameLength", out var mfnl) && mfnl != null && int.TryParse(mfnl.ToString(), out var mfn) && mfn >= 1)
@@ -3562,12 +3318,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is FolderFilePathsNode ffpRestore)
         {
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmFfp) && tdmFfp != null && Enum.TryParse<TitleDisplayMode>(tdmFfp.ToString(), out var tdmFfpV))
-                ffpRestore.TitleDisplayMode = tdmFfpV;
-            if (properties.TryGetValue("TitleColorMode", out var tcmFfp) && tcmFfp != null && Enum.TryParse<TitleColorMode>(tcmFfp.ToString(), out var tcmFfpV))
-                ffpRestore.TitleColorMode = tcmFfpV;
-            if (properties.TryGetValue("TitleColorKey", out var tckFfp))
-                ffpRestore.TitleColorKey = tckFfp?.ToString();
+
             if (properties.TryGetValue("FolderPath", out var fpObj))
                 ffpRestore.FolderPath = fpObj?.ToString() ?? string.Empty;
             if (properties.TryGetValue("FolderSourceNodeId", out var fsnFfp))
@@ -3639,14 +3390,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("PollIntervalUnit", out var piuObj) && piuObj != null &&
                 Enum.TryParse<KeyValueBridgePollUnit>(piuObj.ToString(), out var piu))
                 kvRestore.PollIntervalUnit = piu;
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmKvbObj) && tdmKvbObj != null &&
-                Enum.TryParse<TitleDisplayMode>(tdmKvbObj.ToString(), out var tdmKvb))
-                kvRestore.TitleDisplayMode = tdmKvb;
-            if (properties.TryGetValue("TitleColorMode", out var tcmKvbObj) && tcmKvbObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmKvbObj.ToString(), out var tcmKvb))
-                kvRestore.TitleColorMode = tcmKvb;
-            if (properties.TryGetValue("TitleColorKey", out var tckKvbObj))
-                kvRestore.TitleColorKey = tckKvbObj?.ToString();
 
             if (properties.TryGetValue("EnableDataCleanup", out var edcObj) && edcObj != null &&
                 bool.TryParse(edcObj.ToString(), out var edc))
@@ -3796,21 +3539,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             {
                 flowOverwriteRestore.IncludeIndirectSources = includeIndirect;
             }
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) &&
-                tdmObj != null &&
-                Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var tdm))
-            {
-                flowOverwriteRestore.TitleDisplayMode = tdm;
-            }
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) &&
-                tcmObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var tcm))
-            {
-                flowOverwriteRestore.TitleColorMode = tcm;
-            }
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                flowOverwriteRestore.TitleColorKey = tckObj?.ToString();
-
             if (properties.TryGetValue("Mappings", out var mappingsObj))
             {
                 List<FlowOverwriteMapping>? parsedMappings = null;
@@ -3885,20 +3613,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             {
                 bodyContainerRestore.LockInnerNodes = lockInner;
             }
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj) &&
-                tdmObj != null &&
-                Enum.TryParse<TitleDisplayMode>(tdmObj.ToString(), out var titleDisplayMode))
-            {
-                bodyContainerRestore.TitleDisplayMode = titleDisplayMode;
-            }
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj) &&
-                tcmObj != null &&
-                Enum.TryParse<TitleColorMode>(tcmObj.ToString(), out var titleColorMode))
-            {
-                bodyContainerRestore.TitleColorMode = titleColorMode;
-            }
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-                bodyContainerRestore.TitleColorKey = tckObj?.ToString();
         }
         else if (node is OutputNode outputNode)
         {
@@ -3975,58 +3689,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     outputNode.RebuildDynamicOutputs();
                 }
             }
-            
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                var tdmStr = tdmObj?.ToString();
-                if (!string.IsNullOrWhiteSpace(tdmStr) &&
-                    Enum.TryParse<TitleDisplayMode>(tdmStr, out var titleDisplayMode))
-                {
-                    outputNode.TitleDisplayMode = titleDisplayMode;
-                }
-            }
 
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    outputNode.TitleColorMode = tcm;
-            }
-
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                outputNode.TitleColorKey = tckObj?.ToString();
-            }
         }
         else if (node is NotificationNode notificationNode)
         {
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                var tdmStr = tdmObj?.ToString();
-                if (!string.IsNullOrWhiteSpace(tdmStr) &&
-                    Enum.TryParse<TitleDisplayMode>(tdmStr, out var titleDisplayMode))
-                {
-                    notificationNode.TitleDisplayMode = titleDisplayMode;
-                }
-            }
-
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                var tcmStr = tcmObj?.ToString();
-                if (!string.IsNullOrWhiteSpace(tcmStr) &&
-                    Enum.TryParse<TitleColorMode>(tcmStr, out var titleColorMode))
-                {
-                    notificationNode.TitleColorMode = titleColorMode;
-                }
-            }
-
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                notificationNode.TitleColorKey = tckObj?.ToString();
-            }
-
             if (properties.TryGetValue("DefaultDurationSeconds", out var durObj) &&
                 int.TryParse(durObj?.ToString(), out var dur))
             {
@@ -4049,9 +3715,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                         };
                     }
                 }
-                catch
-                {
-                }
+                catch { }
             }
 
             // ContentInput
@@ -4070,9 +3734,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                         };
                     }
                 }
-                catch
-                {
-                }
+                catch { }
             }
 
             // DurationInput
@@ -4091,9 +3753,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                         };
                     }
                 }
-                catch
-                {
-                }
+                catch { }
             }
 
             if (properties.TryGetValue("StaticTitle", out var staticTitleObj))
@@ -4127,7 +3787,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 notificationNode.ToastBackgroundOpacity = parsedOpacity;
             }
         }
-
 
         // Deserialize ReuseRoutes (áp dụng chung cho mọi loại node)
         if (properties.TryGetValue("ReuseRoutes", out var rrObj) && rrObj != null)
@@ -4331,26 +3990,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         
         else if (node is HttpRequestNode httpRequestNode)
         {
-            // Deserialize TitleDisplayMode
-            if (properties.TryGetValue("TitleDisplayMode", out var tdmObj))
-            {
-                if (Enum.TryParse<TitleDisplayMode>(tdmObj?.ToString(), out var tdm))
-                    httpRequestNode.TitleDisplayMode = tdm;
-            }
-
-            // Deserialize TitleColorMode
-            if (properties.TryGetValue("TitleColorMode", out var tcmObj))
-            {
-                if (Enum.TryParse<TitleColorMode>(tcmObj?.ToString(), out var tcm))
-                    httpRequestNode.TitleColorMode = tcm;
-            }
-
-            // Deserialize TitleColorKey
-            if (properties.TryGetValue("TitleColorKey", out var tckObj))
-            {
-                httpRequestNode.TitleColorKey = tckObj?.ToString();
-            }
-            
             // Deserialize basic properties
             if (properties.TryGetValue("Url", out var urlObj))
                 httpRequestNode.Url = urlObj?.ToString() ?? string.Empty;
@@ -4472,6 +4111,18 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 httpRequestNode.AutoAppendCurlWriteOut = autoWriteOut;
             }
         }
+
+        // ===== Shared title properties (all nodes) =====
+        if (properties.TryGetValue("TitleDisplayMode", out var sharedTdmObj) &&
+            Enum.TryParse<TitleDisplayMode>(sharedTdmObj?.ToString(), out var sharedTdm))
+            node.TitleDisplayMode = sharedTdm;
+
+        if (properties.TryGetValue("TitleColorMode", out var sharedTcmObj) &&
+            Enum.TryParse<TitleColorMode>(sharedTcmObj?.ToString(), out var sharedTcm))
+            node.TitleColorMode = sharedTcm;
+
+        if (properties.TryGetValue("TitleColorKey", out var sharedTckObj))
+            node.TitleColorKey = sharedTckObj?.ToString();
     }
 
     private static Dictionary<string, object> GetNodeProperties(WorkflowNode node)
@@ -4500,11 +4151,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["RepeatCount"] = kp.RepeatCount;
             if (kp.PressDelayMs != 50)
                 dict["PressDelayMs"] = kp.PressDelayMs;
-            // Serialize TitleDisplayMode, TitleColorMode, TitleColorKey
-            dict["TitleDisplayMode"] = kp.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = kp.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(kp.TitleColorKey))
-                dict["TitleColorKey"] = kp.TitleColorKey;
+
         }
         // HotkeyPressEventNode serialization
         else if (node is HotkeyPressEventNode hk)
@@ -4513,22 +4160,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["RepeatCount"] = hk.RepeatCount;
             if (hk.PressDelayMs != 50)
                 dict["PressDelayMs"] = hk.PressDelayMs;
-            // Serialize TitleDisplayMode, TitleColorMode, TitleColorKey
-            dict["TitleDisplayMode"] = hk.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = hk.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(hk.TitleColorKey))
-                dict["TitleColorKey"] = hk.TitleColorKey;
+
         }
         // StringSplitNode serialization
         else if (node is StringSplitNode stringSplit)
         {
             dict["RegexPattern"] = stringSplit.RegexPattern ?? @"\r?\n";
             dict["OutputKey"] = stringSplit.OutputKey ?? "ListItems";
-            // Serialize TitleDisplayMode, TitleColorMode, TitleColorKey
-            dict["TitleDisplayMode"] = stringSplit.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = stringSplit.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(stringSplit.TitleColorKey))
-                dict["TitleColorKey"] = stringSplit.TitleColorKey;
+
         }
 
         if (node is LoopNode loop)
@@ -4539,10 +4178,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["EndIndex"] = loop.EndIndex;
             dict["ArrayInputKey"] = loop.ArrayInputKey;
             dict["InputType"] = loop.InputType.ToString();
-            dict["TitleDisplayMode"] = loop.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = loop.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(loop.TitleColorKey))
-                dict["TitleColorKey"] = loop.TitleColorKey;
+
             if (loop.CustomOutputMappings.Count > 0)
                 dict["CustomOutputMappings"] = System.Text.Json.JsonSerializer.Serialize(loop.CustomOutputMappings);
             if (loop.DataAssignments.Count > 0)
@@ -4554,11 +4190,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["RepeatCount"] = mouseNode.RepeatCount;
             dict["HoldDuration"] = mouseNode.HoldDuration;
             dict["ScrollSpeed"] = mouseNode.ScrollSpeed;
-            // Serialize TitleDisplayMode, TitleColorMode, TitleColorKey
-            dict["TitleDisplayMode"] = mouseNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = mouseNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(mouseNode.TitleColorKey))
-                dict["TitleColorKey"] = mouseNode.TitleColorKey;
+
         }
         else if (node is ScreenPositionPickerNode pos)
         {
@@ -4661,21 +4293,13 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["InputArrayValues"] = JsonSerializer.Serialize(inputNode.ArrayValues);
             }
 
-            // Serialize TitleDisplayMode, TitleColorMode, TitleColorKey
-            dict["TitleDisplayMode"] = inputNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = inputNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(inputNode.TitleColorKey))
-                dict["TitleColorKey"] = inputNode.TitleColorKey;
         }
         else if (node is DelayNode delayNode)
         {
             dict["DelayMilliseconds"] = delayNode.DelayMilliseconds;
             dict["DelayValue"] = delayNode.DelayValue;
             dict["DelayUnit"] = delayNode.DelayUnit.ToString();
-            dict["TitleDisplayMode"] = delayNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = delayNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(delayNode.TitleColorKey))
-                dict["TitleColorKey"] = delayNode.TitleColorKey;
+
             dict["TimingMode"] = delayNode.TimingMode.ToString();
             dict["RandomMinValue"] = delayNode.RandomMinValue;
             dict["RandomMaxValue"] = delayNode.RandomMaxValue;
@@ -4690,10 +4314,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["TargetNodeId"] = callbackNode.TargetNodeId;
             dict["MaxCallbackCount"] = callbackNode.MaxCallbackCount;
             dict["FlowBehavior"] = callbackNode.FlowBehavior.ToString();
-            dict["TitleDisplayMode"] = callbackNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = callbackNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(callbackNode.TitleColorKey))
-                dict["TitleColorKey"] = callbackNode.TitleColorKey;
+
         }
         else if (node is ListOutNode listOutNode)
         {
@@ -4709,21 +4330,13 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["OutputMappings"] = mappingsJson;
             }
             
-            // Serialize TitleDisplayMode
-            dict["TitleDisplayMode"] = listOutNode.TitleDisplayMode.ToString();
 
-            // Serialize TitleColorMode and TitleColorKey
-            dict["TitleColorMode"] = listOutNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(listOutNode.TitleColorKey))
-                dict["TitleColorKey"] = listOutNode.TitleColorKey;
         }
         else if (node is AssignDataNode assignDataNode)
         {
             if (assignDataNode.Assignments.Count > 0)
                 dict["Assignments"] = JsonSerializer.Serialize(assignDataNode.Assignments);
-            dict["TitleColorMode"] = assignDataNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(assignDataNode.TitleColorKey))
-                dict["TitleColorKey"] = assignDataNode.TitleColorKey;
+
         }
         else if (node is MediaGalleryNode mediaGalleryNode)
         {
@@ -4761,9 +4374,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["JsonSourceOutputKey"] = mediaGalleryNode.JsonSourceOutputKey;
             dict["ItemClickPreviewMode"] = mediaGalleryNode.ItemClickPreviewMode.ToString();
             dict["DisplayMode"] = mediaGalleryNode.DisplayMode.ToString();
-            dict["TitleColorMode"] = mediaGalleryNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(mediaGalleryNode.TitleColorKey))
-                dict["TitleColorKey"] = mediaGalleryNode.TitleColorKey;
+
             dict["CanReexecuteSourceNode"] = mediaGalleryNode.CanReexecuteSourceNode;
         }
         else if (node is ImageProcessingNode imageNode)
@@ -4831,10 +4442,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (imageNode.SkipOutputs != null && imageNode.SkipOutputs.Count > 0)
                 dict["SkipOutputs"] = JsonSerializer.Serialize(imageNode.SkipOutputs.ToList());
 
-            dict["TitleDisplayMode"] = imageNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = imageNode.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(imageNode.TitleColorKey))
-                dict["TitleColorKey"] = imageNode.TitleColorKey;
         }
         else if (node is VideoProcessingNode videoNode)
         {
@@ -4937,10 +4544,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (videoNode.Overlays.Count > 0)
                 dict["Overlays"] = JsonSerializer.Serialize(videoNode.Overlays.ToList());
 
-            dict["TitleDisplayMode"] = videoNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = videoNode.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(videoNode.TitleColorKey))
-                dict["TitleColorKey"] = videoNode.TitleColorKey;
         }
         else if (node is DataFetcherNode fetcherNodeSer)
         {
@@ -4963,17 +4566,11 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList());
             dict["RunSourceNodeFirst"] = fetcherNodeSer.RunSourceNodeFirst;
-            dict["TitleDisplayMode"] = fetcherNodeSer.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = fetcherNodeSer.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(fetcherNodeSer.TitleColorKey))
-                dict["TitleColorKey"] = fetcherNodeSer.TitleColorKey;
+
         }
         else if (node is FileDownloadNode fdSer)
         {
-            dict["TitleDisplayMode"] = fdSer.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = fdSer.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(fdSer.TitleColorKey))
-                dict["TitleColorKey"] = fdSer.TitleColorKey;
+
             dict["FileNameTemplate"] = fdSer.FileNameTemplate ?? string.Empty;
             dict["MaxFileNameLength"] = fdSer.MaxFileNameLength;
             dict["AutoIncrementIfExists"] = fdSer.AutoIncrementIfExists;
@@ -5005,10 +4602,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is FolderFilePathsNode ffpSer)
         {
-            dict["TitleDisplayMode"] = ffpSer.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = ffpSer.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(ffpSer.TitleColorKey))
-                dict["TitleColorKey"] = ffpSer.TitleColorKey;
+
             dict["FolderPath"] = ffpSer.FolderPath ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(ffpSer.FolderSourceNodeId))
                 dict["FolderSourceNodeId"] = ffpSer.FolderSourceNodeId;
@@ -5039,10 +4633,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["PollIntervalValue"] = kvbSer.PollIntervalValue;
             dict["intervalUnit"] = kvbSer.PollIntervalUnit.ToString();
             dict["PollIntervalUnit"] = kvbSer.PollIntervalUnit.ToString();
-            dict["TitleDisplayMode"] = kvbSer.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = kvbSer.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(kvbSer.TitleColorKey))
-                dict["TitleColorKey"] = kvbSer.TitleColorKey;
 
             dict["EnableDataCleanup"] = kvbSer.EnableDataCleanup;
             if (!string.IsNullOrWhiteSpace(kvbSer.CleanupTargetBridgeNodeId))
@@ -5091,10 +4681,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["OutputKey"] = string.IsNullOrWhiteSpace(flowOverwriteSer.OutputKey) ? "outputKey" : flowOverwriteSer.OutputKey.Trim();
             dict["AppendMode"] = flowOverwriteSer.AppendMode;
             dict["IncludeIndirectSources"] = flowOverwriteSer.IncludeIndirectSources;
-            dict["TitleDisplayMode"] = flowOverwriteSer.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = flowOverwriteSer.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(flowOverwriteSer.TitleColorKey))
-                dict["TitleColorKey"] = flowOverwriteSer.TitleColorKey;
+
             if (flowOverwriteSer.Mappings != null && flowOverwriteSer.Mappings.Count > 0)
             {
                 dict["Mappings"] = JsonSerializer.Serialize(flowOverwriteSer.Mappings
@@ -5116,10 +4703,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["UseUnifiedColors"] = bodyContainerSer.UseUnifiedColors;
             dict["BackgroundOpacityPercent"] = bodyContainerSer.BackgroundOpacityPercent;
             dict["LockInnerNodes"] = bodyContainerSer.LockInnerNodes;
-            dict["TitleDisplayMode"] = bodyContainerSer.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = bodyContainerSer.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(bodyContainerSer.TitleColorKey))
-                dict["TitleColorKey"] = bodyContainerSer.TitleColorKey;
+
         }
         else if (node is WebNode webNodeForSerialize)
         {
@@ -5200,10 +4784,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     dict["BlockingRules"] = JsonSerializer.Serialize(brList);
                 }
                 dict["SyncLiveOutputsToResults"] = webNodeForSerialize.SyncLiveOutputsToResults;
-                dict["TitleDisplayMode"] = webNodeForSerialize.TitleDisplayMode.ToString();
-                dict["TitleColorMode"] = webNodeForSerialize.TitleColorMode.ToString();
-                if (!string.IsNullOrEmpty(webNodeForSerialize.TitleColorKey))
-                    dict["TitleColorKey"] = webNodeForSerialize.TitleColorKey;
 
                 // Output waiting behavior (timeout + mode)
                 dict["ResponseOutputsWaitTimeoutMs"] = webNodeForSerialize.ResponseOutputsWaitTimeoutMs;
@@ -5413,10 +4993,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is CodeNode codeNode)
         {
-            dict["TitleDisplayMode"] = codeNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = codeNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(codeNode.TitleColorKey))
-                dict["TitleColorKey"] = codeNode.TitleColorKey;
+
             if (codeNode.InputMappings != null && codeNode.InputMappings.Count > 0)
             {
                 var arr = codeNode.InputMappings.Select(m => new Dictionary<string, object?>
@@ -5435,10 +5012,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is FolderNode folderNode)
         {
-            dict["TitleDisplayMode"] = folderNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = folderNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(folderNode.TitleColorKey))
-                dict["TitleColorKey"] = folderNode.TitleColorKey;
+
             if (!string.IsNullOrEmpty(folderNode.RootFolderPath))
                 dict["RootFolderPath"] = folderNode.RootFolderPath;
             if (!string.IsNullOrEmpty(folderNode.RootFolderPresetKey))
@@ -5458,10 +5032,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
         else if (node is HtmlUiNode htmlUiNode)
         {
-            dict["TitleDisplayMode"] = htmlUiNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = htmlUiNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(htmlUiNode.TitleColorKey))
-                dict["TitleColorKey"] = htmlUiNode.TitleColorKey;
+
             if (htmlUiNode.InputMappings != null && htmlUiNode.InputMappings.Count > 0)
             {
                 var arr = htmlUiNode.InputMappings.Select(m => new Dictionary<string, object?>
@@ -5534,10 +5105,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         else if (node is HttpRequestNode httpRequestNode)
         {
             // Serialize basic properties
-            dict["TitleDisplayMode"] = httpRequestNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = httpRequestNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(httpRequestNode.TitleColorKey))
-                dict["TitleColorKey"] = httpRequestNode.TitleColorKey;
+
             dict["Url"] = httpRequestNode.Url ?? string.Empty;
             dict["HttpMethod"] = httpRequestNode.HttpMethod.ToString();
             dict["AuthType"] = httpRequestNode.AuthType.ToString();
@@ -5657,20 +5225,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["InputVariables"] = variablesJson;
             }
             
-            // Serialize TitleDisplayMode
-            dict["TitleDisplayMode"] = outputNode.TitleDisplayMode.ToString();
 
-            // Serialize TitleColorMode and TitleColorKey
-            dict["TitleColorMode"] = outputNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(outputNode.TitleColorKey))
-                dict["TitleColorKey"] = outputNode.TitleColorKey;
         }
         else if (node is NotificationNode notificationNode)
         {
-            dict["TitleDisplayMode"] = notificationNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = notificationNode.TitleColorMode.ToString();
-            if (!string.IsNullOrEmpty(notificationNode.TitleColorKey))
-                dict["TitleColorKey"] = notificationNode.TitleColorKey;
 
             dict["DefaultDurationSeconds"] = notificationNode.DefaultDurationSeconds;
 
@@ -5724,7 +5282,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
             dict["ToastBackgroundOpacity"] = notificationNode.ToastBackgroundOpacity;
         }
-
 
         // Serialize cấu hình ReuseRoutes (tái sử dụng flow + line style) cho mọi loại node nếu có
         if (node.ReuseRoutes != null && node.ReuseRoutes.Count > 0)
@@ -5780,11 +5337,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
         else if (node is StorageNode storageNode)
         {
-            // TitleDisplayMode / TitleColorMode / TitleColorKey
-            dict["TitleDisplayMode"] = storageNode.TitleDisplayMode.ToString();
-            dict["TitleColorMode"] = storageNode.TitleColorMode.ToString();
-            if (!string.IsNullOrWhiteSpace(storageNode.TitleColorKey))
-                dict["TitleColorKey"] = storageNode.TitleColorKey!;
 
             if (!string.IsNullOrWhiteSpace(storageNode.SourceNodeId))
                 dict["SourceNodeId"] = storageNode.SourceNodeId!;
@@ -5812,6 +5364,12 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["OutputKeys"] = keys;
             }
         }
+
+        // ===== Shared title properties (all nodes) =====
+        dict["TitleDisplayMode"] = node.TitleDisplayMode.ToString();
+        dict["TitleColorMode"] = node.TitleColorMode.ToString();
+        if (!string.IsNullOrEmpty(node.TitleColorKey))
+            dict["TitleColorKey"] = node.TitleColorKey;
 
         return dict;
     }
@@ -5933,5 +5491,4 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         }
     }
 }
-
 

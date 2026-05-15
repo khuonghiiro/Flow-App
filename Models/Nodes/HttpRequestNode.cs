@@ -104,11 +104,8 @@ namespace FlowMy.Models.Nodes
     /// Node for making HTTP requests (similar to Postman).
     /// Supports URL, Method, Headers, Query Params, Body, and Authorization.
     /// </summary>
-    public sealed class HttpRequestNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class HttpRequestNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private string _url = "https://api.example.com";
         private HttpMethod _httpMethod = HttpMethod.GET;
         private HttpAuthType _authType = HttpAuthType.None;
@@ -232,54 +229,6 @@ namespace FlowMy.Models.Nodes
         }
 
         #region Properties
-
-        /// <summary>
-        /// Title display mode for the node.
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode != value)
-                {
-                    _titleDisplayMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu sắc tiêu đề (mặc định NodeColor - theo màu node).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode != value)
-                {
-                    _titleColorMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Key của màu tùy chọn cho tiêu đề (khi TitleColorMode = CustomColor).
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey != value)
-                {
-                    _titleColorKey = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
 
         /// <summary>
         /// The URL to send the request to.
@@ -664,25 +613,6 @@ namespace FlowMy.Models.Nodes
         /// </summary>
         [JsonIgnore]
         public string? LastCurlCommand { get; set; }
-
-        #endregion
-
-        #region INotifyPropertyChanged
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Helper method to notify PropertyChanged when Title changes from external sources.
-        /// </summary>
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
-        }
 
         #endregion
     }

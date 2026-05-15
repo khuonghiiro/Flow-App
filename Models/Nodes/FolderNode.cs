@@ -44,11 +44,8 @@ namespace FlowMy.Models.Nodes
     /// <summary>
     /// Node tạo folder: chọn thư mục gốc, path con (có thể dùng key từ inputs và {DateTime.*}), tạo folder và output folder + fullPath.
     /// </summary>
-    public sealed class FolderNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class FolderNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private string _rootFolderPath = string.Empty;
         private string _rootFolderPresetKey = string.Empty;
         private string _subPathTemplate = string.Empty;
@@ -111,33 +108,6 @@ namespace FlowMy.Models.Nodes
 
         /// <summary>Output đã resolve khi chạy: folder (root), fullPath (root + path con đã tạo).</summary>
         public Dictionary<string, object?> ResolvedOutputs { get; set; } = new();
-
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
-        }
 
         /// <summary>Xây lại DynamicOutputs: folder, fullPath.</summary>
         public void RebuildDynamicOutputs()

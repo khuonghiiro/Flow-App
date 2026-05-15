@@ -1,7 +1,5 @@
 using FlowMy.Models;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace FlowMy.Models.Nodes
 {
@@ -16,7 +14,7 @@ namespace FlowMy.Models.Nodes
     /// Node này chỉ có input port, không có output port.
     /// Khi logic chạy vào node này, nó sẽ callback về node đã chọn để chạy lại workflow từ node đó.
     /// </summary>
-    public sealed class CallbackNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class CallbackNode : WorkflowNode
     {
         // ===== PROPERTIES =====
 
@@ -74,61 +72,6 @@ namespace FlowMy.Models.Nodes
             }
         }
 
-        /// <summary>
-        /// TitleDisplayMode: Hidden / Hover / Always
-        /// </summary>
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode != value)
-                {
-                    _titleDisplayMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// TitleColorMode: NodeColor / CustomColor
-        /// </summary>
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode != value)
-                {
-                    _titleColorMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        private string? _titleColorKey;
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey != value)
-                {
-                    _titleColorKey = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Reference tới UI element (dùng bởi NodeControl và Renderer)
-        /// </summary>
-        public System.Windows.Controls.TextBlock? TitleTextBlockUI { get; set; }
-
-        // ===== CONSTRUCTOR =====
-
         public CallbackNode()
         {
             Type = NodeType.Callback;
@@ -182,20 +125,5 @@ namespace FlowMy.Models.Nodes
         }
 
         // ===== INOTIFYPROPERTYCHANGED =====
-
-        public new event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Notify Title changed (dùng khi Title bị thay đổi từ bên ngoài)
-        /// </summary>
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
-        }
     }
 }

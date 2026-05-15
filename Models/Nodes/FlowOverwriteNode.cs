@@ -1,8 +1,6 @@
 using FlowMy.Models;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 
 namespace FlowMy.Models.Nodes;
@@ -13,16 +11,11 @@ public sealed class FlowOverwriteMapping
     public string? SourceOutputKey { get; set; }
 }
 
-public sealed class FlowOverwriteNode : WorkflowNode, INotifyPropertyChanged
+public sealed class FlowOverwriteNode : WorkflowNode
 {
     private string _outputKey = "outputKey";
     private bool _appendMode;
     private bool _includeIndirectSources;
-    private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-    private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-    private string? _titleColorKey;
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public FlowOverwriteNode()
     {
@@ -90,39 +83,6 @@ public sealed class FlowOverwriteNode : WorkflowNode, INotifyPropertyChanged
     public Dictionary<string, object?> ResolvedOutputs { get; } = new(StringComparer.OrdinalIgnoreCase);
     public object ResolvedOutputsSyncRoot { get; } = new();
 
-    public TitleDisplayMode TitleDisplayMode
-    {
-        get => _titleDisplayMode;
-        set
-        {
-            if (_titleDisplayMode == value) return;
-            _titleDisplayMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public TitleColorMode TitleColorMode
-    {
-        get => _titleColorMode;
-        set
-        {
-            if (_titleColorMode == value) return;
-            _titleColorMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string? TitleColorKey
-    {
-        get => _titleColorKey;
-        set
-        {
-            if (_titleColorKey == value) return;
-            _titleColorKey = value;
-            OnPropertyChanged();
-        }
-    }
-
     public TextBlock? TitleTextBlockUI { get; set; }
 
     public void RebuildDynamicOutputs()
@@ -136,9 +96,4 @@ public sealed class FlowOverwriteNode : WorkflowNode, INotifyPropertyChanged
             OutputType = WorkflowDataType.String
         });
     }
-
-    public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

@@ -1,18 +1,14 @@
 using FlowMy.Models;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System.Windows.Controls;
+
 namespace FlowMy.Models.Nodes
 {
     /// <summary>
     /// Liệt kê đường dẫn file trong một thư mục (tuỳ chọn đệ quy), lọc theo đuôi; có thể đọc nội dung (text/base64) theo cấu hình.
     /// Output <c>paths</c> là JSON mảng chuỗi.
     /// </summary>
-    public sealed class FolderFilePathsNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class FolderFilePathsNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
-
         private string _folderPath = string.Empty;
         private string? _folderSourceNodeId;
         private string? _folderSourceOutputKey;
@@ -80,24 +76,6 @@ namespace FlowMy.Models.Nodes
             });
         }
 
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
-
         public string FolderPath
         {
             get => _folderPath;
@@ -150,13 +128,6 @@ namespace FlowMy.Models.Nodes
             get => _readContentExtensionsText;
             set { if (_readContentExtensionsText != value) { _readContentExtensionsText = value ?? ".txt"; OnPropertyChanged(); } }
         }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
 
         public void NotifyRuntimeOutputsChanged() => OnPropertyChanged(nameof(ResolvedOutputs));
     }

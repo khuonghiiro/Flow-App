@@ -1,21 +1,10 @@
 using FlowMy.Models;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 
 namespace FlowMy.Models.Nodes
 {
-    /// <summary>
-    /// Node lấy dữ liệu output từ bất kỳ node nào trong workflow.
-    /// Hỗ trợ 3 chế độ: Timer (tự động theo chu kỳ), Realtime (khi node nguồn xong), Flow (theo workflow).
-    /// Nếu nguồn là WebNode, có thể chờ trang load xong trước khi lấy giá trị.
-    /// </summary>
-    public sealed class DataFetcherNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class DataFetcherNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
-
         // ── Nguồn dữ liệu ──
         private string? _sourceNodeId;
         private string? _sourceOutputKey;
@@ -32,8 +21,6 @@ namespace FlowMy.Models.Nodes
 
         // ── Realtime ──
         private bool _enableRealtime = false;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         public DataFetcherNode()
         {
@@ -59,35 +46,12 @@ namespace FlowMy.Models.Nodes
             // dựa trên keys thực tế của node nguồn khi chạy.
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
-
         public void RaisePropertyChanged(string propertyName) => OnPropertyChanged(propertyName);
 
         #region TitleDisplayMode / TitleColor
 
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
         /// <summary>Reference tới UI element (dùng bởi NodeControl và Renderer).</summary>
         public TextBlock? TitleTextBlockUI { get; set; }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
-        }
 
         #endregion
 

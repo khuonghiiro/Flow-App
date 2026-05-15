@@ -1,22 +1,16 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System.Linq;
 
 namespace FlowMy.Models
 {
     /// <summary>
     /// Model cho Input Node - node để nhập dữ liệu với key, value và type
     /// </summary>
-    public class InputNode : WorkflowNode, INotifyPropertyChanged
+    public class InputNode : WorkflowNode
     {
         private string _key = string.Empty;
         private string _value = string.Empty;
         private WorkflowDataType _dataType = WorkflowDataType.String;
         private List<string> _arrayValues = new List<string>();
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>
         /// Key của input data
@@ -137,68 +131,11 @@ namespace FlowMy.Models
         /// </summary>
         public bool IsDateTimeOrTime => DataType == WorkflowDataType.DateTime || DataType == WorkflowDataType.Time;
 
-        /// <summary>
-        /// Chế độ hiển thị tiêu đề của node (mặc định Hover).
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode == value) return;
-                _titleDisplayMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu sắc tiêu đề (mặc định NodeColor - theo màu node).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode == value) return;
-                _titleColorMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Key của màu tùy chọn cho tiêu đề (khi TitleColorMode = CustomColor).
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey == value) return;
-                _titleColorKey = value;
-                OnPropertyChanged();
-            }
-        }
-
         public InputNode()
         {
             Type = NodeType.Input;
             Title = "Input";
         }
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Method helper để notify PropertyChanged khi Title thay đổi từ bên ngoài
-        /// (ví dụ: từ ViewModel hoặc khi copy node)
-        /// </summary>
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
-        }
     }
 
 }
-

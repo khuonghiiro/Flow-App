@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Windows.Controls;
 
@@ -13,11 +11,8 @@ namespace FlowMy.Models.Nodes
     /// - Khi save workflow, giá trị hiện tại của outputs được serialize vào JSON,
     ///   khi load workflow thì khôi phục lại, tránh mất dữ liệu đã gán.
     /// </summary>
-    public sealed class StorageNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class StorageNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private string? _sourceNodeId;
         private string? _sourceOutputKey;
         private bool _isInputMode = true; // true = port IN visible, false = port OUT visible
@@ -29,8 +24,6 @@ namespace FlowMy.Models.Nodes
         /// </summary>
         [JsonIgnore]
         public Dictionary<string, string?> StoredOutputs { get; } = new();
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         public StorageNode()
         {
@@ -64,48 +57,6 @@ namespace FlowMy.Models.Nodes
             {
                 if (_sourceOutputKey == value) return;
                 _sourceOutputKey = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Chế độ hiển thị tiêu đề (mặc định Always).
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode == value) return;
-                _titleDisplayMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu tiêu đề (NodeColor/CustomColor).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode == value) return;
-                _titleColorMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Resource key màu tiêu đề khi TitleColorMode=CustomColor.
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey == value) return;
-                _titleColorKey = value;
                 OnPropertyChanged();
             }
         }
@@ -164,18 +115,6 @@ namespace FlowMy.Models.Nodes
             return StoredOutputs.TryGetValue(key, out var value) ? value : null;
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Notify khi Title thay đổi từ bên ngoài (copy/paste, ViewModel).
-        /// </summary>
-        public void NotifyTitleChanged()
-        {
-            OnPropertyChanged(nameof(Title));
-        }
     }
 }
 

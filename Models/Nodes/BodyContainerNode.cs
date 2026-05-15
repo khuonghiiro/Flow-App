@@ -1,11 +1,9 @@
 using FlowMy.Models;
 using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
 namespace FlowMy.Models.Nodes;
 
-public sealed class BodyContainerNode : WorkflowNode, INotifyPropertyChanged
+public sealed class BodyContainerNode : WorkflowNode
 {
     private double _bodyWidth = 800;
     private double _bodyHeight = 400;
@@ -14,9 +12,6 @@ public sealed class BodyContainerNode : WorkflowNode, INotifyPropertyChanged
     private bool _useUnifiedColors = true;
     private double _backgroundOpacityPercent = 35;
     private bool _lockInnerNodes;
-    private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-    private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-    private string? _titleColorKey;
 
     public BodyContainerNode()
     {
@@ -106,44 +101,4 @@ public sealed class BodyContainerNode : WorkflowNode, INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
-
-    public TitleDisplayMode TitleDisplayMode
-    {
-        get => _titleDisplayMode;
-        set
-        {
-            if (_titleDisplayMode == value) return;
-            _titleDisplayMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public TitleColorMode TitleColorMode
-    {
-        get => _titleColorMode;
-        set
-        {
-            if (_titleColorMode == value) return;
-            _titleColorMode = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string? TitleColorKey
-    {
-        get => _titleColorKey;
-        set
-        {
-            if (_titleColorKey == value) return;
-            _titleColorKey = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
 }

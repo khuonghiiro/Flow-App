@@ -140,12 +140,8 @@ namespace FlowMy.Models.Nodes
     /// Node xử lý ảnh: nhận ảnh từ URL/file hoặc base64 (có thể map từ node+key),
     /// hiển thị preview trong node với zoom/pan, crop tự do, và (optional) dùng ffmpeg để render/xử lý khi execute.
     /// </summary>
-    public sealed class ImageProcessingNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class ImageProcessingNode : WorkflowNode
     {
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
-
         private double _width = 360;
         private double _height = 260;
 
@@ -185,30 +181,10 @@ namespace FlowMy.Models.Nodes
         /// <summary>Danh sách output keys bị skip (checked = true nghĩa là không xử lý output đó).</summary>
         public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
         public ImageProcessingNode()
         {
             Type = NodeType.ImageProcessing;
             Title = "Xử lý ảnh";
-        }
-
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set { if (_titleDisplayMode != value) { _titleDisplayMode = value; OnPropertyChanged(); } }
-        }
-
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set { if (_titleColorMode != value) { _titleColorMode = value; OnPropertyChanged(); } }
-        }
-
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set { if (_titleColorKey != value) { _titleColorKey = value; OnPropertyChanged(); } }
         }
 
         /// <summary>Reference tới UI element (dùng bởi NodeControl và Renderer).</summary>
@@ -375,11 +351,6 @@ namespace FlowMy.Models.Nodes
             get => _lastExecutionId;
             set { if (_lastExecutionId != value) { _lastExecutionId = value ?? string.Empty; OnPropertyChanged(); } }
         }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
 
         /// <summary>
         /// Helper để trigger UI refresh khi Apply trong dialog nhưng giá trị không đổi.

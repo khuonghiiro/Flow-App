@@ -23,7 +23,7 @@ namespace FlowMy.Services.Interaction
         private readonly ZoomPanHandler _zoomPanHandler;
         private readonly MinimapService _minimapService;
         private readonly CollisionResolver _collisionResolver;
-        private readonly HashSet<INotifyPropertyChanged> _trackedNodeNotifiers = new();
+        private readonly HashSet<WorkflowNode> _trackedNodeNotifiers = new();
         /// <summary>
         /// Flag chống re-entrancy khi đang chạy RefreshDynamicDataSourceSelectors.
         /// Không còn dùng timer/real-time, chỉ chạy theo hành động.
@@ -469,17 +469,17 @@ namespace FlowMy.Services.Interaction
 
         private void TrackNodeNotifier(WorkflowNode node)
         {
-            if (node is INotifyPropertyChanged npc && _trackedNodeNotifiers.Add(npc))
+            if (_trackedNodeNotifiers.Add(node))
             {
-                npc.PropertyChanged += NodeNotifier_PropertyChanged;
+                node.PropertyChanged += NodeNotifier_PropertyChanged;
             }
         }
 
         private void UntrackNodeNotifier(WorkflowNode node)
         {
-            if (node is INotifyPropertyChanged npc && _trackedNodeNotifiers.Remove(npc))
+            if (_trackedNodeNotifiers.Remove(node))
             {
-                npc.PropertyChanged -= NodeNotifier_PropertyChanged;
+                node.PropertyChanged -= NodeNotifier_PropertyChanged;
             }
         }
 

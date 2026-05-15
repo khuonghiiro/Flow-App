@@ -1,6 +1,3 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-
 namespace FlowMy.Models
 {
     /// <summary>
@@ -21,14 +18,11 @@ namespace FlowMy.Models
     /// - Lưu thực thi: DelayMilliseconds (ms)
     /// - Lưu hiển thị/UI: DelayValue + DelayUnit (để node hiển thị theo đơn vị người dùng chọn)
     /// </summary>
-    public sealed class DelayNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class DelayNode : WorkflowNode
     {
         private int _delayMilliseconds = 1000;
         private double _delayValue = 1d;
         private DelayTimeUnit _delayUnit = DelayTimeUnit.Seconds;
-        private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
-        private TitleColorMode _titleColorMode = TitleColorMode.NodeColor;
-        private string? _titleColorKey;
         private DelayTimingMode _timingMode = DelayTimingMode.None;
         private double _randomMinValue;
         private double _randomMaxValue = 1d;
@@ -123,48 +117,6 @@ namespace FlowMy.Models
         }
 
         /// <summary>
-        /// Chế độ hiển thị tiêu đề (Phase 2 - TitleDisplayMode).
-        /// </summary>
-        public TitleDisplayMode TitleDisplayMode
-        {
-            get => _titleDisplayMode;
-            set
-            {
-                if (_titleDisplayMode == value) return;
-                _titleDisplayMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Chế độ màu tiêu đề (Phase 3 - TitleColorMode).
-        /// </summary>
-        public TitleColorMode TitleColorMode
-        {
-            get => _titleColorMode;
-            set
-            {
-                if (_titleColorMode == value) return;
-                _titleColorMode = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Key màu tiêu đề khi TitleColorMode = CustomColor.
-        /// </summary>
-        public string? TitleColorKey
-        {
-            get => _titleColorKey;
-            set
-            {
-                if (_titleColorKey == value) return;
-                _titleColorKey = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
         /// Thời gian chờ dùng để thực thi (milliseconds).
         /// </summary>
         public int DelayMilliseconds
@@ -213,8 +165,6 @@ namespace FlowMy.Models
             }
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
         private void SyncMillisecondsFromUi()
         {
             if (_timingMode != DelayTimingMode.None)
@@ -251,11 +201,6 @@ namespace FlowMy.Models
         }
 
         public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 
     public enum DelayTimeUnit
