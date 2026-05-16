@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using FlowMy.Services.Rendering;
 using FlowMy.Views.NodeControls;
 using System.Windows;
 using System.Windows.Controls;
@@ -61,10 +62,20 @@ namespace FlowMy.Views
 
                 if (_draggedNode != node && !string.IsNullOrEmpty(node.ColorKey))
                 {
-                    var hoverBrush = Application.Current.TryFindResource($"{node.ColorKey}HoverBrush") as Brush;
-                    if (hoverBrush != null)
+                    // Liquid Glass mode: dùng glass hover (tăng opacity gradient) thay vì solid hover brush
+                    if (LiquidGlassHelper.IsLiquidGlassMode(this))
                     {
-                        border.Background = hoverBrush;
+                        var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
+                        border.Background = LiquidGlassHelper.CreateGlassHoverBackground(baseColor);
+                        border.BorderBrush = LiquidGlassHelper.CreateGlassHoverBorderBrush();
+                    }
+                    else
+                    {
+                        var hoverBrush = Application.Current.TryFindResource($"{node.ColorKey}HoverBrush") as Brush;
+                        if (hoverBrush != null)
+                        {
+                            border.Background = hoverBrush;
+                        }
                     }
                 }
             }
@@ -86,7 +97,17 @@ namespace FlowMy.Views
 
                 if (_draggedNode != node)
                 {
-                    border.Background = node.NodeBrush;
+                    // Liquid Glass mode: khôi phục glass background thay vì solid NodeBrush
+                    if (LiquidGlassHelper.IsLiquidGlassMode(this))
+                    {
+                        var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
+                        border.Background = LiquidGlassHelper.CreateGlassBackground(baseColor);
+                        border.BorderBrush = LiquidGlassHelper.CreateGlassBorderBrush();
+                    }
+                    else
+                    {
+                        border.Background = node.NodeBrush;
+                    }
                 }
             }
         }

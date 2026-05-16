@@ -581,14 +581,30 @@ namespace FlowMy.Views.NodeControls.Helpers
                 {
                     if (ctx.Border != null)
                     {
-                        ctx.Border.Background = ctx.Node.NodeBrush;
+                        // Liquid Glass mode: dùng glass background thay vì solid NodeBrush
+                        if (LiquidGlassHelper.IsLiquidGlassMode(ctx.Host))
+                        {
+                            var baseColor = LiquidGlassHelper.GetColorFromBrush(ctx.Node.NodeBrush);
+                            ctx.Border.Background = LiquidGlassHelper.CreateGlassBackground(baseColor);
+                        }
+                        else
+                        {
+                            ctx.Border.Background = ctx.Node.NodeBrush;
+                        }
                     }
                     if (ctx.TitleTextBlock != null)
                     {
-                        ctx.TitleTextBlock.Foreground = ResolveTitleBrush(
-                            GetTitleColorMode(ctx.Node),
-                            GetTitleColorKey(ctx.Node),
-                            ctx.Node.NodeBrush);
+                        if (LiquidGlassHelper.IsLiquidGlassMode(ctx.Host))
+                        {
+                            LiquidGlassHelper.ApplyGlassTextStyle(ctx.TitleTextBlock);
+                        }
+                        else
+                        {
+                            ctx.TitleTextBlock.Foreground = ResolveTitleBrush(
+                                GetTitleColorMode(ctx.Node),
+                                GetTitleColorKey(ctx.Node),
+                                ctx.Node.NodeBrush);
+                        }
                     }
                 },
 

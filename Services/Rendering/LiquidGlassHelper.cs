@@ -23,46 +23,80 @@ namespace FlowMy.Services.Rendering
 
         /// <summary>
         /// Áp dụng hiệu ứng Liquid Glass lên một Border đã có sẵn.
-        /// Gọi sau khi tạo border với background = NodeBrush (solid).
+        /// Tự động detect node màu sáng và tăng contrast.
         /// </summary>
-        /// <param name="border">Border của node</param>
-        /// <param name="baseColor">Màu gốc của node (từ NodeBrush)</param>
         public static void ApplyToExistingBorder(Border border, Color baseColor)
         {
+            // Detect nếu màu quá sáng (trắng, vàng nhạt, v.v.) → tăng tint để nhìn rõ trên nền sáng
+            var isLightColor = IsLightColor(baseColor);
+
             // Nền gradient bán trong suốt
-            border.Background = new LinearGradientBrush(
-                Color.FromArgb(80, baseColor.R, baseColor.G, baseColor.B),
-                Color.FromArgb(35, baseColor.R, baseColor.G, baseColor.B),
-                45.0);
+            border.Background = CreateGlassBackground(baseColor);
 
-            // Viền trắng mờ (glass edge)
-            border.BorderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255));
-            border.BorderThickness = new Thickness(1.2);
+            // Viền: nếu màu sáng → dùng viền tối hơn để tạo contrast
+            border.BorderBrush = isLightColor
+                ? new SolidColorBrush(Color.FromArgb(120, 100, 100, 100))  // viền xám mờ cho node sáng
+                : CreateGlassBorderBrush();
+            border.BorderThickness = new Thickness(1.5);
 
-            // Glow shadow từ màu node
-            border.Effect = new DropShadowEffect
-            {
-                Color = baseColor,
-                BlurRadius = 18,
-                ShadowDepth = 0,
-                Opacity = 0.35,
-                Direction = 0
-            };
+            // Shadow: glow từ màu node + drop shadow nhẹ để tạo chiều sâu
+            border.Effect = CreateGlassEffect(baseColor, isLightColor);
         }
 
         /// <summary>
-        /// Tạo Brush nền Liquid Glass từ màu gốc.
+        /// Tạo Brush nền Liquid Glass từ màu gốc (trạng thái bình thường).
         /// </summary>
         public static Brush CreateGlassBackground(Color baseColor)
         {
-            return new LinearGradientBrush(
-                Color.FromArgb(80, baseColor.R, baseColor.G, baseColor.B),
-                Color.FromArgb(35, baseColor.R, baseColor.G, baseColor.B),
-                45.0);
+            var isLight = IsLightColor(baseColor);
+
+            // Node sáng: tăng alpha để nhìn rõ hơn trên nền sáng
+            byte alphaTop = isLight ? (byte)100 : (byte)80;
+            byte alphaBottom = isLight ? (byte)55 : (byte)35;
+
+            var gradient = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1)
+            };
+            gradient.GradientStops.Add(new GradientStop(
+                Color.FromArgb(alphaTop, baseColor.R, baseColor.G, baseColor.B), 0.0));
+            gradient.GradientStops.Add(new GradientStop(
+                Color.FromArgb(alphaBottom, baseColor.R, baseColor.G, baseColor.B), 0.7));
+            // Thêm highlight nhẹ ở góc dưới phải (giả lập phản chiếu ánh sáng)
+            gradient.GradientStops.Add(new GradientStop(
+                Color.FromArgb((byte)(alphaTop + 20), 255, 255, 255), 1.0));
+
+            return gradient;
         }
 
         /// <summary>
-        /// Tạo BorderBrush cho Liquid Glass.
+        /// Tạo Brush nền Liquid Glass khi hover (sáng hơn, rõ hơn).
+        /// </summary>
+        public static Brush CreateGlassHoverBackground(Color baseColor)
+        {
+            var isLight = IsLightColor(baseColor);
+
+            byte alphaTop = isLight ? (byte)140 : (byte)120;
+            byte alphaBottom = isLight ? (byte)80 : (byte)60;
+
+            var gradient = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1)
+            };
+            gradient.GradientStops.Add(new GradientStop(
+                Color.FromArgb(alphaTop, baseColor.R, baseColor.G, baseColor.B), 0.0));
+            gradient.GradientStops.Add(new GradientStop(
+                Color.FromArgb(alphaBottom, baseColor.R, baseColor.G, baseColor.B), 0.6));
+            gradient.GradientStops.Add(new GradientStop(
+                Color.FromArgb((byte)(alphaTop + 30), 255, 255, 255), 1.0));
+
+            return gradient;
+        }
+
+        /// <summary>
+        /// Tạo BorderBrush cho Liquid Glass (trạng thái bình thường).
         /// </summary>
         public static Brush CreateGlassBorderBrush()
         {
@@ -70,17 +104,33 @@ namespace FlowMy.Services.Rendering
         }
 
         /// <summary>
-        /// Tạo Effect (glow) cho Liquid Glass.
+        /// Tạo BorderBrush cho Liquid Glass khi hover (sáng hơn).
         /// </summary>
-        public static Effect CreateGlassEffect(Color baseColor)
+        public static Brush CreateGlassHoverBorderBrush()
         {
+            return new SolidColorBrush(Color.FromArgb(180, 255, 255, 255));
+        }
+
+        /// <summary>
+        /// Tạo Effect (glow + shadow) cho Liquid Glass.
+        /// Kết hợp outer glow từ màu node và drop shadow tạo chiều sâu.
+        /// </summary>
+        public static Effect CreateGlassEffect(Color baseColor, bool isLightColor = false)
+        {
+            // Dùng DropShadowEffect với ShadowDepth=0 để tạo glow đều xung quanh
+            // + BlurRadius lớn để mềm mại
             return new DropShadowEffect
             {
-                Color = baseColor,
-                BlurRadius = 18,
-                ShadowDepth = 0,
-                Opacity = 0.35,
-                Direction = 0
+                Color = isLightColor
+                    ? Color.FromRgb(
+                        (byte)System.Math.Max(0, baseColor.R - 60),
+                        (byte)System.Math.Max(0, baseColor.G - 60),
+                        (byte)System.Math.Max(0, baseColor.B - 60))
+                    : baseColor,
+                BlurRadius = 22,
+                ShadowDepth = 2,
+                Opacity = isLightColor ? 0.45 : 0.5,
+                Direction = 270
             };
         }
 
@@ -95,7 +145,7 @@ namespace FlowMy.Services.Rendering
                 Color = Colors.Black,
                 BlurRadius = 4,
                 ShadowDepth = 1,
-                Opacity = 0.5
+                Opacity = 0.6
             };
         }
 
@@ -108,6 +158,17 @@ namespace FlowMy.Services.Rendering
             if (brush is LinearGradientBrush lgb && lgb.GradientStops.Count > 0)
                 return lgb.GradientStops[0].Color;
             return Colors.Gray;
+        }
+
+        /// <summary>
+        /// Kiểm tra xem màu có "sáng" không (luminance cao).
+        /// Dùng để tăng contrast cho node trắng/vàng nhạt trên theme sáng.
+        /// </summary>
+        private static bool IsLightColor(Color color)
+        {
+            // Relative luminance (simplified)
+            var luminance = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0;
+            return luminance > 0.65;
         }
     }
 }
