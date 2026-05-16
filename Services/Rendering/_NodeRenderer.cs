@@ -45,6 +45,10 @@ namespace FlowMy.Services.Rendering
         private readonly FlowOverwriteNodeRenderer _flowOverwriteNodeRenderer;
         private readonly BodyContainerNodeRenderer _bodyContainerNodeRenderer;
 
+        // Dispatch map: node concrete type → renderer
+        // Dùng cho các node chỉ cần delegate thuần túy (không có inline logic đặc biệt).
+        private Dictionary<Type, INodeRenderer> _rendererMap = null!;
+
         private IWorkflowEditorHost _host => _hostAccessor.GetRequiredHost();
 
         public NodeRenderer(
@@ -116,10 +120,56 @@ namespace FlowMy.Services.Rendering
             _callbackNodeRenderer = callbackNodeRenderer ?? throw new ArgumentNullException(nameof(callbackNodeRenderer));
             _flowOverwriteNodeRenderer = flowOverwriteNodeRenderer ?? throw new ArgumentNullException(nameof(flowOverwriteNodeRenderer));
             _bodyContainerNodeRenderer = bodyContainerNodeRenderer ?? throw new ArgumentNullException(nameof(bodyContainerNodeRenderer));
+
+            BuildRendererMap();
+        }
+
+        /// <summary>
+        /// Xây dựng dispatch map: concrete node type → renderer.
+        /// Chỉ đăng ký các node có thể delegate hoàn toàn (không cần inline logic).
+        /// Các node đặc biệt (Start/End, BreakNode, ContinueNode, Conditional, LoopBody, AsyncTaskBody,
+        /// ScreenPositionPicker, AsyncTaskDispatchCollect) vẫn xử lý thủ công trong từng method.
+        /// </summary>
+        private void BuildRendererMap()
+        {
+            _rendererMap = new Dictionary<Type, INodeRenderer>
+            {
+                [typeof(AsyncTaskNode)]         = _asyncTaskNodeRenderer,
+                [typeof(LoopNode)]              = _loopNodeRenderer,
+                [typeof(MouseEventNode)]        = _mouseEventNodeRenderer,
+                [typeof(StringSplitNode)]       = _stringSplitNodeRenderer,
+                [typeof(ListOutNode)]           = _listOutNodeRenderer,
+                [typeof(AssignDataNode)]        = _assignDataNodeRenderer,
+                [typeof(MediaGalleryNode)]      = _mediaGalleryNodeRenderer,
+                [typeof(ImageProcessingNode)]   = _imageProcessingNodeRenderer,
+                [typeof(VideoProcessingNode)]   = _videoProcessingNodeRenderer,
+                [typeof(DataFetcherNode)]       = _dataFetcherNodeRenderer,
+                [typeof(KeyValueBridgeNode)]    = _keyValueBridgeNodeRenderer,
+                [typeof(WebNode)]               = _webNodeRenderer,
+                [typeof(CodeNode)]              = _codeNodeRenderer,
+                [typeof(HtmlUiNode)]            = _htmlUiNodeRenderer,
+                [typeof(FolderNode)]            = _folderNodeRenderer,
+                [typeof(FileDownloadNode)]      = _fileDownloadNodeRenderer,
+                [typeof(FolderFilePathsNode)]   = _folderFilePathsNodeRenderer,
+                [typeof(StorageNode)]           = _storageNodeRenderer,
+                [typeof(CallbackNode)]          = _callbackNodeRenderer,
+                [typeof(FlowOverwriteNode)]     = _flowOverwriteNodeRenderer,
+                [typeof(BodyContainerNode)]     = _bodyContainerNodeRenderer,
+                [typeof(OutputNode)]            = _outputNodeRenderer,
+                [typeof(NotificationNode)]      = _notificationNodeRenderer,
+                [typeof(HttpRequestNode)]       = _httpRequestNodeRenderer,
+                [typeof(ScreenCaptureNode)]     = _screenCaptureNodeRenderer,
+                [typeof(InputNode)]             = _inputNodeRenderer,
+                [typeof(DelayNode)]             = _delayNodeRenderer,
+                [typeof(KeyPressEventNode)]     = _keyPressEventNodeRenderer,
+                [typeof(HotkeyPressEventNode)]  = _hotkeyPressEventNodeRenderer,
+            };
         }
 
         public void RenderNode(WorkflowNode node, Canvas canvas)
         {
+            // ── Các node có inline logic đặc biệt — xử lý trước dictionary ──
+
             if (node is ScreenPositionPickerNode screenNode)
             {
                 node.Border = _screenPositionNodeRenderer.CreateBorder(screenNode);
@@ -130,197 +180,23 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetTop(node.Border, node.Y);
                 canvas.Children.Add(node.Border);
                 _host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
-
                 RenderNodePorts(node, canvas);
                 return;
             }
 
-            // Async task node - chạy nhiều task song song
-            if (node is AsyncTaskNode asyncTaskNode)
-            {
-                _asyncTaskNodeRenderer.RenderNode(asyncTaskNode, canvas);
-                return;
-            }
-
-            // node lặp
-            if (node is LoopNode loopNode)
-            {
-                _loopNodeRenderer.RenderNode(loopNode, canvas);
-                return;
-            }
-
-            // Special renderers
-            if (node is MouseEventNode mouseNode)
-            {
-                _mouseEventNodeRenderer.RenderNode(mouseNode, canvas);
-                return;
-            }
-
-            // StringSplit node với custom UI và dialog riêng
-            if (node is StringSplitNode stringSplitNode)
-            {
-                _stringSplitNodeRenderer.RenderNode(stringSplitNode, canvas);
-                return;
-            }
-
-            // ListOut node - lọc và đổi tên outputs
-            if (node is ListOutNode listOutNode)
-            {
-                _listOutNodeRenderer.RenderNode(listOutNode, canvas);
-                return;
-            }
-
-            // AssignData node - gán dữ liệu từ node nguồn sang node đích
-            if (node is AssignDataNode assignDataNode)
-            {
-                _assignDataNodeRenderer.RenderNode(assignDataNode, canvas);
-                return;
-            }
-
-            // MediaGallery node - gallery ảnh/video, co dãn, checkbox, tải ảnh/video
-            if (node is MediaGalleryNode mediaGalleryNode)
-            {
-                _mediaGalleryNodeRenderer.RenderNode(mediaGalleryNode, canvas);
-                return;
-            }
-
-            // ImageProcessing node - preview ảnh (URL/base64), zoom/pan, co dãn
-            if (node is ImageProcessingNode imageProcessingNode)
-            {
-                _imageProcessingNodeRenderer.RenderNode(imageProcessingNode, canvas);
-                return;
-            }
-
-            if (node is VideoProcessingNode videoProcessingNode)
-            {
-                _videoProcessingNodeRenderer.RenderNode(videoProcessingNode, canvas);
-                return;
-            }
-
-            // DataFetcher node - lấy output từ node khác theo nodeId + key, hỗ trợ Timer/Realtime
-            if (node is DataFetcherNode dataFetcherNode)
-            {
-                _dataFetcherNodeRenderer.RenderNode(dataFetcherNode, canvas);
-                return;
-            }
-
-            if (node is KeyValueBridgeNode keyValueBridgeNode)
-            {
-                _keyValueBridgeNodeRenderer.RenderNode(keyValueBridgeNode, canvas);
-                return;
-            }
-
-            // Web node - WebView2, output cookie/bearer/access_token, input cookie, intercept/block requests
-            if (node is WebNode webNode)
-            {
-                _webNodeRenderer.RenderNode(webNode, canvas);
-                return;
-            }
-
-            // Code node - chạy JavaScript với input từ node + key, return object = outputs
-            if (node is CodeNode codeNode)
-            {
-                _codeNodeRenderer.RenderNode(codeNode, canvas);
-                return;
-            }
-
-            // HTML UI node - hiển thị HTML UI cấu hình bằng 4 tab
-            if (node is HtmlUiNode htmlUiNode)
-            {
-                _htmlUiNodeRenderer.RenderNode(htmlUiNode, canvas);
-                return;
-            }
-
-            // Folder node - chọn thư mục gốc, path con (key/DateTime), tạo folder, output folder + fullPath
-            if (node is FolderNode folderNode)
-            {
-                _folderNodeRenderer.RenderNode(folderNode, canvas);
-                return;
-            }
-
-            if (node is FileDownloadNode fileDownloadNode)
-            {
-                _fileDownloadNodeRenderer.RenderNode(fileDownloadNode, canvas);
-                return;
-            }
-
-            if (node is FolderFilePathsNode folderFilePathsNode)
-            {
-                _folderFilePathsNodeRenderer.RenderNode(folderFilePathsNode, canvas);
-                return;
-            }
-
-            // Storage node - lưu trữ dữ liệu toàn cục, không cần flow bắt buộc
-            if (node is StorageNode storageNode)
-            {
-                _storageNodeRenderer.RenderNode(storageNode, canvas);
-                return;
-            }
-
-            // AsyncTask dispatch collector node (parallel-safe aggregation)
             if (node is AsyncTaskDispatchCollectNode collectNode)
             {
                 node.Border = FlowMy.Views.NodeControls.AsyncTaskDispatchCollectNodeControl.CreateBorder(
-                    collectNode,
-                    _host.OwnerWindow,
-                    _host);
+                    collectNode, _host.OwnerWindow, _host);
                 NodeChrome.Apply(node.Border, node, _host);
                 AttachNodeBorderHandlers(node.Border, node);
                 node.Border.ContextMenu = null;
-
                 Canvas.SetLeft(node.Border, node.X);
                 Canvas.SetTop(node.Border, node.Y);
                 canvas.Children.Add(node.Border);
                 _host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
                 RenderNodePorts(node, canvas);
                 return;
-            }
-
-            // Callback node - chạy lại workflow từ node đã chọn
-            if (node is CallbackNode callbackNode)
-            {
-                _callbackNodeRenderer.RenderNode(callbackNode, canvas);
-                return;
-            }
-
-            if (node is FlowOverwriteNode flowOverwriteNode)
-            {
-                _flowOverwriteNodeRenderer.RenderNode(flowOverwriteNode, canvas);
-                return;
-            }
-
-            if (node is BodyContainerNode bodyContainerNode)
-            {
-                _bodyContainerNodeRenderer.RenderNode(bodyContainerNode, canvas);
-                return;
-            }
-
-            // Output node - tạo output text từ format string
-            if (node is OutputNode outputNode)
-            {
-                _outputNodeRenderer.RenderNode(outputNode, canvas);
-                return;
-            }
-
-            // Notification node - hiển thị toast thông báo
-            if (node is NotificationNode notificationNode)
-            {
-                _notificationNodeRenderer.RenderNode(notificationNode, canvas);
-                return;
-            }
-
-            // HttpRequest node - HTTP API calls
-            if (node is HttpRequestNode httpRequestNode)
-            {
-                _httpRequestNodeRenderer.RenderNode(httpRequestNode, canvas);
-                return;
-            }
-
-            // PHẢI CÓ ĐOẠN NÀY Ở ĐẦU, TRƯỚC TẤT CẢ CODE KHÁC
-            if (node is ScreenCaptureNode captureNode)
-            {
-                _screenCaptureNodeRenderer.RenderNode(captureNode, canvas);
-                return;  // QUAN TRỌNG: phải return để không chạy code phía dưới
             }
 
             if (node.IsConditionalNode)
@@ -331,7 +207,6 @@ namespace FlowMy.Services.Rendering
 
             if (node is BreakNode breakNode)
             {
-                // ✅ Luôn sử dụng UI hình tròn với icon cho Break node
                 node.Border = FlowMy.Views.NodeControls.BreakNodeControl.CreateBorder(breakNode, null, _host);
                 NodeChrome.Apply(node.Border, node, _host);
                 AttachNodeBorderHandlers(node.Border, node);
@@ -346,7 +221,6 @@ namespace FlowMy.Services.Rendering
 
             if (node is ContinueNode continueNode)
             {
-                // ✅ Luôn sử dụng UI hình tròn với icon cho Continue node
                 node.Border = FlowMy.Views.NodeControls.ContinueNodeControl.CreateBorder(continueNode, null, _host);
                 NodeChrome.Apply(node.Border, node, _host);
                 AttachNodeBorderHandlers(node.Border, node);
@@ -359,7 +233,6 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
-            // ✅ Start node - hình tròn với icon play và title trên top
             if (node.Type == NodeType.Start)
             {
                 node.Border = FlowMy.Views.NodeControls.StartNodeControl.CreateBorder(node, _host.OwnerWindow, _host);
@@ -370,17 +243,10 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetTop(node.Border, node.Y);
                 canvas.Children.Add(node.Border);
                 _host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
-
-                // Tạo và thêm title TextBlock
-                var titleTextBlock = FlowMy.Views.NodeControls.StartNodeControl.CreateTitleTextBlock(node);
-                canvas.Children.Add(titleTextBlock);
-                FlowMy.Views.NodeControls.StartNodeControl.UpdateTitlePosition(node, canvas);
-
                 RenderNodePorts(node, canvas);
                 return;
             }
 
-            // ✅ End node - hình tròn với icon flag-checkered và title trên top
             if (node.Type == NodeType.End)
             {
                 node.Border = FlowMy.Views.NodeControls.EndNodeControl.CreateBorder(node, _host.OwnerWindow, _host);
@@ -391,57 +257,33 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetTop(node.Border, node.Y);
                 canvas.Children.Add(node.Border);
                 _host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
-
-                // Tạo và thêm title TextBlock
-                var endTitleTextBlock = FlowMy.Views.NodeControls.EndNodeControl.CreateTitleTextBlock(node);
-                canvas.Children.Add(endTitleTextBlock);
-                FlowMy.Views.NodeControls.EndNodeControl.UpdateTitlePosition(node, canvas);
-
                 RenderNodePorts(node, canvas);
                 return;
             }
 
-            if (node is InputNode inputNode)
+            // ── Dictionary dispatch cho các node delegate thuần túy ──
+            if (_rendererMap.TryGetValue(node.GetType(), out var renderer))
             {
-                _inputNodeRenderer.RenderNode(inputNode, canvas);
+                renderer.RenderNode(node, canvas);
                 return;
             }
 
-            if (node is DelayNode delayNode)
-            {
-                _delayNodeRenderer.RenderNode(delayNode, canvas);
-                return;
-            }
-
-            if (node is KeyPressEventNode keyNode)
-            {
-                _keyPressEventNodeRenderer.RenderNode(keyNode, canvas);
-                return;
-            }
-
-            if (node is HotkeyPressEventNode hotkeyNode)
-            {
-                _hotkeyPressEventNodeRenderer.RenderNode(hotkeyNode, canvas);
-                return;
-            }
-
+            // ── Fallback: generic border ──
             node.Border = CreateNodeBorder(node);
             NodeChrome.Apply(node.Border, node, _host);
             AttachNodeBorderHandlers(node.Border, node);
             node.Border.ContextMenu = _host.CreateNodeContextMenu(node);
-
             Canvas.SetLeft(node.Border, node.X);
             Canvas.SetTop(node.Border, node.Y);
             canvas.Children.Add(node.Border);
             _host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
-
             RenderNodePorts(node, canvas);
         }
 
         public void UpdateNodePosition(WorkflowNode node, double x, double y)
         {
-            // ✅ Update Start node title position
-            if (node.Type == NodeType.Start)
+            // ✅ Update Start/End node position
+            if (node.Type == NodeType.Start || node.Type == NodeType.End)
             {
                 node.X = x;
                 node.Y = y;
@@ -452,240 +294,22 @@ namespace FlowMy.Services.Rendering
                     Canvas.SetTop(node.Border, y);
                 }
 
-                // Update title position
-                if (node.TitleTextBlockUI != null && _host.WorkflowCanvas != null)
-                {
-                    FlowMy.Views.NodeControls.StartNodeControl.UpdateTitlePosition(node, _host.WorkflowCanvas);
-                }
-
-                // Update ports
-                foreach (var port in node.Ports.Where(p => p.IsVisible))
-                {
-                    if (port.PortUI == null)
-                    {
-                        var portColor = port.IsInput
-                            ? (GetColorFromTheme("CoralBrush") ?? Colors.Orange)
-                            : (GetColorFromTheme("AtlassianBrush") ?? Colors.Cyan);
-                        port.PortUI = _portRenderer.CreatePort(portColor);
-                    }
-                    _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
-                    _portRenderer.EnsurePortAddedToCanvas(port);
-                    _host.ZIndexManager.SetPortZIndex(node, port.PortUI);
-                }
-                _host.SyncAllPortsZIndex(node);
+                UpdateFloatingTitlePosition(node, x, y);
+                UpdateSimpleNodePorts(node);
                 return;
             }
 
-            // ✅ Update End node title position
-            if (node.Type == NodeType.End)
+            // ── Dictionary dispatch cho các node delegate thuần túy ──
+            if (_rendererMap.TryGetValue(node.GetType(), out var posRenderer))
             {
-                node.X = x;
-                node.Y = y;
-
-                if (node.Border != null)
-                {
-                    Canvas.SetLeft(node.Border, x);
-                    Canvas.SetTop(node.Border, y);
-                }
-
-                // Update title position
-                if (node.TitleTextBlockUI != null && _host.WorkflowCanvas != null)
-                {
-                    FlowMy.Views.NodeControls.EndNodeControl.UpdateTitlePosition(node, _host.WorkflowCanvas);
-                }
-
-                // Update ports
-                foreach (var port in node.Ports.Where(p => p.IsVisible))
-                {
-                    if (port.PortUI == null)
-                    {
-                        var portColor = port.IsInput
-                            ? (GetColorFromTheme("CoralBrush") ?? Colors.Orange)
-                            : (GetColorFromTheme("AtlassianBrush") ?? Colors.Cyan);
-                        port.PortUI = _portRenderer.CreatePort(portColor);
-                    }
-                    _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
-                    _portRenderer.EnsurePortAddedToCanvas(port);
-                    _host.ZIndexManager.SetPortZIndex(node, port.PortUI);
-                }
-                _host.SyncAllPortsZIndex(node);
+                posRenderer.UpdateNodePosition(node, x, y);
                 return;
             }
 
-            // ✅ Delegate cho specialized renderers để update title position
-            if (node is InputNode inputNode)
-            {
-                _inputNodeRenderer.UpdateNodePosition(inputNode, x, y);
-                return;
-            }
-
-            if (node is DelayNode delayNode)
-            {
-                _delayNodeRenderer.UpdateNodePosition(delayNode, x, y);
-                return;
-            }
-
-            if (node is KeyPressEventNode keyNode)
-            {
-                _keyPressEventNodeRenderer.UpdateNodePosition(keyNode, x, y);
-                return;
-            }
-
-            if (node is HotkeyPressEventNode hotkeyNode)
-            {
-                _hotkeyPressEventNodeRenderer.UpdateNodePosition(hotkeyNode, x, y);
-                return;
-            }
-
-            if (node is MouseEventNode mouseNode)
-            {
-                _mouseEventNodeRenderer.UpdateNodePosition(mouseNode, x, y);
-                return;
-            }
-
-            if (node is StringSplitNode stringSplitNode)
-            {
-                _stringSplitNodeRenderer.UpdateNodePosition(stringSplitNode, x, y);
-                return;
-            }
-
-            if (node is ListOutNode listOutNode)
-            {
-                _listOutNodeRenderer.UpdateNodePosition(listOutNode, x, y);
-                return;
-            }
-
-            if (node is AssignDataNode assignDataNode)
-            {
-                _assignDataNodeRenderer.UpdateNodePosition(assignDataNode, x, y);
-                return;
-            }
-
-            if (node is MediaGalleryNode mediaGalleryNode)
-            {
-                _mediaGalleryNodeRenderer.UpdateNodePosition(mediaGalleryNode, x, y);
-                return;
-            }
-
-            if (node is ImageProcessingNode imageProcessingNode)
-            {
-                _imageProcessingNodeRenderer.UpdateNodePosition(imageProcessingNode, x, y);
-                return;
-            }
-
-            if (node is VideoProcessingNode videoProcessingNode)
-            {
-                _videoProcessingNodeRenderer.UpdateNodePosition(videoProcessingNode, x, y);
-                return;
-            }
-
-            if (node is DataFetcherNode dataFetcherNodeForPos)
-            {
-                _dataFetcherNodeRenderer.UpdateNodePosition(dataFetcherNodeForPos, x, y);
-                return;
-            }
-
-            if (node is KeyValueBridgeNode keyValueBridgeForPos)
-            {
-                _keyValueBridgeNodeRenderer.UpdateNodePosition(keyValueBridgeForPos, x, y);
-                return;
-            }
-
-            if (node is WebNode webNodeForPosition)
-            {
-                _webNodeRenderer.UpdateNodePosition(webNodeForPosition, x, y);
-                return;
-            }
-
-            if (node is HtmlUiNode htmlUiNodeForPosition)
-            {
-                _htmlUiNodeRenderer.UpdateNodePosition(htmlUiNodeForPosition, x, y);
-                return;
-            }
-
-            if (node is OutputNode outputNode)
-            {
-                _outputNodeRenderer.UpdateNodePosition(outputNode, x, y);
-                return;
-            }
-
-            if (node is NotificationNode notificationNode)
-            {
-                _notificationNodeRenderer.UpdateNodePosition(notificationNode, x, y);
-                return;
-            }
-
-            if (node is HttpRequestNode httpRequestNode)
-            {
-                _httpRequestNodeRenderer.UpdateNodePosition(httpRequestNode, x, y);
-                return;
-            }
-
-            if (node is CodeNode codeNode)
-            {
-                _codeNodeRenderer.UpdateNodePosition(codeNode, x, y);
-                return;
-            }
-
-            if (node is FolderNode folderNode)
-            {
-                _folderNodeRenderer.UpdateNodePosition(folderNode, x, y);
-                return;
-            }
-
-            if (node is FileDownloadNode fileDownloadNodeForPos)
-            {
-                _fileDownloadNodeRenderer.UpdateNodePosition(fileDownloadNodeForPos, x, y);
-                return;
-            }
-
-            if (node is FolderFilePathsNode folderFilePathsNodeForPos)
-            {
-                _folderFilePathsNodeRenderer.UpdateNodePosition(folderFilePathsNodeForPos, x, y);
-                return;
-            }
-
-            if (node is StorageNode storageNode)
-            {
-                _storageNodeRenderer.UpdateNodePosition(storageNode, x, y);
-                return;
-            }
-
-            if (node is CallbackNode callbackNode)
-            {
-                _callbackNodeRenderer.UpdateNodePosition(callbackNode, x, y);
-                return;
-            }
-
-            if (node is FlowOverwriteNode flowOverwriteNode)
-            {
-                _flowOverwriteNodeRenderer.UpdateNodePosition(flowOverwriteNode, x, y);
-                return;
-            }
-
-            if (node is BodyContainerNode bodyContainerNode)
-            {
-                _bodyContainerNodeRenderer.UpdateNodePosition(bodyContainerNode, x, y);
-                return;
-            }
-
-            // ✅ Delegate ConditionalNode to its own renderer (handles both Diamond and Classic port positioning)
+            // ✅ Delegate ConditionalNode to its own renderer
             if (node.IsConditionalNode)
             {
                 _conditionalNodeRenderer.UpdateNodePosition(node, x, y);
-                return;
-            }
-
-            // ⚠️ Skip LoopNode - it has custom diamond shape port positioning in LoopNodeRenderer.UpdateNodePosition
-            if (node is LoopNode loopNode)
-            {
-                _loopNodeRenderer.UpdateNodePosition(loopNode, x, y);
-                return;
-            }
-
-            if (node is AsyncTaskNode asyncTaskForPos)
-            {
-                _asyncTaskNodeRenderer.UpdateNodePosition(asyncTaskForPos, x, y);
                 return;
             }
 
@@ -801,55 +425,14 @@ namespace FlowMy.Services.Rendering
 
         public void RemoveNode(WorkflowNode node, Canvas canvas)
         {
-            // ✅ Start node cleanup
-            if (node.Type == NodeType.Start)
+            // Start/End: inline cleanup (title + border + ports)
+            if (node.Type == NodeType.Start || node.Type == NodeType.End)
             {
-                if (node.TitleTextBlockUI != null && canvas.Children.Contains(node.TitleTextBlockUI))
-                {
-                    canvas.Children.Remove(node.TitleTextBlockUI);
-                    node.TitleTextBlockUI = null;
-                }
-
-                if (node.Border != null && canvas.Children.Contains(node.Border))
-                {
-                    canvas.Children.Remove(node.Border);
-                }
-
-                foreach (var port in node.Ports)
-                {
-                    if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
-                    {
-                        canvas.Children.Remove(port.PortUI);
-                    }
-                }
+                RemoveSimpleNode(node, canvas);
                 return;
             }
 
-            // ✅ End node cleanup
-            if (node.Type == NodeType.End)
-            {
-                if (node.TitleTextBlockUI != null && canvas.Children.Contains(node.TitleTextBlockUI))
-                {
-                    canvas.Children.Remove(node.TitleTextBlockUI);
-                    node.TitleTextBlockUI = null;
-                }
-
-                if (node.Border != null && canvas.Children.Contains(node.Border))
-                {
-                    canvas.Children.Remove(node.Border);
-                }
-
-                foreach (var port in node.Ports)
-                {
-                    if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
-                    {
-                        canvas.Children.Remove(port.PortUI);
-                    }
-                }
-                return;
-            }
-
-            // ✅ Delegate cho LoopNodeRenderer xử lý
+            // LoopNode/AsyncTaskNode: có cleanup phức tạp (body containers, ports đặc biệt)
             if (node is LoopNode loopNode)
             {
                 _loopNodeRenderer.RemoveNode(loopNode, canvas);
@@ -862,169 +445,10 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
-            // ✅ Delegate cho InputNodeRenderer để cleanup titleTextBlock
-            if (node is InputNode inputNode)
+            // ── Dictionary dispatch cho các node delegate thuần túy ──
+            if (_rendererMap.TryGetValue(node.GetType(), out var removeRenderer))
             {
-                _inputNodeRenderer.RemoveNode(inputNode, canvas);
-                return;
-            }
-
-            // ✅ Delegate cho KeyPressEventNodeRenderer để cleanup titleTextBlock
-            if (node is KeyPressEventNode keyNode)
-            {
-                _keyPressEventNodeRenderer.RemoveNode(keyNode, canvas);
-                return;
-            }
-
-            // ✅ Delegate cho HotkeyPressEventNodeRenderer để cleanup titleTextBlock
-            if (node is HotkeyPressEventNode hotkeyNode)
-            {
-                _hotkeyPressEventNodeRenderer.RemoveNode(hotkeyNode, canvas);
-                return;
-            }
-
-            // ✅ Delegate cho các renderers khác nếu cần
-            if (node is DelayNode delayNode)
-            {
-                _delayNodeRenderer.RemoveNode(delayNode, canvas);
-                return;
-            }
-
-            if (node is MouseEventNode mouseNode)
-            {
-                _mouseEventNodeRenderer.RemoveNode(mouseNode, canvas);
-                return;
-            }
-
-            if (node is StringSplitNode stringSplitNode)
-            {
-                _stringSplitNodeRenderer.RemoveNode(stringSplitNode, canvas);
-                return;
-            }
-
-            if (node is ListOutNode listOutNode)
-            {
-                _listOutNodeRenderer.RemoveNode(listOutNode, canvas);
-                return;
-            }
-
-            if (node is AssignDataNode assignDataNode)
-            {
-                _assignDataNodeRenderer.RemoveNode(assignDataNode, canvas);
-                return;
-            }
-
-            if (node is MediaGalleryNode mediaGalleryNode)
-            {
-                _mediaGalleryNodeRenderer.RemoveNode(mediaGalleryNode, canvas);
-                return;
-            }
-
-            if (node is ImageProcessingNode imageProcessingNode)
-            {
-                _imageProcessingNodeRenderer.RemoveNode(imageProcessingNode, canvas);
-                return;
-            }
-
-            if (node is VideoProcessingNode videoProcessingNode)
-            {
-                _videoProcessingNodeRenderer.RemoveNode(videoProcessingNode, canvas);
-                return;
-            }
-
-            if (node is DataFetcherNode dataFetcherNodeForRemove)
-            {
-                _dataFetcherNodeRenderer.RemoveNode(dataFetcherNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is KeyValueBridgeNode keyValueBridgeForRemove)
-            {
-                _keyValueBridgeNodeRenderer.RemoveNode(keyValueBridgeForRemove, canvas);
-                return;
-            }
-
-            if (node is WebNode webNodeForRemove)
-            {
-                _webNodeRenderer.RemoveNode(webNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is CodeNode codeNodeForRemove)
-            {
-                _codeNodeRenderer.RemoveNode(codeNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is FolderNode folderNodeForRemove)
-            {
-                _folderNodeRenderer.RemoveNode(folderNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is FileDownloadNode fileDownloadNodeForRemove)
-            {
-                _fileDownloadNodeRenderer.RemoveNode(fileDownloadNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is FolderFilePathsNode folderFilePathsNodeForRemove)
-            {
-                _folderFilePathsNodeRenderer.RemoveNode(folderFilePathsNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is OutputNode outputNode)
-            {
-                _outputNodeRenderer.RemoveNode(outputNode, canvas);
-                return;
-            }
-
-            if (node is NotificationNode notificationNode)
-            {
-                _notificationNodeRenderer.RemoveNode(notificationNode, canvas);
-                return;
-            }
-
-            if (node is HttpRequestNode httpRequestNode)
-            {
-                _httpRequestNodeRenderer.RemoveNode(httpRequestNode, canvas);
-                return;
-            }
-
-            if (node is ScreenCaptureNode captureNode)
-            {
-                _screenCaptureNodeRenderer.RemoveNode(captureNode, canvas);
-                return;
-            }
-
-            if (node is ScreenPositionPickerNode screenNode)
-            {
-                _screenPositionNodeRenderer.RemoveNode(screenNode, canvas);
-                return;
-            }
-
-            if (node is StorageNode storageNodeForRemove)
-            {
-                _storageNodeRenderer.RemoveNode(storageNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is CallbackNode callbackNodeForRemove)
-            {
-                _callbackNodeRenderer.RemoveNode(callbackNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is FlowOverwriteNode flowOverwriteNodeForRemove)
-            {
-                _flowOverwriteNodeRenderer.RemoveNode(flowOverwriteNodeForRemove, canvas);
-                return;
-            }
-
-            if (node is BodyContainerNode bodyContainerNodeForRemove)
-            {
-                _bodyContainerNodeRenderer.RemoveNode(bodyContainerNodeForRemove, canvas);
+                removeRenderer.RemoveNode(node, canvas);
                 return;
             }
 
@@ -1034,18 +458,14 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
-            // Fallback: cleanup cơ bản cho các node types khác
+            // Fallback: cleanup cơ bản
             if (node.Border != null && canvas.Children.Contains(node.Border))
-            {
                 canvas.Children.Remove(node.Border);
-            }
 
             foreach (var port in node.Ports)
             {
                 if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
-                {
                     canvas.Children.Remove(port.PortUI);
-                }
             }
         }
 
@@ -1185,183 +605,17 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
-            // Clear references từ các nodes trong ViewModel nếu có
-            // ⚠️ CRITICAL: Xóa titleTextBlock khỏi canvas TRƯỚC KHI clear reference
+            // Clear TitleTextBlockUI references từ tất cả nodes — TitleTextBlockUI là property
+            // trên WorkflowNode base class, không cần cast theo từng type.
             if (_host.ViewModel != null)
             {
                 foreach (var node in _host.ViewModel.Nodes)
                 {
-                    // Start/End nodes
-                    if ((node.Type == NodeType.Start || node.Type == NodeType.End) && node.TitleTextBlockUI != null)
+                    if (node.TitleTextBlockUI != null)
                     {
-                        var titleTextBlock = node.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
+                        if (canvas.Children.Contains(node.TitleTextBlockUI))
+                            canvas.Children.Remove(node.TitleTextBlockUI);
                         node.TitleTextBlockUI = null;
-                    }
-                    else if (node is InputNode inputNode && inputNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = inputNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        inputNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is KeyPressEventNode keyNode && keyNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = keyNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        keyNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is HotkeyPressEventNode hotkeyNode && hotkeyNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = hotkeyNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        hotkeyNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is MouseEventNode mouseNode && mouseNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = mouseNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        mouseNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is ListOutNode listOutNode && listOutNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = listOutNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        listOutNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is OutputNode outputNode && outputNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = outputNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        outputNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is StringSplitNode stringSplitNode && stringSplitNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = stringSplitNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        stringSplitNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is HttpRequestNode httpRequestNode && httpRequestNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = httpRequestNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        httpRequestNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is AssignDataNode assignDataNode && assignDataNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = assignDataNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        assignDataNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is MediaGalleryNode mediaGalleryNode && mediaGalleryNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = mediaGalleryNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        mediaGalleryNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is ImageProcessingNode imageProcessingNode && imageProcessingNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = imageProcessingNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        imageProcessingNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is VideoProcessingNode videoProcessingNode && videoProcessingNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = videoProcessingNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        videoProcessingNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is CodeNode codeNode && codeNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = codeNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        codeNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is FolderNode folderNode && folderNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = folderNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        folderNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is LoopNode loopNode && loopNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = loopNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        loopNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is WebNode webNode && webNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = webNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        webNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is CallbackNode callbackNode && callbackNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = callbackNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        callbackNode.TitleTextBlockUI = null;
-                    }
-                    else if (node is FlowOverwriteNode flowOverwriteNode && flowOverwriteNode.TitleTextBlockUI != null)
-                    {
-                        var titleTextBlock = flowOverwriteNode.TitleTextBlockUI;
-                        if (canvas.Children.Contains(titleTextBlock))
-                        {
-                            canvas.Children.Remove(titleTextBlock);
-                        }
-                        flowOverwriteNode.TitleTextBlockUI = null;
                     }
                 }
             }
@@ -1479,18 +733,88 @@ namespace FlowMy.Services.Rendering
             var vm = _host.ViewModel;
             if (vm == null) return false;
 
-            // Break/Continue UI chỉ dùng trong LoopBody: kiểm tra điểm gần trung tâm node
-            // (Break/Continue thường ~100x40)
             var probe = new Point(node.X + 50, node.Y + 20);
-
             foreach (var loop in vm.Nodes.OfType<LoopNode>())
             {
                 var body = loop.LoopBodyNode;
                 var rect = new Rect(body.X, body.Y, body.Width, body.Height);
                 if (rect.Contains(probe)) return true;
             }
-
             return false;
+        }
+
+        /// <summary>
+        /// Update vị trí floating title TextBlock khi node di chuyển.
+        /// Dùng cho Start/End node — title nằm trên canvas, không nằm trong border.
+        /// </summary>
+        private void UpdateFloatingTitlePosition(WorkflowNode node, double x, double y)
+        {
+            if (node.TitleTextBlockUI == null || _host.WorkflowCanvas == null) return;
+
+            var title = node.TitleTextBlockUI;
+            if (!_host.WorkflowCanvas.Children.Contains(title))
+            {
+                _host.WorkflowCanvas.Children.Add(title);
+                Panel.SetZIndex(title, 20000);
+            }
+
+            if (node.Border == null) return;
+
+            if (title.ActualWidth == 0 || title.ActualHeight == 0)
+            {
+                title.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                title.Arrange(new Rect(title.DesiredSize));
+            }
+
+            var borderWidth = node.Border.ActualWidth > 0 ? node.Border.ActualWidth : node.Border.Width;
+            var titleWidth  = title.ActualWidth  > 0 ? title.ActualWidth  : title.DesiredSize.Width;
+            var titleHeight = title.ActualHeight > 0 ? title.ActualHeight : title.DesiredSize.Height;
+
+            Canvas.SetLeft(title, x + (borderWidth / 2) - (titleWidth / 2));
+            Canvas.SetTop(title,  y - titleHeight - 4);
+        }
+
+        /// <summary>
+        /// Update ports cho node đơn giản (Start/End) — không có logic đặc biệt.
+        /// </summary>
+        private void UpdateSimpleNodePorts(WorkflowNode node)
+        {
+            foreach (var port in node.Ports.Where(p => p.IsVisible))
+            {
+                if (port.PortUI == null)
+                {
+                    var portColor = port.IsInput
+                        ? (GetColorFromTheme("CoralBrush") ?? Colors.Orange)
+                        : (GetColorFromTheme("AtlassianBrush") ?? Colors.Cyan);
+                    port.PortUI = _portRenderer.CreatePort(portColor);
+                }
+                _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
+                _portRenderer.EnsurePortAddedToCanvas(port);
+                _host.ZIndexManager.SetPortZIndex(node, port.PortUI);
+            }
+            _host.SyncAllPortsZIndex(node);
+        }
+
+        /// <summary>
+        /// Xóa node đơn giản (Start/End) khỏi canvas — title + border + ports.
+        /// </summary>
+        private static void RemoveSimpleNode(WorkflowNode node, Canvas canvas)
+        {
+            if (node.TitleTextBlockUI != null)
+            {
+                if (canvas.Children.Contains(node.TitleTextBlockUI))
+                    canvas.Children.Remove(node.TitleTextBlockUI);
+                node.TitleTextBlockUI = null;
+            }
+
+            if (node.Border != null && canvas.Children.Contains(node.Border))
+                canvas.Children.Remove(node.Border);
+
+            foreach (var port in node.Ports)
+            {
+                if (port.PortUI != null && canvas.Children.Contains(port.PortUI))
+                    canvas.Children.Remove(port.PortUI);
+            }
         }
 
     }

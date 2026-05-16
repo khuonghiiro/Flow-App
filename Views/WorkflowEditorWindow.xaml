@@ -409,14 +409,14 @@ Cursor="Hand"
                                     Margin="4,0,0,0"
                                     ToolTip="Thu gọn bảng node (kéo ra sau)">
                                 <Border x:Name="NodePaletteCollapseButtonFace"
-                                        CornerRadius="10"
+                                        CornerRadius="6"
                                         Padding="6,4"
                                         Background="{DynamicResource CardColor}"
                                         BorderBrush="{DynamicResource BorderColor}"
                                         BorderThickness="1">
                                     <controls:SvgViewboxEx Width="14" Height="14"
                                                            Fill="{DynamicResource TextBrush}"
-                                                           Opacity="0.95"
+                                                           Opacity="1"
                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='angles-left duotone'}"/>
                                 </Border>
                             </Button>

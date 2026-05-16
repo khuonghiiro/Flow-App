@@ -1,12 +1,14 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using FlowMy.Models;
+using FlowMy.Models.Nodes;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Rendering;
 using FlowMy.Views.NodeControls;
@@ -49,7 +51,7 @@ namespace FlowMy.Services.Interaction
         /// Giá trị thấp hơn: Title/effects hiện lại nhanh hơn → Responsive hơn, nhưng tăng CPU usage.
         /// Khuyến nghị: 300-500ms cho cân bằng tốt giữa performance và responsiveness.
         /// </summary>
-        private const int ZoomEndDebounceMs = 300;
+        private const int ZoomEndDebounceMs = 150;
         private bool _effectsTemporarilyDisabled;
         private readonly System.Collections.Generic.Dictionary<System.Windows.Controls.Border, Effect?> _savedBorderEffects = new();
 
@@ -409,6 +411,10 @@ namespace FlowMy.Services.Interaction
                 // finalize expensive work after zoom settles
                 RestoreExpensiveEffectsAfterZoom();
                 NodeChrome.SetZoomingState(false); // Re-enable NodeChrome handlers
+
+                // Reset IsZooming trên tất cả node contexts để LayoutUpdated tiếp theo
+                // restore title ngay lập tức, không bị stuck ở nhánh "đang zoom".
+                FlowMy.Views.NodeControls.Helpers.BaseNodeControlHelper.ResetZoomStateForAllContexts();
                 
                 // ✅ Tối ưu: Bật lại viewport culling và trigger update
                 var viewportCullingService = Host.ViewportCullingService;
@@ -449,90 +455,62 @@ namespace FlowMy.Services.Interaction
         {
             var viewModel = Host.ViewModel;
             if (viewModel == null) return;
-            
+
             var host = Host;
-            var viewportCullingService = host.ViewportCullingService;
-            
-            // Tính toán viewport bounds một lần
+
+            // Tính viewport bounds để chỉ update nodes trong tầm nhìn
             Rect viewportBounds = Rect.Empty;
-            if (viewportCullingService != null)
+            try
             {
-                // Sử dụng reflection hoặc public method để lấy viewport bounds
-                // Nếu không có, tính toán đơn giản
-                try
+                var scrollViewer = host.ScrollViewer;
+                if (scrollViewer.ViewportWidth > 0 && scrollViewer.ViewportHeight > 0)
                 {
-                    var scrollViewer = host.ScrollViewer;
-                    if (scrollViewer.ViewportWidth > 0 && scrollViewer.ViewportHeight > 0)
-                    {
-                        double zoom = host.ZoomLevel;
-                        double translateX = host.TranslateTransform.X;
-                        double translateY = host.TranslateTransform.Y;
-                        
-                        double canvasLeft = (scrollViewer.HorizontalOffset - translateX) / zoom;
-                        double canvasTop = (scrollViewer.VerticalOffset - translateY) / zoom;
-                        double canvasWidth = scrollViewer.ViewportWidth / zoom;
-                        double canvasHeight = scrollViewer.ViewportHeight / zoom;
-                        
-                        // Thêm margin lớn để đảm bảo không bỏ sót
-                        viewportBounds = new Rect(
-                            canvasLeft - 300,
-                            canvasTop - 300,
-                            canvasWidth + 600,
-                            canvasHeight + 600
-                        );
-                    }
-                }
-                catch
-                {
-                    // Nếu lỗi, fallback: update tất cả visible nodes
-                    viewportBounds = Rect.Empty;
+                    double zoom = host.ZoomLevel;
+                    double canvasLeft  = (scrollViewer.HorizontalOffset - host.TranslateTransform.X) / zoom;
+                    double canvasTop   = (scrollViewer.VerticalOffset   - host.TranslateTransform.Y) / zoom;
+                    double canvasWidth  = scrollViewer.ViewportWidth  / zoom;
+                    double canvasHeight = scrollViewer.ViewportHeight / zoom;
+                    viewportBounds = new Rect(canvasLeft - 300, canvasTop - 300,
+                                              canvasWidth + 600, canvasHeight + 600);
                 }
             }
-            
-            // Sử dụng DispatcherPriority thấp hơn để không block UI thread
+            catch { /* fallback: update tất cả */ }
+
+            // Dùng DispatcherPriority.Render để title hiện ngay sau khi zoom kết thúc,
+            // không chờ Background queue (vốn chạy sau tất cả UI work khác).
             Host.Dispatcher.BeginInvoke(new Action(() =>
             {
-                int updatedCount = 0;
-                
-                // Chỉ update nodes trong viewport hoặc đang visible
                 foreach (var node in viewModel.Nodes)
                 {
                     if (node.TitleTextBlockUI == null || node.Border == null) continue;
-                    
-                    // Chỉ update nodes đang visible để tránh layout passes không cần thiết
                     if (node.Border.Visibility != Visibility.Visible) continue;
-                    
-                    // Kiểm tra xem node có trong viewport không (nếu có viewport bounds)
+
                     if (!viewportBounds.IsEmpty)
                     {
-                        // Tính toán node bounds đơn giản
-                        double nodeWidth = node.Border.ActualWidth > 0 ? node.Border.ActualWidth : 300;
-                        double nodeHeight = node.Border.ActualHeight > 0 ? node.Border.ActualHeight : 200;
-                        Rect nodeBounds = new Rect(node.X, node.Y, nodeWidth, nodeHeight);
-                        
-                        // Nếu node không intersect với viewport, bỏ qua
-                        if (!viewportBounds.IntersectsWith(nodeBounds)) continue;
+                        double nw = node.Border.ActualWidth  > 0 ? node.Border.ActualWidth  : 80;
+                        double nh = node.Border.ActualHeight > 0 ? node.Border.ActualHeight : 80;
+                        if (!viewportBounds.IntersectsWith(new Rect(node.X, node.Y, nw, nh))) continue;
                     }
-                    
-                    // Batch update: chỉ invalidate một lần và update title position
-                    // Không gọi InvalidateMeasure/InvalidateArrange để tránh layout passes không cần thiết
-                    // Thay vào đó, chỉ update title position trực tiếp
-                    
-                    // Explicitly update Start/End node title positions
-                    if (node.Type == NodeType.Start)
+
+                    var title = node.TitleTextBlockUI;
+
+                    // Restore visibility
+                    if (title.Visibility != Visibility.Visible)
+                        title.Visibility = Visibility.Visible;
+
+                    // Update position
+                    if (title.ActualWidth == 0 || title.ActualHeight == 0)
                     {
-                        StartNodeControl.UpdateTitlePosition(node, Host.WorkflowCanvas);
-                        updatedCount++;
+                        title.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                        title.Arrange(new Rect(title.DesiredSize));
                     }
-                    else if (node.Type == NodeType.End)
-                    {
-                        EndNodeControl.UpdateTitlePosition(node, Host.WorkflowCanvas);
-                        updatedCount++;
-                    }
-                    // Với các node khác, title position sẽ được update tự động qua LayoutUpdated handler
-                    // Không cần force invalidate để tránh lag
+                    var bw = node.Border.ActualWidth  > 0 ? node.Border.ActualWidth  : node.Border.Width;
+                    var tw = title.ActualWidth  > 0 ? title.ActualWidth  : title.DesiredSize.Width;
+                    var th = title.ActualHeight > 0 ? title.ActualHeight : title.DesiredSize.Height;
+                    Canvas.SetLeft(title, node.X + (bw / 2) - (tw / 2));
+                    Canvas.SetTop(title,  node.Y - th - 4);
                 }
-            }), System.Windows.Threading.DispatcherPriority.Background);
+            }), System.Windows.Threading.DispatcherPriority.Render);
         }
 
         private void TryDisableExpensiveEffectsDuringZoom()

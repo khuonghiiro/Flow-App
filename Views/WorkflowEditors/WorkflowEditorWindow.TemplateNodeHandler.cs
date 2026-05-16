@@ -374,6 +374,10 @@ namespace FlowMy.Views
                 "KeyValueBridge" => "list-check solid",
                 "FlowOverwrite" => "merge sharp-regular",
                 "BodyContainer" => "border-none sharp-duotone-regular",
+                "Notification" => "message-captions duotone-regular",
+                "Storage" => "arrow-progress sharp-regular",
+                "Callback" => "arrows-turn-right regular",
+                "FileDownload" => "download solid",
                 _ => "circle2"
             };
         }

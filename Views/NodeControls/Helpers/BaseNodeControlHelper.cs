@@ -96,6 +96,20 @@ namespace FlowMy.Views.NodeControls.Helpers
         }
 
         /// <summary>
+        /// Resets IsZooming = false trên tất cả contexts đang active.
+        /// Gọi từ ZoomPanHandler ngay khi zoom kết thúc để LayoutUpdated tiếp theo
+        /// không bị stuck ở nhánh "đang zoom" và restore title ngay lập tức.
+        /// </summary>
+        public static void ResetZoomStateForAllContexts()
+        {
+            foreach (var ctx in _contexts.Values)
+            {
+                if (ctx.IsZooming)
+                    ctx.IsZooming = false;
+            }
+        }
+
+        /// <summary>
         /// Removes the NodeControlContext for a given Border instance from the centralized dictionary.
         /// </summary>
         /// <param name="border">The Border instance to remove.</param>
