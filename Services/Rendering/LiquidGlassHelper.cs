@@ -22,6 +22,56 @@ namespace FlowMy.Services.Rendering
         }
 
         /// <summary>
+        /// Kiểm tra theme hiện tại có phải theme sáng không.
+        /// Theme sáng: Light, SoftLight, Modern → icon/text dùng màu đen.
+        /// Theme tối: Dark, SoftDark, Dracula, Monokai, Night → icon/text dùng màu trắng.
+        /// </summary>
+        public static bool IsCurrentThemeLight()
+        {
+            try
+            {
+                // Detect theme bằng cách check WindowBackgroundBrush luminance
+                // Theme sáng có nền sáng, theme tối có nền tối
+                var bgBrush = Application.Current?.TryFindResource("WindowBackgroundBrush") as SolidColorBrush;
+                if (bgBrush != null)
+                {
+                    var c = bgBrush.Color;
+                    var luminance = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
+                    return luminance > 0.5;
+                }
+
+                // Fallback: check CanvasBackgroundBrush
+                var canvasBrush = Application.Current?.TryFindResource("CanvasBackgroundBrush") as SolidColorBrush;
+                if (canvasBrush != null)
+                {
+                    var c = canvasBrush.Color;
+                    var luminance = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
+                    return luminance > 0.5;
+                }
+
+                return false;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// Lấy màu icon/text phù hợp cho Liquid Glass theo theme hiện tại.
+        /// Theme sáng → đen, theme tối → trắng.
+        /// </summary>
+        public static Color GetGlassIconColor()
+        {
+            return IsCurrentThemeLight() ? Colors.Black : Colors.White;
+        }
+
+        /// <summary>
+        /// Lấy Brush icon/text phù hợp cho Liquid Glass theo theme hiện tại.
+        /// </summary>
+        public static Brush GetGlassIconBrush()
+        {
+            return new SolidColorBrush(GetGlassIconColor());
+        }
+
+        /// <summary>
         /// Áp dụng hiệu ứng Liquid Glass lên một Border đã có sẵn.
         /// Tự động detect node màu sáng và tăng contrast.
         /// </summary>
@@ -35,7 +85,7 @@ namespace FlowMy.Services.Rendering
 
             // Viền: nếu màu sáng → dùng viền tối hơn để tạo contrast
             border.BorderBrush = isLightColor
-                ? new SolidColorBrush(Color.FromArgb(120, 100, 100, 100))  // viền xám mờ cho node sáng
+                ? new SolidColorBrush(Color.FromArgb(120, 100, 100, 100))
                 : CreateGlassBorderBrush();
             border.BorderThickness = new Thickness(1.5);
 
@@ -50,7 +100,6 @@ namespace FlowMy.Services.Rendering
         {
             var isLight = IsLightColor(baseColor);
 
-            // Node sáng: tăng alpha để nhìn rõ hơn trên nền sáng
             byte alphaTop = isLight ? (byte)100 : (byte)80;
             byte alphaBottom = isLight ? (byte)55 : (byte)35;
 
@@ -63,7 +112,6 @@ namespace FlowMy.Services.Rendering
                 Color.FromArgb(alphaTop, baseColor.R, baseColor.G, baseColor.B), 0.0));
             gradient.GradientStops.Add(new GradientStop(
                 Color.FromArgb(alphaBottom, baseColor.R, baseColor.G, baseColor.B), 0.7));
-            // Thêm highlight nhẹ ở góc dưới phải (giả lập phản chiếu ánh sáng)
             gradient.GradientStops.Add(new GradientStop(
                 Color.FromArgb((byte)(alphaTop + 20), 255, 255, 255), 1.0));
 
@@ -113,12 +161,9 @@ namespace FlowMy.Services.Rendering
 
         /// <summary>
         /// Tạo Effect (glow + shadow) cho Liquid Glass.
-        /// Kết hợp outer glow từ màu node và drop shadow tạo chiều sâu.
         /// </summary>
         public static Effect CreateGlassEffect(Color baseColor, bool isLightColor = false)
         {
-            // Dùng DropShadowEffect với ShadowDepth=0 để tạo glow đều xung quanh
-            // + BlurRadius lớn để mềm mại
             return new DropShadowEffect
             {
                 Color = isLightColor
@@ -135,17 +180,19 @@ namespace FlowMy.Services.Rendering
         }
 
         /// <summary>
-        /// Tạo text foreground phù hợp cho Liquid Glass (trắng + shadow nhẹ).
+        /// Tạo text foreground phù hợp cho Liquid Glass.
+        /// Theme sáng → đen + shadow trắng, theme tối → trắng + shadow đen.
         /// </summary>
         public static void ApplyGlassTextStyle(TextBlock textBlock)
         {
-            textBlock.Foreground = new SolidColorBrush(Colors.White);
+            var isLightTheme = IsCurrentThemeLight();
+            textBlock.Foreground = new SolidColorBrush(isLightTheme ? Colors.Black : Colors.White);
             textBlock.Effect = new DropShadowEffect
             {
-                Color = Colors.Black,
+                Color = isLightTheme ? Colors.White : Colors.Black,
                 BlurRadius = 4,
                 ShadowDepth = 1,
-                Opacity = 0.6
+                Opacity = isLightTheme ? 0.8 : 0.6
             };
         }
 
@@ -162,11 +209,9 @@ namespace FlowMy.Services.Rendering
 
         /// <summary>
         /// Kiểm tra xem màu có "sáng" không (luminance cao).
-        /// Dùng để tăng contrast cho node trắng/vàng nhạt trên theme sáng.
         /// </summary>
         private static bool IsLightColor(Color color)
         {
-            // Relative luminance (simplified)
             var luminance = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0;
             return luminance > 0.65;
         }

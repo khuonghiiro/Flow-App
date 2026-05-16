@@ -2,6 +2,7 @@ using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using FlowMy.Services.Rendering;
 using FlowMy.Workflow;
 using System;
 using System.Linq;
@@ -403,8 +404,13 @@ namespace FlowMy.Views
             {
                 Width = 80,
                 Height = 80,
-                Background = background,
-                BorderBrush = sourceBorder.BorderBrush,
+                Background = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
+                    ? Services.Rendering.LiquidGlassHelper.CreateGlassBackground(
+                        Services.Rendering.LiquidGlassHelper.GetColorFromBrush(background))
+                    : background,
+                BorderBrush = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
+                    ? Services.Rendering.LiquidGlassHelper.CreateGlassBorderBrush()
+                    : sourceBorder.BorderBrush,
                 BorderThickness = new Thickness(2),
                 CornerRadius = new CornerRadius(10),
                 Opacity = 0.5,
@@ -438,7 +444,9 @@ namespace FlowMy.Views
                 Height = 32,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Fill = new SolidColorBrush(Colors.White),
+                Fill = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase)
+                    ? Services.Rendering.LiquidGlassHelper.GetGlassIconBrush()
+                    : new SolidColorBrush(Colors.White),
                 IsHitTestVisible = false
             };
 

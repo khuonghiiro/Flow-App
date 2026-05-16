@@ -997,6 +997,15 @@ namespace FlowMy.Views
                 }
             }
             NodeAppearanceModeSelector.SelectionChanged += NodeAppearanceModeSelector_SelectionChanged;
+
+            // Apply Liquid Glass to palette if mode is already LiquidGlass (from saved preferences)
+            if (string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase))
+            {
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+                {
+                    ApplyLiquidGlassToPalette();
+                }));
+            }
         }
 
         /// <summary>
@@ -1077,6 +1086,16 @@ namespace FlowMy.Views
                                 {
                                     NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);
                                 }
+
+                                // Liquid Glass: cập nhật icon color sau theme switch
+                                if (string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // Canvas nodes: re-render để NodeChrome.Apply cập nhật icon fill theo theme mới
+                                    NodeRendererService?.RenderAllNodes();
+                                    UpdateAllConnectionPaths();
+                                    // Palette: cập nhật icon fill
+                                    ApplyLiquidGlassIconsToPalette();
+                                }
                             }));
                         }
                         catch { }
@@ -1099,8 +1118,130 @@ namespace FlowMy.Views
                     // Re-render all nodes with new appearance
                     NodeRendererService?.RenderAllNodes();
                     UpdateAllConnectionPaths();
+                    // Update palette nodes appearance
+                    ApplyLiquidGlassToPalette();
                     // Persist
                     Services.Utilities.CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Áp dụng/gỡ Liquid Glass style cho các node template trong palette bên trái.
+        /// </summary>
+        private void ApplyLiquidGlassToPalette()
+        {
+            if (NodeTemplatesPanel == null) return;
+            var isGlass = string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase);
+
+            foreach (var child in NodeTemplatesPanel.Children)
+            {
+                if (child is System.Windows.Controls.WrapPanel wp)
+                {
+                    foreach (var wpChild in wp.Children)
+                    {
+                        if (wpChild is Border paletteBorder && paletteBorder.Tag is string)
+                        {
+                            ApplyGlassToPaletteBorder(paletteBorder, isGlass);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Chỉ cập nhật icon fill trong palette khi đang ở LiquidGlass mode (sau theme switch).
+        /// Không đụng background/border — chỉ đổi màu icon đen↔trắng theo theme mới.
+        /// </summary>
+        private void ApplyLiquidGlassIconsToPalette()
+        {
+            if (NodeTemplatesPanel == null) return;
+            var iconBrush = Services.Rendering.LiquidGlassHelper.GetGlassIconBrush();
+
+            foreach (var child in NodeTemplatesPanel.Children)
+            {
+                if (child is System.Windows.Controls.WrapPanel wp)
+                {
+                    foreach (var wpChild in wp.Children)
+                    {
+                        if (wpChild is Border paletteBorder && paletteBorder.Tag is string)
+                        {
+                            foreach (var svg in FindVisualChildren<Controls.SvgViewboxEx>(paletteBorder))
+                            {
+                                svg.Fill = iconBrush;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Áp dụng hoặc gỡ Liquid Glass cho 1 palette border.
+        /// </summary>
+        private static void ApplyGlassToPaletteBorder(Border border, bool isGlass)
+        {
+            if (isGlass)
+            {
+                // Lưu trạng thái gốc lần đầu (trước khi override bất cứ gì)
+                if (!border.Resources.Contains("_OrigBg"))
+                {
+                    border.Resources["_OrigBg"] = border.Background;
+                    border.Resources["_OrigBorderBrush"] = border.BorderBrush;
+                    border.Resources["_OrigBorderThickness"] = border.BorderThickness;
+                    border.Resources["_OrigEffect"] = border.Effect;
+
+                    var origFills = new System.Collections.Generic.List<Brush>();
+                    foreach (var svg in FindVisualChildren<Controls.SvgViewboxEx>(border))
+                        origFills.Add(svg.Fill ?? Brushes.White);
+                    border.Resources["_OrigFills"] = origFills;
+                }
+
+                // Lấy base color từ original background
+                var origBg = border.Resources["_OrigBg"] as Brush ?? border.Background;
+                var baseColor = Services.Rendering.LiquidGlassHelper.GetColorFromBrush(origBg);
+
+                // Apply glass
+                border.Background = Services.Rendering.LiquidGlassHelper.CreateGlassBackground(baseColor);
+                border.BorderBrush = Services.Rendering.LiquidGlassHelper.CreateGlassBorderBrush();
+                border.BorderThickness = new System.Windows.Thickness(1.2);
+                var isLightColor = (0.299 * baseColor.R + 0.587 * baseColor.G + 0.114 * baseColor.B) / 255.0 > 0.65;
+                border.Effect = Services.Rendering.LiquidGlassHelper.CreateGlassEffect(baseColor, isLightColor);
+
+                // Icon fill theo theme
+                var iconBrush = Services.Rendering.LiquidGlassHelper.GetGlassIconBrush();
+                foreach (var svg in FindVisualChildren<Controls.SvgViewboxEx>(border))
+                    svg.Fill = iconBrush;
+            }
+            else
+            {
+                // Khôi phục về Solid từ saved originals
+                if (border.Resources.Contains("_OrigBg"))
+                {
+                    border.Background = border.Resources["_OrigBg"] as Brush;
+                    border.BorderBrush = border.Resources["_OrigBorderBrush"] as Brush;
+                    if (border.Resources["_OrigBorderThickness"] is Thickness t)
+                        border.BorderThickness = t;
+                    border.Effect = border.Resources["_OrigEffect"] as System.Windows.Media.Effects.Effect;
+
+                    // Restore icon fills
+                    if (border.Resources["_OrigFills"] is System.Collections.Generic.List<Brush> origFills)
+                    {
+                        int idx = 0;
+                        foreach (var svg in FindVisualChildren<Controls.SvgViewboxEx>(border))
+                        {
+                            if (idx < origFills.Count)
+                                svg.Fill = origFills[idx];
+                            idx++;
+                        }
+                    }
+
+                    // Xóa saved state
+                    border.Resources.Remove("_OrigBg");
+                    border.Resources.Remove("_OrigBorderBrush");
+                    border.Resources.Remove("_OrigBorderThickness");
+                    border.Resources.Remove("_OrigEffect");
+                    border.Resources.Remove("_OrigFills");
                 }
             }
         }

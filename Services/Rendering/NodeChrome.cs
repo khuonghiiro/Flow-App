@@ -130,10 +130,44 @@ namespace FlowMy.Services.Rendering
             EnsureExecutionStatusBadgeAttached(border, node, host);
 
             border.Child = overlayRoot;
+
+            // Liquid Glass: update icon fills cho complex nodes (SVG icons bên trong)
+            if (LiquidGlassHelper.IsLiquidGlassMode(host))
+            {
+                var iconBrush = LiquidGlassHelper.GetGlassIconBrush();
+                UpdateSvgIconFills(border, iconBrush);
+            }
+
             AttachSizeChangedSync(border, node, host);
 
             EnsureChromeSizeSnapshot(border, node);
             // Bỏ auto-expand: chỉ expand khi user mở toggle
+        }
+
+        /// <summary>
+        /// Cập nhật Fill của tất cả SvgViewboxEx bên trong border (dùng cho Liquid Glass icon color).
+        /// </summary>
+        private static void UpdateSvgIconFills(Border border, Brush iconBrush)
+        {
+            if (border.Child == null) return;
+            UpdateSvgIconFillsRecursive(border.Child, iconBrush);
+        }
+
+        private static void UpdateSvgIconFillsRecursive(DependencyObject parent, Brush iconBrush)
+        {
+            var count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is FlowMy.Controls.SvgViewboxEx svg)
+                {
+                    svg.Fill = iconBrush;
+                }
+                else
+                {
+                    UpdateSvgIconFillsRecursive(child, iconBrush);
+                }
+            }
         }
 
         private static FrameworkElement CreateExecutionStatusBadge(WorkflowNode node)
