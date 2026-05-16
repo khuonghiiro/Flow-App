@@ -292,7 +292,103 @@ Cursor="Hand"
                     SnapsToDevicePixels="True"
                     MinWidth="160">
                 <Grid>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,2,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Fixed header + search (không scroll) -->
+                    <StackPanel Grid.Row="0" Margin="0,0,0,0">
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="Node Templates"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextBrush}"/>
+                            <Button x:Name="NodePaletteCollapseButton"
+                                    Grid.Column="1"
+                                    Click="NodePaletteCollapseButton_Click"
+                                    Style="{DynamicResource TransparentButtonStyle}"
+                                    Padding="6,4"
+                                    MinWidth="32"
+                                    Cursor="Hand"
+                                    VerticalAlignment="Center"
+                                    Margin="4,0,0,0"
+                                    ToolTip="Thu gọn bảng node (kéo ra sau)">
+                                <Border x:Name="NodePaletteCollapseButtonFace"
+                                        CornerRadius="6"
+                                        Padding="6,4"
+                                        Background="{DynamicResource CardColor}"
+                                        BorderBrush="{DynamicResource BorderColor}"
+                                        BorderThickness="1">
+                                    <controls:SvgViewboxEx Width="14" Height="14"
+                                                           Fill="{DynamicResource TextBrush}"
+                                                           Opacity="1"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='angles-left duotone'}"/>
+                                </Border>
+                            </Button>
+                        </Grid>
+                        
+                        <!-- Search Box -->
+                        <Border Background="{DynamicResource CardColor}"
+                                BorderBrush="{DynamicResource BorderColor}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="6,4"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="NodeSearchBox"
+                                         TextChanged="NodeSearchBox_TextChanged"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="4,2"
+                                         FontSize="11"
+                                         Foreground="{DynamicResource TextBrush}"
+                                         VerticalContentAlignment="Center"
+                                         CaretBrush="{DynamicResource TextBrush}"
+                                         ToolTip="Tìm kiếm node...">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="TextBox">
+                                                        <Border Background="{TemplateBinding Background}"
+                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                                CornerRadius="4">
+                                                            <ScrollViewer x:Name="PART_ContentHost"
+                                                                          Margin="{TemplateBinding Padding}"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                                <controls:SvgViewboxEx Grid.Column="1"
+                                                      Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='box-arrow-down-magnifying-glass solid'}"
+                                                      Width="14"
+                                                      Height="14"
+                                                      Fill="{DynamicResource PlaceholderBrush}"
+                                                      Opacity="0.8"
+                                                      VerticalAlignment="Center"
+                                                      Margin="4,0,0,0"
+                                                      IsHitTestVisible="False"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,2,0">
                     <StackPanel Margin="0,0,0,8" x:Name="NodeTemplatesPanel">
                         <StackPanel.Resources>
                             <!-- Icon-only palette item (drag from templates) -->
@@ -387,93 +483,6 @@ Cursor="Hand"
                             </Style>
 
                         </StackPanel.Resources>
-
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0"
-                                       Text="Node Templates"
-                                       FontWeight="SemiBold"
-                                       FontSize="13"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource TextBrush}"/>
-                            <Button x:Name="NodePaletteCollapseButton"
-                                    Grid.Column="1"
-                                    Click="NodePaletteCollapseButton_Click"
-                                    Style="{DynamicResource TransparentButtonStyle}"
-                                    Padding="6,4"
-                                    MinWidth="32"
-                                    Cursor="Hand"
-                                    VerticalAlignment="Center"
-                                    Margin="4,0,0,0"
-                                    ToolTip="Thu gọn bảng node (kéo ra sau)">
-                                <Border x:Name="NodePaletteCollapseButtonFace"
-                                        CornerRadius="6"
-                                        Padding="6,4"
-                                        Background="{DynamicResource CardColor}"
-                                        BorderBrush="{DynamicResource BorderColor}"
-                                        BorderThickness="1">
-                                    <controls:SvgViewboxEx Width="14" Height="14"
-                                                           Fill="{DynamicResource TextBrush}"
-                                                           Opacity="1"
-                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='angles-left duotone'}"/>
-                                </Border>
-                            </Button>
-                        </Grid>
-                        
-                        <!-- Search Box -->
-                        <Border Background="{DynamicResource CardColor}"
-                                BorderBrush="{DynamicResource BorderColor}"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Padding="6,4"
-                                Margin="0,0,0,10">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="NodeSearchBox"
-                                         TextChanged="NodeSearchBox_TextChanged"
-                                         Background="Transparent"
-                                         BorderThickness="0"
-                                         Padding="4,2"
-                                         FontSize="11"
-                                         Foreground="{DynamicResource TextBrush}"
-                                         VerticalContentAlignment="Center"
-                                         CaretBrush="{DynamicResource TextBrush}"
-                                         ToolTip="Tìm kiếm node...">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox">
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="TextBox">
-                                                        <Border Background="{TemplateBinding Background}"
-                                                                BorderBrush="{TemplateBinding BorderBrush}"
-                                                                BorderThickness="{TemplateBinding BorderThickness}"
-                                                                CornerRadius="4">
-                                                            <ScrollViewer x:Name="PART_ContentHost"
-                                                                          Margin="{TemplateBinding Padding}"/>
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
-                                <controls:SvgViewboxEx Grid.Column="1"
-                                                      Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='box-arrow-down-magnifying-glass solid'}"
-                                                      Width="14"
-                                                      Height="14"
-                                                      Fill="{DynamicResource PlaceholderBrush}"
-                                                      Opacity="0.8"
-                                                      VerticalAlignment="Center"
-                                                      Margin="4,0,0,0"
-                                                      IsHitTestVisible="False"/>
-                            </Grid>
-                        </Border>
                         
                         <!-- Start Node --><!--
                         <Border x:Name="StartNodeTemplate"
@@ -1889,10 +1898,9 @@ Cursor="Hand"
                     </StackPanel>
                 </ScrollViewer>
 
-                    <Border VerticalAlignment="Bottom"
+                    <Border Grid.Row="2"
                             HorizontalAlignment="Stretch"
-                            Margin="0,0,10,8"
-                            Panel.ZIndex="2"
+                            Margin="0,8,10,0"
                             Visibility="{Binding HasManualRunSessions, Converter={StaticResource BooleanToVisibilityConverter}}"
                             CornerRadius="8"
                             Padding="8,6"
