@@ -64,6 +64,9 @@ namespace FlowMy.Services.Interaction
         double EnergyTextSpinSeconds { get; set; }
         bool EnergyMeteorMode { get; set; }
 
+        // Node appearance mode: "Solid" (default) or "LiquidGlass"
+        string NodeAppearanceMode { get; set; }
+
         WorkflowConnection? SelectedConnection { get; set; }
 
         // Mutable editor state (kept on host for now)

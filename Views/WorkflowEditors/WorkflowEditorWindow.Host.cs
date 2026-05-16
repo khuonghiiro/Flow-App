@@ -59,6 +59,8 @@ namespace FlowMy.Views
         double IWorkflowEditorHost.EnergyTextSpinSeconds { get => _energyTextSpinSeconds; set => _energyTextSpinSeconds = value; }
         bool IWorkflowEditorHost.EnergyMeteorMode { get => _energyMeteorMode; set => _energyMeteorMode = value; }
 
+        string IWorkflowEditorHost.NodeAppearanceMode { get => _nodeAppearanceMode; set => _nodeAppearanceMode = string.IsNullOrWhiteSpace(value) ? "Solid" : value; }
+
         WorkflowConnection? IWorkflowEditorHost.SelectedConnection { get => _selectedConnection; set => _selectedConnection = value; }
 
         WorkflowNode? IWorkflowEditorHost.DraggedNode { get => _draggedNode; set => _draggedNode = value; }

@@ -48,6 +48,11 @@ namespace FlowMy.Services.Utilities
 
         // UI Theme animations
         /// <summary>
+        /// Chế độ giao diện node: "Solid" (màu đặc mặc định) hoặc "LiquidGlass" (kính lỏng trong suốt).
+        /// </summary>
+        public string NodeAppearanceMode { get; set; } = "Solid";
+
+        /// <summary>
         /// Bật/tắt hiệu ứng animation trên các control giao diện (hover, checked transitions, etc.)
         /// Tắt để tăng hiệu năng trên máy yếu.
         /// </summary>

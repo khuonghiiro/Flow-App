@@ -83,6 +83,18 @@
 
                             <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,10,0,0">
                                 <StackPanel>
+                                    <TextBlock Text="Giao diện Node (Node Appearance)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
+                                    <ComboBox x:Name="NodeAppearanceModeComboBox" Style="{DynamicResource BaseComboBox}" Margin="0,4,0,6" Height="32">
+                                        <ComboBoxItem Content="Màu đặc (Solid)" Tag="Solid"/>
+                                        <ComboBoxItem Content="Kính lỏng (Liquid Glass)" Tag="LiquidGlass"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Liquid Glass: node hiển thị trong suốt với hiệu ứng kính mờ, tint màu nhẹ theo node. Phù hợp với mọi theme."
+                                               Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,10,0,0">
+                                <StackPanel>
                                     <TextBlock Text="Đồng bộ kết thúc luồng (Final Sync)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
                                     <CheckBox Foreground="{DynamicResource TextBrush}" x:Name="StrictFinalSyncEnabledCheckBox" Content="Strict Final Sync (code xong thì chốt UI và flush dữ liệu cuối)" Margin="0,0,0,6"/>
                                     <TextBlock Text="Bật để ép đồng bộ UI ngay khi luồng code kết thúc. Nếu tắt, UI có thể mượt hơn nhẹ nhưng trạng thái/result có thể trễ một nhịp."

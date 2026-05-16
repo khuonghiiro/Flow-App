@@ -80,6 +80,7 @@ namespace FlowMy.Views
         private double _energyRunSpeed = Settings.Default.EnergyRunSpeed <= 0 ? 1.0 : Settings.Default.EnergyRunSpeed; // multiplier
         private double _energyTextSpinSeconds = Settings.Default.EnergyTextSpinSeconds <= 0 ? 0.7 : Settings.Default.EnergyTextSpinSeconds; // seconds / vòng 360
         private bool _energyMeteorMode;
+        private string _nodeAppearanceMode = "Solid";
         private bool _isApplyingEnergyMenuState = false;
         private bool _headlessCanvasOptimizationEnabled;
         private HashSet<string> _headlessHiddenWidgetNodeIds = new(StringComparer.OrdinalIgnoreCase);
@@ -974,6 +975,28 @@ namespace FlowMy.Views
                 }
             }
             ThemeSelector.SelectionChanged += ThemeSelector_SelectionChanged;
+
+            // Initialize Node Appearance Mode selector
+            InitializeNodeAppearanceModeSelector();
+        }
+
+        /// <summary>
+        /// Khởi tạo ComboBox chọn giao diện node (Solid / Liquid Glass) từ preferences đã lưu.
+        /// </summary>
+        private void InitializeNodeAppearanceModeSelector()
+        {
+            if (NodeAppearanceModeSelector == null) return;
+
+            NodeAppearanceModeSelector.SelectionChanged -= NodeAppearanceModeSelector_SelectionChanged;
+            foreach (ComboBoxItem item in NodeAppearanceModeSelector.Items)
+            {
+                if (string.Equals(item.Tag?.ToString(), _nodeAppearanceMode, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    NodeAppearanceModeSelector.SelectedItem = item;
+                    break;
+                }
+            }
+            NodeAppearanceModeSelector.SelectionChanged += NodeAppearanceModeSelector_SelectionChanged;
         }
 
         /// <summary>
@@ -1058,6 +1081,26 @@ namespace FlowMy.Views
                         }
                         catch { }
                     }));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Khi user chọn Node Appearance Mode từ ComboBox trên toolbar.
+        /// </summary>
+        private void NodeAppearanceModeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is ComboBox cb && cb.SelectedItem is ComboBoxItem item)
+            {
+                var mode = item.Tag?.ToString() ?? "Solid";
+                if (!string.Equals(_nodeAppearanceMode, mode, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    _nodeAppearanceMode = mode;
+                    // Re-render all nodes with new appearance
+                    NodeRendererService?.RenderAllNodes();
+                    UpdateAllConnectionPaths();
+                    // Persist
+                    Services.Utilities.CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
                 }
             }
         }
@@ -2341,6 +2384,11 @@ namespace FlowMy.Views
                     ScrollViewer.SnapsToDevicePixels = true;
                 }
             }
+        }
+
+        private void LeftSplitterColumn_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+        {
+
         }
 
         // Note: Code đã được di chuyển vào các file partial class trong thư mục WorkflowEditor/

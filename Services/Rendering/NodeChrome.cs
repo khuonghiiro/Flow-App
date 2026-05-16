@@ -50,6 +50,13 @@ namespace FlowMy.Services.Rendering
             // Không gắn chrome cho LoopBody container (node ảo)
             if (node is LoopBodyNode) return;
 
+            // ── Liquid Glass: transform border appearance trước khi apply GPU/chrome ──
+            if (LiquidGlassHelper.IsLiquidGlassMode(host))
+            {
+                var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
+                LiquidGlassHelper.ApplyToExistingBorder(border, baseColor);
+            }
+
             if (node is ImageProcessingNode or VideoProcessingNode)
                 ImageProcessingNodeControl.ApplyEditorGpuChrome(node, border, host.CacheNodeEnabled);
             else
@@ -69,6 +76,12 @@ namespace FlowMy.Services.Rendering
                 // Ensure title sync + store ref for later updates
                 titleText.Text = node.Title;
                 node.TitleTextBlockUI = titleText;
+
+                // Liquid Glass: đổi text style cho dễ đọc trên nền trong suốt
+                if (LiquidGlassHelper.IsLiquidGlassMode(host))
+                {
+                    LiquidGlassHelper.ApplyGlassTextStyle(titleText);
+                }
 
                 var root = new Grid { Tag = RootTag };
                 root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });

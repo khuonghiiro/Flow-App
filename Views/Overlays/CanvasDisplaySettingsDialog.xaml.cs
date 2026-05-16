@@ -112,6 +112,7 @@ namespace FlowMy.Views.Overlays
             SelectByTag(GridTypeComboBox, preferences.GridType);
             SetRadioSelection(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio, preferences.CanvasDisplayMode);
             SetRadioSelection(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio, preferences.CullingPerformanceProfile);
+            SelectByTag(NodeAppearanceModeComboBox, string.IsNullOrWhiteSpace(preferences.NodeAppearanceMode) ? "Solid" : preferences.NodeAppearanceMode);
             SelectByTag(LineStyleComboBox, preferences.ConnectionLineStyle);
             SetRadioSelection(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio, preferences.ConnectionAnimationMode);
             SetRadioSelection(ConnectionColorModeNodeRadio, ConnectionColorModeCustomRadio, preferences.ConnectionColorMode);
@@ -273,6 +274,7 @@ namespace FlowMy.Views.Overlays
                 GridType = SelectedTag(GridTypeComboBox),
                 CanvasDisplayMode = SelectedRadioTag(CanvasDisplayModeAllRadio, CanvasDisplayModeViewportRadio),
                 CullingPerformanceProfile = SelectedRadioTag(CullingProfileLowRadio, CullingProfileNormalRadio, CullingProfileHighRadio),
+                NodeAppearanceMode = SelectedTag(NodeAppearanceModeComboBox),
                 ConnectionLineStyle = SelectedTag(LineStyleComboBox),
                 ConnectionAnimationMode = SelectedRadioTag(AnimationModeAnimatedRadio, AnimationModeOffRadio, AnimationModeDashedRadio),
                 ConnectionColorMode = SelectedRadioTag(ConnectionColorModeNodeRadio, ConnectionColorModeCustomRadio),
@@ -358,6 +360,7 @@ namespace FlowMy.Views.Overlays
             BulkTitleModeCustomRadio.Checked += AnyControlChanged;
             EnergyColorModeFollowLineRadio.Checked += AnyControlChanged;
             EnergyColorModeCustomRadio.Checked += AnyControlChanged;
+            NodeAppearanceModeComboBox.SelectionChanged += AnyControlChanged;
             NodeSpinnerArcModeCheckBox.Checked += AnyControlChanged;
             NodeSpinnerArcModeCheckBox.Unchecked += AnyControlChanged;
             NodeSpinnerMultiColorCheckBox.Checked += AnyControlChanged;

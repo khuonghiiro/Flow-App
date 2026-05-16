@@ -246,6 +246,19 @@ Cursor="Hand"
                         <ComboBoxItem Tag="Night">🌌 Night</ComboBoxItem>
                         <ComboBoxItem Tag="Modern">✨ Modern</ComboBoxItem>
                     </ComboBox>
+
+                    <!-- Node Appearance Mode ComboBox -->
+                    <ComboBox x:Name="NodeAppearanceModeSelector"
+                              SelectionChanged="NodeAppearanceModeSelector_SelectionChanged"
+                              Style="{DynamicResource BaseComboBox}"
+                              Width="110"
+                              Height="28"
+                              VerticalAlignment="Center"
+                              Margin="4,0,0,0"
+                              ToolTip="Chọn giao diện node (Solid / Liquid Glass)">
+                        <ComboBoxItem Tag="Solid">🎯 Solid</ComboBoxItem>
+                        <ComboBoxItem Tag="LiquidGlass">💎 Liquid Glass</ComboBoxItem>
+                    </ComboBox>
                     <!-- Quick toggle icon -->
                     <!-- <Button x:Name="ThemeToggleButton"
                             Click="ThemeToggleButton_Click"
@@ -266,7 +279,7 @@ Cursor="Hand"
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="LeftMenuColumn" Width="220" MinWidth="160" MaxWidth="420"/>
-                <ColumnDefinition x:Name="LeftSplitterColumn" Width="6" MinWidth="6" MaxWidth="6"/>
+                <ColumnDefinition x:Name="LeftSplitterColumn" Width="5" MinWidth="5" MaxWidth="5"/>
                 <ColumnDefinition Width="*" MinWidth="300"/>
             </Grid.ColumnDefinitions>
 
@@ -276,7 +289,7 @@ Cursor="Hand"
                          HorizontalAlignment="Stretch"
                          VerticalAlignment="Stretch"
                          Background="Transparent"
-                         Width="6"
+                         Width="5"
                           Margin="-3,0,0,0"
                          ResizeDirection="Columns"
                          ShowsPreview="True"
@@ -324,6 +337,7 @@ Cursor="Hand"
                                 <Border x:Name="NodePaletteCollapseButtonFace"
                                         CornerRadius="6"
                                         Padding="6,4"
+                                        Margin="6,0,10,0"
                                         Background="{DynamicResource CardColor}"
                                         BorderBrush="{DynamicResource BorderColor}"
                                         BorderThickness="1">
@@ -341,7 +355,7 @@ Cursor="Hand"
                                 BorderThickness="1"
                                 CornerRadius="6"
                                 Padding="6,4"
-                                Margin="0,0,0,10">
+                                Margin="0,0,10,10">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>

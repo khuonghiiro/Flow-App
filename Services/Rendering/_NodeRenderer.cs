@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 
 namespace FlowMy.Services.Rendering
@@ -655,16 +656,52 @@ namespace FlowMy.Services.Rendering
 
         private Border CreateNodeBorder(WorkflowNode node)
         {
+            var isLiquidGlass = string.Equals(_host.NodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase);
+
+            Brush background;
+            Brush borderBrush;
+            Thickness borderThickness;
+            Effect? effect;
+
+            if (isLiquidGlass)
+            {
+                // Liquid Glass: nền bán trong suốt lấy tint từ NodeBrush, viền trắng mờ, blur shadow
+                var baseColor = GetColorFromBrush(node.NodeBrush);
+                var glassColor = Color.FromArgb(60, baseColor.R, baseColor.G, baseColor.B); // ~23% opacity
+                background = new LinearGradientBrush(
+                    Color.FromArgb(80, baseColor.R, baseColor.G, baseColor.B),
+                    Color.FromArgb(35, baseColor.R, baseColor.G, baseColor.B),
+                    45.0);
+                borderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)); // viền trắng mờ
+                borderThickness = new Thickness(1.2);
+                effect = new DropShadowEffect
+                {
+                    Color = baseColor,
+                    BlurRadius = 18,
+                    ShadowDepth = 0,
+                    Opacity = 0.35,
+                    Direction = 0
+                };
+            }
+            else
+            {
+                // Solid mode (mặc định)
+                background = node.NodeBrush;
+                borderBrush = new SolidColorBrush(Colors.White);
+                borderThickness = new Thickness(2);
+                effect = GpuOptimizationHelper.CreateDropShadowEffect();
+            }
+
             var border = new Border
             {
                 Width = 150,
                 Height = 80,
-                Background = node.NodeBrush,
-                BorderBrush = new SolidColorBrush(Colors.White),
-                BorderThickness = new Thickness(2),
+                Background = background,
+                BorderBrush = borderBrush,
+                BorderThickness = borderThickness,
                 CornerRadius = new CornerRadius(10),
                 Cursor = Cursors.Hand,
-                Effect = GpuOptimizationHelper.CreateDropShadowEffect(),
+                Effect = effect,
                 Tag = node
             };
 
@@ -677,7 +714,19 @@ namespace FlowMy.Services.Rendering
                 FontWeight = FontWeights.Bold
             };
 
-            if (!string.IsNullOrEmpty(node.ColorKey))
+            if (isLiquidGlass)
+            {
+                // Liquid Glass: text trắng với drop shadow nhẹ để đọc được trên nền trong suốt
+                textBlock.Foreground = new SolidColorBrush(Colors.White);
+                textBlock.Effect = new DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    BlurRadius = 4,
+                    ShadowDepth = 1,
+                    Opacity = 0.5
+                };
+            }
+            else if (!string.IsNullOrEmpty(node.ColorKey))
             {
                 var textBrush = Application.Current.TryFindResource($"TextOn{node.ColorKey}Brush") as Brush;
                 textBlock.Foreground = textBrush ?? GetTextColorFromBrush(node.NodeBrush);

@@ -500,6 +500,7 @@ namespace FlowMy.Views
                 EnergyRunSpeed = _energyRunSpeed,
                 EnergyTextSpinSeconds = _energyTextSpinSeconds,
                 EnergyMeteorMode = _energyMeteorMode,
+                NodeAppearanceMode = _nodeAppearanceMode,
                 NodeSpinnerArcMode = _nodeSpinnerArcMode,
                 NodeSpinnerMultiColor = _nodeSpinnerMultiColor,
                 NodeSpinnerSize = _nodeSpinnerSize,
@@ -654,6 +655,12 @@ namespace FlowMy.Views
             _energyRunSpeed = preferences.EnergyRunSpeed > 0 ? preferences.EnergyRunSpeed : _energyRunSpeed;
             _energyTextSpinSeconds = preferences.EnergyTextSpinSeconds > 0 ? preferences.EnergyTextSpinSeconds : _energyTextSpinSeconds;
             _energyMeteorMode = preferences.EnergyMeteorMode;
+
+            // Node appearance mode: Solid / LiquidGlass
+            var newAppearanceMode = string.IsNullOrWhiteSpace(preferences.NodeAppearanceMode) ? "Solid" : preferences.NodeAppearanceMode;
+            var appearanceModeChanged = !string.Equals(_nodeAppearanceMode, newAppearanceMode, System.StringComparison.OrdinalIgnoreCase);
+            _nodeAppearanceMode = newAppearanceMode;
+
             _nodeSpinnerArcMode = preferences.NodeSpinnerArcMode;
             _nodeSpinnerMultiColor = preferences.NodeSpinnerMultiColor;
             _nodeSpinnerSize = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 26.0;
@@ -687,6 +694,28 @@ namespace FlowMy.Views
             RefreshExecutionEnergyVisual();
             if (ViewModel?.Nodes != null)
                 NodeChrome.RefreshExecutionIndicators(ViewModel.Nodes, this);
+
+            // Re-render all nodes when appearance mode changes (Solid ↔ LiquidGlass)
+            if (appearanceModeChanged && ViewModel?.Nodes != null)
+            {
+                NodeRendererService.RenderAllNodes();
+                UpdateAllConnectionPaths();
+
+                // Sync toolbar ComboBox
+                if (NodeAppearanceModeSelector != null)
+                {
+                    NodeAppearanceModeSelector.SelectionChanged -= NodeAppearanceModeSelector_SelectionChanged;
+                    foreach (ComboBoxItem item in NodeAppearanceModeSelector.Items)
+                    {
+                        if (string.Equals(item.Tag?.ToString(), _nodeAppearanceMode, System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            NodeAppearanceModeSelector.SelectedItem = item;
+                            break;
+                        }
+                    }
+                    NodeAppearanceModeSelector.SelectionChanged += NodeAppearanceModeSelector_SelectionChanged;
+                }
+            }
 
             if (CanvasPerformanceProfileComboBox != null)
             {
