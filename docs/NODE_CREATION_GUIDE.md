@@ -1257,20 +1257,42 @@ public enum NodeType
 
 ### 11.2 Palette XAML — `Views/WorkflowEditorWindow.xaml`
 
-Thêm vào `NodeTemplatesPanel` (trong `WrapPanel` của nhóm phù hợp):
+Thêm vào `NodeTemplatesPanel` (trong `WrapPanel` của nhóm phù hợp). **Mỗi node palette phải có cả `ToolTip` lẫn `ContextMenu`** — thiếu `ContextMenu` thì chuột phải vào icon không hiện thông tin:
 
 ```xml
 <Border Style="{StaticResource PaletteIconNodeStyle}"
         Background="{DynamicResource ForestPineBrush}"
         Tag="YourNodeTypeName">
+
+    <!-- ToolTip: hiện khi hover — title in đậm/nghiêng + gạch đầu dòng -->
     <Border.ToolTip>
         <ToolTip>
-            <StackPanel MaxWidth="220">
-                <TextBlock Text="Tên Node" FontWeight="Bold"/>
-                <TextBlock Text="Mô tả ngắn." TextWrapping="Wrap" Margin="0,2,0,0"/>
+            <StackPanel MaxWidth="240">
+                <!-- Title: in đậm + in nghiêng -->
+                <TextBlock FontWeight="Bold" FontStyle="Italic">
+                    <Run Text="Tên Node"/>
+                </TextBlock>
+                <!-- Mô tả ngắn (1 dòng) -->
+                <TextBlock Text="Mô tả ngắn gọn về chức năng."
+                           TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
+                <!-- Gạch đầu dòng: mỗi tính năng / output là 1 dòng -->
+                <TextBlock Margin="0,6,0,0">
+                    <Run Text="• "/>
+                    <Run Text="Tính năng / output 1" FontWeight="SemiBold"/>
+                </TextBlock>
+                <TextBlock>
+                    <Run Text="• "/>
+                    <Run Text="Tính năng / output 2"/>
+                </TextBlock>
+                <TextBlock>
+                    <Run Text="• "/>
+                    <Run Text="Tính năng / output 3"/>
+                </TextBlock>
             </StackPanel>
         </ToolTip>
     </Border.ToolTip>
+
+    <!-- ContextMenu: hiện khi chuột phải (chi tiết hơn) — BẮT BUỘC -->
     <Border.ContextMenu>
         <ContextMenu Placement="MousePoint" StaysOpen="False">
             <MenuItem IsHitTestVisible="False">
@@ -1282,15 +1304,23 @@ Thêm vào `NodeTemplatesPanel` (trong `WrapPanel` của nhóm phù hợp):
                             <TextBlock Text="Tên Node"
                                        Foreground="{DynamicResource TextOnForestPineBrush}"
                                        FontWeight="Bold" FontSize="13"/>
-                            <TextBlock Text="Mô tả chi tiết."
+                            <TextBlock Text="Mô tả chi tiết hơn tooltip."
                                        Foreground="{DynamicResource TextOnForestPineBrush}"
                                        Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            <!-- Gạch đầu dòng cho outputs / tính năng quan trọng -->
+                            <TextBlock Text="• Tính năng / output 1"
+                                       Foreground="{DynamicResource TextOnForestPineBrush}"
+                                       Opacity="0.85" Margin="0,4,0,0"/>
+                            <TextBlock Text="• Tính năng / output 2"
+                                       Foreground="{DynamicResource TextOnForestPineBrush}"
+                                       Opacity="0.85"/>
                         </StackPanel>
                     </Border>
                 </MenuItem.Header>
             </MenuItem>
         </ContextMenu>
     </Border.ContextMenu>
+
     <Grid>
         <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
                               Source="{Binding Source={x:Static sys:String.Empty},
@@ -1301,7 +1331,22 @@ Thêm vào `NodeTemplatesPanel` (trong `WrapPanel` của nhóm phù hợp):
 </Border>
 ```
 
-> ⚠️ `Tag` phải là **string** khớp chính xác với switch case trong TemplateFactory.
+**Quy tắc format ToolTip:**
+
+| Phần | Format | Ghi chú |
+|------|--------|---------|
+| Title | `FontWeight="Bold" FontStyle="Italic"` | Dùng `<Run Text="..."/>` bên trong `<TextBlock>` |
+| Mô tả ngắn | `TextWrapping="Wrap" Opacity="0.9"` | 1 câu, không quá 2 dòng |
+| Gạch đầu dòng | `<Run Text="• "/>` + `<Run Text="..."/>` | Mỗi output/tính năng 1 dòng; key quan trọng dùng `FontWeight="SemiBold"` |
+| MaxWidth | `240` | Đủ rộng cho 2–3 từ/dòng |
+
+> ⚠️ **Bắt buộc**: Mọi node trong palette phải có **cả `ToolTip` lẫn `ContextMenu`**.
+> - `ToolTip`: hiện khi hover — title in đậm/nghiêng + gạch đầu dòng tính năng/output
+> - `ContextMenu`: hiện khi chuột phải — mô tả chi tiết hơn, có thể thêm bullet points
+> - Thiếu `ContextMenu` → chuột phải vào icon không hiện gì (lỗi UX)
+> - Thiếu format title → tooltip trông như plain text, khó đọc
+>
+> `Tag` phải là **string** khớp chính xác với switch case trong TemplateFactory.
 > Thay `ForestPine` bằng ColorKey thực của node.
 
 ### 11.3 TemplateFactory — `Services/Workflow/TemplateFactory.cs`
@@ -1420,7 +1465,7 @@ case YourNode yourNode:
 
 ```yaml
 - [ ] NodeType enum value thêm vào NodeType.cs
-- [ ] Palette XAML: Border + Tag + ColorKey + iconKey + TextOnColorKeyBrush
+- [ ] Palette XAML: Border + Tag + ColorKey + iconKey + TextOnColorKeyBrush + **cả ToolTip lẫn ContextMenu**
 - [ ] TemplateFactory: string switch case + CreateYourNode()
 - [ ] WorkflowEditorWindow.TemplateNodeHandler.cs: GetIconNameForNodeType
 - [ ] WorkflowEditorViewModel.cs: ResolveNodeIconKey

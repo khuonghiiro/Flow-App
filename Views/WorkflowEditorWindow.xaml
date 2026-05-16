@@ -549,6 +549,20 @@ Cursor="Hand"
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource SkyAzureBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Start" Foreground="{DynamicResource TextOnSkyAzureBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Điểm bắt đầu workflow. Cấu hình FlowScope, RunMode (MainFlow / SubFlow / AutoScheduled)." Foreground="{DynamicResource TextOnSkyAzureBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play duotone-regular'}"
@@ -567,6 +581,20 @@ Cursor="Hand"
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource DangerBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="End" Foreground="{DynamicResource TextOnDangerBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Điểm kết thúc workflow. Cấu hình EndBehavior: StopCurrentFlow / ReturnToParent / EmitResultOnly." Foreground="{DynamicResource TextOnDangerBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='flag-checkered sharp-duotone-solid'}"
@@ -975,6 +1003,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource FluidityBrush}"
          Tag="ListOut">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="List Out" FontWeight="Bold"/>
+                                            <TextBlock Text="Lọc và đổi tên outputs từ upstream nodes. Downstream chỉ thấy outputs được cấu hình." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1001,6 +1037,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource VioletHazeBrush}"
          Tag="Storage">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Storage" FontWeight="Bold"/>
+                                            <TextBlock Text="Lưu trữ dữ liệu toàn cục. Các node khác đọc theo Node + Key mà không cần nối flow." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1061,6 +1105,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource BerryPurpleBrush}"
          Tag="AssignData">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Gán dữ liệu" FontWeight="Bold"/>
+                                            <TextBlock Text="Gán giá trị từ output của node nguồn sang key của node đích." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1086,6 +1138,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource CharcoalMistBrush}"
          Tag="MediaGallery">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Gallery ảnh/video" FontWeight="Bold"/>
+                                            <TextBlock Text="Hiển thị ảnh/video; tải, xem, phóng to. Node co dãn chiều ngang." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1111,6 +1171,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource CharcoalDarkBrush}"
          Tag="ImageProcessing">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Xử lý ảnh" FontWeight="Bold"/>
+                                            <TextBlock Text="Mở ảnh từ link/file/base64; xem/zoom/pan; xử lý bằng ffmpeg (GPU). Output: path/base64." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1135,6 +1203,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
        Background="{DynamicResource GraphiteGrayBrush}"
          Tag="VideoProcessing">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Video Processing" FontWeight="Bold"/>
+                                            <TextBlock Text="Xử lý video bằng FFmpeg: tách frame, color grading, ghép audio track." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1160,6 +1236,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource PrussianBlueBrush}"
          Tag="Code">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Code" FontWeight="Bold"/>
+                                            <TextBlock Text="Viết JavaScript, chọn node + key làm input, return object { key: value } làm outputs." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1185,6 +1269,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource EspressoBrownBrush}"
          Tag="HtmlUi">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="HTML UI" FontWeight="Bold"/>
+                                            <TextBlock Text="Tạo UI HTML với WebView2 (Html/Js/Css/Params). Inputs/outputs để trả value ra các node khác." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1210,6 +1302,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource GoldenYellowBrush}"
          Tag="Folder">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Folder" FontWeight="Bold"/>
+                                            <TextBlock Text="Chọn thư mục gốc, path con (dùng key từ inputs và {DateTime.*}), tạo folder. Output: folder, fullPath." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1235,6 +1335,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource CantaloupeOrangeBrush}"
          Tag="FileDownload">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Tải file" FontWeight="Bold"/>
+                                            <TextBlock Text="Tải ảnh/video/file từ URL hoặc cURL. Output: filePath, completed, errorMessage." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1260,6 +1368,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource ForestPineBrush}"
          Tag="FolderFilePaths">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="File trong thư mục" FontWeight="Bold"/>
+                                            <TextBlock Text="Liệt kê đường dẫn file trong folder; lọc đuôi; đọc nội dung (text/base64). Output: paths (JSON array)." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1285,6 +1401,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource RetroBrush}"
          Tag="StringSplit">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="String Split" FontWeight="Bold"/>
+                                            <TextBlock Text="Cắt chuỗi thành danh sách item dựa trên regex pattern. Output: ListItems (String[])." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1312,6 +1436,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource TurquoiseBrush}"
          Tag="HttpRequest">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="HTTP Request" FontWeight="Bold"/>
+                                            <TextBlock Text="Gửi HTTP request (GET/POST/PUT/DELETE...) với headers, params, body. Output: Status Code, Response Body, Success, Error." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1338,6 +1470,14 @@ Cursor="Hand"
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
          Background="{DynamicResource SkyAzureBrush}"
          Tag="Web">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Web" FontWeight="Bold"/>
+                                            <TextBlock Text="WebView2: lấy cookie/bearer/access_token, input cookie từ node+key, chặn/thay request." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                                 <Border.ContextMenu>
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
@@ -1621,6 +1761,23 @@ Cursor="Hand"
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource SeaFoamBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="KeyValue Bridge" Foreground="{DynamicResource TextOnSeaFoamBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Kênh key/value runtime chung cho một lần chạy." Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Pass Key: truyền key vào store trong flow" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Get Value: đọc store sau interval" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85"/>
+                                                        <TextBlock Text="Code node: dùng biến kv[key]" Foreground="{DynamicResource TextOnSeaFoamBrush}" Opacity="0.85" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='list-check solid'}"
@@ -1638,6 +1795,21 @@ Cursor="Hand"
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource KiwiGreenBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Flow Overwrite" Foreground="{DynamicResource TextOnKiwiGreenBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Ghi đè hoặc gom mảng giá trị theo node chạy vào cuối cùng." Foreground="{DynamicResource TextOnKiwiGreenBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Chỉ map node nối trực tiếp vào cổng IN. Hỗ trợ Append mode để gom thành mảng." Foreground="{DynamicResource TextOnKiwiGreenBrush}" Opacity="0.85" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='merge sharp-regular'}"
