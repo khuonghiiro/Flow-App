@@ -52,6 +52,13 @@ namespace FlowMy.Services.Interaction
         /// Khuyến nghị: 300-500ms cho cân bằng tốt giữa performance và responsiveness.
         /// </summary>
         private const int ZoomEndDebounceMs = 150;
+
+        /// <summary>
+        /// Số node tối thiểu để bật chế độ "ẩn title khi zoom" (giảm lag với canvas lớn).
+        /// Dưới ngưỡng này, title được giữ visible trong suốt quá trình zoom — tránh
+        /// delay 1-3s khi restore title sau khi zoom kết thúc trên canvas ít node.
+        /// </summary>
+        private const int ZoomTitleHideThreshold = 500;
         private bool _effectsTemporarilyDisabled;
         private readonly System.Collections.Generic.Dictionary<System.Windows.Controls.Border, Effect?> _savedBorderEffects = new();
 
@@ -210,8 +217,15 @@ namespace FlowMy.Services.Interaction
             // With many nodes, shadows are expensive to re-render for every zoom step
             TryDisableExpensiveEffectsDuringZoom();
 
-            // Throttle NodeChrome handlers during zoom
-            NodeChrome.SetZoomingState(true);
+            // Chỉ throttle NodeChrome handlers (ẩn title, ẩn WebView2, throttle ports)
+            // khi canvas có nhiều nodes. Với ít nodes, ẩn title không cải thiện performance
+            // mà còn gây delay 1-3s khi restore sau zoom.
+            var viewModel = host.ViewModel;
+            int nodeCount = viewModel?.Nodes?.Count ?? 0;
+            if (nodeCount >= ZoomTitleHideThreshold)
+            {
+                NodeChrome.SetZoomingState(true);
+            }
 
             // ✅ Tối ưu: Tắt viewport culling khi đang zoom để tránh lag
             var viewportCullingService = Host.ViewportCullingService;
@@ -416,17 +430,16 @@ namespace FlowMy.Services.Interaction
                 // restore title ngay lập tức, không bị stuck ở nhánh "đang zoom".
                 FlowMy.Views.NodeControls.Helpers.BaseNodeControlHelper.ResetZoomStateForAllContexts();
                 
-                // ✅ Tối ưu: Bật lại viewport culling và trigger update
+                // ✅ Bật lại viewport culling — Resume() đã gọi UpdateViewportCulling() đồng bộ,
+                // không cần OnViewportChanged() thêm (tránh timer 100ms restart liên tục
+                // làm ScheduleThrottledTitleUpdate bị reset và title không hiện).
                 var viewportCullingService = Host.ViewportCullingService;
                 if (viewportCullingService != null)
                 {
-                    viewportCullingService.Resume(); // Bật lại viewport culling
-                    // Chỉ trigger update, không force ngay để tránh lag
-                    viewportCullingService.OnViewportChanged();
+                    viewportCullingService.Resume();
                 }
-                
-                // ✅ Tối ưu: Update title position chỉ cho nodes trong viewport, không phải tất cả
-                // Sử dụng DispatcherPriority thấp hơn để không block UI thread
+
+                // Update title visibility + position ngay lập tức (đang ở UI thread từ timer tick).
                 UpdateVisibleTitlePositionsAfterZoom();
                 
                 // Update ViewModel with current zoom and pan state (effectivePan = Translate - Scroll)
@@ -476,41 +489,38 @@ namespace FlowMy.Services.Interaction
             }
             catch { /* fallback: update tất cả */ }
 
-            // Dùng DispatcherPriority.Render để title hiện ngay sau khi zoom kết thúc,
-            // không chờ Background queue (vốn chạy sau tất cả UI work khác).
-            Host.Dispatcher.BeginInvoke(new Action(() =>
+            // Chạy đồng bộ — đang ở UI thread từ _zoomEndTimer.Tick.
+            // Không dùng BeginInvoke để tránh bị delay bởi dispatcher queue.
+            foreach (var node in viewModel.Nodes)
             {
-                foreach (var node in viewModel.Nodes)
+                if (node.TitleTextBlockUI == null || node.Border == null) continue;
+                if (node.Border.Visibility != Visibility.Visible) continue;
+
+                if (!viewportBounds.IsEmpty)
                 {
-                    if (node.TitleTextBlockUI == null || node.Border == null) continue;
-                    if (node.Border.Visibility != Visibility.Visible) continue;
-
-                    if (!viewportBounds.IsEmpty)
-                    {
-                        double nw = node.Border.ActualWidth  > 0 ? node.Border.ActualWidth  : 80;
-                        double nh = node.Border.ActualHeight > 0 ? node.Border.ActualHeight : 80;
-                        if (!viewportBounds.IntersectsWith(new Rect(node.X, node.Y, nw, nh))) continue;
-                    }
-
-                    var title = node.TitleTextBlockUI;
-
-                    // Restore visibility
-                    if (title.Visibility != Visibility.Visible)
-                        title.Visibility = Visibility.Visible;
-
-                    // Update position
-                    if (title.ActualWidth == 0 || title.ActualHeight == 0)
-                    {
-                        title.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                        title.Arrange(new Rect(title.DesiredSize));
-                    }
-                    var bw = node.Border.ActualWidth  > 0 ? node.Border.ActualWidth  : node.Border.Width;
-                    var tw = title.ActualWidth  > 0 ? title.ActualWidth  : title.DesiredSize.Width;
-                    var th = title.ActualHeight > 0 ? title.ActualHeight : title.DesiredSize.Height;
-                    Canvas.SetLeft(title, node.X + (bw / 2) - (tw / 2));
-                    Canvas.SetTop(title,  node.Y - th - 4);
+                    double nw = node.Border.ActualWidth  > 0 ? node.Border.ActualWidth  : 80;
+                    double nh = node.Border.ActualHeight > 0 ? node.Border.ActualHeight : 80;
+                    if (!viewportBounds.IntersectsWith(new Rect(node.X, node.Y, nw, nh))) continue;
                 }
-            }), System.Windows.Threading.DispatcherPriority.Render);
+
+                var title = node.TitleTextBlockUI;
+
+                // Restore visibility
+                if (title.Visibility != Visibility.Visible)
+                    title.Visibility = Visibility.Visible;
+
+                // Update position
+                if (title.ActualWidth == 0 || title.ActualHeight == 0)
+                {
+                    title.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    title.Arrange(new Rect(title.DesiredSize));
+                }
+                var bw = node.Border.ActualWidth  > 0 ? node.Border.ActualWidth  : node.Border.Width;
+                var tw = title.ActualWidth  > 0 ? title.ActualWidth  : title.DesiredSize.Width;
+                var th = title.ActualHeight > 0 ? title.ActualHeight : title.DesiredSize.Height;
+                Canvas.SetLeft(title, node.X + (bw / 2) - (tw / 2));
+                Canvas.SetTop(title,  node.Y - th - 4);
+            }
         }
 
         private void TryDisableExpensiveEffectsDuringZoom()

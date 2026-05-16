@@ -277,6 +277,7 @@ Cursor="Hand"
                          VerticalAlignment="Stretch"
                          Background="Transparent"
                          Width="6"
+                          Margin="-3,0,0,0"
                          ResizeDirection="Columns"
                          ShowsPreview="True"
                          Cursor="SizeWE"/>
