@@ -28,7 +28,7 @@
     </Style>
 
     <!-- ============================================ -->
-    <!-- COMPACT THUMB STYLE - Must be defined before use -->
+    <!-- COMPACT THUMB STYLE - web-style thin scrollbar -->
     <!-- ============================================ -->
     <Style x:Key="CompactScrollBarThumb" TargetType="Thumb">
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -40,23 +40,20 @@
                 <ControlTemplate TargetType="Thumb">
                     <Border x:Name="ThumbBorder"
                             Background="{DynamicResource ScrollBarThumbBrush}"
-                            CornerRadius="5"
+                            CornerRadius="4"
                             Margin="2"
-                            MinHeight="24"
-                            MinWidth="8"
+                            MinHeight="28"
+                            MinWidth="6"
                             SnapsToDevicePixels="True"
                             BorderThickness="0">
                     </Border>
-
                     <ControlTemplate.Triggers>
-                        <!-- Dùng brush tokens (DynamicResource), không dùng StaticResource Color —
-                             tránh lỗi khi dictionary chỉ có SemanticTokens / không merge Color từ palette. -->
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
                             <Setter TargetName="ThumbBorder" Property="Margin" Value="1.5"/>
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollBarThumbPressedBrush}"/>
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                             <Setter TargetName="ThumbBorder" Property="Margin" Value="1"/>
                         </Trigger>
                     </ControlTemplate.Triggers>

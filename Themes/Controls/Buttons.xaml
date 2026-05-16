@@ -9,19 +9,20 @@
     <conv:HeightBasedWidthConverter x:Key="HeightBasedWidthConverter"/>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!--  DEFAULT implicit Button                                        -->
+    <!--  DEFAULT implicit Button — web-style rounded, smooth hover      -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style TargetType="Button">
         <Setter Property="Background"                Value="{DynamicResource ButtonBackgroundBrush}"/>
         <Setter Property="Foreground"                Value="{DynamicResource TextBrush}"/>
         <Setter Property="BorderBrush"               Value="{DynamicResource ButtonBorderBrush}"/>
         <Setter Property="BorderThickness"           Value="1"/>
-        <Setter Property="Padding"                   Value="10,5"/>
+        <Setter Property="Padding"                   Value="12,6"/>
         <Setter Property="Cursor"                    Value="Hand"/>
         <Setter Property="SnapsToDevicePixels"        Value="True"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment"   Value="Center"/>
-        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="UseLayoutRounding"          Value="True"/>
+        <Setter Property="FontSize"                   Value="13"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -29,7 +30,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
+                            CornerRadius="7"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True"
                             UseLayoutRounding="True">
@@ -99,20 +100,17 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!--  CONTEXTUAL BUTTON BASE — shared base for all color variants   -->
-    <!--                                                                 -->
-    <!--  NOTE: Padding is applied via Border.Padding, NOT as Margin    -->
-    <!--  on ContentPresenter. This ensures small icon buttons (e.g.    -->
-    <!--  Width="24") are never clipped regardless of Padding value.    -->
+    <!--  CONTEXTUAL BUTTON BASE — web-style, smooth press feedback     -->
+    <!--  CornerRadius=8 for a modern pill-like feel                    -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style x:Key="ContextualButtonBase" TargetType="Button">
         <Setter Property="FontSize"    Value="13"/>
-        <Setter Property="FontWeight"  Value="Medium"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
         <Setter Property="Height"      Value="34"/>
         <Setter Property="Cursor"      Value="Hand"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="BorderBrush"     Value="Transparent"/>
-        <Setter Property="Padding"         Value="5,0"/>
+        <Setter Property="Padding"         Value="14,0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment"   Value="Center"/>
         <Setter Property="SnapsToDevicePixels"         Value="True"/>
@@ -128,7 +126,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
+                            CornerRadius="8"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True"
                             UseLayoutRounding="True">
@@ -140,7 +138,7 @@
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="border" Property="RenderTransformOrigin" Value="0.5,0.5"/>
                             <Setter TargetName="border" Property="RenderTransform">
-                                <Setter.Value><TranslateTransform Y="1"/></Setter.Value>
+                                <Setter.Value><ScaleTransform ScaleX="0.97" ScaleY="0.97"/></Setter.Value>
                             </Setter>
                         </Trigger>
                     </ControlTemplate.Triggers>

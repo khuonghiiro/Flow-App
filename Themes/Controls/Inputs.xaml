@@ -4,7 +4,7 @@
 
 
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <!--  BASE TextBox — rounded border, hover + focus states           -->
+    <!--  BASE TextBox — web-style: rounded, smooth focus ring          -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <Style x:Key="BaseTextBox" TargetType="TextBox">
         <Setter Property="Foreground"               Value="{DynamicResource TextBrush}"/>
@@ -12,7 +12,7 @@
         <Setter Property="BorderBrush"              Value="{DynamicResource ControlBorderBrush}"/>
         <Setter Property="BorderThickness"          Value="1"/>
         <Setter Property="FontSize"                 Value="13"/>
-        <Setter Property="Padding"                  Value="8,0"/>
+        <Setter Property="Padding"                  Value="10,0"/>
         <Setter Property="Height"                   Value="34"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="CaretBrush"               Value="{DynamicResource TextBrush}"/>
@@ -33,25 +33,35 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="border"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
-                            SnapsToDevicePixels="True"
-                            UseLayoutRounding="True">
-                        <ScrollViewer x:Name="PART_ContentHost"
-                                      Margin="{TemplateBinding Padding}"
-                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                    </Border>
+                    <!-- Outer focus ring layer -->
+                    <Grid>
+                        <Border x:Name="focusRing"
+                                CornerRadius="9"
+                                BorderThickness="2"
+                                BorderBrush="Transparent"
+                                Margin="-2"
+                                IsHitTestVisible="False"/>
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7"
+                                SnapsToDevicePixels="True"
+                                UseLayoutRounding="True">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource TextBoxHoverBorderBrush}"/>
                             <Setter TargetName="border" Property="Background"   Value="{DynamicResource TextBoxHoverBackground}"/>
                         </Trigger>
                         <Trigger Property="IsFocused" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource TextBoxFocusBorderBrush}"/>
-                            <Setter TargetName="border" Property="Background"   Value="{DynamicResource TextBoxFocusBackground}"/>
+                            <Setter TargetName="border"    Property="BorderBrush"  Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="border"    Property="Background"   Value="{DynamicResource TextBoxFocusBackground}"/>
+                            <Setter TargetName="focusRing" Property="BorderBrush"  Value="{DynamicResource FocusRingBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Background"   Value="{DynamicResource DisabledBackground}"/>
@@ -66,13 +76,13 @@
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="border" Property="BorderBrush"  Value="{DynamicResource DangerColor}"/>
                         </Trigger>
-                        <!-- Focused without validation error — ensure focus border wins -->
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
                                 <Condition Property="IsKeyboardFocused"   Value="True"/>
                                 <Condition Property="Validation.HasError" Value="False"/>
                             </MultiTrigger.Conditions>
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="border"    Property="BorderBrush"  Value="{DynamicResource TextBoxFocusBorderBrush}"/>
+                            <Setter TargetName="focusRing" Property="BorderBrush"  Value="{DynamicResource FocusRingBrush}"/>
                         </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
