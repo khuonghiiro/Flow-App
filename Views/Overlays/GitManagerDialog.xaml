@@ -1,4 +1,4 @@
-<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.GitManagerDialog"
+<Window x:Class="FlowMy.Views.Overlays.GitManagerDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:FlowMy.Controls"
@@ -6,47 +6,75 @@
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
     xmlns:conv="clr-namespace:FlowMy.Converters"
     Title="Git Manager"
-    WindowStyle="None" ResizeMode="CanResize"
-    AllowsTransparency="True" Background="Transparent"
-    ShowInTaskbar="False" Topmost="True"
+    WindowStyle="SingleBorderWindow"
+    ResizeMode="CanResize"
+    ShowInTaskbar="True"
     WindowStartupLocation="CenterScreen"
-    Width="580" MinWidth="350" MaxWidth="700" MinHeight="580" Height="680">
+    Width="620" MinWidth="500" MaxWidth="900" MinHeight="520" Height="620"
+    Background="{DynamicResource WindowBackground}"
+    StateChanged="Window_StateChanged">
 
-    <local:BaseNodeDialog.Resources>
+    <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
         <conv:InverseBooleanConverter x:Key="InverseBoolConverter"/>
 
-        <!-- Vertical tab style (dọc, căn giữa, theo theme) -->
-        <Style x:Key="VerticalTabItemStyle" TargetType="TabItem">
-            <Setter Property="MinWidth" Value="110"/>
-            <Setter Property="Height" Value="44"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="14,8"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+        <!-- Main tab radio style -->
+        <Style x:Key="GitTabRadioStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Opacity" Value="0.6"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="Bd" Background="Transparent"
-                                BorderBrush="Transparent" BorderThickness="3,0,0,0"
-                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              ContentSource="Header" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="Transparent" Padding="12,10"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource CardColor}"/>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="White"/>
+                                <Setter Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsChecked" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter Property="Opacity" Value="0.85"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Sub-tab radio style -->
+        <Style x:Key="GitSubTabRadioStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="Transparent" Padding="10,8"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
                                 <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                             </Trigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsMouseOver" Value="True"/>
-                                    <Condition Property="IsSelected" Value="False"/>
+                                    <Condition Property="IsChecked" Value="False"/>
                                 </MultiTrigger.Conditions>
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MenuItemHoverBackgroundBrush}"/>
                                 <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
@@ -56,405 +84,325 @@
                 </Setter.Value>
             </Setter>
         </Style>
-    </local:BaseNodeDialog.Resources>
+    </Window.Resources>
 
-    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-            <!-- ═══ HEADER ═══ -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,10,12,10"
-                    MouseLeftButtonDown="Header_MouseLeftButtonDown" Cursor="SizeAll">
+        <!-- ═══ TAB HEADER BAR ═══ -->
+        <Border Grid.Row="0" Background="{DynamicResource HeaderBackgroundMainBrush}"
+                BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1" Padding="0,0,0,0">
+            <UniformGrid Rows="1" HorizontalAlignment="Stretch">
+                <RadioButton x:Name="TabTongHop" Content="📋 Tổng hợp" GroupName="MainTab"
+                             IsChecked="True" Checked="MainTab_Checked"
+                             Style="{StaticResource GitTabRadioStyle}"/>
+                <RadioButton x:Name="TabGit" Content="🔀 Git" GroupName="MainTab"
+                             Checked="MainTab_Checked"
+                             Style="{StaticResource GitTabRadioStyle}"/>
+            </UniformGrid>
+        </Border>
+
+        <!-- ═══ CONTENT AREA ═══ -->
+        <Grid Grid.Row="1">
+
+            <!-- PAGE: TỔNG HỢP -->
+            <Border x:Name="PageTongHop" Padding="16" Visibility="Visible">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <controls:SvgViewboxEx Grid.Column="0" Width="18" Height="18" Margin="0,0,10,0"
-                                           Fill="{DynamicResource TextBrush}" Opacity="0.9"
-                                           Source="{Binding Source={x:Static sys:String.Empty},
-                                                    Converter={StaticResource IconKeyToPathConverter},
-                                                    ConverterParameter='code-branch duotone-regular'}"/>
-                    <TextBlock Grid.Column="1" Text="Git Manager"
-                               Foreground="{DynamicResource TextBrush}" FontSize="15" FontWeight="SemiBold"
-                               VerticalAlignment="Center" IsHitTestVisible="False"/>
-                    <Button x:Name="CloseButton" Grid.Column="2" Width="26" Height="26"
-                            Style="{DynamicResource DangerButton}" Padding="0"
-                            Content="×" FontSize="13" FontWeight="Bold" Cursor="Hand"
-                            Click="CloseButton_Click"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Danh sách Git Repos đã lưu"
+                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
+                               Margin="0,0,0,10"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding SavedRepos}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8" Padding="12" CornerRadius="8"
+                                            Background="{DynamicResource CardColor}"
+                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="8"
+                                                    Background="{Binding NodeBrush}" Margin="0,0,12,0"
+                                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                                    VerticalAlignment="Center">
+                                                <controls:SvgViewboxEx Width="18" Height="18"
+                                                                       Fill="{Binding IconBrushResolved}"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="13"
+                                                           Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock FontSize="10" Opacity="0.6" Foreground="{DynamicResource TextSecondary}"
+                                                           TextTrimming="CharacterEllipsis" Margin="0,2,0,0">
+                                                    <Run Text="🌿"/><Run Text="{Binding Branch, Mode=OneWay}"/>
+                                                    <Run Text="  📁"/><Run Text="{Binding LocalPath, Mode=OneWay}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="▶" Width="28" Height="28" Padding="0" Margin="2"
+                                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand" ToolTip="Start"
+                                                        Command="{Binding DataContext.RunRepoCommandCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="↓" Width="28" Height="28" Padding="0" Margin="2"
+                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" ToolTip="Pull"
+                                                        Command="{Binding DataContext.PullSavedRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Width="44" Height="28" Padding="0" Margin="2"
+                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" ToolTip="VS Code"
+                                                        Command="{Binding DataContext.OpenVsCodeForRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="Code" FontSize="10" FontWeight="Bold"/>
+                                                </Button>
+                                                <Button Content="⚙" Width="28" Height="28" Padding="0" Margin="2"
+                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" ToolTip="Sửa"
+                                                        Command="{Binding DataContext.EditRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="🗑" Width="28" Height="28" Padding="0" Margin="2"
+                                                        Style="{DynamicResource DangerButton}" Cursor="Hand" ToolTip="Xóa"
+                                                        Command="{Binding DataContext.RemoveRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Grid>
             </Border>
 
-            <!-- ═══ BODY ═══ -->
-            <TabControl Grid.Row="1" x:Name="MainTabControl" TabStripPlacement="Left"
-                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,0,10">
-                <TabControl.Template>
-                    <ControlTemplate TargetType="TabControl">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <!-- Tab headers bên trái -->
-                            <Border Grid.Column="0" Background="{DynamicResource WindowBodyBackground}"
-                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
-                                <TabPanel IsItemsHost="True" Margin="0,4,0,0"/>
-                            </Border>
-                            <!-- Content area stretch full -->
-                            <ContentPresenter Grid.Column="1"
-                                              ContentSource="SelectedContent"
-                                              HorizontalAlignment="Stretch"
-                                              VerticalAlignment="Stretch"/>
-                        </Grid>
-                    </ControlTemplate>
-                </TabControl.Template>
-                <TabControl.Resources>
-                    <Style TargetType="TabItem" BasedOn="{StaticResource VerticalTabItemStyle}"/>
-                </TabControl.Resources>
+            <!-- PAGE: GIT -->
+            <Grid x:Name="PageGit" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                        <!-- ═══ TAB: TỔNG HỢP ═══ -->
-                        <TabItem Header="📋 Tổng hợp">
-                            <Border Padding="20,16" Background="{DynamicResource WindowBackground}"
-                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="*"/>
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Text="Danh sách Git Repos"
-                                               Style="{DynamicResource DialogSectionHeader}" Margin="0,0,0,10"/>
-                                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                        <ItemsControl ItemsSource="{Binding SavedRepos}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Margin="0,0,0,10" Style="{DynamicResource SectionCardBorder}">
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
+                <!-- Sub-tab header -->
+                <Border Grid.Row="0" Background="{DynamicResource CardColor}"
+                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,0,1">
+                    <UniformGrid Rows="1" HorizontalAlignment="Stretch">
+                        <RadioButton x:Name="SubTabClone" Content="Clone" GroupName="SubTab"
+                                     IsChecked="True" Checked="SubTab_Checked"
+                                     Style="{StaticResource GitSubTabRadioStyle}"/>
+                        <RadioButton x:Name="SubTabDisplay" Content="Hiển thị" GroupName="SubTab"
+                                     Checked="SubTab_Checked"
+                                     Style="{StaticResource GitSubTabRadioStyle}"/>
+                        <RadioButton x:Name="SubTabSettings" Content="Cài đặt" GroupName="SubTab"
+                                     Checked="SubTab_Checked"
+                                     Style="{StaticResource GitSubTabRadioStyle}"/>
+                    </UniformGrid>
+                </Border>
 
-                                                            <!-- Icon -->
-                                                            <Border Grid.Column="0" Width="42" Height="42" CornerRadius="10"
-                                                                    Background="{Binding NodeBrush}" Margin="0,0,14,0"
-                                                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1.5"
-                                                                    VerticalAlignment="Center">
-                                                                <controls:SvgViewboxEx Width="20" Height="20"
-                                                                                       Fill="{Binding IconBrushResolved}"
-                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                                       Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
-                                                            </Border>
+                <!-- Sub-tab content -->
+                <Grid Grid.Row="1">
+                    <!-- Clone page -->
+                    <ScrollViewer x:Name="SubPageClone" VerticalScrollBarVisibility="Auto" Padding="16,12" Visibility="Visible">
+                        <StackPanel MaxWidth="500">
+                            <TextBlock Text="Repository URL:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding RepoUrl, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="34" Margin="0,0,0,12"/>
 
-                                                            <!-- Info -->
-                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="13"
-                                                                           Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
-                                                                <TextBlock FontSize="10" Opacity="0.65" Foreground="{DynamicResource TextSecondary}"
-                                                                           TextTrimming="CharacterEllipsis" Margin="0,2,0,0">
-                                                                    <Run Text="🌿"/>
-                                                                    <Run Text="{Binding Branch, Mode=OneWay}"/>
-                                                                    <Run Text="  📁 "/>
-                                                                    <Run Text="{Binding LocalPath, Mode=OneWay}"/>
-                                                                </TextBlock>
-                                                            </StackPanel>
-
-                                                            <!-- Buttons -->
-                                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <Button Content="▶" Width="30" Height="30" Padding="0" Margin="3,0"
-                                                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand" FontSize="12"
-                                                                        ToolTip="Chạy command đã cấu hình"
-                                                                        Command="{Binding DataContext.RunRepoCommandCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                        CommandParameter="{Binding}"/>
-                                                                <Button Content="↓" Width="30" Height="30" Padding="0" Margin="3,0"
-                                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" FontSize="13"
-                                                                        ToolTip="Pull latest"
-                                                                        Command="{Binding DataContext.PullSavedRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                        CommandParameter="{Binding}"/>
-                                                                <Button Width="52" Height="30" Padding="0" Margin="3,0"
-                                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
-                                                                        ToolTip="Mở VS Code (code .)"
-                                                                        Command="{Binding DataContext.OpenVsCodeForRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                        CommandParameter="{Binding}">
-                                                                    <TextBlock Text="Code" FontSize="10" FontWeight="Bold"/>
-                                                                </Button>
-                                                                <Button Content="⚙" Width="30" Height="30" Padding="0" Margin="3,0"
-                                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
-                                                                        ToolTip="Chỉnh sửa cấu hình"
-                                                                        Command="{Binding DataContext.EditRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                        CommandParameter="{Binding}"/>
-                                                                <Button Content="🗑" Width="30" Height="30" Padding="0" Margin="3,0"
-                                                                        Style="{DynamicResource DangerButton}" Cursor="Hand"
-                                                                        ToolTip="Xóa"
-                                                                        Command="{Binding DataContext.RemoveRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                        CommandParameter="{Binding}"/>
-                                                            </StackPanel>
-                                                        </Grid>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
-                                </Grid>
-                            </Border>
-                        </TabItem>
-
-                        <!-- ═══ TAB: GIT ═══ -->
-                        <TabItem Header="🔀 Git">
-                            <Grid Background="{DynamicResource WindowBackground}"
-                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <!-- Sub-tabs ngang -->
-                                <TabControl Grid.Row="0" Background="Transparent" BorderThickness="0">
-                                    <TabControl.Template>
-                                        <ControlTemplate TargetType="TabControl">
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="*"/>
-                                                </Grid.RowDefinitions>
-                                                <TabPanel Grid.Row="0" IsItemsHost="True" Margin="16,8,0,0"/>
-                                                <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"
-                                                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-                                            </Grid>
-                                        </ControlTemplate>
-                                    </TabControl.Template>
-
-                                    <!-- Clone -->
-                                    <TabItem Header="Clone" Style="{StaticResource HttpTabItemStyle}">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16">
-                                            <StackPanel MaxWidth="480" Width="427">
-                                                <TextBlock Text="Repository URL:" Style="{DynamicResource SectionTitle}"/>
-                                                <TextBox Text="{Binding RepoUrl, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,14"/>
-
-                                                <TextBlock Text="Thư mục local:" Style="{DynamicResource SectionTitle}"/>
-                                                <Grid Margin="0,0,0,14">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBox Grid.Column="0" Text="{Binding LocalPath, UpdateSourceTrigger=PropertyChanged}"
-                                                             Style="{DynamicResource BaseTextBoxV2}" Height="36"/>
-                                                    <Button Grid.Column="1" Padding="0" Content="📁" Width="36" Height="36" Margin="8,0,0,0"
-                                                            Style="{DynamicResource SecondaryButton}" Cursor="Hand"
-                                                            Command="{Binding BrowseLocalPathCommand}"/>
-                                                </Grid>
-
-                                                <TextBlock Text="Branch:" Style="{DynamicResource SectionTitle}"/>
-                                                <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" IsEditable="True"
-                                                          Text="{Binding Branch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                          ItemsSource="{Binding AvailableBranches}" Margin="0,0,0,16"/>
-
-                                                <!-- Buttons -->
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                                    <Button Height="36" MinWidth="100" Margin="0,0,8,0"
-                                                            Style="{DynamicResource PrimaryButton}" Cursor="Hand"
-                                                            Command="{Binding CloneRepoCommand}"
-                                                            IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="⬇" FontSize="13" Margin="0,0,6,0"/>
-                                                            <TextBlock Text="Clone" FontWeight="SemiBold"/>
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Height="36" MinWidth="100" Margin="0,0,8,0"
-                                                            Style="{DynamicResource PrimaryButton}" Cursor="Hand"
-                                                            Command="{Binding PullRepoCommand}"
-                                                            IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="🔄" FontSize="13" Margin="0,0,6,0"/>
-                                                            <TextBlock Text="Pull" FontWeight="SemiBold"/>
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Height="36" MinWidth="70"
-                                                            Style="{DynamicResource DangerButton}" Cursor="Hand"
-                                                            Command="{Binding CancelOperationCommand}"
-                                                            Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
-                                                        <TextBlock Text="✕ Huỷ" FontWeight="SemiBold"/>
-                                                    </Button>
-                                                </StackPanel>
-
-                                                <!-- Progress -->
-                                                <Border Margin="0,0,0,12" CornerRadius="8" Padding="12,10"
-                                                        Background="{DynamicResource CardColor}"
-                                                        BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
-                                                        Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding ProgressStatusText}"
-                                                                   Foreground="{DynamicResource AccentBrush}"
-                                                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                                        <ProgressBar IsIndeterminate="True" Height="4"
-                                                                     Foreground="{DynamicResource AccentBrush}"
-                                                                     Background="{DynamicResource WindowBackground}"/>
-                                                    </StackPanel>
-                                                </Border>
-
-                                                <!-- Log -->
-                                                <Border Style="{DynamicResource SectionCardBorder}" MaxHeight="130">
-                                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                                        <TextBlock Text="{Binding OperationLog}" FontSize="10"
-                                                                   FontFamily="Consolas" Foreground="{DynamicResource TextSecondary}"
-                                                                   TextWrapping="Wrap"/>
-                                                    </ScrollViewer>
-                                                </Border>
-                                            </StackPanel>
-                                        </ScrollViewer>
-                                    </TabItem>
-
-                                    <!-- Hiển thị -->
-                                    <TabItem Header="Hiển thị" Style="{StaticResource HttpTabItemStyle}">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16" Width="464">
-                                            <StackPanel MaxWidth="480" Width="412">
-                                                <TextBlock Text="Tên hiển thị:" Style="{DynamicResource SectionTitle}"/>
-                                                <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,14"/>
-
-                                                <TextBlock Text="Icon:" Style="{DynamicResource SectionTitle}"/>
-                                                <controls:IconSelectorUserControl x:Name="IconSelector"
-                                                                                  ButtonHeight="34" Margin="0,0,0,14"
-                                                                                  SelectedIcon="{Binding IconKey, Mode=TwoWay}"/>
-
-                                                <!-- Màu icon -->
-                                                <TextBlock Text="Màu icon:" Style="{DynamicResource SectionTitle}"/>
-                                                <Grid Margin="0,0,0,14">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <ComboBox Grid.Column="0" Height="34" Style="{DynamicResource BaseComboBox}"
-                                                              ItemsSource="{Binding TitleColorOptions}"
-                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                                              SelectedValue="{Binding IconColorKey, Mode=TwoWay}"
-                                                              SelectionChanged="IconColorComboBox_SelectionChanged"/>
-                                                    <Button Grid.Column="1" Content="🎨" Width="34" Height="34"
-                                                            Padding="0" Margin="8,0,0,0" Cursor="Hand" Click="PickIconColor_Click"/>
-                                                    <Border x:Name="IconColorPreview" Grid.Column="2"
-                                                            Width="34" Height="34" CornerRadius="8" Margin="8,0,0,0"
-                                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"/>
-                                                </Grid>
-
-                                                <!-- Màu node -->
-                                                <TextBlock Text="Màu node:" Style="{DynamicResource SectionTitle}"/>
-                                                <Grid Margin="0,0,0,14">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <ComboBox Grid.Column="0" Height="34" Style="{DynamicResource BaseComboBox}"
-                                                              ItemsSource="{Binding TitleColorOptions}"
-                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                                              SelectedValue="{Binding NodeColorKey, Mode=TwoWay}"
-                                                              SelectionChanged="NodeColorComboBox_SelectionChanged"/>
-                                                    <Button Grid.Column="1" Content="🎨" Width="34" Height="34"
-                                                            Padding="0" Margin="8,0,0,0" Cursor="Hand" Click="PickNodeColor_Click"/>
-                                                    <Border x:Name="NodeColorPreview" Grid.Column="2"
-                                                            Width="34" Height="34" CornerRadius="8" Margin="8,0,0,0"
-                                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"/>
-                                                </Grid>
-
-                                                <!-- Mô tả -->
-                                                <TextBlock Text="Mô tả:" Style="{DynamicResource SectionTitle}"/>
-                                                <TextBox Text="{Binding TooltipText, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{DynamicResource BaseTextBoxV2}" Height="56" Margin="0,0,0,16"
-                                                         AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
-
-                                                <!-- Xem trước -->
-                                                <TextBlock Text="Xem trước:" Style="{DynamicResource SectionTitle}"/>
-                                                <Border Style="{DynamicResource SectionCardBorder}" Padding="16" HorizontalAlignment="Left" MinWidth="280">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Border Width="48" Height="48" CornerRadius="10"
-                                                                Background="{DynamicResource IndigoBrush}"
-                                                                BorderBrush="{DynamicResource BorderColor}" BorderThickness="1.5"
-                                                                x:Name="PreviewNodeBorder">
-                                                            <controls:SvgViewboxEx x:Name="PreviewIcon" Width="24" Height="24"
-                                                                                   Fill="White" Opacity="0.95"
-                                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                                   Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
-                                                        </Border>
-                                                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding DisplayName, TargetNullValue='Git Source'}"
-                                                                       FontWeight="Bold" FontSize="14"
-                                                                       Foreground="{DynamicResource TextBrush}"/>
-                                                            <TextBlock Text="{Binding TooltipText, TargetNullValue='Mô tả repo...'}"
-                                                                       FontSize="11" Opacity="0.65" TextTrimming="CharacterEllipsis"
-                                                                       MaxWidth="180" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0"/>
-                                                        </StackPanel>
-                                                    </StackPanel>
-                                                </Border>
-                                            </StackPanel>
-                                        </ScrollViewer>
-                                    </TabItem>
-
-                                    <!-- Cài đặt -->
-                                    <TabItem Header="Cài đặt" Style="{StaticResource HttpTabItemStyle}">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16">
-                                            <StackPanel MaxWidth="480" Width="420">
-                                                <TextBlock Text="Command Line:" Style="{DynamicResource SectionTitle}"/>
-                                                <TextBlock Text="Lệnh chạy khi nhấn ▶ Start ở tab Tổng hợp"
-                                                           Style="{DynamicResource HintText}" Margin="0,0,0,10"/>
-                                                <TextBox Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{DynamicResource BaseTextBoxV2}"
-                                                         MinHeight="80" MaxHeight="180"
-                                                         AcceptsReturn="True" TextWrapping="Wrap"
-                                                         VerticalScrollBarVisibility="Auto"
-                                                         FontFamily="Consolas" FontSize="12" Margin="0,0,0,14"/>
-
-                                                <Button Height="36" MinWidth="130" HorizontalAlignment="Left"
-                                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand"
-                                                        Command="{Binding TestRunCommandCommand}">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="▶" FontSize="13" Margin="0,0,8,0"/>
-                                                        <TextBlock Text="Test chạy" FontWeight="Bold" FontSize="12"/>
-                                                    </StackPanel>
-                                                </Button>
-
-                                                <TextBlock Text="Output:" Style="{DynamicResource SectionTitle}" Margin="0,18,0,6"/>
-                                                <Border Style="{DynamicResource SectionCardBorder}" MaxHeight="200">
-                                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                                        <TextBlock Text="{Binding CommandOutput}" FontFamily="Consolas" FontSize="10"
-                                                                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
-                                                    </ScrollViewer>
-                                                </Border>
-                                            </StackPanel>
-                                        </ScrollViewer>
-                                    </TabItem>
-                                </TabControl>
-
-                                <!-- Save notification -->
-                                <Border Grid.Row="1" Padding="12,6" CornerRadius="6" Margin="16,0,16,6"
-                                        Background="{DynamicResource SuccessBrush}" Opacity="0.9"
-                                        Visibility="{Binding ShowSaveSuccess, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Text="✅ Đã lưu thành công vào Tổng hợp!" FontWeight="SemiBold"
-                                               FontSize="11" Foreground="White" HorizontalAlignment="Center"/>
-                                </Border>
-
-                                <!-- Save button -->
-                                <Border Grid.Row="2" Padding="16,10" BorderThickness="0,1,0,0"
-                                        BorderBrush="{DynamicResource BorderColor}"
-                                        Background="Transparent">
-                                    <Button Height="38" MinWidth="160" HorizontalAlignment="Center"
-                                            Style="{DynamicResource PrimaryButton}" Cursor="Hand"
-                                            Command="{Binding SaveRepoCommand}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="💾" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Lưu vào Tổng hợp" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                </Border>
+                            <TextBlock Text="Thư mục local:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding LocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="34"/>
+                                <Button Grid.Column="1" Padding="0" Content="📁" Width="34" Height="34" Margin="6,0,0,0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                        Command="{Binding BrowseLocalPathCommand}"/>
                             </Grid>
-                        </TabItem>
-                    </TabControl>
+
+                            <TextBlock Text="Branch:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <ComboBox Height="34" Style="{DynamicResource BaseComboBox}" IsEditable="True"
+                                      Text="{Binding Branch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      ItemsSource="{Binding AvailableBranches}" Margin="0,0,0,14"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button Height="34" MinWidth="90" Margin="0,0,6,0"
+                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                        Command="{Binding CloneRepoCommand}"
+                                        IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⬇" FontSize="12" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Clone" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Height="34" MinWidth="90" Margin="0,0,6,0"
+                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                        Command="{Binding PullRepoCommand}"
+                                        IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔄" FontSize="12" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Pull" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Height="34" MinWidth="60"
+                                        Style="{DynamicResource DangerButton}" Cursor="Hand"
+                                        Command="{Binding CancelOperationCommand}"
+                                        Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="✕ Huỷ" FontWeight="SemiBold"/>
+                                </Button>
+                            </StackPanel>
+
+                            <Border Margin="0,0,0,10" CornerRadius="6" Padding="10,8"
+                                    Background="{DynamicResource CardColor}"
+                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                                    Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding ProgressStatusText}" Foreground="{DynamicResource AccentBrush}"
+                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <ProgressBar IsIndeterminate="True" Height="3" Foreground="{DynamicResource AccentBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1" CornerRadius="6" Padding="8" MaxHeight="120">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Text="{Binding OperationLog}" FontSize="10" FontFamily="Consolas"
+                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Hiển thị page -->
+                    <ScrollViewer x:Name="SubPageDisplay" VerticalScrollBarVisibility="Auto" Padding="16,12" Visibility="Collapsed">
+                        <StackPanel MaxWidth="500">
+                            <TextBlock Text="Tên hiển thị:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="34" Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Icon:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <controls:IconSelectorUserControl x:Name="IconSelector" ButtonHeight="32" Margin="0,0,0,12"
+                                                              SelectedIcon="{Binding IconKey, Mode=TwoWay}"/>
+
+                            <TextBlock Text="Màu icon:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" Height="32" Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}" SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding IconColorKey, Mode=TwoWay}" SelectionChanged="IconColorComboBox_SelectionChanged"/>
+                                <Button Grid.Column="1" Content="🎨" Width="32" Height="32" Padding="0" Margin="6,0,0,0" Cursor="Hand" Click="PickIconColor_Click"/>
+                                <Border x:Name="IconColorPreview" Grid.Column="2" Width="32" Height="32" CornerRadius="6" Margin="6,0,0,0"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"/>
+                            </Grid>
+
+                            <TextBlock Text="Màu node:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" Height="32" Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}" SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding NodeColorKey, Mode=TwoWay}" SelectionChanged="NodeColorComboBox_SelectionChanged"/>
+                                <Button Grid.Column="1" Content="🎨" Width="32" Height="32" Padding="0" Margin="6,0,0,0" Cursor="Hand" Click="PickNodeColor_Click"/>
+                                <Border x:Name="NodeColorPreview" Grid.Column="2" Width="32" Height="32" CornerRadius="6" Margin="6,0,0,0"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"/>
+                            </Grid>
+
+                            <TextBlock Text="Mô tả:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding TooltipText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="50" Margin="0,0,0,14"
+                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+
+                            <TextBlock Text="Xem trước:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1" CornerRadius="8" Padding="14" HorizontalAlignment="Left" MinWidth="260">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border x:Name="PreviewNodeBorder" Width="44" Height="44" CornerRadius="10"
+                                            Background="{Binding PreviewNodeBrush}"
+                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1.5">
+                                        <controls:SvgViewboxEx x:Name="PreviewIcon" Width="22" Height="22"
+                                                               Fill="{Binding PreviewIconBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+                                    </Border>
+                                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName, TargetNullValue='Git Source'}"
+                                                   FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="{Binding TooltipText, TargetNullValue='Mô tả...'}"
+                                                   FontSize="10" Opacity="0.6" TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="160" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Cài đặt page -->
+                    <ScrollViewer x:Name="SubPageSettings" VerticalScrollBarVisibility="Auto" Padding="16,12" Visibility="Collapsed">
+                        <StackPanel MaxWidth="500">
+                            <TextBlock Text="Command Line:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Lệnh chạy khi nhấn ▶ ở tab Tổng hợp" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8"/>
+                            <TextBox Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" MinHeight="70" MaxHeight="160"
+                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
+
+                            <Button Height="34" MinWidth="110" HorizontalAlignment="Left"
+                                    Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                    Command="{Binding TestRunCommandCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="▶" FontSize="12" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Test chạy" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Text="Output:" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                            <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1" CornerRadius="6" Padding="8" MaxHeight="180">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Text="{Binding CommandOutput}" FontFamily="Consolas" FontSize="10"
+                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Save notification -->
+                <Border Grid.Row="2" Padding="8,5" CornerRadius="6" Margin="16,4,16,4"
+                        Background="{DynamicResource SuccessBrush}" Opacity="0.9"
+                        Visibility="{Binding ShowSaveSuccess, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="✅ Đã lưu thành công!" FontWeight="SemiBold"
+                               FontSize="11" Foreground="White" HorizontalAlignment="Center"/>
+                </Border>
+
+                <!-- Save button -->
+                <Border Grid.Row="3" Padding="14,8" BorderThickness="0,1,0,0"
+                        BorderBrush="{DynamicResource BorderColor}" Background="{DynamicResource CardColor}">
+                    <Button Height="36" MinWidth="150" HorizontalAlignment="Center"
+                            Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                            Command="{Binding SaveRepoCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="💾" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Lưu vào Tổng hợp" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Border>
+            </Grid>
         </Grid>
-    </Border>
-</local:BaseNodeDialog>
+    </Grid>
+</Window>

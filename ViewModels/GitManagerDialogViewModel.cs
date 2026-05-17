@@ -34,6 +34,10 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _commandText = string.Empty;
         [ObservableProperty] private string _commandOutput = string.Empty;
 
+        // Preview (cập nhật từ code-behind khi đổi màu)
+        [ObservableProperty] private System.Windows.Media.Brush _previewNodeBrush = System.Windows.Media.Brushes.Indigo;
+        [ObservableProperty] private System.Windows.Media.Brush _previewIconBrush = System.Windows.Media.Brushes.White;
+
         // Status
         [ObservableProperty] private bool _isOperating;
         [ObservableProperty] private string _operationLog = string.Empty;
