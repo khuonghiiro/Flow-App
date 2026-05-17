@@ -1924,60 +1924,12 @@ Cursor="Hand"
                             </Border>
                         </WrapPanel>
 
-                        <TextBlock Text="Dev Tools" Style="{StaticResource PaletteGroupHeaderStyle}"/>
-                        <WrapPanel Orientation="Horizontal" x:Name="DevToolsWrapPanel">
-                            <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Background="{DynamicResource IndigoBrush}"
-                                    Tag="GitSource">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth="240">
-                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
-                                                <Run Text="Git Source"/>
-                                            </TextBlock>
-                                            <TextBlock Text="Clone/pull Git repo, mở VSCodium để code." TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
-                                            <TextBlock Margin="0,6,0,0">
-                                                <Run Text="• "/>
-                                                <Run Text="localPath" FontWeight="SemiBold"/>
-                                                <Run Text=" — đường dẫn thư mục source"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="• "/>
-                                                <Run Text="branch" FontWeight="SemiBold"/>
-                                                <Run Text=" — branch hiện tại"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="• "/>
-                                                <Run Text="lastCommit" FontWeight="SemiBold"/>
-                                                <Run Text=" — hash commit cuối"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
-                                        <MenuItem IsHitTestVisible="False">
-                                            <MenuItem.Header>
-                                                <Border Background="{DynamicResource IndigoBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
-                                                    <StackPanel>
-                                                        <TextBlock Text="Git Source" Foreground="{DynamicResource TextOnIndigoBrush}" FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Clone/pull Git repository về local. Cấu hình icon, tooltip, context menu cho node. Khi thực thi sẽ mở VSCodium với source." Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Output: localPath, branch, lastCommit" Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.85" Margin="0,4,0,0"/>
-                                                        <TextBlock Text="• Hỗ trợ: clone, pull, checkout branch" Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.85"/>
-                                                        <TextBlock Text="• Mở VSCodium tự động khi chạy" Foreground="{DynamicResource TextOnIndigoBrush}" Opacity="0.85"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-branch duotone-regular'}"
-                                                          Fill="{DynamicResource TextOnIndigoBrush}"/>
-                                </Grid>
-                            </Border>
-                        </WrapPanel>
+                        <!-- Git Repos palette — TẠM COMMENT: logic chuyển sang GitManagerDialog tab Tổng hợp -->
+                        <!--
+                        <StackPanel x:Name="GitReposPaletteSection"
+                                    Visibility="{Binding HasGitRepos, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        </StackPanel>
+                        -->
                     </StackPanel>
                 </ScrollViewer>
 

@@ -18,7 +18,12 @@ namespace FlowMy.Services.Git
         {
             try
             {
-                if (Directory.Exists(localPath) && Directory.GetFileSystemEntries(localPath).Length > 0)
+                // Tạo folder nếu chưa tồn tại
+                if (!Directory.Exists(localPath))
+                {
+                    Directory.CreateDirectory(localPath);
+                }
+                else if (Directory.GetFileSystemEntries(localPath).Length > 0)
                 {
                     return new CloneResult { Success = false, ErrorMessage = $"Thư mục '{localPath}' đã tồn tại và không rỗng." };
                 }

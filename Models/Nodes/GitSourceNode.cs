@@ -99,6 +99,46 @@ namespace FlowMy.Models
             set { if (_iconKey != value) { _iconKey = value ?? "code-branch duotone-regular"; OnPropertyChanged(); } }
         }
 
+        private string _iconColorKey = "White";
+        /// <summary>Màu icon (để đảm bảo icon nhìn rõ trên nền node).</summary>
+        public string IconColorKey
+        {
+            get => _iconColorKey;
+            set { if (_iconColorKey != value) { _iconColorKey = value ?? "White"; OnPropertyChanged(); OnPropertyChanged(nameof(IconBrushResolved)); } }
+        }
+
+        /// <summary>Brush đã resolve cho icon — dùng trong palette DataTemplate binding.</summary>
+        public System.Windows.Media.Brush IconBrushResolved
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_iconColorKey))
+                    return System.Windows.Media.Brushes.White;
+
+                // Try hex color
+                if (_iconColorKey.StartsWith("#"))
+                {
+                    try
+                    {
+                        var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(_iconColorKey);
+                        return new System.Windows.Media.SolidColorBrush(color);
+                    }
+                    catch { }
+                }
+
+                // Try named color
+                if (_iconColorKey.Equals("White", System.StringComparison.OrdinalIgnoreCase))
+                    return System.Windows.Media.Brushes.White;
+                if (_iconColorKey.Equals("Black", System.StringComparison.OrdinalIgnoreCase))
+                    return System.Windows.Media.Brushes.Black;
+
+                // Try resource brush
+                var brush = System.Windows.Application.Current?.TryFindResource($"{_iconColorKey}Brush") as System.Windows.Media.Brush
+                         ?? System.Windows.Application.Current?.TryFindResource(_iconColorKey) as System.Windows.Media.Brush;
+                return brush ?? System.Windows.Media.Brushes.White;
+            }
+        }
+
         /// <summary>Nội dung tooltip khi hover node trên palette.</summary>
         public string TooltipText
         {
@@ -139,6 +179,14 @@ namespace FlowMy.Models
         {
             get => _autoOpenOnExecute;
             set { if (_autoOpenOnExecute != value) { _autoOpenOnExecute = value; OnPropertyChanged(); } }
+        }
+
+        private string _commandText = string.Empty;
+        /// <summary>Command line để chạy trong thư mục source.</summary>
+        public string CommandText
+        {
+            get => _commandText;
+            set { if (_commandText != value) { _commandText = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));

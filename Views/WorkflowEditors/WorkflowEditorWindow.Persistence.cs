@@ -11,6 +11,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace FlowMy.Views
 {
@@ -545,34 +547,181 @@ namespace FlowMy.Views
 
         private void GitManagerButton_Click(object sender, RoutedEventArgs e)
         {
-            // Mở dialog Git Source cho node đang chọn hoặc tạo mới
             if (ViewModel == null) return;
 
-            // Nếu đang chọn 1 GitSourceNode → mở dialog của nó
-            if (ViewModel.SelectedNode is GitSourceNode gitNode && gitNode.Border != null)
+            // Tạo node tạm để cấu hình
+            var tempNode = _templateFactory?.Create("GitSource", 0, 0) as GitSourceNode;
+            if (tempNode == null) return;
+
+            // Mở GitManagerDialog căn giữa màn hình
+            var dialog = new GitManagerDialog(tempNode, this, this);
+            var result = dialog.ShowDialog();
+
+            if (result == true && dialog.ResultNode != null)
             {
-                // Trigger right-click dialog (giống double-click mở dialog)
-                var dialog = new Views.Overlays.GitSourceNodeDialog(gitNode, this, this);
-                dialog.Show();
-                return;
-            }
-
-            // Nếu không → tạo node GitSource mới ở giữa canvas rồi mở dialog
-            var newNode = _templateFactory?.Create("GitSource",
-                WorkflowCanvas.ActualWidth / 2,
-                WorkflowCanvas.ActualHeight / 2);
-
-            if (newNode is GitSourceNode newGitNode)
-            {
-                ViewModel.Nodes.Add(newGitNode);
-                _nodeRenderer?.RenderNode(newGitNode, WorkflowCanvas);
-                ViewModel.SelectedNode = newGitNode;
-
-                // Mở dialog ngay
-                var dialog = new Views.Overlays.GitSourceNodeDialog(newGitNode, this, this);
-                dialog.Show();
+                // Thêm node vào palette
+                AddGitNodeToPalette(dialog.ResultNode);
             }
         }
+
+        private void AddGitRepoButton_Click(object sender, RoutedEventArgs e)
+        {
+            GitManagerButton_Click(sender, e);
+        }
+
+        /// <summary>
+        /// Thêm GitSourceNode vào palette menu trái (dynamic).
+        /// </summary>
+        private void AddGitNodeToPalette(GitSourceNode node)
+        {
+            if (ViewModel == null) return;
+
+            // Kiểm tra đã có trong palette chưa (theo Id)
+            if (ViewModel.GitRepoNodes.Any(n => n.Id == node.Id))
+                return;
+
+            ViewModel.GitRepoNodes.Add(node);
+            ViewModel.HasGitRepos = ViewModel.GitRepoNodes.Count > 0;
+        }
+
+        /// <summary>
+        /// Xóa GitSourceNode khỏi palette (không xóa node khỏi canvas).
+        /// </summary>
+        private void RemoveGitNodeFromPalette(string nodeId)
+        {
+            if (ViewModel == null) return;
+            var item = ViewModel.GitRepoNodes.FirstOrDefault(n => n.Id == nodeId);
+            if (item != null)
+            {
+                ViewModel.GitRepoNodes.Remove(item);
+                ViewModel.HasGitRepos = ViewModel.GitRepoNodes.Count > 0;
+            }
+        }
+
+        private void GitRepoPaletteItem_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Bắt đầu drag — tạo node GitSource mới từ template của repo đã clone
+            if (sender is not FrameworkElement fe || fe.Tag is not string nodeId) return;
+            if (ViewModel == null) return;
+
+            var sourceNode = ViewModel.GitRepoNodes.FirstOrDefault(n => n.Id == nodeId);
+            if (sourceNode == null) return;
+
+            // Lưu thông tin để dùng khi drop
+            _gitDragSourceNode = sourceNode;
+            _gitDragStartPoint = e.GetPosition(this);
+            fe.CaptureMouse();
+        }
+
+        private void GitRepoPaletteItem_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_gitDragSourceNode == null || e.LeftButton != MouseButtonState.Pressed)
+                return;
+
+            var pos = e.GetPosition(this);
+            if (Math.Abs(pos.X - _gitDragStartPoint.X) > 5 || Math.Abs(pos.Y - _gitDragStartPoint.Y) > 5)
+            {
+                if (sender is FrameworkElement fe)
+                    fe.ReleaseMouseCapture();
+
+                // Tạo node mới từ template và drop vào canvas
+                var canvasPos = e.GetPosition(WorkflowCanvas);
+                var transform = WorkflowCanvas.RenderTransform as System.Windows.Media.TransformGroup;
+                double scale = 1.0;
+                double offsetX = 0, offsetY = 0;
+                if (transform != null)
+                {
+                    var scaleT = transform.Children.OfType<System.Windows.Media.ScaleTransform>().FirstOrDefault();
+                    var translateT = transform.Children.OfType<System.Windows.Media.TranslateTransform>().FirstOrDefault();
+                    if (scaleT != null) scale = scaleT.ScaleX;
+                    if (translateT != null) { offsetX = translateT.X; offsetY = translateT.Y; }
+                }
+
+                var worldX = (canvasPos.X - offsetX) / scale;
+                var worldY = (canvasPos.Y - offsetY) / scale;
+
+                var newNode = _templateFactory?.Create("GitSource", worldX, worldY);
+                if (newNode is GitSourceNode newGit)
+                {
+                    // Copy cấu hình từ source node
+                    newGit.RepoUrl = _gitDragSourceNode.RepoUrl;
+                    newGit.LocalPath = _gitDragSourceNode.LocalPath;
+                    newGit.Branch = _gitDragSourceNode.Branch;
+                    newGit.DisplayName = _gitDragSourceNode.DisplayName;
+                    newGit.IconKey = _gitDragSourceNode.IconKey;
+                    newGit.TooltipText = _gitDragSourceNode.TooltipText;
+                    newGit.ContextMenuDescription = _gitDragSourceNode.ContextMenuDescription;
+                    newGit.VscodiumPath = _gitDragSourceNode.VscodiumPath;
+                    newGit.AutoOpenOnExecute = _gitDragSourceNode.AutoOpenOnExecute;
+                    newGit.LastCommitHash = _gitDragSourceNode.LastCommitHash;
+                    newGit.LastPullTime = _gitDragSourceNode.LastPullTime;
+                    newGit.Title = string.IsNullOrWhiteSpace(_gitDragSourceNode.DisplayName)
+                        ? _gitDragSourceNode.Title : _gitDragSourceNode.DisplayName;
+
+                    ViewModel?.Nodes.Add(newGit);
+                    _nodeRenderer?.RenderNode(newGit, WorkflowCanvas);
+                }
+
+                _gitDragSourceNode = null;
+            }
+        }
+
+        private void GitRepoPaletteItem_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe)
+                fe.ReleaseMouseCapture();
+            _gitDragSourceNode = null;
+        }
+
+        private void GitRepoPaletteItem_OpenConfig_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi) return;
+            var ctx = (mi.Parent as ContextMenu)?.PlacementTarget as FrameworkElement;
+            var nodeId = ctx?.Tag as string;
+            if (string.IsNullOrWhiteSpace(nodeId) || ViewModel == null) return;
+
+            var node = ViewModel.GitRepoNodes.FirstOrDefault(n => n.Id == nodeId)
+                    ?? ViewModel.Nodes.OfType<GitSourceNode>().FirstOrDefault(n => n.Id == nodeId);
+            if (node == null) return;
+
+            var dialog = new Views.Overlays.GitSourceNodeDialog(node, this, this);
+            dialog.Show();
+        }
+
+        private void GitRepoPaletteItem_OpenVsCode_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi) return;
+            var ctx = (mi.Parent as ContextMenu)?.PlacementTarget as FrameworkElement;
+            var nodeId = ctx?.Tag as string;
+            if (string.IsNullOrWhiteSpace(nodeId) || ViewModel == null) return;
+
+            var node = ViewModel.GitRepoNodes.FirstOrDefault(n => n.Id == nodeId);
+            if (node == null || string.IsNullOrWhiteSpace(node.LocalPath)) return;
+
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c cd /d \"{node.LocalPath}\" && code .",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+            }
+            catch { }
+        }
+
+        private void GitRepoPaletteItem_Remove_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi) return;
+            var ctx = (mi.Parent as ContextMenu)?.PlacementTarget as FrameworkElement;
+            var nodeId = ctx?.Tag as string;
+            if (!string.IsNullOrWhiteSpace(nodeId))
+                RemoveGitNodeFromPalette(nodeId);
+        }
+
+        private GitSourceNode? _gitDragSourceNode;
+        private Point _gitDragStartPoint;
 
         /// <summary>
         /// Update theme toggle button icon based on current theme

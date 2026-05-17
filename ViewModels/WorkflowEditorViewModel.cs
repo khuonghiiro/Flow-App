@@ -123,6 +123,15 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool hasManualRunSessions;
 
+        /// <summary>
+        /// Danh sách Git repo nodes hiển thị trên palette (dynamic — chỉ hiện sau khi clone + user thêm).
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<GitSourceNode> gitRepoNodes = new();
+
+        [ObservableProperty]
+        private bool hasGitRepos;
+
         [ObservableProperty]
         private bool enableExecutionTraceLog;
 
