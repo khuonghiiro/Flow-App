@@ -45,6 +45,7 @@ namespace FlowMy.Services.Rendering
         private readonly CallbackNodeRenderer _callbackNodeRenderer;
         private readonly FlowOverwriteNodeRenderer _flowOverwriteNodeRenderer;
         private readonly BodyContainerNodeRenderer _bodyContainerNodeRenderer;
+        private readonly GitSourceNodeRenderer _gitSourceNodeRenderer;
 
         // Dispatch map: node concrete type → renderer
         // Dùng cho các node chỉ cần delegate thuần túy (không có inline logic đặc biệt).
@@ -85,7 +86,8 @@ namespace FlowMy.Services.Rendering
             StorageNodeRenderer storageNodeRenderer,
             CallbackNodeRenderer callbackNodeRenderer,
             FlowOverwriteNodeRenderer flowOverwriteNodeRenderer,
-            BodyContainerNodeRenderer bodyContainerNodeRenderer
+            BodyContainerNodeRenderer bodyContainerNodeRenderer,
+            GitSourceNodeRenderer gitSourceNodeRenderer
             )
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
@@ -121,6 +123,7 @@ namespace FlowMy.Services.Rendering
             _callbackNodeRenderer = callbackNodeRenderer ?? throw new ArgumentNullException(nameof(callbackNodeRenderer));
             _flowOverwriteNodeRenderer = flowOverwriteNodeRenderer ?? throw new ArgumentNullException(nameof(flowOverwriteNodeRenderer));
             _bodyContainerNodeRenderer = bodyContainerNodeRenderer ?? throw new ArgumentNullException(nameof(bodyContainerNodeRenderer));
+            _gitSourceNodeRenderer = gitSourceNodeRenderer ?? throw new ArgumentNullException(nameof(gitSourceNodeRenderer));
 
             BuildRendererMap();
         }
@@ -164,6 +167,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(DelayNode)]             = _delayNodeRenderer,
                 [typeof(KeyPressEventNode)]     = _keyPressEventNodeRenderer,
                 [typeof(HotkeyPressEventNode)]  = _hotkeyPressEventNodeRenderer,
+                [typeof(GitSourceNode)]         = _gitSourceNodeRenderer,
             };
         }
 

@@ -1,3 +1,4 @@
+using FlowMy.Models;
 using FlowMy.Models.Persistence;
 using FlowMy.Services.Workflow;
 using FlowMy.Views.Overlays;
@@ -540,6 +541,37 @@ namespace FlowMy.Views
             UpdateThemeToggleIcon();
             InitializeThemeSelector();
             UpdateGridPattern();
+        }
+
+        private void GitManagerButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Mở dialog Git Source cho node đang chọn hoặc tạo mới
+            if (ViewModel == null) return;
+
+            // Nếu đang chọn 1 GitSourceNode → mở dialog của nó
+            if (ViewModel.SelectedNode is GitSourceNode gitNode && gitNode.Border != null)
+            {
+                // Trigger right-click dialog (giống double-click mở dialog)
+                var dialog = new Views.Overlays.GitSourceNodeDialog(gitNode, this, this);
+                dialog.Show();
+                return;
+            }
+
+            // Nếu không → tạo node GitSource mới ở giữa canvas rồi mở dialog
+            var newNode = _templateFactory?.Create("GitSource",
+                WorkflowCanvas.ActualWidth / 2,
+                WorkflowCanvas.ActualHeight / 2);
+
+            if (newNode is GitSourceNode newGitNode)
+            {
+                ViewModel.Nodes.Add(newGitNode);
+                _nodeRenderer?.RenderNode(newGitNode, WorkflowCanvas);
+                ViewModel.SelectedNode = newGitNode;
+
+                // Mở dialog ngay
+                var dialog = new Views.Overlays.GitSourceNodeDialog(newGitNode, this, this);
+                dialog.Show();
+            }
         }
 
         /// <summary>

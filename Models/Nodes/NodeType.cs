@@ -54,7 +54,9 @@ namespace FlowMy.Models
         BodyContainer,
         /// <summary>Liệt kê (và tuỳ chọn đọc) file trong một thư mục.</summary>
         FolderFilePaths,
-        FlowOverwrite
+        FlowOverwrite,
+        /// <summary>Git source — clone/pull repo, mở VSCodium.</summary>
+        GitSource
     }
 }
 

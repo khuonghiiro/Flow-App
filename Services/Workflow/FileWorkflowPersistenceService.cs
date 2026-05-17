@@ -3577,6 +3577,32 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
             flowOverwriteRestore.RebuildDynamicOutputs();
         }
+        else if (node is GitSourceNode gitSourceRestore)
+        {
+            if (properties.TryGetValue("RepoUrl", out var repoUrlObj))
+                gitSourceRestore.RepoUrl = repoUrlObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("LocalPath", out var localPathObj))
+                gitSourceRestore.LocalPath = localPathObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("Branch", out var branchObj))
+                gitSourceRestore.Branch = branchObj?.ToString() ?? "main";
+            if (properties.TryGetValue("DisplayName", out var displayNameObj))
+                gitSourceRestore.DisplayName = displayNameObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("IconKey", out var iconKeyObj))
+                gitSourceRestore.IconKey = iconKeyObj?.ToString() ?? "code-branch duotone-regular";
+            if (properties.TryGetValue("TooltipText", out var tooltipObj))
+                gitSourceRestore.TooltipText = tooltipObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("ContextMenuDescription", out var ctxDescObj))
+                gitSourceRestore.ContextMenuDescription = ctxDescObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("VscodiumPath", out var vscodiumObj))
+                gitSourceRestore.VscodiumPath = vscodiumObj?.ToString() ?? "vscodium";
+            if (properties.TryGetValue("LastCommitHash", out var commitObj))
+                gitSourceRestore.LastCommitHash = commitObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("LastPullTime", out var pullTimeObj))
+                gitSourceRestore.LastPullTime = pullTimeObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("AutoOpenOnExecute", out var autoOpenObj) &&
+                autoOpenObj != null && bool.TryParse(autoOpenObj.ToString(), out var autoOpen))
+                gitSourceRestore.AutoOpenOnExecute = autoOpen;
+        }
         else if (node is BodyContainerNode bodyContainerRestore)
         {
             if (properties.TryGetValue("BodyWidth", out var widthObj) &&
@@ -4693,6 +4719,20 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     })
                     .ToList());
             }
+        }
+        else if (node is GitSourceNode gitSourceSer)
+        {
+            dict["RepoUrl"] = gitSourceSer.RepoUrl;
+            dict["LocalPath"] = gitSourceSer.LocalPath;
+            dict["Branch"] = gitSourceSer.Branch;
+            dict["DisplayName"] = gitSourceSer.DisplayName;
+            dict["IconKey"] = gitSourceSer.IconKey;
+            dict["TooltipText"] = gitSourceSer.TooltipText;
+            dict["ContextMenuDescription"] = gitSourceSer.ContextMenuDescription;
+            dict["VscodiumPath"] = gitSourceSer.VscodiumPath;
+            dict["LastCommitHash"] = gitSourceSer.LastCommitHash;
+            dict["LastPullTime"] = gitSourceSer.LastPullTime;
+            dict["AutoOpenOnExecute"] = gitSourceSer.AutoOpenOnExecute;
         }
         else if (node is BodyContainerNode bodyContainerSer)
         {

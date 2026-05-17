@@ -860,6 +860,7 @@ namespace FlowMy.ViewModels
                 NodeType.KeyScopedStore => "arrow-progress sharp-regular",
                 NodeType.LoopContext => "arrows-spin duotone",
                 NodeType.Condition => "list-tree sharp-light",
+                NodeType.GitSource => "code-branch duotone-regular",
                 _ => "circle-question chisel-regular"
             };
         }

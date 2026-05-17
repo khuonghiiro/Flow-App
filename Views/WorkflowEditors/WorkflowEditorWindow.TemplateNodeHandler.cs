@@ -379,6 +379,7 @@ namespace FlowMy.Views
                 "Storage" => "arrow-progress sharp-regular",
                 "Callback" => "arrows-turn-right regular",
                 "FileDownload" => "download solid",
+                "GitSource" => "code-branch duotone-regular",
                 _ => "circle2"
             };
         }

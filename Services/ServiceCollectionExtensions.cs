@@ -80,6 +80,7 @@ namespace FlowMy.Services
             services.AddScoped<DataFetcherNodeRenderer>();
             services.AddScoped<KeyValueBridgeNodeRenderer>();
             services.AddScoped<FlowOverwriteNodeRenderer>();
+            services.AddScoped<GitSourceNodeRenderer>();
             services.AddScoped<BodyContainerNodeRenderer>();
             services.AddScoped<WebNodeRenderer>();
             services.AddScoped<CodeNodeRenderer>();

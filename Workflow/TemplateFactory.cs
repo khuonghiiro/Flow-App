@@ -59,6 +59,7 @@ namespace FlowMy.Workflow
                 "FolderFilePaths" => CreateFolderFilePathsNode(x, y),
                 "KeyValueBridge" => CreateKeyValueBridgeNode(x, y),
                 "FlowOverwrite" => CreateFlowOverwriteNode(x, y),
+                "GitSource" => CreateGitSourceNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1273,6 +1274,44 @@ namespace FlowMy.Workflow
                 ColorKey = "KiwiGreen",
                 Type = NodeType.FlowOverwrite
             };
+            return node;
+        }
+
+        private WorkflowNode CreateGitSourceNode(double x, double y)
+        {
+            var nodeBrush = _colorThemeService.GetBrush("IndigoBrush")
+                            ?? _colorThemeService.GetBrush("PrimaryBrush")
+                            ?? Brushes.Indigo;
+
+            var node = new GitSourceNode
+            {
+                Id = $"Node_GitSource_{Guid.NewGuid()}",
+                Title = "Git Source",
+                X = x - 30,
+                Y = y - 30,
+                NodeBrush = nodeBrush,
+                ColorKey = "Indigo",
+                Type = NodeType.GitSource
+            };
+
+            node.Ports.Clear();
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = true,
+                Position = PortPosition.Left,
+                IsVisible = true,
+                ColorKey = "Info"
+            });
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = false,
+                Position = PortPosition.Right,
+                IsVisible = true,
+                ColorKey = "SunsetOrange"
+            });
+
             return node;
         }
 

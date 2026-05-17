@@ -1,0 +1,405 @@
+<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.GitSourceNodeDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:FlowMy.Controls"
+    xmlns:local="clr-namespace:FlowMy.Views.Overlays"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:conv="clr-namespace:FlowMy.Converters"
+    Title="Git Source"
+    WindowStyle="None" ResizeMode="CanResize"
+    AllowsTransparency="True" Background="Transparent"
+    ShowInTaskbar="False" Topmost="True"
+    Width="620" MinWidth="500" MaxWidth="1000" MinHeight="550">
+
+    <local:BaseNodeDialog.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <conv:IconKeyToPathConverter x:Key="IconKeyToPathConverter"/>
+        <conv:InverseBooleanConverter x:Key="InverseBoolConverter"/>
+    </local:BaseNodeDialog.Resources>
+
+    <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- HEADER -->
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <controls:SvgViewboxEx Grid.Column="0" Width="20" Height="20" Margin="0,0,10,0"
+                                           Fill="White" Opacity="0.9"
+                                           Source="{Binding Source={x:Static sys:String.Empty},
+                                                    Converter={StaticResource IconKeyToPathConverter},
+                                                    ConverterParameter='code-branch duotone-regular'}"/>
+
+                    <TextBox x:Name="TitleTextBox" Grid.Column="1"
+                             Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{DynamicResource BaseTextBoxV2}" FontSize="16"
+                             Padding="0,4,0,4" VerticalContentAlignment="Center" Cursor="IBeam"/>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button Width="24" Height="24" Content="▶" FontSize="12"
+                                Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                Margin="8,0,0,0" ToolTip="Mở VSCodium với source"
+                                Command="{Binding OpenInVsCodiumCommand}"/>
+                        <Button x:Name="CloseButton" Width="24" Height="24"
+                                Style="{DynamicResource DangerButton}"
+                                Content="×" FontSize="12" FontWeight="Bold" Cursor="Hand"
+                                Margin="8,0,0,0" Click="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- CONTENT -->
+            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+
+                <!-- TAB 1: GIT -->
+                <TabItem Header="Git" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- Repository URL -->
+                            <TextBlock Text="Repository URL:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding RepoUrl, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,12"
+                                     ToolTip="URL HTTPS hoặc SSH của repository"/>
+
+                            <!-- Local Path -->
+                            <TextBlock Text="Thư mục local:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding LocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="36"/>
+                                <Button Grid.Column="1" Content="📁" Width="36" Height="36" Margin="6,0,0,0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                        Command="{Binding BrowseLocalPathCommand}" ToolTip="Chọn thư mục"/>
+                            </Grid>
+
+                            <!-- Branch -->
+                            <TextBlock Text="Branch:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" Height="36" Style="{DynamicResource BaseComboBox}"
+                                          IsEditable="True"
+                                          Text="{Binding Branch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          ItemsSource="{Binding AvailableBranches}"/>
+                                <Button Grid.Column="1" Content="⟳" Width="36" Height="36" Margin="6,0,0,0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                        Command="{Binding CheckoutSelectedBranchCommand}" ToolTip="Checkout branch"/>
+                            </Grid>
+
+                            <!-- Action Buttons -->
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Height="36" Margin="0,0,4,0"
+                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                        Command="{Binding CloneRepoCommand}"
+                                        IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⬇" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Clone" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Height="36" Margin="4,0,4,0"
+                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                        Command="{Binding PullRepoCommand}"
+                                        IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔄" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Pull" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2" Height="36" Margin="4,0,0,0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                        Command="{Binding OpenInVsCodiumCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🖥" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="VSCodium" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- Progress Indicator — hiện khi đang clone/pull -->
+                            <Border Margin="0,0,0,12" CornerRadius="6" Padding="10,8"
+                                    Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                                    Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="⏳" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ProgressStatusText}"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                    <ProgressBar IsIndeterminate="True" Height="4"
+                                                 Foreground="{DynamicResource AccentBrush}"
+                                                 Background="{DynamicResource CardColor}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Status -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Trạng thái:" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextSecondary}"
+                                               FontSize="11" TextWrapping="Wrap"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Last Commit:" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
+                                            <TextBlock Text="{Binding LastCommitDisplay}" Foreground="{DynamicResource TextBrush}"
+                                                       FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Last Pull:" Foreground="{DynamicResource TextSecondary}" FontSize="10"/>
+                                            <TextBlock Text="{Binding LastPullTimeDisplay}" Foreground="{DynamicResource TextBrush}"
+                                                       FontSize="11" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Recent Commits -->
+                            <TextBlock Text="Commits gần đây:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,12"
+                                    MaxHeight="180">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding RecentCommits}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="6,4" Margin="0,0,0,2" CornerRadius="4"
+                                                        Background="{DynamicResource CardColor}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="60"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Hash}"
+                                                                   FontFamily="Consolas" FontSize="10"
+                                                                   Foreground="{DynamicResource AccentBrush}"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Message}"
+                                                                   FontSize="11" Foreground="{DynamicResource TextBrush}"
+                                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                                   Margin="8,0"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding Date}"
+                                                                   FontSize="9" Foreground="{DynamicResource TextSecondary}"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+
+                            <!-- Operation Log -->
+                            <TextBlock Text="Log:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="8" MaxHeight="120">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Text="{Binding OperationLog}" FontSize="10"
+                                               FontFamily="Consolas" Foreground="{DynamicResource TextSecondary}"
+                                               TextWrapping="Wrap"/>
+                                </ScrollViewer>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- TAB 2: HIỂN THỊ (cấu hình icon, tooltip, context menu cho palette) -->
+                <TabItem Header="Hiển thị" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- Display Name -->
+                            <TextBlock Text="Tên hiển thị (palette):" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,12"
+                                     ToolTip="Tên hiển thị trên palette menu trái (trống = dùng Title)"/>
+
+                            <!-- Icon Selector -->
+                            <TextBlock Text="Icon:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <controls:IconSelectorUserControl x:Name="IconSelector"
+                                                              ButtonHeight="34"
+                                                              Margin="0,0,0,12"
+                                                              SelectedIcon="{Binding IconKey, Mode=TwoWay}"/>
+
+                            <!-- Tooltip Text -->
+                            <TextBlock Text="Tooltip (hover):" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding TooltipText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="60" Margin="0,0,0,12"
+                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                     ToolTip="Nội dung hiện khi hover vào node trên palette"/>
+
+                            <!-- Context Menu Description -->
+                            <TextBlock Text="Mô tả chi tiết (chuột phải):" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding ContextMenuDescription, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="80" Margin="0,0,0,12"
+                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                     ToolTip="Mô tả chi tiết hiện khi chuột phải vào node"/>
+
+                            <!-- Title Display Mode -->
+                            <TextBlock Text="Hiển thị tiêu đề:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox x:Name="TitleDisplayModeComboBox" Height="36"
+                                      Style="{DynamicResource BaseComboBox}" Margin="0,0,0,16"
+                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+
+                            <!-- Title Color -->
+                            <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border x:Name="TitleColorPreview" Grid.Column="1"
+                                        Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                            </Grid>
+
+                            <!-- Preview -->
+                            <TextBlock Text="Xem trước:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,12"
+                                    HorizontalAlignment="Left" MinWidth="200">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="48" Height="48" CornerRadius="8"
+                                            Background="{DynamicResource IndigoBrush}"
+                                            BorderBrush="White" BorderThickness="1.5">
+                                        <controls:SvgViewboxEx x:Name="PreviewIcon" Width="24" Height="24"
+                                                               Fill="White" Opacity="0.95"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+                                    </Border>
+                                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName, TargetNullValue='Git Source'}"
+                                                   FontWeight="SemiBold" FontSize="13"
+                                                   Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="{Binding TooltipText, TargetNullValue='Mô tả...'}"
+                                                   FontSize="10" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="200" Foreground="{DynamicResource TextSecondary}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- TAB 3: CẤU HÌNH -->
+                <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- VSCodium Path -->
+                            <TextBlock Text="Đường dẫn VSCodium:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding VscodiumPath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="36"
+                                         ToolTip="Đường dẫn tới vscodium.exe (hoặc 'vscodium' nếu đã thêm vào PATH)"/>
+                                <Button Grid.Column="1" Content="📁" Width="36" Height="36" Margin="6,0,0,0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                        Command="{Binding BrowseVscodiumPathCommand}" ToolTip="Chọn file exe"/>
+                            </Grid>
+
+                            <!-- Auto Open -->
+                            <CheckBox Content="Tự động mở VSCodium khi node được thực thi"
+                                      IsChecked="{Binding AutoOpenOnExecute, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}" FontSize="12"
+                                      Margin="0,0,0,16"/>
+
+                            <!-- Port Position -->
+                            <TextBlock Text="Vị trí cổng IN/OUT:" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Inputs/Outputs panels (hidden for this node) -->
+                            <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
+                            <StackPanel x:Name="OutputsPanel" Visibility="Collapsed"/>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+            </TabControl>
+        </Grid>
+    </Border>
+</local:BaseNodeDialog>

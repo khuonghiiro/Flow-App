@@ -1,0 +1,146 @@
+using System.Collections.Generic;
+
+namespace FlowMy.Models
+{
+    /// <summary>
+    /// Node Git Source — pull/clone repo từ remote, cấu hình icon/tooltip cho palette,
+    /// khi thực thi sẽ mở VSCodium với source đã clone.
+    /// </summary>
+    public sealed class GitSourceNode : WorkflowNode
+    {
+        private string _repoUrl = string.Empty;
+        private string _localPath = string.Empty;
+        private string _branch = "main";
+        private string _displayName = string.Empty;
+        private string _iconKey = "code-branch duotone-regular";
+        private string _tooltipText = string.Empty;
+        private string _contextMenuDescription = string.Empty;
+        private string _vscodiumPath = "vscodium";
+        private string _lastCommitHash = string.Empty;
+        private string _lastPullTime = string.Empty;
+        private bool _autoOpenOnExecute = true;
+
+        public GitSourceNode()
+        {
+            Type = NodeType.GitSource;
+            Title = "Git Source";
+            TitleDisplayMode = TitleDisplayMode.Always;
+
+            Ports.Add(new NodePort
+            {
+                Id = System.Guid.NewGuid().ToString(),
+                IsInput = true,
+                Position = PortPosition.Left,
+                IsVisible = true,
+                ColorKey = "Info"
+            });
+            Ports.Add(new NodePort
+            {
+                Id = System.Guid.NewGuid().ToString(),
+                IsInput = false,
+                Position = PortPosition.Right,
+                IsVisible = true,
+                ColorKey = "SunsetOrange"
+            });
+
+            // Default outputs
+            DynamicOutputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "localPath",
+                DisplayName = "Local Path",
+                OutputType = WorkflowDataType.String
+            });
+            DynamicOutputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "branch",
+                DisplayName = "Branch",
+                OutputType = WorkflowDataType.String
+            });
+            DynamicOutputs.Add(new WorkflowDynamicDataPort
+            {
+                Key = "lastCommit",
+                DisplayName = "Last Commit",
+                OutputType = WorkflowDataType.String
+            });
+        }
+
+        /// <summary>URL remote repository (HTTPS hoặc SSH).</summary>
+        public string RepoUrl
+        {
+            get => _repoUrl;
+            set { if (_repoUrl != value) { _repoUrl = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Đường dẫn local nơi clone/pull repo.</summary>
+        public string LocalPath
+        {
+            get => _localPath;
+            set { if (_localPath != value) { _localPath = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Branch cần checkout.</summary>
+        public string Branch
+        {
+            get => _branch;
+            set { if (_branch != value) { _branch = value ?? "main"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Tên hiển thị trên palette (nếu trống dùng Title).</summary>
+        public string DisplayName
+        {
+            get => _displayName;
+            set { if (_displayName != value) { _displayName = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Icon key cho node trên palette (dùng IconSelectorUserControl để chọn).</summary>
+        public string IconKey
+        {
+            get => _iconKey;
+            set { if (_iconKey != value) { _iconKey = value ?? "code-branch duotone-regular"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Nội dung tooltip khi hover node trên palette.</summary>
+        public string TooltipText
+        {
+            get => _tooltipText;
+            set { if (_tooltipText != value) { _tooltipText = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Mô tả chi tiết hiện khi chuột phải vào node.</summary>
+        public string ContextMenuDescription
+        {
+            get => _contextMenuDescription;
+            set { if (_contextMenuDescription != value) { _contextMenuDescription = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Đường dẫn tới VSCodium executable.</summary>
+        public string VscodiumPath
+        {
+            get => _vscodiumPath;
+            set { if (_vscodiumPath != value) { _vscodiumPath = value ?? "vscodium"; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Hash commit cuối cùng đã pull.</summary>
+        public string LastCommitHash
+        {
+            get => _lastCommitHash;
+            set { if (_lastCommitHash != value) { _lastCommitHash = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Thời gian pull cuối cùng (ISO 8601).</summary>
+        public string LastPullTime
+        {
+            get => _lastPullTime;
+            set { if (_lastPullTime != value) { _lastPullTime = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Tự động mở VSCodium khi node được thực thi.</summary>
+        public bool AutoOpenOnExecute
+        {
+            get => _autoOpenOnExecute;
+            set { if (_autoOpenOnExecute != value) { _autoOpenOnExecute = value; OnPropertyChanged(); } }
+        }
+
+        public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
+    }
+}
