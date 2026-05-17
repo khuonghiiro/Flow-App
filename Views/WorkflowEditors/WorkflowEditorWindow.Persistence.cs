@@ -723,6 +723,19 @@ namespace FlowMy.Views
         private GitSourceNode? _gitDragSourceNode;
         private Point _gitDragStartPoint;
 
+        /// <summary>Load git repos đã lưu từ file khi app khởi động.</summary>
+        private void LoadSavedGitRepos()
+        {
+            if (ViewModel == null) return;
+            var repos = Services.Git.GitRepoStorageService.Load();
+            foreach (var repo in repos)
+            {
+                if (!ViewModel.GitRepoNodes.Any(r => r.Id == repo.Id))
+                    ViewModel.GitRepoNodes.Add(repo);
+            }
+            ViewModel.HasGitRepos = ViewModel.GitRepoNodes.Count > 0;
+        }
+
         /// <summary>
         /// Update theme toggle button icon based on current theme
         /// </summary>

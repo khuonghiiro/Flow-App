@@ -500,6 +500,7 @@ namespace FlowMy.Views
             {
                 SyncExecutionTraceDetachState();
                 SyncLeftMenuForExecutionTraceDockMode();
+                LoadSavedGitRepos();
             };
             // Đảm bảo đóng cửa sổ detach khi main window close để không bị window dangling.
             Closed += (_, _) =>

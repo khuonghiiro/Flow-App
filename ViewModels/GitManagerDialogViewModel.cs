@@ -233,6 +233,9 @@ namespace FlowMy.ViewModels
 
             AppendLog($"💾 Đã lưu: {_gitNode.DisplayName}");
 
+            // Persist ra file
+            GitRepoStorageService.Save(SavedRepos);
+
             // Hiện thông báo thành công
             ShowSaveSuccess = true;
             await Task.Delay(2500);
@@ -314,6 +317,7 @@ namespace FlowMy.ViewModels
                 if (item != null) vm.GitRepoNodes.Remove(item);
                 vm.HasGitRepos = vm.GitRepoNodes.Count > 0;
             }
+            GitRepoStorageService.Save(SavedRepos);
         }
 
         // ═══════════════════════════════════════════
