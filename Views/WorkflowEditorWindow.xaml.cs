@@ -918,6 +918,10 @@ namespace FlowMy.Views
                 UpdateGridPattern(); // Use current theme's CanvasGridBrush
                 ApplyCanvasToolbarPreferences();
 
+                // Initialize Node Appearance Mode selector AFTER preferences are loaded
+                // (so _nodeAppearanceMode has the correct saved value)
+                InitializeNodeAppearanceModeSelector();
+
                 // Subscribe to theme changed event
                 if (_colorThemeService != null)
                 {
@@ -976,8 +980,8 @@ namespace FlowMy.Views
             }
             ThemeSelector.SelectionChanged += ThemeSelector_SelectionChanged;
 
-            // Initialize Node Appearance Mode selector
-            InitializeNodeAppearanceModeSelector();
+            // Note: InitializeNodeAppearanceModeSelector is called AFTER ApplyCanvasToolbarPreferences
+            // to ensure _nodeAppearanceMode is loaded from saved preferences first.
         }
 
         /// <summary>
