@@ -51,10 +51,18 @@ namespace FlowMy.Services.Rendering
             if (node is LoopBodyNode) return;
 
             // ── Liquid Glass: transform border appearance trước khi apply GPU/chrome ──
+            // Skip cho các node dùng hình thoi (diamond) — border của chúng là transparent container
             if (LiquidGlassHelper.IsLiquidGlassMode(host))
             {
-                var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
-                LiquidGlassHelper.ApplyToExistingBorder(border, baseColor);
+                var skipGlassBorder = node is LoopNode
+                    || (node.IsConditionalNode && node.ConditionalVisualMode == ConditionalVisualMode.Diamond)
+                    || (node is AsyncTaskNode asyncTask && asyncTask.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch);
+
+                if (!skipGlassBorder)
+                {
+                    var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
+                    LiquidGlassHelper.ApplyToExistingBorder(border, baseColor);
+                }
             }
 
             if (node is ImageProcessingNode or VideoProcessingNode)
@@ -132,10 +140,18 @@ namespace FlowMy.Services.Rendering
             border.Child = overlayRoot;
 
             // Liquid Glass: update icon fills cho complex nodes (SVG icons bên trong)
+            // Skip cho diamond nodes — chúng có icon bên trong hình thoi với màu riêng
             if (LiquidGlassHelper.IsLiquidGlassMode(host))
             {
-                var iconBrush = LiquidGlassHelper.GetGlassIconBrush();
-                UpdateSvgIconFills(border, iconBrush);
+                var skipIconUpdate = node is LoopNode
+                    || (node.IsConditionalNode && node.ConditionalVisualMode == ConditionalVisualMode.Diamond)
+                    || (node is AsyncTaskNode at2 && at2.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch);
+
+                if (!skipIconUpdate)
+                {
+                    var iconBrush = LiquidGlassHelper.GetGlassIconBrush();
+                    UpdateSvgIconFills(border, iconBrush);
+                }
             }
 
             AttachSizeChangedSync(border, node, host);
