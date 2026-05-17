@@ -699,7 +699,7 @@ namespace FlowMy.Views
             if (appearanceModeChanged && ViewModel?.Nodes != null)
             {
                 NodeRendererService.RenderAllNodes();
-                UpdateAllConnectionPaths();
+                RenderAllConnections();
 
                 // Sync toolbar ComboBox
                 if (NodeAppearanceModeSelector != null)

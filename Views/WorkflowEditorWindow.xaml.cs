@@ -1092,7 +1092,7 @@ namespace FlowMy.Views
                                 {
                                     // Canvas nodes: re-render để NodeChrome.Apply cập nhật icon fill theo theme mới
                                     NodeRendererService?.RenderAllNodes();
-                                    UpdateAllConnectionPaths();
+                                    RenderAllConnections();
                                     // Palette: cập nhật icon fill
                                     ApplyLiquidGlassIconsToPalette();
                                 }
@@ -1117,7 +1117,7 @@ namespace FlowMy.Views
                     _nodeAppearanceMode = mode;
                     // Re-render all nodes with new appearance
                     NodeRendererService?.RenderAllNodes();
-                    UpdateAllConnectionPaths();
+                    RenderAllConnections();
                     // Update palette nodes appearance
                     ApplyLiquidGlassToPalette();
                     // Persist
