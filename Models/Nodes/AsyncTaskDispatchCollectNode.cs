@@ -10,15 +10,10 @@ namespace FlowMy.Models.Nodes
     /// Collect outputs across AsyncTask parallel dispatch iterations (executionId pattern: {parentExecId}:dispatch-{index}).
     /// Used when AsyncTask is configured to "sau loopOut" (read results after loopOut) in a parallel-safe way.
     /// </summary>
-    public sealed class AsyncTaskDispatchCollectNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class AsyncTaskDispatchCollectNode : WorkflowNode
     {
         private string? _sourceBodyNodeId;
         private string? _sourceOutputKey;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? name = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         public AsyncTaskDispatchCollectNode()
         {

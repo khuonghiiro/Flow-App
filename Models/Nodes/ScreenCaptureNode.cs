@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 
 namespace FlowMy.Models.Nodes
 {
-    public sealed class ScreenCaptureNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class ScreenCaptureNode : WorkflowNode
     {
         private int _captureX;
         private int _captureY;
@@ -90,12 +90,5 @@ namespace FlowMy.Models.Nodes
         }
 
         public bool HasCaptureRegion => CaptureWidth > 0 && CaptureHeight > 0;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 }

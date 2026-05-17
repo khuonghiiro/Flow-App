@@ -11,7 +11,7 @@ namespace FlowMy.Models
     /// 
     /// LoopBodyNode luôn nằm dưới LoopNode với offset cố định (trừ khi user kéo riêng).
     /// </summary>
-    public sealed class LoopBodyNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class LoopBodyNode : WorkflowNode
     {
         public LoopNode ParentLoopNode { get; set; } = null!;
 
@@ -85,13 +85,6 @@ namespace FlowMy.Models
 
             X = ParentLoopNode.X + horizontalOffset;
             Y = ParentLoopNode.Y + verticalOffset;
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

@@ -7,12 +7,10 @@ namespace FlowMy.Models
     /// <summary>
     /// Model cho Screen Position Picker Node - node đặc biệt để chọn vị trí trên màn hình
     /// </summary>
-    public class ScreenPositionPickerNode : WorkflowNode, INotifyPropertyChanged
+    public class ScreenPositionPickerNode : WorkflowNode
     {
         private Point _selectedPosition;
         private bool _hasPosition;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>
         /// Vị trí đã chọn trên màn hình (tọa độ tuyệt đối)
@@ -66,12 +64,5 @@ namespace FlowMy.Models
             _selectedPosition = new Point(0, 0);
             OnPropertyChanged(nameof(SelectedPosition));
         }
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            if (propertyName == null) return;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 }
-

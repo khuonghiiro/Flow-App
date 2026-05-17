@@ -6,7 +6,7 @@ namespace FlowMy.Models
     /// <summary>
     /// Vùng body cho AsyncTask ở chế độ giao diện giống Loop — node ảo, quản lý bởi AsyncTaskNode.
     /// </summary>
-    public sealed class AsyncTaskBodyNode : WorkflowNode, INotifyPropertyChanged
+    public sealed class AsyncTaskBodyNode : WorkflowNode
     {
         public AsyncTaskNode ParentAsyncTaskNode { get; set; } = null!;
 
@@ -57,10 +57,5 @@ namespace FlowMy.Models
             X = newX;
             Y = newY;
         }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
