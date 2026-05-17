@@ -1001,7 +1001,7 @@ namespace FlowMy.Views
             // Apply Liquid Glass to palette if mode is already LiquidGlass (from saved preferences)
             if (string.Equals(_nodeAppearanceMode, "LiquidGlass", System.StringComparison.OrdinalIgnoreCase))
             {
-                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, new Action(() =>
                 {
                     ApplyLiquidGlassToPalette();
                 }));

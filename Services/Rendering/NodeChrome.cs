@@ -54,11 +54,17 @@ namespace FlowMy.Services.Rendering
             // Skip cho các node dùng hình thoi (diamond) — border của chúng là transparent container
             if (LiquidGlassHelper.IsLiquidGlassMode(host))
             {
-                var skipGlassBorder = node is LoopNode
+                var isDiamondNode = node is LoopNode
                     || (node.IsConditionalNode && node.ConditionalVisualMode == ConditionalVisualMode.Diamond)
                     || (node is AsyncTaskNode asyncTask && asyncTask.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch);
 
-                if (!skipGlassBorder)
+                if (isDiamondNode)
+                {
+                    // Diamond nodes: áp dụng glass lên Polygon fill bên trong, không đụng border
+                    var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
+                    ApplyGlassToDiamondPolygon(border, baseColor);
+                }
+                else
                 {
                     var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
                     LiquidGlassHelper.ApplyToExistingBorder(border, baseColor);
@@ -140,18 +146,10 @@ namespace FlowMy.Services.Rendering
             border.Child = overlayRoot;
 
             // Liquid Glass: update icon fills cho complex nodes (SVG icons bên trong)
-            // Skip cho diamond nodes — chúng có icon bên trong hình thoi với màu riêng
             if (LiquidGlassHelper.IsLiquidGlassMode(host))
             {
-                var skipIconUpdate = node is LoopNode
-                    || (node.IsConditionalNode && node.ConditionalVisualMode == ConditionalVisualMode.Diamond)
-                    || (node is AsyncTaskNode at2 && at2.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch);
-
-                if (!skipIconUpdate)
-                {
-                    var iconBrush = LiquidGlassHelper.GetGlassIconBrush();
-                    UpdateSvgIconFills(border, iconBrush);
-                }
+                var iconBrush = LiquidGlassHelper.GetGlassIconBrush();
+                UpdateSvgIconFills(border, iconBrush);
             }
 
             AttachSizeChangedSync(border, node, host);
@@ -167,6 +165,47 @@ namespace FlowMy.Services.Rendering
         {
             if (border.Child == null) return;
             UpdateSvgIconFillsRecursive(border.Child, iconBrush);
+        }
+
+        /// <summary>
+        /// Áp dụng Liquid Glass lên Polygon (diamond shape) bên trong border.
+        /// Tìm Polygon đầu tiên và đổi Fill thành glass gradient + thêm glow effect lên Grid chứa nó.
+        /// </summary>
+        private static void ApplyGlassToDiamondPolygon(Border border, Color baseColor)
+        {
+            if (border.Child == null) return;
+            var polygon = FindFirstVisualChild<System.Windows.Shapes.Polygon>(border);
+            if (polygon != null)
+            {
+                polygon.Fill = LiquidGlassHelper.CreateGlassBackground(baseColor);
+                polygon.Stroke = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255));
+                polygon.StrokeThickness = 1.2;
+            }
+
+            // Thêm glow effect lên Grid chứa diamond (nếu chưa có)
+            var grid = border.Child as Grid;
+            if (grid == null && border.Child is FrameworkElement fe)
+            {
+                grid = FindFirstVisualChild<Grid>(border);
+            }
+            if (grid != null)
+            {
+                var isLightColor = (0.299 * baseColor.R + 0.587 * baseColor.G + 0.114 * baseColor.B) / 255.0 > 0.65;
+                grid.Effect = LiquidGlassHelper.CreateGlassEffect(baseColor, isLightColor);
+            }
+        }
+
+        private static T? FindFirstVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            var count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T found) return found;
+                var result = FindFirstVisualChild<T>(child);
+                if (result != null) return result;
+            }
+            return null;
         }
 
         private static void UpdateSvgIconFillsRecursive(DependencyObject parent, Brush iconBrush)
