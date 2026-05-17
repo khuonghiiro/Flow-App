@@ -2295,7 +2295,7 @@ namespace FlowMy.ViewModels
             Connections.Clear();
             _nodeCounter = 1;
             InitializeSampleNodes();
-            CurrentWorkflowName = "Untitled Workflow";
+            CurrentWorkflowName = "";
             
             // Reset view state to defaults
             ZoomLevel = 1.0;
