@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Rendering;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
 using System;
@@ -55,6 +56,15 @@ namespace FlowMy.Views.NodeControls
                 Stretch = Stretch.Fill
             };
 
+            // Liquid Glass: đổi fill diamond thành gradient trong suốt
+            if (LiquidGlassHelper.IsLiquidGlassMode(host))
+            {
+                var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
+                diamond.Fill = LiquidGlassHelper.CreateGlassBackground(baseColor);
+                diamond.Stroke = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255));
+                diamond.StrokeThickness = 1.5;
+            }
+
             var grid = new Grid
             {
                 Width = DiamondWidth,
@@ -75,9 +85,19 @@ namespace FlowMy.Views.NodeControls
                 Height = 32,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Fill = GetBrushFromTheme("TextOnWarningBrush") ?? new SolidColorBrush(Colors.White)
+                Fill = LiquidGlassHelper.IsLiquidGlassMode(host)
+                    ? LiquidGlassHelper.GetGlassIconBrush()
+                    : (GetBrushFromTheme("TextOnWarningBrush") ?? new SolidColorBrush(Colors.White))
             };
             grid.Children.Add(iconSvg);
+
+            // Liquid Glass: thêm glow effect lên grid chứa diamond
+            if (LiquidGlassHelper.IsLiquidGlassMode(host))
+            {
+                var baseColor = LiquidGlassHelper.GetColorFromBrush(node.NodeBrush);
+                var isLightColor = (0.299 * baseColor.R + 0.587 * baseColor.G + 0.114 * baseColor.B) / 255.0 > 0.65;
+                grid.Effect = LiquidGlassHelper.CreateGlassEffect(baseColor, isLightColor);
+            }
 
             // Title sẽ là TextBlock riêng trên Canvas (giống LoopNode)
             var titleTextBlock = new TextBlock
@@ -322,9 +342,13 @@ namespace FlowMy.Views.NodeControls
             {
                 Width = SatelliteRadius * 2,
                 Height = SatelliteRadius * 2,
-                Fill = new SolidColorBrush(portColor),
-                Stroke = new SolidColorBrush(Colors.White),
-                StrokeThickness = 2,
+                Fill = LiquidGlassHelper.IsLiquidGlassMode(host)
+                    ? LiquidGlassHelper.CreateGlassBackground(portColor)
+                    : new SolidColorBrush(portColor),
+                Stroke = LiquidGlassHelper.IsLiquidGlassMode(host)
+                    ? LiquidGlassHelper.CreateGlassBorderBrush()
+                    : new SolidColorBrush(Colors.White),
+                StrokeThickness = LiquidGlassHelper.IsLiquidGlassMode(host) ? 1.5 : 2,
                 Effect = CreateSatelliteBaseShadow()
             };
             ApplySmoothCircleRendering(ellipse);
@@ -335,7 +359,9 @@ namespace FlowMy.Views.NodeControls
                 Text = (index + 1).ToString(),
                 FontSize = 16 * SatelliteScale,
                 FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
+                Foreground = LiquidGlassHelper.IsLiquidGlassMode(host)
+                    ? LiquidGlassHelper.GetGlassIconBrush()
+                    : Brushes.White,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false
