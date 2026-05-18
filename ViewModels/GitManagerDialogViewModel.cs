@@ -154,21 +154,31 @@ namespace FlowMy.ViewModels
         /// <summary>Khi user chọn / gõ branch khác trong ComboBox → tự checkout (nếu repo hợp lệ).</summary>
         partial void OnBranchChanged(string value)
         {
+            // KHÔNG tự động checkout ở đây nữa.
+            // Checkout chỉ xảy ra khi user click chọn item từ dropdown,
+            // được xử lý qua ConfirmBranchSelection() → CheckoutBranchAsync().
+        }
+
+        /// <summary>Được gọi từ code-behind khi user CLICK chọn item từ ComboBox dropdown.</summary>
+        public void ConfirmBranchSelection(string branchName)
+        {
+            if (string.IsNullOrWhiteSpace(branchName)) return;
             if (_suppressBranchCheckout) return;
-            if (string.IsNullOrWhiteSpace(value)) return;
             if (string.IsNullOrWhiteSpace(LocalPath) || !Directory.Exists(LocalPath)) return;
             if (!_gitService.IsGitRepository(LocalPath)) return;
-
-            // Chỉ checkout với nhánh đã tồn tại trong AvailableBranches để tránh
-            // checkout nhầm khi user đang gõ dở
-            if (!AvailableBranches.Contains(value)) return;
+            if (!AvailableBranches.Contains(branchName)) return;
 
             // Chỉ checkout nếu nhánh mới khác nhánh hiện tại
             var currentStatus = _gitService.GetStatus(LocalPath);
-            if (currentStatus.IsValid && currentStatus.Branch.Equals(value, StringComparison.Ordinal)) return;
+            if (currentStatus.IsValid && currentStatus.Branch.Equals(branchName, StringComparison.Ordinal)) return;
 
-            // Chạy checkout async để không block UI
-            _ = CheckoutBranchAsync(value);
+            // Cập nhật Branch property (suppress để không loop)
+            _suppressBranchCheckout = true;
+            Branch = branchName;
+            _suppressBranchCheckout = false;
+
+            // Chạy checkout async
+            _ = CheckoutBranchAsync(branchName);
         }
 
         private async Task CheckoutBranchAsync(string branchName)

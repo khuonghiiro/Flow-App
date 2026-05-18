@@ -84,6 +84,16 @@ namespace FlowMy.Views.Overlays
         private void IconColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
             => UpdateIconColorPreview();
 
+        // ═══ Branch ComboBox — chỉ checkout khi user CLICK chọn item từ dropdown ═══
+        private void BranchComboBox_DropDownClosed(object sender, System.EventArgs e)
+        {
+            // Khi dropdown đóng lại sau khi user chọn item → trigger checkout
+            if (sender is System.Windows.Controls.ComboBox cb && cb.SelectedItem is string selectedBranch)
+            {
+                _viewModel.ConfirmBranchSelection(selectedBranch);
+            }
+        }
+
         private void PickNodeColor_Click(object sender, RoutedEventArgs e)
         {
             // Simple color picker — dùng system dialog
