@@ -4,7 +4,6 @@ using FlowMy.Models;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -22,12 +21,13 @@ namespace FlowMy.Views.NodeControls
             // ─── 1. ICON ───
             var iconConverter = new IconKeyToPathConverter();
             var iconUri = iconConverter.Convert(null, typeof(Uri),
-                "code-branch duotone-regular",
+                "git-alt brands",
                 System.Globalization.CultureInfo.CurrentCulture) as Uri;
             var iconSvg = new SvgViewboxEx
             {
                 Source = iconUri,
-                Width = 32, Height = 32,
+                Width = 32,
+                Height = 32,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Fill = GetIconBrush(node.ColorKey)
@@ -65,8 +65,11 @@ namespace FlowMy.Views.NodeControls
                 Cursor = Cursors.Hand,
                 Effect = new DropShadowEffect
                 {
-                    Color = Colors.Black, Direction = 270,
-                    ShadowDepth = 5, BlurRadius = 10, Opacity = 0.5
+                    Color = Colors.Black,
+                    Direction = 270,
+                    ShadowDepth = 5,
+                    BlurRadius = 10,
+                    Opacity = 0.5
                 },
                 Tag = node
             };
@@ -82,7 +85,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     // Update icon khi user đổi icon trong dialog
                     var newUri = iconConverter.Convert(null, typeof(Uri),
-                        node.IconKey ?? "code-branch duotone-regular",
+                        node.IconKey ?? "git-alt brands",
                         System.Globalization.CultureInfo.CurrentCulture) as Uri;
                     iconSvg.Source = newUri;
                 }

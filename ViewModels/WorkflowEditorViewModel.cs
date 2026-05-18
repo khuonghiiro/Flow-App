@@ -1,31 +1,23 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Models.Persistence;
+using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
-using FlowMy.Services.Interaction;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using Microsoft.VisualBasic;
-using System.Collections.Generic;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Microsoft.Win32;
 
 namespace FlowMy.ViewModels
 {
@@ -1140,7 +1132,7 @@ namespace FlowMy.ViewModels
                 NodeType.KeyScopedStore => "arrow-progress sharp-regular",
                 NodeType.LoopContext => "arrows-spin duotone",
                 NodeType.Condition => "list-tree sharp-light",
-                NodeType.GitSource => "code-branch duotone-regular",
+                NodeType.GitSource => "git-alt brands",
                 _ => "circle-nodes duotone-regular"
             };
         }
@@ -2306,7 +2298,7 @@ namespace FlowMy.ViewModels
             _nodeCounter = 1;
             InitializeSampleNodes();
             CurrentWorkflowName = "";
-            
+
             // Reset view state to defaults
             ZoomLevel = 1.0;
             PanX = 0.0;

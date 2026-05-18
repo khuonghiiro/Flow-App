@@ -4,7 +4,6 @@ using FlowMy.Models;
 using FlowMy.Services.Interaction;
 using System.Diagnostics;
 using System.IO;
-using System.Windows;
 
 namespace FlowMy.ViewModels
 {
@@ -16,7 +15,7 @@ namespace FlowMy.ViewModels
     {
         private readonly GitSourceNode _gitNode;
 
-        [ObservableProperty] private string _iconKey = "code-branch duotone-regular";
+        [ObservableProperty] private string _iconKey = "git-alt brands";
         [ObservableProperty] private string _iconColorKey = "White";
         [ObservableProperty] private string _tooltipText = string.Empty;
         [ObservableProperty] private string _commandText = string.Empty;

@@ -2,13 +2,9 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Models.Persistence;
 using FlowMy.Services.Rendering;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Media.Imaging;
 
@@ -117,8 +113,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             string json;
             try
             {
-                var options = new JsonSerializerOptions 
-                { 
+                var options = new JsonSerializerOptions
+                {
                     WriteIndented = true,
                     MaxDepth = 64 // Giới hạn độ sâu để tránh stack overflow
                 };
@@ -141,8 +137,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     savedViewportCenterX,
                     savedViewportCenterY,
                     connectionLineStyle);
-                var options = new JsonSerializerOptions 
-                { 
+                var options = new JsonSerializerOptions
+                {
                     WriteIndented = true,
                     MaxDepth = 64
                 };
@@ -1270,7 +1266,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             // Update port visibility based on IsInputMode after loading
             foreach (var port in storageNode.Ports)
             {
-                bool shouldShowPort = storageNode.IsInputMode 
+                bool shouldShowPort = storageNode.IsInputMode
                     ? port.IsInput  // IsInputMode = true: chỉ hiện port IN
                     : !port.IsInput; // IsInputMode = false: chỉ hiện port OUT
                 port.IsVisible = shouldShowPort;
@@ -2157,7 +2153,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
 
         }
-            else if (node is WebNode webNode)
+        else if (node is WebNode webNode)
         {
             if (properties.TryGetValue("Width", out var wObj) && wObj != null && double.TryParse(wObj.ToString(), out var w))
             {
@@ -2451,7 +2447,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     System.Diagnostics.Debug.WriteLine($"=== Deserializing RequestInterceptRules for WebNode ===");
                     System.Diagnostics.Debug.WriteLine($"RequestInterceptRules value type: {rirObj.GetType().Name}");
                     System.Diagnostics.Debug.WriteLine($"RequestInterceptRules value: {rirObj}");
-                    
+
                     webNode.RequestInterceptRules.Clear();
                     JsonElement? rirJe = null;
                     if (rirObj is JsonElement je)
@@ -2520,7 +2516,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     {
                         System.Diagnostics.Debug.WriteLine($"⚠ RequestInterceptRules is unsupported type/value (type: {rirObj.GetType().Name})");
                     }
-                    
+
                     if (rirJe.HasValue)
                     {
                         try
@@ -2548,7 +2544,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                                     if (e.TryGetProperty("ReplaceBodyValue", out var rbv)) r.ReplaceBodyValue = GetStringFromJsonValue(rbv);
                                     if (e.TryGetProperty("ReplaceBodySourceNodeId", out var rbsni)) r.ReplaceBodySourceNodeId = GetStringFromJsonValue(rbsni);
                                     if (e.TryGetProperty("ReplaceBodySourceOutputKey", out var rbsok)) r.ReplaceBodySourceOutputKey = GetStringFromJsonValue(rbsok);
-                                    
+
                                     System.Diagnostics.Debug.WriteLine($"Deserialized RequestInterceptRule [{count}]: MatchUrl='{r.MatchUrlPattern}', ReplaceUrl='{r.ReplaceUrlValue}', ReplaceUrlWithNodeKey={r.ReplaceUrlWithNodeKey}");
                                     webNode.RequestInterceptRules.Add(r);
                                     count++;
@@ -2592,7 +2588,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             {
                 System.Diagnostics.Debug.WriteLine($"RequestInterceptRules property not found or null in Properties");
             }
-            
+
             // Deserialize ResponseOutputs
             if (properties.TryGetValue("ResponseOutputs", out var roObj) && roObj != null)
             {
@@ -2601,7 +2597,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     System.Diagnostics.Debug.WriteLine($"=== Deserializing ResponseOutputs for WebNode ===");
                     System.Diagnostics.Debug.WriteLine($"ResponseOutputs value type: {roObj.GetType().Name}");
                     System.Diagnostics.Debug.WriteLine($"ResponseOutputs value: {roObj}");
-                    
+
                     webNode.ResponseOutputs.Clear();
                     JsonElement? roJe = null;
                     if (roObj is JsonElement je)
@@ -2670,7 +2666,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     {
                         System.Diagnostics.Debug.WriteLine($"⚠ ResponseOutputs is unsupported type/value (type: {roObj.GetType().Name})");
                     }
-                    
+
                     if (roJe.HasValue)
                     {
                         try
@@ -2694,7 +2690,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                                         if (bool.TryParse(wfcStr, out var wfcBool))
                                             ro.WaitForCompletion = wfcBool;
                                     }
-                                    
+
                                     System.Diagnostics.Debug.WriteLine($"Deserialized ResponseOutput [{count}]: Key='{ro.Key}', Url='{ro.Url}', Method='{ro.RequestMethod}', ExtractType='{ro.ExtractType}'");
                                     webNode.ResponseOutputs.Add(ro);
                                     count++;
@@ -2713,7 +2709,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                                 }
                             }
                             System.Diagnostics.Debug.WriteLine($"✓ Successfully deserialized {count} ResponseOutputs. Collection now has {webNode.ResponseOutputs.Count} items");
-                            
+
                             // Rebuild DynamicOutputs sau khi load ResponseOutputs
                             webNode.RebuildResponseOutputs();
                             System.Diagnostics.Debug.WriteLine($"✓ RebuildResponseOutputs() called");
@@ -2957,7 +2953,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     }
                 }
             }
-            
+
             var loadedMappings = false;
             if (properties.TryGetValue("InputMappings", out var imObj) && imObj != null)
             {
@@ -3588,7 +3584,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("DisplayName", out var displayNameObj))
                 gitSourceRestore.DisplayName = displayNameObj?.ToString() ?? string.Empty;
             if (properties.TryGetValue("IconKey", out var iconKeyObj))
-                gitSourceRestore.IconKey = iconKeyObj?.ToString() ?? "code-branch duotone-regular";
+                gitSourceRestore.IconKey = iconKeyObj?.ToString() ?? "git-alt brands";
             if (properties.TryGetValue("IconColorKey", out var iconColorObj))
                 gitSourceRestore.IconColorKey = iconColorObj?.ToString() ?? "White";
             if (properties.TryGetValue("TooltipText", out var tooltipObj))
@@ -3649,11 +3645,11 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             // Deserialize OutputKey
             if (properties.TryGetValue("OutputKey", out var outputKeyObj))
                 outputNode.OutputKey = outputKeyObj?.ToString() ?? "output";
-            
+
             // Deserialize FormatString
             if (properties.TryGetValue("FormatString", out var formatStrObj))
                 outputNode.FormatString = formatStrObj?.ToString() ?? string.Empty;
-            
+
             // Deserialize InputVariables
             if (properties.TryGetValue("InputVariables", out var variablesObj))
             {
@@ -3898,7 +3894,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
             }
         }
-        
+
         // WebNode deserialization
         if (node is WebNode webNodeRestore)
         {
@@ -3908,7 +3904,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 try
                 {
                     List<Dictionary<string, object>>? parsedRules = null;
-                    
+
                     if (brObj is string brJson && !string.IsNullOrWhiteSpace(brJson))
                     {
                         parsedRules = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(brJson);
@@ -3928,29 +3924,29 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                             parsedRules = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(brElement.GetRawText());
                         }
                     }
-                    
+
                     if (parsedRules != null && parsedRules.Count > 0)
                     {
                         webNodeRestore.BlockingRules.Clear();
                         foreach (var ruleDict in parsedRules)
                         {
                             var rule = new WebBlockingRule();
-                            
+
                             if (ruleDict.TryGetValue("UrlPattern", out var urlObj))
                                 rule.UrlPattern = urlObj?.ToString() ?? string.Empty;
-                            
+
                             if (ruleDict.TryGetValue("Method", out var methodObj))
                                 rule.Method = methodObj?.ToString() ?? "All";
                             else
                                 rule.Method = "All"; // Default for old workflows without Method
-                            
+
                             // Deserialize ChildRules nếu có
                             if (ruleDict.TryGetValue("ChildRules", out var childRulesObj))
                             {
                                 try
                                 {
                                     List<Dictionary<string, object>>? childRulesList = null;
-                                    
+
                                     // Handle different formats
                                     if (childRulesObj is List<object> childRulesListObj)
                                     {
@@ -3978,22 +3974,22 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                                     {
                                         childRulesList = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(childRulesJson);
                                     }
-                                    
+
                                     // Parse child rules
                                     if (childRulesList != null && childRulesList.Count > 0)
                                     {
                                         foreach (var childRuleDict in childRulesList)
                                         {
                                             var childRule = new WebBlockingChildRule();
-                                            
+
                                             if (childRuleDict.TryGetValue("UrlPattern", out var childUrlObj))
                                                 childRule.UrlPattern = childUrlObj?.ToString() ?? string.Empty;
-                                            
+
                                             if (childRuleDict.TryGetValue("Method", out var childMethodObj))
                                                 childRule.Method = childMethodObj?.ToString() ?? "All";
                                             else
                                                 childRule.Method = "All";
-                                            
+
                                             if (!string.IsNullOrWhiteSpace(childRule.UrlPattern))
                                                 rule.ChildRules.Add(childRule);
                                         }
@@ -4005,7 +4001,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                                     // Continue - don't break rule loading
                                 }
                             }
-                            
+
                             webNodeRestore.BlockingRules.Add(rule);
                         }
                     }
@@ -4017,7 +4013,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
             }
         }
-        
+
         else if (node is HttpRequestNode httpRequestNode)
         {
             // Deserialize basic properties
@@ -4038,16 +4034,16 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 if (Enum.TryParse<HttpBodyType>(bodyTypeObj?.ToString(), out var bodyType))
                     httpRequestNode.BodyType = bodyType;
             }
-            if (properties.TryGetValue("TimeoutSeconds", out var timeoutObj) && 
+            if (properties.TryGetValue("TimeoutSeconds", out var timeoutObj) &&
                 int.TryParse(timeoutObj?.ToString(), out var timeout))
                 httpRequestNode.TimeoutSeconds = timeout;
-            
+
             // Deserialize URL dynamic binding
             if (properties.TryGetValue("UrlSourceNodeId", out var urlSrcNodeObj))
                 httpRequestNode.UrlSourceNodeId = urlSrcNodeObj?.ToString();
             if (properties.TryGetValue("UrlSourceOutputKey", out var urlSrcKeyObj))
                 httpRequestNode.UrlSourceOutputKey = urlSrcKeyObj?.ToString();
-            
+
             // Deserialize Body
             if (properties.TryGetValue("RawBody", out var rawBodyObj))
                 httpRequestNode.RawBody = rawBodyObj?.ToString() ?? string.Empty;
@@ -4055,7 +4051,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 httpRequestNode.BodySourceNodeId = bodySrcNodeObj?.ToString();
             if (properties.TryGetValue("BodySourceOutputKey", out var bodySrcKeyObj))
                 httpRequestNode.BodySourceOutputKey = bodySrcKeyObj?.ToString();
-            
+
             // Deserialize Auth
             if (properties.TryGetValue("AuthUsername", out var authUserObj))
                 httpRequestNode.AuthUsername = authUserObj?.ToString() ?? string.Empty;
@@ -4078,7 +4074,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("ApiKeyInHeader", out var apiKeyInHeaderObj) &&
                 bool.TryParse(apiKeyInHeaderObj?.ToString(), out var apiKeyInHeader))
                 httpRequestNode.ApiKeyInHeader = apiKeyInHeader;
-            
+
             // Deserialize Headers
             if (properties.TryGetValue("Headers", out var headersObj))
             {
@@ -4090,7 +4086,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                         httpRequestNode.Headers.Add(h);
                 }
             }
-            
+
             // Deserialize QueryParams
             if (properties.TryGetValue("QueryParams", out var paramsObj))
             {
@@ -4102,7 +4098,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                         httpRequestNode.QueryParams.Add(p);
                 }
             }
-            
+
             // Deserialize FormData
             if (properties.TryGetValue("FormData", out var formDataObj))
             {
@@ -4359,7 +4355,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }).ToList());
                 dict["OutputMappings"] = mappingsJson;
             }
-            
+
 
         }
         else if (node is AssignDataNode assignDataNode)
@@ -4757,7 +4753,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             try
             {
                 System.Diagnostics.Debug.WriteLine($"=== Attempting to update bindings before serialize ===");
-                
+
                 // Tìm tất cả WorkflowEditorWindow đang mở (có thể có nhiều window)
                 var allWindows = Application.Current?.Windows.OfType<Views.WorkflowEditorWindow>().ToList();
                 if (allWindows != null && allWindows.Count > 0)
@@ -4791,7 +4787,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 System.Diagnostics.Debug.WriteLine($"✗ Error updating bindings before serialize: {ex.Message}\n{ex.StackTrace}");
                 // Continue - không block serialize
             }
-            
+
             try
             {
                 dict["Width"] = webNodeForSerialize.Width;
@@ -4883,14 +4879,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 System.Diagnostics.Debug.WriteLine($"Error serializing WebNode basic properties: {ex.Message}\n{ex.StackTrace}");
                 // Continue - don't crash
             }
-            
+
             // Serialize RequestInterceptRules - chỉ serialize khi có items và không null
             try
             {
                 System.Diagnostics.Debug.WriteLine($"=== Serializing RequestInterceptRules for WebNode ===");
                 System.Diagnostics.Debug.WriteLine($"RequestInterceptRules is null: {webNodeForSerialize.RequestInterceptRules == null}");
                 System.Diagnostics.Debug.WriteLine($"RequestInterceptRules Count: {webNodeForSerialize.RequestInterceptRules?.Count ?? 0}");
-                
+
                 if (webNodeForSerialize.RequestInterceptRules != null && webNodeForSerialize.RequestInterceptRules.Count > 0)
                 {
                     var arr = new List<Dictionary<string, object>>();
@@ -4911,9 +4907,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                             var replaceBody = r?.ReplaceBodyValue ?? "";
                             var replaceBodyNodeId = r?.ReplaceBodySourceNodeId ?? "";
                             var replaceBodyKey = r?.ReplaceBodySourceOutputKey ?? "";
-                            
+
                             System.Diagnostics.Debug.WriteLine($"[{index}] RequestInterceptRule - MatchUrl='{matchUrl}', ReplaceUrl='{replaceUrl}', ReplaceUrlWithNodeKey={replaceUrlWithNodeKey}");
-                            
+
                             var ruleDict = new Dictionary<string, object>();
                             ruleDict["MatchUrlPattern"] = matchUrl;
                             ruleDict["ReplaceUrlValue"] = replaceUrl;
@@ -4936,7 +4932,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                             index++;
                         }
                     }
-                    
+
                     if (arr.Count > 0)
                     {
                         var options = new JsonSerializerOptions
@@ -4963,14 +4959,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 System.Diagnostics.Debug.WriteLine($"✗ Error serializing RequestInterceptRules: {ex.Message}\n{ex.StackTrace}");
                 // Continue - don't crash the save operation
             }
-            
+
             // Serialize ResponseOutputs - serialize tất cả items (kể cả rỗng) để đảm bảo cấu hình được lưu
             try
             {
                 System.Diagnostics.Debug.WriteLine($"=== Serializing ResponseOutputs for WebNode ===");
                 System.Diagnostics.Debug.WriteLine($"ResponseOutputs is null: {webNodeForSerialize.ResponseOutputs == null}");
                 System.Diagnostics.Debug.WriteLine($"ResponseOutputs Count: {webNodeForSerialize.ResponseOutputs?.Count ?? 0}");
-                
+
                 if (webNodeForSerialize.ResponseOutputs != null && webNodeForSerialize.ResponseOutputs.Count > 0)
                 {
                     var responseOutputsArr = new List<Dictionary<string, string>>();
@@ -4985,10 +4981,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                             var method = ro?.RequestMethod ?? "GET";
                             var extractType = ro?.ExtractType ?? "Response";
                             var waitForCompletion = ro?.WaitForCompletion ?? false;
-                            
+
                             // Debug log để kiểm tra giá trị
                             System.Diagnostics.Debug.WriteLine($"[{index}] ResponseOutput - Key='{key}', Url='{url}', Method='{method}', ExtractType='{extractType}'");
-                            
+
                             // Serialize tất cả items, kể cả khi Key hoặc Url rỗng (để user có thể chỉnh sửa sau)
                             var itemDict = new Dictionary<string, string>
                             {
@@ -5008,7 +5004,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                             index++;
                         }
                     }
-                    
+
                     // Luôn serialize nếu có items (kể cả rỗng) để đảm bảo cấu hình được lưu
                     if (responseOutputsArr.Count > 0)
                     {
@@ -5157,13 +5153,13 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["AuthType"] = httpRequestNode.AuthType.ToString();
             dict["BodyType"] = httpRequestNode.BodyType.ToString();
             dict["TimeoutSeconds"] = httpRequestNode.TimeoutSeconds;
-            
+
             // Serialize URL dynamic binding
             if (!string.IsNullOrWhiteSpace(httpRequestNode.UrlSourceNodeId))
                 dict["UrlSourceNodeId"] = httpRequestNode.UrlSourceNodeId;
             if (!string.IsNullOrWhiteSpace(httpRequestNode.UrlSourceOutputKey))
                 dict["UrlSourceOutputKey"] = httpRequestNode.UrlSourceOutputKey;
-            
+
             // Serialize Body
             if (!string.IsNullOrWhiteSpace(httpRequestNode.RawBody))
                 dict["RawBody"] = httpRequestNode.RawBody;
@@ -5171,7 +5167,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["BodySourceNodeId"] = httpRequestNode.BodySourceNodeId;
             if (!string.IsNullOrWhiteSpace(httpRequestNode.BodySourceOutputKey))
                 dict["BodySourceOutputKey"] = httpRequestNode.BodySourceOutputKey;
-            
+
             // Serialize Auth
             if (!string.IsNullOrWhiteSpace(httpRequestNode.AuthUsername))
                 dict["AuthUsername"] = httpRequestNode.AuthUsername;
@@ -5192,7 +5188,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (!string.IsNullOrWhiteSpace(httpRequestNode.ApiKeyValueSourceOutputKey))
                 dict["ApiKeyValueSourceOutputKey"] = httpRequestNode.ApiKeyValueSourceOutputKey;
             dict["ApiKeyInHeader"] = httpRequestNode.ApiKeyInHeader;
-            
+
             // Serialize Headers
             if (httpRequestNode.Headers != null && httpRequestNode.Headers.Count > 0)
             {
@@ -5206,7 +5202,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }).ToList());
                 dict["Headers"] = headersJson;
             }
-            
+
             // Serialize QueryParams
             if (httpRequestNode.QueryParams != null && httpRequestNode.QueryParams.Count > 0)
             {
@@ -5220,7 +5216,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }).ToList());
                 dict["QueryParams"] = paramsJson;
             }
-            
+
             // Serialize FormData
             if (httpRequestNode.FormData != null && httpRequestNode.FormData.Count > 0)
             {
@@ -5254,11 +5250,11 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             // Serialize OutputKey
             if (!string.IsNullOrWhiteSpace(outputNode.OutputKey))
                 dict["OutputKey"] = outputNode.OutputKey;
-            
+
             // Serialize FormatString
             if (!string.IsNullOrWhiteSpace(outputNode.FormatString))
                 dict["FormatString"] = outputNode.FormatString;
-            
+
             // Serialize InputVariables
             if (outputNode.InputVariables != null && outputNode.InputVariables.Count > 0)
             {
@@ -5270,7 +5266,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }).ToList());
                 dict["InputVariables"] = variablesJson;
             }
-            
+
 
         }
         else if (node is NotificationNode notificationNode)

@@ -4,8 +4,6 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Reflection;
 
 namespace FlowMy.ViewModels
 {
@@ -207,23 +205,23 @@ namespace FlowMy.ViewModels
             // Sync title khi node thay đổi
             node.PropertyChanged += (s, e) =>
             {
-                    if (e.PropertyName == nameof(WorkflowNode.Title))
-                    {
-                        NodeTitle = node.Title ?? GetDefaultTitle();
-                    }
-                    else if (e.PropertyName == "TitleDisplayMode")
-                    {
-                        TitleDisplayMode = GetTitleDisplayMode(node);
-                    }
-                    else if (e.PropertyName == "TitleColorMode")
-                    {
-                        TitleColorMode = GetTitleColorMode(node);
-                    }
-                    else if (e.PropertyName == "TitleColorKey")
-                    {
-                        TitleColorKey = GetTitleColorKey(node);
-                    }
-                    OnNodePropertyChanged(e.PropertyName);
+                if (e.PropertyName == nameof(WorkflowNode.Title))
+                {
+                    NodeTitle = node.Title ?? GetDefaultTitle();
+                }
+                else if (e.PropertyName == "TitleDisplayMode")
+                {
+                    TitleDisplayMode = GetTitleDisplayMode(node);
+                }
+                else if (e.PropertyName == "TitleColorMode")
+                {
+                    TitleColorMode = GetTitleColorMode(node);
+                }
+                else if (e.PropertyName == "TitleColorKey")
+                {
+                    TitleColorKey = GetTitleColorKey(node);
+                }
+                OnNodePropertyChanged(e.PropertyName);
             };
         }
 
@@ -860,7 +858,7 @@ namespace FlowMy.ViewModels
                 NodeType.KeyScopedStore => "arrow-progress sharp-regular",
                 NodeType.LoopContext => "arrows-spin duotone",
                 NodeType.Condition => "list-tree sharp-light",
-                NodeType.GitSource => "code-branch duotone-regular",
+                NodeType.GitSource => "git-alt brands",
                 _ => "circle-question chisel-regular"
             };
         }

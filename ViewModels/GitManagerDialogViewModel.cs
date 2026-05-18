@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Services.Git;
 using FlowMy.Services.Interaction;
-using FlowMy.Views.Overlays;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -25,7 +24,7 @@ namespace FlowMy.ViewModels
 
         // Hiển thị tab
         [ObservableProperty] private string _displayName = string.Empty;
-        [ObservableProperty] private string _iconKey = "code-branch duotone-regular";
+        [ObservableProperty] private string _iconKey = "git-alt brands";
         [ObservableProperty] private string _iconColorKey = "White";
         [ObservableProperty] private string _nodeColorKey = "Indigo";
         [ObservableProperty] private string _tooltipText = string.Empty;
@@ -146,6 +145,7 @@ namespace FlowMy.ViewModels
                     _gitNode.LastPullTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     Branch = result.Branch;
                     if (string.IsNullOrWhiteSpace(DisplayName)) DisplayName = repoName;
+                    _gitNode.RefreshCloneStatus();
                     AppendLog($"✅ Clone OK! {repoName} ({result.Branch})");
                 }
                 else AppendLog($"❌ {result.ErrorMessage}");
@@ -192,7 +192,8 @@ namespace FlowMy.ViewModels
             if (_operationCts is { IsCancellationRequested: false }) { _operationCts.Cancel(); AppendLog("⚠️ Huỷ."); }
         }
 
-        [RelayCommand] private void BrowseLocalPath()
+        [RelayCommand]
+        private void BrowseLocalPath()
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục" };
             if (dlg.ShowDialog() == true) LocalPath = dlg.FolderName;
@@ -216,8 +217,8 @@ namespace FlowMy.ViewModels
             _gitNode.TooltipText = TooltipText;
             _gitNode.CommandText = CommandText;
 
-            var brush = Application.Current?.TryFindResource($"{NodeColorKey}Brush") as System.Windows.Media.Brush;
-            if (brush != null) _gitNode.NodeBrush = brush;
+            var brush = ResolveBrushFromKey(NodeColorKey);
+            _gitNode.NodeBrush = brush;
 
             // Thêm vào danh sách tổng hợp (nếu chưa có)
             if (!SavedRepos.Any(r => r.Id == _gitNode.Id))
@@ -271,6 +272,35 @@ namespace FlowMy.ViewModels
             AppendLog($"🔄 Pull {repo.DisplayName}...");
             var result = await Task.Run(() => _gitService.PullRepository(repo.LocalPath));
             AppendLog(result.Success ? $"✅ {repo.DisplayName} pulled." : $"❌ {result.ErrorMessage}");
+        }
+
+        [RelayCommand]
+        private async Task CloneSavedRepoAsync(GitSourceNode? repo)
+        {
+            if (repo == null || string.IsNullOrWhiteSpace(repo.RepoUrl)) return;
+
+            var targetPath = repo.LocalPath;
+            if (string.IsNullOrWhiteSpace(targetPath))
+            { AppendLog("❌ Chưa cấu hình thư mục local."); return; }
+
+            if (!Directory.Exists(targetPath))
+                Directory.CreateDirectory(targetPath);
+
+            AppendLog($"⬇ Clone {repo.DisplayName}...");
+            try
+            {
+                var result = await Task.Run(() => _gitService.CloneRepository(repo.RepoUrl, targetPath, repo.Branch));
+                if (result.Success)
+                {
+                    repo.LastCommitHash = result.LastCommitHash;
+                    repo.LastPullTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    repo.RefreshCloneStatus();
+                    AppendLog($"✅ Clone OK: {repo.DisplayName}");
+                    GitRepoStorageService.Save(SavedRepos);
+                }
+                else AppendLog($"❌ {result.ErrorMessage}");
+            }
+            catch (Exception ex) { AppendLog($"❌ {ex.Message}"); }
         }
 
         [RelayCommand]
@@ -336,10 +366,13 @@ namespace FlowMy.ViewModels
             {
                 var psi = new ProcessStartInfo
                 {
-                    FileName = "cmd.exe", Arguments = $"/c {CommandText}",
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {CommandText}",
                     WorkingDirectory = workDir,
-                    RedirectStandardOutput = true, RedirectStandardError = true,
-                    UseShellExecute = false, CreateNoWindow = true
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
                 };
                 using var proc = Process.Start(psi);
                 if (proc == null) { CommandOutput += "❌ Không khởi tạo được."; return; }
@@ -371,6 +404,35 @@ namespace FlowMy.ViewModels
             var name = url[(lastSep + 1)..].Trim();
             if (string.IsNullOrWhiteSpace(name) || name.Contains("..") || name.Contains("\\")) return null;
             return name;
+        }
+
+        /// <summary>Resolve ColorKey thành Brush — hỗ trợ hex (#RRGGBB) và named resource key.</summary>
+        private static System.Windows.Media.Brush ResolveBrushFromKey(string? key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return System.Windows.Media.Brushes.Transparent;
+
+            // Hex color
+            if (key.StartsWith("#"))
+            {
+                try
+                {
+                    var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(key);
+                    return new System.Windows.Media.SolidColorBrush(color);
+                }
+                catch { return System.Windows.Media.Brushes.Transparent; }
+            }
+
+            // Named system colors
+            if (key.Equals("White", StringComparison.OrdinalIgnoreCase))
+                return System.Windows.Media.Brushes.White;
+            if (key.Equals("Black", StringComparison.OrdinalIgnoreCase))
+                return System.Windows.Media.Brushes.Black;
+
+            // Resource lookup
+            var brush = Application.Current?.TryFindResource($"{key}Brush") as System.Windows.Media.Brush
+                     ?? Application.Current?.TryFindResource(key) as System.Windows.Media.Brush;
+            return brush ?? System.Windows.Media.Brushes.Transparent;
         }
     }
 }

@@ -38,3 +38,11 @@ volume-low duotone-light
 stop sharp-regular
 angles-right sharp-solid
 angles-left sharp-solid
+code-pull-request-closed duotone-light
+code-branch duotone-light
+code-commit duotone-light
+code-compare duotone-light
+code-fork duotone-light
+code-merge duotone-light
+code-pull-request duotone-light
+code-pull-request-draft duotone-light

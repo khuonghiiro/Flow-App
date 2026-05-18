@@ -328,7 +328,12 @@ namespace FlowMy.Models
         public double X { get; set; }
         public double Y { get; set; }
 
-        public Brush NodeBrush { get; set; } = Brushes.Transparent;
+        private Brush _nodeBrush = Brushes.Transparent;
+        public Brush NodeBrush
+        {
+            get => _nodeBrush;
+            set { if (_nodeBrush != value) { _nodeBrush = value; OnPropertyChanged(); } }
+        }
         public string? ColorKey { get; set; } // Key của màu từ theme (ví dụ: "SkyAzure", "Ocean", ...)
 
         // UI của node (hiện đang dùng trực tiếp trong renderer)

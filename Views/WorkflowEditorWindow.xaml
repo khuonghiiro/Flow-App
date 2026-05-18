@@ -130,7 +130,7 @@
                                 MinWidth="32">
                             <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
                                              Converter={StaticResource IconKeyToPathConverter}, 
-                                             ConverterParameter='code-branch duotone-regular'}"
+                                             ConverterParameter='git-alt brands'}"
                                           Width="18" Height="18" Fill="White" Opacity="0.8"/>
                         </Button>
                     </StackPanel>

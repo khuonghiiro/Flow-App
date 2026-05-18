@@ -49,6 +49,7 @@
                         <Button x:Name="PlayFlowButton" Width="24" Height="24" Content="▶▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}"
                                 Cursor="Hand"
+                                Padding="0"
                                 Margin="8,0,0,0" ToolTip="Chạy workflow từ node này"
                                 Command="{Binding RunWorkflowFromNodeCommand}"/>
 

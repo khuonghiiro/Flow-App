@@ -71,7 +71,7 @@ namespace FlowMy.Services.Git
                         LocalPath = dto.LocalPath ?? string.Empty,
                         Branch = dto.Branch ?? "main",
                         DisplayName = dto.DisplayName ?? dto.Title ?? "Git Source",
-                        IconKey = dto.IconKey ?? "code-branch duotone-regular",
+                        IconKey = dto.IconKey ?? "git-alt brands",
                         IconColorKey = dto.IconColorKey ?? "White",
                         ColorKey = dto.ColorKey ?? "Indigo",
                         TooltipText = dto.TooltipText ?? string.Empty,
@@ -84,8 +84,11 @@ namespace FlowMy.Services.Git
                     };
 
                     // Resolve NodeBrush from ColorKey
-                    var brush = Application.Current?.TryFindResource($"{node.ColorKey}Brush") as Brush;
-                    if (brush != null) node.NodeBrush = brush;
+                    node.NodeBrush = ResolveBrushFromKey(node.ColorKey);
+
+                    // Ensure IconColorKey is set so IconBrushResolved works
+                    // (already set above, just trigger property for binding)
+                    node.IconColorKey = dto.IconColorKey ?? "White";
 
                     node.Type = NodeType.GitSource;
                     return node;
@@ -115,6 +118,35 @@ namespace FlowMy.Services.Git
             public string? LastCommitHash { get; set; }
             public string? LastPullTime { get; set; }
             public bool AutoOpenOnExecute { get; set; } = true;
+        }
+
+        /// <summary>Resolve ColorKey thành Brush — hỗ trợ hex (#RRGGBB) và named resource key.</summary>
+        private static Brush ResolveBrushFromKey(string? key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return Brushes.Transparent;
+
+            // Hex color
+            if (key.StartsWith("#"))
+            {
+                try
+                {
+                    var color = (Color)ColorConverter.ConvertFromString(key);
+                    return new SolidColorBrush(color);
+                }
+                catch { return Brushes.Transparent; }
+            }
+
+            // Named system colors
+            if (key.Equals("White", System.StringComparison.OrdinalIgnoreCase))
+                return Brushes.White;
+            if (key.Equals("Black", System.StringComparison.OrdinalIgnoreCase))
+                return Brushes.Black;
+
+            // Resource lookup: try "{key}Brush" first, then "{key}"
+            var brush = Application.Current?.TryFindResource($"{key}Brush") as Brush
+                     ?? Application.Current?.TryFindResource(key) as Brush;
+            return brush ?? Brushes.Transparent;
         }
     }
 }

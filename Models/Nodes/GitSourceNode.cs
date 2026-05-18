@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace FlowMy.Models
 {
     /// <summary>
@@ -12,7 +10,7 @@ namespace FlowMy.Models
         private string _localPath = string.Empty;
         private string _branch = "main";
         private string _displayName = string.Empty;
-        private string _iconKey = "code-branch duotone-regular";
+        private string _iconKey = "git-alt brands";
         private string _tooltipText = string.Empty;
         private string _contextMenuDescription = string.Empty;
         private string _vscodiumPath = "vscodium";
@@ -75,7 +73,7 @@ namespace FlowMy.Models
         public string LocalPath
         {
             get => _localPath;
-            set { if (_localPath != value) { _localPath = value ?? string.Empty; OnPropertyChanged(); } }
+            set { if (_localPath != value) { _localPath = value ?? string.Empty; OnPropertyChanged(); OnPropertyChanged(nameof(IsGitRepoCloned)); } }
         }
 
         /// <summary>Branch cần checkout.</summary>
@@ -96,7 +94,7 @@ namespace FlowMy.Models
         public string IconKey
         {
             get => _iconKey;
-            set { if (_iconKey != value) { _iconKey = value ?? "code-branch duotone-regular"; OnPropertyChanged(); } }
+            set { if (_iconKey != value) { _iconKey = value ?? "git-alt brands"; OnPropertyChanged(); } }
         }
 
         private string _iconColorKey = "White";
@@ -188,6 +186,19 @@ namespace FlowMy.Models
             get => _commandText;
             set { if (_commandText != value) { _commandText = value ?? string.Empty; OnPropertyChanged(); } }
         }
+
+        /// <summary>Kiểm tra folder local có tồn tại .git hay không (đã clone).</summary>
+        public bool IsGitRepoCloned
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_localPath)) return false;
+                return System.IO.Directory.Exists(System.IO.Path.Combine(_localPath, ".git"));
+            }
+        }
+
+        /// <summary>Gọi để cập nhật trạng thái clone trên UI.</summary>
+        public void RefreshCloneStatus() => OnPropertyChanged(nameof(IsGitRepoCloned));
 
         public void NotifyTitleChanged() => OnPropertyChanged(nameof(Title));
     }

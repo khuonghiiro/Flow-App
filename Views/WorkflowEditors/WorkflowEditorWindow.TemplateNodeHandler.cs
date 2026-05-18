@@ -2,10 +2,7 @@ using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
-using FlowMy.Services.Rendering;
 using FlowMy.Workflow;
-using System;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -379,8 +376,8 @@ namespace FlowMy.Views
                 "Storage" => "arrow-progress sharp-regular",
                 "Callback" => "arrows-turn-right regular",
                 "FileDownload" => "download solid",
-                "GitSource" => "code-branch duotone-regular",
-                _ => "circle2"
+                "GitSource" => "git-alt brands",
+                _ => "circle duotone"
             };
         }
 
@@ -570,7 +567,7 @@ namespace FlowMy.Views
                     }
 
                     // Check if matches search (search in node type name or tooltip)
-                    bool matches = !hasSearchText || 
+                    bool matches = !hasSearchText ||
                                    nodeName.ToLowerInvariant().Contains(searchText) ||
                                    (!string.IsNullOrEmpty(tooltipText) && tooltipText.Contains(searchText));
 
@@ -613,17 +610,17 @@ namespace FlowMy.Views
             if (NodeTemplatesPanel == null) return;
 
             var children = NodeTemplatesPanel.Children.OfType<UIElement>().ToList();
-            
+
             for (int i = 0; i < children.Count; i++)
             {
                 var child = children[i];
-                
-                if (child is TextBlock textBlock && 
+
+                if (child is TextBlock textBlock &&
                     textBlock.Style == (Style)NodeTemplatesPanel.FindResource("PaletteGroupHeaderStyle"))
                 {
                     // Check if next sibling is UniformGrid and has visible children
                     bool hasVisibleChildren = false;
-                    
+
                     if (i + 1 < children.Count && children[i + 1] is UniformGrid uniformGrid)
                     {
                         hasVisibleChildren = uniformGrid.Children.OfType<Border>()
@@ -636,7 +633,7 @@ namespace FlowMy.Views
                 {
                     bool hasVisibleChildren = uniformGrid.Children.OfType<Border>()
                         .Any(b => b.Visibility == Visibility.Visible);
-                    
+
                     uniformGrid.Visibility = hasVisibleChildren ? Visibility.Visible : Visibility.Collapsed;
                 }
             }
