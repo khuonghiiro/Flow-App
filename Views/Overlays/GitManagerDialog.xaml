@@ -129,13 +129,13 @@
                                     Style="{DynamicResource PrimaryButton}" Cursor="Hand" ToolTip="Import JSON"
                                     Command="{Binding ImportConfigJsonCommand}">
                                 <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-arrow-down duotone-light'}"
-                                                       Width="22" Height="22"  Opacity="1"/>
+                                                       Width="18" Height="18"  Opacity="1"/>
                             </Button>
                             <Button Width="30" Height="30" Padding="0" Margin="2"
                                     Style="{DynamicResource SuccessButton}" Cursor="Hand" ToolTip="Export JSON"
                                     Command="{Binding ExportConfigJsonCommand}">
                                 <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='file-arrow-up duotone-light'}"
-                                                       Width="22" Height="22"  Opacity="1"/>
+                                                       Width="18" Height="18"  Opacity="1"/>
                             </Button>
                         </StackPanel>
                     </Grid>
@@ -249,20 +249,20 @@
                                                 </Button>
                                                 <!-- Pull button: hiện khi đã có .git -->
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
-                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" ToolTip="Pull"
+                                                        Style="{DynamicResource WarningButton}" Cursor="Hand" ToolTip="Pull"
                                                         Command="{Binding DataContext.PullSavedRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding IsGitRepoCloned, Converter={StaticResource BoolToVisibility}}">
                                                     <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-pull-request duotone-light'}"
-                                                                           Width="15" Height="15" Fill="{DynamicResource TextBrush}" Opacity="0.8"/>
+                                                                           Width="15" Height="15" Opacity="0.8"/>
                                                 </Button>
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
-                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" ToolTip="VS Code"
+                                                        Style="{DynamicResource InfoButton}" Cursor="Hand" ToolTip="VS Code"
                                                         Command="{Binding DataContext.OpenVsCodeForRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding IsGitRepoCloned, Converter={StaticResource BoolToVisibility}}">
                                                     <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code duotone-regular'}"
-                                                                           Width="15" Height="15" Fill="{DynamicResource TextBrush}" Opacity="0.8"/>
+                                                                           Width="15" Height="15" Opacity="0.8"/>
                                                 </Button>
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
                                                         Style="{DynamicResource SuccessButton}" Cursor="Hand" ToolTip="Sửa"
@@ -370,7 +370,7 @@
                                         IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
                                     <StackPanel Orientation="Horizontal">
                                         <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open duotone'}"
-                                                               Width="14" Height="14" Fill="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,5,0"/>
+                                                               Width="14" Height="14" Fill="White" Opacity="1" Margin="0,0,5,0"/>
                                         <TextBlock Text="Import folder" FontWeight="SemiBold"/>
                                     </StackPanel>
                                 </Button>
@@ -478,10 +478,77 @@
                         <StackPanel MaxWidth="500">
                             <TextBlock Text="Command Line:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <TextBlock Text="Lệnh chạy khi nhấn ▶ ở tab Tổng hợp (mỗi dòng = 1 lệnh, chạy tuần tự)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8"/>
-                            <TextBox Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}" MinHeight="70" MaxHeight="160"
-                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                     FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" MinHeight="70" MaxHeight="160"
+                                         AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                         FontFamily="Consolas" FontSize="12"/>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Top" Margin="6,0,0,0">
+                                    <Button x:Name="CmdTemplateToggle" Width="32" Height="32" Padding="0" Cursor="Hand"
+                                            ToolTip="Chọn mẫu lệnh"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Click="CmdTemplateToggle_Click">
+                                        <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='rectangle-terminal duotone-light'}"
+                                                               Width="16" Height="16" Fill="{DynamicResource TextBrush}" Opacity="0.85"/>
+                                    </Button>
+                                    <Popup x:Name="CmdTemplatePopup"
+                                           PlacementTarget="{Binding ElementName=CmdTemplateToggle}"
+                                           Placement="Left" StaysOpen="False" AllowsTransparency="True"
+                                           IsOpen="{Binding IsCommandTemplatePopupOpen, Mode=TwoWay}">
+                                        <Border Background="{DynamicResource CardColor}"
+                                                BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                                CornerRadius="8" Padding="10" MinWidth="480" MaxHeight="360">
+                                            <Border.Effect>
+                                                <DropShadowEffect BlurRadius="12" Opacity="0.25" ShadowDepth="4"/>
+                                            </Border.Effect>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="*"/>
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Grid.Row="0" Text="📋 Mẫu lệnh CMD" FontWeight="Bold" FontSize="13"
+                                                           Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="300">
+                                                    <ItemsControl ItemsSource="{Binding CommandTemplates}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Margin="0,0,0,4" Padding="8,6" CornerRadius="5"
+                                                                        Background="{DynamicResource WindowBackground}"
+                                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="160"/>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <TextBlock Grid.Column="0" Text="{Binding Command}"
+                                                                                   FontFamily="Consolas" FontSize="11.5" FontWeight="SemiBold"
+                                                                                   Foreground="{DynamicResource AccentBrush}"
+                                                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                                                   ToolTip="{Binding Command}"/>
+                                                                        <TextBlock Grid.Column="1" Text="{Binding Description}"
+                                                                                   FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                                                                   VerticalAlignment="Center" TextWrapping="Wrap" Margin="10,0"/>
+                                                                        <Button Grid.Column="2" Content="Dùng" Width="50" Height="26"
+                                                                                FontSize="11" FontWeight="SemiBold" Cursor="Hand"
+                                                                                Style="{DynamicResource PrimaryButton}"
+                                                                                Command="{Binding DataContext.InsertCommandTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                CommandParameter="{Binding}"/>
+                                                                    </Grid>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </ScrollViewer>
+                                            </Grid>
+                                        </Border>
+                                    </Popup>
+                                </StackPanel>
+                            </Grid>
 
                             <CheckBox IsChecked="{Binding ShowCmdWindow}" Margin="0,0,0,12" Cursor="Hand"
                                       Foreground="{DynamicResource TextBrush}" FontSize="12">

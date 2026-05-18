@@ -42,6 +42,25 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _commandText = string.Empty;
         [ObservableProperty] private string _commandOutput = string.Empty;
         [ObservableProperty] private bool _showCmdWindow = true;
+        [ObservableProperty] private bool _isCommandTemplatePopupOpen;
+
+        /// <summary>Danh sách mẫu lệnh CMD gợi ý.</summary>
+        public List<CmdTemplateItem> CommandTemplates { get; } = new()
+        {
+            new CmdTemplateItem("npm install", "Cài đặt tất cả dependencies từ package.json"),
+            new CmdTemplateItem("npm run dev", "Chạy dev server (Vite, Next.js, ...)"),
+            new CmdTemplateItem("npm run build", "Build production"),
+            new CmdTemplateItem("npm start", "Khởi chạy ứng dụng Node.js"),
+            new CmdTemplateItem("yarn install", "Cài đặt dependencies bằng Yarn"),
+            new CmdTemplateItem("yarn dev", "Chạy dev server bằng Yarn"),
+            new CmdTemplateItem("dotnet run", "Chạy project .NET"),
+            new CmdTemplateItem("dotnet build", "Build project .NET"),
+            new CmdTemplateItem("python main.py", "Chạy file Python chính"),
+            new CmdTemplateItem("pip install -r requirements.txt", "Cài đặt dependencies Python"),
+            new CmdTemplateItem("docker-compose up -d", "Khởi chạy Docker containers"),
+            new CmdTemplateItem("git status", "Xem trạng thái Git hiện tại"),
+            new CmdTemplateItem("git log --oneline -10", "Xem 10 commit gần nhất"),
+        };
 
         // Preview (cập nhật từ code-behind khi đổi màu)
         [ObservableProperty] private System.Windows.Media.Brush _previewNodeBrush = System.Windows.Media.Brushes.Indigo;
@@ -111,7 +130,12 @@ namespace FlowMy.ViewModels
             // Load saved repos from storage (Documents\FlowMy-CmdGit\git_repos.json)
             var storedRepos = GitRepoStorageService.Load();
             foreach (var r in storedRepos)
+            {
+                // Khôi phục trạng thái IsRunning từ ProcessManager (process vẫn chạy dù dialog đã đóng)
+                r.IsRunning = GitCmdProcessManager.IsRunning(r.Id);
                 SavedRepos.Add(r);
+            }
+            RunningGitCount = SavedRepos.Count(r => r.IsRunning);
 
             // Sync lên ViewModel chính nếu cần
             if (host.ViewModel is ViewModels.WorkflowEditorViewModel vm)
@@ -754,6 +778,22 @@ namespace FlowMy.ViewModels
                 onOutput: msg => Application.Current?.Dispatcher.Invoke(() => CommandOutput += msg + "\n"),
                 onCompleted: () => Application.Current?.Dispatcher.Invoke(() => CommandOutput += "\n✅ Hoàn tất.")
             );
+        }
+
+        // ═══════════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // COMMAND TEMPLATE
+        // ═══════════════════════════════════════════
+
+        [RelayCommand]
+        private void InsertCommandTemplate(CmdTemplateItem? template)
+        {
+            if (template == null) return;
+            if (string.IsNullOrWhiteSpace(CommandText))
+                CommandText = template.Command;
+            else
+                CommandText = CommandText.TrimEnd() + Environment.NewLine + template.Command;
+            IsCommandTemplatePopupOpen = false;
         }
 
         // ═══════════════════════════════════════════

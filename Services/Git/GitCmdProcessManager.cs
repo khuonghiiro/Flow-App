@@ -134,5 +134,12 @@ namespace FlowMy.Services.Git
             }
             _processes.Clear();
         }
+
+        /// <summary>Kiểm tra repo có process đang chạy hay không.</summary>
+        public static bool IsRunning(string repoId)
+        {
+            if (!_processes.TryGetValue(repoId, out var list)) return false;
+            return list.Any(p => { try { return !p.HasExited; } catch { return false; } });
+        }
     }
 }

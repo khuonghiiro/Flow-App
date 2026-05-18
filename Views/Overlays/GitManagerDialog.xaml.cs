@@ -149,5 +149,11 @@ namespace FlowMy.Views.Overlays
                 ?? Application.Current?.TryFindResource(key) as Brush
                 ?? fallback;
         }
+
+        // ═══ Command template popup toggle ═══
+        private void CmdTemplateToggle_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.IsCommandTemplatePopupOpen = !_viewModel.IsCommandTemplatePopupOpen;
+        }
     }
 }
