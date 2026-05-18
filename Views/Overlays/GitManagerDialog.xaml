@@ -278,7 +278,9 @@
                             <TextBlock Text="Branch:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <ComboBox Height="34" Style="{DynamicResource BaseComboBox}" IsEditable="True"
                                       Text="{Binding Branch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      ItemsSource="{Binding AvailableBranches}" Margin="0,0,0,14"/>
+                                      ItemsSource="{Binding AvailableBranches}"
+                                      IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"
+                                      Margin="0,0,0,14"/>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                 <Button Height="34" MinWidth="90" Margin="0,0,6,0"

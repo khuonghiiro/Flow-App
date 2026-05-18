@@ -20,6 +20,9 @@ namespace FlowMy.ViewModels
         /// <summary>Node đang được chỉnh sửa (null = tạo mới).</summary>
         private GitSourceNode? _editingNode;
 
+        /// <summary>Cờ chặn checkout-loop khi cập nhật Branch từ code (clone, load).</summary>
+        private bool _suppressBranchCheckout;
+
         /// <summary>Event yêu cầu code-behind chuyển sang tab Git.</summary>
         public event Action? RequestSwitchToGitTab;
 
@@ -100,6 +103,82 @@ namespace FlowMy.ViewModels
                 foreach (var r in vm.GitRepoNodes)
                     SavedRepos.Add(r);
             }
+
+            // Nếu LocalPath đã là git repo thì load branches sẵn
+            TryLoadBranchesFromLocalPath();
+        }
+
+        // ═══════════════════════════════════════════
+        // BRANCH LOADING / CHECKOUT
+        // ═══════════════════════════════════════════
+
+        /// <summary>Load danh sách branch local nếu LocalPath là git repo hợp lệ.</summary>
+        private void TryLoadBranchesFromLocalPath()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(LocalPath) || !Directory.Exists(LocalPath))
+                    return;
+                if (!_gitService.IsGitRepository(LocalPath))
+                    return;
+
+                var branches = _gitService.GetBranches(LocalPath);
+                if (branches.Count == 0) return;
+
+                AvailableBranches.Clear();
+                foreach (var b in branches)
+                    AvailableBranches.Add(b);
+
+                // Lấy nhánh hiện tại từ repo, ưu tiên hiển thị đúng
+                var status = _gitService.GetStatus(LocalPath);
+                if (status.IsValid && !string.IsNullOrWhiteSpace(status.Branch))
+                {
+                    _suppressBranchCheckout = true;
+                    Branch = status.Branch;
+                    _suppressBranchCheckout = false;
+                }
+                else if (!AvailableBranches.Contains(Branch))
+                {
+                    // Fallback: chọn main/master nếu có, không thì lấy branch đầu tiên
+                    var preferred = AvailableBranches.FirstOrDefault(b => b.Equals("main", StringComparison.OrdinalIgnoreCase))
+                                 ?? AvailableBranches.FirstOrDefault(b => b.Equals("master", StringComparison.OrdinalIgnoreCase))
+                                 ?? AvailableBranches[0];
+                    _suppressBranchCheckout = true;
+                    Branch = preferred;
+                    _suppressBranchCheckout = false;
+                }
+            }
+            catch (Exception ex) { AppendLog($"⚠️ Không load được branches: {ex.Message}"); }
+        }
+
+        /// <summary>Khi user chọn / gõ branch khác trong ComboBox → tự checkout (nếu repo hợp lệ).</summary>
+        partial void OnBranchChanged(string value)
+        {
+            if (_suppressBranchCheckout) return;
+            if (string.IsNullOrWhiteSpace(value)) return;
+            if (string.IsNullOrWhiteSpace(LocalPath) || !Directory.Exists(LocalPath)) return;
+            if (!_gitService.IsGitRepository(LocalPath)) return;
+
+            // Chỉ checkout nếu nhánh mới khác nhánh hiện tại
+            var status = _gitService.GetStatus(LocalPath);
+            if (status.IsValid && status.Branch.Equals(value, StringComparison.Ordinal)) return;
+
+            // Chỉ checkout với nhánh đã tồn tại trong AvailableBranches để tránh
+            // checkout nhầm khi user đang gõ dở
+            if (!AvailableBranches.Contains(value)) return;
+
+            try
+            {
+                var ok = _gitService.CheckoutBranch(LocalPath, value);
+                AppendLog(ok ? $"🔀 Đã chuyển sang nhánh '{value}'" : $"❌ Không chuyển được sang '{value}'");
+            }
+            catch (Exception ex) { AppendLog($"❌ Checkout {value}: {ex.Message}"); }
+        }
+
+        /// <summary>Khi LocalPath thay đổi → thử load branches từ path mới.</summary>
+        partial void OnLocalPathChanged(string value)
+        {
+            TryLoadBranchesFromLocalPath();
         }
 
         // ═══════════════════════════════════════════
@@ -149,10 +228,26 @@ namespace FlowMy.ViewModels
                     LocalPath = clonePath;
                     _gitNode.LastCommitHash = result.LastCommitHash;
                     _gitNode.LastPullTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                    Branch = result.Branch;
+
+                    // Load danh sách branches local
+                    var branches = _gitService.GetBranches(clonePath);
+                    AvailableBranches.Clear();
+                    foreach (var b in branches) AvailableBranches.Add(b);
+
+                    // Set Branch theo nhánh thực tế đã checkout, ưu tiên main/master
+                    _suppressBranchCheckout = true;
+                    var resolved = !string.IsNullOrWhiteSpace(result.Branch) && AvailableBranches.Contains(result.Branch)
+                        ? result.Branch
+                        : AvailableBranches.FirstOrDefault(b => b.Equals("main", StringComparison.OrdinalIgnoreCase))
+                          ?? AvailableBranches.FirstOrDefault(b => b.Equals("master", StringComparison.OrdinalIgnoreCase))
+                          ?? AvailableBranches.FirstOrDefault()
+                          ?? result.Branch;
+                    Branch = resolved ?? string.Empty;
+                    _suppressBranchCheckout = false;
+
                     if (string.IsNullOrWhiteSpace(DisplayName)) DisplayName = repoName;
                     _gitNode.RefreshCloneStatus();
-                    AppendLog($"✅ Clone OK! {repoName} ({result.Branch})");
+                    AppendLog($"✅ Clone OK! {repoName} ({Branch})");
                 }
                 else AppendLog($"❌ {result.ErrorMessage}");
             }
@@ -343,15 +438,22 @@ namespace FlowMy.ViewModels
             _editingNode = repo;
 
             // Load thông tin repo vào form để chỉnh sửa
+            // Chặn checkout-loop trong lúc set Branch (sẽ load lại branches sau)
+            _suppressBranchCheckout = true;
             RepoUrl = repo.RepoUrl;
-            LocalPath = repo.LocalPath;
+            LocalPath = repo.LocalPath; // OnLocalPathChanged sẽ load branches
             Branch = repo.Branch;
+            _suppressBranchCheckout = false;
+
             DisplayName = repo.DisplayName;
             IconKey = repo.IconKey;
             IconColorKey = repo.IconColorKey ?? "White";
             NodeColorKey = repo.ColorKey ?? "Indigo";
             TooltipText = repo.TooltipText;
             CommandText = repo.CommandText ?? string.Empty;
+
+            // Đảm bảo branches được load lại (trường hợp LocalPath không đổi)
+            TryLoadBranchesFromLocalPath();
 
             // Chuyển sang tab Git
             RequestSwitchToGitTab?.Invoke();
