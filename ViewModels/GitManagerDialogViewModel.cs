@@ -386,9 +386,8 @@ namespace FlowMy.ViewModels
                 _gitNode.RefreshCloneStatus();
             }
 
-            // Auto-fill DisplayName từ tên folder nếu chưa có
-            if (string.IsNullOrWhiteSpace(DisplayName))
-                DisplayName = new DirectoryInfo(path).Name;
+            // Luôn lấy tên folder cuối cùng làm DisplayName
+            DisplayName = new DirectoryInfo(path).Name;
 
             var repoInfo = string.IsNullOrWhiteSpace(remoteUrl) ? "(không có remote)" : remoteUrl;
             AppendLog($"📂 Đã import: {DisplayName} — {repoInfo} [{Branch}]");
@@ -595,6 +594,108 @@ namespace FlowMy.ViewModels
             GitRepoStorageService.Save(SavedRepos);
             GitCmdStorageService.Delete(repo.Id);
             GitCmdProcessManager.KillProcesses(repo.Id);
+        }
+
+        // ═══════════════════════════════════════════
+        // IMPORT / EXPORT JSON
+        // ═══════════════════════════════════════════
+
+        [RelayCommand]
+        private void ImportConfigJson()
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Import cấu hình Git repos",
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                DefaultExt = ".json"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var entries = GitCmdStorageService.ImportFromFile(dlg.FileName);
+            if (entries.Count == 0)
+            { AppendLog("⚠️ File không chứa dữ liệu hợp lệ."); return; }
+
+            int imported = 0;
+            foreach (var entry in entries)
+            {
+                // Tạo GitSourceNode từ entry
+                var node = new GitSourceNode
+                {
+                    Id = entry.RepoId,
+                    RepoUrl = entry.RepoUrl,
+                    LocalPath = entry.LocalPath,
+                    Branch = entry.Branch,
+                    DisplayName = entry.DisplayName,
+                    Title = entry.DisplayName,
+                    IconKey = entry.IconKey,
+                    IconColorKey = entry.IconColorKey,
+                    ColorKey = entry.ColorKey,
+                    TooltipText = entry.TooltipText,
+                    CommandText = entry.CommandText,
+                    Type = NodeType.GitSource
+                };
+                node.NodeBrush = ResolveBrushFromKey(node.ColorKey);
+                node.RefreshCloneStatus();
+
+                // Thêm vào SavedRepos nếu chưa có
+                if (!SavedRepos.Any(r => r.Id == node.Id))
+                {
+                    SavedRepos.Add(node);
+                    imported++;
+                }
+
+                // Sync lên ViewModel chính
+                if (_host.ViewModel is WorkflowEditorViewModel vm)
+                {
+                    if (!vm.GitRepoNodes.Any(r => r.Id == node.Id))
+                        vm.GitRepoNodes.Add(node);
+                    vm.HasGitRepos = vm.GitRepoNodes.Count > 0;
+                }
+
+                // Lưu entry vào Documents/FlowMy-CmdGit/
+                GitCmdStorageService.SaveFull(entry);
+            }
+
+            // Persist danh sách repos
+            GitRepoStorageService.Save(SavedRepos);
+            AppendLog($"📥 Import thành công: {imported}/{entries.Count} repos.");
+        }
+
+        [RelayCommand]
+        private void ExportConfigJson()
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export cấu hình Git repos",
+                Filter = "JSON files (*.json)|*.json",
+                DefaultExt = ".json",
+                FileName = $"FlowMy_GitConfig_{DateTime.Now:yyyyMMdd_HHmmss}.json"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            // Build danh sách entries đầy đủ từ SavedRepos + command từ Documents
+            var entries = SavedRepos.Select(repo =>
+            {
+                var existing = GitCmdStorageService.LoadEntry(repo.Id);
+                return new GitCmdEntry
+                {
+                    RepoId = repo.Id,
+                    CommandText = existing?.CommandText ?? repo.CommandText ?? string.Empty,
+                    ShowCmdWindow = existing?.ShowCmdWindow ?? true,
+                    RepoUrl = repo.RepoUrl,
+                    LocalPath = repo.LocalPath,
+                    Branch = repo.Branch,
+                    DisplayName = repo.DisplayName,
+                    IconKey = repo.IconKey,
+                    IconColorKey = repo.IconColorKey ?? "White",
+                    ColorKey = repo.ColorKey ?? "Indigo",
+                    TooltipText = repo.TooltipText ?? string.Empty
+                };
+            }).ToList();
+
+            var json = System.Text.Json.JsonSerializer.Serialize(entries, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(dlg.FileName, json);
+            AppendLog($"📤 Export thành công: {entries.Count} repos → {dlg.FileName}");
         }
 
         // ═══════════════════════════════════════════
