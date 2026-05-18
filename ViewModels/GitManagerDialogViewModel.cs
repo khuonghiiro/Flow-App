@@ -159,20 +159,40 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(LocalPath) || !Directory.Exists(LocalPath)) return;
             if (!_gitService.IsGitRepository(LocalPath)) return;
 
-            // Chỉ checkout nếu nhánh mới khác nhánh hiện tại
-            var status = _gitService.GetStatus(LocalPath);
-            if (status.IsValid && status.Branch.Equals(value, StringComparison.Ordinal)) return;
-
             // Chỉ checkout với nhánh đã tồn tại trong AvailableBranches để tránh
             // checkout nhầm khi user đang gõ dở
             if (!AvailableBranches.Contains(value)) return;
 
+            // Chỉ checkout nếu nhánh mới khác nhánh hiện tại
+            var currentStatus = _gitService.GetStatus(LocalPath);
+            if (currentStatus.IsValid && currentStatus.Branch.Equals(value, StringComparison.Ordinal)) return;
+
+            // Chạy checkout async để không block UI
+            _ = CheckoutBranchAsync(value);
+        }
+
+        private async Task CheckoutBranchAsync(string branchName)
+        {
+            if (IsOperating) return; // Tránh chồng thao tác
+
+            var path = LocalPath;
+            IsOperating = true;
+            ProgressStatusText = $"Đang chuyển sang nhánh '{branchName}'...";
+            AppendLog($"🔀 Checkout '{branchName}'...");
+
             try
             {
-                var ok = _gitService.CheckoutBranch(LocalPath, value);
-                AppendLog(ok ? $"🔀 Đã chuyển sang nhánh '{value}'" : $"❌ Không chuyển được sang '{value}'");
+                var ok = await Task.Run(() => _gitService.CheckoutBranch(path, branchName));
+                AppendLog(ok ? $"✅ Đã chuyển sang nhánh '{branchName}'"
+                             : $"❌ Không chuyển được sang '{branchName}' (working tree có thể đang dirty)");
             }
-            catch (Exception ex) { AppendLog($"❌ Checkout {value}: {ex.Message}"); }
+            catch (Exception ex) { AppendLog($"❌ Checkout {branchName}: {ex.Message}"); }
+            finally
+            {
+                await Task.Delay(300);
+                IsOperating = false;
+                ProgressStatusText = string.Empty;
+            }
         }
 
         /// <summary>Khi LocalPath thay đổi → thử load branches từ path mới.</summary>
@@ -298,6 +318,51 @@ namespace FlowMy.ViewModels
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục" };
             if (dlg.ShowDialog() == true) LocalPath = dlg.FolderName;
+        }
+
+        /// <summary>Mở folder Git có sẵn — load toàn bộ thông tin (URL remote, branch, last commit) từ repo đó.</summary>
+        [RelayCommand]
+        private void ImportLocalRepo()
+        {
+            var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục Git có sẵn" };
+            if (dlg.ShowDialog() != true) return;
+
+            var path = dlg.FolderName;
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            { AppendLog("❌ Thư mục không hợp lệ."); return; }
+
+            if (!_gitService.IsGitRepository(path))
+            { AppendLog($"❌ '{path}' không phải Git repository."); return; }
+
+            // Set LocalPath — sẽ trigger OnLocalPathChanged → load branches
+            _suppressBranchCheckout = true;
+            LocalPath = path;
+            _suppressBranchCheckout = false;
+
+            // Lấy remote URL
+            var remoteUrl = _gitService.GetRemoteUrl(path);
+            if (!string.IsNullOrWhiteSpace(remoteUrl))
+                RepoUrl = remoteUrl;
+
+            // Lấy status (branch hiện tại, last commit)
+            var status = _gitService.GetStatus(path);
+            if (status.IsValid)
+            {
+                _suppressBranchCheckout = true;
+                if (!string.IsNullOrWhiteSpace(status.Branch)) Branch = status.Branch;
+                _suppressBranchCheckout = false;
+
+                _gitNode.LastCommitHash = status.LastCommitHash;
+                _gitNode.LastPullTime = status.LastCommitTime;
+                _gitNode.RefreshCloneStatus();
+            }
+
+            // Auto-fill DisplayName từ tên folder nếu chưa có
+            if (string.IsNullOrWhiteSpace(DisplayName))
+                DisplayName = new DirectoryInfo(path).Name;
+
+            var repoInfo = string.IsNullOrWhiteSpace(remoteUrl) ? "(không có remote)" : remoteUrl;
+            AppendLog($"📂 Đã import: {DisplayName} — {repoInfo} [{Branch}]");
         }
 
         // ═══════════════════════════════════════════

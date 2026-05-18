@@ -246,6 +246,21 @@ namespace FlowMy.Services.Git
         }
 
         /// <summary>
+        /// Lấy URL remote (origin) của repo local. Trả về null nếu không có.
+        /// </summary>
+        public string? GetRemoteUrl(string localPath, string remoteName = "origin")
+        {
+            try
+            {
+                if (!Repository.IsValid(localPath)) return null;
+                using var repo = new Repository(localPath);
+                var remote = repo.Network.Remotes[remoteName] ?? repo.Network.Remotes.FirstOrDefault();
+                return remote?.Url;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
         /// Kiểm tra xem đường dẫn có phải Git repo không.
         /// </summary>
         public bool IsGitRepository(string path)

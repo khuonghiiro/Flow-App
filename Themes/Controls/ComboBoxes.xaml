@@ -203,6 +203,118 @@
     <!--  BASE COMBO BOX — shared template helper                        -->
     <!-- The actual template is defined once here and reused via MergedDictionaries. -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- Editable ComboBox template (has PART_EditableTextBox) -->
+    <ControlTemplate x:Key="EditableComboBoxTemplate" TargetType="ComboBox">
+        <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
+            <Border x:Name="MainBorder"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="7"
+                    SnapsToDevicePixels="True"
+                    UseLayoutRounding="True">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="28"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="PART_EditableTextBox"
+                             Margin="10,0,0,0"
+                             VerticalAlignment="Center"
+                             HorizontalAlignment="Stretch"
+                             Foreground="{TemplateBinding Foreground}"
+                             FontSize="{TemplateBinding FontSize}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             IsReadOnly="{TemplateBinding IsReadOnly}"
+                             Focusable="True"
+                             CaretBrush="{DynamicResource TextBrush}"/>
+                    <ToggleButton x:Name="ToggleButton"
+                                  Grid.Column="1"
+                                  Background="Transparent" BorderThickness="0"
+                                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                  ClickMode="Press" Focusable="false">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border Background="Transparent" Padding="0,0,10,0">
+                                    <Path Data="M 0 0 L 4 4 L 8 0 Z"
+                                          Width="7" Height="4"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center"
+                                          Fill="{DynamicResource ComboBoxGlyphBrush}"
+                                          Stretch="Uniform"/>
+                                </Border>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                </Grid>
+            </Border>
+            <Popup x:Name="Popup"
+                   Placement="Bottom"
+                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                   AllowsTransparency="True"
+                   Focusable="False"
+                   PopupAnimation="Fade">
+                <Grid Margin="6,4,8,12"
+                      UseLayoutRounding="True"
+                      SnapsToDevicePixels="True">
+                    <Border CornerRadius="10"
+                            Background="Transparent"
+                            Margin="0,0,2,4"
+                            MinWidth="{TemplateBinding ActualWidth}"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True">
+                        <Border.Effect>
+                            <DropShadowEffect Color="{DynamicResource ShadowColor}"
+                                              BlurRadius="16"
+                                              ShadowDepth="4"
+                                              Direction="270"
+                                              Opacity="0.35"/>
+                        </Border.Effect>
+                    </Border>
+                    <Border MinWidth="{TemplateBinding ActualWidth}"
+                            Background="{DynamicResource ComboBoxPopupBackground}"
+                            BorderBrush="{DynamicResource ComboBoxPopupBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="4"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True">
+                        <ScrollViewer Margin="0"
+                                      SnapsToDevicePixels="True"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Popup>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="MainBorder" Property="BorderBrush"  Value="{DynamicResource ComboBoxFieldHoverBorderBrush}"/>
+                <Setter TargetName="MainBorder" Property="Background"   Value="{DynamicResource ComboBoxFieldHoverBackground}"/>
+            </Trigger>
+            <Trigger Property="IsDropDownOpen" Value="True">
+                <Setter TargetName="MainBorder" Property="BorderBrush"  Value="{DynamicResource PrimaryBrush}"/>
+                <Setter TargetName="MainBorder" Property="Background"   Value="{DynamicResource ComboBoxFieldFocusBackground}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="MainBorder" Property="Background"   Value="{DynamicResource DisabledBackground}"/>
+                <Setter TargetName="MainBorder" Property="BorderBrush"  Value="{DynamicResource ComboBoxFieldBorderBrush}"/>
+                <Setter Property="Foreground"                           Value="{DynamicResource DisabledTextBrush}"/>
+                <Setter Property="Opacity"                              Value="0.65"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="MainBorder" Property="BorderBrush"  Value="{DynamicResource ComboBoxFieldFocusBorderBrush}"/>
+                <Setter TargetName="MainBorder" Property="Background"   Value="{DynamicResource ComboBoxFieldFocusBackground}"/>
+            </Trigger>
+            <Trigger Property="Validation.HasError" Value="True">
+                <Setter TargetName="MainBorder" Property="BorderBrush" Value="{DynamicResource DangerColor}"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
     <ControlTemplate x:Key="StandardComboBoxTemplate" TargetType="ComboBox">
         <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
             <Border x:Name="MainBorder"
@@ -406,6 +518,11 @@
                 <Style TargetType="ComboBoxItem" BasedOn="{StaticResource BaseComboBoxItem}"/>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsEditable" Value="True">
+                <Setter Property="Template" Value="{StaticResource EditableComboBoxTemplate}"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- CUSTOM ComboBox (same transparent field as Base; card fill removed so nền màn hiện qua) -->

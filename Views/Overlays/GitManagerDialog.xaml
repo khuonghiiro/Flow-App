@@ -303,6 +303,17 @@
                                         <TextBlock Text="Pull" FontWeight="SemiBold"/>
                                     </StackPanel>
                                 </Button>
+                                <Button Height="34" MinWidth="110" Margin="0,0,6,0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                        ToolTip="Mở folder Git có sẵn và load thông tin"
+                                        Command="{Binding ImportLocalRepoCommand}"
+                                        IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='folder-open duotone'}"
+                                                               Width="14" Height="14" Fill="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Import folder" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
                                 <Button Height="34" MinWidth="60"
                                         Style="{DynamicResource DangerButton}" Cursor="Hand"
                                         Command="{Binding CancelOperationCommand}"
