@@ -555,9 +555,14 @@
                                      AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                                      FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
 
-                            <CheckBox IsChecked="{Binding ShowCmdWindow}" Margin="0,0,0,12" Cursor="Hand"
+                            <CheckBox IsChecked="{Binding ShowCmdWindow}" Margin="0,0,0,8" Cursor="Hand"
                                       Foreground="{DynamicResource TextBrush}" FontSize="12">
                                 <TextBlock Text="Hiện cửa sổ CMD khi chạy (bỏ tick = chạy ngầm)" Foreground="{DynamicResource TextBrush}"/>
+                            </CheckBox>
+
+                            <CheckBox IsChecked="{Binding RunAsBatch}" Margin="0,0,0,12" Cursor="Hand"
+                                      Foreground="{DynamicResource TextBrush}" FontSize="12">
+                                <TextBlock Text="Chạy gộp như file .bat (tất cả lệnh chạy 1 thể, bỏ tick = chạy tuần tự từng dòng)" Foreground="{DynamicResource TextBrush}"/>
                             </CheckBox>
 
                             <Button Height="34" MinWidth="110" HorizontalAlignment="Left"

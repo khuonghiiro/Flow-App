@@ -42,6 +42,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _commandText = string.Empty;
         [ObservableProperty] private string _commandOutput = string.Empty;
         [ObservableProperty] private bool _showCmdWindow = true;
+        [ObservableProperty] private bool _runAsBatch;
         [ObservableProperty] private bool _isCommandTemplatePopupOpen;
 
         /// <summary>Danh sách mẫu lệnh CMD gợi ý.</summary>
@@ -148,6 +149,7 @@ namespace FlowMy.ViewModels
                 if (!string.IsNullOrWhiteSpace(savedEntry.CommandText))
                     CommandText = savedEntry.CommandText;
                 ShowCmdWindow = savedEntry.ShowCmdWindow;
+                RunAsBatch = savedEntry.RunAsBatch;
             }
 
             // Load saved repos from storage (Documents\FlowMy-CmdGit\git_repos.json)
@@ -490,6 +492,7 @@ namespace FlowMy.ViewModels
                 RepoId = targetNode.Id,
                 CommandText = CommandText,
                 ShowCmdWindow = ShowCmdWindow,
+                RunAsBatch = RunAsBatch,
                 RepoUrl = targetNode.RepoUrl,
                 LocalPath = targetNode.LocalPath,
                 Branch = targetNode.Branch,
@@ -541,6 +544,7 @@ namespace FlowMy.ViewModels
             }
 
             var showWindow = entry?.ShowCmdWindow ?? true;
+            var runAsBatch = entry?.RunAsBatch ?? false;
 
             // Đánh dấu đang chạy
             repo.IsRunning = true;
@@ -549,7 +553,7 @@ namespace FlowMy.ViewModels
 
             // Chạy tuần tự từng dòng qua ProcessManager
             _ = GitCmdProcessManager.RunCommandsAsync(
-                repo.Id, cmdText, repo.LocalPath, showWindow,
+                repo.Id, cmdText, repo.LocalPath, showWindow, runAsBatch,
                 onOutput: msg => Application.Current?.Dispatcher.Invoke(() => AppendLog($"[{repo.DisplayName}] {msg}")),
                 onCompleted: () => Application.Current?.Dispatcher.Invoke(() =>
                 {
@@ -655,6 +659,7 @@ namespace FlowMy.ViewModels
                 if (!string.IsNullOrWhiteSpace(entry.CommandText))
                     CommandText = entry.CommandText;
                 ShowCmdWindow = entry.ShowCmdWindow;
+                RunAsBatch = entry.RunAsBatch;
             }
 
             // Đảm bảo branches được load lại (trường hợp LocalPath không đổi)
@@ -766,6 +771,7 @@ namespace FlowMy.ViewModels
                     RepoId = repo.Id,
                     CommandText = existing?.CommandText ?? repo.CommandText ?? string.Empty,
                     ShowCmdWindow = existing?.ShowCmdWindow ?? true,
+                    RunAsBatch = existing?.RunAsBatch ?? false,
                     RepoUrl = repo.RepoUrl,
                     LocalPath = repo.LocalPath,
                     Branch = repo.Branch,
@@ -794,10 +800,13 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(workDir) || !Directory.Exists(workDir)) { CommandOutput = "❌ Thư mục không tồn tại."; return; }
 
             var nodeId = (_editingNode?.Id ?? _gitNode.Id);
-            CommandOutput = $"⏳ Chạy tuần tự {CommandText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length} lệnh...\n";
+            var lineCount = CommandText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+            var modeText = RunAsBatch ? "gộp .bat" : "tuần tự";
+            var windowText = ShowCmdWindow ? "hiện CMD" : "ngầm";
+            CommandOutput = $"⏳ Chạy {lineCount} lệnh [{modeText}, {windowText}]...\n";
 
             await GitCmdProcessManager.RunCommandsAsync(
-                nodeId, CommandText, workDir, ShowCmdWindow,
+                nodeId, CommandText, workDir, ShowCmdWindow, RunAsBatch,
                 onOutput: msg => Application.Current?.Dispatcher.Invoke(() => CommandOutput += msg + "\n"),
                 onCompleted: () => Application.Current?.Dispatcher.Invoke(() => CommandOutput += "\n✅ Hoàn tất.")
             );

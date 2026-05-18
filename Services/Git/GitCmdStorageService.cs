@@ -148,6 +148,7 @@ namespace FlowMy.Services.Git
         public string RepoId { get; set; } = string.Empty;
         public string CommandText { get; set; } = string.Empty;
         public bool ShowCmdWindow { get; set; } = true;
+        public bool RunAsBatch { get; set; } = false;
 
         // Thông tin git repo (để import khôi phục)
         public string RepoUrl { get; set; } = string.Empty;
