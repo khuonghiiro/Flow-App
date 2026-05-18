@@ -47,17 +47,40 @@ namespace FlowMy.ViewModels
         /// <summary>Danh sách mẫu lệnh CMD gợi ý.</summary>
         public List<CmdTemplateItem> CommandTemplates { get; } = new()
         {
-            new CmdTemplateItem("npm install", "Cài đặt tất cả dependencies từ package.json"),
+            // ── Đặc biệt ──
+            new CmdTemplateItem("cd .root", "Trỏ về folder gốc (LocalPath) của repo"),
+            new CmdTemplateItem("cd .root/src", "Trỏ đến subfolder src trong folder gốc"),
+
+            // ── Chạy file ──
+            new CmdTemplateItem("node index.js", "Chạy file JS bằng Node.js"),
+            new CmdTemplateItem("python main.py", "Chạy file Python"),
+            new CmdTemplateItem("dotnet run", "Chạy project .NET hiện tại"),
+            new CmdTemplateItem("java -jar app.jar", "Chạy file JAR"),
+            new CmdTemplateItem("start app.exe", "Chạy file .exe"),
+
+            // ── Node.js / NPM ──
+            new CmdTemplateItem("npm install", "Cài đặt dependencies từ package.json"),
             new CmdTemplateItem("npm run dev", "Chạy dev server (Vite, Next.js, ...)"),
             new CmdTemplateItem("npm run build", "Build production"),
             new CmdTemplateItem("npm start", "Khởi chạy ứng dụng Node.js"),
+
+            // ── Yarn ──
             new CmdTemplateItem("yarn install", "Cài đặt dependencies bằng Yarn"),
             new CmdTemplateItem("yarn dev", "Chạy dev server bằng Yarn"),
-            new CmdTemplateItem("dotnet run", "Chạy project .NET"),
+
+            // ── .NET ──
             new CmdTemplateItem("dotnet build", "Build project .NET"),
-            new CmdTemplateItem("python main.py", "Chạy file Python chính"),
+            new CmdTemplateItem("dotnet test", "Chạy unit test .NET"),
+
+            // ── Python ──
             new CmdTemplateItem("pip install -r requirements.txt", "Cài đặt dependencies Python"),
+            new CmdTemplateItem("python -m venv venv", "Tạo virtual environment"),
+
+            // ── Docker ──
             new CmdTemplateItem("docker-compose up -d", "Khởi chạy Docker containers"),
+            new CmdTemplateItem("docker-compose down", "Dừng Docker containers"),
+
+            // ── Git ──
             new CmdTemplateItem("git status", "Xem trạng thái Git hiện tại"),
             new CmdTemplateItem("git log --oneline -10", "Xem 10 commit gần nhất"),
         };

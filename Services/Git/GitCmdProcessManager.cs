@@ -39,15 +39,41 @@ namespace FlowMy.Services.Git
             var processList = new List<Process>();
             _processes[repoId] = processList;
 
+            // Thư mục hiện tại (có thể thay đổi bởi cd .root/...)
+            var currentDir = workingDir;
+
             try
             {
-                foreach (var line in lines)
+                foreach (var rawLine in lines)
                 {
+                    var line = rawLine.Trim();
+
+                    // ── Xử lý lệnh đặc biệt: cd .root hoặc cd .root/subfolder ──
+                    if (line.StartsWith("cd .root", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var afterRoot = line.Substring("cd .root".Length).TrimStart('/', '\\').Trim();
+                        if (string.IsNullOrEmpty(afterRoot))
+                            currentDir = workingDir;
+                        else
+                            currentDir = System.IO.Path.Combine(workingDir, afterRoot.Replace('/', '\\'));
+
+                        if (!System.IO.Directory.Exists(currentDir))
+                        {
+                            onOutput?.Invoke($"⚠️ Folder không tồn tại: {currentDir}");
+                            currentDir = workingDir;
+                        }
+                        else
+                        {
+                            onOutput?.Invoke($"📂 cd → {currentDir}");
+                        }
+                        continue;
+                    }
+
                     var psi = new ProcessStartInfo
                     {
                         FileName = "cmd.exe",
                         Arguments = $"/c {line}",
-                        WorkingDirectory = workingDir,
+                        WorkingDirectory = currentDir,
                         UseShellExecute = showWindow,
                         CreateNoWindow = !showWindow,
                         RedirectStandardOutput = !showWindow,
