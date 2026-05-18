@@ -173,8 +173,9 @@
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
                                                         Style="{DynamicResource PrimaryButton}" Cursor="Hand" ToolTip="Start"
                                                         Command="{Binding DataContext.RunRepoCommandCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}">
-                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-compare duotone-light'}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding IsGitRepoCloned, Converter={StaticResource BoolToVisibility}}">
+                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play regular'}"
                                                                            Width="15" Height="15" Fill="White" Opacity="0.9"/>
                                                 </Button>
                                                 <!-- Clone button: hiện khi chưa có .git -->
@@ -183,7 +184,7 @@
                                                         Command="{Binding DataContext.CloneSavedRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding IsGitRepoCloned, Converter={StaticResource InverseBoolToVisibility}}">
-                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-pull-request duotone-light'}"
+                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='clone-plus duotone'}"
                                                                            Width="15" Height="15" Fill="White" Opacity="0.9"/>
                                                 </Button>
                                                 <!-- Pull button: hiện khi đã có .git -->
@@ -192,28 +193,29 @@
                                                         Command="{Binding DataContext.PullSavedRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding IsGitRepoCloned, Converter={StaticResource BoolToVisibility}}">
-                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-merge duotone-light'}"
+                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-pull-request duotone-light'}"
                                                                            Width="15" Height="15" Fill="{DynamicResource TextBrush}" Opacity="0.8"/>
                                                 </Button>
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
                                                         Style="{DynamicResource SecondaryButton}" Cursor="Hand" ToolTip="VS Code"
                                                         Command="{Binding DataContext.OpenVsCodeForRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}">
-                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-branch duotone-light'}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding IsGitRepoCloned, Converter={StaticResource BoolToVisibility}}">
+                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code duotone-regular'}"
                                                                            Width="15" Height="15" Fill="{DynamicResource TextBrush}" Opacity="0.8"/>
                                                 </Button>
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
-                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand" ToolTip="Sửa"
+                                                        Style="{DynamicResource SuccessButton}" Cursor="Hand" ToolTip="Sửa"
                                                         Command="{Binding DataContext.EditRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}">
-                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-fork duotone-light'}"
-                                                                           Width="15" Height="15" Fill="{DynamicResource TextBrush}" Opacity="0.8"/>
+                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='pen-to-square duotone-light'}"
+                                                                           Width="15" Height="15" Fill="White" Opacity="0.9"/>
                                                 </Button>
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
                                                         Style="{DynamicResource DangerButton}" Cursor="Hand" ToolTip="Xóa"
                                                         Command="{Binding DataContext.RemoveRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}">
-                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-pull-request-closed duotone-light'}"
+                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='trash-can light'}"
                                                                            Width="15" Height="15" Fill="White" Opacity="0.9"/>
                                                 </Button>
                                             </StackPanel>
@@ -284,7 +286,8 @@
                                         Command="{Binding CloneRepoCommand}"
                                         IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="⬇" FontSize="12" Margin="0,0,5,0"/>
+                                        <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='clone-plus duotone'}"
+                                                               Width="14" Height="14" Fill="White" Opacity="0.9" Margin="0,0,5,0"/>
                                         <TextBlock Text="Clone" FontWeight="SemiBold"/>
                                     </StackPanel>
                                 </Button>
@@ -293,7 +296,8 @@
                                         Command="{Binding PullRepoCommand}"
                                         IsEnabled="{Binding IsOperating, Converter={StaticResource InverseBoolConverter}}">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🔄" FontSize="12" Margin="0,0,5,0"/>
+                                        <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code-pull-request duotone-light'}"
+                                                               Width="14" Height="14" Fill="White" Opacity="0.9" Margin="0,0,5,0"/>
                                         <TextBlock Text="Pull" FontWeight="SemiBold"/>
                                     </StackPanel>
                                 </Button>
@@ -301,7 +305,11 @@
                                         Style="{DynamicResource DangerButton}" Cursor="Hand"
                                         Command="{Binding CancelOperationCommand}"
                                         Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Text="✕ Huỷ" FontWeight="SemiBold"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='xmark regular'}"
+                                                               Width="12" Height="12" Fill="White" Opacity="0.9" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Huỷ" FontWeight="SemiBold"/>
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
 
@@ -406,7 +414,8 @@
                                     Style="{DynamicResource PrimaryButton}" Cursor="Hand"
                                     Command="{Binding TestRunCommandCommand}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="▶" FontSize="12" Margin="0,0,6,0"/>
+                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play regular'}"
+                                                           Width="14" Height="14" Fill="White" Opacity="0.9" Margin="0,0,6,0"/>
                                     <TextBlock Text="Test chạy" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Button>

@@ -21,6 +21,14 @@ namespace FlowMy.Views.Overlays
 
             if (owner != null) Owner = owner;
 
+            // Lắng nghe event chuyển sang tab Git khi nhấn Sửa
+            _viewModel.RequestSwitchToGitTab += () =>
+            {
+                TabGit.IsChecked = true;
+                UpdateNodeColorPreview();
+                UpdateIconColorPreview();
+            };
+
             Loaded += (s, e) =>
             {
                 UpdateNodeColorPreview();

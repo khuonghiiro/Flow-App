@@ -46,3 +46,5 @@ code-fork duotone-light
 code-merge duotone-light
 code-pull-request duotone-light
 code-pull-request-draft duotone-light
+clone-plus duotone
+code duotone-regular

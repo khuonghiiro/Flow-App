@@ -17,6 +17,12 @@ namespace FlowMy.ViewModels
         private readonly IWorkflowEditorHost _host;
         private CancellationTokenSource? _operationCts;
 
+        /// <summary>Node đang được chỉnh sửa (null = tạo mới).</summary>
+        private GitSourceNode? _editingNode;
+
+        /// <summary>Event yêu cầu code-behind chuyển sang tab Git.</summary>
+        public event Action? RequestSwitchToGitTab;
+
         // Clone tab
         [ObservableProperty] private string _repoUrl = string.Empty;
         [ObservableProperty] private string _localPath = string.Empty;
@@ -206,36 +212,44 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private async Task SaveRepoAsync()
         {
-            _gitNode.RepoUrl = RepoUrl;
-            _gitNode.LocalPath = LocalPath;
-            _gitNode.Branch = Branch;
-            _gitNode.DisplayName = string.IsNullOrWhiteSpace(DisplayName) ? "Git Source" : DisplayName;
-            _gitNode.Title = _gitNode.DisplayName;
-            _gitNode.IconKey = IconKey;
-            _gitNode.IconColorKey = IconColorKey;
-            _gitNode.ColorKey = NodeColorKey;
-            _gitNode.TooltipText = TooltipText;
-            _gitNode.CommandText = CommandText;
+            // Xác định node đích: nếu đang edit thì dùng node đó, ngược lại dùng _gitNode mới
+            var targetNode = _editingNode ?? _gitNode;
+
+            targetNode.RepoUrl = RepoUrl;
+            targetNode.LocalPath = LocalPath;
+            targetNode.Branch = Branch;
+            targetNode.DisplayName = string.IsNullOrWhiteSpace(DisplayName) ? "Git Source" : DisplayName;
+            targetNode.Title = targetNode.DisplayName;
+            targetNode.IconKey = IconKey;
+            targetNode.IconColorKey = IconColorKey;
+            targetNode.ColorKey = NodeColorKey;
+            targetNode.TooltipText = TooltipText;
+            targetNode.CommandText = CommandText;
 
             var brush = ResolveBrushFromKey(NodeColorKey);
-            _gitNode.NodeBrush = brush;
+            targetNode.NodeBrush = brush;
 
             // Thêm vào danh sách tổng hợp (nếu chưa có)
-            if (!SavedRepos.Any(r => r.Id == _gitNode.Id))
-                SavedRepos.Add(_gitNode);
+            if (!SavedRepos.Any(r => r.Id == targetNode.Id))
+                SavedRepos.Add(targetNode);
 
             // Sync lên ViewModel chính
             if (_host.ViewModel is WorkflowEditorViewModel vm)
             {
-                if (!vm.GitRepoNodes.Any(r => r.Id == _gitNode.Id))
-                    vm.GitRepoNodes.Add(_gitNode);
+                if (!vm.GitRepoNodes.Any(r => r.Id == targetNode.Id))
+                    vm.GitRepoNodes.Add(targetNode);
                 vm.HasGitRepos = vm.GitRepoNodes.Count > 0;
             }
 
-            AppendLog($"💾 Đã lưu: {_gitNode.DisplayName}");
+            AppendLog(_editingNode != null
+                ? $"✏️ Đã cập nhật: {targetNode.DisplayName}"
+                : $"💾 Đã lưu: {targetNode.DisplayName}");
 
             // Persist ra file
             GitRepoStorageService.Save(SavedRepos);
+
+            // Reset trạng thái edit
+            _editingNode = null;
 
             // Hiện thông báo thành công
             ShowSaveSuccess = true;
@@ -324,6 +338,10 @@ namespace FlowMy.ViewModels
         private void EditRepo(GitSourceNode? repo)
         {
             if (repo == null) return;
+
+            // Ghi nhớ node đang edit
+            _editingNode = repo;
+
             // Load thông tin repo vào form để chỉnh sửa
             RepoUrl = repo.RepoUrl;
             LocalPath = repo.LocalPath;
@@ -334,6 +352,9 @@ namespace FlowMy.ViewModels
             NodeColorKey = repo.ColorKey ?? "Indigo";
             TooltipText = repo.TooltipText;
             CommandText = repo.CommandText ?? string.Empty;
+
+            // Chuyển sang tab Git
+            RequestSwitchToGitTab?.Invoke();
         }
 
         [RelayCommand]
