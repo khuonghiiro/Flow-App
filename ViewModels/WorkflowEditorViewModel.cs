@@ -125,6 +125,9 @@ namespace FlowMy.ViewModels
         private bool hasGitRepos;
 
         [ObservableProperty]
+        private int runningGitCount;
+
+        [ObservableProperty]
         private bool enableExecutionTraceLog;
 
         [ObservableProperty]

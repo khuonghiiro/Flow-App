@@ -197,6 +197,14 @@ namespace FlowMy.Models
             }
         }
 
+        private bool _isRunning;
+        /// <summary>Trạng thái đang chạy cmd (play/pause toggle).</summary>
+        public bool IsRunning
+        {
+            get => _isRunning;
+            set { if (_isRunning != value) { _isRunning = value; OnPropertyChanged(); } }
+        }
+
         /// <summary>Gọi để cập nhật trạng thái clone trên UI.</summary>
         public void RefreshCloneStatus() => OnPropertyChanged(nameof(IsGitRepoCloned));
 

@@ -52,6 +52,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _operationLog = string.Empty;
         [ObservableProperty] private string _progressStatusText = string.Empty;
         [ObservableProperty] private bool _showSaveSuccess;
+        [ObservableProperty] private int _runningGitCount;
 
         public ObservableCollection<string> AvailableBranches { get; } = new();
 
@@ -471,19 +472,55 @@ namespace FlowMy.ViewModels
             if (repo == null) return;
             if (string.IsNullOrWhiteSpace(repo.LocalPath) || !Directory.Exists(repo.LocalPath)) return;
 
+            // Toggle: nếu đang chạy → stop
+            if (repo.IsRunning)
+            {
+                GitCmdProcessManager.KillProcesses(repo.Id);
+                repo.IsRunning = false;
+                RunningGitCount = SavedRepos.Count(r => r.IsRunning);
+                AppendLog($"⏹ [{repo.DisplayName}] Đã dừng.");
+                // Sync lên WorkflowEditorViewModel
+                SyncRunningCountToHost();
+                return;
+            }
+
             // Load command từ Documents/FlowMy-CmdGit/
             var entry = GitCmdStorageService.LoadEntry(repo.Id);
             var cmdText = entry?.CommandText ?? repo.CommandText;
-            if (string.IsNullOrWhiteSpace(cmdText)) return;
+            if (string.IsNullOrWhiteSpace(cmdText))
+            {
+                AppendLog($"⚠️ [{repo.DisplayName}] Chưa cấu hình command.");
+                return;
+            }
 
             var showWindow = entry?.ShowCmdWindow ?? true;
+
+            // Đánh dấu đang chạy
+            repo.IsRunning = true;
+            RunningGitCount = SavedRepos.Count(r => r.IsRunning);
+            SyncRunningCountToHost();
 
             // Chạy tuần tự từng dòng qua ProcessManager
             _ = GitCmdProcessManager.RunCommandsAsync(
                 repo.Id, cmdText, repo.LocalPath, showWindow,
                 onOutput: msg => Application.Current?.Dispatcher.Invoke(() => AppendLog($"[{repo.DisplayName}] {msg}")),
-                onCompleted: () => Application.Current?.Dispatcher.Invoke(() => AppendLog($"✅ [{repo.DisplayName}] Hoàn tất."))
+                onCompleted: () => Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    repo.IsRunning = false;
+                    RunningGitCount = SavedRepos.Count(r => r.IsRunning);
+                    SyncRunningCountToHost();
+                    AppendLog($"✅ [{repo.DisplayName}] Hoàn tất.");
+                })
             );
+        }
+
+        /// <summary>Đồng bộ RunningGitCount lên WorkflowEditorViewModel để hiện badge.</summary>
+        private void SyncRunningCountToHost()
+        {
+            if (_host.ViewModel is WorkflowEditorViewModel vm)
+            {
+                vm.RunningGitCount = RunningGitCount;
+            }
         }
 
         [RelayCommand]

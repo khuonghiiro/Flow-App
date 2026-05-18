@@ -48,3 +48,4 @@ code-pull-request duotone-light
 code-pull-request-draft duotone-light
 clone-plus duotone
 code duotone-regular
+pause sharp-light

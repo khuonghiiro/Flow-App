@@ -128,10 +128,36 @@
                                 VerticalAlignment="Center"
                                 Margin="6,0,0,0"
                                 MinWidth="32">
-                            <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
+                            <Grid>
+                                <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
                                              Converter={StaticResource IconKeyToPathConverter}, 
                                              ConverterParameter='git-alt brands'}"
                                           Width="18" Height="18" Fill="White" Opacity="0.8"/>
+                                <!-- Badge số lượng git đang chạy -->
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Margin="0,-4,-6,0"
+                                        MinWidth="16" Height="16"
+                                        CornerRadius="8"
+                                        Background="{DynamicResource DangerBrush}"
+                                        Padding="3,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RunningGitCount}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding RunningGitCount}"
+                                               Foreground="White"
+                                               FontSize="9"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                            </Grid>
                         </Button>
                     </StackPanel>
                 </StackPanel>
