@@ -417,11 +417,16 @@
                     <ScrollViewer x:Name="SubPageSettings" VerticalScrollBarVisibility="Auto" Padding="16,12" Visibility="Collapsed">
                         <StackPanel MaxWidth="500">
                             <TextBlock Text="Command Line:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <TextBlock Text="Lệnh chạy khi nhấn ▶ ở tab Tổng hợp" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8"/>
+                            <TextBlock Text="Lệnh chạy khi nhấn ▶ ở tab Tổng hợp (mỗi dòng = 1 lệnh, chạy tuần tự)" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8"/>
                             <TextBox Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}" MinHeight="70" MaxHeight="160"
                                      AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                                      FontFamily="Consolas" FontSize="12" Margin="0,0,0,12"/>
+
+                            <CheckBox IsChecked="{Binding ShowCmdWindow}" Margin="0,0,0,12" Cursor="Hand"
+                                      Foreground="{DynamicResource TextBrush}" FontSize="12">
+                                <TextBlock Text="Hiện cửa sổ CMD khi chạy (bỏ tick = chạy ngầm)" Foreground="{DynamicResource TextBrush}"/>
+                            </CheckBox>
 
                             <Button Height="34" MinWidth="110" HorizontalAlignment="Left"
                                     Style="{DynamicResource PrimaryButton}" Cursor="Hand"

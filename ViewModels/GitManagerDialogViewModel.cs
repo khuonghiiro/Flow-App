@@ -41,6 +41,7 @@ namespace FlowMy.ViewModels
         // Cài đặt tab
         [ObservableProperty] private string _commandText = string.Empty;
         [ObservableProperty] private string _commandOutput = string.Empty;
+        [ObservableProperty] private bool _showCmdWindow = true;
 
         // Preview (cập nhật từ code-behind khi đổi màu)
         [ObservableProperty] private System.Windows.Media.Brush _previewNodeBrush = System.Windows.Media.Brushes.Indigo;
@@ -97,11 +98,29 @@ namespace FlowMy.ViewModels
             if (!string.IsNullOrWhiteSpace(node.TooltipText)) TooltipText = node.TooltipText;
             if (!string.IsNullOrWhiteSpace(node.CommandText)) CommandText = node.CommandText;
 
-            // Load saved repos from ViewModel (if available)
+            // Load command từ Documents/FlowMy-CmdGit/ (ưu tiên file riêng, fallback về node.CommandText)
+            var savedEntry = GitCmdStorageService.LoadEntry(node.Id);
+            if (savedEntry != null)
+            {
+                if (!string.IsNullOrWhiteSpace(savedEntry.CommandText))
+                    CommandText = savedEntry.CommandText;
+                ShowCmdWindow = savedEntry.ShowCmdWindow;
+            }
+
+            // Load saved repos from storage (Documents\FlowMy-CmdGit\git_repos.json)
+            var storedRepos = GitRepoStorageService.Load();
+            foreach (var r in storedRepos)
+                SavedRepos.Add(r);
+
+            // Sync lên ViewModel chính nếu cần
             if (host.ViewModel is ViewModels.WorkflowEditorViewModel vm)
             {
-                foreach (var r in vm.GitRepoNodes)
-                    SavedRepos.Add(r);
+                foreach (var r in storedRepos)
+                {
+                    if (!vm.GitRepoNodes.Any(n => n.Id == r.Id))
+                        vm.GitRepoNodes.Add(r);
+                }
+                vm.HasGitRepos = vm.GitRepoNodes.Count > 0;
             }
 
             // Nếu LocalPath đã là git repo thì load branches sẵn
@@ -418,6 +437,22 @@ namespace FlowMy.ViewModels
             // Persist ra file
             GitRepoStorageService.Save(SavedRepos);
 
+            // Lưu command text + cấu hình ra Documents/FlowMy-CmdGit/
+            GitCmdStorageService.SaveFull(new GitCmdEntry
+            {
+                RepoId = targetNode.Id,
+                CommandText = CommandText,
+                ShowCmdWindow = ShowCmdWindow,
+                RepoUrl = targetNode.RepoUrl,
+                LocalPath = targetNode.LocalPath,
+                Branch = targetNode.Branch,
+                DisplayName = targetNode.DisplayName,
+                IconKey = targetNode.IconKey,
+                IconColorKey = targetNode.IconColorKey,
+                ColorKey = targetNode.ColorKey ?? "Indigo",
+                TooltipText = targetNode.TooltipText
+            });
+
             // Reset trạng thái edit
             _editingNode = null;
 
@@ -434,19 +469,22 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void RunRepoCommand(GitSourceNode? repo)
         {
-            if (repo == null || string.IsNullOrWhiteSpace(repo.CommandText)) return;
+            if (repo == null) return;
             if (string.IsNullOrWhiteSpace(repo.LocalPath) || !Directory.Exists(repo.LocalPath)) return;
 
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c cd /d \"{repo.LocalPath}\" && {repo.CommandText}",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex) { AppendLog($"❌ {ex.Message}"); }
+            // Load command từ Documents/FlowMy-CmdGit/
+            var entry = GitCmdStorageService.LoadEntry(repo.Id);
+            var cmdText = entry?.CommandText ?? repo.CommandText;
+            if (string.IsNullOrWhiteSpace(cmdText)) return;
+
+            var showWindow = entry?.ShowCmdWindow ?? true;
+
+            // Chạy tuần tự từng dòng qua ProcessManager
+            _ = GitCmdProcessManager.RunCommandsAsync(
+                repo.Id, cmdText, repo.LocalPath, showWindow,
+                onOutput: msg => Application.Current?.Dispatcher.Invoke(() => AppendLog($"[{repo.DisplayName}] {msg}")),
+                onCompleted: () => Application.Current?.Dispatcher.Invoke(() => AppendLog($"✅ [{repo.DisplayName}] Hoàn tất."))
+            );
         }
 
         [RelayCommand]
@@ -527,6 +565,15 @@ namespace FlowMy.ViewModels
             TooltipText = repo.TooltipText;
             CommandText = repo.CommandText ?? string.Empty;
 
+            // Load command + ShowCmdWindow từ Documents/FlowMy-CmdGit/
+            var entry = GitCmdStorageService.LoadEntry(repo.Id);
+            if (entry != null)
+            {
+                if (!string.IsNullOrWhiteSpace(entry.CommandText))
+                    CommandText = entry.CommandText;
+                ShowCmdWindow = entry.ShowCmdWindow;
+            }
+
             // Đảm bảo branches được load lại (trường hợp LocalPath không đổi)
             TryLoadBranchesFromLocalPath();
 
@@ -546,6 +593,8 @@ namespace FlowMy.ViewModels
                 vm.HasGitRepos = vm.GitRepoNodes.Count > 0;
             }
             GitRepoStorageService.Save(SavedRepos);
+            GitCmdStorageService.Delete(repo.Id);
+            GitCmdProcessManager.KillProcesses(repo.Id);
         }
 
         // ═══════════════════════════════════════════
@@ -559,27 +608,14 @@ namespace FlowMy.ViewModels
             var workDir = LocalPath;
             if (string.IsNullOrWhiteSpace(workDir) || !Directory.Exists(workDir)) { CommandOutput = "❌ Thư mục không tồn tại."; return; }
 
-            CommandOutput = $"⏳ Chạy: {CommandText}\n";
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {CommandText}",
-                    WorkingDirectory = workDir,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                using var proc = Process.Start(psi);
-                if (proc == null) { CommandOutput += "❌ Không khởi tạo được."; return; }
-                var stdout = await proc.StandardOutput.ReadToEndAsync();
-                var stderr = await proc.StandardError.ReadToEndAsync();
-                await proc.WaitForExitAsync();
-                CommandOutput = stdout + (string.IsNullOrWhiteSpace(stderr) ? "" : $"\n[STDERR]\n{stderr}") + $"\n[Exit: {proc.ExitCode}]";
-            }
-            catch (Exception ex) { CommandOutput += $"\n❌ {ex.Message}"; }
+            var nodeId = (_editingNode?.Id ?? _gitNode.Id);
+            CommandOutput = $"⏳ Chạy tuần tự {CommandText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length} lệnh...\n";
+
+            await GitCmdProcessManager.RunCommandsAsync(
+                nodeId, CommandText, workDir, ShowCmdWindow,
+                onOutput: msg => Application.Current?.Dispatcher.Invoke(() => CommandOutput += msg + "\n"),
+                onCompleted: () => Application.Current?.Dispatcher.Invoke(() => CommandOutput += "\n✅ Hoàn tất.")
+            );
         }
 
         // ═══════════════════════════════════════════

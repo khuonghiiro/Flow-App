@@ -1,6 +1,7 @@
 using FlowMy.Extensions;
 using FlowMy.Helpers;
 using FlowMy.Services;
+using FlowMy.Services.Git;
 using FlowMy.Services.Interfaces;
 using FlowMy.Services.Utilities;
 using FlowMy.Services.Workflow;
@@ -413,6 +414,9 @@ namespace FlowMy
 
                 _pipeServerCts?.Cancel();
                 _pipeServerCts?.Dispose();
+
+                // Kill tất cả cmd process của Git repos
+                GitCmdProcessManager.KillAll();
 
                 // Dọn dẹp tray service
                 var trayService = _serviceProvider?.GetService<ITrayService>();

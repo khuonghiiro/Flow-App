@@ -8,14 +8,57 @@ namespace FlowMy.Services.Git
 {
     /// <summary>
     /// Lưu/đọc danh sách Git repos đã cấu hình vào file JSON.
-    /// File: {AppRoot}/git_repos.json
+    /// File: Documents\FlowMy-CmdGit\git_repos.json
     /// </summary>
     public static class GitRepoStorageService
     {
+        /// <summary>Thư mục lưu trữ: Documents\FlowMy-CmdGit</summary>
+        private static string GetStorageFolder()
+        {
+            var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            return Path.Combine(docs, "FlowMy-CmdGit");
+        }
+
         private static string GetFilePath()
         {
-            var appRoot = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.Combine(appRoot, "git_repos.json");
+            var folder = GetStorageFolder();
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+            return Path.Combine(folder, "git_repos.json");
+        }
+
+        /// <summary>
+        /// Migrate dữ liệu cũ từ AppRoot sang Documents (chạy 1 lần).
+        /// Gọi khi app khởi động hoặc trước khi Load().
+        /// </summary>
+        public static void MigrateFromLegacyIfNeeded()
+        {
+            try
+            {
+                var legacyFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "git_repos.json");
+                var newFile = GetFilePath();
+
+                // Chỉ migrate nếu file cũ tồn tại VÀ file mới chưa có
+                if (File.Exists(legacyFile) && !File.Exists(newFile))
+                {
+                    File.Copy(legacyFile, newFile, overwrite: false);
+                }
+
+                // Migrate cmd_git folder
+                var legacyCmdFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cmd_git");
+                var newCmdFolder = Path.Combine(GetStorageFolder(), "cmd_git");
+                if (Directory.Exists(legacyCmdFolder) && !Directory.Exists(newCmdFolder))
+                {
+                    Directory.CreateDirectory(newCmdFolder);
+                    foreach (var file in Directory.GetFiles(legacyCmdFolder, "*.cmd"))
+                    {
+                        var destFile = Path.Combine(newCmdFolder, Path.GetFileName(file));
+                        if (!File.Exists(destFile))
+                            File.Copy(file, destFile);
+                    }
+                }
+            }
+            catch { /* Silent — không block app nếu migrate fail */ }
         }
 
         /// <summary>Lưu danh sách repos ra file.</summary>
@@ -54,51 +97,95 @@ namespace FlowMy.Services.Git
         {
             try
             {
+                // Auto-migrate từ vị trí cũ nếu cần
+                MigrateFromLegacyIfNeeded();
+
                 var path = GetFilePath();
                 if (!File.Exists(path)) return new List<GitSourceNode>();
 
                 var json = File.ReadAllText(path);
-                var dtos = JsonSerializer.Deserialize<List<GitRepoDto>>(json);
-                if (dtos == null) return new List<GitSourceNode>();
-
-                return dtos.Select(dto =>
-                {
-                    var node = new GitSourceNode
-                    {
-                        Id = dto.Id ?? Guid.NewGuid().ToString(),
-                        Title = dto.Title ?? dto.DisplayName ?? "Git Source",
-                        RepoUrl = dto.RepoUrl ?? string.Empty,
-                        LocalPath = dto.LocalPath ?? string.Empty,
-                        Branch = dto.Branch ?? "main",
-                        DisplayName = dto.DisplayName ?? dto.Title ?? "Git Source",
-                        IconKey = dto.IconKey ?? "git-alt brands",
-                        IconColorKey = dto.IconColorKey ?? "White",
-                        ColorKey = dto.ColorKey ?? "Indigo",
-                        TooltipText = dto.TooltipText ?? string.Empty,
-                        ContextMenuDescription = dto.ContextMenuDescription ?? string.Empty,
-                        VscodiumPath = dto.VscodiumPath ?? "vscodium",
-                        CommandText = dto.CommandText ?? string.Empty,
-                        LastCommitHash = dto.LastCommitHash ?? string.Empty,
-                        LastPullTime = dto.LastPullTime ?? string.Empty,
-                        AutoOpenOnExecute = dto.AutoOpenOnExecute
-                    };
-
-                    // Resolve NodeBrush from ColorKey
-                    node.NodeBrush = ResolveBrushFromKey(node.ColorKey);
-
-                    // Ensure IconColorKey is set so IconBrushResolved works
-                    // (already set above, just trigger property for binding)
-                    node.IconColorKey = dto.IconColorKey ?? "White";
-
-                    node.Type = NodeType.GitSource;
-                    return node;
-                }).ToList();
+                return DeserializeRepos(json);
             }
             catch
             {
                 return new List<GitSourceNode>();
             }
         }
+
+        /// <summary>
+        /// Import danh sách repos từ file JSON bên ngoài (merge vào danh sách hiện tại).
+        /// Trả về số lượng repos đã import thành công.
+        /// </summary>
+        public static int ImportFromJson(string jsonFilePath)
+        {
+            try
+            {
+                if (!File.Exists(jsonFilePath)) return 0;
+
+                var json = File.ReadAllText(jsonFilePath);
+                var importedRepos = DeserializeRepos(json);
+                if (importedRepos.Count == 0) return 0;
+
+                // Load danh sách hiện tại
+                var existingRepos = Load();
+                var existingIds = new HashSet<string>(existingRepos.Select(r => r.Id));
+
+                int count = 0;
+                foreach (var repo in importedRepos)
+                {
+                    if (!existingIds.Contains(repo.Id))
+                    {
+                        existingRepos.Add(repo);
+                        existingIds.Add(repo.Id);
+                        count++;
+                    }
+                }
+
+                if (count > 0)
+                    Save(existingRepos);
+
+                return count;
+            }
+            catch { return 0; }
+        }
+
+        /// <summary>
+        /// Export danh sách repos hiện tại ra file JSON tại đường dẫn chỉ định.
+        /// </summary>
+        public static bool ExportToJson(string outputFilePath)
+        {
+            try
+            {
+                var repos = Load();
+                var dtos = repos.Select(r => new GitRepoDto
+                {
+                    Id = r.Id,
+                    Title = r.Title,
+                    RepoUrl = r.RepoUrl,
+                    LocalPath = r.LocalPath,
+                    Branch = r.Branch,
+                    DisplayName = r.DisplayName,
+                    IconKey = r.IconKey,
+                    IconColorKey = r.IconColorKey,
+                    ColorKey = r.ColorKey,
+                    TooltipText = r.TooltipText,
+                    ContextMenuDescription = r.ContextMenuDescription,
+                    VscodiumPath = r.VscodiumPath,
+                    CommandText = r.CommandText,
+                    LastCommitHash = r.LastCommitHash,
+                    LastPullTime = r.LastPullTime,
+                    AutoOpenOnExecute = r.AutoOpenOnExecute
+                }).ToList();
+
+                var json = JsonSerializer.Serialize(dtos, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(outputFilePath, json);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>Trả về đường dẫn thư mục lưu trữ (để hiển thị cho user).</summary>
+        public static string GetStoragePath() => GetStorageFolder();
 
         private sealed class GitRepoDto
         {
@@ -118,6 +205,42 @@ namespace FlowMy.Services.Git
             public string? LastCommitHash { get; set; }
             public string? LastPullTime { get; set; }
             public bool AutoOpenOnExecute { get; set; } = true;
+        }
+
+        /// <summary>Deserialize JSON string thành danh sách GitSourceNode.</summary>
+        private static List<GitSourceNode> DeserializeRepos(string json)
+        {
+            var dtos = JsonSerializer.Deserialize<List<GitRepoDto>>(json);
+            if (dtos == null) return new List<GitSourceNode>();
+
+            return dtos.Select(dto =>
+            {
+                var node = new GitSourceNode
+                {
+                    Id = dto.Id ?? Guid.NewGuid().ToString(),
+                    Title = dto.Title ?? dto.DisplayName ?? "Git Source",
+                    RepoUrl = dto.RepoUrl ?? string.Empty,
+                    LocalPath = dto.LocalPath ?? string.Empty,
+                    Branch = dto.Branch ?? "main",
+                    DisplayName = dto.DisplayName ?? dto.Title ?? "Git Source",
+                    IconKey = dto.IconKey ?? "git-alt brands",
+                    IconColorKey = dto.IconColorKey ?? "White",
+                    ColorKey = dto.ColorKey ?? "Indigo",
+                    TooltipText = dto.TooltipText ?? string.Empty,
+                    ContextMenuDescription = dto.ContextMenuDescription ?? string.Empty,
+                    VscodiumPath = dto.VscodiumPath ?? "vscodium",
+                    CommandText = dto.CommandText ?? string.Empty,
+                    LastCommitHash = dto.LastCommitHash ?? string.Empty,
+                    LastPullTime = dto.LastPullTime ?? string.Empty,
+                    AutoOpenOnExecute = dto.AutoOpenOnExecute
+                };
+
+                // Resolve NodeBrush from ColorKey
+                node.NodeBrush = ResolveBrushFromKey(node.ColorKey);
+                node.IconColorKey = dto.IconColorKey ?? "White";
+                node.Type = NodeType.GitSource;
+                return node;
+            }).ToList();
         }
 
         /// <summary>Resolve ColorKey thành Brush — hỗ trợ hex (#RRGGBB) và named resource key.</summary>
