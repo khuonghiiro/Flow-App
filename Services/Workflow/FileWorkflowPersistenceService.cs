@@ -43,34 +43,6 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
     {
         _templateFactory = templateFactory ?? throw new ArgumentNullException(nameof(templateFactory));
         _workflowsDir = GetDefaultWorkflowsDirectory();
-        MigrateWorkflowsFromLegacyIfNeeded(_workflowsDir);
-    }
-
-    /// <summary>
-    /// Migrate workflow JSON files từ Documents\Workflow_Json (legacy) → Documents\FlowMy\Workflow_Json (mới).
-    /// Chỉ copy file chưa tồn tại ở đích, chạy silent.
-    /// </summary>
-    private static void MigrateWorkflowsFromLegacyIfNeeded(string newDir)
-    {
-        try
-        {
-            var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            if (string.IsNullOrWhiteSpace(docs)) return;
-
-            var legacyDir = Path.Combine(docs, DefaultWorkflowJsonFolderName);
-            if (!Directory.Exists(legacyDir)) return;
-
-            if (!Directory.Exists(newDir))
-                Directory.CreateDirectory(newDir);
-
-            foreach (var srcFile in Directory.GetFiles(legacyDir, "*.json"))
-            {
-                var destFile = Path.Combine(newDir, Path.GetFileName(srcFile));
-                if (!File.Exists(destFile))
-                    File.Copy(srcFile, destFile, overwrite: false);
-            }
-        }
-        catch { /* Silent — không block app */ }
     }
 
     public IReadOnlyList<string> GetAllWorkflowNames()
