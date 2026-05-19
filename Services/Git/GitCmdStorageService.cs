@@ -5,7 +5,7 @@ namespace FlowMy.Services.Git
 {
     /// <summary>
     /// Lưu/đọc command text + cấu hình Git repos vào folder Documents của user.
-    /// Path: {Documents}/FlowMy-CmdGit/git_config.json
+    /// Path: {Documents}/FlowMy/FlowMy-CmdGit/git_config.json
     /// Mục đích: tách riêng khỏi git repo (không bị pull/push ảnh hưởng),
     /// dễ backup/import để khôi phục danh sách + cấu hình.
     /// </summary>
@@ -14,7 +14,7 @@ namespace FlowMy.Services.Git
         private static string GetFolder()
         {
             var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            return Path.Combine(docs, "FlowMy-CmdGit");
+            return Path.Combine(docs, "FlowMy", "FlowMy-CmdGit");
         }
 
         private static string GetFilePath()
@@ -83,6 +83,9 @@ namespace FlowMy.Services.Git
         {
             try
             {
+                // Auto-migrate từ Documents\FlowMy-CmdGit (legacy v2) nếu file mới chưa có
+                MigrateFromLegacyIfNeeded();
+
                 var filePath = GetFilePath();
                 if (!File.Exists(filePath)) return new List<GitCmdEntry>();
 
@@ -90,6 +93,28 @@ namespace FlowMy.Services.Git
                 return JsonSerializer.Deserialize<List<GitCmdEntry>>(json) ?? new List<GitCmdEntry>();
             }
             catch { return new List<GitCmdEntry>(); }
+        }
+
+        /// <summary>
+        /// Migrate git_config.json từ Documents\FlowMy-CmdGit (legacy) → Documents\FlowMy\FlowMy-CmdGit (mới).
+        /// Chạy silent, chỉ copy nếu file mới chưa tồn tại.
+        /// </summary>
+        private static void MigrateFromLegacyIfNeeded()
+        {
+            try
+            {
+                var newFile = GetFilePath();
+                if (File.Exists(newFile)) return; // Đã có file mới, không cần migrate
+
+                var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                var legacyFile = Path.Combine(docs, "FlowMy-CmdGit", "git_config.json");
+                if (!File.Exists(legacyFile)) return;
+
+                var newFolder = GetFolder();
+                if (!Directory.Exists(newFolder)) Directory.CreateDirectory(newFolder);
+                File.Copy(legacyFile, newFile, overwrite: false);
+            }
+            catch { /* Silent — không block app */ }
         }
 
         /// <summary>Xóa entry khi xóa repo.</summary>

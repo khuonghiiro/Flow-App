@@ -8,15 +8,15 @@ namespace FlowMy.Services.Git
 {
     /// <summary>
     /// Lưu/đọc danh sách Git repos đã cấu hình vào file JSON.
-    /// File: Documents\FlowMy-CmdGit\git_repos.json
+    /// File: Documents\FlowMy\FlowMy-CmdGit\git_repos.json
     /// </summary>
     public static class GitRepoStorageService
     {
-        /// <summary>Thư mục lưu trữ: Documents\FlowMy-CmdGit</summary>
+        /// <summary>Thư mục lưu trữ: Documents\FlowMy\FlowMy-CmdGit</summary>
         private static string GetStorageFolder()
         {
             var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            return Path.Combine(docs, "FlowMy-CmdGit");
+            return Path.Combine(docs, "FlowMy", "FlowMy-CmdGit");
         }
 
         private static string GetFilePath()
@@ -28,29 +28,55 @@ namespace FlowMy.Services.Git
         }
 
         /// <summary>
-        /// Migrate dữ liệu cũ từ AppRoot sang Documents (chạy 1 lần).
+        /// Migrate dữ liệu cũ sang vị trí mới (chạy 1 lần).
+        /// Thứ tự ưu tiên: AppRoot → Documents\FlowMy-CmdGit (cũ) → Documents\FlowMy\FlowMy-CmdGit (mới).
         /// Gọi khi app khởi động hoặc trước khi Load().
         /// </summary>
         public static void MigrateFromLegacyIfNeeded()
         {
             try
             {
-                var legacyFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "git_repos.json");
+                var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 var newFile = GetFilePath();
+                var newFolder = GetStorageFolder();
 
-                // Chỉ migrate nếu file cũ tồn tại VÀ file mới chưa có
-                if (File.Exists(legacyFile) && !File.Exists(newFile))
+                // 1. Migrate từ AppRoot (legacy v1)
+                var legacyAppRootFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "git_repos.json");
+                if (File.Exists(legacyAppRootFile) && !File.Exists(newFile))
                 {
-                    File.Copy(legacyFile, newFile, overwrite: false);
+                    if (!Directory.Exists(newFolder)) Directory.CreateDirectory(newFolder);
+                    File.Copy(legacyAppRootFile, newFile, overwrite: false);
                 }
 
-                // Migrate cmd_git folder
+                // 2. Migrate từ Documents\FlowMy-CmdGit (legacy v2) → Documents\FlowMy\FlowMy-CmdGit (v3)
+                var legacyDocsFolder = Path.Combine(docs, "FlowMy-CmdGit");
+                var legacyDocsFile = Path.Combine(legacyDocsFolder, "git_repos.json");
+                if (File.Exists(legacyDocsFile) && !File.Exists(newFile))
+                {
+                    if (!Directory.Exists(newFolder)) Directory.CreateDirectory(newFolder);
+                    File.Copy(legacyDocsFile, newFile, overwrite: false);
+                }
+
+                // 3. Migrate cmd_git folder từ AppRoot
                 var legacyCmdFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cmd_git");
-                var newCmdFolder = Path.Combine(GetStorageFolder(), "cmd_git");
+                var newCmdFolder = Path.Combine(newFolder, "cmd_git");
                 if (Directory.Exists(legacyCmdFolder) && !Directory.Exists(newCmdFolder))
                 {
                     Directory.CreateDirectory(newCmdFolder);
                     foreach (var file in Directory.GetFiles(legacyCmdFolder, "*.cmd"))
+                    {
+                        var destFile = Path.Combine(newCmdFolder, Path.GetFileName(file));
+                        if (!File.Exists(destFile))
+                            File.Copy(file, destFile);
+                    }
+                }
+
+                // 4. Migrate cmd_git folder từ Documents\FlowMy-CmdGit (legacy v2)
+                var legacyDocsCmdFolder = Path.Combine(legacyDocsFolder, "cmd_git");
+                if (Directory.Exists(legacyDocsCmdFolder) && !Directory.Exists(newCmdFolder))
+                {
+                    Directory.CreateDirectory(newCmdFolder);
+                    foreach (var file in Directory.GetFiles(legacyDocsCmdFolder, "*.cmd"))
                     {
                         var destFile = Path.Combine(newCmdFolder, Path.GetFileName(file));
                         if (!File.Exists(destFile))

@@ -14,6 +14,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 {
     /// <summary>Thư mục con trong Documents khi lưu workflow mặc định (không phụ thuộc thư mục chạy / bin).</summary>
     public const string DefaultWorkflowJsonFolderName = "Workflow_Json";
+    private const string FlowMyRootFolderName = "FlowMy";
 
     private readonly FlowMy.Workflow.TemplateFactory _templateFactory;
     private readonly string _workflowsDir;
@@ -21,14 +22,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
     private sealed record CachedWorkflowJson(DateTime LastWriteUtc, string Json);
 
-    /// <summary>Đường dẫn mặc định: Documents\Workflow_Json; nếu không lấy được Documents thì fallback cạnh exe.</summary>
+    /// <summary>Đường dẫn mặc định: Documents\FlowMy\Workflow_Json; nếu không lấy được Documents thì fallback cạnh exe.</summary>
     public static string GetDefaultWorkflowsDirectory()
     {
         try
         {
             var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             if (!string.IsNullOrWhiteSpace(docs))
-                return Path.Combine(docs, DefaultWorkflowJsonFolderName);
+                return Path.Combine(docs, FlowMyRootFolderName, DefaultWorkflowJsonFolderName);
         }
         catch
         {
@@ -42,6 +43,34 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
     {
         _templateFactory = templateFactory ?? throw new ArgumentNullException(nameof(templateFactory));
         _workflowsDir = GetDefaultWorkflowsDirectory();
+        MigrateWorkflowsFromLegacyIfNeeded(_workflowsDir);
+    }
+
+    /// <summary>
+    /// Migrate workflow JSON files từ Documents\Workflow_Json (legacy) → Documents\FlowMy\Workflow_Json (mới).
+    /// Chỉ copy file chưa tồn tại ở đích, chạy silent.
+    /// </summary>
+    private static void MigrateWorkflowsFromLegacyIfNeeded(string newDir)
+    {
+        try
+        {
+            var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (string.IsNullOrWhiteSpace(docs)) return;
+
+            var legacyDir = Path.Combine(docs, DefaultWorkflowJsonFolderName);
+            if (!Directory.Exists(legacyDir)) return;
+
+            if (!Directory.Exists(newDir))
+                Directory.CreateDirectory(newDir);
+
+            foreach (var srcFile in Directory.GetFiles(legacyDir, "*.json"))
+            {
+                var destFile = Path.Combine(newDir, Path.GetFileName(srcFile));
+                if (!File.Exists(destFile))
+                    File.Copy(srcFile, destFile, overwrite: false);
+            }
+        }
+        catch { /* Silent — không block app */ }
     }
 
     public IReadOnlyList<string> GetAllWorkflowNames()

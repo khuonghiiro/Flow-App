@@ -128,8 +128,8 @@ namespace FlowMy.ViewModels
             _gitNode = node ?? throw new ArgumentNullException(nameof(node));
             _host = host;
 
-            var appRoot = AppDomain.CurrentDomain.BaseDirectory;
-            LocalPath = Path.Combine(appRoot, "Project_Git");
+            var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            LocalPath = Path.Combine(docs, "FlowMy", "FlowMy_CloneGit");
 
             // Sync from node if already configured
             if (!string.IsNullOrWhiteSpace(node.RepoUrl)) RepoUrl = node.RepoUrl;
