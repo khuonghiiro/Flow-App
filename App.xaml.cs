@@ -37,7 +37,7 @@ namespace FlowMy
         // File logging
         private static readonly string LogDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "Auto_Click_Logs");
+            "FlowMy", "logs");
         private static readonly object LogFileLock = new object();
 
         #endregion
@@ -487,7 +487,7 @@ namespace FlowMy
         }
 
         /// <summary>
-        /// Ghi log vào file trong thư mục Documents/Auto_Click_Logs
+        /// Ghi log vào file trong thư mục Documents/FlowMy/logs
         /// File log được đặt tên theo ngày hiện tại (yyyy_MM_dd.log)
         /// </summary>
         /// <param name="category">Loại log (ví dụ: ERROR, INFO, WARNING)</param>
