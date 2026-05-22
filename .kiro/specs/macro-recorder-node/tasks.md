@@ -6,26 +6,26 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
 
 ## Tasks
 
-- [ ] 1. Thêm `MacroRecorder` vào enum `NodeType`
+- [x] 1. Thêm `MacroRecorder` vào enum `NodeType`
   - File: `Models/Nodes/NodeType.cs`
   - Thêm `MacroRecorder` vào cuối enum
 
-- [ ] 2. Tạo `MacroAction` DTO
+- [x] 2. Tạo `MacroAction` DTO
   - File: `Models/Nodes/MacroAction.cs` (file mới)
   - Class `MacroAction` với properties: `SequenceNumber` (int), `Type` (string), `Timestamp` (long), `X` (int), `Y` (int), `Button` (string?), `Key` (string?)
 
-- [ ] 3. Tạo `MacroPlaybackMode` enum và `MacroRecorderNode` model
+- [x] 3. Tạo `MacroPlaybackMode` enum và `MacroRecorderNode` model
   - File: `Models/Nodes/MacroRecorderNode.cs` (file mới)
   - Enum `MacroPlaybackMode { Once, Repeat }`
   - Class `MacroRecorderNode : WorkflowNode` với đầy đủ properties và ports trong constructor
   - Requires: Task 1, Task 2
 
-- [-] 4. Tạo `MacroRecorderNodeControl`
+- [x] 4. Tạo `MacroRecorderNodeControl`
   - File: `Views/NodeControls/MacroRecorderNodeControl.cs` (file mới)
   - Static class, method `CreateBorder`, icon `"chart-network light"`, fluent API đầy đủ
   - Requires: Task 3
 
-- [ ] 5. Tạo `MacroRecorderNodeDialogViewModel`
+- [x] 5. Tạo `MacroRecorderNodeDialogViewModel`
   - File: `ViewModels/MacroRecorderNodeDialogViewModel.cs` (file mới)
   - Properties: `OutputKey`, `MacroDataJson`, `SelectedPlaybackMode`, `RepeatIntervalMs`, `RepeatCount`
   - Computed: `IsRepeatVisible`, `CanExportJson`
@@ -33,7 +33,7 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
   - `OnSaveTitle` sync về node
   - Requires: Task 3
 
-- [ ] 6. Tạo `MacroRecorderOverlay` (XAML + code-behind)
+- [x] 6. Tạo `MacroRecorderOverlay` (XAML + code-behind)
   - File: `Views/Overlays/MacroRecorderOverlay.xaml` + `.xaml.cs` (file mới)
   - Cửa sổ toàn màn hình trong suốt, Topmost, AllowsTransparency
   - State machine: IDLE → RECORDING → DONE/CANCELLED
@@ -45,7 +45,7 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
   - Property `RecordedJson` (string?) và `HasData` (bool) trả về kết quả
   - Requires: Task 2
 
-- [ ] 7. Tạo `MacroRecorderNodeDialog` (XAML + code-behind)
+- [-] 7. Tạo `MacroRecorderNodeDialog` (XAML + code-behind)
   - File: `Views/Overlays/MacroRecorderNodeDialog.xaml` + `.xaml.cs` (file mới)
   - Kế thừa `BaseNodeDialog`
   - Tab "Logic": TitleDisplayMode, TitleColorMode+preview, OutputKey TextBox, MacroDataJson TextArea readonly, Button "🔴 Ghi lại thao tác", PlaybackMode ComboBox, RepeatIntervalMs TextBox (ẩn/hiện theo IsRepeatVisible), RepeatCount TextBox (ẩn/hiện), Button "📤 Export JSON" (bind IsEnabled=CanExportJson), Button "📥 Import JSON", InputsPanel, OutputsPanel
@@ -53,52 +53,52 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
   - Code-behind: xử lý "Ghi lại thao tác" (minimize app, show overlay, restore app, cập nhật MacroDataJson), Export JSON (SaveFileDialog), Import JSON (OpenFileDialog + validate JSON)
   - Requires: Task 5, Task 6
 
-- [ ] 8. Tạo `MacroRecorderNodeRenderer`
+- [-] 8. Tạo `MacroRecorderNodeRenderer`
   - File: `Services/Rendering/MacroRecorderNodeRenderer.cs` (file mới)
   - Implement `INodeRenderer`
   - `RenderNode`, `UpdateNodePosition`, `RemoveNode`, `RemoveAllNodeVisuals`
   - Pattern giống `MouseEventNodeRenderer`
   - Requires: Task 4
 
-- [ ] 9. Tạo `MacroRecorderNodeExecutor`
+- [x] 9. Tạo `MacroRecorderNodeExecutor`
   - File: `Services/Workflow/NodeExecutors/MacroRecorderNodeExecutor.cs` (file mới)
   - Implement `INodeExecutor`
   - `CanExecute`: `node is MacroRecorderNode`
   - `ExecuteAsync`: parse JSON, phát lại với timing delta (Task.Delay = delta timestamp), hỗ trợ Once/Repeat với delay giữa chu kỳ, mouse move dùng SetCursorPos P/Invoke, publish output vào scoped store, gọi TraverseOutputsAsync
   - Requires: Task 3
 
-- [ ] 10. Thêm `CreateMacroRecorderNode` vào `TemplateFactory`
+- [x] 10. Thêm `CreateMacroRecorderNode` vào `TemplateFactory`
   - File: `Workflow/TemplateFactory.cs`
   - Thêm `"MacroRecorder" => CreateMacroRecorderNode(x, y)` vào switch
   - Thêm private method `CreateMacroRecorderNode(double x, double y)` với `MangoTangoBrush`
   - Requires: Task 3
 
-- [ ] 11. Đăng ký renderer trong `ServiceCollectionExtensions`
+- [~] 11. Đăng ký renderer trong `ServiceCollectionExtensions`
   - File: `Services/ServiceCollectionExtensions.cs`
   - Thêm `services.AddScoped<MacroRecorderNodeRenderer>()`
   - Requires: Task 8
 
-- [ ] 12. Đăng ký renderer trong `_NodeRenderer.cs`
+- [~] 12. Đăng ký renderer trong `_NodeRenderer.cs`
   - File: `Services/Rendering/_NodeRenderer.cs`
   - Thêm field `_macroRecorderNodeRenderer`, constructor param, và entry `[typeof(MacroRecorderNode)] = _macroRecorderNodeRenderer` vào dictionary
   - Requires: Task 8, Task 11
 
-- [ ] 13. Đăng ký executor trong `WorkflowExecutionService`
+- [~] 13. Đăng ký executor trong `WorkflowExecutionService`
   - File: `Services/Workflow/WorkflowExecutionService.cs`
   - Thêm `new MacroRecorderNodeExecutor()` vào `_nodeExecutors` list
   - Requires: Task 9
 
-- [ ] 14. Thêm persistence — `GetNodeProperties` trong `FileWorkflowPersistenceService`
+- [-] 14. Thêm persistence — `GetNodeProperties` trong `FileWorkflowPersistenceService`
   - File: `Services/Workflow/FileWorkflowPersistenceService.cs`
   - Thêm `else if (node is MacroRecorderNode macroNode)` block serialize: OutputKey, MacroDataJson, PlaybackMode, RepeatIntervalMs, RepeatCount
   - Requires: Task 3
 
-- [ ] 15. Thêm persistence — `RestoreNodeProperties` trong `FileWorkflowPersistenceService`
+- [-] 15. Thêm persistence — `RestoreNodeProperties` trong `FileWorkflowPersistenceService`
   - File: `Services/Workflow/FileWorkflowPersistenceService.cs`
   - Thêm `else if (node is MacroRecorderNode macroNode)` block deserialize 5 properties
   - Requires: Task 3
 
-- [ ] 16. Thêm persistence trong `WorkflowEditorViewModel`
+- [-] 16. Thêm persistence trong `WorkflowEditorViewModel`
   - File: `ViewModels/WorkflowEditorViewModel.cs`
   - Thêm `else if (node is MacroRecorderNode)` block vào cả `GetNodeProperties` và `RestoreNodeProperties`
   - Requires: Task 3
@@ -108,7 +108,7 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
   - Trong method clone node, thêm deep copy cho `MacroRecorderNode` properties (OutputKey, MacroDataJson, PlaybackMode, RepeatIntervalMs, RepeatCount)
   - Requires: Task 3
 
-- [ ] 18. Thêm entry palette vào `WorkflowEditorWindow.xaml`
+- [~] 18. Thêm entry palette vào `WorkflowEditorWindow.xaml`
   - File: `Views/WorkflowEditorWindow.xaml`
   - Thêm `Border` với `Tag="MacroRecorder"` vào `EventsWrapPanel` sau entry MouseEvent
   - Background: `MangoTangoBrush`, icon: `chart-network light`, Fill: `TextOnMangoTangoBrush`

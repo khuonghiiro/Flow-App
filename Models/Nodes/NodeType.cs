@@ -56,7 +56,9 @@ namespace FlowMy.Models
         FolderFilePaths,
         FlowOverwrite,
         /// <summary>Git source — clone/pull repo, mở VSCodium.</summary>
-        GitSource
+        GitSource,
+        /// <summary>Ghi lại và phát lại thao tác chuột/bàn phím.</summary>
+        MacroRecorder
     }
 }
 

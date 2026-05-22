@@ -60,6 +60,7 @@ namespace FlowMy.Workflow
                 "KeyValueBridge" => CreateKeyValueBridgeNode(x, y),
                 "FlowOverwrite" => CreateFlowOverwriteNode(x, y),
                 "GitSource" => CreateGitSourceNode(x, y),
+                "MacroRecorder" => CreateMacroRecorderNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1327,6 +1328,21 @@ namespace FlowMy.Workflow
                 Type = NodeType.BodyContainer
             };
             return node;
+        }
+
+        private WorkflowNode CreateMacroRecorderNode(double x, double y)
+        {
+            var nodeBrush = _colorThemeService.GetBrush("MangoTangoBrush")
+                            ?? _colorThemeService.GetBrush("WarningBrush")
+                            ?? Brushes.OrangeRed;
+
+            return new MacroRecorderNode
+            {
+                Id = $"Node_MacroRecorder_{Guid.NewGuid()}",
+                X = x - 75,
+                Y = y - 40,
+                NodeBrush = nodeBrush
+            };
         }
 
         private Brush GetRandomBrush()
