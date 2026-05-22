@@ -1,7 +1,7 @@
 namespace FlowMy.Models
 {
     /// <summary>
-    /// DTO đại diện cho một thao tác đơn lẻ được ghi lại (click chuột, nhấn phím, di chuyển chuột).
+    /// DTO đại diện cho một thao tác đơn lẻ được ghi lại (click chuột, nhấn phím, di chuyển chuột, scroll).
     /// </summary>
     public sealed class MacroAction
     {
@@ -11,7 +11,7 @@ namespace FlowMy.Models
         public int SequenceNumber { get; set; }
 
         /// <summary>
-        /// Loại thao tác: "MouseClick" | "KeyPress" | "MouseMove"
+        /// Loại thao tác: "MouseClick" | "KeyPress" | "MouseMove" | "MouseScroll"
         /// </summary>
         public string Type { get; set; } = string.Empty;
 
@@ -31,13 +31,18 @@ namespace FlowMy.Models
         public int Y { get; set; }
 
         /// <summary>
-        /// Nút chuột được nhấn: "Left" | "Right" | null (null với KeyPress và MouseMove).
+        /// Nút chuột được nhấn: "Left" | "Right" | "ShiftLeft" | null.
         /// </summary>
         public string? Button { get; set; }
 
         /// <summary>
-        /// Tên phím được nhấn (ví dụ: "A", "Enter", "F5") hoặc null (null với MouseClick và MouseMove).
+        /// Tên phím được nhấn (ví dụ: "A", "Enter", "F5") hoặc null.
         /// </summary>
         public string? Key { get; set; }
+
+        /// <summary>
+        /// Số notch scroll (dương = lên, âm = xuống). Chỉ dùng với MouseScroll.
+        /// </summary>
+        public int ScrollDelta { get; set; }
     }
 }

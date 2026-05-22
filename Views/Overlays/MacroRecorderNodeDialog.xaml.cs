@@ -37,25 +37,28 @@ namespace FlowMy.Views.Overlays
 
         private void RecordButton_Click(object sender, RoutedEventArgs e)
         {
-            // 1. Tìm app window chính để minimize
+            // 1. Minimize app main window
             var appWindow = Application.Current.MainWindow;
-
-            // 2. Minimize app window
             if (appWindow != null)
                 appWindow.WindowState = WindowState.Minimized;
 
-            // 3. Hiển thị MacroRecorderOverlay
+            // 2. Hide this dialog so it doesn't block the overlay
+            this.Hide();
+
+            // 3. Show overlay
             var overlay = new MacroRecorderOverlay();
             overlay.ShowDialog();
 
-            // 4. Restore app window
+            // 4. Restore app window and re-show dialog
             if (appWindow != null)
             {
                 appWindow.WindowState = WindowState.Normal;
                 appWindow.Activate();
             }
+            this.Show();
+            this.Activate();
 
-            // 5. Cập nhật MacroDataJson nếu overlay có dữ liệu
+            // 5. Update MacroDataJson if overlay has data
             if (overlay.HasData && overlay.RecordedJson != null)
             {
                 _viewModel.MacroDataJson = overlay.RecordedJson;
