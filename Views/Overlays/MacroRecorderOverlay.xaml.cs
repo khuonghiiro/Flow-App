@@ -66,6 +66,7 @@ namespace FlowMy.Views.Overlays
         private const int WM_KEYDOWN    = 0x0100;
         private const int WM_SYSKEYDOWN = 0x0104;
         private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_LBUTTONUP   = 0x0202;
         private const int WM_RBUTTONDOWN = 0x0204;
         private const int WM_MOUSEMOVE   = 0x0200;
         private const int WM_MOUSEWHEEL  = 0x020A;
@@ -110,6 +111,13 @@ namespace FlowMy.Views.Overlays
         private int _lastMoveX = int.MinValue;
         private int _lastMoveY = int.MinValue;
         private const int MoveThresholdPx = 5;
+
+        // Drag-hold tracking (left button held down)
+        private bool _isDragging = false;
+        private int _dragStartX, _dragStartY;
+        private int _dragStartSeq;
+        private System.Windows.Point _dragStartCanvas;
+        private Line? _dragLine;
 
         // Trail polyline
         private Polyline? _trailPolyline;
@@ -254,12 +262,56 @@ namespace FlowMy.Views.Overlays
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
-                        Type = "MouseClick", Timestamp = ts,
+                        Type = "MouseDown", Timestamp = ts,
                         X = x, Y = y, Button = button
                     });
+                    int seq = _sequenceCounter;
                     Dispatcher.Invoke(() =>
                     {
-                        DrawClick(x, y, button, _sequenceCounter, delta);
+                        DrawClick(x, y, button, seq, delta);
+                        // Start drag-hold tracking
+                        _isDragging = true;
+                        _dragStartX = x; _dragStartY = y;
+                        _dragStartSeq = seq;
+                        _dragStartCanvas = ScreenToCanvas(x, y);
+                        // Create drag line (will grow as mouse moves)
+                        _dragLine = new Line
+                        {
+                            X1 = _dragStartCanvas.X, Y1 = _dragStartCanvas.Y,
+                            X2 = _dragStartCanvas.X, Y2 = _dragStartCanvas.Y,
+                            Stroke = new SolidColorBrush(Color.FromArgb(200, 0xFF, 0xA5, 0x00)),
+                            StrokeThickness = 2,
+                            StrokeDashArray = new DoubleCollection { 5, 3 },
+                            IsHitTestVisible = false
+                        };
+                        DrawingCanvas.Children.Add(_dragLine);
+                        UpdateActionCount();
+                    });
+                }
+                else if (wParam == (IntPtr)WM_LBUTTONUP && _isDragging)
+                {
+                    double delta  = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                    _lastActionTs = ts;
+
+                    _actions.Add(new MacroAction
+                    {
+                        SequenceNumber = ++_sequenceCounter,
+                        Type = "MouseUp", Timestamp = ts,
+                        X = x, Y = y, Button = "Left"
+                    });
+                    int seq = _sequenceCounter;
+                    Dispatcher.Invoke(() =>
+                    {
+                        _isDragging = false;
+                        // Finalize drag line endpoint
+                        if (_dragLine != null)
+                        {
+                            var endPt = ScreenToCanvas(x, y);
+                            _dragLine.X2 = endPt.X;
+                            _dragLine.Y2 = endPt.Y;
+                            _dragLine = null;
+                        }
+                        DrawMouseUp(x, y, seq, delta);
                         UpdateActionCount();
                     });
                 }
@@ -319,6 +371,13 @@ namespace FlowMy.Views.Overlays
                         Dispatcher.Invoke(() =>
                         {
                             AddTrailPoint(x, y);
+                            // Update drag line endpoint while dragging
+                            if (_isDragging && _dragLine != null)
+                            {
+                                var pt = ScreenToCanvas(x, y);
+                                _dragLine.X2 = pt.X;
+                                _dragLine.Y2 = pt.Y;
+                            }
                             UpdateActionCount();
                         });
                     }
@@ -603,6 +662,59 @@ namespace FlowMy.Views.Overlays
         {
             if (_trailPolyline == null) return;
             _trailPolyline.Points.Add(ScreenToCanvas(screenX, screenY));
+        }
+
+        /// <summary>
+        /// Vẽ marker nhả chuột trái (kết thúc drag-hold): hình tròn rỗng màu cam + label.
+        /// </summary>
+        private void DrawMouseUp(int screenX, int screenY, int seq, double deltaSeconds)
+        {
+            var pt = ScreenToCanvas(screenX, screenY);
+
+            // Open circle (stroke only, no fill) to distinguish from press
+            var circle = new Ellipse
+            {
+                Width  = MarkerRadius * 2,
+                Height = MarkerRadius * 2,
+                Fill   = new SolidColorBrush(Color.FromArgb(60, 0xFF, 0xA5, 0x00)),
+                Stroke = new SolidColorBrush(Color.FromArgb(220, 0xFF, 0xA5, 0x00)),
+                StrokeThickness = 2.5,
+                StrokeDashArray = new DoubleCollection { 4, 2 },
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(circle, pt.X - MarkerRadius);
+            Canvas.SetTop(circle,  pt.Y - MarkerRadius);
+            DrawingCanvas.Children.Add(circle);
+
+            var labelSp = new StackPanel { Orientation = Orientation.Vertical };
+            labelSp.Children.Add(new TextBlock
+            {
+                Text       = $"[{seq}] ↑L",
+                FontSize   = 11,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White
+            });
+            if (deltaSeconds > 0)
+            {
+                labelSp.Children.Add(new TextBlock
+                {
+                    Text       = $"+{deltaSeconds:F2}s",
+                    FontSize   = 10,
+                    Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 240, 120))
+                });
+            }
+
+            var pill = new Border
+            {
+                Background   = new SolidColorBrush(Color.FromArgb(210, 20, 20, 20)),
+                CornerRadius = new CornerRadius(4),
+                Padding      = new Thickness(5, 2, 5, 2),
+                Child        = labelSp,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(pill, pt.X + MarkerRadius + 3);
+            Canvas.SetTop(pill,  pt.Y - MarkerRadius);
+            DrawingCanvas.Children.Add(pill);
         }
 
         private System.Windows.Point ScreenToCanvas(int screenX, int screenY)

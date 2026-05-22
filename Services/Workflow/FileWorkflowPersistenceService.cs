@@ -3733,6 +3733,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("RepeatCount", out var mrcObj) &&
                 int.TryParse(mrcObj?.ToString(), out var mrc))
                 macroRecorderNode.RepeatCount = Math.Max(1, mrc);
+            if (properties.TryGetValue("VisualPlaybackMode", out var vpmObj) &&
+                Enum.TryParse<VisualPlaybackMode>(vpmObj?.ToString(), out var vpm))
+                macroRecorderNode.VisualPlaybackMode = vpm;
         }
         else if (node is NotificationNode notificationNode)
         {
@@ -5293,6 +5296,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["PlaybackMode"] = macroNode.PlaybackMode.ToString();
             dict["RepeatIntervalMs"] = macroNode.RepeatIntervalMs;
             dict["RepeatCount"] = macroNode.RepeatCount;
+            dict["VisualPlaybackMode"] = macroNode.VisualPlaybackMode.ToString();
         }
         else if (node is NotificationNode notificationNode)
         {

@@ -26,8 +26,15 @@ namespace FlowMy.Views.Overlays
             _viewModel = new MacroRecorderNodeDialogViewModel(node, host);
             InitializeBase(_viewModel, owner);
 
-            // Cập nhật preview màu tiêu đề sau khi khởi tạo
             UpdateTitleColorPreview();
+
+            // Wire visual mode hint
+            _viewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MacroRecorderNodeDialogViewModel.SelectedVisualPlaybackMode))
+                    UpdateVisualModeHint();
+            };
+            UpdateVisualModeHint();
         }
 
         protected override Panel? GetInputsPanel() => InputsPanel;
@@ -139,6 +146,18 @@ namespace FlowMy.Views.Overlays
         }
 
         // ─── Helpers ──────────────────────────────────────────────────────────────
+
+        private void UpdateVisualModeHint()
+        {
+            if (VisualModeHint == null) return;
+            VisualModeHint.Text = _viewModel.SelectedVisualPlaybackMode switch
+            {
+                "Không hiển thị"     => "Chạy thao tác ngầm, không hiển thị gì lên màn hình.",
+                "Hiển thị trực tiếp" => "Hiển thị marker tại vị trí thao tác khi nó xảy ra, rồi mờ dần.",
+                "Hiển thị luồng sẵn" => "Vẽ sẵn toàn bộ luồng lên màn hình, thao tác đến đâu marker biến mất đến đó.",
+                _                    => ""
+            };
+        }
 
         /// <summary>
         /// Kiểm tra chuỗi có phải JSON hợp lệ và là array không.

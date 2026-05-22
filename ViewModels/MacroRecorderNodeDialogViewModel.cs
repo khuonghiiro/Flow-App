@@ -11,38 +11,30 @@ namespace FlowMy.ViewModels
     {
         private readonly MacroRecorderNode _macroRecorderNode;
 
-        [ObservableProperty]
-        private string _outputKey;
+        [ObservableProperty] private string _outputKey;
+        [ObservableProperty] private string _macroDataJson;
+        [ObservableProperty] private string _selectedPlaybackMode;
+        [ObservableProperty] private int    _repeatIntervalMs;
+        [ObservableProperty] private int    _repeatCount;
+        [ObservableProperty] private string _selectedVisualPlaybackMode;
 
-        [ObservableProperty]
-        private string _macroDataJson;
+        public bool IsRepeatVisible       => SelectedPlaybackMode == "Lặp lại";
+        public bool CanExportJson         => !string.IsNullOrWhiteSpace(MacroDataJson);
 
-        [ObservableProperty]
-        private string _selectedPlaybackMode;
-
-        [ObservableProperty]
-        private int _repeatIntervalMs;
-
-        [ObservableProperty]
-        private int _repeatCount;
-
-        /// <summary>
-        /// Trả về true khi SelectedPlaybackMode == "Lặp lại", false khi "Chạy 1 lần".
-        /// </summary>
-        public bool IsRepeatVisible => SelectedPlaybackMode == "Lặp lại";
-
-        /// <summary>
-        /// Trả về true khi MacroDataJson có nội dung (không null, không rỗng, không chỉ khoảng trắng).
-        /// </summary>
-        public bool CanExportJson => !string.IsNullOrWhiteSpace(MacroDataJson);
-
-        /// <summary>
-        /// Danh sách chế độ phát lại cho ComboBox.
-        /// </summary>
         public ObservableCollection<string> PlaybackModeOptions { get; } = new()
         {
             "Chạy 1 lần",
             "Lặp lại"
+        };
+
+        /// <summary>
+        /// 3 chế độ hiển thị overlay khi phát lại.
+        /// </summary>
+        public ObservableCollection<string> VisualPlaybackModeOptions { get; } = new()
+        {
+            "Không hiển thị",
+            "Hiển thị trực tiếp",
+            "Hiển thị luồng sẵn"
         };
 
         public MacroRecorderNodeDialogViewModel(MacroRecorderNode node, IWorkflowEditorHost host)
@@ -50,14 +42,13 @@ namespace FlowMy.ViewModels
         {
             _macroRecorderNode = node;
 
-            // Khởi tạo từ node properties
-            _outputKey = node.OutputKey ?? "macroData";
-            _macroDataJson = node.MacroDataJson ?? "";
-            _selectedPlaybackMode = node.PlaybackMode == MacroPlaybackMode.Repeat ? "Lặp lại" : "Chạy 1 lần";
-            _repeatIntervalMs = node.RepeatIntervalMs;
-            _repeatCount = node.RepeatCount;
+            _outputKey               = node.OutputKey ?? "macroData";
+            _macroDataJson           = node.MacroDataJson ?? "";
+            _selectedPlaybackMode    = node.PlaybackMode == MacroPlaybackMode.Repeat ? "Lặp lại" : "Chạy 1 lần";
+            _repeatIntervalMs        = node.RepeatIntervalMs;
+            _repeatCount             = node.RepeatCount;
+            _selectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
 
-            // Sync từ node khi node thay đổi bên ngoài
             if (node is INotifyPropertyChanged npc)
             {
                 npc.PropertyChanged += (s, e) =>
@@ -75,6 +66,8 @@ namespace FlowMy.ViewModels
                         RepeatIntervalMs = node.RepeatIntervalMs;
                     else if (e.PropertyName == nameof(MacroRecorderNode.RepeatCount))
                         RepeatCount = node.RepeatCount;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.VisualPlaybackMode))
+                        SelectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
 
                     OnNodePropertyChanged(e.PropertyName);
                 };
@@ -83,72 +76,58 @@ namespace FlowMy.ViewModels
 
         protected override string GetDefaultTitle() => "Macro Recorder";
 
-        /// <summary>
-        /// Khi SelectedPlaybackMode thay đổi, thông báo IsRepeatVisible để UI cập nhật visibility.
-        /// </summary>
         partial void OnSelectedPlaybackModeChanged(string value)
-        {
-            OnPropertyChanged(nameof(IsRepeatVisible));
-        }
+            => OnPropertyChanged(nameof(IsRepeatVisible));
 
-        /// <summary>
-        /// Khi MacroDataJson thay đổi, thông báo CanExportJson để UI cập nhật trạng thái nút Export.
-        /// </summary>
         partial void OnMacroDataJsonChanged(string value)
-        {
-            OnPropertyChanged(nameof(CanExportJson));
-        }
+            => OnPropertyChanged(nameof(CanExportJson));
 
-        /// <summary>
-        /// Override OnSaveTitle để sync tất cả properties về node.
-        /// </summary>
         protected override void OnSaveTitle()
         {
             bool needSync = false;
 
-            // Sync NodeTitle về node.Title
             if (_macroRecorderNode.Title != NodeTitle)
-            {
-                _macroRecorderNode.Title = NodeTitle;
-                needSync = true;
-            }
+            { _macroRecorderNode.Title = NodeTitle; needSync = true; }
 
             if (_macroRecorderNode.OutputKey != OutputKey)
-            {
-                _macroRecorderNode.OutputKey = OutputKey;
-                needSync = true;
-            }
+            { _macroRecorderNode.OutputKey = OutputKey; needSync = true; }
 
             if (_macroRecorderNode.MacroDataJson != MacroDataJson)
-            {
-                _macroRecorderNode.MacroDataJson = MacroDataJson;
-                needSync = true;
-            }
+            { _macroRecorderNode.MacroDataJson = MacroDataJson; needSync = true; }
 
             var newPlaybackMode = SelectedPlaybackMode == "Lặp lại"
-                ? MacroPlaybackMode.Repeat
-                : MacroPlaybackMode.Once;
-
+                ? MacroPlaybackMode.Repeat : MacroPlaybackMode.Once;
             if (_macroRecorderNode.PlaybackMode != newPlaybackMode)
-            {
-                _macroRecorderNode.PlaybackMode = newPlaybackMode;
-                needSync = true;
-            }
+            { _macroRecorderNode.PlaybackMode = newPlaybackMode; needSync = true; }
 
             if (_macroRecorderNode.RepeatIntervalMs != RepeatIntervalMs)
-            {
-                _macroRecorderNode.RepeatIntervalMs = RepeatIntervalMs;
-                needSync = true;
-            }
+            { _macroRecorderNode.RepeatIntervalMs = RepeatIntervalMs; needSync = true; }
 
             if (_macroRecorderNode.RepeatCount != RepeatCount)
-            {
-                _macroRecorderNode.RepeatCount = RepeatCount;
-                needSync = true;
-            }
+            { _macroRecorderNode.RepeatCount = RepeatCount; needSync = true; }
+
+            var newVisual = StringToVisualMode(SelectedVisualPlaybackMode);
+            if (_macroRecorderNode.VisualPlaybackMode != newVisual)
+            { _macroRecorderNode.VisualPlaybackMode = newVisual; needSync = true; }
 
             if (needSync)
                 _host.RequestSyncDataPanels(immediate: true);
         }
+
+        // ─── Helpers ─────────────────────────────────────────────────────────────
+
+        private static string VisualModeToString(VisualPlaybackMode m) => m switch
+        {
+            VisualPlaybackMode.Silent => "Không hiển thị",
+            VisualPlaybackMode.Ghost  => "Hiển thị luồng sẵn",
+            _                         => "Hiển thị trực tiếp"
+        };
+
+        private static VisualPlaybackMode StringToVisualMode(string s) => s switch
+        {
+            "Không hiển thị"    => VisualPlaybackMode.Silent,
+            "Hiển thị luồng sẵn" => VisualPlaybackMode.Ghost,
+            _                    => VisualPlaybackMode.Live
+        };
     }
 }

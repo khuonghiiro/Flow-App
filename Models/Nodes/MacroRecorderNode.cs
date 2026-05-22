@@ -10,6 +10,19 @@ namespace FlowMy.Models
     }
 
     /// <summary>
+    /// Chế độ hiển thị overlay khi phát lại:
+    /// Silent = không hiển thị gì,
+    /// Live   = hiển thị marker khi thao tác xảy ra rồi mờ dần,
+    /// Ghost  = vẽ sẵn toàn bộ luồng, thao tác đến đâu marker biến mất đến đó.
+    /// </summary>
+    public enum VisualPlaybackMode
+    {
+        Silent,
+        Live,
+        Ghost
+    }
+
+    /// <summary>
     /// Node ghi lại và phát lại thao tác chuột/bàn phím.
     /// </summary>
     public sealed class MacroRecorderNode : WorkflowNode
@@ -19,6 +32,7 @@ namespace FlowMy.Models
         private MacroPlaybackMode _playbackMode = MacroPlaybackMode.Once;
         private int _repeatIntervalMs = 500;
         private int _repeatCount = 1;
+        private VisualPlaybackMode _visualPlaybackMode = VisualPlaybackMode.Live;
 
         public MacroRecorderNode()
         {
@@ -121,6 +135,20 @@ namespace FlowMy.Models
                 var v = value < 1 ? 1 : value;
                 if (_repeatCount == v) return;
                 _repeatCount = v;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Chế độ hiển thị overlay khi phát lại.
+        /// </summary>
+        public VisualPlaybackMode VisualPlaybackMode
+        {
+            get => _visualPlaybackMode;
+            set
+            {
+                if (_visualPlaybackMode == value) return;
+                _visualPlaybackMode = value;
                 OnPropertyChanged();
             }
         }
