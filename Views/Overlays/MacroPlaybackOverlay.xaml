@@ -1,0 +1,95 @@
+<Window x:Class="FlowMy.Views.Overlays.MacroPlaybackOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Macro Playback"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        WindowState="Maximized"
+        ShowInTaskbar="False"
+        IsHitTestVisible="False"
+        Focusable="False">
+
+    <Grid>
+        <!-- Very light tint so canvas is visible but overlay is obvious -->
+        <Rectangle Fill="#08000000" IsHitTestVisible="False"/>
+
+        <!-- Drawing canvas for replay visuals -->
+        <Canvas x:Name="DrawingCanvas" IsHitTestVisible="False"/>
+
+        <!-- Status bar — top center -->
+        <Border x:Name="StatusPanel"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                Margin="0,24,0,0"
+                Background="#E0111111"
+                CornerRadius="8"
+                Padding="20,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock FontSize="16"
+                           Foreground="#44FF88"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           Text="▶"/>
+                <TextBlock x:Name="StatusText"
+                           FontSize="14"
+                           Foreground="#FFFFFF"
+                           FontWeight="Medium"
+                           VerticalAlignment="Center"
+                           Text="Đang phát lại thao tác..."/>
+            </StackPanel>
+        </Border>
+
+        <!-- Progress: cycle / action count — top right -->
+        <Border x:Name="ProgressPanel"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Right"
+                Margin="0,24,24,0"
+                Background="#E0003366"
+                CornerRadius="8"
+                Padding="16,8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock FontSize="14"
+                           Foreground="#FFFFFF"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,6,0"
+                           Text="▶"/>
+                <TextBlock x:Name="ProgressText"
+                           FontSize="14"
+                           Foreground="#FFFFFF"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"
+                           Text="0 / 0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Action counter — top left -->
+        <Border x:Name="ActionPanel"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                Margin="24,24,0,0"
+                Background="#E0111111"
+                CornerRadius="8"
+                Padding="14,8">
+            <TextBlock x:Name="ActionText"
+                       FontSize="13"
+                       Foreground="#FFFFFF"
+                       FontWeight="Medium"
+                       Text="Thao tác 0 / 0"/>
+        </Border>
+
+        <!-- ESC hint — bottom center -->
+        <Border VerticalAlignment="Bottom"
+                HorizontalAlignment="Center"
+                Margin="0,0,0,24"
+                Background="#CC111111"
+                CornerRadius="6"
+                Padding="14,6">
+            <TextBlock FontSize="12"
+                       Foreground="#AAFFFFFF"
+                       Text="ESC để dừng workflow"/>
+        </Border>
+    </Grid>
+</Window>

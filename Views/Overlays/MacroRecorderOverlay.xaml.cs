@@ -485,33 +485,36 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(vBar,  pt.Y - MarkerRadius / 2.0);
             DrawingCanvas.Children.Add(vBar);
 
-            // Sequence + button label (top-right of circle)
-            var seqLabel = new TextBlock
+            // Label pill: "[seq] L  +X.XXs" — dark background so it's readable on any background
+            var labelSp = new StackPanel { Orientation = Orientation.Vertical };
+            labelSp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] {label}",
                 FontSize   = 11,
                 FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(seqLabel, pt.X + MarkerRadius + 3);
-            Canvas.SetTop(seqLabel,  pt.Y - MarkerRadius);
-            DrawingCanvas.Children.Add(seqLabel);
-
-            // Delta time label (below sequence label, only if > 0)
+                Foreground = Brushes.White
+            });
             if (deltaSeconds > 0)
             {
-                var deltaLabel = new TextBlock
+                labelSp.Children.Add(new TextBlock
                 {
                     Text       = $"+{deltaSeconds:F2}s",
                     FontSize   = 10,
-                    Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 180)),
-                    IsHitTestVisible = false
-                };
-                Canvas.SetLeft(deltaLabel, pt.X + MarkerRadius + 3);
-                Canvas.SetTop(deltaLabel,  pt.Y - MarkerRadius + 14);
-                DrawingCanvas.Children.Add(deltaLabel);
+                    Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 240, 120))
+                });
             }
+
+            var pill = new Border
+            {
+                Background   = new SolidColorBrush(Color.FromArgb(210, 20, 20, 20)),
+                CornerRadius = new CornerRadius(4),
+                Padding      = new Thickness(5, 2, 5, 2),
+                Child        = labelSp,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(pill, pt.X + MarkerRadius + 3);
+            Canvas.SetTop(pill,  pt.Y - MarkerRadius);
+            DrawingCanvas.Children.Add(pill);
         }
 
         /// <summary>

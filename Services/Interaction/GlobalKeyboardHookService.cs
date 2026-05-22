@@ -50,6 +50,12 @@ namespace FlowMy.Services.Interaction
         private bool _disposed;
         private int _suppressCount;
 
+        /// <summary>
+        /// Fired on the UI thread when the user physically presses ESC (VK_ESCAPE = 0x1B).
+        /// Only fires when notifications are not suppressed.
+        /// </summary>
+        public event Action? EscapePressed;
+
         public GlobalKeyboardHookService()
         {
             _proc = HookCallback;
@@ -186,6 +192,21 @@ namespace FlowMy.Services.Interaction
                 {
                     // KBDLLHOOKSTRUCT.vkCode is the first 4 bytes
                     var vkCode = Marshal.ReadInt32(lParam);
+
+                    // Fire EscapePressed event when user physically presses ESC
+                    if (vkCode == 0x1B) // VK_ESCAPE
+                    {
+                        var handler = EscapePressed;
+                        if (handler != null)
+                        {
+                            var app = Application.Current;
+                            if (app?.Dispatcher != null)
+                                app.Dispatcher.BeginInvoke(handler);
+                            else
+                                handler();
+                        }
+                    }
+
                     var key = KeyInterop.KeyFromVirtualKey(vkCode);
                     if (key != Key.None)
                     {

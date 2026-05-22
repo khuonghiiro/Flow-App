@@ -1,13 +1,17 @@
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
+using FlowMy.Views.Overlays;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
     /// <summary>
     /// Executor cho MacroRecorderNode: phát lại chuỗi thao tác chuột/bàn phím đã ghi.
+    /// Hiển thị MacroPlaybackOverlay trong suốt quá trình phát lại để user thấy tiến trình.
     /// </summary>
     internal sealed class MacroRecorderNodeExecutor : INodeExecutor
     {
@@ -25,10 +29,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
         {
             var macroNode = (MacroRecorderNode)node;
-
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            // Nếu JSON rỗng, chỉ traverse và kết thúc — không throw
+            // Empty JSON → traverse and finish without throwing
             if (string.IsNullOrWhiteSpace(macroNode.MacroDataJson))
             {
                 sw.Stop();
@@ -57,8 +60,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return;
             }
 
-            // Xác định số chu kỳ phát lại
             int cycles = macroNode.PlaybackMode == MacroPlaybackMode.Once ? 1 : macroNode.RepeatCount;
+
+            // ── Show playback overlay on UI thread ────────────────────────────────
+            MacroPlaybackOverlay? overlay = null;
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null)
+            {
+                await dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        overlay = new MacroPlaybackOverlay();
+                        overlay.Show();
+                    }
+                    catch { overlay = null; }
+                }, DispatcherPriority.Normal);
+            }
 
             try
             {
@@ -66,21 +84,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     env.CancellationToken.ThrowIfCancellationRequested();
 
-                    // Delay giữa các chu kỳ (bỏ qua chu kỳ đầu tiên)
-                    if (cycle > 0 && macroNode.RepeatIntervalMs > 0)
+                    // Clear visuals between cycles
+                    if (cycle > 0)
                     {
-                        await Task.Delay(macroNode.RepeatIntervalMs, env.CancellationToken);
+                        overlay?.ClearVisuals();
+
+                        if (macroNode.RepeatIntervalMs > 0)
+                            await Task.Delay(macroNode.RepeatIntervalMs, env.CancellationToken);
                     }
 
                     for (int i = 0; i < actions.Count; i++)
                     {
                         env.CancellationToken.ThrowIfCancellationRequested();
 
-                        // Delay theo delta timestamp (bỏ qua action đầu tiên)
+                        // Update progress display
+                        overlay?.UpdateProgress(cycle + 1, cycles, i + 1, actions.Count);
+
+                        // Delay by delta timestamp (skip first action)
                         if (i > 0)
                         {
                             long delta = actions[i].Timestamp - actions[i - 1].Timestamp;
-                            // Nếu delta <= 0 (clock skew hoặc cùng timestamp) thì bỏ qua delay
                             if (delta > 0)
                             {
                                 int delayMs = (int)Math.Min(delta, int.MaxValue);
@@ -93,13 +116,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             case "MouseClick":
                                 SetCursorPos(action.X, action.Y);
-                                if (Enum.TryParse<MouseButton>(action.Button, ignoreCase: true, out var mouseButton))
+                                overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+
+                                if (action.Button == "ShiftLeft")
+                                {
+                                    // Hold Shift via INPUT, click left, release Shift
+                                    SendShiftClick(action.X, action.Y);
+                                }
+                                else if (Enum.TryParse<MouseButton>(action.Button, ignoreCase: true, out var mouseButton))
                                 {
                                     env.Service.MouseInput.SendMouseClick(mouseButton, 1, 0);
                                 }
                                 else
                                 {
-                                    // Mặc định Left nếu không parse được
                                     env.Service.MouseInput.SendMouseClick(MouseButton.Left, 1, 0);
                                 }
                                 break;
@@ -107,16 +136,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             case "KeyPress":
                                 if (!string.IsNullOrWhiteSpace(action.Key))
                                 {
+                                    overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
                                     env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
                                 }
                                 break;
 
                             case "MouseMove":
                                 SetCursorPos(action.X, action.Y);
+                                overlay?.AddTrailPoint(action.X, action.Y);
+                                break;
+
+                            case "MouseScroll":
+                                overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
+                                // Scroll: positive = up (WHEEL_DELTA * notches), negative = down
+                                SendScroll(action.X, action.Y, action.ScrollDelta);
                                 break;
 
                             default:
-                                System.Diagnostics.Debug.WriteLine($"MacroRecorderNodeExecutor: Unknown action type '{action.Type}', skipping.");
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"MacroRecorderNodeExecutor: Unknown action type '{action.Type}', skipping.");
                                 break;
                         }
                     }
@@ -132,17 +170,60 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 env.OnNodeFailed?.Invoke(macroNode, ex.Message);
                 throw;
             }
+            finally
+            {
+                // Always close overlay on UI thread
+                if (overlay != null && dispatcher != null)
+                {
+                    dispatcher.BeginInvoke(() =>
+                    {
+                        try { overlay.Close(); } catch { }
+                    }, DispatcherPriority.Normal);
+                }
+            }
 
-            // Publish output vào scoped store
+            // Publish output
             if (!string.IsNullOrWhiteSpace(macroNode.OutputKey) && !string.IsNullOrWhiteSpace(env.ExecutionId))
             {
-                env.Service.SetScopedNodeStringOutput(env.ExecutionId, macroNode.Id, macroNode.OutputKey.Trim(), macroNode.MacroDataJson);
+                env.Service.SetScopedNodeStringOutput(
+                    env.ExecutionId, macroNode.Id,
+                    macroNode.OutputKey.Trim(), macroNode.MacroDataJson);
             }
 
             sw.Stop();
             env.OnNodeCompleted?.Invoke(macroNode, sw.Elapsed);
-
             await env.TraverseOutputsAsync(node);
+        }
+
+        // ─── P/Invoke for scroll ──────────────────────────────────────────────────
+
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(uint dwFlags, int dx, int dy, int dwData, IntPtr dwExtraInfo);
+
+        private const uint MOUSEEVENTF_WHEEL     = 0x0800;
+        private const uint MOUSEEVENTF_LEFTDOWN  = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP    = 0x0004;
+        private const uint KEYEVENTF_KEYDOWN     = 0x0000;
+        private const uint KEYEVENTF_KEYUP       = 0x0002;
+        private const byte VK_SHIFT              = 0x10;
+
+        private static void SendScroll(int x, int y, int notches)
+        {
+            if (notches == 0) return;
+            SetCursorPos(x, y);
+            mouse_event(MOUSEEVENTF_WHEEL, x, y, notches * 120, IntPtr.Zero);
+        }
+
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, IntPtr dwExtraInfo);
+
+        private static void SendShiftClick(int x, int y)
+        {
+            SetCursorPos(x, y);
+            keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
+            mouse_event(MOUSEEVENTF_LEFTDOWN, x, y, 0, IntPtr.Zero);
+            mouse_event(MOUSEEVENTF_LEFTUP,   x, y, 0, IntPtr.Zero);
+            keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
         }
     }
 }

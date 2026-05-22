@@ -494,6 +494,18 @@ namespace FlowMy.Views
             InitializeServices();
             SetupEventHandlers();
 
+            // ESC key → stop all running workflows (global, works even when app is not focused)
+            var keyboardHookSvc = App.Services?.GetService(typeof(GlobalKeyboardHookService)) as GlobalKeyboardHookService;
+            if (keyboardHookSvc != null)
+            {
+                keyboardHookSvc.EscapePressed += () =>
+                {
+                    var vm = ViewModel;
+                    if (vm != null && vm.ManualExecutionRunsInFlight > 0)
+                        vm.EndTestCommand.Execute(null);
+                };
+            }
+
             // Nếu preferences đã lưu mode=Detached thì reparent panel log sang cửa sổ riêng
             // ngay sau khi cửa sổ chính load xong (defer để CanvasHostGrid đã build visual tree).
             Loaded += (_, _) =>

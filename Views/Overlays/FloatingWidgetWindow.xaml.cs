@@ -149,6 +149,18 @@ public partial class FloatingWidgetWindow : Window
         {
             npc.PropertyChanged += Node_PropertyChanged;
         }
+
+        // ESC key → stop all running workflows (global, works even when app is not focused)
+        var keyboardHookSvc = App.Services?.GetService(typeof(GlobalKeyboardHookService)) as GlobalKeyboardHookService;
+        if (keyboardHookSvc != null)
+        {
+            keyboardHookSvc.EscapePressed += () =>
+            {
+                var vm = _host?.ViewModel;
+                if (vm != null && vm.ManualExecutionRunsInFlight > 0)
+                    vm.EndTestCommand.Execute(null);
+            };
+        }
     }
 
     // ═══════════════════════════════════════════
