@@ -3718,6 +3718,22 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
 
         }
+        else if (node is MacroRecorderNode macroRecorderNode)
+        {
+            if (properties.TryGetValue("OutputKey", out var mkObj))
+                macroRecorderNode.OutputKey = mkObj?.ToString() ?? "macroData";
+            if (properties.TryGetValue("MacroDataJson", out var mdjObj))
+                macroRecorderNode.MacroDataJson = mdjObj?.ToString() ?? "";
+            if (properties.TryGetValue("PlaybackMode", out var pmObj) &&
+                Enum.TryParse<MacroPlaybackMode>(pmObj?.ToString(), out var pm))
+                macroRecorderNode.PlaybackMode = pm;
+            if (properties.TryGetValue("RepeatIntervalMs", out var rimObj) &&
+                int.TryParse(rimObj?.ToString(), out var rim))
+                macroRecorderNode.RepeatIntervalMs = Math.Max(0, rim);
+            if (properties.TryGetValue("RepeatCount", out var mrcObj) &&
+                int.TryParse(mrcObj?.ToString(), out var mrc))
+                macroRecorderNode.RepeatCount = Math.Max(1, mrc);
+        }
         else if (node is NotificationNode notificationNode)
         {
             if (properties.TryGetValue("DefaultDurationSeconds", out var durObj) &&
@@ -5269,6 +5285,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
 
 
+        }
+        else if (node is MacroRecorderNode macroNode)
+        {
+            dict["OutputKey"] = macroNode.OutputKey ?? "macroData";
+            dict["MacroDataJson"] = macroNode.MacroDataJson ?? "";
+            dict["PlaybackMode"] = macroNode.PlaybackMode.ToString();
+            dict["RepeatIntervalMs"] = macroNode.RepeatIntervalMs;
+            dict["RepeatCount"] = macroNode.RepeatCount;
         }
         else if (node is NotificationNode notificationNode)
         {

@@ -45,7 +45,7 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
   - Property `RecordedJson` (string?) và `HasData` (bool) trả về kết quả
   - Requires: Task 2
 
-- [-] 7. Tạo `MacroRecorderNodeDialog` (XAML + code-behind)
+- [x] 7. Tạo `MacroRecorderNodeDialog` (XAML + code-behind)
   - File: `Views/Overlays/MacroRecorderNodeDialog.xaml` + `.xaml.cs` (file mới)
   - Kế thừa `BaseNodeDialog`
   - Tab "Logic": TitleDisplayMode, TitleColorMode+preview, OutputKey TextBox, MacroDataJson TextArea readonly, Button "🔴 Ghi lại thao tác", PlaybackMode ComboBox, RepeatIntervalMs TextBox (ẩn/hiện theo IsRepeatVisible), RepeatCount TextBox (ẩn/hiện), Button "📤 Export JSON" (bind IsEnabled=CanExportJson), Button "📥 Import JSON", InputsPanel, OutputsPanel
@@ -53,7 +53,7 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
   - Code-behind: xử lý "Ghi lại thao tác" (minimize app, show overlay, restore app, cập nhật MacroDataJson), Export JSON (SaveFileDialog), Import JSON (OpenFileDialog + validate JSON)
   - Requires: Task 5, Task 6
 
-- [-] 8. Tạo `MacroRecorderNodeRenderer`
+- [x] 8. Tạo `MacroRecorderNodeRenderer`
   - File: `Services/Rendering/MacroRecorderNodeRenderer.cs` (file mới)
   - Implement `INodeRenderer`
   - `RenderNode`, `UpdateNodePosition`, `RemoveNode`, `RemoveAllNodeVisuals`
@@ -73,42 +73,42 @@ Triển khai node Macro Recorder theo thứ tự từ model → control → dial
   - Thêm private method `CreateMacroRecorderNode(double x, double y)` với `MangoTangoBrush`
   - Requires: Task 3
 
-- [~] 11. Đăng ký renderer trong `ServiceCollectionExtensions`
+- [x] 11. Đăng ký renderer trong `ServiceCollectionExtensions`
   - File: `Services/ServiceCollectionExtensions.cs`
   - Thêm `services.AddScoped<MacroRecorderNodeRenderer>()`
   - Requires: Task 8
 
-- [~] 12. Đăng ký renderer trong `_NodeRenderer.cs`
+- [x] 12. Đăng ký renderer trong `_NodeRenderer.cs`
   - File: `Services/Rendering/_NodeRenderer.cs`
   - Thêm field `_macroRecorderNodeRenderer`, constructor param, và entry `[typeof(MacroRecorderNode)] = _macroRecorderNodeRenderer` vào dictionary
   - Requires: Task 8, Task 11
 
-- [~] 13. Đăng ký executor trong `WorkflowExecutionService`
+- [x] 13. Đăng ký executor trong `WorkflowExecutionService`
   - File: `Services/Workflow/WorkflowExecutionService.cs`
   - Thêm `new MacroRecorderNodeExecutor()` vào `_nodeExecutors` list
   - Requires: Task 9
 
-- [-] 14. Thêm persistence — `GetNodeProperties` trong `FileWorkflowPersistenceService`
+- [x] 14. Thêm persistence — `GetNodeProperties` trong `FileWorkflowPersistenceService`
   - File: `Services/Workflow/FileWorkflowPersistenceService.cs`
   - Thêm `else if (node is MacroRecorderNode macroNode)` block serialize: OutputKey, MacroDataJson, PlaybackMode, RepeatIntervalMs, RepeatCount
   - Requires: Task 3
 
-- [-] 15. Thêm persistence — `RestoreNodeProperties` trong `FileWorkflowPersistenceService`
+- [x] 15. Thêm persistence — `RestoreNodeProperties` trong `FileWorkflowPersistenceService`
   - File: `Services/Workflow/FileWorkflowPersistenceService.cs`
   - Thêm `else if (node is MacroRecorderNode macroNode)` block deserialize 5 properties
   - Requires: Task 3
 
-- [-] 16. Thêm persistence trong `WorkflowEditorViewModel`
+- [x] 16. Thêm persistence trong `WorkflowEditorViewModel`
   - File: `ViewModels/WorkflowEditorViewModel.cs`
   - Thêm `else if (node is MacroRecorderNode)` block vào cả `GetNodeProperties` và `RestoreNodeProperties`
   - Requires: Task 3
 
-- [ ] 17. Thêm copy/paste support
+- [x] 17. Thêm copy/paste support
   - File: `Views/WorkflowEditors/WorkflowEditorWindow.NodeActions.cs`
   - Trong method clone node, thêm deep copy cho `MacroRecorderNode` properties (OutputKey, MacroDataJson, PlaybackMode, RepeatIntervalMs, RepeatCount)
   - Requires: Task 3
 
-- [~] 18. Thêm entry palette vào `WorkflowEditorWindow.xaml`
+- [x] 18. Thêm entry palette vào `WorkflowEditorWindow.xaml`
   - File: `Views/WorkflowEditorWindow.xaml`
   - Thêm `Border` với `Tag="MacroRecorder"` vào `EventsWrapPanel` sau entry MouseEvent
   - Background: `MangoTangoBrush`, icon: `chart-network light`, Fill: `TextOnMangoTangoBrush`

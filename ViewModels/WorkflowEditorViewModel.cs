@@ -2970,6 +2970,22 @@ namespace FlowMy.ViewModels
                     delayNode.DelayValue = multiplier <= 0 ? 0 : delayNode.DelayMilliseconds / multiplier;
                 }
             }
+            else if (node is MacroRecorderNode macroRecorderRestoreNode)
+            {
+                if (properties.TryGetValue("OutputKey", out var mkObj))
+                    macroRecorderRestoreNode.OutputKey = mkObj?.ToString() ?? "macroData";
+                if (properties.TryGetValue("MacroDataJson", out var mdjObj))
+                    macroRecorderRestoreNode.MacroDataJson = mdjObj?.ToString() ?? "";
+                if (properties.TryGetValue("PlaybackMode", out var pmObj) &&
+                    Enum.TryParse<MacroPlaybackMode>(pmObj?.ToString(), out var pm))
+                    macroRecorderRestoreNode.PlaybackMode = pm;
+                if (properties.TryGetValue("RepeatIntervalMs", out var rimObj) &&
+                    int.TryParse(rimObj?.ToString(), out var rim))
+                    macroRecorderRestoreNode.RepeatIntervalMs = Math.Max(0, rim);
+                if (properties.TryGetValue("RepeatCount", out var mrcObj) &&
+                    int.TryParse(mrcObj?.ToString(), out var mrc))
+                    macroRecorderRestoreNode.RepeatCount = Math.Max(1, mrc);
+            }
 
             // Dynamic input selections (source node + output key)
             if (node.DynamicInputs != null && node.DynamicInputs.Count > 0)
@@ -3115,6 +3131,14 @@ namespace FlowMy.ViewModels
                 dict["DelayMilliseconds"] = delayNode.DelayMilliseconds;
                 dict["DelayValue"] = delayNode.DelayValue;
                 dict["DelayUnit"] = delayNode.DelayUnit.ToString();
+            }
+            else if (node is MacroRecorderNode macroRecorderNode)
+            {
+                dict["OutputKey"] = macroRecorderNode.OutputKey ?? "macroData";
+                dict["MacroDataJson"] = macroRecorderNode.MacroDataJson ?? "";
+                dict["PlaybackMode"] = macroRecorderNode.PlaybackMode.ToString();
+                dict["RepeatIntervalMs"] = macroRecorderNode.RepeatIntervalMs;
+                dict["RepeatCount"] = macroRecorderNode.RepeatCount;
             }
 
             // Dynamic input selections (persist minimal config)

@@ -582,6 +582,7 @@ namespace FlowMy.Services.Workflow
                 new NodeExecutors.FileDownloadNodeExecutor(),
                 new NodeExecutors.FolderFilePathsNodeExecutor(),
                 new NodeExecutors.GitSourceNodeExecutor(),
+                new NodeExecutors.MacroRecorderNodeExecutor(),
                 new NodeExecutors.DefaultNodeExecutor()
             };
         }

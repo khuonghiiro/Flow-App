@@ -91,6 +91,7 @@ namespace FlowMy.Services
             services.AddScoped<OutputNodeRenderer>();
             services.AddScoped<NotificationNodeRenderer>();
             services.AddScoped<HttpRequestNodeRenderer>();
+            services.AddScoped<MacroRecorderNodeRenderer>();
             // Không cần renderer riêng cho Break/Continue vì chúng dùng default UI
             services.AddScoped<NodeRenderer>();
             services.AddScoped<INodeRenderer>(sp => sp.GetRequiredService<NodeRenderer>());

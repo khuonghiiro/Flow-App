@@ -993,6 +993,18 @@ namespace FlowMy.Views
                 dstOverwrite.RebuildDynamicOutputs();
             }
 
+            if (source is MacroRecorderNode srcMacro && node is MacroRecorderNode dstMacro)
+            {
+                dstMacro.OutputKey = srcMacro.OutputKey;
+                dstMacro.MacroDataJson = srcMacro.MacroDataJson;
+                dstMacro.PlaybackMode = srcMacro.PlaybackMode;
+                dstMacro.RepeatIntervalMs = srcMacro.RepeatIntervalMs;
+                dstMacro.RepeatCount = srcMacro.RepeatCount;
+                dstMacro.TitleDisplayMode = srcMacro.TitleDisplayMode;
+                dstMacro.TitleColorMode = srcMacro.TitleColorMode;
+                dstMacro.TitleColorKey = srcMacro.TitleColorKey;
+            }
+
             // ⚠️ CRITICAL: Trigger PropertyChanged cho các node có INotifyPropertyChanged
             if (node is OutputNode outputNode)
             {

@@ -46,6 +46,7 @@ namespace FlowMy.Services.Rendering
         private readonly FlowOverwriteNodeRenderer _flowOverwriteNodeRenderer;
         private readonly BodyContainerNodeRenderer _bodyContainerNodeRenderer;
         private readonly GitSourceNodeRenderer _gitSourceNodeRenderer;
+        private readonly MacroRecorderNodeRenderer _macroRecorderNodeRenderer;
 
         // Dispatch map: node concrete type → renderer
         // Dùng cho các node chỉ cần delegate thuần túy (không có inline logic đặc biệt).
@@ -87,7 +88,8 @@ namespace FlowMy.Services.Rendering
             CallbackNodeRenderer callbackNodeRenderer,
             FlowOverwriteNodeRenderer flowOverwriteNodeRenderer,
             BodyContainerNodeRenderer bodyContainerNodeRenderer,
-            GitSourceNodeRenderer gitSourceNodeRenderer
+            GitSourceNodeRenderer gitSourceNodeRenderer,
+            MacroRecorderNodeRenderer macroRecorderNodeRenderer
             )
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
@@ -124,6 +126,7 @@ namespace FlowMy.Services.Rendering
             _flowOverwriteNodeRenderer = flowOverwriteNodeRenderer ?? throw new ArgumentNullException(nameof(flowOverwriteNodeRenderer));
             _bodyContainerNodeRenderer = bodyContainerNodeRenderer ?? throw new ArgumentNullException(nameof(bodyContainerNodeRenderer));
             _gitSourceNodeRenderer = gitSourceNodeRenderer ?? throw new ArgumentNullException(nameof(gitSourceNodeRenderer));
+            _macroRecorderNodeRenderer = macroRecorderNodeRenderer ?? throw new ArgumentNullException(nameof(macroRecorderNodeRenderer));
 
             BuildRendererMap();
         }
@@ -168,6 +171,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(KeyPressEventNode)]     = _keyPressEventNodeRenderer,
                 [typeof(HotkeyPressEventNode)]  = _hotkeyPressEventNodeRenderer,
                 [typeof(GitSourceNode)]         = _gitSourceNodeRenderer,
+                [typeof(MacroRecorderNode)]     = _macroRecorderNodeRenderer,
             };
         }
 

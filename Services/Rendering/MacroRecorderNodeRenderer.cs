@@ -1,5 +1,4 @@
 using FlowMy.Models;
-using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls;
 using System.Windows;
@@ -65,10 +64,9 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
-            // Render ports - LUÔN update màu để đảm bảo đúng màu
+            // Render ports
             foreach (var port in node.Ports.Where(p => p.IsVisible))
             {
-                // Ưu tiên ColorKey của port nếu có, nếu không thì dùng logic IsInput
                 Color portColor;
                 if (!string.IsNullOrWhiteSpace(port.ColorKey))
                 {
@@ -97,7 +95,6 @@ namespace FlowMy.Services.Rendering
                 }
                 else
                 {
-                    // Update màu của port đã tồn tại
                     if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
                     {
                         ellipse.Fill = new SolidColorBrush(portColor);
@@ -151,7 +148,6 @@ namespace FlowMy.Services.Rendering
 
             foreach (var port in node.Ports.Where(p => p.IsVisible))
             {
-                // Ưu tiên ColorKey của port nếu có, nếu không thì dùng logic IsInput
                 Color portColor;
                 if (!string.IsNullOrWhiteSpace(port.ColorKey))
                 {
@@ -173,7 +169,6 @@ namespace FlowMy.Services.Rendering
                 }
                 else
                 {
-                    // LUÔN update màu để đảm bảo đúng màu (kể cả khi port đã tồn tại)
                     if (port.PortUI is System.Windows.Shapes.Ellipse ellipse)
                     {
                         ellipse.Fill = new SolidColorBrush(portColor);

@@ -779,6 +779,41 @@ Cursor="Hand"
       Fill="{DynamicResource TextOnTurquoiseBrush}"/>
                                 </Grid>
                             </Border>
+
+                            <!-- Macro Recorder Node -->
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource MangoTangoBrush}"
+                                    Tag="MacroRecorder">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Macro Recorder" FontWeight="Bold"/>
+                                            <TextBlock Text="Ghi lại và phát lại thao tác chuột/bàn phím." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Output: macroData" Opacity="0.85" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource MangoTangoBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Macro Recorder" Foreground="{DynamicResource TextOnMangoTangoBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Ghi lại thao tác chuột và bàn phím, sau đó phát lại tự động trong workflow." Foreground="{DynamicResource TextOnMangoTangoBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="Data Output: macroData (String)" Foreground="{DynamicResource TextOnMangoTangoBrush}" Opacity="0.85" Margin="0,6,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='chart-network light'}"
+                                                          Fill="{DynamicResource TextOnMangoTangoBrush}"/>
+                                </Grid>
+                            </Border>
                             
                         </WrapPanel>
 
