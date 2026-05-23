@@ -105,17 +105,23 @@ namespace FlowMy.Views.Overlays
 
         /// <summary>
         /// Di chuyển chuột ảo đến tọa độ màn hình (screenX, screenY).
-        /// Gọi trước mỗi action để user thấy chuột ảo đang ở đâu.
+        /// syncBeforeAction=true: dùng Invoke (sync) để cursor hiển thị trước khi action thực thi.
+        /// syncBeforeAction=false: dùng BeginInvoke (async) cho MouseMove liên tục, không block executor.
         /// </summary>
-        public void MoveVirtualCursor(int screenX, int screenY)
+        public void MoveVirtualCursor(int screenX, int screenY, bool syncBeforeAction = false)
         {
-            Dispatcher.BeginInvoke(() =>
+            void Update()
             {
                 var pt = ScreenToCanvas(screenX, screenY);
                 VirtualCursor.Visibility = Visibility.Visible;
                 Canvas.SetLeft(VirtualCursor, pt.X);
                 Canvas.SetTop(VirtualCursor, pt.Y);
-            });
+            }
+
+            if (syncBeforeAction)
+                Dispatcher.Invoke(Update);
+            else
+                Dispatcher.BeginInvoke(Update);
         }
 
         /// <summary>Draw a click marker at screen coordinates.</summary>

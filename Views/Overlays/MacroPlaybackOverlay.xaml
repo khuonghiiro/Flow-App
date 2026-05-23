@@ -19,7 +19,10 @@
         <Canvas x:Name="DrawingCanvas" IsHitTestVisible="False"/>
 
         <!-- Chuột ảo: theo dõi vị trí thực thi thao tác (không ảnh hưởng input) -->
-        <Canvas x:Name="CursorCanvas" IsHitTestVisible="False">
+        <Canvas x:Name="CursorCanvas"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False">
             <!-- Mũi tên chuột ảo màu xanh lam, luôn hiển thị khi overlay mở -->
             <Path x:Name="VirtualCursor"
                   Visibility="Collapsed"

@@ -146,7 +146,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             case "MouseClick":
                                 SetCursorPos(action.X, action.Y);
-                                overlay?.MoveVirtualCursor(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
@@ -168,7 +168,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseDown":
                                 SetCursorPos(action.X, action.Y);
-                                overlay?.MoveVirtualCursor(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
@@ -180,7 +180,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseUp":
                                 SetCursorPos(action.X, action.Y);
-                                overlay?.MoveVirtualCursor(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
@@ -190,6 +190,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             case "KeyPress":
                                 if (!string.IsNullOrWhiteSpace(action.Key))
                                 {
+                                    // KeyPress: cursor stays at last position, no move needed
                                     if (visualMode == VisualPlaybackMode.Live)
                                         overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
                                     else if (visualMode == VisualPlaybackMode.Ghost)
@@ -201,7 +202,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseMove":
                                 SetCursorPos(action.X, action.Y);
-                                overlay?.MoveVirtualCursor(action.X, action.Y);
+                                // MouseMove: async is fine — no need to block executor for smooth trail
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent)
                                     overlay?.AddTrailPoint(action.X, action.Y);
                                 if (visualMode == VisualPlaybackMode.Ghost)
@@ -209,7 +211,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 break;
 
                             case "MouseScroll":
-                                overlay?.MoveVirtualCursor(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
