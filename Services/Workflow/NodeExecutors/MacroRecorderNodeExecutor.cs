@@ -11,12 +11,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 {
     /// <summary>
     /// Executor cho MacroRecorderNode: phát lại chuỗi thao tác chuột/bàn phím đã ghi.
-    /// Hiển thị MacroPlaybackOverlay trong suốt quá trình phát lại để user thấy tiến trình.
+    /// Dùng MOUSEEVENTF_ABSOLUTE để inject input tại tọa độ tuyệt đối — KHÔNG di chuyển
+    /// con trỏ hệ thống, cho phép user dùng chuột thật độc lập trong khi macro chạy.
     /// </summary>
     internal sealed class MacroRecorderNodeExecutor : INodeExecutor
     {
+        // ─── Shift+Click via keybd_event (không cần SetCursorPos) ────────────────
         [DllImport("user32.dll")]
-        private static extern bool SetCursorPos(int x, int y);
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, IntPtr dwExtraInfo);
+
+        private const uint KEYEVENTF_KEYDOWN = 0x0000;
+        private const uint KEYEVENTF_KEYUP   = 0x0002;
+        private const byte VK_SHIFT          = 0x10;
 
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -68,8 +74,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var dispatcher = Application.Current?.Dispatcher;
             if (visualMode != VisualPlaybackMode.Silent && dispatcher != null)
             {
-                // Create and show overlay on UI thread, then await its Loaded event before
-                // proceeding — this guarantees DrawingCanvas is ready and click-through is applied.
                 Task? loadedTask = null;
                 dispatcher.Invoke(() =>
                 {
@@ -88,8 +92,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                 }, DispatcherPriority.Normal);
 
-                // Wait for the overlay's Loaded event so DrawingCanvas is ready and
-                // MakeClickThrough() has been called before we start drawing or executing actions.
                 if (loadedTask != null)
                 {
                     try { await loadedTask.WaitAsync(TimeSpan.FromSeconds(3)); }
@@ -105,11 +107,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     env.CancellationToken.ThrowIfCancellationRequested();
 
-                    // Clear visuals between cycles
                     if (cycle > 0)
                     {
                         overlay?.ClearVisuals();
-
                         if (macroNode.RepeatIntervalMs > 0)
                             await Task.Delay(macroNode.RepeatIntervalMs, env.CancellationToken);
                     }
@@ -127,7 +127,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         env.CancellationToken.ThrowIfCancellationRequested();
 
-                        // Update progress display
                         overlay?.UpdateProgress(cycle + 1, cycles, i + 1, actions.Count);
 
                         // Delay by delta timestamp (skip first action)
@@ -145,7 +144,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         switch (action.Type)
                         {
                             case "MouseClick":
-                                SetCursorPos(action.X, action.Y);
+                                // Move virtual cursor (sync) then inject click at absolute coords
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
@@ -153,44 +152,35 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 if (action.Button == "ShiftLeft")
-                                {
-                                    SendShiftClick(action.X, action.Y);
-                                }
-                                else if (Enum.TryParse<MouseButton>(action.Button, ignoreCase: true, out var mouseButton))
-                                {
-                                    env.Service.MouseInput.SendMouseClick(mouseButton, 1, 0);
-                                }
+                                    SendShiftClickAt(action.X, action.Y, env.Service.MouseInput);
+                                else if (Enum.TryParse<MouseButton>(action.Button, ignoreCase: true, out var mb))
+                                    env.Service.MouseInput.SendMouseClickAt(action.X, action.Y, mb);
                                 else
-                                {
-                                    env.Service.MouseInput.SendMouseClick(MouseButton.Left, 1, 0);
-                                }
+                                    env.Service.MouseInput.SendMouseClickAt(action.X, action.Y, MouseButton.Left);
                                 break;
 
                             case "MouseDown":
-                                SetCursorPos(action.X, action.Y);
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                env.Service.MouseInput.SendMouseDown(
+                                env.Service.MouseInput.SendMouseDownAt(action.X, action.Y,
                                     action.Button == "Right" ? MouseButton.Right : MouseButton.Left);
                                 break;
 
                             case "MouseUp":
-                                SetCursorPos(action.X, action.Y);
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                env.Service.MouseInput.SendMouseUp(MouseButton.Left);
+                                env.Service.MouseInput.SendMouseUpAt(action.X, action.Y, MouseButton.Left);
                                 break;
 
                             case "KeyPress":
                                 if (!string.IsNullOrWhiteSpace(action.Key))
                                 {
-                                    // KeyPress: cursor stays at last position, no move needed
                                     if (visualMode == VisualPlaybackMode.Live)
                                         overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
                                     else if (visualMode == VisualPlaybackMode.Ghost)
@@ -201,8 +191,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 break;
 
                             case "MouseMove":
-                                SetCursorPos(action.X, action.Y);
-                                // MouseMove: async is fine — no need to block executor for smooth trail
+                                // MouseMove: only update virtual cursor + trail, no real cursor move
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent)
                                     overlay?.AddTrailPoint(action.X, action.Y);
@@ -217,7 +206,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                SendScroll(action.X, action.Y, action.ScrollDelta);
+                                env.Service.MouseInput.SendMouseScrollAt(action.X, action.Y, action.ScrollDelta);
                                 break;
 
                             default:
@@ -240,13 +229,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
-                // Wait a moment so the last visual markers are visible before closing
                 if (overlay != null)
                 {
                     try { await Task.Delay(800); } catch { }
                 }
 
-                // Close overlay on UI thread — use InvokeAsync (awaited) to ensure it completes
                 if (overlay != null && dispatcher != null)
                 {
                     await dispatcher.InvokeAsync(() =>
@@ -269,34 +256,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await env.TraverseOutputsAsync(node);
         }
 
-        // ─── P/Invoke for scroll ──────────────────────────────────────────────────
+        // ─── Shift+Click at absolute coords (no SetCursorPos) ────────────────────
 
-        [DllImport("user32.dll")]
-        private static extern void mouse_event(uint dwFlags, int dx, int dy, int dwData, IntPtr dwExtraInfo);
-
-        private const uint MOUSEEVENTF_WHEEL     = 0x0800;
-        private const uint MOUSEEVENTF_LEFTDOWN  = 0x0002;
-        private const uint MOUSEEVENTF_LEFTUP    = 0x0004;
-        private const uint KEYEVENTF_KEYDOWN     = 0x0000;
-        private const uint KEYEVENTF_KEYUP       = 0x0002;
-        private const byte VK_SHIFT              = 0x10;
-
-        private static void SendScroll(int x, int y, int notches)
+        private static void SendShiftClickAt(int x, int y, MouseInputService mouse)
         {
-            if (notches == 0) return;
-            SetCursorPos(x, y);
-            mouse_event(MOUSEEVENTF_WHEEL, x, y, notches * 120, IntPtr.Zero);
-        }
-
-        [DllImport("user32.dll")]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, IntPtr dwExtraInfo);
-
-        private static void SendShiftClick(int x, int y)
-        {
-            SetCursorPos(x, y);
             keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
-            mouse_event(MOUSEEVENTF_LEFTDOWN, x, y, 0, IntPtr.Zero);
-            mouse_event(MOUSEEVENTF_LEFTUP,   x, y, 0, IntPtr.Zero);
+            mouse.SendMouseDownAt(x, y, MouseButton.Left);
+            mouse.SendMouseUpAt(x, y, MouseButton.Left);
             keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
         }
     }
