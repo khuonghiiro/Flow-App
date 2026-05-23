@@ -68,26 +68,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var dispatcher = Application.Current?.Dispatcher;
             if (visualMode != VisualPlaybackMode.Silent && dispatcher != null)
             {
-                // Must use InvokeAsync and capture result via TaskCompletionSource
-                // because lambda captures cannot assign back to outer 'overlay' variable
-                // through a simple closure when using await InvokeAsync.
-                var tcs = new TaskCompletionSource<MacroPlaybackOverlay?>();
-                await dispatcher.InvokeAsync(() =>
+                // Use synchronous Invoke so overlay is guaranteed created before we proceed
+                dispatcher.Invoke(() =>
                 {
                     try
                     {
-                        var o = new MacroPlaybackOverlay();
-                        o.Show();
-                        tcs.SetResult(o);
+                        overlay = new MacroPlaybackOverlay();
+                        overlay.Show();
+                        overlay.Activate();
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"MacroPlaybackOverlay.Show failed: {ex.Message}");
-                        tcs.SetResult(null);
+                        System.Diagnostics.Debug.WriteLine($"[MacroExecutor] overlay.Show failed: {ex}");
+                        overlay = null;
                     }
                 }, DispatcherPriority.Normal);
-                overlay = await tcs.Task;
             }
+
+            System.Diagnostics.Debug.WriteLine($"[MacroExecutor] visualMode={visualMode}, overlay={overlay?.GetType().Name ?? "null"}, actions={actions.Count}");
 
             try
             {

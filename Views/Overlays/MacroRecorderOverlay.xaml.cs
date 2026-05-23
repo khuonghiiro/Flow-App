@@ -1,5 +1,4 @@
-using System;
-using System.Collections.Generic;
+using FlowMy.Models;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
@@ -7,7 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using FlowMy.Models;
 
 namespace FlowMy.Views.Overlays
 {
@@ -61,32 +59,32 @@ namespace FlowMy.Views.Overlays
         // ─── Constants ───────────────────────────────────────────────────────────
 
         private const int WH_KEYBOARD_LL = 13;
-        private const int WH_MOUSE_LL    = 14;
+        private const int WH_MOUSE_LL = 14;
 
-        private const int WM_KEYDOWN    = 0x0100;
+        private const int WM_KEYDOWN = 0x0100;
         private const int WM_SYSKEYDOWN = 0x0104;
         private const int WM_LBUTTONDOWN = 0x0201;
-        private const int WM_LBUTTONUP   = 0x0202;
+        private const int WM_LBUTTONUP = 0x0202;
         private const int WM_RBUTTONDOWN = 0x0204;
-        private const int WM_MOUSEMOVE   = 0x0200;
-        private const int WM_MOUSEWHEEL  = 0x020A;
+        private const int WM_MOUSEMOVE = 0x0200;
+        private const int WM_MOUSEWHEEL = 0x020A;
 
-        private const uint VK_CONTROL  = 0x11;
-        private const uint VK_MENU     = 0x12;
-        private const uint VK_SHIFT    = 0x10;
-        private const uint VK_ESCAPE   = 0x1B;
+        private const uint VK_CONTROL = 0x11;
+        private const uint VK_MENU = 0x12;
+        private const uint VK_SHIFT = 0x10;
+        private const uint VK_ESCAPE = 0x1B;
         private const uint VK_LCONTROL = 0xA2;
         private const uint VK_RCONTROL = 0xA3;
-        private const uint VK_LMENU    = 0xA4;
-        private const uint VK_RMENU    = 0xA5;
-        private const uint VK_LSHIFT   = 0xA0;
-        private const uint VK_RSHIFT   = 0xA1;
+        private const uint VK_LMENU = 0xA4;
+        private const uint VK_RMENU = 0xA5;
+        private const uint VK_LSHIFT = 0xA0;
+        private const uint VK_RSHIFT = 0xA1;
 
         // Click marker colors
-        private static readonly Color ColorLeftClick      = Color.FromRgb(0x22, 0x99, 0xFF); // blue
-        private static readonly Color ColorRightClick     = Color.FromRgb(0xFF, 0x33, 0x33); // red
+        private static readonly Color ColorLeftClick = Color.FromRgb(0x22, 0x99, 0xFF); // blue
+        private static readonly Color ColorRightClick = Color.FromRgb(0xFF, 0x33, 0x33); // red
         private static readonly Color ColorShiftLeftClick = Color.FromRgb(0xFF, 0xA5, 0x00); // orange
-        private static readonly Color ColorScroll         = Color.FromRgb(0x44, 0xDD, 0x88); // green
+        private static readonly Color ColorScroll = Color.FromRgb(0x44, 0xDD, 0x88); // green
 
         private const int MarkerRadius = 18; // px radius — vừa phải, dễ nhìn
 
@@ -150,16 +148,16 @@ namespace FlowMy.Views.Overlays
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         private readonly LowLevelKeyboardProc _keyboardProc;
-        private readonly LowLevelMouseProc    _mouseProc;
+        private readonly LowLevelMouseProc _mouseProc;
         private IntPtr _keyboardHook = IntPtr.Zero;
-        private IntPtr _mouseHook    = IntPtr.Zero;
+        private IntPtr _mouseHook = IntPtr.Zero;
 
         // ─── State ───────────────────────────────────────────────────────────────
 
         private OverlayState _state = OverlayState.Idle;
         private readonly List<MacroAction> _actions = new();
-        private int  _sequenceCounter  = 0;
-        private long _lastActionTs     = 0;   // timestamp of previous action (for delta display)
+        private int _sequenceCounter = 0;
+        private long _lastActionTs = 0;   // timestamp of previous action (for delta display)
 
         // Mouse move throttle
         private int _lastMoveX = int.MinValue;
@@ -167,10 +165,10 @@ namespace FlowMy.Views.Overlays
         private const int MoveThresholdPx = 5;
 
         // ESC rapid-press detection (3 presses within 1.5s = cancel/stop)
-        private int  _escPressCount   = 0;
+        private int _escPressCount = 0;
         private long _escFirstPressTs = 0;
-        private const int EscRequiredCount  = 3;
-        private const long EscWindowMs      = 1500; // 1.5 giây
+        private const int EscRequiredCount = 3;
+        private const long EscWindowMs = 1500; // 1.5 giây
 
         // Drag-hold tracking (left button held down)
         private bool _isDragging = false;
@@ -205,7 +203,7 @@ namespace FlowMy.Views.Overlays
 
             _showMouseTrail = showMouseTrail;
             _keyboardProc = KeyboardHookCallback;
-            _mouseProc    = MouseHookCallback;
+            _mouseProc = MouseHookCallback;
 
             _timer.Interval = TimeSpan.FromSeconds(1);
             _timer.Tick += Timer_Tick;
@@ -218,12 +216,12 @@ namespace FlowMy.Views.Overlays
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            using var proc   = System.Diagnostics.Process.GetCurrentProcess();
+            using var proc = System.Diagnostics.Process.GetCurrentProcess();
             using var module = proc.MainModule;
             var hMod = GetModuleHandle(module?.ModuleName ?? string.Empty);
 
             _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, hMod, 0);
-            _mouseHook    = SetWindowsHookEx(WH_MOUSE_LL,    _mouseProc,    hMod, 0);
+            _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, hMod, 0);
 
             UpdateUI();
         }
@@ -232,7 +230,7 @@ namespace FlowMy.Views.Overlays
         {
             _timer.Stop();
             if (_keyboardHook != IntPtr.Zero) { UnhookWindowsHookEx(_keyboardHook); _keyboardHook = IntPtr.Zero; }
-            if (_mouseHook    != IntPtr.Zero) { UnhookWindowsHookEx(_mouseHook);    _mouseHook    = IntPtr.Zero; }
+            if (_mouseHook != IntPtr.Zero) { UnhookWindowsHookEx(_mouseHook); _mouseHook = IntPtr.Zero; }
         }
 
         // ─── Timer ────────────────────────────────────────────────────────────────
@@ -259,7 +257,7 @@ namespace FlowMy.Views.Overlays
             var pt = ScreenToCanvas(screenX, screenY);
             VirtualCursor.Visibility = Visibility.Visible;
             Canvas.SetLeft(VirtualCursor, pt.X);
-            Canvas.SetTop(VirtualCursor,  pt.Y);
+            Canvas.SetTop(VirtualCursor, pt.Y);
         }
 
         // ─── Keyboard hook ────────────────────────────────────────────────────────
@@ -271,19 +269,19 @@ namespace FlowMy.Views.Overlays
                 var kb = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
                 var vk = kb.vkCode;
 
-                bool ctrlDown  = (GetAsyncKeyState((int)VK_CONTROL) & 0x8000) != 0;
-                bool altDown   = (GetAsyncKeyState((int)VK_MENU)    & 0x8000) != 0;
-                bool shiftDown = (GetAsyncKeyState((int)VK_SHIFT)   & 0x8000) != 0;
+                bool ctrlDown = (GetAsyncKeyState((int)VK_CONTROL) & 0x8000) != 0;
+                bool altDown = (GetAsyncKeyState((int)VK_MENU) & 0x8000) != 0;
+                bool shiftDown = (GetAsyncKeyState((int)VK_SHIFT) & 0x8000) != 0;
 
                 bool isModifier = vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL
-                                     or VK_MENU    or VK_LMENU    or VK_RMENU
-                                     or VK_SHIFT   or VK_LSHIFT   or VK_RSHIFT;
+                                     or VK_MENU or VK_LMENU or VK_RMENU
+                                     or VK_SHIFT or VK_LSHIFT or VK_RSHIFT;
 
                 if (isModifier)
                 {
-                    bool ctrlNow  = ctrlDown  || vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL;
-                    bool altNow   = altDown   || vk is VK_MENU    or VK_LMENU    or VK_RMENU;
-                    bool shiftNow = shiftDown || vk is VK_SHIFT   or VK_LSHIFT   or VK_RSHIFT;
+                    bool ctrlNow = ctrlDown || vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL;
+                    bool altNow = altDown || vk is VK_MENU or VK_LMENU or VK_RMENU;
+                    bool shiftNow = shiftDown || vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT;
 
                     if (ctrlNow && altNow && shiftNow)
                     {
@@ -301,17 +299,18 @@ namespace FlowMy.Views.Overlays
                 if (_state == OverlayState.Recording && !isModifier)
                 {
                     GetCursorPos(out POINT pt);
-                    long ts      = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
                     var keyName = GetKeyName(vk);
-                    var action  = new MacroAction
+                    var action = new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
-                        Type      = "KeyPress",
+                        Type = "KeyPress",
                         Timestamp = ts,
-                        X = pt.X, Y = pt.Y,
+                        X = pt.X,
+                        Y = pt.Y,
                         Key = keyName
                     };
                     _actions.Add(action);
@@ -333,23 +332,26 @@ namespace FlowMy.Views.Overlays
             if (nCode >= 0 && _state == OverlayState.Recording)
             {
                 var ms = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
-                int x  = ms.pt.X;
-                int y  = ms.pt.Y;
+                int x = ms.pt.X;
+                int y = ms.pt.Y;
                 long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
                 if (wParam == (IntPtr)WM_LBUTTONDOWN)
                 {
                     bool shiftHeld = (GetAsyncKeyState((int)VK_SHIFT) & 0x8000) != 0;
-                    string button  = shiftHeld ? "ShiftLeft" : "Left";
+                    string button = shiftHeld ? "ShiftLeft" : "Left";
 
-                    double delta  = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                    double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
-                        Type = "MouseDown", Timestamp = ts,
-                        X = x, Y = y, Button = button
+                        Type = "MouseDown",
+                        Timestamp = ts,
+                        X = x,
+                        Y = y,
+                        Button = button
                     });
                     int seq = _sequenceCounter;
                     _mouseDownTs = ts;
@@ -375,13 +377,13 @@ namespace FlowMy.Views.Overlays
                         // Small filled dot at drag start
                         _dragStartDot = new Ellipse
                         {
-                            Width  = 7,
+                            Width = 7,
                             Height = 7,
-                            Fill   = new SolidColorBrush(Color.FromArgb(220, 0x00, 0xBB, 0xFF)),
+                            Fill = new SolidColorBrush(Color.FromArgb(220, 0x00, 0xBB, 0xFF)),
                             IsHitTestVisible = false
                         };
                         Canvas.SetLeft(_dragStartDot, _dragStartCanvas.X - 3.5);
-                        Canvas.SetTop(_dragStartDot,  _dragStartCanvas.Y - 3.5);
+                        Canvas.SetTop(_dragStartDot, _dragStartCanvas.Y - 3.5);
                         DrawingCanvas.Children.Add(_dragStartDot);
 
                         // Keep _dragLine for backward compat (not used for drawing now)
@@ -391,14 +393,17 @@ namespace FlowMy.Views.Overlays
                 }
                 else if (wParam == (IntPtr)WM_LBUTTONUP && _isDragging)
                 {
-                    double delta  = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                    double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
-                        Type = "MouseUp", Timestamp = ts,
-                        X = x, Y = y, Button = "Left"
+                        Type = "MouseUp",
+                        Timestamp = ts,
+                        X = x,
+                        Y = y,
+                        Button = "Left"
                     });
                     int seq = _sequenceCounter;
                     Dispatcher.Invoke(() =>
@@ -420,14 +425,17 @@ namespace FlowMy.Views.Overlays
                 }
                 else if (wParam == (IntPtr)WM_RBUTTONDOWN)
                 {
-                    double delta  = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                    double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
-                        Type = "MouseClick", Timestamp = ts,
-                        X = x, Y = y, Button = "Right"
+                        Type = "MouseClick",
+                        Timestamp = ts,
+                        X = x,
+                        Y = y,
+                        Button = "Right"
                     });
                     Dispatcher.Invoke(() =>
                     {
@@ -439,16 +447,19 @@ namespace FlowMy.Views.Overlays
                 {
                     // High word of mouseData = wheel delta (positive = up, negative = down)
                     int wheelDelta = (short)((ms.mouseData >> 16) & 0xFFFF);
-                    int notches    = wheelDelta / 120; // 120 units per notch
+                    int notches = wheelDelta / 120; // 120 units per notch
 
-                    double delta  = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                    double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
-                        Type = "MouseScroll", Timestamp = ts,
-                        X = x, Y = y, ScrollDelta = notches
+                        Type = "MouseScroll",
+                        Timestamp = ts,
+                        X = x,
+                        Y = y,
+                        ScrollDelta = notches
                     });
                     Dispatcher.Invoke(() =>
                     {
@@ -468,8 +479,10 @@ namespace FlowMy.Views.Overlays
                         _actions.Add(new MacroAction
                         {
                             SequenceNumber = ++_sequenceCounter,
-                            Type = "MouseMove", Timestamp = ts,
-                            X = x, Y = y
+                            Type = "MouseMove",
+                            Timestamp = ts,
+                            X = x,
+                            Y = y
                         });
                         Dispatcher.Invoke(() =>
                         {
@@ -502,7 +515,7 @@ namespace FlowMy.Views.Overlays
 
         private void ToggleRecording()
         {
-            if (_state == OverlayState.Idle)         StartRecording();
+            if (_state == OverlayState.Idle) StartRecording();
             else if (_state == OverlayState.Recording) StopRecording(save: true);
         }
 
@@ -511,10 +524,10 @@ namespace FlowMy.Views.Overlays
             _state = OverlayState.Recording;
             _actions.Clear();
             _sequenceCounter = 0;
-            _lastActionTs    = 0;
+            _lastActionTs = 0;
             _lastMoveX = int.MinValue;
             _lastMoveY = int.MinValue;
-            _escPressCount   = 0;
+            _escPressCount = 0;
             _escFirstPressTs = 0;
             _recordingStartDateTime = DateTime.Now;
 
@@ -571,7 +584,7 @@ namespace FlowMy.Views.Overlays
             // Reset counter if outside the time window
             if (_escPressCount > 0 && (now - _escFirstPressTs) > EscWindowMs)
             {
-                _escPressCount   = 0;
+                _escPressCount = 0;
                 _escFirstPressTs = 0;
             }
 
@@ -633,7 +646,7 @@ namespace FlowMy.Views.Overlays
                 timer.Stop();
                 if (_state == OverlayState.Recording)
                 {
-                    EscHintText.Text       = "ESC để lưu và thoát";
+                    EscHintText.Text = "ESC để lưu và thoát";
                     EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
                         System.Windows.Media.Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
                 }
@@ -648,21 +661,21 @@ namespace FlowMy.Views.Overlays
             switch (_state)
             {
                 case OverlayState.Idle:
-                    StatusIcon.Text      = "⏺";
+                    StatusIcon.Text = "⏺";
                     InstructionText.Text = "Nhấn giữ tổ hợp phím Ctrl+Alt+Shift để bắt đầu ghi lại thao tác";
-                    TimerPanel.Visibility       = Visibility.Collapsed;
+                    TimerPanel.Visibility = Visibility.Collapsed;
                     ActionCountPanel.Visibility = Visibility.Collapsed;
                     EscHintText.Text = "ESC để hủy";
                     break;
 
                 case OverlayState.Recording:
-                    StatusIcon.Text      = "🔴";
+                    StatusIcon.Text = "🔴";
                     InstructionText.Text = "Đang ghi... Nhấn Ctrl+Alt+Shift để dừng";
-                    TimerPanel.Visibility       = Visibility.Visible;
+                    TimerPanel.Visibility = Visibility.Visible;
                     ActionCountPanel.Visibility = Visibility.Visible;
-                    TimerText.Text       = "00:00";
+                    TimerText.Text = "00:00";
                     ActionCountText.Text = "0 thao tác";
-                    EscHintText.Text     = "ESC để lưu và thoát";
+                    EscHintText.Text = "ESC để lưu và thoát";
                     break;
             }
         }
@@ -673,60 +686,181 @@ namespace FlowMy.Views.Overlays
         // ─── Visual feedback ──────────────────────────────────────────────────────
 
         /// <summary>
-        /// Vẽ marker click: hình tròn đầy màu sắc, label "[seq] L/R" ở tâm, delta giây bên dưới.
+        /// Helper chung: vẽ marker hình tròn — label loại thao tác ở tâm, seq badge trên đỉnh, delta bên dưới.
         /// </summary>
+        private void DrawMarker(System.Windows.Point pt, Color fillColor, string centerText,
+                                int seq, double deltaSeconds, bool hollow = false)
+        {
+            int r = MarkerRadius;
+
+            // Outer glow
+            var glow = new Ellipse
+            {
+                Width = (r + 7) * 2,
+                Height = (r + 7) * 2,
+                Fill = new SolidColorBrush(Color.FromArgb(45, fillColor.R, fillColor.G, fillColor.B)),
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(glow, pt.X - (r + 7));
+            Canvas.SetTop(glow, pt.Y - (r + 7));
+            DrawingCanvas.Children.Add(glow);
+
+            // Main circle
+            var circle = new Ellipse
+            {
+                Width = r * 2,
+                Height = r * 2,
+                Fill = hollow
+                    ? new SolidColorBrush(Color.FromArgb(55, fillColor.R, fillColor.G, fillColor.B))
+                    : new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
+                Stroke = Brushes.White,
+                StrokeThickness = 2,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(circle, pt.X - r);
+            Canvas.SetTop(circle, pt.Y - r);
+            DrawingCanvas.Children.Add(circle);
+
+            // Center label — loại thao tác (L / R / ↑ / ↓ / tên phím)
+            var centerTb = new TextBlock
+            {
+                Text = centerText,
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false
+            };
+            centerTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(centerTb, pt.X - centerTb.DesiredSize.Width / 2);
+            Canvas.SetTop(centerTb, pt.Y - centerTb.DesiredSize.Height / 2);
+            DrawingCanvas.Children.Add(centerTb);
+
+            // Seq badge — hình tròn nhỏ nằm trên đỉnh circle
+            var seqBg = new Ellipse
+            {
+                Width = 18,
+                Height = 18,
+                Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
+                Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
+                StrokeThickness = 1.5,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(seqBg, pt.X - 9);
+            Canvas.SetTop(seqBg, pt.Y - r - 9);
+            DrawingCanvas.Children.Add(seqBg);
+
+            var seqTb = new TextBlock
+            {
+                Text = seq.ToString(),
+                FontSize = 9,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false
+            };
+            seqTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(seqTb, pt.X - seqTb.DesiredSize.Width / 2);
+            Canvas.SetTop(seqTb, pt.Y - r - 9 + (18 - seqTb.DesiredSize.Height) / 2);
+            DrawingCanvas.Children.Add(seqTb);
+
+            // Delta badge bên dưới circle
+            if (deltaSeconds > 0)
+            {
+                var deltaBorder = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(4, 1, 4, 1),
+                    Child = new TextBlock
+                    {
+                        Text = $"+{deltaSeconds:F2}s",
+                        FontSize = 9,
+                        Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 225, 80))
+                    },
+                    IsHitTestVisible = false
+                };
+                deltaBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2);
+                Canvas.SetTop(deltaBorder, pt.Y + r + 4);
+                DrawingCanvas.Children.Add(deltaBorder);
+            }
+        }
+
         private void DrawClick(int screenX, int screenY, string button, int seq, double deltaSeconds)
         {
             var pt = ScreenToCanvas(screenX, screenY);
-
             Color fillColor = button switch
             {
-                "Left"      => ColorLeftClick,
-                "Right"     => ColorRightClick,
+                "Left" => ColorLeftClick,
+                "Right" => ColorRightClick,
                 "ShiftLeft" => ColorShiftLeftClick,
-                _           => ColorLeftClick
+                _ => ColorLeftClick
             };
             string label = button switch
             {
-                "Left"      => "L",
-                "Right"     => "R",
+                "Left" => "L",
+                "Right" => "R",
                 "ShiftLeft" => "⇧L",
-                _           => "?"
+                _ => "?"
             };
+            DrawMarker(pt, fillColor, label, seq, deltaSeconds);
+        }
 
+        private void DrawScroll(int screenX, int screenY, int notches, int seq, double deltaSeconds)
+            => DrawMarker(ScreenToCanvas(screenX, screenY), ColorScroll,
+                          notches >= 0 ? "↑" : "↓", seq, deltaSeconds);
+
+        private void DrawKeyPress(int screenX, int screenY, string keyName, int seq, double deltaSeconds)
+        {
+            string displayKey = keyName.Length > 4 ? keyName[..4] : keyName;
+            DrawMarker(ScreenToCanvas(screenX, screenY),
+                       Color.FromRgb(0xAA, 0x88, 0xFF), displayKey, seq, deltaSeconds);
+        }
+
+        private void DrawMouseUp(int screenX, int screenY, int seq, double deltaSeconds)
+            => DrawMarker(ScreenToCanvas(screenX, screenY),
+                          Color.FromRgb(0xFF, 0xA5, 0x00), "↑L", seq, deltaSeconds, hollow: true);
+
+        // ── OLD DrawClick body removed — kept only for compiler: dummy block ──────
+        private void _DrawClick_OLD(int screenX, int screenY, string button, int seq, double deltaSeconds)
+        {
+            var pt = ScreenToCanvas(screenX, screenY);
+            Color fillColor = button switch { _ => ColorLeftClick };
+            string label = "?";
             int r = MarkerRadius;
 
             // Outer glow ring
             var glow = new Ellipse
             {
-                Width  = (r + 6) * 2,
+                Width = (r + 6) * 2,
                 Height = (r + 6) * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(40, fillColor.R, fillColor.G, fillColor.B)),
+                Fill = new SolidColorBrush(Color.FromArgb(40, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(glow, pt.X - (r + 6));
-            Canvas.SetTop(glow,  pt.Y - (r + 6));
+            Canvas.SetTop(glow, pt.Y - (r + 6));
             DrawingCanvas.Children.Add(glow);
 
             // Main filled circle
             var circle = new Ellipse
             {
-                Width  = r * 2,
+                Width = r * 2,
                 Height = r * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(230, fillColor.R, fillColor.G, fillColor.B)),
+                Fill = new SolidColorBrush(Color.FromArgb(230, fillColor.R, fillColor.G, fillColor.B)),
                 Stroke = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)),
                 StrokeThickness = 2,
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(circle, pt.X - r);
-            Canvas.SetTop(circle,  pt.Y - r);
+            Canvas.SetTop(circle, pt.Y - r);
             DrawingCanvas.Children.Add(circle);
 
             // Label at center — seq number + button type
             var centerLabel = new TextBlock
             {
-                Text       = $"{seq}\n{label}",
-                FontSize   = 11,
+                Text = $"{seq}\n{label}",
+                FontSize = 11,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
@@ -735,7 +869,7 @@ namespace FlowMy.Views.Overlays
             };
             centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
-            Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
+            Canvas.SetTop(centerLabel, pt.Y - centerLabel.DesiredSize.Height / 2);
             DrawingCanvas.Children.Add(centerLabel);
 
             // Delta time badge below circle
@@ -743,170 +877,20 @@ namespace FlowMy.Views.Overlays
             {
                 var delta = new Border
                 {
-                    Background   = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
+                    Background = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
                     CornerRadius = new CornerRadius(4),
-                    Padding      = new Thickness(4, 1, 4, 1),
-                    Child        = new TextBlock
+                    Padding = new Thickness(4, 1, 4, 1),
+                    Child = new TextBlock
                     {
-                        Text       = $"+{deltaSeconds:F2}s",
-                        FontSize   = 9,
+                        Text = $"+{deltaSeconds:F2}s",
+                        FontSize = 9,
                         Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 230, 100))
                     },
                     IsHitTestVisible = false
                 };
                 delta.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 Canvas.SetLeft(delta, pt.X - delta.DesiredSize.Width / 2);
-                Canvas.SetTop(delta,  pt.Y + r + 3);
-                DrawingCanvas.Children.Add(delta);
-            }
-        }
-
-        /// <summary>
-        /// Vẽ marker scroll: hình tròn xanh lá, icon scroll wheel ở tâm, mũi tên + label.
-        /// </summary>
-        private void DrawScroll(int screenX, int screenY, int notches, int seq, double deltaSeconds)
-        {
-            var pt = ScreenToCanvas(screenX, screenY);
-            bool scrollUp = notches >= 0;
-            string arrow  = scrollUp ? "↑" : "↓";
-            int r = MarkerRadius;
-
-            // Outer glow
-            var glow = new Ellipse
-            {
-                Width  = (r + 6) * 2,
-                Height = (r + 6) * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(40, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(glow, pt.X - (r + 6));
-            Canvas.SetTop(glow,  pt.Y - (r + 6));
-            DrawingCanvas.Children.Add(glow);
-
-            // Main circle
-            var circle = new Ellipse
-            {
-                Width  = r * 2,
-                Height = r * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(220, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
-                Stroke = Brushes.White,
-                StrokeThickness = 2,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(circle, pt.X - r);
-            Canvas.SetTop(circle,  pt.Y - r);
-            DrawingCanvas.Children.Add(circle);
-
-            // Center label: seq + arrow
-            var centerLabel = new TextBlock
-            {
-                Text       = $"{seq}\n{arrow}",
-                FontSize   = 11,
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                TextAlignment = TextAlignment.Center,
-                LineHeight = 13,
-                IsHitTestVisible = false
-            };
-            centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
-            Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
-            DrawingCanvas.Children.Add(centerLabel);
-
-            // Delta badge
-            if (deltaSeconds > 0)
-            {
-                var delta = new Border
-                {
-                    Background   = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding      = new Thickness(4, 1, 4, 1),
-                    Child        = new TextBlock
-                    {
-                        Text       = $"+{deltaSeconds:F2}s",
-                        FontSize   = 9,
-                        Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 230, 100))
-                    },
-                    IsHitTestVisible = false
-                };
-                delta.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(delta, pt.X - delta.DesiredSize.Width / 2);
-                Canvas.SetTop(delta,  pt.Y + r + 3);
-                DrawingCanvas.Children.Add(delta);
-            }
-        }
-
-        /// <summary>
-        /// Vẽ label phím: hình tròn tím nhạt, tên phím ở tâm.
-        /// </summary>
-        private void DrawKeyPress(int screenX, int screenY, string keyName, int seq, double deltaSeconds)
-        {
-            var pt = ScreenToCanvas(screenX, screenY);
-            int r = MarkerRadius;
-            var keyColor = Color.FromRgb(0xAA, 0x88, 0xFF); // purple
-
-            // Outer glow
-            var glow = new Ellipse
-            {
-                Width  = (r + 6) * 2,
-                Height = (r + 6) * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(35, keyColor.R, keyColor.G, keyColor.B)),
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(glow, pt.X - (r + 6));
-            Canvas.SetTop(glow,  pt.Y - (r + 6));
-            DrawingCanvas.Children.Add(glow);
-
-            // Main circle
-            var circle = new Ellipse
-            {
-                Width  = r * 2,
-                Height = r * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(210, keyColor.R, keyColor.G, keyColor.B)),
-                Stroke = Brushes.White,
-                StrokeThickness = 2,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(circle, pt.X - r);
-            Canvas.SetTop(circle,  pt.Y - r);
-            DrawingCanvas.Children.Add(circle);
-
-            // Center label: seq + key name (truncate if long)
-            string displayKey = keyName.Length > 4 ? keyName[..4] : keyName;
-            var centerLabel = new TextBlock
-            {
-                Text       = $"{seq}\n{displayKey}",
-                FontSize   = 10,
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                TextAlignment = TextAlignment.Center,
-                LineHeight = 12,
-                IsHitTestVisible = false
-            };
-            centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
-            Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
-            DrawingCanvas.Children.Add(centerLabel);
-
-            // Delta badge
-            if (deltaSeconds > 0)
-            {
-                var delta = new Border
-                {
-                    Background   = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding      = new Thickness(4, 1, 4, 1),
-                    Child        = new TextBlock
-                    {
-                        Text       = $"+{deltaSeconds:F2}s",
-                        FontSize   = 9,
-                        Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 230, 100))
-                    },
-                    IsHitTestVisible = false
-                };
-                delta.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(delta, pt.X - delta.DesiredSize.Width / 2);
-                Canvas.SetTop(delta,  pt.Y + r + 3);
+                Canvas.SetTop(delta, pt.Y + r + 3);
                 DrawingCanvas.Children.Add(delta);
             }
         }
@@ -935,80 +919,6 @@ namespace FlowMy.Views.Overlays
             _trailPolyline.Points.Add(pt);
         }
 
-        /// <summary>
-        /// Vẽ marker nhả chuột trái (kết thúc drag): hình tròn cam rỗng, label ở tâm.
-        /// </summary>
-        private void DrawMouseUp(int screenX, int screenY, int seq, double deltaSeconds)
-        {
-            var pt = ScreenToCanvas(screenX, screenY);
-            int r = MarkerRadius;
-            var upColor = Color.FromRgb(0xFF, 0xA5, 0x00); // orange
-
-            // Outer glow
-            var glow = new Ellipse
-            {
-                Width  = (r + 6) * 2,
-                Height = (r + 6) * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(35, upColor.R, upColor.G, upColor.B)),
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(glow, pt.X - (r + 6));
-            Canvas.SetTop(glow,  pt.Y - (r + 6));
-            DrawingCanvas.Children.Add(glow);
-
-            // Hollow circle (drag release)
-            var circle = new Ellipse
-            {
-                Width  = r * 2,
-                Height = r * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(60, upColor.R, upColor.G, upColor.B)),
-                Stroke = new SolidColorBrush(Color.FromArgb(230, upColor.R, upColor.G, upColor.B)),
-                StrokeThickness = 2.5,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(circle, pt.X - r);
-            Canvas.SetTop(circle,  pt.Y - r);
-            DrawingCanvas.Children.Add(circle);
-
-            // Center label
-            var centerLabel = new TextBlock
-            {
-                Text       = $"{seq}\n↑L",
-                FontSize   = 11,
-                FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromArgb(255, upColor.R, upColor.G, upColor.B)),
-                TextAlignment = TextAlignment.Center,
-                LineHeight = 13,
-                IsHitTestVisible = false
-            };
-            centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
-            Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
-            DrawingCanvas.Children.Add(centerLabel);
-
-            // Delta badge
-            if (deltaSeconds > 0)
-            {
-                var delta = new Border
-                {
-                    Background   = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding      = new Thickness(4, 1, 4, 1),
-                    Child        = new TextBlock
-                    {
-                        Text       = $"+{deltaSeconds:F2}s",
-                        FontSize   = 9,
-                        Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 230, 100))
-                    },
-                    IsHitTestVisible = false
-                };
-                delta.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(delta, pt.X - delta.DesiredSize.Width / 2);
-                Canvas.SetTop(delta,  pt.Y + r + 3);
-                DrawingCanvas.Children.Add(delta);
-            }
-        }
-
         private System.Windows.Point ScreenToCanvas(int screenX, int screenY)
         {
             var source = PresentationSource.FromVisual(this);
@@ -1022,21 +932,46 @@ namespace FlowMy.Views.Overlays
 
         private static string GetKeyName(uint vk) => vk switch
         {
-            0x08 => "Backspace", 0x09 => "Tab",    0x0D => "Enter",
-            0x13 => "Pause",     0x14 => "CapsLock",0x1B => "Escape",
-            0x20 => "Space",     0x21 => "PageUp",  0x22 => "PageDown",
-            0x23 => "End",       0x24 => "Home",
-            0x25 => "←",         0x26 => "↑",       0x27 => "→",  0x28 => "↓",
-            0x2C => "PrtSc",     0x2D => "Insert",  0x2E => "Delete",
+            0x08 => "Backspace",
+            0x09 => "Tab",
+            0x0D => "Enter",
+            0x13 => "Pause",
+            0x14 => "CapsLock",
+            0x1B => "Escape",
+            0x20 => "Space",
+            0x21 => "PageUp",
+            0x22 => "PageDown",
+            0x23 => "End",
+            0x24 => "Home",
+            0x25 => "←",
+            0x26 => "↑",
+            0x27 => "→",
+            0x28 => "↓",
+            0x2C => "PrtSc",
+            0x2D => "Insert",
+            0x2E => "Delete",
             >= 0x30 and <= 0x39 => ((char)vk).ToString(),
             >= 0x41 and <= 0x5A => ((char)vk).ToString(),
             >= 0x60 and <= 0x69 => $"Num{vk - 0x60}",
-            0x6A => "Num*", 0x6B => "Num+", 0x6D => "Num-", 0x6E => "Num.", 0x6F => "Num/",
+            0x6A => "Num*",
+            0x6B => "Num+",
+            0x6D => "Num-",
+            0x6E => "Num.",
+            0x6F => "Num/",
             >= 0x70 and <= 0x87 => $"F{vk - 0x6F}",
-            0x90 => "NumLock", 0x91 => "ScrollLock",
-            0xBA => ";",  0xBB => "=",  0xBC => ",",  0xBD => "-",
-            0xBE => ".",  0xBF => "/",  0xC0 => "`",
-            0xDB => "[",  0xDC => "\\", 0xDD => "]",  0xDE => "'",
+            0x90 => "NumLock",
+            0x91 => "ScrollLock",
+            0xBA => ";",
+            0xBB => "=",
+            0xBC => ",",
+            0xBD => "-",
+            0xBE => ".",
+            0xBF => "/",
+            0xC0 => "`",
+            0xDB => "[",
+            0xDC => "\\",
+            0xDD => "]",
+            0xDE => "'",
             _ => $"VK_{vk:X2}"
         };
     }
