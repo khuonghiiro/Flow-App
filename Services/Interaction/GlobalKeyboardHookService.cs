@@ -50,11 +50,24 @@ namespace FlowMy.Services.Interaction
         private bool _disposed;
         private int _suppressCount;
 
+        // Triple-ESC rapid press detection
+        private int  _escPressCount   = 0;
+        private long _escFirstPressTs = 0;
+        private const int  EscTripleCount = 3;
+        private const long EscWindowMs    = 2000; // 2 giây
+
         /// <summary>
         /// Fired on the UI thread when the user physically presses ESC (VK_ESCAPE = 0x1B).
         /// Only fires when notifications are not suppressed.
         /// </summary>
         public event Action? EscapePressed;
+
+        /// <summary>
+        /// Fired on the UI thread when the user presses ESC 3 times within 1.5 seconds.
+        /// Intended to stop a running workflow even when the macro contains ESC key actions.
+        /// Only fires when notifications are not suppressed.
+        /// </summary>
+        public event Action? EscapeTriplePressed;
 
         public GlobalKeyboardHookService()
         {
@@ -183,28 +196,62 @@ namespace FlowMy.Services.Interaction
         {
             if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
             {
-                if (Volatile.Read(ref _suppressCount) > 0)
-                {
-                    return CallNextHookEx(_hook, nCode, wParam, lParam);
-                }
-
                 try
                 {
                     // KBDLLHOOKSTRUCT.vkCode is the first 4 bytes
                     var vkCode = Marshal.ReadInt32(lParam);
 
-                    // Fire EscapePressed event when user physically presses ESC
+                    // ESC handling is ALWAYS processed regardless of suppress state
+                    // (triple-ESC must be able to stop workflow even during macro playback)
                     if (vkCode == 0x1B) // VK_ESCAPE
                     {
-                        var handler = EscapePressed;
-                        if (handler != null)
+                        // Single ESC event — only fire when not suppressed
+                        if (Volatile.Read(ref _suppressCount) == 0)
                         {
-                            var app = Application.Current;
-                            if (app?.Dispatcher != null)
-                                app.Dispatcher.BeginInvoke(handler);
-                            else
-                                handler();
+                            var handler = EscapePressed;
+                            if (handler != null)
+                            {
+                                var app = Application.Current;
+                                if (app?.Dispatcher != null)
+                                    app.Dispatcher.BeginInvoke(handler);
+                                else
+                                    handler();
+                            }
                         }
+
+                        // Triple-ESC tracking — always active, ignores suppress
+                        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        if (_escPressCount > 0 && (now - _escFirstPressTs) > EscWindowMs)
+                        {
+                            _escPressCount   = 0;
+                            _escFirstPressTs = 0;
+                        }
+                        if (_escPressCount == 0)
+                            _escFirstPressTs = now;
+                        _escPressCount++;
+
+                        if (_escPressCount >= EscTripleCount)
+                        {
+                            _escPressCount = 0;
+                            var tripleHandler = EscapeTriplePressed;
+                            if (tripleHandler != null)
+                            {
+                                var app2 = Application.Current;
+                                if (app2?.Dispatcher != null)
+                                    app2.Dispatcher.BeginInvoke(tripleHandler);
+                                else
+                                    tripleHandler();
+                            }
+                        }
+
+                        // Don't pass ESC to Notify() — skip rest of processing
+                        return CallNextHookEx(_hook, nCode, wParam, lParam);
+                    }
+
+                    // All other keys: respect suppress state
+                    if (Volatile.Read(ref _suppressCount) > 0)
+                    {
+                        return CallNextHookEx(_hook, nCode, wParam, lParam);
                     }
 
                     var key = KeyInterop.KeyFromVirtualKey(vkCode);

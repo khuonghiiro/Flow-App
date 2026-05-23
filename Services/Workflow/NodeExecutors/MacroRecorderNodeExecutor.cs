@@ -61,11 +61,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             int cycles = macroNode.PlaybackMode == MacroPlaybackMode.Once ? 1 : macroNode.RepeatCount;
+            var visualMode = macroNode.VisualPlaybackMode;
 
-            // ── Show playback overlay on UI thread ────────────────────────────────
+            // ── Show playback overlay on UI thread (only for Live / Ghost modes) ──
             MacroPlaybackOverlay? overlay = null;
             var dispatcher = Application.Current?.Dispatcher;
-            if (dispatcher != null)
+            if (visualMode != VisualPlaybackMode.Silent && dispatcher != null)
             {
                 await dispatcher.InvokeAsync(() =>
                 {
@@ -93,6 +94,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             await Task.Delay(macroNode.RepeatIntervalMs, env.CancellationToken);
                     }
 
+                    // Ghost mode: pre-draw all markers before starting execution
+                    if (visualMode == VisualPlaybackMode.Ghost && overlay != null)
+                    {
+                        await dispatcher!.InvokeAsync(() =>
+                        {
+                            overlay.PreDrawGhostMarkers(actions);
+                        }, DispatcherPriority.Normal);
+                    }
+
                     for (int i = 0; i < actions.Count; i++)
                     {
                         env.CancellationToken.ThrowIfCancellationRequested();
@@ -116,11 +126,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             case "MouseClick":
                                 SetCursorPos(action.X, action.Y);
-                                overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+                                if (visualMode == VisualPlaybackMode.Live)
+                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+                                else if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 if (action.Button == "ShiftLeft")
                                 {
-                                    // Hold Shift via INPUT, click left, release Shift
                                     SendShiftClick(action.X, action.Y);
                                 }
                                 else if (Enum.TryParse<MouseButton>(action.Button, ignoreCase: true, out var mouseButton))
@@ -133,22 +145,51 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
                                 break;
 
+                            case "MouseDown":
+                                SetCursorPos(action.X, action.Y);
+                                if (visualMode == VisualPlaybackMode.Live)
+                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+                                else if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
+
+                                env.Service.MouseInput.SendMouseDown(
+                                    action.Button == "Right" ? MouseButton.Right : MouseButton.Left);
+                                break;
+
+                            case "MouseUp":
+                                SetCursorPos(action.X, action.Y);
+                                if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
+
+                                env.Service.MouseInput.SendMouseUp(MouseButton.Left);
+                                break;
+
                             case "KeyPress":
                                 if (!string.IsNullOrWhiteSpace(action.Key))
                                 {
-                                    overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
+                                    if (visualMode == VisualPlaybackMode.Live)
+                                        overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
+                                    else if (visualMode == VisualPlaybackMode.Ghost)
+                                        overlay?.RemoveGhostMarker(action.SequenceNumber);
+
                                     env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
                                 }
                                 break;
 
                             case "MouseMove":
                                 SetCursorPos(action.X, action.Y);
-                                overlay?.AddTrailPoint(action.X, action.Y);
+                                if (visualMode != VisualPlaybackMode.Silent)
+                                    overlay?.AddTrailPoint(action.X, action.Y);
+                                if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
                                 break;
 
                             case "MouseScroll":
-                                overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
-                                // Scroll: positive = up (WHEEL_DELTA * notches), negative = down
+                                if (visualMode == VisualPlaybackMode.Live)
+                                    overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
+                                else if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
+
                                 SendScroll(action.X, action.Y, action.ScrollDelta);
                                 break;
 

@@ -151,10 +151,11 @@ public partial class FloatingWidgetWindow : Window
         }
 
         // ESC key → stop all running workflows (global, works even when app is not focused)
+        // Triple ESC within 1.5s stops workflow; single ESC is reserved for other UI
         var keyboardHookSvc = App.Services?.GetService(typeof(GlobalKeyboardHookService)) as GlobalKeyboardHookService;
         if (keyboardHookSvc != null)
         {
-            keyboardHookSvc.EscapePressed += () =>
+            keyboardHookSvc.EscapeTriplePressed += () =>
             {
                 var vm = _host?.ViewModel;
                 if (vm != null && vm.ManualExecutionRunsInFlight > 0)

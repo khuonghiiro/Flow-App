@@ -89,7 +89,7 @@
                 Padding="14,6">
             <TextBlock FontSize="12"
                        Foreground="#AAFFFFFF"
-                       Text="ESC để dừng workflow"/>
+                       Text="Nhấn ESC × 3 liên tiếp để dừng workflow"/>
         </Border>
     </Grid>
 </Window>

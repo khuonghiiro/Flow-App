@@ -112,15 +112,24 @@ namespace FlowMy.Views.Overlays
         private int _lastMoveY = int.MinValue;
         private const int MoveThresholdPx = 5;
 
+        // ESC rapid-press detection (3 presses within 1.5s = cancel/stop)
+        private int  _escPressCount   = 0;
+        private long _escFirstPressTs = 0;
+        private const int EscRequiredCount  = 3;
+        private const long EscWindowMs      = 1500; // 1.5 giây
+
         // Drag-hold tracking (left button held down)
         private bool _isDragging = false;
         private int _dragStartX, _dragStartY;
         private int _dragStartSeq;
         private System.Windows.Point _dragStartCanvas;
         private Line? _dragLine;
+        private Ellipse? _dragStartDot;
 
         // Trail polyline
         private Polyline? _trailPolyline;
+        // Drag trail (separate polyline while dragging, distinct color)
+        private Polyline? _dragTrailPolyline;
 
         // Timer
         private readonly DispatcherTimer _timer = new();
@@ -274,17 +283,32 @@ namespace FlowMy.Views.Overlays
                         _dragStartX = x; _dragStartY = y;
                         _dragStartSeq = seq;
                         _dragStartCanvas = ScreenToCanvas(x, y);
-                        // Create drag line (will grow as mouse moves)
-                        _dragLine = new Line
+
+                        // Drag trail polyline — bright red-orange, clearly distinct from white move trail
+                        _dragTrailPolyline = new Polyline
                         {
-                            X1 = _dragStartCanvas.X, Y1 = _dragStartCanvas.Y,
-                            X2 = _dragStartCanvas.X, Y2 = _dragStartCanvas.Y,
-                            Stroke = new SolidColorBrush(Color.FromArgb(200, 0xFF, 0xA5, 0x00)),
-                            StrokeThickness = 2,
-                            StrokeDashArray = new DoubleCollection { 5, 3 },
+                            Stroke = new SolidColorBrush(Color.FromArgb(230, 0xFF, 0x44, 0x00)),
+                            StrokeThickness = 3,
+                            StrokeDashArray = new DoubleCollection { 1, 0 }, // solid line
                             IsHitTestVisible = false
                         };
-                        DrawingCanvas.Children.Add(_dragLine);
+                        _dragTrailPolyline.Points.Add(_dragStartCanvas);
+                        DrawingCanvas.Children.Add(_dragTrailPolyline);
+
+                        // Small filled dot at drag start
+                        _dragStartDot = new Ellipse
+                        {
+                            Width  = 10,
+                            Height = 10,
+                            Fill   = new SolidColorBrush(Color.FromArgb(230, 0xFF, 0x44, 0x00)),
+                            IsHitTestVisible = false
+                        };
+                        Canvas.SetLeft(_dragStartDot, _dragStartCanvas.X - 5);
+                        Canvas.SetTop(_dragStartDot,  _dragStartCanvas.Y - 5);
+                        DrawingCanvas.Children.Add(_dragStartDot);
+
+                        // Keep _dragLine for backward compat (not used for drawing now)
+                        _dragLine = null;
                         UpdateActionCount();
                     });
                 }
@@ -303,14 +327,13 @@ namespace FlowMy.Views.Overlays
                     Dispatcher.Invoke(() =>
                     {
                         _isDragging = false;
-                        // Finalize drag line endpoint
-                        if (_dragLine != null)
+                        // Finalize drag trail endpoint
+                        if (_dragTrailPolyline != null)
                         {
-                            var endPt = ScreenToCanvas(x, y);
-                            _dragLine.X2 = endPt.X;
-                            _dragLine.Y2 = endPt.Y;
-                            _dragLine = null;
+                            _dragTrailPolyline.Points.Add(ScreenToCanvas(x, y));
+                            _dragTrailPolyline = null;
                         }
+                        _dragLine = null;
                         DrawMouseUp(x, y, seq, delta);
                         UpdateActionCount();
                     });
@@ -370,13 +393,15 @@ namespace FlowMy.Views.Overlays
                         });
                         Dispatcher.Invoke(() =>
                         {
-                            AddTrailPoint(x, y);
-                            // Update drag line endpoint while dragging
-                            if (_isDragging && _dragLine != null)
+                            var pt = ScreenToCanvas(x, y);
+                            if (_isDragging)
                             {
-                                var pt = ScreenToCanvas(x, y);
-                                _dragLine.X2 = pt.X;
-                                _dragLine.Y2 = pt.Y;
+                                // While dragging: add to drag trail (cyan), not normal trail
+                                _dragTrailPolyline?.Points.Add(pt);
+                            }
+                            else
+                            {
+                                AddTrailPoint(x, y);
                             }
                             UpdateActionCount();
                         });
@@ -403,13 +428,16 @@ namespace FlowMy.Views.Overlays
             _lastActionTs    = 0;
             _lastMoveX = int.MinValue;
             _lastMoveY = int.MinValue;
+            _escPressCount   = 0;
+            _escFirstPressTs = 0;
             _recordingStartDateTime = DateTime.Now;
 
+            // Normal mouse-move trail: white dashed — visible on any background
             _trailPolyline = new Polyline
             {
-                Stroke = new SolidColorBrush(Color.FromArgb(160, 255, 200, 0)),
-                StrokeThickness = 2,
-                StrokeDashArray = new DoubleCollection { 4, 2 },
+                Stroke = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)),
+                StrokeThickness = 1.5,
+                StrokeDashArray = new DoubleCollection { 4, 3 },
                 IsHitTestVisible = false
             };
             DrawingCanvas.Children.Add(_trailPolyline);
@@ -442,14 +470,79 @@ namespace FlowMy.Views.Overlays
 
         private void HandleEsc()
         {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            // Reset counter if outside the time window
+            if (_escPressCount > 0 && (now - _escFirstPressTs) > EscWindowMs)
+            {
+                _escPressCount   = 0;
+                _escFirstPressTs = 0;
+            }
+
+            if (_escPressCount == 0)
+                _escFirstPressTs = now;
+
+            _escPressCount++;
+
             if (_state == OverlayState.Recording)
-                StopRecording(save: _actions.Count >= 1);
+            {
+                // Check if any recorded action is an ESC key press
+                bool macroHasEsc = _actions.Exists(a => a.Type == "KeyPress" &&
+                    string.Equals(a.Key, "Escape", StringComparison.OrdinalIgnoreCase));
+
+                if (macroHasEsc)
+                {
+                    // Macro contains ESC — need 3 rapid presses to stop
+                    if (_escPressCount >= EscRequiredCount)
+                    {
+                        _escPressCount = 0;
+                        StopRecording(save: _actions.Count >= 1);
+                    }
+                    else
+                    {
+                        int remaining = EscRequiredCount - _escPressCount;
+                        ShowEscWarning(remaining);
+                    }
+                }
+                else
+                {
+                    // No ESC in macro — single press saves and exits
+                    _escPressCount = 0;
+                    StopRecording(save: _actions.Count >= 1);
+                }
+            }
             else
             {
+                // Idle state — single ESC cancels
+                _escPressCount = 0;
                 _state = OverlayState.Cancelled;
                 RecordedJson = null;
                 Close();
             }
+        }
+
+        /// <summary>
+        /// Hiển thị cảnh báo tạm thời khi user nhấn ESC nhưng chưa đủ 3 lần.
+        /// </summary>
+        private void ShowEscWarning(int remaining)
+        {
+            EscHintText.Text = $"⚠ Macro có phím ESC — nhấn ESC thêm {remaining} lần nữa để dừng";
+            EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xFF, 0xCC, 0x00));
+
+            // Reset hint text after 2 seconds
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                if (_state == OverlayState.Recording)
+                {
+                    EscHintText.Text       = "ESC để lưu và thoát";
+                    EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
+                }
+            };
+            timer.Start();
         }
 
         // ─── UI update ────────────────────────────────────────────────────────────

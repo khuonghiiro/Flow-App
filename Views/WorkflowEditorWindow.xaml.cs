@@ -495,10 +495,12 @@ namespace FlowMy.Views
             SetupEventHandlers();
 
             // ESC key → stop all running workflows (global, works even when app is not focused)
+            // Single ESC: fires EscapePressed (used for other UI purposes)
+            // Triple ESC within 1.5s: fires EscapeTriplePressed → stops workflow
             var keyboardHookSvc = App.Services?.GetService(typeof(GlobalKeyboardHookService)) as GlobalKeyboardHookService;
             if (keyboardHookSvc != null)
             {
-                keyboardHookSvc.EscapePressed += () =>
+                keyboardHookSvc.EscapeTriplePressed += () =>
                 {
                     var vm = ViewModel;
                     if (vm != null && vm.ManualExecutionRunsInFlight > 0)
