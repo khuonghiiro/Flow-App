@@ -18,6 +18,33 @@
         <!-- Drawing canvas for replay visuals -->
         <Canvas x:Name="DrawingCanvas" IsHitTestVisible="False"/>
 
+        <!-- Chuột ảo: theo dõi vị trí thực thi thao tác (không ảnh hưởng input) -->
+        <Canvas x:Name="CursorCanvas" IsHitTestVisible="False">
+            <!-- Mũi tên chuột ảo màu xanh lam, luôn hiển thị khi overlay mở -->
+            <Path x:Name="VirtualCursor"
+                  Visibility="Collapsed"
+                  IsHitTestVisible="False"
+                  Fill="#FF2299FF"
+                  Stroke="#FFFFFFFF"
+                  StrokeThickness="1">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathFigure StartPoint="0,0" IsClosed="True">
+                            <LineSegment Point="0,14"/>
+                            <LineSegment Point="4,10"/>
+                            <LineSegment Point="7,16"/>
+                            <LineSegment Point="9,15"/>
+                            <LineSegment Point="6,9"/>
+                            <LineSegment Point="11,9"/>
+                        </PathFigure>
+                    </PathGeometry>
+                </Path.Data>
+                <Path.Effect>
+                    <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Opacity="0.6"/>
+                </Path.Effect>
+            </Path>
+        </Canvas>
+
         <!-- Status bar — top center -->
         <Border x:Name="StatusPanel"
                 VerticalAlignment="Top"

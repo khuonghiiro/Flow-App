@@ -26,13 +26,8 @@ namespace FlowMy.Views.Overlays
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hwnd, int nIndex, int dwNewLong);
 
-        [DllImport("user32.dll")]
-        private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
-
         private const int GWL_EXSTYLE       = -20;
         private const int WS_EX_TRANSPARENT = 0x00000020;
-        private const int WS_EX_LAYERED     = 0x00080000;
-        private const uint LWA_ALPHA        = 0x00000002;
         // Trail polyline for mouse move
         private Polyline? _trailPolyline;
 
@@ -47,11 +42,20 @@ namespace FlowMy.Views.Overlays
         private static readonly Color ColorKeyPress       = Color.FromRgb(0xAA, 0x88, 0xFF);
         private const int MarkerRadius = 18;
 
+        // TaskCompletionSource to signal when the overlay is fully loaded and ready
+        private readonly TaskCompletionSource _loadedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>
+        /// Awaitable: resolves when the Loaded event has fired and the overlay is fully ready
+        /// (DrawingCanvas populated, click-through applied, PresentationSource available).
+        /// </summary>
+        public Task WhenLoaded => _loadedTcs.Task;
+
         public MacroPlaybackOverlay()
         {
             InitializeComponent();
 
-            // Create trail polyline
+            // Create trail polyline — added to canvas in Loaded to ensure DrawingCanvas is ready
             _trailPolyline = new Polyline
             {
                 Stroke = new SolidColorBrush(Color.FromArgb(140, 100, 200, 255)),
@@ -64,24 +68,25 @@ namespace FlowMy.Views.Overlays
                 DrawingCanvas.Children.Add(_trailPolyline);
                 // Make window click-through so input reaches the app below
                 MakeClickThrough();
+                // Signal that the overlay is fully ready for drawing
+                _loadedTcs.TrySetResult();
             };
         }
 
         /// <summary>
-        /// Apply WS_EX_TRANSPARENT | WS_EX_LAYERED so all mouse/keyboard input
-        /// passes through this overlay to whatever window is underneath.
-        /// SetLayeredWindowAttributes with LWA_ALPHA=255 keeps full visual opacity
-        /// while still allowing input pass-through via WS_EX_TRANSPARENT.
+        /// Apply WS_EX_TRANSPARENT so all mouse/keyboard input passes through this overlay
+        /// to whatever window is underneath.
+        /// NOTE: Do NOT call SetLayeredWindowAttributes — WPF manages the layered window
+        /// internally when AllowsTransparency=True. Overriding it breaks WPF rendering.
+        /// WS_EX_TRANSPARENT alone is sufficient for click-through on a WPF transparent window.
         /// </summary>
         private void MakeClickThrough()
         {
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return;
             int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            // Must set LAYERED first, then TRANSPARENT
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED | WS_EX_TRANSPARENT);
-            // LWA_ALPHA=255 = fully opaque visually, but WS_EX_TRANSPARENT passes all input through
-            SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+            // Only add WS_EX_TRANSPARENT — WPF already sets WS_EX_LAYERED via AllowsTransparency
+            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TRANSPARENT);
         }
 
         // ─── Public API called from executor ─────────────────────────────────────
@@ -95,6 +100,21 @@ namespace FlowMy.Views.Overlays
                     ? $"Chu kỳ {cycle}/{totalCycles}"
                     : "Phát lại";
                 ActionText.Text = $"Thao tác {actionIndex} / {totalActions}";
+            });
+        }
+
+        /// <summary>
+        /// Di chuyển chuột ảo đến tọa độ màn hình (screenX, screenY).
+        /// Gọi trước mỗi action để user thấy chuột ảo đang ở đâu.
+        /// </summary>
+        public void MoveVirtualCursor(int screenX, int screenY)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                var pt = ScreenToCanvas(screenX, screenY);
+                VirtualCursor.Visibility = Visibility.Visible;
+                Canvas.SetLeft(VirtualCursor, pt.X);
+                Canvas.SetTop(VirtualCursor, pt.Y);
             });
         }
 
@@ -294,6 +314,7 @@ namespace FlowMy.Views.Overlays
             {
                 DrawingCanvas.Children.Clear();
                 _ghostMarkers.Clear();
+                VirtualCursor.Visibility = Visibility.Collapsed;
                 _trailPolyline = new Polyline
                 {
                     Stroke = new SolidColorBrush(Color.FromArgb(140, 100, 200, 255)),

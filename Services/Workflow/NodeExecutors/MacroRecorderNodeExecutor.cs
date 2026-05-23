@@ -68,12 +68,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var dispatcher = Application.Current?.Dispatcher;
             if (visualMode != VisualPlaybackMode.Silent && dispatcher != null)
             {
-                // Use synchronous Invoke so overlay is guaranteed created before we proceed
+                // Create and show overlay on UI thread, then await its Loaded event before
+                // proceeding — this guarantees DrawingCanvas is ready and click-through is applied.
+                Task? loadedTask = null;
                 dispatcher.Invoke(() =>
                 {
                     try
                     {
                         overlay = new MacroPlaybackOverlay();
+                        loadedTask = overlay.WhenLoaded;
                         overlay.Show();
                         overlay.Activate();
                     }
@@ -81,8 +84,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         System.Diagnostics.Debug.WriteLine($"[MacroExecutor] overlay.Show failed: {ex}");
                         overlay = null;
+                        loadedTask = null;
                     }
                 }, DispatcherPriority.Normal);
+
+                // Wait for the overlay's Loaded event so DrawingCanvas is ready and
+                // MakeClickThrough() has been called before we start drawing or executing actions.
+                if (loadedTask != null)
+                {
+                    try { await loadedTask.WaitAsync(TimeSpan.FromSeconds(3)); }
+                    catch { /* timeout — proceed anyway */ }
+                }
             }
 
             System.Diagnostics.Debug.WriteLine($"[MacroExecutor] visualMode={visualMode}, overlay={overlay?.GetType().Name ?? "null"}, actions={actions.Count}");
@@ -134,6 +146,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             case "MouseClick":
                                 SetCursorPos(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
@@ -155,6 +168,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseDown":
                                 SetCursorPos(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
@@ -166,6 +180,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseUp":
                                 SetCursorPos(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y);
                                 if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
@@ -186,6 +201,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseMove":
                                 SetCursorPos(action.X, action.Y);
+                                overlay?.MoveVirtualCursor(action.X, action.Y);
                                 if (visualMode != VisualPlaybackMode.Silent)
                                     overlay?.AddTrailPoint(action.X, action.Y);
                                 if (visualMode == VisualPlaybackMode.Ghost)
@@ -193,6 +209,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 break;
 
                             case "MouseScroll":
+                                overlay?.MoveVirtualCursor(action.X, action.Y);
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
