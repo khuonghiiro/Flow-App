@@ -88,7 +88,61 @@ namespace FlowMy.Views.Overlays
         private static readonly Color ColorShiftLeftClick = Color.FromRgb(0xFF, 0xA5, 0x00); // orange
         private static readonly Color ColorScroll         = Color.FromRgb(0x44, 0xDD, 0x88); // green
 
-        private const int MarkerRadius = 14; // px radius of click circle
+        private const int MarkerRadius = 20; // px radius of click circle (increased for visibility)
+
+        // ─── Screen color sampling ────────────────────────────────────────────────
+
+        [DllImport("gdi32.dll")]
+        private static extern uint GetPixel(IntPtr hdc, int nXPos, int nYPos);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetDC(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+        /// <summary>
+        /// Sample the screen pixel at (screenX, screenY) and return a contrasting color
+        /// for the trail so it's always visible regardless of background.
+        /// Light background → dark trail; dark background → light trail.
+        /// </summary>
+        private static Color GetContrastingTrailColor(int screenX, int screenY)
+        {
+            try
+            {
+                IntPtr hdc = GetDC(IntPtr.Zero); // screen DC
+                uint pixel = GetPixel(hdc, screenX, screenY);
+                ReleaseDC(IntPtr.Zero, hdc);
+
+                byte r = (byte)(pixel & 0xFF);
+                byte g = (byte)((pixel >> 8) & 0xFF);
+                byte b = (byte)((pixel >> 16) & 0xFF);
+
+                // Perceived luminance (ITU-R BT.709)
+                double lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+                if (lum > 160)
+                {
+                    // Light background → use dark vivid color (deep blue)
+                    return Color.FromArgb(220, 0x00, 0x44, 0xCC);
+                }
+                else if (lum > 80)
+                {
+                    // Mid-tone → use bright yellow-green
+                    return Color.FromArgb(220, 0xFF, 0xEE, 0x00);
+                }
+                else
+                {
+                    // Dark background → use bright white-cyan
+                    return Color.FromArgb(220, 0xCC, 0xFF, 0xFF);
+                }
+            }
+            catch
+            {
+                // Fallback: bright yellow always visible
+                return Color.FromArgb(200, 0xFF, 0xEE, 0x00);
+            }
+        }
 
         // ─── Delegates ───────────────────────────────────────────────────────────
 
@@ -125,9 +179,12 @@ namespace FlowMy.Views.Overlays
         private System.Windows.Point _dragStartCanvas;
         private Line? _dragLine;
         private Ellipse? _dragStartDot;
+        private long _mouseDownTs = 0; // timestamp of last LButtonDown (ms)
+        private const long DragMinHoldMs = 200; // minimum hold to show MouseUp marker
 
         // Trail polyline
         private Polyline? _trailPolyline;
+        private readonly bool _showMouseTrail;
         // Drag trail (separate polyline while dragging, distinct color)
         private Polyline? _dragTrailPolyline;
 
@@ -142,10 +199,11 @@ namespace FlowMy.Views.Overlays
 
         // ─── Constructor ─────────────────────────────────────────────────────────
 
-        public MacroRecorderOverlay()
+        public MacroRecorderOverlay(bool showMouseTrail = false)
         {
             InitializeComponent();
 
+            _showMouseTrail = showMouseTrail;
             _keyboardProc = KeyboardHookCallback;
             _mouseProc    = MouseHookCallback;
 
@@ -275,6 +333,7 @@ namespace FlowMy.Views.Overlays
                         X = x, Y = y, Button = button
                     });
                     int seq = _sequenceCounter;
+                    _mouseDownTs = ts;
                     Dispatcher.Invoke(() =>
                     {
                         DrawClick(x, y, button, seq, delta);
@@ -284,12 +343,11 @@ namespace FlowMy.Views.Overlays
                         _dragStartSeq = seq;
                         _dragStartCanvas = ScreenToCanvas(x, y);
 
-                        // Drag trail polyline — bright red-orange, clearly distinct from white move trail
+                        // Drag trail: solid thin blue line — distinct from white dashed move trail
                         _dragTrailPolyline = new Polyline
                         {
-                            Stroke = new SolidColorBrush(Color.FromArgb(230, 0xFF, 0x44, 0x00)),
-                            StrokeThickness = 3,
-                            StrokeDashArray = new DoubleCollection { 1, 0 }, // solid line
+                            Stroke = new SolidColorBrush(Color.FromArgb(200, 0x00, 0xBB, 0xFF)),
+                            StrokeThickness = 1.5,
                             IsHitTestVisible = false
                         };
                         _dragTrailPolyline.Points.Add(_dragStartCanvas);
@@ -298,13 +356,13 @@ namespace FlowMy.Views.Overlays
                         // Small filled dot at drag start
                         _dragStartDot = new Ellipse
                         {
-                            Width  = 10,
-                            Height = 10,
-                            Fill   = new SolidColorBrush(Color.FromArgb(230, 0xFF, 0x44, 0x00)),
+                            Width  = 7,
+                            Height = 7,
+                            Fill   = new SolidColorBrush(Color.FromArgb(220, 0x00, 0xBB, 0xFF)),
                             IsHitTestVisible = false
                         };
-                        Canvas.SetLeft(_dragStartDot, _dragStartCanvas.X - 5);
-                        Canvas.SetTop(_dragStartDot,  _dragStartCanvas.Y - 5);
+                        Canvas.SetLeft(_dragStartDot, _dragStartCanvas.X - 3.5);
+                        Canvas.SetTop(_dragStartDot,  _dragStartCanvas.Y - 3.5);
                         DrawingCanvas.Children.Add(_dragStartDot);
 
                         // Keep _dragLine for backward compat (not used for drawing now)
@@ -334,7 +392,10 @@ namespace FlowMy.Views.Overlays
                             _dragTrailPolyline = null;
                         }
                         _dragLine = null;
-                        DrawMouseUp(x, y, seq, delta);
+                        // Only show MouseUp marker if held long enough (>= 200ms)
+                        bool wasHeld = (ts - _mouseDownTs) >= DragMinHoldMs;
+                        if (wasHeld)
+                            DrawMouseUp(x, y, seq, delta);
                         UpdateActionCount();
                     });
                 }
@@ -432,15 +493,19 @@ namespace FlowMy.Views.Overlays
             _escFirstPressTs = 0;
             _recordingStartDateTime = DateTime.Now;
 
-            // Normal mouse-move trail: white dashed — visible on any background
-            _trailPolyline = new Polyline
+            // Normal mouse-move trail: adaptive color — only shown when user opted in
+            // Initial color will be updated per-point via GetContrastingTrailColor
+            if (_showMouseTrail)
             {
-                Stroke = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)),
-                StrokeThickness = 1.5,
-                StrokeDashArray = new DoubleCollection { 4, 3 },
-                IsHitTestVisible = false
-            };
-            DrawingCanvas.Children.Add(_trailPolyline);
+                _trailPolyline = new Polyline
+                {
+                    Stroke = new SolidColorBrush(Color.FromArgb(220, 0xFF, 0xEE, 0x00)), // initial yellow
+                    StrokeThickness = 1.5,
+                    StrokeDashArray = new DoubleCollection { 4, 3 },
+                    IsHitTestVisible = false
+                };
+                DrawingCanvas.Children.Add(_trailPolyline);
+            }
 
             _timer.Start();
             UpdateUI();
@@ -599,50 +664,39 @@ namespace FlowMy.Views.Overlays
                 _           => "?"
             };
 
-            // Outer circle
+            // Filled circle — no dashed border, clean look
             var circle = new Ellipse
             {
                 Width  = MarkerRadius * 2,
                 Height = MarkerRadius * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
-                Stroke = Brushes.White,
-                StrokeThickness = 2,
+                Fill   = new SolidColorBrush(Color.FromArgb(210, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(circle, pt.X - MarkerRadius);
             Canvas.SetTop(circle,  pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(circle);
 
-            // "+" cross — horizontal bar
-            var hBar = new Rectangle
+            // ◈ icon in center
+            var icon = new TextBlock
             {
-                Width  = MarkerRadius,
-                Height = 2.5,
-                Fill   = Brushes.White,
+                Text       = "◈",
+                FontSize   = 16,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(hBar, pt.X - MarkerRadius / 2.0);
-            Canvas.SetTop(hBar,  pt.Y - 1.25);
-            DrawingCanvas.Children.Add(hBar);
+            // Measure to center it
+            icon.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(icon, pt.X - icon.DesiredSize.Width / 2);
+            Canvas.SetTop(icon,  pt.Y - icon.DesiredSize.Height / 2);
+            DrawingCanvas.Children.Add(icon);
 
-            // "+" cross — vertical bar
-            var vBar = new Rectangle
-            {
-                Width  = 2.5,
-                Height = MarkerRadius,
-                Fill   = Brushes.White,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(vBar, pt.X - 1.25);
-            Canvas.SetTop(vBar,  pt.Y - MarkerRadius / 2.0);
-            DrawingCanvas.Children.Add(vBar);
-
-            // Label pill: "[seq] L  +X.XXs" — dark background so it's readable on any background
+            // Label pill
             var labelSp = new StackPanel { Orientation = Orientation.Vertical };
             labelSp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] {label}",
-                FontSize   = 11,
+                FontSize   = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White
             });
@@ -651,20 +705,20 @@ namespace FlowMy.Views.Overlays
                 labelSp.Children.Add(new TextBlock
                 {
                     Text       = $"+{deltaSeconds:F2}s",
-                    FontSize   = 10,
+                    FontSize   = 11,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 240, 120))
                 });
             }
 
             var pill = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(210, 20, 20, 20)),
-                CornerRadius = new CornerRadius(4),
-                Padding      = new Thickness(5, 2, 5, 2),
+                Background   = new SolidColorBrush(Color.FromArgb(220, 15, 15, 15)),
+                CornerRadius = new CornerRadius(5),
+                Padding      = new Thickness(7, 3, 7, 3),
                 Child        = labelSp,
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(pill, pt.X + MarkerRadius + 3);
+            Canvas.SetLeft(pill, pt.X + MarkerRadius + 4);
             Canvas.SetTop(pill,  pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(pill);
         }
@@ -692,7 +746,7 @@ namespace FlowMy.Views.Overlays
             sp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] {arrow} {Math.Abs(notches)}",
-                FontSize   = 11,
+                FontSize   = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White
             });
@@ -701,7 +755,7 @@ namespace FlowMy.Views.Overlays
                 sp.Children.Add(new TextBlock
                 {
                     Text       = $"  +{deltaSeconds:F2}s",
-                    FontSize   = 10,
+                    FontSize   = 11,
                     Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 180)),
                     VerticalAlignment = VerticalAlignment.Center
                 });
@@ -724,7 +778,7 @@ namespace FlowMy.Views.Overlays
             sp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] {keyName}",
-                FontSize   = 11,
+                FontSize   = 13,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Brushes.White
             });
@@ -733,16 +787,16 @@ namespace FlowMy.Views.Overlays
                 sp.Children.Add(new TextBlock
                 {
                     Text       = $"+{deltaSeconds:F2}s",
-                    FontSize   = 10,
+                    FontSize   = 11,
                     Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 180))
                 });
             }
 
             var border = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(200, 30, 30, 30)),
-                CornerRadius = new CornerRadius(4),
-                Padding      = new Thickness(5, 2, 5, 2),
+                Background   = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                CornerRadius = new CornerRadius(5),
+                Padding      = new Thickness(7, 3, 7, 3),
                 Child        = sp,
                 IsHitTestVisible = false
             };
@@ -753,8 +807,26 @@ namespace FlowMy.Views.Overlays
 
         private void AddTrailPoint(int screenX, int screenY)
         {
-            if (_trailPolyline == null) return;
-            _trailPolyline.Points.Add(ScreenToCanvas(screenX, screenY));
+            if (!_showMouseTrail || _trailPolyline == null) return;
+            var pt = ScreenToCanvas(screenX, screenY);
+
+            // Sample pixel color at current position and update trail stroke if contrast changed
+            var contrastColor = GetContrastingTrailColor(screenX, screenY);
+            var currentBrush = _trailPolyline.Stroke as SolidColorBrush;
+            if (currentBrush == null || currentBrush.Color != contrastColor)
+            {
+                // Start a new polyline segment with the new color
+                _trailPolyline = new Polyline
+                {
+                    Stroke = new SolidColorBrush(contrastColor),
+                    StrokeThickness = 1.5,
+                    StrokeDashArray = new DoubleCollection { 4, 3 },
+                    IsHitTestVisible = false
+                };
+                DrawingCanvas.Children.Add(_trailPolyline);
+            }
+
+            _trailPolyline.Points.Add(pt);
         }
 
         /// <summary>
@@ -764,26 +836,39 @@ namespace FlowMy.Views.Overlays
         {
             var pt = ScreenToCanvas(screenX, screenY);
 
-            // Open circle (stroke only, no fill) to distinguish from press
+            // Hollow diamond ◇ circle — orange, marks drag release
             var circle = new Ellipse
             {
                 Width  = MarkerRadius * 2,
                 Height = MarkerRadius * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(60, 0xFF, 0xA5, 0x00)),
-                Stroke = new SolidColorBrush(Color.FromArgb(220, 0xFF, 0xA5, 0x00)),
-                StrokeThickness = 2.5,
-                StrokeDashArray = new DoubleCollection { 4, 2 },
+                Fill   = new SolidColorBrush(Color.FromArgb(80, 0xFF, 0xA5, 0x00)),
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 0xFF, 0xA5, 0x00)),
+                StrokeThickness = 2,
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(circle, pt.X - MarkerRadius);
             Canvas.SetTop(circle,  pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(circle);
 
+            // ◇ icon in center
+            var icon = new TextBlock
+            {
+                Text       = "◇",
+                FontSize   = 16,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(230, 0xFF, 0xA5, 0x00)),
+                IsHitTestVisible = false
+            };
+            icon.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(icon, pt.X - icon.DesiredSize.Width / 2);
+            Canvas.SetTop(icon,  pt.Y - icon.DesiredSize.Height / 2);
+            DrawingCanvas.Children.Add(icon);
+
             var labelSp = new StackPanel { Orientation = Orientation.Vertical };
             labelSp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] ↑L",
-                FontSize   = 11,
+                FontSize   = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White
             });
@@ -792,20 +877,20 @@ namespace FlowMy.Views.Overlays
                 labelSp.Children.Add(new TextBlock
                 {
                     Text       = $"+{deltaSeconds:F2}s",
-                    FontSize   = 10,
+                    FontSize   = 11,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 240, 120))
                 });
             }
 
             var pill = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(210, 20, 20, 20)),
-                CornerRadius = new CornerRadius(4),
-                Padding      = new Thickness(5, 2, 5, 2),
+                Background   = new SolidColorBrush(Color.FromArgb(220, 15, 15, 15)),
+                CornerRadius = new CornerRadius(5),
+                Padding      = new Thickness(7, 3, 7, 3),
                 Child        = labelSp,
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(pill, pt.X + MarkerRadius + 3);
+            Canvas.SetLeft(pill, pt.X + MarkerRadius + 4);
             Canvas.SetTop(pill,  pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(pill);
         }

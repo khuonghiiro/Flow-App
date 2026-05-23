@@ -192,6 +192,16 @@ namespace FlowMy.Services.Interaction
             }
         }
 
+        /// <summary>
+        /// Cài đặt hook ngay lập tức mà không throw nếu thất bại.
+        /// Dùng để đảm bảo ESC triple-press luôn hoạt động ngay khi app khởi động.
+        /// </summary>
+        public void EnsureInstalledSilent()
+        {
+            if (_disposed || _installed) return;
+            try { EnsureInstalled(); } catch { }
+        }
+
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))

@@ -17,6 +17,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private int    _repeatIntervalMs;
         [ObservableProperty] private int    _repeatCount;
         [ObservableProperty] private string _selectedVisualPlaybackMode;
+        [ObservableProperty] private bool   _showMouseTrail;
 
         public bool IsRepeatVisible       => SelectedPlaybackMode == "Lặp lại";
         public bool CanExportJson         => !string.IsNullOrWhiteSpace(MacroDataJson);
@@ -48,6 +49,7 @@ namespace FlowMy.ViewModels
             _repeatIntervalMs        = node.RepeatIntervalMs;
             _repeatCount             = node.RepeatCount;
             _selectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
+            _showMouseTrail          = node.ShowMouseTrail;
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -68,6 +70,8 @@ namespace FlowMy.ViewModels
                         RepeatCount = node.RepeatCount;
                     else if (e.PropertyName == nameof(MacroRecorderNode.VisualPlaybackMode))
                         SelectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
+                    else if (e.PropertyName == nameof(MacroRecorderNode.ShowMouseTrail))
+                        ShowMouseTrail = node.ShowMouseTrail;
 
                     OnNodePropertyChanged(e.PropertyName);
                 };
@@ -81,6 +85,19 @@ namespace FlowMy.ViewModels
 
         partial void OnMacroDataJsonChanged(string value)
             => OnPropertyChanged(nameof(CanExportJson));
+
+        /// <summary>
+        /// Flush ShowMouseTrail vào node ngay lập tức (không chờ Save button).
+        /// Gọi trước khi mở MacroRecorderOverlay.
+        /// </summary>
+        public void SaveShowMouseTrailToNode()
+        {
+            if (_macroRecorderNode.ShowMouseTrail != ShowMouseTrail)
+            {
+                _macroRecorderNode.ShowMouseTrail = ShowMouseTrail;
+                _host.RequestSyncDataPanels(immediate: true);
+            }
+        }
 
         protected override void OnSaveTitle()
         {
@@ -109,6 +126,9 @@ namespace FlowMy.ViewModels
             var newVisual = StringToVisualMode(SelectedVisualPlaybackMode);
             if (_macroRecorderNode.VisualPlaybackMode != newVisual)
             { _macroRecorderNode.VisualPlaybackMode = newVisual; needSync = true; }
+
+            if (_macroRecorderNode.ShowMouseTrail != ShowMouseTrail)
+            { _macroRecorderNode.ShowMouseTrail = ShowMouseTrail; needSync = true; }
 
             if (needSync)
                 _host.RequestSyncDataPanels(immediate: true);

@@ -169,8 +169,18 @@
                                     FontWeight="SemiBold"
                                     Style="{DynamicResource PrimaryButton}"
                                     Cursor="Hand"
-                                    Margin="0,0,0,16"
+                                    Margin="0,0,0,8"
                                     Click="RecordButton_Click"/>
+
+                            <!-- Checkbox: hiển thị nét di chuyển chuột -->
+                            <CheckBox x:Name="ShowMouseTrailCheckBox"
+                                      Content="Hiển thị nét di chuyển chuột khi ghi"
+                                      IsChecked="{Binding ShowMouseTrail, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="12"
+                                      Opacity="0.85"
+                                      Margin="0,0,0,16"
+                                      Cursor="Hand"/>
 
                             <!-- PlaybackMode ComboBox -->
                             <TextBlock Text="Chế độ phát lại:"

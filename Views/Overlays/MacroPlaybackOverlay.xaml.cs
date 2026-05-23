@@ -26,9 +26,13 @@ namespace FlowMy.Views.Overlays
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hwnd, int nIndex, int dwNewLong);
 
+        [DllImport("user32.dll")]
+        private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
+
         private const int GWL_EXSTYLE       = -20;
         private const int WS_EX_TRANSPARENT = 0x00000020;
         private const int WS_EX_LAYERED     = 0x00080000;
+        private const uint LWA_ALPHA        = 0x00000002;
         // Trail polyline for mouse move
         private Polyline? _trailPolyline;
 
@@ -66,13 +70,18 @@ namespace FlowMy.Views.Overlays
         /// <summary>
         /// Apply WS_EX_TRANSPARENT | WS_EX_LAYERED so all mouse/keyboard input
         /// passes through this overlay to whatever window is underneath.
+        /// SetLayeredWindowAttributes with LWA_ALPHA=255 keeps full visual opacity
+        /// while still allowing input pass-through via WS_EX_TRANSPARENT.
         /// </summary>
         private void MakeClickThrough()
         {
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return;
             int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+            // Must set LAYERED first, then TRANSPARENT
+            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED | WS_EX_TRANSPARENT);
+            // LWA_ALPHA=255 = fully opaque visually, but WS_EX_TRANSPARENT passes all input through
+            SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
         }
 
         // ─── Public API called from executor ─────────────────────────────────────

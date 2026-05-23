@@ -44,6 +44,9 @@ namespace FlowMy.Views.Overlays
 
         private void RecordButton_Click(object sender, RoutedEventArgs e)
         {
+            // 0. Flush ShowMouseTrail to node immediately (don't wait for Save)
+            _viewModel.SaveShowMouseTrailToNode();
+
             // 1. Minimize app main window
             var appWindow = Application.Current.MainWindow;
             if (appWindow != null)
@@ -53,7 +56,7 @@ namespace FlowMy.Views.Overlays
             this.Hide();
 
             // 3. Show overlay
-            var overlay = new MacroRecorderOverlay();
+            var overlay = new MacroRecorderOverlay(_viewModel.ShowMouseTrail);
             overlay.ShowDialog();
 
             // 4. Restore app window and re-show dialog

@@ -33,6 +33,7 @@ namespace FlowMy.Models
         private int _repeatIntervalMs = 500;
         private int _repeatCount = 1;
         private VisualPlaybackMode _visualPlaybackMode = VisualPlaybackMode.Live;
+        private bool _showMouseTrail = false;
 
         public MacroRecorderNode()
         {
@@ -149,6 +150,20 @@ namespace FlowMy.Models
             {
                 if (_visualPlaybackMode == value) return;
                 _visualPlaybackMode = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Hiển thị nét đứt di chuyển chuột khi ghi lại thao tác.
+        /// </summary>
+        public bool ShowMouseTrail
+        {
+            get => _showMouseTrail;
+            set
+            {
+                if (_showMouseTrail == value) return;
+                _showMouseTrail = value;
                 OnPropertyChanged();
             }
         }
