@@ -88,7 +88,7 @@ namespace FlowMy.Views.Overlays
         private static readonly Color ColorShiftLeftClick = Color.FromRgb(0xFF, 0xA5, 0x00); // orange
         private static readonly Color ColorScroll         = Color.FromRgb(0x44, 0xDD, 0x88); // green
 
-        private const int MarkerRadius = 20; // px radius of click circle (increased for visibility)
+        private const int MarkerRadius = 14; // px radius of click circle
 
         // ─── Screen color sampling ────────────────────────────────────────────────
 
@@ -680,7 +680,7 @@ namespace FlowMy.Views.Overlays
             var icon = new TextBlock
             {
                 Text       = "◈",
-                FontSize   = 16,
+                FontSize   = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 IsHitTestVisible = false
@@ -696,7 +696,7 @@ namespace FlowMy.Views.Overlays
             labelSp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] {label}",
-                FontSize   = 13,
+                FontSize   = 11,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White
             });
@@ -705,7 +705,7 @@ namespace FlowMy.Views.Overlays
                 labelSp.Children.Add(new TextBlock
                 {
                     Text       = $"+{deltaSeconds:F2}s",
-                    FontSize   = 11,
+                    FontSize   = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 240, 120))
                 });
             }
@@ -746,7 +746,7 @@ namespace FlowMy.Views.Overlays
             sp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] {arrow} {Math.Abs(notches)}",
-                FontSize   = 13,
+                FontSize   = 11,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White
             });
@@ -755,7 +755,7 @@ namespace FlowMy.Views.Overlays
                 sp.Children.Add(new TextBlock
                 {
                     Text       = $"  +{deltaSeconds:F2}s",
-                    FontSize   = 11,
+                    FontSize   = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 180)),
                     VerticalAlignment = VerticalAlignment.Center
                 });
@@ -778,7 +778,7 @@ namespace FlowMy.Views.Overlays
             sp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] {keyName}",
-                FontSize   = 13,
+                FontSize   = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Brushes.White
             });
@@ -787,7 +787,7 @@ namespace FlowMy.Views.Overlays
                 sp.Children.Add(new TextBlock
                 {
                     Text       = $"+{deltaSeconds:F2}s",
-                    FontSize   = 11,
+                    FontSize   = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 180))
                 });
             }
@@ -854,7 +854,7 @@ namespace FlowMy.Views.Overlays
             var icon = new TextBlock
             {
                 Text       = "◇",
-                FontSize   = 16,
+                FontSize   = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(Color.FromArgb(230, 0xFF, 0xA5, 0x00)),
                 IsHitTestVisible = false
@@ -868,7 +868,7 @@ namespace FlowMy.Views.Overlays
             labelSp.Children.Add(new TextBlock
             {
                 Text       = $"[{seq}] ↑L",
-                FontSize   = 13,
+                FontSize   = 11,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White
             });
@@ -877,7 +877,7 @@ namespace FlowMy.Views.Overlays
                 labelSp.Children.Add(new TextBlock
                 {
                     Text       = $"+{deltaSeconds:F2}s",
-                    FontSize   = 11,
+                    FontSize   = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 240, 120))
                 });
             }
