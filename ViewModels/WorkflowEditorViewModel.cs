@@ -2985,6 +2985,12 @@ namespace FlowMy.ViewModels
                 if (properties.TryGetValue("RepeatCount", out var mrcObj) &&
                     int.TryParse(mrcObj?.ToString(), out var mrc))
                     macroRecorderRestoreNode.RepeatCount = Math.Max(1, mrc);
+                if (properties.TryGetValue("VisualPlaybackMode", out var vpmObj) &&
+                    Enum.TryParse<VisualPlaybackMode>(vpmObj?.ToString(), out var vpm))
+                    macroRecorderRestoreNode.VisualPlaybackMode = vpm;
+                if (properties.TryGetValue("ShowMouseTrail", out var smtObj) &&
+                    bool.TryParse(smtObj?.ToString(), out var smt))
+                    macroRecorderRestoreNode.ShowMouseTrail = smt;
             }
 
             // Dynamic input selections (source node + output key)
@@ -3139,6 +3145,8 @@ namespace FlowMy.ViewModels
                 dict["PlaybackMode"] = macroRecorderNode.PlaybackMode.ToString();
                 dict["RepeatIntervalMs"] = macroRecorderNode.RepeatIntervalMs;
                 dict["RepeatCount"] = macroRecorderNode.RepeatCount;
+                dict["VisualPlaybackMode"] = macroRecorderNode.VisualPlaybackMode.ToString();
+                dict["ShowMouseTrail"] = macroRecorderNode.ShowMouseTrail;
             }
 
             // Dynamic input selections (persist minimal config)

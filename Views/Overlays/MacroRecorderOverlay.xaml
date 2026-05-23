@@ -11,11 +11,36 @@
         Focusable="True">
 
     <Grid>
-        <!-- Lớp phủ bán trong suốt rất nhẹ để bắt sự kiện -->
+        <!-- Lớp phủ trong suốt — rất nhẹ, chỉ để overlay có nền -->
         <Rectangle Fill="#01000000" IsHitTestVisible="True"/>
 
         <!-- Canvas để vẽ trail và visual feedback -->
         <Canvas x:Name="DrawingCanvas" IsHitTestVisible="False"/>
+
+        <!-- Chuột ảo: hiển thị vị trí chuột thật khi đang ghi (không ảnh hưởng input) -->
+        <Canvas x:Name="CursorCanvas" IsHitTestVisible="False">
+            <!-- VirtualCursor: hình mũi tên nhỏ màu đỏ, ẩn khi chưa ghi -->
+            <Path x:Name="VirtualCursor"
+                  Visibility="Collapsed"
+                  IsHitTestVisible="False"
+                  Fill="#FFEE0000"
+                  Stroke="#FFFFFFFF"
+                  StrokeThickness="1">
+                <!-- Mũi tên chuột chuẩn (12×18 px) -->
+                <Path.Data>
+                    <PathGeometry>
+                        <PathFigure StartPoint="0,0" IsClosed="True">
+                            <LineSegment Point="0,14"/>
+                            <LineSegment Point="4,10"/>
+                            <LineSegment Point="7,16"/>
+                            <LineSegment Point="9,15"/>
+                            <LineSegment Point="6,9"/>
+                            <LineSegment Point="11,9"/>
+                        </PathFigure>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+        </Canvas>
 
         <!-- Panel hướng dẫn / trạng thái (góc trên giữa) -->
         <Border x:Name="InstructionPanel"

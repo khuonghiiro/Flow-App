@@ -68,15 +68,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var dispatcher = Application.Current?.Dispatcher;
             if (visualMode != VisualPlaybackMode.Silent && dispatcher != null)
             {
+                // Must use InvokeAsync and capture result via TaskCompletionSource
+                // because lambda captures cannot assign back to outer 'overlay' variable
+                // through a simple closure when using await InvokeAsync.
+                var tcs = new TaskCompletionSource<MacroPlaybackOverlay?>();
                 await dispatcher.InvokeAsync(() =>
                 {
                     try
                     {
-                        overlay = new MacroPlaybackOverlay();
-                        overlay.Show();
+                        var o = new MacroPlaybackOverlay();
+                        o.Show();
+                        tcs.SetResult(o);
                     }
-                    catch { overlay = null; }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"MacroPlaybackOverlay.Show failed: {ex.Message}");
+                        tcs.SetResult(null);
+                    }
                 }, DispatcherPriority.Normal);
+                overlay = await tcs.Task;
             }
 
             try
@@ -213,10 +223,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
-                // Always close overlay on UI thread
+                // Wait a moment so the last visual markers are visible before closing
+                if (overlay != null)
+                {
+                    try { await Task.Delay(800); } catch { }
+                }
+
+                // Close overlay on UI thread — use InvokeAsync (awaited) to ensure it completes
                 if (overlay != null && dispatcher != null)
                 {
-                    dispatcher.BeginInvoke(() =>
+                    await dispatcher.InvokeAsync(() =>
                     {
                         try { overlay.Close(); } catch { }
                     }, DispatcherPriority.Normal);

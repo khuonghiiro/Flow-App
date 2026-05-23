@@ -44,8 +44,8 @@ namespace FlowMy.Views.Overlays
         private static readonly Color ColorRightClick     = Color.FromRgb(0xFF, 0x33, 0x33);
         private static readonly Color ColorShiftLeftClick = Color.FromRgb(0xFF, 0xA5, 0x00);
         private static readonly Color ColorScroll         = Color.FromRgb(0x44, 0xDD, 0x88);
-        private static readonly Color ColorKeyPress       = Color.FromRgb(0xCC, 0xCC, 0xFF);
-        private const int MarkerRadius = 14;
+        private static readonly Color ColorKeyPress       = Color.FromRgb(0xAA, 0x88, 0xFF);
+        private const int MarkerRadius = 18;
 
         public MacroPlaybackOverlay()
         {
@@ -104,6 +104,7 @@ namespace FlowMy.Views.Overlays
             Dispatcher.BeginInvoke(() =>
             {
                 var pt = ScreenToCanvas(screenX, screenY);
+                int r = MarkerRadius;
 
                 Color fillColor = button switch
                 {
@@ -120,53 +121,49 @@ namespace FlowMy.Views.Overlays
                     _           => "?"
                 };
 
-                // Circle
+                // Outer glow
+                var glow = new Ellipse
+                {
+                    Width  = (r + 6) * 2,
+                    Height = (r + 6) * 2,
+                    Fill   = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(glow, pt.X - (r + 6));
+                Canvas.SetTop(glow,  pt.Y - (r + 6));
+                DrawingCanvas.Children.Add(glow);
+
+                // Main circle
                 var circle = new Ellipse
                 {
-                    Width  = MarkerRadius * 2,
-                    Height = MarkerRadius * 2,
-                    Fill   = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
+                    Width  = r * 2,
+                    Height = r * 2,
+                    Fill   = new SolidColorBrush(Color.FromArgb(230, fillColor.R, fillColor.G, fillColor.B)),
                     Stroke = Brushes.White,
                     StrokeThickness = 2,
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(circle, pt.X - MarkerRadius);
-                Canvas.SetTop(circle,  pt.Y - MarkerRadius);
+                Canvas.SetLeft(circle, pt.X - r);
+                Canvas.SetTop(circle,  pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // "+" horizontal
-                var hBar = new Rectangle { Width = MarkerRadius, Height = 2.5, Fill = Brushes.White, IsHitTestVisible = false };
-                Canvas.SetLeft(hBar, pt.X - MarkerRadius / 2.0);
-                Canvas.SetTop(hBar,  pt.Y - 1.25);
-                DrawingCanvas.Children.Add(hBar);
-
-                // "+" vertical
-                var vBar = new Rectangle { Width = 2.5, Height = MarkerRadius, Fill = Brushes.White, IsHitTestVisible = false };
-                Canvas.SetLeft(vBar, pt.X - 1.25);
-                Canvas.SetTop(vBar,  pt.Y - MarkerRadius / 2.0);
-                DrawingCanvas.Children.Add(vBar);
-
-                // Label pill
-                var pill = new Border
+                // Center label
+                var centerLabel = new TextBlock
                 {
-                    Background   = new SolidColorBrush(Color.FromArgb(210, 20, 20, 20)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding      = new Thickness(5, 2, 5, 2),
-                    Child        = new TextBlock
-                    {
-                        Text       = $"[{seq}] {lbl}",
-                        FontSize   = 11,
-                        FontWeight = FontWeights.Bold,
-                        Foreground = Brushes.White
-                    },
+                    Text       = $"{seq}\n{lbl}",
+                    FontSize   = 11,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    TextAlignment = TextAlignment.Center,
+                    LineHeight = 13,
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(pill, pt.X + MarkerRadius + 3);
-                Canvas.SetTop(pill,  pt.Y - MarkerRadius);
-                DrawingCanvas.Children.Add(pill);
+                centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
+                DrawingCanvas.Children.Add(centerLabel);
 
-                // Fade out after 1.5 s
-                FadeOutAndRemove(circle, hBar, vBar, pill);
+                FadeOutAndRemove(glow, circle, centerLabel);
             });
         }
 
@@ -176,27 +173,52 @@ namespace FlowMy.Views.Overlays
             Dispatcher.BeginInvoke(() =>
             {
                 var pt = ScreenToCanvas(screenX, screenY);
-                string arrow = notches >= 0 ? "▲" : "▼";
+                int r = MarkerRadius;
+                string arrow = notches >= 0 ? "↑" : "↓";
 
-                var pill = new Border
+                // Outer glow
+                var glow = new Ellipse
                 {
-                    Background   = new SolidColorBrush(Color.FromArgb(200, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
-                    CornerRadius = new CornerRadius(6),
-                    Padding      = new Thickness(6, 3, 6, 3),
-                    Child        = new TextBlock
-                    {
-                        Text       = $"[{seq}] {arrow} {Math.Abs(notches)}",
-                        FontSize   = 11,
-                        FontWeight = FontWeights.Bold,
-                        Foreground = Brushes.White
-                    },
+                    Width  = (r + 6) * 2,
+                    Height = (r + 6) * 2,
+                    Fill   = new SolidColorBrush(Color.FromArgb(50, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(pill, pt.X + 10);
-                Canvas.SetTop(pill,  pt.Y - 12);
-                DrawingCanvas.Children.Add(pill);
+                Canvas.SetLeft(glow, pt.X - (r + 6));
+                Canvas.SetTop(glow,  pt.Y - (r + 6));
+                DrawingCanvas.Children.Add(glow);
 
-                FadeOutAndRemove(pill);
+                // Main circle
+                var circle = new Ellipse
+                {
+                    Width  = r * 2,
+                    Height = r * 2,
+                    Fill   = new SolidColorBrush(Color.FromArgb(220, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(circle, pt.X - r);
+                Canvas.SetTop(circle,  pt.Y - r);
+                DrawingCanvas.Children.Add(circle);
+
+                // Center label
+                var centerLabel = new TextBlock
+                {
+                    Text       = $"{seq}\n{arrow}",
+                    FontSize   = 11,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    TextAlignment = TextAlignment.Center,
+                    LineHeight = 13,
+                    IsHitTestVisible = false
+                };
+                centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
+                DrawingCanvas.Children.Add(centerLabel);
+
+                FadeOutAndRemove(glow, circle, centerLabel);
             });
         }
 
@@ -206,26 +228,52 @@ namespace FlowMy.Views.Overlays
             Dispatcher.BeginInvoke(() =>
             {
                 var pt = ScreenToCanvas(screenX, screenY);
+                int r = MarkerRadius;
 
-                var pill = new Border
+                // Outer glow
+                var glow = new Ellipse
                 {
-                    Background   = new SolidColorBrush(Color.FromArgb(210, 30, 30, 30)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding      = new Thickness(5, 2, 5, 2),
-                    Child        = new TextBlock
-                    {
-                        Text       = $"[{seq}] {keyName}",
-                        FontSize   = 11,
-                        FontWeight = FontWeights.SemiBold,
-                        Foreground = Brushes.White
-                    },
+                    Width  = (r + 6) * 2,
+                    Height = (r + 6) * 2,
+                    Fill   = new SolidColorBrush(Color.FromArgb(40, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(pill, pt.X + 10);
-                Canvas.SetTop(pill,  pt.Y - 10);
-                DrawingCanvas.Children.Add(pill);
+                Canvas.SetLeft(glow, pt.X - (r + 6));
+                Canvas.SetTop(glow,  pt.Y - (r + 6));
+                DrawingCanvas.Children.Add(glow);
 
-                FadeOutAndRemove(pill);
+                // Main circle
+                var circle = new Ellipse
+                {
+                    Width  = r * 2,
+                    Height = r * 2,
+                    Fill   = new SolidColorBrush(Color.FromArgb(210, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(circle, pt.X - r);
+                Canvas.SetTop(circle,  pt.Y - r);
+                DrawingCanvas.Children.Add(circle);
+
+                // Center label
+                string displayKey = keyName.Length > 4 ? keyName[..4] : keyName;
+                var centerLabel = new TextBlock
+                {
+                    Text       = $"{seq}\n{displayKey}",
+                    FontSize   = 10,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    TextAlignment = TextAlignment.Center,
+                    LineHeight = 12,
+                    IsHitTestVisible = false
+                };
+                centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
+                DrawingCanvas.Children.Add(centerLabel);
+
+                FadeOutAndRemove(glow, circle, centerLabel);
             });
         }
 
@@ -567,15 +615,21 @@ namespace FlowMy.Views.Overlays
         {
             var timer = new System.Windows.Threading.DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(1500)
+                Interval = TimeSpan.FromMilliseconds(1200)
             };
             timer.Tick += (_, _) =>
             {
                 timer.Stop();
                 foreach (var el in elements)
                 {
-                    if (DrawingCanvas.Children.Contains(el))
-                        DrawingCanvas.Children.Remove(el);
+                    if (!DrawingCanvas.Children.Contains(el)) continue;
+                    var anim = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(400));
+                    anim.Completed += (_, _) =>
+                    {
+                        if (DrawingCanvas.Children.Contains(el))
+                            DrawingCanvas.Children.Remove(el);
+                    };
+                    el.BeginAnimation(UIElement.OpacityProperty, anim);
                 }
             };
             timer.Start();
