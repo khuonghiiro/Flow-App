@@ -412,43 +412,62 @@ namespace FlowMy.Views.Overlays
             {
                 var pt = ScreenToCanvas(screenX, screenY);
                 int r = MarkerRadius;
+                bool isCombo = keyName.Contains('+');
+
+                // Combo = orange, single key = purple
+                Color fillColor = isCombo
+                    ? Color.FromRgb(0xFF, 0xAA, 0x00)
+                    : ColorKeyPress;
+                if (isCombo) r = MarkerRadius + 4;
 
                 var glow = new Ellipse
                 {
-                    Width  = (r + 6) * 2, Height = (r + 6) * 2,
-                    Fill   = new SolidColorBrush(Color.FromArgb(40, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
+                    Width  = (r + 4) * 2, Height = (r + 4) * 2,
+                    Fill   = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(glow, pt.X - (r + 6)); Canvas.SetTop(glow, pt.Y - (r + 6));
+                Canvas.SetLeft(glow, pt.X - (r + 4)); Canvas.SetTop(glow, pt.Y - (r + 4));
                 DrawingCanvas.Children.Add(glow);
 
                 var circle = new Ellipse
                 {
                     Width  = r * 2, Height = r * 2,
-                    Fill   = new SolidColorBrush(Color.FromArgb(210, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
-                    Stroke = Brushes.White, StrokeThickness = 2, IsHitTestVisible = false
+                    Fill   = new SolidColorBrush(Color.FromArgb(210, fillColor.R, fillColor.G, fillColor.B)),
+                    Stroke = Brushes.White, StrokeThickness = isCombo ? 2 : 1.5, IsHitTestVisible = false
                 };
                 Canvas.SetLeft(circle, pt.X - r); Canvas.SetTop(circle, pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center: just the key name
-                string displayKey = keyName.Length > 5 ? keyName[..5] : keyName;
-                var centerContainer = new Grid
+                // Center: combo split into two lines, single key truncated
+                string displayText;
+                double fontSize;
+                if (isCombo)
                 {
-                    Width = r * 2, Height = r * 2,
-                    IsHitTestVisible = false
-                };
+                    int lastPlus = keyName.LastIndexOf('+');
+                    string modPart = keyName[..lastPlus];
+                    string keyPart = keyName[(lastPlus + 1)..];
+                    displayText = $"{modPart}\n{keyPart}";
+                    fontSize = modPart.Length > 8 ? 7 : 8;
+                }
+                else
+                {
+                    displayText = keyName.Length > 5 ? keyName[..5] : keyName;
+                    fontSize = 9;
+                }
+
+                var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
                 centerContainer.Children.Add(new TextBlock
                 {
-                    Text = displayKey,
-                    FontSize = 9, FontWeight = FontWeights.Bold,
+                    Text = displayText, FontSize = fontSize, FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
+                    LineHeight = fontSize + 2,
                     IsHitTestVisible = false
-                });                Canvas.SetLeft(centerContainer, pt.X - r);
+                });
+                Canvas.SetLeft(centerContainer, pt.X - r);
                 Canvas.SetTop(centerContainer,  pt.Y - r);
                 DrawingCanvas.Children.Add(centerContainer);
 
@@ -457,7 +476,7 @@ namespace FlowMy.Views.Overlays
                 {
                     Width = 18, Height = 18,
                     Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
-                    Stroke = new SolidColorBrush(Color.FromArgb(200, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
+                    Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
                     StrokeThickness = 1.5, IsHitTestVisible = false
                 };
                 Canvas.SetLeft(seqBg, pt.X - 9); Canvas.SetTop(seqBg, pt.Y - r - 9);
@@ -466,8 +485,7 @@ namespace FlowMy.Views.Overlays
                 var seqContainer = new Grid { Width = 18, Height = 18, IsHitTestVisible = false };
                 seqContainer.Children.Add(new TextBlock
                 {
-                    Text = seq.ToString(),
-                    FontSize = 9, FontWeight = FontWeights.Bold,
+                    Text = seq.ToString(), FontSize = 9, FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,

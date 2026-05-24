@@ -1214,44 +1214,68 @@ namespace FlowMy.Views.Overlays
                                    string? comboLabel = null)
         {
             var pt = ScreenToCanvas(screenX, screenY);
-            Color fillColor = Color.FromRgb(0xAA, 0x88, 0xFF);
-            int r = MarkerRadius;
+            bool isCombo = keyName.Contains('+');
+
+            // Combo keys: orange/yellow — visually distinct from single keys (purple)
+            Color fillColor = isCombo
+                ? Color.FromRgb(0xFF, 0xAA, 0x00)   // orange for combos
+                : Color.FromRgb(0xAA, 0x88, 0xFF);  // purple for single keys
+
+            int r = isCombo ? MarkerRadius + 4 : MarkerRadius; // slightly larger for combos
 
             // Outer glow
             var glow = new Ellipse
             {
-                Width = (r + 5) * 2, Height = (r + 5) * 2,
-                Fill = new SolidColorBrush(Color.FromArgb(45, fillColor.R, fillColor.G, fillColor.B)),
+                Width = (r + 4) * 2, Height = (r + 4) * 2,
+                Fill = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(glow, pt.X - (r + 5));
-            Canvas.SetTop(glow, pt.Y - (r + 5));
+            Canvas.SetLeft(glow, pt.X - (r + 4));
+            Canvas.SetTop(glow, pt.Y - (r + 4));
             DrawingCanvas.Children.Add(glow);
 
-            // Main circle
+            // Main circle — dashed border for combos to further distinguish
             var circle = new Ellipse
             {
                 Width = r * 2, Height = r * 2,
                 Fill = new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
-                Stroke = Brushes.White, StrokeThickness = 1.5,
+                Stroke = Brushes.White, StrokeThickness = isCombo ? 2 : 1.5,
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(circle, pt.X - r);
             Canvas.SetTop(circle, pt.Y - r);
             DrawingCanvas.Children.Add(circle);
 
-            // Center label — just the key name, truncated if too long
-            string displayKey = keyName.Length > 5 ? keyName[..5] : keyName;
+            // Center label — for combos show "Ctrl+C" split nicely, for single keys show key name
+            string displayText;
+            double fontSize;
+            if (isCombo)
+            {
+                // Split combo into two lines: modifiers on top, main key on bottom
+                // e.g. "Ctrl+Shift+C" → "Ctrl+Shift\nC"
+                int lastPlus = keyName.LastIndexOf('+');
+                string modPart = keyName[..lastPlus];   // "Ctrl+Shift"
+                string keyPart = keyName[(lastPlus + 1)..]; // "C"
+                displayText = $"{modPart}\n{keyPart}";
+                fontSize = modPart.Length > 8 ? 7 : 8;
+            }
+            else
+            {
+                displayText = keyName.Length > 5 ? keyName[..5] : keyName;
+                fontSize = 9;
+            }
+
             var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
             centerContainer.Children.Add(new TextBlock
             {
-                Text = displayKey,
-                FontSize = 9, FontWeight = FontWeights.Bold,
+                Text = displayText,
+                FontSize = fontSize, FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap,
+                LineHeight = fontSize + 2,
                 IsHitTestVisible = false
             });
             Canvas.SetLeft(centerContainer, pt.X - r);
@@ -1306,23 +1330,23 @@ namespace FlowMy.Views.Overlays
                 badgeTop += deltaBorder.DesiredSize.Height + 2;
             }
 
-            // Combo label below delta — e.g. "Ctrl (3.12s) + Shift (1.2s) + B (0.1s)"
+            // Combo timing label below delta — e.g. "Ctrl (3.12s) + Shift (1.2s) + B (0.1s)"
             if (!string.IsNullOrEmpty(comboLabel))
             {
                 var comboBorder = new Border
                 {
-                    Background = new SolidColorBrush(Color.FromArgb(210, 20, 20, 40)),
+                    Background = new SolidColorBrush(Color.FromArgb(210, 30, 20, 0)),
                     CornerRadius = new CornerRadius(4),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(120, 0xAA, 0x88, 0xFF)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(150, fillColor.R, fillColor.G, fillColor.B)),
                     BorderThickness = new Thickness(1),
                     Padding = new Thickness(5, 2, 5, 2),
                     Child = new TextBlock
                     {
                         Text = comboLabel,
                         FontSize = 9,
-                        Foreground = new SolidColorBrush(Color.FromArgb(255, 0xCC, 0xBB, 0xFF)),
+                        Foreground = new SolidColorBrush(Color.FromArgb(255, 0xFF, 0xDD, 0x88)),
                         TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 200
+                        MaxWidth = 220
                     },
                     IsHitTestVisible = false
                 };
