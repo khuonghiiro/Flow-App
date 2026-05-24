@@ -12,9 +12,6 @@
         Focusable="False">
 
     <Grid>
-        <!-- Very light tint so canvas is visible but overlay is obvious -->
-        <Rectangle Fill="#08000000" IsHitTestVisible="False"/>
-
         <!-- Drawing canvas for replay visuals -->
         <Canvas x:Name="DrawingCanvas" IsHitTestVisible="False"/>
 
@@ -46,10 +43,34 @@
                     <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Opacity="0.6"/>
                 </Path.Effect>
             </Path>
+
+            <!-- Hint hành động: hiện khi đang nhấn / giữ chuột -->
+            <Border x:Name="ActionHintBorder"
+                    Visibility="Collapsed"
+                    Background="#DD1A1A2E"
+                    BorderBrush="#882299FF"
+                    BorderThickness="1"
+                    CornerRadius="5"
+                    Padding="8,4"
+                    Canvas.Left="16"
+                    Canvas.Top="16">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🖱 "
+                               FontSize="11"
+                               Foreground="#FF2299FF"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ActionHintText"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#FFFFFFFF"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Canvas>
 
         <!-- Status bar — top center -->
         <Border x:Name="StatusPanel"
+                IsHitTestVisible="False"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 Margin="0,24,0,0"
@@ -73,6 +94,7 @@
 
         <!-- Progress: cycle / action count — top right -->
         <Border x:Name="ProgressPanel"
+                IsHitTestVisible="False"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Right"
                 Margin="0,24,24,0"
@@ -97,6 +119,7 @@
 
         <!-- Action counter — top left -->
         <Border x:Name="ActionPanel"
+                IsHitTestVisible="False"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
                 Margin="24,24,0,0"
@@ -111,7 +134,8 @@
         </Border>
 
         <!-- ESC hint — bottom center -->
-        <Border VerticalAlignment="Bottom"
+        <Border IsHitTestVisible="False"
+                VerticalAlignment="Bottom"
                 HorizontalAlignment="Center"
                 Margin="0,0,0,24"
                 Background="#CC111111"

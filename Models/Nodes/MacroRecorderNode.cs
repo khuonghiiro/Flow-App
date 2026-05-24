@@ -34,6 +34,7 @@ namespace FlowMy.Models
         private int _repeatCount = 1;
         private VisualPlaybackMode _visualPlaybackMode = VisualPlaybackMode.Live;
         private bool _showMouseTrail = false;
+        private int _countdownSeconds = 3;
 
         public MacroRecorderNode()
         {
@@ -150,6 +151,22 @@ namespace FlowMy.Models
             {
                 if (_visualPlaybackMode == value) return;
                 _visualPlaybackMode = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Số giây đếm ngược trước khi phát lại (để user kịp chuyển sang app target).
+        /// 0 = không đếm ngược.
+        /// </summary>
+        public int CountdownSeconds
+        {
+            get => _countdownSeconds;
+            set
+            {
+                var v = value < 0 ? 0 : value > 10 ? 10 : value;
+                if (_countdownSeconds == v) return;
+                _countdownSeconds = v;
                 OnPropertyChanged();
             }
         }

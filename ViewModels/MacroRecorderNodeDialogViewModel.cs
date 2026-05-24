@@ -18,6 +18,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private int    _repeatCount;
         [ObservableProperty] private string _selectedVisualPlaybackMode;
         [ObservableProperty] private bool   _showMouseTrail;
+        [ObservableProperty] private int    _countdownSeconds;
 
         public bool IsRepeatVisible       => SelectedPlaybackMode == "Lặp lại";
         public bool CanExportJson         => !string.IsNullOrWhiteSpace(MacroDataJson);
@@ -50,6 +51,7 @@ namespace FlowMy.ViewModels
             _repeatCount             = node.RepeatCount;
             _selectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
             _showMouseTrail          = node.ShowMouseTrail;
+            _countdownSeconds        = node.CountdownSeconds;
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -129,6 +131,9 @@ namespace FlowMy.ViewModels
 
             if (_macroRecorderNode.ShowMouseTrail != ShowMouseTrail)
             { _macroRecorderNode.ShowMouseTrail = ShowMouseTrail; needSync = true; }
+
+            if (_macroRecorderNode.CountdownSeconds != CountdownSeconds)
+            { _macroRecorderNode.CountdownSeconds = CountdownSeconds; needSync = true; }
 
             if (needSync)
                 _host.RequestSyncDataPanels(immediate: true);

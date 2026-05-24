@@ -338,26 +338,32 @@ namespace FlowMy.Views.Overlays
 
                 if (wParam == (IntPtr)WM_LBUTTONDOWN)
                 {
-                    bool shiftHeld = (GetAsyncKeyState((int)VK_SHIFT) & 0x8000) != 0;
-                    string button = shiftHeld ? "ShiftLeft" : "Left";
+                    bool shiftHeld = (GetAsyncKeyState((int)VK_SHIFT)   & 0x8000) != 0;
+                    bool ctrlHeld  = (GetAsyncKeyState((int)VK_CONTROL) & 0x8000) != 0;
+                    bool altHeld   = (GetAsyncKeyState((int)VK_MENU)    & 0x8000) != 0;
 
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
+                    // Build display label for visual feedback
+                    string button = "Left";
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
                         Type = "MouseDown",
                         Timestamp = ts,
-                        X = x,
-                        Y = y,
-                        Button = button
+                        X = x, Y = y,
+                        Button = button,
+                        ShiftHeld = shiftHeld,
+                        CtrlHeld  = ctrlHeld,
+                        AltHeld   = altHeld
                     });
                     int seq = _sequenceCounter;
+                    string displayButton = BuildModifierLabel(button, shiftHeld, ctrlHeld, altHeld);
                     _mouseDownTs = ts;
                     Dispatcher.Invoke(() =>
                     {
-                        DrawClick(x, y, button, seq, delta);
+                        DrawClick(x, y, displayButton, seq, delta);
                         // Start drag-hold tracking
                         _isDragging = true;
                         _dragStartX = x; _dragStartY = y;
@@ -425,6 +431,9 @@ namespace FlowMy.Views.Overlays
                 }
                 else if (wParam == (IntPtr)WM_RBUTTONDOWN)
                 {
+                    bool shiftHeld = (GetAsyncKeyState((int)VK_SHIFT)   & 0x8000) != 0;
+                    bool ctrlHeld  = (GetAsyncKeyState((int)VK_CONTROL) & 0x8000) != 0;
+                    bool altHeld   = (GetAsyncKeyState((int)VK_MENU)    & 0x8000) != 0;
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
@@ -433,13 +442,16 @@ namespace FlowMy.Views.Overlays
                         SequenceNumber = ++_sequenceCounter,
                         Type = "MouseClick",
                         Timestamp = ts,
-                        X = x,
-                        Y = y,
-                        Button = "Right"
+                        X = x, Y = y,
+                        Button = "Right",
+                        ShiftHeld = shiftHeld,
+                        CtrlHeld  = ctrlHeld,
+                        AltHeld   = altHeld
                     });
+                    string displayRight = BuildModifierLabel("Right", shiftHeld, ctrlHeld, altHeld);
                     Dispatcher.Invoke(() =>
                     {
-                        DrawClick(x, y, "Right", _sequenceCounter, delta);
+                        DrawClick(x, y, displayRight, _sequenceCounter, delta);
                         UpdateActionCount();
                     });
                 }
@@ -974,5 +986,19 @@ namespace FlowMy.Views.Overlays
             0xDE => "'",
             _ => $"VK_{vk:X2}"
         };
+
+        /// <summary>
+        /// Tạo label hiển thị cho click kèm modifier: "Ctrl+L", "Shift+Alt+R", v.v.
+        /// Dùng "+" làm separator, "L"/"R" cho Left/Right click.
+        /// </summary>
+        private static string BuildModifierLabel(string button, bool shift, bool ctrl, bool alt)
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (ctrl)  parts.Add("Ctrl");
+            if (alt)   parts.Add("Alt");
+            if (shift) parts.Add("Shift");
+            parts.Add(button == "Right" ? "R" : "L");
+            return string.Join("+", parts);
+        }
     }
 }

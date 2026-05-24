@@ -5,44 +5,31 @@ namespace FlowMy.Models
     /// </summary>
     public sealed class MacroAction
     {
-        /// <summary>
-        /// Số thứ tự của action, tăng dần bắt đầu từ 1.
-        /// </summary>
         public int SequenceNumber { get; set; }
 
         /// <summary>
-        /// Loại thao tác: "MouseClick" | "KeyPress" | "MouseMove" | "MouseScroll"
+        /// Loại thao tác: "MouseClick" | "MouseDown" | "MouseUp" | "KeyPress" | "MouseMove" | "MouseScroll"
         /// </summary>
         public string Type { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Unix timestamp milliseconds tại thời điểm sự kiện xảy ra.
-        /// </summary>
         public long Timestamp { get; set; }
-
-        /// <summary>
-        /// Tọa độ X của con trỏ chuột tại thời điểm sự kiện.
-        /// </summary>
         public int X { get; set; }
-
-        /// <summary>
-        /// Tọa độ Y của con trỏ chuột tại thời điểm sự kiện.
-        /// </summary>
         public int Y { get; set; }
 
         /// <summary>
-        /// Nút chuột được nhấn: "Left" | "Right" | "ShiftLeft" | null.
+        /// Nút chuột: "Left" | "Right" | "Middle" | null.
+        /// Modifier combos được lưu riêng trong CtrlHeld/ShiftHeld/AltHeld.
         /// </summary>
         public string? Button { get; set; }
 
-        /// <summary>
-        /// Tên phím được nhấn (ví dụ: "A", "Enter", "F5") hoặc null.
-        /// </summary>
+        /// <summary>Tên phím (ví dụ: "A", "Enter", "F5") — chỉ dùng với KeyPress.</summary>
         public string? Key { get; set; }
 
-        /// <summary>
-        /// Số notch scroll (dương = lên, âm = xuống). Chỉ dùng với MouseScroll.
-        /// </summary>
         public int ScrollDelta { get; set; }
+
+        // ─── Modifier key state tại thời điểm action ─────────────────────────────
+        public bool ShiftHeld { get; set; }
+        public bool CtrlHeld  { get; set; }
+        public bool AltHeld   { get; set; }
     }
 }

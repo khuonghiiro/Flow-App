@@ -3739,6 +3739,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("ShowMouseTrail", out var smtObj) &&
                 bool.TryParse(smtObj?.ToString(), out var smt))
                 macroRecorderNode.ShowMouseTrail = smt;
+            if (properties.TryGetValue("CountdownSeconds", out var csObj) &&
+                int.TryParse(csObj?.ToString(), out var cs))
+                macroRecorderNode.CountdownSeconds = Math.Max(0, Math.Min(10, cs));
         }
         else if (node is NotificationNode notificationNode)
         {
@@ -5301,6 +5304,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["RepeatCount"] = macroNode.RepeatCount;
             dict["VisualPlaybackMode"] = macroNode.VisualPlaybackMode.ToString();
             dict["ShowMouseTrail"] = macroNode.ShowMouseTrail;
+            dict["CountdownSeconds"] = macroNode.CountdownSeconds;
         }
         else if (node is NotificationNode notificationNode)
         {

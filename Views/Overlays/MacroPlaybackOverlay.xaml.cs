@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace FlowMy.Views.Overlays
 {
@@ -91,7 +92,29 @@ namespace FlowMy.Views.Overlays
 
         // ─── Public API called from executor ─────────────────────────────────────
 
-        /// <summary>Update cycle and action progress labels.</summary>
+        /// <summary>
+        /// Hiển thị countdown "Bắt đầu sau Xs..." trên overlay, minimize main window,
+        /// rồi resolve task khi countdown xong để executor bắt đầu phát lại.
+        /// </summary>
+        public Task ShowCountdownAsync(int seconds, Window? mainWindow)
+        {
+            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Dispatcher.BeginInvoke(async () =>
+            {
+                // Minimize main window để app target lên foreground
+                if (mainWindow != null)
+                    mainWindow.WindowState = WindowState.Minimized;
+
+                for (int i = seconds; i > 0; i--)
+                {
+                    StatusText.Text = $"Bắt đầu sau {i}s... (chuyển sang app cần thao tác)";
+                    await Task.Delay(1000);
+                }
+                StatusText.Text = "Đang phát lại thao tác...";
+                tcs.TrySetResult();
+            });
+            return tcs.Task;
+        }
         public void UpdateProgress(int cycle, int totalCycles, int actionIndex, int totalActions)
         {
             Dispatcher.BeginInvoke(() =>
@@ -116,12 +139,30 @@ namespace FlowMy.Views.Overlays
                 VirtualCursor.Visibility = Visibility.Visible;
                 Canvas.SetLeft(VirtualCursor, pt.X);
                 Canvas.SetTop(VirtualCursor, pt.Y);
+                // Hint follows cursor — offset 16px right/down from tip
+                Canvas.SetLeft(ActionHintBorder, pt.X + 16);
+                Canvas.SetTop(ActionHintBorder,  pt.Y + 16);
             }
 
             if (syncBeforeAction)
                 Dispatcher.Invoke(Update);
             else
                 Dispatcher.BeginInvoke(Update);
+        }
+
+        /// <summary>
+        /// Hiển thị hint hành động tại vị trí chuột ảo (ví dụ: "Đang nhấn L", "Giữ L...").
+        /// text=null để ẩn hint.
+        /// </summary>
+        public void ShowActionHint(string? text)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                ActionHintText.Text = text ?? "";
+                ActionHintBorder.Visibility = string.IsNullOrEmpty(text)
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            });
         }
 
         /// <summary>Draw a click marker at screen coordinates.</summary>
@@ -132,20 +173,9 @@ namespace FlowMy.Views.Overlays
                 var pt = ScreenToCanvas(screenX, screenY);
                 int r = MarkerRadius;
 
-                Color fillColor = button switch
-                {
-                    "Left"      => ColorLeftClick,
-                    "Right"     => ColorRightClick,
-                    "ShiftLeft" => ColorShiftLeftClick,
-                    _           => ColorLeftClick
-                };
-                string lbl = button switch
-                {
-                    "Left"      => "L",
-                    "Right"     => "R",
-                    "ShiftLeft" => "⇧L",
-                    _           => "?"
-                };
+                // Xác định màu dựa trên button (Left/Right/modifier combo)
+                bool isRight = button.EndsWith("R") || button == "Right";
+                Color fillColor = isRight ? ColorRightClick : ColorLeftClick;
 
                 // Outer glow
                 var glow = new Ellipse
@@ -173,15 +203,14 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetTop(circle,  pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center label
+                // Tâm: dấu "+"
                 var centerLabel = new TextBlock
                 {
-                    Text       = $"{seq}\n{lbl}",
-                    FontSize   = 11,
+                    Text       = "+",
+                    FontSize   = 16,
                     FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     TextAlignment = TextAlignment.Center,
-                    LineHeight = 13,
                     IsHitTestVisible = false
                 };
                 centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -189,7 +218,41 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
                 DrawingCanvas.Children.Add(centerLabel);
 
-                FadeOutAndRemove(glow, circle, centerLabel);
+                // Số thứ tự — trên đỉnh hình tròn
+                var seqLabel = new TextBlock
+                {
+                    Text       = seq.ToString(),
+                    FontSize   = 10,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    TextAlignment = TextAlignment.Center,
+                    IsHitTestVisible = false
+                };
+                seqLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(seqLabel, pt.X - seqLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(seqLabel,  pt.Y - r - seqLabel.DesiredSize.Height - 2);
+                DrawingCanvas.Children.Add(seqLabel);
+
+                // Modifier label bên trái hình tròn (nếu có modifier)
+                // button dạng "Ctrl+L", "Shift+R", "L", "R"
+                string modPart = ExtractModifierPart(button);
+                if (!string.IsNullOrEmpty(modPart))
+                {
+                    var modLabel = new TextBlock
+                    {
+                        Text       = modPart,
+                        FontSize   = 9,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 220, 100)),
+                        IsHitTestVisible = false
+                    };
+                    modLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    Canvas.SetLeft(modLabel, pt.X - r - modLabel.DesiredSize.Width - 4);
+                    Canvas.SetTop(modLabel,  pt.Y - modLabel.DesiredSize.Height / 2);
+                    DrawingCanvas.Children.Add(modLabel);
+                }
+
+                FadeOutAndRemove(glow, circle, centerLabel, seqLabel);
             });
         }
 
@@ -202,49 +265,47 @@ namespace FlowMy.Views.Overlays
                 int r = MarkerRadius;
                 string arrow = notches >= 0 ? "↑" : "↓";
 
-                // Outer glow
                 var glow = new Ellipse
                 {
-                    Width  = (r + 6) * 2,
-                    Height = (r + 6) * 2,
+                    Width  = (r + 6) * 2, Height = (r + 6) * 2,
                     Fill   = new SolidColorBrush(Color.FromArgb(50, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(glow, pt.X - (r + 6));
-                Canvas.SetTop(glow,  pt.Y - (r + 6));
+                Canvas.SetLeft(glow, pt.X - (r + 6)); Canvas.SetTop(glow, pt.Y - (r + 6));
                 DrawingCanvas.Children.Add(glow);
 
-                // Main circle
                 var circle = new Ellipse
                 {
-                    Width  = r * 2,
-                    Height = r * 2,
+                    Width  = r * 2, Height = r * 2,
                     Fill   = new SolidColorBrush(Color.FromArgb(220, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
-                    Stroke = Brushes.White,
-                    StrokeThickness = 2,
-                    IsHitTestVisible = false
+                    Stroke = Brushes.White, StrokeThickness = 2, IsHitTestVisible = false
                 };
-                Canvas.SetLeft(circle, pt.X - r);
-                Canvas.SetTop(circle,  pt.Y - r);
+                Canvas.SetLeft(circle, pt.X - r); Canvas.SetTop(circle, pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center label
+                // Tâm: mũi tên scroll
                 var centerLabel = new TextBlock
                 {
-                    Text       = $"{seq}\n{arrow}",
-                    FontSize   = 11,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White,
-                    TextAlignment = TextAlignment.Center,
-                    LineHeight = 13,
-                    IsHitTestVisible = false
+                    Text = arrow, FontSize = 14, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
                 };
                 centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
                 Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
                 DrawingCanvas.Children.Add(centerLabel);
 
-                FadeOutAndRemove(glow, circle, centerLabel);
+                // Số thứ tự — trên đỉnh
+                var seqLabel = new TextBlock
+                {
+                    Text = seq.ToString(), FontSize = 10, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
+                };
+                seqLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(seqLabel, pt.X - seqLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(seqLabel,  pt.Y - r - seqLabel.DesiredSize.Height - 2);
+                DrawingCanvas.Children.Add(seqLabel);
+
+                FadeOutAndRemove(glow, circle, centerLabel, seqLabel);
             });
         }
 
@@ -256,50 +317,48 @@ namespace FlowMy.Views.Overlays
                 var pt = ScreenToCanvas(screenX, screenY);
                 int r = MarkerRadius;
 
-                // Outer glow
                 var glow = new Ellipse
                 {
-                    Width  = (r + 6) * 2,
-                    Height = (r + 6) * 2,
+                    Width  = (r + 6) * 2, Height = (r + 6) * 2,
                     Fill   = new SolidColorBrush(Color.FromArgb(40, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(glow, pt.X - (r + 6));
-                Canvas.SetTop(glow,  pt.Y - (r + 6));
+                Canvas.SetLeft(glow, pt.X - (r + 6)); Canvas.SetTop(glow, pt.Y - (r + 6));
                 DrawingCanvas.Children.Add(glow);
 
-                // Main circle
                 var circle = new Ellipse
                 {
-                    Width  = r * 2,
-                    Height = r * 2,
+                    Width  = r * 2, Height = r * 2,
                     Fill   = new SolidColorBrush(Color.FromArgb(210, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
-                    Stroke = Brushes.White,
-                    StrokeThickness = 2,
-                    IsHitTestVisible = false
+                    Stroke = Brushes.White, StrokeThickness = 2, IsHitTestVisible = false
                 };
-                Canvas.SetLeft(circle, pt.X - r);
-                Canvas.SetTop(circle,  pt.Y - r);
+                Canvas.SetLeft(circle, pt.X - r); Canvas.SetTop(circle, pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center label
-                string displayKey = keyName.Length > 4 ? keyName[..4] : keyName;
+                // Tâm: tên phím (rút gọn nếu dài)
+                string displayKey = keyName.Length > 5 ? keyName[..5] : keyName;
                 var centerLabel = new TextBlock
                 {
-                    Text       = $"{seq}\n{displayKey}",
-                    FontSize   = 10,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White,
-                    TextAlignment = TextAlignment.Center,
-                    LineHeight = 12,
-                    IsHitTestVisible = false
+                    Text = displayKey, FontSize = 10, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
                 };
                 centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
                 Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
                 DrawingCanvas.Children.Add(centerLabel);
 
-                FadeOutAndRemove(glow, circle, centerLabel);
+                // Số thứ tự — trên đỉnh
+                var seqLabel = new TextBlock
+                {
+                    Text = seq.ToString(), FontSize = 10, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
+                };
+                seqLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(seqLabel, pt.X - seqLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(seqLabel,  pt.Y - r - seqLabel.DesiredSize.Height - 2);
+                DrawingCanvas.Children.Add(seqLabel);
+
+                FadeOutAndRemove(glow, circle, centerLabel, seqLabel);
             });
         }
 
@@ -627,6 +686,22 @@ namespace FlowMy.Views.Overlays
         }
 
         // ─── Helpers ─────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Trích xuất phần modifier từ button string.
+        /// Ví dụ: "Ctrl+L" → "Ctrl", "Shift+Alt+R" → "Shift+Alt", "L" → "", "R" → ""
+        /// </summary>
+        private static string ExtractModifierPart(string button)
+        {
+            if (string.IsNullOrEmpty(button)) return "";
+            
+            // Tìm dấu "+" cuối cùng
+            int lastPlusIndex = button.LastIndexOf('+');
+            if (lastPlusIndex < 0) return ""; // không có modifier
+            
+            // Trả về phần trước dấu "+" cuối cùng
+            return button[..lastPlusIndex];
+        }
 
         private System.Windows.Point ScreenToCanvas(int screenX, int screenY)
         {

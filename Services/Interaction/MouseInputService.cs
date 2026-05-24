@@ -25,12 +25,16 @@ namespace FlowMy.Services.Interaction
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
         [DllImport("user32.dll")]
-        private static extern int GetSystemMetrics(int nIndex);
+        private static extern bool SetCursorPos(int x, int y);
 
-        private const int SM_CXVIRTUALSCREEN = 78;
-        private const int SM_CYVIRTUALSCREEN = 79;
-        private const int SM_XVIRTUALSCREEN  = 76;
-        private const int SM_YVIRTUALSCREEN  = 77;
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern int ShowCursor(bool bShow);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT
@@ -50,151 +54,154 @@ namespace FlowMy.Services.Interaction
             public IntPtr dwExtraInfo;
         }
 
-        private const int INPUT_MOUSE = 0;
-        private const uint MOUSEEVENTF_MOVE         = 0x0001;
-        private const uint MOUSEEVENTF_LEFTDOWN     = 0x0002;
-        private const uint MOUSEEVENTF_LEFTUP       = 0x0004;
-        private const uint MOUSEEVENTF_RIGHTDOWN    = 0x0008;
-        private const uint MOUSEEVENTF_RIGHTUP      = 0x0010;
-        private const uint MOUSEEVENTF_MIDDLEDOWN   = 0x0020;
-        private const uint MOUSEEVENTF_MIDDLEUP     = 0x0040;
-        private const uint MOUSEEVENTF_WHEEL        = 0x0800;
-        private const uint MOUSEEVENTF_ABSOLUTE     = 0x8000;
-        private const uint MOUSEEVENTF_VIRTUALDESK  = 0x4000;
+        private const int INPUT_MOUSE             = 0;
+        private const uint MOUSEEVENTF_LEFTDOWN   = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP     = 0x0004;
+        private const uint MOUSEEVENTF_RIGHTDOWN  = 0x0008;
+        private const uint MOUSEEVENTF_RIGHTUP    = 0x0010;
+        private const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
+        private const uint MOUSEEVENTF_MIDDLEUP   = 0x0040;
+        private const uint MOUSEEVENTF_WHEEL      = 0x0800;
+        private const uint WHEEL_DELTA            = 120;
 
-        private const uint WHEEL_DELTA = 120;
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, IntPtr dwExtraInfo);
+
+        private const uint KEYEVENTF_KEYDOWN = 0x0000;
+        private const uint KEYEVENTF_KEYUP   = 0x0002;
+        private const byte VK_SHIFT          = 0x10;
+        private const byte VK_CONTROL        = 0x11;
+        private const byte VK_MENU           = 0x12; // Alt
 
         #endregion
 
-        // ─── Coordinate helpers ───────────────────────────────────────────────────
+        private POINT _savedPosBeforeDrag;
+
+        // ─── Cursor visibility (dùng khi macro playback) ─────────────────────────
 
         /// <summary>
-        /// Convert screen pixel coordinates to the normalized 0–65535 range
-        /// required by MOUSEEVENTF_ABSOLUTE across the full virtual desktop.
+        /// Ẩn con trỏ hệ thống. Gọi trước khi macro bắt đầu phát lại.
+        /// ShowCursor dùng reference count — gọi Hide 1 lần thì phải Show 1 lần.
         /// </summary>
-        private static (int nx, int ny) ToAbsoluteCoords(int screenX, int screenY)
+        public void HideSystemCursor()
         {
-            int vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-            int vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-            int vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
-            int vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
-
-            // Clamp to virtual screen bounds
-            int px = Math.Max(vx, Math.Min(screenX, vx + vw - 1));
-            int py = Math.Max(vy, Math.Min(screenY, vy + vh - 1));
-
-            int nx = (int)(((long)(px - vx) * 65535 + vw / 2) / vw);
-            int ny = (int)(((long)(py - vy) * 65535 + vh / 2) / vh);
-            return (nx, ny);
+            // ShowCursor(false) decrements ref count; keep calling until < 0
+            int count = ShowCursor(false);
+            while (count >= 0)
+                count = ShowCursor(false);
         }
 
-        // ─── Absolute-position input (for macro playback — does NOT move real cursor) ──
+        /// <summary>
+        /// Hiện lại con trỏ hệ thống. Gọi sau khi macro kết thúc.
+        /// </summary>
+        public void ShowSystemCursor()
+        {
+            // ShowCursor(true) increments ref count; keep calling until >= 0
+            int count = ShowCursor(true);
+            while (count < 0)
+                count = ShowCursor(true);
+        }
+
+        // ─── Macro playback: lưu vị trí chuột → di chuyển → thực thi → trả về ────
 
         /// <summary>
-        /// Inject a mouse click at absolute screen coordinates WITHOUT moving the real cursor.
-        /// Uses MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK so the event is delivered
-        /// at the target position regardless of where the physical cursor is.
+        /// Click tại tọa độ action, sau đó trả chuột về vị trí cũ của user.
         /// </summary>
         public void SendMouseClickAt(int screenX, int screenY, MouseButton button,
-                                     int repeatCount = 1, double holdDurationSeconds = 0)
+                                     int repeatCount = 1, double holdDurationSeconds = 0,
+                                     bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
         {
             if (repeatCount < 1) repeatCount = 1;
             if (holdDurationSeconds < 0) holdDurationSeconds = 0;
 
-            var (nx, ny) = ToAbsoluteCoords(screenX, screenY);
-            uint downFlag = AbsDownFlag(button);
-            uint upFlag   = AbsUpFlag(button);
+            GetCursorPos(out POINT saved);
+            SetCursorPos(screenX, screenY);
 
             for (int i = 0; i < repeatCount; i++)
             {
-                SendAbsoluteEvent(nx, ny, downFlag);
+                if (ctrlHeld)  keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
+                if (altHeld)   keybd_event(VK_MENU,    0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
+                if (shiftHeld) keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
 
-                if (holdDurationSeconds > 0)
-                    Thread.Sleep((int)(holdDurationSeconds * 1000));
+                SendRawDown(button);
+                Thread.Sleep(20);
+                SendRawUp(button);
 
-                SendAbsoluteEvent(nx, ny, upFlag);
+                if (shiftHeld) keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYUP, IntPtr.Zero);
+                if (altHeld)   keybd_event(VK_MENU,    0, KEYEVENTF_KEYUP, IntPtr.Zero);
+                if (ctrlHeld)  keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
 
-                if (i < repeatCount - 1)
-                    Thread.Sleep(50);
+                if (i < repeatCount - 1) Thread.Sleep(50);
             }
+
+            SetCursorPos(saved.X, saved.Y);
         }
 
-        /// <summary>
-        /// Inject a mouse-down at absolute screen coordinates WITHOUT moving the real cursor.
-        /// </summary>
-        public void SendMouseDownAt(int screenX, int screenY, MouseButton button)
+        /// <summary>Lưu vị trí chuột hiện tại trước khi drag.</summary>
+        public void SaveCursorPos() => GetCursorPos(out _savedPosBeforeDrag);
+
+        public void SendMouseDownAt(int screenX, int screenY, MouseButton button,
+                                    bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)        {
+            SetCursorPos(screenX, screenY);
+            if (ctrlHeld)  keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
+            if (altHeld)   keybd_event(VK_MENU,    0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
+            if (shiftHeld) keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
+            SendRawDown(button);
+        }
+
+        public void SendMouseUpAt(int screenX, int screenY, MouseButton button,
+                                  bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
         {
-            var (nx, ny) = ToAbsoluteCoords(screenX, screenY);
-            SendAbsoluteEvent(nx, ny, AbsDownFlag(button));
+            SetCursorPos(screenX, screenY);
+            SendRawUp(button);
+            if (shiftHeld) keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            if (altHeld)   keybd_event(VK_MENU,    0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            if (ctrlHeld)  keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            // Trả chuột về vị trí đã lưu
+            SetCursorPos(_savedPosBeforeDrag.X, _savedPosBeforeDrag.Y);
         }
 
         /// <summary>
-        /// Inject a mouse-up at absolute screen coordinates WITHOUT moving the real cursor.
-        /// </summary>
-        public void SendMouseUpAt(int screenX, int screenY, MouseButton button)
-        {
-            var (nx, ny) = ToAbsoluteCoords(screenX, screenY);
-            SendAbsoluteEvent(nx, ny, AbsUpFlag(button));
-        }
-
-        /// <summary>
-        /// Inject a scroll event at absolute screen coordinates WITHOUT moving the real cursor.
+        /// Scroll tại tọa độ action, sau đó trả chuột về vị trí cũ.
         /// </summary>
         public void SendMouseScrollAt(int screenX, int screenY, int notches)
         {
             if (notches == 0) return;
-            var (nx, ny) = ToAbsoluteCoords(screenX, screenY);
+            GetCursorPos(out POINT saved);
+            SetCursorPos(screenX, screenY);
             int delta = notches * (int)WHEEL_DELTA;
-
             var input = new INPUT
             {
                 type = INPUT_MOUSE,
-                mi = new MOUSEINPUT
-                {
-                    dx        = nx,
-                    dy        = ny,
-                    dwFlags   = MOUSEEVENTF_WHEEL | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
-                    mouseData = (uint)delta,
-                    time      = 0,
-                    dwExtraInfo = IntPtr.Zero
-                }
+                mi   = new MOUSEINPUT { dwFlags = MOUSEEVENTF_WHEEL, mouseData = (uint)delta }
             };
             SendInput(1, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
+            SetCursorPos(saved.X, saved.Y);
         }
 
-        private static void SendAbsoluteEvent(int nx, int ny, uint actionFlag)
+        private static uint SendRawDown(MouseButton button)
         {
-            var input = new INPUT
+            uint flag = button switch
             {
-                type = INPUT_MOUSE,
-                mi = new MOUSEINPUT
-                {
-                    dx        = nx,
-                    dy        = ny,
-                    dwFlags   = actionFlag | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
-                    mouseData = 0,
-                    time      = 0,
-                    dwExtraInfo = IntPtr.Zero
-                }
+                MouseButton.Right  => MOUSEEVENTF_RIGHTDOWN,
+                MouseButton.Middle => MOUSEEVENTF_MIDDLEDOWN,
+                _                  => MOUSEEVENTF_LEFTDOWN
             };
-            SendInput(1, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
+            var input = new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { dwFlags = flag } };
+            return SendInput(1, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
         }
 
-        private static uint AbsDownFlag(MouseButton button) => button switch
+        private static uint SendRawUp(MouseButton button)
         {
-            MouseButton.Left   => MOUSEEVENTF_LEFTDOWN,
-            MouseButton.Right  => MOUSEEVENTF_RIGHTDOWN,
-            MouseButton.Middle => MOUSEEVENTF_MIDDLEDOWN,
-            _ => throw new ArgumentException($"Invalid button for MouseDown: {button}")
-        };
-
-        private static uint AbsUpFlag(MouseButton button) => button switch
-        {
-            MouseButton.Left   => MOUSEEVENTF_LEFTUP,
-            MouseButton.Right  => MOUSEEVENTF_RIGHTUP,
-            MouseButton.Middle => MOUSEEVENTF_MIDDLEUP,
-            _ => throw new ArgumentException($"Invalid button for MouseUp: {button}")
-        };
+            uint flag = button switch
+            {
+                MouseButton.Right  => MOUSEEVENTF_RIGHTUP,
+                MouseButton.Middle => MOUSEEVENTF_MIDDLEUP,
+                _                  => MOUSEEVENTF_LEFTUP
+            };
+            var input = new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { dwFlags = flag } };
+            return SendInput(1, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
+        }
 
         /// <summary>
         /// Click chuột (nhấn + thả)

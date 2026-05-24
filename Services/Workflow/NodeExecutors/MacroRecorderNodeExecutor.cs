@@ -10,19 +10,42 @@ using System.Windows.Threading;
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
     /// <summary>
-    /// Executor cho MacroRecorderNode: phát lại chuỗi thao tác chuột/bàn phím đã ghi.
-    /// Dùng MOUSEEVENTF_ABSOLUTE để inject input tại tọa độ tuyệt đối — KHÔNG di chuyển
-    /// con trỏ hệ thống, cho phép user dùng chuột thật độc lập trong khi macro chạy.
+    /// Executor cho MacroRecorderNode.
+    /// Minimize FlowMy → countdown → lưu target HWND → phát lại với SetForegroundWindow trước mỗi click.
     /// </summary>
     internal sealed class MacroRecorderNodeExecutor : INodeExecutor
     {
-        // ─── Shift+Click via keybd_event (không cần SetCursorPos) ────────────────
-        [DllImport("user32.dll")]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, IntPtr dwExtraInfo);
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+        [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+        [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
-        private const uint KEYEVENTF_KEYDOWN = 0x0000;
-        private const uint KEYEVENTF_KEYUP   = 0x0002;
-        private const byte VK_SHIFT          = 0x10;
+        /// <summary>
+        /// Đưa targetHwnd lên foreground một cách đáng tin cậy bằng AttachThreadInput.
+        /// SetForegroundWindow thông thường bị Windows chặn từ background thread.
+        /// </summary>
+        private static void ForceForeground(IntPtr targetHwnd)
+        {
+            if (targetHwnd == IntPtr.Zero || !IsWindow(targetHwnd)) return;
+
+            var fgHwnd = GetForegroundWindow();
+            if (fgHwnd == targetHwnd) return; // đã là foreground
+
+            uint fgThread  = GetWindowThreadProcessId(fgHwnd, out _);
+            uint myThread  = GetCurrentThreadId();
+            uint tgtThread = GetWindowThreadProcessId(targetHwnd, out _);
+
+            // Attach current thread và target thread vào foreground thread
+            bool attached1 = fgThread != myThread  && AttachThreadInput(myThread,  fgThread, true);
+            bool attached2 = fgThread != tgtThread && AttachThreadInput(tgtThread, fgThread, true);
+
+            SetForegroundWindow(targetHwnd);
+
+            if (attached1) AttachThreadInput(myThread,  fgThread, false);
+            if (attached2) AttachThreadInput(tgtThread, fgThread, false);
+        }
 
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -101,6 +124,35 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             System.Diagnostics.Debug.WriteLine($"[MacroExecutor] visualMode={visualMode}, overlay={overlay?.GetType().Name ?? "null"}, actions={actions.Count}");
 
+            // ── Minimize FlowMy + countdown + lưu target HWND ────────────────────
+            var mainWindow = dispatcher != null
+                ? await dispatcher.InvokeAsync(() => Application.Current?.MainWindow)
+                : null;
+
+            // Minimize main window trước
+            if (dispatcher != null)
+            {
+                dispatcher.Invoke(() =>
+                {
+                    if (mainWindow != null)
+                        mainWindow.WindowState = WindowState.Minimized;
+                });
+            }
+
+            // Countdown (overlay vẫn hiển thị để user thấy)
+            if (macroNode.CountdownSeconds > 0 && overlay != null)
+            {
+                await overlay.ShowCountdownAsync(macroNode.CountdownSeconds, mainWindow: null); // đã minimize rồi
+            }
+            else
+            {
+                await Task.Delay(300); // đủ để Windows xử lý minimize
+            }
+
+            // Lưu HWND của app target (foreground window sau khi FlowMy đã minimize)
+            IntPtr targetHwnd = GetForegroundWindow();
+            System.Diagnostics.Debug.WriteLine($"[MacroExecutor] targetHwnd=0x{targetHwnd:X}");
+
             try
             {
                 for (int cycle = 0; cycle < cycles; cycle++)
@@ -144,38 +196,62 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         switch (action.Type)
                         {
                             case "MouseClick":
-                                // Move virtual cursor (sync) then inject click at absolute coords
+                            {
+                                string hint = BuildClickHint(action.Button, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.ShowActionHint(hint);
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+                                    overlay?.DrawClick(action.X, action.Y, hint, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                if (action.Button == "ShiftLeft")
-                                    SendShiftClickAt(action.X, action.Y, env.Service.MouseInput);
-                                else if (Enum.TryParse<MouseButton>(action.Button, ignoreCase: true, out var mb))
-                                    env.Service.MouseInput.SendMouseClickAt(action.X, action.Y, mb);
-                                else
-                                    env.Service.MouseInput.SendMouseClickAt(action.X, action.Y, MouseButton.Left);
+                                if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
+                                    ForceForeground(targetHwnd);
+
+                                var btn = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
+                                env.Service.MouseInput.SendMouseClickAt(
+                                    action.X, action.Y, btn,
+                                    shiftHeld: action.ShiftHeld,
+                                    ctrlHeld:  action.CtrlHeld,
+                                    altHeld:   action.AltHeld);
+                                overlay?.ShowActionHint(null);
                                 break;
+                            }
 
                             case "MouseDown":
+                            {
+                                string hint = "Giữ " + BuildClickHint(action.Button, action.ShiftHeld, action.CtrlHeld, action.AltHeld) + "...";
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.ShowActionHint(hint);
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+                                    overlay?.DrawClick(action.X, action.Y, hint, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                env.Service.MouseInput.SendMouseDownAt(action.X, action.Y,
-                                    action.Button == "Right" ? MouseButton.Right : MouseButton.Left);
+                                if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
+                                    ForceForeground(targetHwnd);
+
+                                env.Service.MouseInput.SaveCursorPos();
+                                var btnDown = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
+                                env.Service.MouseInput.SendMouseDownAt(
+                                    action.X, action.Y, btnDown,
+                                    shiftHeld: action.ShiftHeld,
+                                    ctrlHeld:  action.CtrlHeld,
+                                    altHeld:   action.AltHeld);
                                 break;
+                            }
 
                             case "MouseUp":
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.ShowActionHint(null);
                                 if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                env.Service.MouseInput.SendMouseUpAt(action.X, action.Y, MouseButton.Left);
+                                env.Service.MouseInput.SendMouseUpAt(
+                                    action.X, action.Y, MouseButton.Left,
+                                    shiftHeld: action.ShiftHeld,
+                                    ctrlHeld:  action.CtrlHeld,
+                                    altHeld:   action.AltHeld);
                                 break;
 
                             case "KeyPress":
@@ -186,12 +262,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     else if (visualMode == VisualPlaybackMode.Ghost)
                                         overlay?.RemoveGhostMarker(action.SequenceNumber);
 
+                                    if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
+                                        ForceForeground(targetHwnd);
                                     env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
                                 }
                                 break;
 
                             case "MouseMove":
-                                // MouseMove: only update virtual cursor + trail, no real cursor move
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent)
                                     overlay?.AddTrailPoint(action.X, action.Y);
@@ -201,12 +278,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseScroll":
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.ShowActionHint("Cuộn chuột");
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
+                                if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
+                                    ForceForeground(targetHwnd);
                                 env.Service.MouseInput.SendMouseScrollAt(action.X, action.Y, action.ScrollDelta);
+                                overlay?.ShowActionHint(null);
                                 break;
 
                             default:
@@ -241,6 +322,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         try { overlay.Close(); } catch { }
                     }, DispatcherPriority.Normal);
                 }
+
+                // Restore main window sau khi macro xong
+                if (dispatcher != null)
+                {
+                    dispatcher.BeginInvoke(() =>
+                    {
+                        try
+                        {
+                            var win = Application.Current?.MainWindow;
+                            if (win != null && win.WindowState == WindowState.Minimized)
+                            {
+                                win.WindowState = WindowState.Normal;
+                                win.Activate();
+                            }
+                        }
+                        catch { }
+                    });
+                }
             }
 
             // Publish output
@@ -256,14 +355,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await env.TraverseOutputsAsync(node);
         }
 
-        // ─── Shift+Click at absolute coords (no SetCursorPos) ────────────────────
+        // ─── Helpers ─────────────────────────────────────────────────────────────
 
-        private static void SendShiftClickAt(int x, int y, MouseInputService mouse)
+        /// <summary>
+        /// Tạo label hiển thị cho click: "L", "R", "Ctrl+L", "Shift+Alt+R", v.v.
+        /// </summary>
+        private static string BuildClickHint(string? button, bool shift, bool ctrl, bool alt)
         {
-            keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
-            mouse.SendMouseDownAt(x, y, MouseButton.Left);
-            mouse.SendMouseUpAt(x, y, MouseButton.Left);
-            keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            var parts = new System.Collections.Generic.List<string>();
+            if (ctrl)  parts.Add("Ctrl");
+            if (alt)   parts.Add("Alt");
+            if (shift) parts.Add("Shift");
+            parts.Add(button == "Right" ? "R" : "L");
+            return string.Join("+", parts);
         }
     }
 }

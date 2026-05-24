@@ -213,7 +213,21 @@
                                        Opacity="0.65"
                                        TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextBrush}"
-                                       Margin="0,0,0,16"/>
+                                       Margin="0,0,0,8"/>
+
+                            <!-- Countdown trước khi phát lại -->
+                            <TextBlock Text="Đếm ngược trước khi phát lại (giây, 0 = không đếm):"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12"
+                                       Opacity="0.85"
+                                       Margin="0,0,0,4"/>
+                            <TextBox Height="32"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     FontSize="13"
+                                     Padding="8,0,8,0"
+                                     VerticalContentAlignment="Center"
+                                     Margin="0,0,0,16"
+                                     Text="{Binding CountdownSeconds, UpdateSourceTrigger=PropertyChanged}"/>
 
                             <!-- RepeatIntervalMs (ẩn/hiện theo IsRepeatVisible) -->
                             <StackPanel Visibility="{Binding IsRepeatVisible, Converter={StaticResource BoolToVisibility}}"
