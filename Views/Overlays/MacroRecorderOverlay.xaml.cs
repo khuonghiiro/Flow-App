@@ -38,6 +38,28 @@ namespace FlowMy.Views.Overlays
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
 
+        [DllImport("user32.dll")]
+        private static extern short GetKeyState(int nVirtKey);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetWindowLong(IntPtr hwnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetWindowLong(IntPtr hwnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+            int X, int Y, int cx, int cy, uint uFlags);
+
+        private const int GWL_EXSTYLE        = -20;
+        private const int WS_EX_TRANSPARENT  = 0x00000020;
+        private const int WS_EX_NOACTIVATE   = 0x08000000;
+        private const int WS_EX_LAYERED      = 0x00080000;
+        private const uint SWP_NOMOVE        = 0x0002;
+        private const uint SWP_NOSIZE        = 0x0001;
+        private const uint SWP_NOZORDER      = 0x0004;
+        private const uint SWP_FRAMECHANGED  = 0x0020;
+
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int X; public int Y; }
 
@@ -66,6 +88,7 @@ namespace FlowMy.Views.Overlays
         private const int WM_LBUTTONDOWN = 0x0201;
         private const int WM_LBUTTONUP = 0x0202;
         private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_RBUTTONUP = 0x0205;
         private const int WM_MOUSEMOVE = 0x0200;
         private const int WM_MOUSEWHEEL = 0x020A;
 
@@ -186,6 +209,13 @@ namespace FlowMy.Views.Overlays
         // Key hold tracking (prevent multiple markers for same key hold)
         private readonly HashSet<uint> _keysCurrentlyHeld = new();
 
+        // Real-action mode: when true, mouse hook skips recording so clicks pass through unrecorded
+        // Toggled by Ctrl+CapsLock+CapsLock
+        private volatile bool _realActionMode = false;
+
+        // Manual Ctrl tracking — GetAsyncKeyState is unreliable inside low-level hook callbacks
+        private volatile bool _ctrlHeldInHook = false;
+
         // Drag-hold tracking (left button held down)
         private bool _isDragging = false;
         private int _dragStartX, _dragStartY;
@@ -276,7 +306,121 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(VirtualCursor, pt.Y);
         }
 
-        // ─── Keyboard hook ────────────────────────────────────────────────────────
+        /// <summary>
+        /// Bật/tắt chế độ thao tác thực:
+        ///   enable=true  → ẩn HitTestRect + thêm WS_EX_TRANSPARENT|WS_EX_NOACTIVATE
+        ///                   → click đi thẳng qua overlay xuống app bên dưới
+        ///   enable=false → hiện lại HitTestRect + xóa các flag đó
+        /// </summary>
+        private void ApplyRealActionWindowStyle(bool enable)
+        {
+            // Toggle the hit-test rectangle — when hidden, WPF has nothing to capture mouse
+            HitTestRect.IsHitTestVisible = !enable;
+            HitTestRect.Fill = enable
+                ? System.Windows.Media.Brushes.Transparent   // fully transparent = no hit
+                : new System.Windows.Media.SolidColorBrush(
+                      System.Windows.Media.Color.FromArgb(1, 0, 0, 0)); // #01000000
+
+            // Also apply/remove WS_EX_TRANSPARENT + WS_EX_NOACTIVATE at Win32 level
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            IntPtr hwnd = helper.Handle;
+            if (hwnd == IntPtr.Zero) return;
+
+            IntPtr cur = GetWindowLong(hwnd, GWL_EXSTYLE);
+            long style = cur.ToInt64();
+            if (enable)
+                style |= WS_EX_TRANSPARENT | WS_EX_NOACTIVATE;
+            else
+                style &= ~(long)(WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+
+            SetWindowLong(hwnd, GWL_EXSTYLE, new IntPtr(style));
+            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+        }
+
+        // ─── SendInput P/Invoke (for real-action mode) ───────────────────────────
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public uint type;
+            public INPUTUNION u;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct INPUTUNION
+        {
+            [FieldOffset(0)] public MOUSEINPUT mi;
+            [FieldOffset(0)] public KEYBDINPUT ki;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MOUSEINPUT
+        {
+            public int dx, dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KEYBDINPUT
+        {
+            public ushort wVk, wScan;
+            public uint dwFlags, time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        private const uint INPUT_MOUSE    = 0;
+        private const uint MOUSEEVENTF_LEFTDOWN   = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP     = 0x0004;
+        private const uint MOUSEEVENTF_RIGHTDOWN  = 0x0008;
+        private const uint MOUSEEVENTF_RIGHTUP    = 0x0010;
+        private const uint MOUSEEVENTF_ABSOLUTE   = 0x8000;
+        private const uint MOUSEEVENTF_MOVE       = 0x0001;
+        private const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
+
+        // Extra info tag to identify our own injected events — skip them in the hook
+        private static readonly IntPtr OurExtraInfo = new IntPtr(0x464C4F57); // "FLOW"
+
+        /// <summary>
+        /// Inject a real mouse click at (screenX, screenY) using SendInput.
+        /// The injected event is tagged with OurExtraInfo so the hook ignores it.
+        /// </summary>
+        private static void InjectMouseClick(int screenX, int screenY, bool rightButton, bool down)
+        {
+            // Convert screen coords to absolute (0–65535 range)
+            int screenW = (int)SystemParameters.PrimaryScreenWidth;
+            int screenH = (int)SystemParameters.PrimaryScreenHeight;
+            int absX = (int)((screenX * 65535.0) / screenW);
+            int absY = (int)((screenY * 65535.0) / screenH);
+
+            uint flags = down
+                ? (rightButton ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN)
+                : (rightButton ? MOUSEEVENTF_RIGHTUP   : MOUSEEVENTF_LEFTUP);
+
+            var input = new INPUT
+            {
+                type = INPUT_MOUSE,
+                u = new INPUTUNION
+                {
+                    mi = new MOUSEINPUT
+                    {
+                        dx = absX,
+                        dy = absY,
+                        mouseData = 0,
+                        dwFlags = flags | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK,
+                        time = 0,
+                        dwExtraInfo = OurExtraInfo
+                    }
+                }
+            };
+            SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
+        }
 
         private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
@@ -285,81 +429,96 @@ namespace FlowMy.Views.Overlays
                 var kb = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
                 var vk = kb.vkCode;
 
-                // Handle key down events
-                if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN)
+                bool isKeyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
+                bool isKeyUp   = wParam == (IntPtr)0x0101 || wParam == (IntPtr)0x0105; // WM_KEYUP / WM_SYSKEYUP
+
+                // ── Track Ctrl state manually (GetAsyncKeyState unreliable in hook thread) ──
+                if (vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL)
                 {
-                    bool ctrlDown = (GetAsyncKeyState((int)VK_CONTROL) & 0x8000) != 0;
-                    bool altDown = (GetAsyncKeyState((int)VK_MENU) & 0x8000) != 0;
-                    bool shiftDown = (GetAsyncKeyState((int)VK_SHIFT) & 0x8000) != 0;
+                    if (isKeyDown)
+                    {
+                        _ctrlHeldInHook = true;
+                    }
+                    else if (isKeyUp)
+                    {
+                        _ctrlHeldInHook = false;
+                        // Reset hotkey counters when Ctrl is released
+                        _altPressCount = 0;
+                        _altFirstPressTs = 0;
+                        _capsLockPressCount = 0;
+                        _capsLockFirstPressTs = 0;
+                    }
+                }
+
+                if (isKeyDown)
+                {
+                    // Use manually tracked Ctrl state — reliable in hook context
+                    bool ctrlDown  = _ctrlHeldInHook;
+                    bool altDown   = (GetKeyState((int)VK_MENU)  & 0x8000) != 0;
+                    bool shiftDown = (GetKeyState((int)VK_SHIFT) & 0x8000) != 0;
 
                     bool isModifier = vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL
-                                         or VK_MENU or VK_LMENU or VK_RMENU
-                                         or VK_SHIFT or VK_LSHIFT or VK_RSHIFT
+                                         or VK_MENU    or VK_LMENU    or VK_RMENU
+                                         or VK_SHIFT   or VK_LSHIFT   or VK_RSHIFT
                                          or VK_CAPITAL;
 
-                    if (isModifier)
+                    // ── Hotkey: Ctrl + Alt + Alt → toggle recording ───────────────
+                    if (ctrlDown && (vk is VK_MENU or VK_LMENU or VK_RMENU))
                     {
                         long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-                        // Ctrl + Alt + Alt: Phải giữ Ctrl, nhấn Alt 2 lần → toggle recording
-                        if (ctrlDown && vk is VK_MENU or VK_LMENU or VK_RMENU)
-                        {
-                            // Reset counter nếu ngoài time window
-                            if (_altPressCount > 0 && (now - _altFirstPressTs) > AltWindowMs)
-                            {
-                                _altPressCount = 0;
-                                _altFirstPressTs = 0;
-                            }
-
-                            if (_altPressCount == 0)
-                                _altFirstPressTs = now;
-
-                            _altPressCount++;
-
-                            if (_altPressCount >= AltRequiredCount)
-                            {
-                                _altPressCount = 0;
-                                _altFirstPressTs = 0;
-                                Dispatcher.Invoke(ToggleRecording);
-                                return (IntPtr)1; // Block this key
-                            }
-                        }
-                        
-                        // Ctrl + CapsLock + CapsLock: Phải giữ Ctrl, nhấn CapsLock 2 lần → thao tác thực (pass through)
-                        if (ctrlDown && vk == VK_CAPITAL)
-                        {
-                            // Reset counter nếu ngoài time window
-                            if (_capsLockPressCount > 0 && (now - _capsLockFirstPressTs) > CapsLockWindowMs)
-                            {
-                                _capsLockPressCount = 0;
-                                _capsLockFirstPressTs = 0;
-                            }
-
-                            if (_capsLockPressCount == 0)
-                                _capsLockFirstPressTs = now;
-
-                            _capsLockPressCount++;
-
-                            if (_capsLockPressCount >= CapsLockRequiredCount)
-                            {
-                                _capsLockPressCount = 0;
-                                _capsLockFirstPressTs = 0;
-                                // Pass through — không block, để Windows xử lý thao tác thực
-                                System.Diagnostics.Debug.WriteLine("[MacroRecorder] Ctrl+CapsLock+CapsLock detected - pass through for real action");
-                            }
-                            
-                            // Luôn pass through để không block thao tác
-                            return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
-                        }
-
-                        // Reset counters khi không còn giữ Ctrl
-                        if (!ctrlDown)
+                        if (_altPressCount > 0 && (now - _altFirstPressTs) > AltWindowMs)
                         {
                             _altPressCount = 0;
                             _altFirstPressTs = 0;
+                        }
+                        if (_altPressCount == 0) _altFirstPressTs = now;
+                        _altPressCount++;
+
+                        if (_altPressCount >= AltRequiredCount)
+                        {
+                            _altPressCount = 0;
+                            _altFirstPressTs = 0;
+                            Dispatcher.Invoke(ToggleRecording);
+                            return (IntPtr)1;
+                        }
+                        return (IntPtr)1; // block first Alt press too
+                    }
+
+                    // ── Hotkey: Ctrl + CapsLock + CapsLock → toggle real-action mode ──
+                    if (ctrlDown && vk == VK_CAPITAL)
+                    {
+                        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        if (_capsLockPressCount > 0 && (now - _capsLockFirstPressTs) > CapsLockWindowMs)
+                        {
                             _capsLockPressCount = 0;
                             _capsLockFirstPressTs = 0;
                         }
+                        if (_capsLockPressCount == 0) _capsLockFirstPressTs = now;
+                        _capsLockPressCount++;
+
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[MacroRecorder] Ctrl+CapsLock press #{_capsLockPressCount}");
+
+                        if (_capsLockPressCount >= CapsLockRequiredCount)
+                        {
+                            _capsLockPressCount = 0;
+                            _capsLockFirstPressTs = 0;
+                            _realActionMode = !_realActionMode;
+                            bool mode = _realActionMode;
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[MacroRecorder] Real-action mode = {mode}");
+                            Dispatcher.Invoke(() =>
+                            {
+                                // Visual feedback only — no window style change needed
+                                // (block+reinject approach handles click routing)
+                                InstructionText.Text = mode
+                                    ? "⚡ Chế độ thao tác thực — nhấn Ctrl+CapsLock+CapsLock để quay lại ghi"
+                                    : "Đang ghi... Nhấn Ctrl+Alt+Alt để dừng";
+                                StatusIcon.Text = mode ? "⚡" : "🔴";
+                            });
+                        }
+                        // Always pass through so Windows processes CapsLock normally
+                        return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
                     }
 
                     if (vk == VK_ESCAPE)
@@ -370,14 +529,10 @@ namespace FlowMy.Views.Overlays
 
                     if (_state == OverlayState.Recording && !isModifier)
                     {
-                        // Key hold detection: chỉ ghi nếu key chưa được giữ
+                        // Key hold detection: only record first press, not repeat
                         if (_keysCurrentlyHeld.Contains(vk))
-                        {
-                            // Key đang được giữ → không tạo marker mới
                             return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
-                        }
 
-                        // Đánh dấu key đang được giữ
                         _keysCurrentlyHeld.Add(vk);
 
                         GetCursorPos(out POINT pt);
@@ -386,7 +541,7 @@ namespace FlowMy.Views.Overlays
                         _lastActionTs = ts;
 
                         var keyName = GetKeyName(vk);
-                        var action = new MacroAction
+                        _actions.Add(new MacroAction
                         {
                             SequenceNumber = ++_sequenceCounter,
                             Type = "KeyPress",
@@ -394,8 +549,7 @@ namespace FlowMy.Views.Overlays
                             X = pt.X,
                             Y = pt.Y,
                             Key = keyName
-                        };
-                        _actions.Add(action);
+                        });
                         Dispatcher.Invoke(() =>
                         {
                             DrawKeyPress(pt.X, pt.Y, keyName, _sequenceCounter, delta);
@@ -403,10 +557,8 @@ namespace FlowMy.Views.Overlays
                         });
                     }
                 }
-                // Handle key up events (WM_KEYUP = 0x0101, WM_SYSKEYUP = 0x0105)
-                else if (wParam == (IntPtr)0x0101 || wParam == (IntPtr)0x0105)
+                else if (isKeyUp)
                 {
-                    // Xóa key khỏi danh sách đang giữ
                     _keysCurrentlyHeld.Remove(vk);
                 }
             }
@@ -424,6 +576,60 @@ namespace FlowMy.Views.Overlays
                 int x = ms.pt.X;
                 int y = ms.pt.Y;
                 long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                // Skip events we injected ourselves (real-action mode re-injection)
+                if (ms.dwExtraInfo == OurExtraInfo)
+                    return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+
+                // Real-action mode: record the action AND inject a real click to the app below
+                if (_realActionMode)
+                {
+                    if (wParam == (IntPtr)WM_LBUTTONDOWN || wParam == (IntPtr)WM_RBUTTONDOWN
+                        || wParam == (IntPtr)WM_LBUTTONUP)
+                    {
+                        bool isRight = wParam == (IntPtr)WM_RBUTTONDOWN;
+                        bool isDown  = wParam != (IntPtr)WM_LBUTTONUP;
+                        bool shiftHeld = (GetKeyState((int)VK_SHIFT)   & 0x8000) != 0;
+                        bool ctrlHeld  = _ctrlHeldInHook;
+                        bool altHeld   = (GetKeyState((int)VK_MENU)    & 0x8000) != 0;
+
+                        double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                        _lastActionTs = ts;
+
+                        string button = isRight ? "Right" : "Left";
+                        string actionType = isRight ? "MouseClick"
+                                          : isDown  ? "MouseDown" : "MouseUp";
+
+                        _actions.Add(new MacroAction
+                        {
+                            SequenceNumber = ++_sequenceCounter,
+                            Type = actionType,
+                            Timestamp = ts,
+                            X = x, Y = y,
+                            Button = button,
+                            ShiftHeld = shiftHeld,
+                            CtrlHeld  = ctrlHeld,
+                            AltHeld   = altHeld
+                        });
+                        int seq = _sequenceCounter;
+                        string displayButton = BuildModifierLabel(button, shiftHeld, ctrlHeld, altHeld);
+
+                        // Draw marker on overlay
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            DrawClick(x, y, displayButton, seq, delta);
+                            UpdateActionCount();
+                        });
+
+                        // Inject the real click so it reaches the app below
+                        // Block the original event (return 1) then re-inject via SendInput
+                        // so the app below receives it without the overlay intercepting
+                        Task.Run(() => InjectMouseClick(x, y, isRight, isDown));
+                        return (IntPtr)1; // block original, our injected copy will go through
+                    }
+                    // For mouse move and scroll — just pass through normally
+                    return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+                }
 
                 if (wParam == (IntPtr)WM_LBUTTONDOWN)
                 {
@@ -661,6 +867,7 @@ namespace FlowMy.Views.Overlays
         private void StopRecording(bool save)
         {
             _timer.Stop();
+            _realActionMode = false;
 
             // Hide virtual cursor
             VirtualCursor.Visibility = Visibility.Collapsed;
@@ -793,9 +1000,10 @@ namespace FlowMy.Views.Overlays
 
         /// <summary>
         /// Helper chung: vẽ marker hình tròn — label loại thao tác ở tâm, seq badge trên đỉnh, delta bên dưới.
+        /// centerFontSize: font size cho label tâm (default 13, dùng 8 cho text dài như "Chuột trái")
         /// </summary>
         private void DrawMarker(System.Windows.Point pt, Color fillColor, string centerText,
-                                int seq, double deltaSeconds, bool hollow = false)
+                                int seq, double deltaSeconds, bool hollow = false, double centerFontSize = 13)
         {
             int r = MarkerRadius;
 
@@ -827,22 +1035,32 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(circle, pt.Y - r);
             DrawingCanvas.Children.Add(circle);
 
-            // Center label — loại thao tác (L / R / ↑ / ↓ / tên phím)
+            // Center label — use a fixed-size container so the text is truly centered
+            // Width/Height = diameter of circle, positioned so its center aligns with pt
+            var centerContainer = new Grid
+            {
+                Width = r * 2,
+                Height = r * 2,
+                IsHitTestVisible = false
+            };
             var centerTb = new TextBlock
             {
                 Text = centerText,
-                FontSize = 13,
+                FontSize = centerFontSize,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
                 IsHitTestVisible = false
             };
-            centerTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(centerTb, pt.X - centerTb.DesiredSize.Width / 2);
-            Canvas.SetTop(centerTb, pt.Y - centerTb.DesiredSize.Height / 2);
-            DrawingCanvas.Children.Add(centerTb);
+            centerContainer.Children.Add(centerTb);
+            Canvas.SetLeft(centerContainer, pt.X - r);
+            Canvas.SetTop(centerContainer, pt.Y - r);
+            DrawingCanvas.Children.Add(centerContainer);
 
-            // Seq badge — hình tròn nhỏ nằm trên đỉnh circle
+            // Seq badge — small circle sitting on top of the main circle
             var seqBg = new Ellipse
             {
                 Width = 18,
@@ -856,6 +1074,13 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(seqBg, pt.Y - r - 9);
             DrawingCanvas.Children.Add(seqBg);
 
+            // Seq number — centered inside the badge using a fixed container
+            var seqContainer = new Grid
+            {
+                Width = 18,
+                Height = 18,
+                IsHitTestVisible = false
+            };
             var seqTb = new TextBlock
             {
                 Text = seq.ToString(),
@@ -863,14 +1088,16 @@ namespace FlowMy.Views.Overlays
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false
             };
-            seqTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(seqTb, pt.X - seqTb.DesiredSize.Width / 2);
-            Canvas.SetTop(seqTb, pt.Y - r - 9 + (18 - seqTb.DesiredSize.Height) / 2);
-            DrawingCanvas.Children.Add(seqTb);
+            seqContainer.Children.Add(seqTb);
+            Canvas.SetLeft(seqContainer, pt.X - 9);
+            Canvas.SetTop(seqContainer, pt.Y - r - 9);
+            DrawingCanvas.Children.Add(seqContainer);
 
-            // Delta badge bên dưới circle
+            // Delta badge below circle
             if (deltaSeconds > 0)
             {
                 var deltaBorder = new Border
@@ -896,21 +1123,15 @@ namespace FlowMy.Views.Overlays
         private void DrawClick(int screenX, int screenY, string button, int seq, double deltaSeconds)
         {
             var pt = ScreenToCanvas(screenX, screenY);
-            Color fillColor = button switch
-            {
-                "Left" => ColorLeftClick,
-                "Right" => ColorRightClick,
-                "ShiftLeft" => ColorShiftLeftClick,
-                _ => ColorLeftClick
-            };
-            string label = button switch
-            {
-                "Left" => "L",
-                "Right" => "R",
-                "ShiftLeft" => "⇧L",
-                _ => "?"
-            };
-            DrawMarker(pt, fillColor, label, seq, deltaSeconds);
+
+            // Detect right-click: button is "Right", "R", or ends with "+R" (e.g. "Ctrl+R")
+            bool isRight = button == "Right" || button == "R" || button.EndsWith("+R");
+            Color fillColor = isRight ? ColorRightClick : ColorLeftClick;
+
+            // Center label: "Chuột trái" / "Chuột phải" (smaller font to fit circle)
+            string label = isRight ? "Chuột\nphải" : "Chuột\ntrái";
+
+            DrawMarker(pt, fillColor, label, seq, deltaSeconds, centerFontSize: 8);
         }
 
         private void DrawScroll(int screenX, int screenY, int notches, int seq, double deltaSeconds)
@@ -923,11 +1144,10 @@ namespace FlowMy.Views.Overlays
             Color fillColor = Color.FromRgb(0xAA, 0x88, 0xFF);
             int r = MarkerRadius;
 
-            // Kiểm tra xem có phải modifier key hay combo không
-            bool isModifierOrCombo = keyName.Contains("+") || 
-                                      keyName is "Ctrl" or "Shift" or "Alt" or 
-                                      "Control" or "LCtrl" or "RCtrl" or 
-                                      "LShift" or "RShift" or "LAlt" or "RAlt";
+            bool isModifierOrCombo = keyName.Contains("+") ||
+                                     keyName is "Ctrl" or "Shift" or "Alt" or
+                                     "Control" or "LCtrl" or "RCtrl" or
+                                     "LShift" or "RShift" or "LAlt" or "RAlt";
 
             // Outer glow
             var glow = new Ellipse
@@ -955,38 +1175,49 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(circle, pt.Y - r);
             DrawingCanvas.Children.Add(circle);
 
-            // Key label — vị trí phụ thuộc vào loại phím
-            string displayKey = keyName.Length > 4 ? keyName[..4] : keyName;
-            var keyLabel = new TextBlock
+            // Center label — "Nhấn X" in center using Grid container for true centering
+            string displayKey = keyName.Length > 5 ? keyName[..5] : keyName;
+            string centerText = isModifierOrCombo ? displayKey : $"Nhấn\n{displayKey}";
+            double fontSize = isModifierOrCombo ? 9 : 8;
+
+            var centerContainer = new Grid
             {
-                Text = displayKey,
-                FontSize = isModifierOrCombo ? 9 : 13,
+                Width = r * 2,
+                Height = r * 2,
+                IsHitTestVisible = false
+            };
+            var centerTb = new TextBlock
+            {
+                Text = centerText,
+                FontSize = fontSize,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
                 IsHitTestVisible = false
             };
-            keyLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            centerContainer.Children.Add(centerTb);
 
             if (isModifierOrCombo)
             {
-                // Modifier/combo → label ở TOP (trên số thứ tự)
-                Canvas.SetLeft(keyLabel, pt.X - keyLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(keyLabel, pt.Y - r - 28); // Trên số thứ tự
+                // Modifier/combo → label above the seq badge (top of marker)
+                Canvas.SetLeft(centerContainer, pt.X - r);
+                Canvas.SetTop(centerContainer, pt.Y - r - 28);
             }
             else
             {
-                // Single key → label ở CENTER
-                Canvas.SetLeft(keyLabel, pt.X - keyLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(keyLabel, pt.Y - keyLabel.DesiredSize.Height / 2);
+                // Normal key → centered inside circle
+                Canvas.SetLeft(centerContainer, pt.X - r);
+                Canvas.SetTop(centerContainer, pt.Y - r);
             }
-            DrawingCanvas.Children.Add(keyLabel);
+            DrawingCanvas.Children.Add(centerContainer);
 
-            // Seq badge — hình tròn nhỏ nằm trên đỉnh circle
+            // Seq badge
             var seqBg = new Ellipse
             {
-                Width = 18,
-                Height = 18,
+                Width = 18, Height = 18,
                 Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
                 Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
                 StrokeThickness = 1.5,
@@ -996,21 +1227,22 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(seqBg, pt.Y - r - 9);
             DrawingCanvas.Children.Add(seqBg);
 
-            var seqTb = new TextBlock
+            var seqContainer = new Grid { Width = 18, Height = 18, IsHitTestVisible = false };
+            seqContainer.Children.Add(new TextBlock
             {
                 Text = seq.ToString(),
-                FontSize = 9,
-                FontWeight = FontWeights.Bold,
+                FontSize = 9, FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false
-            };
-            seqTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(seqTb, pt.X - seqTb.DesiredSize.Width / 2);
-            Canvas.SetTop(seqTb, pt.Y - r - 9 + (18 - seqTb.DesiredSize.Height) / 2);
-            DrawingCanvas.Children.Add(seqTb);
+            });
+            Canvas.SetLeft(seqContainer, pt.X - 9);
+            Canvas.SetTop(seqContainer, pt.Y - r - 9);
+            DrawingCanvas.Children.Add(seqContainer);
 
-            // Delta badge bên dưới circle
+            // Delta badge
             if (deltaSeconds > 0)
             {
                 var deltaBorder = new Border

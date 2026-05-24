@@ -12,6 +12,18 @@
         Focusable="False">
 
     <Grid>
+        <!-- Viền sáng primary khi đang phát lại thao tác -->
+        <Border x:Name="GlowBorder"
+                IsHitTestVisible="False"
+                BorderBrush="#FF2299FF"
+                BorderThickness="3"
+                CornerRadius="0"
+                Opacity="0.85">
+            <Border.Effect>
+                <DropShadowEffect Color="#2299FF" BlurRadius="18" ShadowDepth="0" Opacity="0.7"/>
+            </Border.Effect>
+        </Border>
+
         <!-- Drawing canvas for replay visuals -->
         <Canvas x:Name="DrawingCanvas" IsHitTestVisible="False"/>
 

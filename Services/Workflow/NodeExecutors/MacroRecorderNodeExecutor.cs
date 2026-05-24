@@ -204,7 +204,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, hint, action.SequenceNumber);
+                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
@@ -232,7 +232,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, hint, action.SequenceNumber);
+                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
@@ -387,7 +387,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         // ─── Helpers ─────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Tạo label hiển thị cho click: "L", "R", "Ctrl+L", "Shift+Alt+R", v.v.
+        /// Tạo label hiển thị cho tooltip: "Chuột trái", "Chuột phải", "Ctrl + Chuột trái", v.v.
         /// </summary>
         private static string BuildClickHint(string? button, bool shift, bool ctrl, bool alt)
         {
@@ -395,12 +395,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (ctrl)  parts.Add("Ctrl");
             if (alt)   parts.Add("Alt");
             if (shift) parts.Add("Shift");
-            parts.Add(button == "Right" ? "R" : "L");
-            return string.Join("+", parts);
+            parts.Add(button == "Right" ? "Chuột phải" : "Chuột trái");
+            return string.Join(" + ", parts);
         }
 
         /// <summary>
-        /// Tạo mô tả hành động cho panel bên phải.
+        /// Tạo mô tả hành động cho floating tooltip.
         /// </summary>
         private static string GetActionDescription(string actionType, string? button, bool shift, bool ctrl, bool alt)
         {
@@ -417,8 +417,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return actionType switch
             {
                 "MouseClick" => $"Đang nhấn {modifiers}{buttonName}",
-                "MouseDown" => $"Đang giữ {modifiers}{buttonName}",
-                _ => $"Đang thao tác {modifiers}{buttonName}"
+                "MouseDown"  => $"Đang giữ {modifiers}{buttonName}",
+                _            => $"Đang thao tác {modifiers}{buttonName}"
             };
         }
     }

@@ -12,7 +12,8 @@
 
     <Grid>
         <!-- Lớp phủ trong suốt — rất nhẹ, chỉ để overlay có nền -->
-        <Rectangle Fill="#01000000" IsHitTestVisible="True"/>
+        <!-- Ẩn khi ở chế độ thao tác thực để click đi qua -->
+        <Rectangle x:Name="HitTestRect" Fill="#01000000" IsHitTestVisible="True"/>
 
         <!-- Canvas để vẽ trail và visual feedback -->
         <Canvas x:Name="DrawingCanvas" IsHitTestVisible="False"/>

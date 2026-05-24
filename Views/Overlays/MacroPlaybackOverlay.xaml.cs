@@ -250,8 +250,7 @@ namespace FlowMy.Views.Overlays
                 var pt = ScreenToCanvas(screenX, screenY);
                 int r = MarkerRadius;
 
-                // Xác định màu dựa trên button (Left/Right/modifier combo)
-                bool isRight = button.EndsWith("R") || button == "Right";
+                bool isRight = button == "Right" || button == "R" || button.EndsWith("+R");
                 Color fillColor = isRight ? ColorRightClick : ColorLeftClick;
 
                 // Outer glow
@@ -280,38 +279,59 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetTop(circle,  pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Tâm: dấu "+"
-                var centerLabel = new TextBlock
+                // Center label: "Chuột\ntrái" / "Chuột\nphải" — Grid container for true centering
+                string label = isRight ? "Chuột\nphải" : "Chuột\ntrái";
+                var centerContainer = new Grid
                 {
-                    Text       = "+",
-                    FontSize   = 16,
+                    Width = r * 2,
+                    Height = r * 2,
+                    IsHitTestVisible = false
+                };
+                centerContainer.Children.Add(new TextBlock
+                {
+                    Text = label,
+                    FontSize = 8,
                     FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
+                    IsHitTestVisible = false
+                });
+                Canvas.SetLeft(centerContainer, pt.X - r);
+                Canvas.SetTop(centerContainer,  pt.Y - r);
+                DrawingCanvas.Children.Add(centerContainer);
+
+                // Số thứ tự — seq badge on top
+                var seqBg = new Ellipse
+                {
+                    Width = 18, Height = 18,
+                    Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
+                    Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
+                    StrokeThickness = 1.5,
                     IsHitTestVisible = false
                 };
-                centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
-                DrawingCanvas.Children.Add(centerLabel);
+                Canvas.SetLeft(seqBg, pt.X - 9);
+                Canvas.SetTop(seqBg,  pt.Y - r - 9);
+                DrawingCanvas.Children.Add(seqBg);
 
-                // Số thứ tự — trên đỉnh hình tròn
-                var seqLabel = new TextBlock
+                var seqContainer = new Grid { Width = 18, Height = 18, IsHitTestVisible = false };
+                seqContainer.Children.Add(new TextBlock
                 {
-                    Text       = seq.ToString(),
-                    FontSize   = 10,
-                    FontWeight = FontWeights.Bold,
+                    Text = seq.ToString(),
+                    FontSize = 9, FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
                     IsHitTestVisible = false
-                };
-                seqLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(seqLabel, pt.X - seqLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(seqLabel,  pt.Y - r - seqLabel.DesiredSize.Height - 2);
-                DrawingCanvas.Children.Add(seqLabel);
+                });
+                Canvas.SetLeft(seqContainer, pt.X - 9);
+                Canvas.SetTop(seqContainer,  pt.Y - r - 9);
+                DrawingCanvas.Children.Add(seqContainer);
 
-                // Modifier label bên trái hình tròn (nếu có modifier)
-                // button dạng "Ctrl+L", "Shift+R", "L", "R"
+                // Modifier label left of circle (if any)
                 string modPart = ExtractModifierPart(button);
                 if (!string.IsNullOrEmpty(modPart))
                 {
@@ -329,7 +349,7 @@ namespace FlowMy.Views.Overlays
                     DrawingCanvas.Children.Add(modLabel);
                 }
 
-                FadeOutAndRemove(glow, circle, centerLabel, seqLabel);
+                FadeOutAndRemove(glow, circle, centerContainer, seqBg, seqContainer);
             });
         }
 
@@ -412,30 +432,54 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetLeft(circle, pt.X - r); Canvas.SetTop(circle, pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Tâm: tên phím (rút gọn nếu dài)
+                // Center: "Nhấn\n{key}" using Grid for true centering
                 string displayKey = keyName.Length > 5 ? keyName[..5] : keyName;
-                var centerLabel = new TextBlock
+                var centerContainer = new Grid
                 {
-                    Text = displayKey, FontSize = 10, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
+                    Width = r * 2, Height = r * 2,
+                    IsHitTestVisible = false
                 };
-                centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
-                DrawingCanvas.Children.Add(centerLabel);
-
-                // Số thứ tự — trên đỉnh
-                var seqLabel = new TextBlock
+                centerContainer.Children.Add(new TextBlock
                 {
-                    Text = seq.ToString(), FontSize = 10, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
-                };
-                seqLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(seqLabel, pt.X - seqLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(seqLabel,  pt.Y - r - seqLabel.DesiredSize.Height - 2);
-                DrawingCanvas.Children.Add(seqLabel);
+                    Text = $"Nhấn\n{displayKey}",
+                    FontSize = 8, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
+                    IsHitTestVisible = false
+                });
+                Canvas.SetLeft(centerContainer, pt.X - r);
+                Canvas.SetTop(centerContainer,  pt.Y - r);
+                DrawingCanvas.Children.Add(centerContainer);
 
-                FadeOutAndRemove(glow, circle, centerLabel, seqLabel);
+                // Seq badge
+                var seqBg = new Ellipse
+                {
+                    Width = 18, Height = 18,
+                    Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
+                    Stroke = new SolidColorBrush(Color.FromArgb(200, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
+                    StrokeThickness = 1.5, IsHitTestVisible = false
+                };
+                Canvas.SetLeft(seqBg, pt.X - 9); Canvas.SetTop(seqBg, pt.Y - r - 9);
+                DrawingCanvas.Children.Add(seqBg);
+
+                var seqContainer = new Grid { Width = 18, Height = 18, IsHitTestVisible = false };
+                seqContainer.Children.Add(new TextBlock
+                {
+                    Text = seq.ToString(),
+                    FontSize = 9, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    IsHitTestVisible = false
+                });
+                Canvas.SetLeft(seqContainer, pt.X - 9); Canvas.SetTop(seqContainer, pt.Y - r - 9);
+                DrawingCanvas.Children.Add(seqContainer);
+
+                FadeOutAndRemove(glow, circle, centerContainer, seqBg, seqContainer);
             });
         }
 
