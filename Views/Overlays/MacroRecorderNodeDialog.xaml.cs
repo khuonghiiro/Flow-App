@@ -4,6 +4,7 @@ using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
 using Microsoft.Win32;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -47,48 +48,58 @@ namespace FlowMy.Views.Overlays
             // 0. Flush ShowMouseTrail to node immediately
             _viewModel.SaveShowMouseTrailToNode();
 
-            // 1. Minimize app main window
-            var appWindow = Application.Current.MainWindow;
-            if (appWindow != null)
-                appWindow.WindowState = WindowState.Minimized;
+            // 1. Collect all app windows to hide/restore
+            var allWindows = Application.Current.Windows
+                .OfType<Window>()
+                .Where(w => w.IsVisible)
+                .ToList();
 
-            // 2. Hide this dialog so it doesn't block the overlay
-            this.Hide();
+            // Hide all visible windows (dialog + main app)
+            foreach (var w in allWindows)
+                w.Hide();
 
-            // 3. Show overlay as non-modal — ShowDialog would block UI thread and keep
-            //    this dialog as owner, preventing clicks from reaching the app below
+            // 2. Create overlay
             var overlay = new MacroRecorderOverlay(_viewModel.ShowMouseTrail);
 
             overlay.Closed += (_, _) =>
             {
                 Dispatcher.BeginInvoke(() =>
                 {
-                    // Always restore app window
-                    if (appWindow != null)
-                    {
-                        appWindow.WindowState = WindowState.Normal;
-                        appWindow.Activate();
-                    }
-
-                    // Update data and persist to node if recording produced results
+                    // Persist recorded data if any
                     if (overlay.HasData && overlay.RecordedJson != null)
                     {
                         _viewModel.MacroDataJson = overlay.RecordedJson;
-                        // Persist to node model immediately
                         _viewModel.SaveTitleCommand?.Execute(null);
                     }
 
-                    // Always re-show dialog so user can review the recorded data
-                    try
+                    // Restore all previously visible windows
+                    foreach (var w in allWindows)
                     {
-                        this.Show();
-                        this.Activate();
+                        try
+                        {
+                            w.Show();
+                            if (w.WindowState == WindowState.Minimized)
+                                w.WindowState = WindowState.Normal;
+                        }
+                        catch { /* window may have been closed */ }
                     }
-                    catch { /* window already closed */ }
+
+                    // Bring this dialog to front
+                    try { this.Activate(); } catch { }
                 });
             };
 
-            overlay.Show();
+            // Short delay so hide animation completes before overlay appears
+            var timer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                overlay.Show();
+            };
+            timer.Start();
         }
 
         // ─── Button: Export JSON ──────────────────────────────────────────────────

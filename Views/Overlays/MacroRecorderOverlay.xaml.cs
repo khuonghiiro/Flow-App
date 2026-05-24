@@ -534,11 +534,13 @@ namespace FlowMy.Views.Overlays
                             if (!_realActionMode)
                             {
                                 // First activation: start recording + enable click-through
+                                // Set _state immediately on hook thread so mouse hook starts
+                                // recording right away — before BeginInvoke runs on UI thread
                                 _realActionMode = true;
+                                _state = OverlayState.Recording;
                                 Dispatcher.BeginInvoke(() =>
                                 {
-                                    if (_state == OverlayState.Idle)
-                                        StartRecording();
+                                    StartRecording(); // full UI init: timer, visuals, counters
                                     SetClickThroughMode(true);
                                 });
                             }
@@ -962,13 +964,19 @@ namespace FlowMy.Views.Overlays
             {
                 if (_escPressCount >= 2)
                 {
-                    // 2 rapid presses → stop and save
+                    // 2 rapid presses < 1.5s → save & close, remove the last ESC action
                     _escPressCount = 0;
+                    var lastEsc = _actions.FindLast(a =>
+                        a.Type == "KeyPress" &&
+                        string.Equals(a.Key, "Escape", StringComparison.OrdinalIgnoreCase));
+                    if (lastEsc != null)
+                        _actions.Remove(lastEsc);
                     StopRecording(save: _actions.Count >= 1);
                 }
                 else
                 {
-                    // First press → record ESC as a key action and show it on overlay
+                    // First press → record ESC as a key action, show marker
+                    // Don't save yet — wait to see if user presses ESC again within 1.5s
                     GetCursorPos(out POINT pt);
                     long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
@@ -987,27 +995,26 @@ namespace FlowMy.Views.Overlays
                     {
                         DrawKeyPress(pt.X, pt.Y, "Esc", seqEsc, delta);
                         UpdateActionCount();
-                        // Show hint that second press will stop
-                        EscHintText.Text = "Nhấn ESC lần nữa để lưu và thoát";
+                        EscHintText.Text = "ESC × 2 nhanh để lưu & thoát";
                         EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
                             System.Windows.Media.Color.FromRgb(0xFF, 0xCC, 0x00));
                     });
 
-                    // Auto-reset hint after 1.5s if user doesn't press again
-                    var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(EscWindowMs) };
-                    timer.Tick += (_, _) =>
+                    // After 1.5s with no second press → reset counter, restore hint
+                    var resetTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(EscWindowMs) };
+                    resetTimer.Tick += (_, _) =>
                     {
-                        timer.Stop();
+                        resetTimer.Stop();
                         _escPressCount = 0;
                         _escFirstPressTs = 0;
                         if (_state == OverlayState.Recording)
                         {
-                            EscHintText.Text = "ESC để lưu và thoát";
+                            EscHintText.Text = "ESC = ghi phím Esc | ESC × 2 nhanh để lưu & thoát";
                             EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
                                 System.Windows.Media.Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
                         }
                     };
-                    timer.Start();
+                    resetTimer.Start();
                 }
             }
             else
@@ -1041,7 +1048,7 @@ namespace FlowMy.Views.Overlays
                     ActionCountPanel.Visibility = Visibility.Visible;
                     TimerText.Text = "00:00";
                     ActionCountText.Text = "0 thao tác";
-                    EscHintText.Text = "ESC = ghi phím Esc | ESC × 2 để lưu & thoát";
+                    EscHintText.Text = "ESC = ghi phím Esc | ESC × 2 nhanh để lưu & thoát";
                     break;
             }
         }
