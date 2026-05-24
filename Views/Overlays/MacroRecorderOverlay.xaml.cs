@@ -581,7 +581,11 @@ namespace FlowMy.Views.Overlays
 
                         var keyName = GetKeyName(vk);
 
-                        // Build combo label from currently held modifiers + this key
+                        // Build full combo key string including held modifiers
+                        // e.g. "Ctrl+C", "Shift+Alt+F4", or just "A" if no modifiers
+                        string comboKey = BuildComboKeyString(keyName);
+
+                        // Build combo timing label for visual display
                         string? comboLabel = BuildComboLabel(ts, keyName);
 
                         _actions.Add(new MacroAction
@@ -591,27 +595,23 @@ namespace FlowMy.Views.Overlays
                             Timestamp = ts,
                             X = pt.X,
                             Y = pt.Y,
-                            Key = keyName
+                            Key = comboKey  // store full combo e.g. "Ctrl+C"
                         });
                         int seqKey = _sequenceCounter;
                         Dispatcher.BeginInvoke(() =>
                         {
-                            DrawKeyPress(pt.X, pt.Y, keyName, seqKey, delta, comboLabel);
+                            DrawKeyPress(pt.X, pt.Y, comboKey, seqKey, delta, comboLabel);
                             UpdateActionCount();
                         });
                     }
                     else if (_state == OverlayState.Recording && isModifier)
                     {
-                        // Track modifier hold start time for combo label
+                        // Track modifier hold start time for combo label timing
+                        // Also draw a visual marker so user can see modifier was registered
                         if (!_modifierHoldStart.ContainsKey(vk))
                         {
                             long modTs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                             _modifierHoldStart[vk] = modTs;
-
-                            // Draw a modifier marker at current cursor position
-                            GetCursorPos(out POINT modPt);
-                            double modDelta = _lastActionTs > 0 ? (modTs - _lastActionTs) / 1000.0 : 0;
-                            _lastActionTs = modTs; // update so next action delta is correct
 
                             string modName = vk switch
                             {
@@ -621,19 +621,48 @@ namespace FlowMy.Views.Overlays
                                 VK_CAPITAL => "Caps",
                                 _          => GetKeyName(vk)
                             };
-                            int modSeq = ++_sequenceCounter;
-                            _actions.Add(new MacroAction
-                            {
-                                SequenceNumber = modSeq,
-                                Type      = "KeyPress",
-                                Timestamp = modTs,
-                                X = modPt.X, Y = modPt.Y,
-                                Key = modName
-                            });
+                            GetCursorPos(out POINT modPt);
+                            double modDelta = _lastActionTs > 0 ? (modTs - _lastActionTs) / 1000.0 : 0;
+                            int modSeq = _sequenceCounter; // don't increment — modifier is not a separate action
                             Dispatcher.BeginInvoke(() =>
                             {
-                                DrawKeyPress(modPt.X, modPt.Y, modName, modSeq, modDelta);
-                                UpdateActionCount();
+                                // Draw a small dim marker to show modifier is held (no seq badge)
+                                var pt2 = ScreenToCanvas(modPt.X, modPt.Y);
+                                var color = Color.FromArgb(160, 0xAA, 0x88, 0xFF);
+                                int r2 = MarkerRadius - 3;
+                                var circle2 = new Ellipse
+                                {
+                                    Width = r2 * 2, Height = r2 * 2,
+                                    Fill = new SolidColorBrush(Color.FromArgb(180, color.R, color.G, color.B)),
+                                    Stroke = Brushes.White, StrokeThickness = 1,
+                                    IsHitTestVisible = false
+                                };
+                                Canvas.SetLeft(circle2, pt2.X - r2);
+                                Canvas.SetTop(circle2, pt2.Y - r2);
+                                DrawingCanvas.Children.Add(circle2);
+
+                                var container2 = new Grid { Width = r2 * 2, Height = r2 * 2, IsHitTestVisible = false };
+                                container2.Children.Add(new TextBlock
+                                {
+                                    Text = modName, FontSize = 8, FontWeight = FontWeights.Bold,
+                                    Foreground = Brushes.White,
+                                    HorizontalAlignment = HorizontalAlignment.Center,
+                                    VerticalAlignment = VerticalAlignment.Center,
+                                    IsHitTestVisible = false
+                                });
+                                Canvas.SetLeft(container2, pt2.X - r2);
+                                Canvas.SetTop(container2, pt2.Y - r2);
+                                DrawingCanvas.Children.Add(container2);
+
+                                // Fade out after 1s
+                                var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                                t.Tick += (_, _) =>
+                                {
+                                    t.Stop();
+                                    DrawingCanvas.Children.Remove(circle2);
+                                    DrawingCanvas.Children.Remove(container2);
+                                };
+                                t.Start();
                             });
                         }
                     }
@@ -1472,6 +1501,27 @@ namespace FlowMy.Views.Overlays
             if (alt)   parts.Add("Alt");
             if (shift) parts.Add("Shift");
             parts.Add(button == "Right" ? "R" : "L");
+            return string.Join("+", parts);
+        }
+
+        /// <summary>
+        /// Tạo combo key string để lưu vào MacroAction.Key: "Ctrl+C", "Shift+Alt+F4", "A", v.v.
+        /// Dùng trạng thái modifier hiện tại (reliable hơn _modifierHoldStart).
+        /// </summary>
+        private string BuildComboKeyString(string mainKey)
+        {
+            var parts = new List<string>();
+
+            // Use live key state — more reliable than _modifierHoldStart
+            // _ctrlHeldInHook is manually tracked; GetKeyState for Shift/Alt
+            if (_ctrlHeldInHook)
+                parts.Add("Ctrl");
+            if ((GetKeyState((int)VK_MENU) & 0x8000) != 0)
+                parts.Add("Alt");
+            if ((GetKeyState((int)VK_SHIFT) & 0x8000) != 0)
+                parts.Add("Shift");
+
+            parts.Add(mainKey);
             return string.Join("+", parts);
         }
 

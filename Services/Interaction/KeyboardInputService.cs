@@ -509,12 +509,16 @@ namespace FlowMy.Services.Interaction
                 case "esc":
                     return Key.Escape;
                 case "up":
+                case "↑":
                     return Key.Up;
                 case "down":
+                case "↓":
                     return Key.Down;
                 case "left":
+                case "←":
                     return Key.Left;
                 case "right":
+                case "→":
                     return Key.Right;
                 case "home":
                     return Key.Home;
@@ -526,6 +530,50 @@ namespace FlowMy.Services.Interaction
                 case "pagedown":
                 case "pgdn":
                     return Key.PageDown;
+                case "prtsc":
+                    return Key.PrintScreen;
+                case "insert":
+                    return Key.Insert;
+                case "capslock":
+                    return Key.CapsLock;
+                case "pause":
+                    return Key.Pause;
+                case "numlock":
+                    return Key.NumLock;
+                case "scrolllock":
+                    return Key.Scroll;
+            }
+
+            // Handle Num0–Num9 (numpad)
+            if (normalized.StartsWith("num") && normalized.Length == 4 &&
+                char.IsDigit(normalized[3]))
+            {
+                int digit = normalized[3] - '0';
+                return (Key)(Key.NumPad0 + digit);
+            }
+
+            // Handle Num* Num+ Num- Num. Num/
+            switch (normalized)
+            {
+                case "num*": return Key.Multiply;
+                case "num+": return Key.Add;
+                case "num-": return Key.Subtract;
+                case "num.": return Key.Decimal;
+                case "num/": return Key.Divide;
+            }
+
+            // Handle F1–F24
+            if (normalized.StartsWith("f") && int.TryParse(normalized[1..], out int fNum) &&
+                fNum >= 1 && fNum <= 24)
+            {
+                return (Key)(Key.F1 + fNum - 1);
+            }
+
+            // Handle VK_XX hex codes from GetKeyName fallback
+            if (normalized.StartsWith("vk_") && int.TryParse(normalized[3..], System.Globalization.NumberStyles.HexNumber, null, out int vkHex))
+            {
+                var k = KeyInterop.KeyFromVirtualKey(vkHex);
+                if (k != Key.None) return k;
             }
 
             return null;

@@ -280,9 +280,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     else if (visualMode == VisualPlaybackMode.Ghost)
                                         overlay?.RemoveGhostMarker(action.SequenceNumber);
 
+                                    // Ensure target window has focus BEFORE sending keys
                                     if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
+                                    {
                                         ForceForeground(targetHwnd);
-                                    env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
+                                        await Task.Delay(30); // let focus settle
+                                    }
+
+                                    System.Diagnostics.Debug.WriteLine($"[MacroExecutor] KeyPress: '{action.Key}' isCombo={action.Key.Contains('+')}");
+
+                                    // Use SendHotkeyPress for combos (e.g. "Ctrl+C"), SendKeyPress for single keys
+                                    if (action.Key.Contains('+'))
+                                        env.Service.KeyboardInput.SendHotkeyPress(action.Key, 1, 0);
+                                    else
+                                        env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
                                     
                                     await Task.Delay(50);
                                     overlay?.ShowRightActionInfo(null, null);
