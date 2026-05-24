@@ -145,5 +145,35 @@
                        Foreground="#AAFFFFFF"
                        Text="Nhấn ESC × 3 liên tiếp để dừng workflow"/>
         </Border>
+
+        <!-- Right-side action info panel -->
+        <Border x:Name="RightActionPanel"
+                IsHitTestVisible="False"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Right"
+                Margin="0,0,24,0"
+                Background="#E0111111"
+                CornerRadius="12"
+                Padding="20,16"
+                Visibility="Collapsed">
+            <StackPanel>
+                <!-- Phím/Tổ hợp phím -->
+                <TextBlock x:Name="RightActionKeyText"
+                           FontSize="24"
+                           FontWeight="Bold"
+                           Foreground="#FF2299FF"
+                           TextAlignment="Center"
+                           Margin="0,0,0,8"
+                           Text="Ctrl+L"/>
+                <!-- Mô tả đang xử lý gì -->
+                <TextBlock x:Name="RightActionDescText"
+                           FontSize="14"
+                           Foreground="#CCFFFFFF"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="200"
+                           Text="Đang nhấn chuột trái"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>

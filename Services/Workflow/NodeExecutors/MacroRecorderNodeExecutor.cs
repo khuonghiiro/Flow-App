@@ -198,8 +198,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             case "MouseClick":
                             {
                                 string hint = BuildClickHint(action.Button, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                string desc = GetActionDescription("MouseClick", action.Button, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                overlay?.ShowActionHint(hint);
+                                overlay?.ShowRightActionInfo(hint, desc);
+                                
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, hint, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
@@ -214,15 +217,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     shiftHeld: action.ShiftHeld,
                                     ctrlHeld:  action.CtrlHeld,
                                     altHeld:   action.AltHeld);
-                                overlay?.ShowActionHint(null);
+                                
+                                await Task.Delay(50); // Đợi click hoàn tất
+                                overlay?.ShowRightActionInfo(null, null);
                                 break;
                             }
 
                             case "MouseDown":
                             {
-                                string hint = "Giữ " + BuildClickHint(action.Button, action.ShiftHeld, action.CtrlHeld, action.AltHeld) + "...";
+                                string hint = BuildClickHint(action.Button, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                string desc = GetActionDescription("MouseDown", action.Button, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                overlay?.ShowActionHint(hint);
+                                overlay?.ShowRightActionInfo(hint, desc);
+                                
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawClick(action.X, action.Y, hint, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
@@ -231,32 +239,42 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
                                     ForceForeground(targetHwnd);
 
-                                env.Service.MouseInput.SaveCursorPos();
                                 var btnDown = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
                                 env.Service.MouseInput.SendMouseDownAt(
                                     action.X, action.Y, btnDown,
                                     shiftHeld: action.ShiftHeld,
                                     ctrlHeld:  action.CtrlHeld,
                                     altHeld:   action.AltHeld);
+                                // Không ẩn panel — giữ hiển thị cho đến khi MouseUp
                                 break;
                             }
 
                             case "MouseUp":
+                            {
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                overlay?.ShowActionHint(null);
+                                
                                 if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
+                                var btnUp = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
                                 env.Service.MouseInput.SendMouseUpAt(
-                                    action.X, action.Y, MouseButton.Left,
+                                    action.X, action.Y, btnUp,
                                     shiftHeld: action.ShiftHeld,
                                     ctrlHeld:  action.CtrlHeld,
                                     altHeld:   action.AltHeld);
+                                
+                                await Task.Delay(50);
+                                overlay?.ShowRightActionInfo(null, null);
                                 break;
-
+                            }
                             case "KeyPress":
                                 if (!string.IsNullOrWhiteSpace(action.Key))
                                 {
+                                    string keyDisplay = action.Key;
+                                    string desc = $"Đang nhấn phím {action.Key}";
+                                    
+                                    overlay?.ShowRightActionInfo(keyDisplay, desc);
+                                    
                                     if (visualMode == VisualPlaybackMode.Live)
                                         overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
                                     else if (visualMode == VisualPlaybackMode.Ghost)
@@ -265,6 +283,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
                                         ForceForeground(targetHwnd);
                                     env.Service.KeyboardInput.SendKeyPress(action.Key, 1, 0);
+                                    
+                                    await Task.Delay(50);
+                                    overlay?.ShowRightActionInfo(null, null);
                                 }
                                 break;
 
@@ -277,8 +298,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 break;
 
                             case "MouseScroll":
+                            {
+                                string scrollDir = action.ScrollDelta > 0 ? "lên" : "xuống";
+                                string desc = $"Đang cuộn chuột {scrollDir}";
+                                
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                overlay?.ShowActionHint("Cuộn chuột");
+                                overlay?.ShowRightActionInfo("Scroll", desc);
+                                
                                 if (visualMode == VisualPlaybackMode.Live)
                                     overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
@@ -287,8 +313,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
                                     ForceForeground(targetHwnd);
                                 env.Service.MouseInput.SendMouseScrollAt(action.X, action.Y, action.ScrollDelta);
-                                overlay?.ShowActionHint(null);
+                                
+                                await Task.Delay(50);
+                                overlay?.ShowRightActionInfo(null, null);
                                 break;
+                            }
 
                             default:
                                 System.Diagnostics.Debug.WriteLine(
@@ -368,6 +397,29 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (shift) parts.Add("Shift");
             parts.Add(button == "Right" ? "R" : "L");
             return string.Join("+", parts);
+        }
+
+        /// <summary>
+        /// Tạo mô tả hành động cho panel bên phải.
+        /// </summary>
+        private static string GetActionDescription(string actionType, string? button, bool shift, bool ctrl, bool alt)
+        {
+            string modifiers = "";
+            var modParts = new System.Collections.Generic.List<string>();
+            if (ctrl)  modParts.Add("Ctrl");
+            if (alt)   modParts.Add("Alt");
+            if (shift) modParts.Add("Shift");
+            if (modParts.Count > 0)
+                modifiers = string.Join("+", modParts) + " + ";
+
+            string buttonName = button == "Right" ? "chuột phải" : "chuột trái";
+
+            return actionType switch
+            {
+                "MouseClick" => $"Đang nhấn {modifiers}{buttonName}",
+                "MouseDown" => $"Đang giữ {modifiers}{buttonName}",
+                _ => $"Đang thao tác {modifiers}{buttonName}"
+            };
         }
     }
 }

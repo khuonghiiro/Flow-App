@@ -141,23 +141,43 @@ namespace FlowMy.Services.Interaction
         public void SaveCursorPos() => GetCursorPos(out _savedPosBeforeDrag);
 
         public void SendMouseDownAt(int screenX, int screenY, MouseButton button,
-                                    bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)        {
+                                    bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
+        {
+            // Di chuyển chuột thật đến vị trí action
+            GetCursorPos(out POINT saved);
             SetCursorPos(screenX, screenY);
+            Thread.Sleep(10); // Đợi Windows xử lý SetCursorPos
+            
+            // Nhấn modifier keys
             if (ctrlHeld)  keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
             if (altHeld)   keybd_event(VK_MENU,    0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
             if (shiftHeld) keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYDOWN, IntPtr.Zero);
+            
+            // Nhấn chuột xuống
             SendRawDown(button);
+            Thread.Sleep(10);
+            
+            // Lưu vị trí để MouseUp trả về
+            _savedPosBeforeDrag = saved;
         }
 
         public void SendMouseUpAt(int screenX, int screenY, MouseButton button,
                                   bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
         {
+            // Di chuyển chuột thật đến vị trí thả
             SetCursorPos(screenX, screenY);
+            Thread.Sleep(10);
+            
+            // Thả chuột
             SendRawUp(button);
+            Thread.Sleep(10);
+            
+            // Thả modifier keys
             if (shiftHeld) keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYUP, IntPtr.Zero);
             if (altHeld)   keybd_event(VK_MENU,    0, KEYEVENTF_KEYUP, IntPtr.Zero);
             if (ctrlHeld)  keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
-            // Trả chuột về vị trí đã lưu
+            
+            // Trả chuột về vị trí user ban đầu
             SetCursorPos(_savedPosBeforeDrag.X, _savedPosBeforeDrag.Y);
         }
 

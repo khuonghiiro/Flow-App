@@ -165,6 +165,29 @@ namespace FlowMy.Views.Overlays
             });
         }
 
+        /// <summary>
+        /// Hiển thị thông tin thao tác ở panel bên phải màn hình.
+        /// keyText: phím hoặc tổ hợp phím (ví dụ: "Ctrl+L", "Shift+Alt+R", "L")
+        /// descText: mô tả đang xử lý gì (ví dụ: "Đang nhấn chuột trái", "Giữ chuột phải")
+        /// Gọi với keyText=null để ẩn panel.
+        /// </summary>
+        public void ShowRightActionInfo(string? keyText, string? descText)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (string.IsNullOrEmpty(keyText))
+                {
+                    RightActionPanel.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    RightActionKeyText.Text = keyText;
+                    RightActionDescText.Text = descText ?? "";
+                    RightActionPanel.Visibility = Visibility.Visible;
+                }
+            });
+        }
+
         /// <summary>Draw a click marker at screen coordinates.</summary>
         public void DrawClick(int screenX, int screenY, string button, int seq)
         {
