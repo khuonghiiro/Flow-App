@@ -598,7 +598,36 @@ namespace FlowMy.Views.Overlays
                     {
                         // Track modifier hold start time for combo label
                         if (!_modifierHoldStart.ContainsKey(vk))
-                            _modifierHoldStart[vk] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        {
+                            long modTs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                            _modifierHoldStart[vk] = modTs;
+
+                            // Draw a small modifier marker at current cursor position
+                            GetCursorPos(out POINT modPt);
+                            double modDelta = _lastActionTs > 0 ? (modTs - _lastActionTs) / 1000.0 : 0;
+                            string modName = vk switch
+                            {
+                                VK_CONTROL or VK_LCONTROL or VK_RCONTROL => "Ctrl",
+                                VK_MENU    or VK_LMENU    or VK_RMENU    => "Alt",
+                                VK_SHIFT   or VK_LSHIFT   or VK_RSHIFT   => "Shift",
+                                VK_CAPITAL => "Caps",
+                                _          => GetKeyName(vk)
+                            };
+                            int modSeq = ++_sequenceCounter;
+                            _actions.Add(new MacroAction
+                            {
+                                SequenceNumber = modSeq,
+                                Type      = "KeyPress",
+                                Timestamp = modTs,
+                                X = modPt.X, Y = modPt.Y,
+                                Key = modName
+                            });
+                            Dispatcher.BeginInvoke(() =>
+                            {
+                                DrawKeyPress(modPt.X, modPt.Y, modName, modSeq, modDelta);
+                                UpdateActionCount();
+                            });
+                        }
                     }
                 }
                 else if (isKeyUp)
@@ -673,19 +702,8 @@ namespace FlowMy.Views.Overlays
                         _dragTrailPolyline.Points.Add(_dragStartCanvas);
                         DrawingCanvas.Children.Add(_dragTrailPolyline);
 
-                        // Small filled dot at drag start
-                        _dragStartDot = new Ellipse
-                        {
-                            Width = 7,
-                            Height = 7,
-                            Fill = new SolidColorBrush(Color.FromArgb(220, 0x00, 0xBB, 0xFF)),
-                            IsHitTestVisible = false
-                        };
-                        Canvas.SetLeft(_dragStartDot, _dragStartCanvas.X - 3.5);
-                        Canvas.SetTop(_dragStartDot, _dragStartCanvas.Y - 3.5);
-                        DrawingCanvas.Children.Add(_dragStartDot);
-
-                        // Keep _dragLine for backward compat (not used for drawing now)
+                        // No separate drag start dot — the DrawClick circle already marks the position
+                        _dragStartDot = null;
                         _dragLine = null;
                         UpdateActionCount();
                     });
@@ -1010,94 +1028,91 @@ namespace FlowMy.Views.Overlays
         {
             int r = MarkerRadius;
 
-            // Outer glow
+            // Outer glow — tight, just 3px beyond circle edge
             var glow = new Ellipse
             {
-                Width = (r + 7) * 2,
-                Height = (r + 7) * 2,
-                Fill = new SolidColorBrush(Color.FromArgb(45, fillColor.R, fillColor.G, fillColor.B)),
+                Width  = (r + 3) * 2,
+                Height = (r + 3) * 2,
+                Fill   = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(glow, pt.X - (r + 7));
-            Canvas.SetTop(glow, pt.Y - (r + 7));
+            Canvas.SetLeft(glow, pt.X - (r + 3));
+            Canvas.SetTop(glow,  pt.Y - (r + 3));
             DrawingCanvas.Children.Add(glow);
 
             // Main circle
             var circle = new Ellipse
             {
-                Width = r * 2,
+                Width  = r * 2,
                 Height = r * 2,
-                Fill = hollow
+                Fill   = hollow
                     ? new SolidColorBrush(Color.FromArgb(55, fillColor.R, fillColor.G, fillColor.B))
                     : new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
-                Stroke = Brushes.White,
-                StrokeThickness = 2,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(circle, pt.X - r);
-            Canvas.SetTop(circle, pt.Y - r);
-            DrawingCanvas.Children.Add(circle);
-
-            // Center label — use a fixed-size container so the text is truly centered
-            // Width/Height = diameter of circle, positioned so its center aligns with pt
-            var centerContainer = new Grid
-            {
-                Width = r * 2,
-                Height = r * 2,
-                IsHitTestVisible = false
-            };
-            var centerTb = new TextBlock
-            {
-                Text = centerText,
-                FontSize = centerFontSize,
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                TextWrapping = TextWrapping.Wrap,
-                IsHitTestVisible = false
-            };
-            centerContainer.Children.Add(centerTb);
-            Canvas.SetLeft(centerContainer, pt.X - r);
-            Canvas.SetTop(centerContainer, pt.Y - r);
-            DrawingCanvas.Children.Add(centerContainer);
-
-            // Seq badge — small circle sitting on top of the main circle
-            var seqBg = new Ellipse
-            {
-                Width = 18,
-                Height = 18,
-                Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
-                Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
+                Stroke          = Brushes.White,
                 StrokeThickness = 1.5,
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(seqBg, pt.X - 9);
-            Canvas.SetTop(seqBg, pt.Y - r - 9);
-            DrawingCanvas.Children.Add(seqBg);
+            Canvas.SetLeft(circle, pt.X - r);
+            Canvas.SetTop(circle,  pt.Y - r);
+            DrawingCanvas.Children.Add(circle);
 
-            // Seq number — centered inside the badge using a fixed container
-            var seqContainer = new Grid
+            // Center label — Grid container ensures true centering inside the circle
+            var centerContainer = new Grid
             {
-                Width = 18,
-                Height = 18,
+                Width  = r * 2,
+                Height = r * 2,
                 IsHitTestVisible = false
             };
-            var seqTb = new TextBlock
+            centerContainer.Children.Add(new TextBlock
             {
-                Text = seq.ToString(),
-                FontSize = 9,
+                Text       = centerText,
+                FontSize   = centerFontSize,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
-                TextAlignment = TextAlignment.Center,
+                TextAlignment       = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment   = VerticalAlignment.Center,
+                TextWrapping        = TextWrapping.Wrap,
+                IsHitTestVisible    = false
+            });
+            Canvas.SetLeft(centerContainer, pt.X - r);
+            Canvas.SetTop(centerContainer,  pt.Y - r);
+            DrawingCanvas.Children.Add(centerContainer);
+
+            // Seq badge — 14px circle sitting on top edge of main circle
+            const int seqR = 7;
+            var seqBg = new Ellipse
+            {
+                Width  = seqR * 2,
+                Height = seqR * 2,
+                Fill   = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
+                Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
+                StrokeThickness  = 1,
                 IsHitTestVisible = false
             };
-            seqContainer.Children.Add(seqTb);
-            Canvas.SetLeft(seqContainer, pt.X - 9);
-            Canvas.SetTop(seqContainer, pt.Y - r - 9);
+            Canvas.SetLeft(seqBg, pt.X - seqR);
+            Canvas.SetTop(seqBg,  pt.Y - r - seqR);
+            DrawingCanvas.Children.Add(seqBg);
+
+            var seqContainer = new Grid
+            {
+                Width  = seqR * 2,
+                Height = seqR * 2,
+                IsHitTestVisible = false
+            };
+            seqContainer.Children.Add(new TextBlock
+            {
+                Text       = seq.ToString(),
+                FontSize   = 8,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                TextAlignment       = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment   = VerticalAlignment.Center,
+                IsHitTestVisible    = false
+            });
+            Canvas.SetLeft(seqContainer, pt.X - seqR);
+            Canvas.SetTop(seqContainer,  pt.Y - r - seqR);
             DrawingCanvas.Children.Add(seqContainer);
 
             // Delta badge below circle
@@ -1105,20 +1120,20 @@ namespace FlowMy.Views.Overlays
             {
                 var deltaBorder = new Border
                 {
-                    Background = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
+                    Background   = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
                     CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(4, 1, 4, 1),
-                    Child = new TextBlock
+                    Padding      = new Thickness(4, 1, 4, 1),
+                    Child        = new TextBlock
                     {
-                        Text = $"+{deltaSeconds:F2}s",
-                        FontSize = 9,
+                        Text       = $"+{deltaSeconds:F2}s",
+                        FontSize   = 9,
                         Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 225, 80))
                     },
                     IsHitTestVisible = false
                 };
                 deltaBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2);
-                Canvas.SetTop(deltaBorder, pt.Y + r + 4);
+                Canvas.SetTop(deltaBorder,  pt.Y + r + 3);
                 DrawingCanvas.Children.Add(deltaBorder);
             }
         }
