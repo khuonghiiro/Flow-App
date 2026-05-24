@@ -63,31 +63,28 @@ namespace FlowMy.Views.Overlays
             {
                 Dispatcher.BeginInvoke(() =>
                 {
-                    // Restore app window regardless of outcome
+                    // Always restore app window
                     if (appWindow != null)
                     {
                         appWindow.WindowState = WindowState.Normal;
                         appWindow.Activate();
                     }
 
+                    // Update data and persist to node if recording produced results
                     if (overlay.HasData && overlay.RecordedJson != null)
                     {
-                        // Data recorded — save to node and close dialog (don't re-show)
                         _viewModel.MacroDataJson = overlay.RecordedJson;
+                        // Persist to node model immediately
                         _viewModel.SaveTitleCommand?.Execute(null);
-                        // Close only if not already closed
-                        try { this.Close(); } catch { }
                     }
-                    else
+
+                    // Always re-show dialog so user can review the recorded data
+                    try
                     {
-                        // Cancelled — re-show dialog so user can try again
-                        try
-                        {
-                            this.Show();
-                            this.Activate();
-                        }
-                        catch { /* window already closed, ignore */ }
+                        this.Show();
+                        this.Activate();
                     }
+                    catch { /* window already closed */ }
                 });
             };
 

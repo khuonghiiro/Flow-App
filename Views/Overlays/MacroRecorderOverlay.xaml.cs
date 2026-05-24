@@ -719,32 +719,55 @@ namespace FlowMy.Views.Overlays
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
-                    _actions.Add(new MacroAction
+                    bool wasHeld = (ts - _mouseDownTs) >= DragMinHoldMs;
+
+                    if (!wasHeld)
                     {
-                        SequenceNumber = ++_sequenceCounter,
-                        Type = "MouseUp",
-                        Timestamp = ts,
-                        X = x,
-                        Y = y,
-                        Button = "Left"
-                    });
-                    int seq = _sequenceCounter;
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        _isDragging = false;
-                        // Finalize drag trail endpoint
-                        if (_dragTrailPolyline != null)
+                        // Quick click (< 200ms) — retroactively convert MouseDown → MouseClick
+                        // and don't add a MouseUp action
+                        var lastDown = _actions.FindLast(a => a.Type == "MouseDown" && a.Button == "Left");
+                        if (lastDown != null)
+                            lastDown.Type = "MouseClick";
+
+                        Dispatcher.BeginInvoke(() =>
                         {
-                            _dragTrailPolyline.Points.Add(ScreenToCanvas(x, y));
-                            _dragTrailPolyline = null;
-                        }
-                        _dragLine = null;
-                        // Only show MouseUp marker if held long enough (>= 200ms)
-                        bool wasHeld = (ts - _mouseDownTs) >= DragMinHoldMs;
-                        if (wasHeld)
+                            _isDragging = false;
+                            if (_dragTrailPolyline != null)
+                            {
+                                // Remove the drag trail — it was just a click, not a drag
+                                DrawingCanvas.Children.Remove(_dragTrailPolyline);
+                                _dragTrailPolyline = null;
+                            }
+                            _dragLine = null;
+                            UpdateActionCount();
+                        });
+                    }
+                    else
+                    {
+                        // Real drag — keep MouseDown + add MouseUp
+                        _actions.Add(new MacroAction
+                        {
+                            SequenceNumber = ++_sequenceCounter,
+                            Type = "MouseUp",
+                            Timestamp = ts,
+                            X = x,
+                            Y = y,
+                            Button = "Left"
+                        });
+                        int seq = _sequenceCounter;
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            _isDragging = false;
+                            if (_dragTrailPolyline != null)
+                            {
+                                _dragTrailPolyline.Points.Add(ScreenToCanvas(x, y));
+                                _dragTrailPolyline = null;
+                            }
+                            _dragLine = null;
                             DrawMouseUp(x, y, seq, delta);
-                        UpdateActionCount();
-                    });
+                            UpdateActionCount();
+                        });
+                    }
                 }
                 else if (wParam == (IntPtr)WM_RBUTTONDOWN)
                 {
