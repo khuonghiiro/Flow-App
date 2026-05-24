@@ -139,15 +139,54 @@ namespace FlowMy.Views.Overlays
                 VirtualCursor.Visibility = Visibility.Visible;
                 Canvas.SetLeft(VirtualCursor, pt.X);
                 Canvas.SetTop(VirtualCursor, pt.Y);
-                // Hint follows cursor — offset 16px right/down from tip
-                Canvas.SetLeft(ActionHintBorder, pt.X + 16);
-                Canvas.SetTop(ActionHintBorder,  pt.Y + 16);
+                // Reposition floating tooltip relative to cursor, avoiding screen edges
+                RepositionHint(pt.X, pt.Y);
             }
 
             if (syncBeforeAction)
                 Dispatcher.Invoke(Update);
             else
                 Dispatcher.BeginInvoke(Update);
+        }
+
+        /// <summary>
+        /// Tính toán vị trí tooltip sát chuột ảo, tự động tránh bị khuất khi gần cạnh màn hình.
+        /// Ưu tiên: phải-dưới → trái-dưới → phải-trên → trái-trên
+        /// </summary>
+        private void RepositionHint(double cursorX, double cursorY)
+        {
+            if (ActionHintBorder.Visibility != Visibility.Visible) return;
+
+            // Measure hint size (use last desired size if not yet measured)
+            ActionHintBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double hw = ActionHintBorder.DesiredSize.Width;
+            double hh = ActionHintBorder.DesiredSize.Height;
+
+            double screenW = ActualWidth > 0 ? ActualWidth : SystemParameters.PrimaryScreenWidth;
+            double screenH = ActualHeight > 0 ? ActualHeight : SystemParameters.PrimaryScreenHeight;
+
+            const double offsetX = 18; // horizontal gap from cursor tip
+            const double offsetY = 18; // vertical gap from cursor tip
+            const double margin  = 12; // min distance from screen edge
+
+            // Try right-bottom first (default)
+            double left = cursorX + offsetX;
+            double top  = cursorY + offsetY;
+
+            // Flip horizontal if would overflow right edge
+            if (left + hw > screenW - margin)
+                left = cursorX - hw - offsetX;
+
+            // Flip vertical if would overflow bottom edge
+            if (top + hh > screenH - margin)
+                top = cursorY - hh - offsetY;
+
+            // Clamp to screen bounds
+            left = Math.Max(margin, Math.Min(left, screenW - hw - margin));
+            top  = Math.Max(margin, Math.Min(top,  screenH - hh - margin));
+
+            Canvas.SetLeft(ActionHintBorder, left);
+            Canvas.SetTop(ActionHintBorder,  top);
         }
 
         /// <summary>
@@ -166,24 +205,39 @@ namespace FlowMy.Views.Overlays
         }
 
         /// <summary>
-        /// Hiển thị thông tin thao tác ở panel bên phải màn hình.
-        /// keyText: phím hoặc tổ hợp phím (ví dụ: "Ctrl+L", "Shift+Alt+R", "L")
+        /// Hiển thị thông tin thao tác trên floating tooltip sát chuột ảo.
+        /// keyText: phím hoặc tổ hợp phím (ví dụ: "Ctrl+L", "Shift+Alt+R", "L") — null để ẩn
         /// descText: mô tả đang xử lý gì (ví dụ: "Đang nhấn chuột trái", "Giữ chuột phải")
-        /// Gọi với keyText=null để ẩn panel.
         /// </summary>
         public void ShowRightActionInfo(string? keyText, string? descText)
         {
             Dispatcher.BeginInvoke(() =>
             {
-                if (string.IsNullOrEmpty(keyText))
+                if (string.IsNullOrEmpty(keyText) && string.IsNullOrEmpty(descText))
                 {
-                    RightActionPanel.Visibility = Visibility.Collapsed;
+                    ActionHintBorder.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
-                    RightActionKeyText.Text = keyText;
-                    RightActionDescText.Text = descText ?? "";
-                    RightActionPanel.Visibility = Visibility.Visible;
+                    // Key line — only show if there's a key text
+                    if (!string.IsNullOrEmpty(keyText))
+                    {
+                        ActionHintKeyText.Text = keyText;
+                        ActionHintKeyText.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        ActionHintKeyText.Visibility = Visibility.Collapsed;
+                    }
+
+                    ActionHintText.Text = descText ?? "";
+                    ActionHintBorder.Visibility = Visibility.Visible;
+
+                    // Reposition based on current cursor position
+                    double curX = Canvas.GetLeft(VirtualCursor);
+                    double curY = Canvas.GetTop(VirtualCursor);
+                    if (!double.IsNaN(curX) && !double.IsNaN(curY))
+                        RepositionHint(curX, curY);
                 }
             });
         }

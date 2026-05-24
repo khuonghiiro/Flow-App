@@ -73,6 +73,7 @@ namespace FlowMy.Views.Overlays
         private const uint VK_MENU = 0x12;
         private const uint VK_SHIFT = 0x10;
         private const uint VK_ESCAPE = 0x1B;
+        private const uint VK_CAPITAL = 0x14; // CapsLock
         private const uint VK_LCONTROL = 0xA2;
         private const uint VK_RCONTROL = 0xA3;
         private const uint VK_LMENU = 0xA4;
@@ -176,11 +177,11 @@ namespace FlowMy.Views.Overlays
         private const int AltRequiredCount = 2;
         private const long AltWindowMs = 500; // 0.5 giây
 
-        // Shift double-press detection (Ctrl + Shift + Shift = thao tác thực)
-        private int _shiftPressCount = 0;
-        private long _shiftFirstPressTs = 0;
-        private const int ShiftRequiredCount = 2;
-        private const long ShiftWindowMs = 500; // 0.5 giây
+        // Shift double-press detection (Ctrl + CapsLock + CapsLock = thao tác thực)
+        private int _capsLockPressCount = 0;
+        private long _capsLockFirstPressTs = 0;
+        private const int CapsLockRequiredCount = 2;
+        private const long CapsLockWindowMs = 500; // 0.5 giây
 
         // Key hold tracking (prevent multiple markers for same key hold)
         private readonly HashSet<uint> _keysCurrentlyHeld = new();
@@ -293,7 +294,8 @@ namespace FlowMy.Views.Overlays
 
                     bool isModifier = vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL
                                          or VK_MENU or VK_LMENU or VK_RMENU
-                                         or VK_SHIFT or VK_LSHIFT or VK_RSHIFT;
+                                         or VK_SHIFT or VK_LSHIFT or VK_RSHIFT
+                                         or VK_CAPITAL;
 
                     if (isModifier)
                     {
@@ -323,27 +325,27 @@ namespace FlowMy.Views.Overlays
                             }
                         }
                         
-                        // Ctrl + Shift + Shift: Phải giữ Ctrl, nhấn Shift 2 lần → thao tác thực (pass through)
-                        if (ctrlDown && vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT)
+                        // Ctrl + CapsLock + CapsLock: Phải giữ Ctrl, nhấn CapsLock 2 lần → thao tác thực (pass through)
+                        if (ctrlDown && vk == VK_CAPITAL)
                         {
                             // Reset counter nếu ngoài time window
-                            if (_shiftPressCount > 0 && (now - _shiftFirstPressTs) > ShiftWindowMs)
+                            if (_capsLockPressCount > 0 && (now - _capsLockFirstPressTs) > CapsLockWindowMs)
                             {
-                                _shiftPressCount = 0;
-                                _shiftFirstPressTs = 0;
+                                _capsLockPressCount = 0;
+                                _capsLockFirstPressTs = 0;
                             }
 
-                            if (_shiftPressCount == 0)
-                                _shiftFirstPressTs = now;
+                            if (_capsLockPressCount == 0)
+                                _capsLockFirstPressTs = now;
 
-                            _shiftPressCount++;
+                            _capsLockPressCount++;
 
-                            if (_shiftPressCount >= ShiftRequiredCount)
+                            if (_capsLockPressCount >= CapsLockRequiredCount)
                             {
-                                _shiftPressCount = 0;
-                                _shiftFirstPressTs = 0;
+                                _capsLockPressCount = 0;
+                                _capsLockFirstPressTs = 0;
                                 // Pass through — không block, để Windows xử lý thao tác thực
-                                System.Diagnostics.Debug.WriteLine("[MacroRecorder] Ctrl+Shift+Shift detected - pass through for real action");
+                                System.Diagnostics.Debug.WriteLine("[MacroRecorder] Ctrl+CapsLock+CapsLock detected - pass through for real action");
                             }
                             
                             // Luôn pass through để không block thao tác
@@ -355,8 +357,8 @@ namespace FlowMy.Views.Overlays
                         {
                             _altPressCount = 0;
                             _altFirstPressTs = 0;
-                            _shiftPressCount = 0;
-                            _shiftFirstPressTs = 0;
+                            _capsLockPressCount = 0;
+                            _capsLockFirstPressTs = 0;
                         }
                     }
 
@@ -630,8 +632,8 @@ namespace FlowMy.Views.Overlays
             _escFirstPressTs = 0;
             _altPressCount = 0;
             _altFirstPressTs = 0;
-            _shiftPressCount = 0;
-            _shiftFirstPressTs = 0;
+            _capsLockPressCount = 0;
+            _capsLockFirstPressTs = 0;
             _keysCurrentlyHeld.Clear();
             _recordingStartDateTime = DateTime.Now;
 
@@ -766,7 +768,7 @@ namespace FlowMy.Views.Overlays
             {
                 case OverlayState.Idle:
                     StatusIcon.Text = "⏺";
-                    InstructionText.Text = "Nhấn Ctrl+Alt+Alt để bắt đầu ghi (overlay) | Ctrl+Shift+Shift để thao tác thực";
+                    InstructionText.Text = "Nhấn Ctrl+Alt+Alt để bắt đầu ghi (overlay) | Ctrl+CapsLock+CapsLock để thao tác thực";
                     TimerPanel.Visibility = Visibility.Collapsed;
                     ActionCountPanel.Visibility = Visibility.Collapsed;
                     EscHintText.Text = "ESC để hủy";

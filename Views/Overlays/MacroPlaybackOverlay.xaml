@@ -44,26 +44,35 @@
                 </Path.Effect>
             </Path>
 
-            <!-- Hint hành động: hiện khi đang nhấn / giữ chuột -->
+            <!-- Floating action tooltip — follows cursor, auto-repositions near edges -->
             <Border x:Name="ActionHintBorder"
                     Visibility="Collapsed"
-                    Background="#DD1A1A2E"
-                    BorderBrush="#882299FF"
+                    Background="#E0101828"
+                    BorderBrush="#CC2299FF"
                     BorderThickness="1"
-                    CornerRadius="5"
-                    Padding="8,4"
-                    Canvas.Left="16"
-                    Canvas.Top="16">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🖱 "
-                               FontSize="11"
+                    CornerRadius="8"
+                    Padding="10,7"
+                    Canvas.Left="20"
+                    Canvas.Top="20">
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="2" Opacity="0.5"/>
+                </Border.Effect>
+                <StackPanel>
+                    <!-- Dòng 1: phím / tổ hợp phím -->
+                    <TextBlock x:Name="ActionHintKeyText"
+                               FontSize="13"
+                               FontWeight="Bold"
                                Foreground="#FF2299FF"
-                               VerticalAlignment="Center"/>
+                               TextAlignment="Center"
+                               Visibility="Collapsed"/>
+                    <!-- Dòng 2: mô tả hành động -->
                     <TextBlock x:Name="ActionHintText"
                                FontSize="11"
                                FontWeight="SemiBold"
                                Foreground="#FFFFFFFF"
-                               VerticalAlignment="Center"/>
+                               TextAlignment="Center"
+                               MaxWidth="180"
+                               TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
         </Canvas>
@@ -146,34 +155,5 @@
                        Text="Nhấn ESC × 3 liên tiếp để dừng workflow"/>
         </Border>
 
-        <!-- Left-side action info panel -->
-        <Border x:Name="RightActionPanel"
-                IsHitTestVisible="False"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Left"
-                Margin="24,0,0,0"
-                Background="#E0111111"
-                CornerRadius="12"
-                Padding="20,16"
-                Visibility="Collapsed">
-            <StackPanel>
-                <!-- Phím/Tổ hợp phím -->
-                <TextBlock x:Name="RightActionKeyText"
-                           FontSize="24"
-                           FontWeight="Bold"
-                           Foreground="#FF2299FF"
-                           TextAlignment="Center"
-                           Margin="0,0,0,8"
-                           Text="Ctrl+L"/>
-                <!-- Mô tả đang xử lý gì -->
-                <TextBlock x:Name="RightActionDescText"
-                           FontSize="14"
-                           Foreground="#CCFFFFFF"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           MaxWidth="200"
-                           Text="Đang nhấn chuột trái"/>
-            </StackPanel>
-        </Border>
     </Grid>
 </Window>
