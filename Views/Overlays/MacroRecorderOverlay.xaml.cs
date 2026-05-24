@@ -502,8 +502,12 @@ namespace FlowMy.Views.Overlays
                             Dispatcher.BeginInvoke(ToggleRecording);
                             return (IntPtr)1;
                         }
-                        return (IntPtr)1; // block first Alt press too
+                        // First Alt press while Ctrl held — still record it as a modifier if recording
+                        // (fall through to modifier recording block below)
                     }
+
+                    // ── Standalone Alt (no Ctrl) or first Alt+Ctrl during recording ──
+                    // Falls through to the modifier recording block at the bottom
 
                     // ── Hotkey: Ctrl + CapsLock + CapsLock → toggle real-action recording ──
                     // First pair:  starts recording AND enables click-through (real-action mode)
@@ -602,9 +606,11 @@ namespace FlowMy.Views.Overlays
                             long modTs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                             _modifierHoldStart[vk] = modTs;
 
-                            // Draw a small modifier marker at current cursor position
+                            // Draw a modifier marker at current cursor position
                             GetCursorPos(out POINT modPt);
                             double modDelta = _lastActionTs > 0 ? (modTs - _lastActionTs) / 1000.0 : 0;
+                            _lastActionTs = modTs; // update so next action delta is correct
+
                             string modName = vk switch
                             {
                                 VK_CONTROL or VK_LCONTROL or VK_RCONTROL => "Ctrl",
@@ -862,8 +868,9 @@ namespace FlowMy.Views.Overlays
             _modifierHoldStart.Clear();
             _recordingStartDateTime = DateTime.Now;
 
-            // Show virtual cursor
+            // Show virtual cursor and recording border
             VirtualCursor.Visibility = Visibility.Visible;
+            RecordingBorder.Visibility = Visibility.Visible;
 
             // Normal mouse-move trail: adaptive color — only shown when user opted in
             // Initial color will be updated per-point via GetContrastingTrailColor
@@ -890,8 +897,9 @@ namespace FlowMy.Views.Overlays
             // Ensure click-through is off when stopping
             SetClickThroughMode(false);
 
-            // Hide virtual cursor
+            // Hide virtual cursor and recording border
             VirtualCursor.Visibility = Visibility.Collapsed;
+            RecordingBorder.Visibility = Visibility.Collapsed;
 
             if (save && _actions.Count > 0)
             {
@@ -929,29 +937,54 @@ namespace FlowMy.Views.Overlays
 
             if (_state == OverlayState.Recording)
             {
-                // Check if any recorded action is an ESC key press
-                bool macroHasEsc = _actions.Exists(a => a.Type == "KeyPress" &&
-                    string.Equals(a.Key, "Escape", StringComparison.OrdinalIgnoreCase));
-
-                if (macroHasEsc)
+                if (_escPressCount >= 2)
                 {
-                    // Macro contains ESC — need 3 rapid presses to stop
-                    if (_escPressCount >= EscRequiredCount)
-                    {
-                        _escPressCount = 0;
-                        StopRecording(save: _actions.Count >= 1);
-                    }
-                    else
-                    {
-                        int remaining = EscRequiredCount - _escPressCount;
-                        ShowEscWarning(remaining);
-                    }
+                    // 2 rapid presses → stop and save
+                    _escPressCount = 0;
+                    StopRecording(save: _actions.Count >= 1);
                 }
                 else
                 {
-                    // No ESC in macro — single press saves and exits
-                    _escPressCount = 0;
-                    StopRecording(save: _actions.Count >= 1);
+                    // First press → record ESC as a key action and show it on overlay
+                    GetCursorPos(out POINT pt);
+                    long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                    _lastActionTs = ts;
+
+                    _actions.Add(new MacroAction
+                    {
+                        SequenceNumber = ++_sequenceCounter,
+                        Type = "KeyPress",
+                        Timestamp = ts,
+                        X = pt.X, Y = pt.Y,
+                        Key = "Escape"
+                    });
+                    int seqEsc = _sequenceCounter;
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        DrawKeyPress(pt.X, pt.Y, "Esc", seqEsc, delta);
+                        UpdateActionCount();
+                        // Show hint that second press will stop
+                        EscHintText.Text = "Nhấn ESC lần nữa để lưu và thoát";
+                        EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
+                            System.Windows.Media.Color.FromRgb(0xFF, 0xCC, 0x00));
+                    });
+
+                    // Auto-reset hint after 1.5s if user doesn't press again
+                    var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(EscWindowMs) };
+                    timer.Tick += (_, _) =>
+                    {
+                        timer.Stop();
+                        _escPressCount = 0;
+                        _escFirstPressTs = 0;
+                        if (_state == OverlayState.Recording)
+                        {
+                            EscHintText.Text = "ESC để lưu và thoát";
+                            EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
+                                System.Windows.Media.Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
+                        }
+                    };
+                    timer.Start();
                 }
             }
             else
@@ -962,30 +995,6 @@ namespace FlowMy.Views.Overlays
                 RecordedJson = null;
                 Close();
             }
-        }
-
-        /// <summary>
-        /// Hiển thị cảnh báo tạm thời khi user nhấn ESC nhưng chưa đủ 3 lần.
-        /// </summary>
-        private void ShowEscWarning(int remaining)
-        {
-            EscHintText.Text = $"⚠ Macro có phím ESC — nhấn ESC thêm {remaining} lần nữa để dừng";
-            EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0xFF, 0xCC, 0x00));
-
-            // Reset hint text after 2 seconds
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            timer.Tick += (_, _) =>
-            {
-                timer.Stop();
-                if (_state == OverlayState.Recording)
-                {
-                    EscHintText.Text = "ESC để lưu và thoát";
-                    EscHintText.Foreground = new System.Windows.Media.SolidColorBrush(
-                        System.Windows.Media.Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF));
-                }
-            };
-            timer.Start();
         }
 
         // ─── UI update ────────────────────────────────────────────────────────────
@@ -1009,7 +1018,7 @@ namespace FlowMy.Views.Overlays
                     ActionCountPanel.Visibility = Visibility.Visible;
                     TimerText.Text = "00:00";
                     ActionCountText.Text = "0 thao tác";
-                    EscHintText.Text = "ESC để lưu và thoát";
+                    EscHintText.Text = "ESC = ghi phím Esc | ESC × 2 để lưu & thoát";
                     break;
             }
         }
@@ -1079,41 +1088,32 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(centerContainer,  pt.Y - r);
             DrawingCanvas.Children.Add(centerContainer);
 
-            // Seq badge — 14px circle sitting on top edge of main circle
-            const int seqR = 7;
-            var seqBg = new Ellipse
+            // Seq badge — pill above the circle with 8px gap (mirrors delta badge below)
+            var seqBorder = new Border
             {
-                Width  = seqR * 2,
-                Height = seqR * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
-                Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
-                StrokeThickness  = 1,
+                Background   = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                BorderBrush  = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding      = new Thickness(4, 1, 4, 1),
+                Child        = new TextBlock
+                {
+                    Text       = seq.ToString(),
+                    FontSize   = 9,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    IsHitTestVisible = false,
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        Color = Colors.Black, BlurRadius = 3, ShadowDepth = 0, Opacity = 1
+                    }
+                },
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(seqBg, pt.X - seqR);
-            Canvas.SetTop(seqBg,  pt.Y - r - seqR);
-            DrawingCanvas.Children.Add(seqBg);
-
-            var seqContainer = new Grid
-            {
-                Width  = seqR * 2,
-                Height = seqR * 2,
-                IsHitTestVisible = false
-            };
-            seqContainer.Children.Add(new TextBlock
-            {
-                Text       = seq.ToString(),
-                FontSize   = 8,
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                TextAlignment       = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment   = VerticalAlignment.Center,
-                IsHitTestVisible    = false
-            });
-            Canvas.SetLeft(seqContainer, pt.X - seqR);
-            Canvas.SetTop(seqContainer,  pt.Y - r - seqR);
-            DrawingCanvas.Children.Add(seqContainer);
+            seqBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(seqBorder, pt.X - seqBorder.DesiredSize.Width / 2);
+            Canvas.SetTop(seqBorder,  pt.Y - r - seqBorder.DesiredSize.Height - 8); // 8px gap above circle
+            DrawingCanvas.Children.Add(seqBorder);
 
             // Delta badge below circle
             if (deltaSeconds > 0)
@@ -1199,31 +1199,29 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(centerContainer, pt.Y - r);
             DrawingCanvas.Children.Add(centerContainer);
 
-            // Seq badge
-            var seqBg = new Ellipse
+            // Seq badge — pill above circle with 8px gap
+            var seqBorder = new Border
             {
-                Width = 16, Height = 16,
-                Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
-                Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
-                StrokeThickness = 1.5, IsHitTestVisible = false
-            };
-            Canvas.SetLeft(seqBg, pt.X - 8);
-            Canvas.SetTop(seqBg, pt.Y - r - 8);
-            DrawingCanvas.Children.Add(seqBg);
-
-            var seqContainer = new Grid { Width = 16, Height = 16, IsHitTestVisible = false };
-            seqContainer.Children.Add(new TextBlock
-            {
-                Text = seq.ToString(), FontSize = 8, FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                Background   = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                BorderBrush  = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding      = new Thickness(4, 1, 4, 1),
+                Child        = new TextBlock
+                {
+                    Text = seq.ToString(), FontSize = 9, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, IsHitTestVisible = false,
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        Color = Colors.Black, BlurRadius = 3, ShadowDepth = 0, Opacity = 1
+                    }
+                },
                 IsHitTestVisible = false
-            });
-            Canvas.SetLeft(seqContainer, pt.X - 8);
-            Canvas.SetTop(seqContainer, pt.Y - r - 8);
-            DrawingCanvas.Children.Add(seqContainer);
+            };
+            seqBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(seqBorder, pt.X - seqBorder.DesiredSize.Width / 2);
+            Canvas.SetTop(seqBorder,  pt.Y - r - seqBorder.DesiredSize.Height - 8);
+            DrawingCanvas.Children.Add(seqBorder);
 
             // Delta badge below circle
             double badgeTop = pt.Y + r + 3;

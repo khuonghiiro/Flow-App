@@ -11,6 +11,19 @@
         Focusable="True">
 
     <Grid>
+        <!-- Viền xanh khi đang ghi — hiển thị để biết overlay đang active -->
+        <Border x:Name="RecordingBorder"
+                IsHitTestVisible="False"
+                BorderBrush="#CC2299FF"
+                BorderThickness="4"
+                Background="Transparent"
+                Panel.ZIndex="100"
+                Visibility="Collapsed">
+            <Border.Effect>
+                <DropShadowEffect Color="#2299FF" BlurRadius="20" ShadowDepth="0" Opacity="0.9"/>
+            </Border.Effect>
+        </Border>
+
         <!-- Lớp phủ trong suốt — rất nhẹ, chỉ để overlay có nền -->
         <!-- Ẩn khi ở chế độ thao tác thực để click đi qua -->
         <Rectangle x:Name="HitTestRect" Fill="#01000000" IsHitTestVisible="True"/>
