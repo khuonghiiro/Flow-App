@@ -41,7 +41,7 @@ namespace FlowMy.Views.Overlays
         private static readonly Color ColorShiftLeftClick = Color.FromRgb(0xFF, 0xA5, 0x00);
         private static readonly Color ColorScroll         = Color.FromRgb(0x44, 0xDD, 0x88);
         private static readonly Color ColorKeyPress       = Color.FromRgb(0xAA, 0x88, 0xFF);
-        private const int MarkerRadius = 18;
+        private const int MarkerRadius = 12;
 
         // TaskCompletionSource to signal when the overlay is fully loaded and ready
         private readonly TaskCompletionSource _loadedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -279,8 +279,8 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetTop(circle,  pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center label: "Chuột\ntrái" / "Chuột\nphải" — Grid container for true centering
-                string label = isRight ? "Chuột\nphải" : "Chuột\ntrái";
+                // Center label: "+" — color already distinguishes left/right
+                string label = "+";
                 var centerContainer = new Grid
                 {
                     Width = r * 2,
@@ -290,13 +290,12 @@ namespace FlowMy.Views.Overlays
                 centerContainer.Children.Add(new TextBlock
                 {
                     Text = label,
-                    FontSize = 8,
+                    FontSize = 14,
                     FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
-                    TextWrapping = TextWrapping.Wrap,
                     IsHitTestVisible = false
                 });
                 Canvas.SetLeft(centerContainer, pt.X - r);
@@ -432,7 +431,7 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetLeft(circle, pt.X - r); Canvas.SetTop(circle, pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center: "Nhấn\n{key}" using Grid for true centering
+                // Center: just the key name
                 string displayKey = keyName.Length > 5 ? keyName[..5] : keyName;
                 var centerContainer = new Grid
                 {
@@ -441,16 +440,15 @@ namespace FlowMy.Views.Overlays
                 };
                 centerContainer.Children.Add(new TextBlock
                 {
-                    Text = $"Nhấn\n{displayKey}",
-                    FontSize = 8, FontWeight = FontWeights.Bold,
+                    Text = displayKey,
+                    FontSize = 9, FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
                     IsHitTestVisible = false
-                });
-                Canvas.SetLeft(centerContainer, pt.X - r);
+                });                Canvas.SetLeft(centerContainer, pt.X - r);
                 Canvas.SetTop(centerContainer,  pt.Y - r);
                 DrawingCanvas.Children.Add(centerContainer);
 

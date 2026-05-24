@@ -199,6 +199,17 @@ namespace FlowMy.Services.Interaction
             SetCursorPos(saved.X, saved.Y);
         }
 
+        /// <summary>
+        /// Giải phóng tất cả modifier keys (Shift/Ctrl/Alt) để tránh bị dính phím
+        /// sau khi workflow kết thúc hoặc bị hủy giữa chừng.
+        /// </summary>
+        public void ReleaseAllModifiers()
+        {
+            keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            keybd_event(VK_MENU,    0, KEYEVENTF_KEYUP, IntPtr.Zero);
+        }
+
         private static uint SendRawDown(MouseButton button)
         {
             uint flag = button switch

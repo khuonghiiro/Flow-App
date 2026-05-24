@@ -110,7 +110,7 @@ namespace FlowMy.Views.Overlays
         private static readonly Color ColorShiftLeftClick = Color.FromRgb(0xFF, 0xA5, 0x00); // orange
         private static readonly Color ColorScroll = Color.FromRgb(0x44, 0xDD, 0x88); // green
 
-        private const int MarkerRadius = 18; // px radius — vừa phải, dễ nhìn
+        private const int MarkerRadius = 12; // px radius — nhỏ gọn, không che khuất
 
         // ─── Screen color sampling ────────────────────────────────────────────────
 
@@ -208,6 +208,9 @@ namespace FlowMy.Views.Overlays
 
         // Key hold tracking (prevent multiple markers for same key hold)
         private readonly HashSet<uint> _keysCurrentlyHeld = new();
+
+        // Modifier hold timing for combo label: key → press timestamp
+        private readonly Dictionary<uint, long> _modifierHoldStart = new();
 
         // Real-action mode: when true, mouse hook skips recording so clicks pass through unrecorded
         // Toggled by Ctrl+CapsLock+CapsLock
@@ -571,6 +574,10 @@ namespace FlowMy.Views.Overlays
                         _lastActionTs = ts;
 
                         var keyName = GetKeyName(vk);
+
+                        // Build combo label from currently held modifiers + this key
+                        string? comboLabel = BuildComboLabel(ts, keyName);
+
                         _actions.Add(new MacroAction
                         {
                             SequenceNumber = ++_sequenceCounter,
@@ -580,16 +587,25 @@ namespace FlowMy.Views.Overlays
                             Y = pt.Y,
                             Key = keyName
                         });
+                        int seqKey = _sequenceCounter;
                         Dispatcher.BeginInvoke(() =>
                         {
-                            DrawKeyPress(pt.X, pt.Y, keyName, _sequenceCounter, delta);
+                            DrawKeyPress(pt.X, pt.Y, keyName, seqKey, delta, comboLabel);
                             UpdateActionCount();
                         });
+                    }
+                    else if (_state == OverlayState.Recording && isModifier)
+                    {
+                        // Track modifier hold start time for combo label
+                        if (!_modifierHoldStart.ContainsKey(vk))
+                            _modifierHoldStart[vk] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     }
                 }
                 else if (isKeyUp)
                 {
                     _keysCurrentlyHeld.Remove(vk);
+                    // Clear modifier hold timing on release
+                    _modifierHoldStart.Remove(vk);
                 }
             }
 
@@ -825,6 +841,7 @@ namespace FlowMy.Views.Overlays
             _capsLockPressCount = 0;
             _capsLockFirstPressTs = 0;
             _keysCurrentlyHeld.Clear();
+            _modifierHoldStart.Clear();
             _recordingStartDateTime = DateTime.Now;
 
             // Show virtual cursor
@@ -1109,126 +1126,92 @@ namespace FlowMy.Views.Overlays
         private void DrawClick(int screenX, int screenY, string button, int seq, double deltaSeconds)
         {
             var pt = ScreenToCanvas(screenX, screenY);
-
-            // Detect right-click: button is "Right", "R", or ends with "+R" (e.g. "Ctrl+R")
             bool isRight = button == "Right" || button == "R" || button.EndsWith("+R");
             Color fillColor = isRight ? ColorRightClick : ColorLeftClick;
-
-            // Center label: "Chuột trái" / "Chuột phải" (smaller font to fit circle)
-            string label = isRight ? "Chuột\nphải" : "Chuột\ntrái";
-
-            DrawMarker(pt, fillColor, label, seq, deltaSeconds, centerFontSize: 8);
+            // Always show "+" in center — color already distinguishes left/right
+            DrawMarker(pt, fillColor, "+", seq, deltaSeconds, centerFontSize: 14);
         }
 
         private void DrawScroll(int screenX, int screenY, int notches, int seq, double deltaSeconds)
             => DrawMarker(ScreenToCanvas(screenX, screenY), ColorScroll,
                           notches >= 0 ? "↑" : "↓", seq, deltaSeconds);
 
-        private void DrawKeyPress(int screenX, int screenY, string keyName, int seq, double deltaSeconds)
+        private void DrawKeyPress(int screenX, int screenY, string keyName, int seq, double deltaSeconds,
+                                   string? comboLabel = null)
         {
             var pt = ScreenToCanvas(screenX, screenY);
             Color fillColor = Color.FromRgb(0xAA, 0x88, 0xFF);
             int r = MarkerRadius;
 
-            bool isModifierOrCombo = keyName.Contains("+") ||
-                                     keyName is "Ctrl" or "Shift" or "Alt" or
-                                     "Control" or "LCtrl" or "RCtrl" or
-                                     "LShift" or "RShift" or "LAlt" or "RAlt";
-
             // Outer glow
             var glow = new Ellipse
             {
-                Width = (r + 7) * 2,
-                Height = (r + 7) * 2,
+                Width = (r + 5) * 2, Height = (r + 5) * 2,
                 Fill = new SolidColorBrush(Color.FromArgb(45, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(glow, pt.X - (r + 7));
-            Canvas.SetTop(glow, pt.Y - (r + 7));
+            Canvas.SetLeft(glow, pt.X - (r + 5));
+            Canvas.SetTop(glow, pt.Y - (r + 5));
             DrawingCanvas.Children.Add(glow);
 
             // Main circle
             var circle = new Ellipse
             {
-                Width = r * 2,
-                Height = r * 2,
+                Width = r * 2, Height = r * 2,
                 Fill = new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
-                Stroke = Brushes.White,
-                StrokeThickness = 2,
+                Stroke = Brushes.White, StrokeThickness = 1.5,
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(circle, pt.X - r);
             Canvas.SetTop(circle, pt.Y - r);
             DrawingCanvas.Children.Add(circle);
 
-            // Center label — "Nhấn X" in center using Grid container for true centering
+            // Center label — just the key name, truncated if too long
             string displayKey = keyName.Length > 5 ? keyName[..5] : keyName;
-            string centerText = isModifierOrCombo ? displayKey : $"Nhấn\n{displayKey}";
-            double fontSize = isModifierOrCombo ? 9 : 8;
-
-            var centerContainer = new Grid
+            var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
+            centerContainer.Children.Add(new TextBlock
             {
-                Width = r * 2,
-                Height = r * 2,
-                IsHitTestVisible = false
-            };
-            var centerTb = new TextBlock
-            {
-                Text = centerText,
-                FontSize = fontSize,
-                FontWeight = FontWeights.Bold,
+                Text = displayKey,
+                FontSize = 9, FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap,
                 IsHitTestVisible = false
-            };
-            centerContainer.Children.Add(centerTb);
-
-            if (isModifierOrCombo)
-            {
-                // Modifier/combo → label above the seq badge (top of marker)
-                Canvas.SetLeft(centerContainer, pt.X - r);
-                Canvas.SetTop(centerContainer, pt.Y - r - 28);
-            }
-            else
-            {
-                // Normal key → centered inside circle
-                Canvas.SetLeft(centerContainer, pt.X - r);
-                Canvas.SetTop(centerContainer, pt.Y - r);
-            }
+            });
+            Canvas.SetLeft(centerContainer, pt.X - r);
+            Canvas.SetTop(centerContainer, pt.Y - r);
             DrawingCanvas.Children.Add(centerContainer);
 
             // Seq badge
             var seqBg = new Ellipse
             {
-                Width = 18, Height = 18,
+                Width = 16, Height = 16,
                 Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
                 Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
-                StrokeThickness = 1.5,
-                IsHitTestVisible = false
+                StrokeThickness = 1.5, IsHitTestVisible = false
             };
-            Canvas.SetLeft(seqBg, pt.X - 9);
-            Canvas.SetTop(seqBg, pt.Y - r - 9);
+            Canvas.SetLeft(seqBg, pt.X - 8);
+            Canvas.SetTop(seqBg, pt.Y - r - 8);
             DrawingCanvas.Children.Add(seqBg);
 
-            var seqContainer = new Grid { Width = 18, Height = 18, IsHitTestVisible = false };
+            var seqContainer = new Grid { Width = 16, Height = 16, IsHitTestVisible = false };
             seqContainer.Children.Add(new TextBlock
             {
-                Text = seq.ToString(),
-                FontSize = 9, FontWeight = FontWeights.Bold,
+                Text = seq.ToString(), FontSize = 8, FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false
             });
-            Canvas.SetLeft(seqContainer, pt.X - 9);
-            Canvas.SetTop(seqContainer, pt.Y - r - 9);
+            Canvas.SetLeft(seqContainer, pt.X - 8);
+            Canvas.SetTop(seqContainer, pt.Y - r - 8);
             DrawingCanvas.Children.Add(seqContainer);
 
-            // Delta badge
+            // Delta badge below circle
+            double badgeTop = pt.Y + r + 3;
             if (deltaSeconds > 0)
             {
                 var deltaBorder = new Border
@@ -1246,8 +1229,35 @@ namespace FlowMy.Views.Overlays
                 };
                 deltaBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2);
-                Canvas.SetTop(deltaBorder, pt.Y + r + 4);
+                Canvas.SetTop(deltaBorder, badgeTop);
                 DrawingCanvas.Children.Add(deltaBorder);
+                badgeTop += deltaBorder.DesiredSize.Height + 2;
+            }
+
+            // Combo label below delta — e.g. "Ctrl (3.12s) + Shift (1.2s) + B (0.1s)"
+            if (!string.IsNullOrEmpty(comboLabel))
+            {
+                var comboBorder = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(210, 20, 20, 40)),
+                    CornerRadius = new CornerRadius(4),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(120, 0xAA, 0x88, 0xFF)),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(5, 2, 5, 2),
+                    Child = new TextBlock
+                    {
+                        Text = comboLabel,
+                        FontSize = 9,
+                        Foreground = new SolidColorBrush(Color.FromArgb(255, 0xCC, 0xBB, 0xFF)),
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 200
+                    },
+                    IsHitTestVisible = false
+                };
+                comboBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(comboBorder, pt.X - comboBorder.DesiredSize.Width / 2);
+                Canvas.SetTop(comboBorder, badgeTop);
+                DrawingCanvas.Children.Add(comboBorder);
             }
         }
 
@@ -1420,6 +1430,43 @@ namespace FlowMy.Views.Overlays
             if (shift) parts.Add("Shift");
             parts.Add(button == "Right" ? "R" : "L");
             return string.Join("+", parts);
+        }
+
+        /// <summary>
+        /// Tạo combo label với thời gian giữ từng modifier: "Ctrl (3.12s) + Shift (1.2s) + B (0.1s)"
+        /// Trả về null nếu không có modifier nào đang được giữ.
+        /// </summary>
+        private string? BuildComboLabel(long nowMs, string mainKey)
+        {
+            var modMap = new (uint vk, string name)[]
+            {
+                (VK_CONTROL,  "Ctrl"),
+                (VK_LCONTROL, "Ctrl"),
+                (VK_RCONTROL, "Ctrl"),
+                (VK_MENU,     "Alt"),
+                (VK_LMENU,    "Alt"),
+                (VK_RMENU,    "Alt"),
+                (VK_SHIFT,    "Shift"),
+                (VK_LSHIFT,   "Shift"),
+                (VK_RSHIFT,   "Shift"),
+            };
+
+            var parts = new List<string>();
+            var seen  = new HashSet<string>();
+
+            foreach (var (vk, name) in modMap)
+            {
+                if (_modifierHoldStart.TryGetValue(vk, out long startMs) && seen.Add(name))
+                {
+                    double held = (nowMs - startMs) / 1000.0;
+                    parts.Add($"{name} ({held:F2}s)");
+                }
+            }
+
+            if (parts.Count == 0) return null;
+
+            parts.Add(mainKey);
+            return string.Join(" + ", parts);
         }
     }
 }
