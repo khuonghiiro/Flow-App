@@ -170,6 +170,21 @@ namespace FlowMy.Views.Overlays
         private const int EscRequiredCount = 3;
         private const long EscWindowMs = 1500; // 1.5 giây
 
+        // Alt double-press detection (Ctrl + Alt + Alt = toggle recording)
+        private int _altPressCount = 0;
+        private long _altFirstPressTs = 0;
+        private const int AltRequiredCount = 2;
+        private const long AltWindowMs = 500; // 0.5 giây
+
+        // Shift double-press detection (Ctrl + Shift + Shift = thao tác thực)
+        private int _shiftPressCount = 0;
+        private long _shiftFirstPressTs = 0;
+        private const int ShiftRequiredCount = 2;
+        private const long ShiftWindowMs = 500; // 0.5 giây
+
+        // Key hold tracking (prevent multiple markers for same key hold)
+        private readonly HashSet<uint> _keysCurrentlyHeld = new();
+
         // Drag-hold tracking (left button held down)
         private bool _isDragging = false;
         private int _dragStartX, _dragStartY;
@@ -264,61 +279,133 @@ namespace FlowMy.Views.Overlays
 
         private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            if (nCode >= 0)
             {
                 var kb = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
                 var vk = kb.vkCode;
 
-                bool ctrlDown = (GetAsyncKeyState((int)VK_CONTROL) & 0x8000) != 0;
-                bool altDown = (GetAsyncKeyState((int)VK_MENU) & 0x8000) != 0;
-                bool shiftDown = (GetAsyncKeyState((int)VK_SHIFT) & 0x8000) != 0;
-
-                bool isModifier = vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL
-                                     or VK_MENU or VK_LMENU or VK_RMENU
-                                     or VK_SHIFT or VK_LSHIFT or VK_RSHIFT;
-
-                if (isModifier)
+                // Handle key down events
+                if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN)
                 {
-                    bool ctrlNow = ctrlDown || vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL;
-                    bool altNow = altDown || vk is VK_MENU or VK_LMENU or VK_RMENU;
-                    bool shiftNow = shiftDown || vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT;
+                    bool ctrlDown = (GetAsyncKeyState((int)VK_CONTROL) & 0x8000) != 0;
+                    bool altDown = (GetAsyncKeyState((int)VK_MENU) & 0x8000) != 0;
+                    bool shiftDown = (GetAsyncKeyState((int)VK_SHIFT) & 0x8000) != 0;
 
-                    if (ctrlNow && altNow && shiftNow)
+                    bool isModifier = vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL
+                                         or VK_MENU or VK_LMENU or VK_RMENU
+                                         or VK_SHIFT or VK_LSHIFT or VK_RSHIFT;
+
+                    if (isModifier)
                     {
-                        Dispatcher.Invoke(ToggleRecording);
+                        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                        // Ctrl + Alt + Alt: Phải giữ Ctrl, nhấn Alt 2 lần → toggle recording
+                        if (ctrlDown && vk is VK_MENU or VK_LMENU or VK_RMENU)
+                        {
+                            // Reset counter nếu ngoài time window
+                            if (_altPressCount > 0 && (now - _altFirstPressTs) > AltWindowMs)
+                            {
+                                _altPressCount = 0;
+                                _altFirstPressTs = 0;
+                            }
+
+                            if (_altPressCount == 0)
+                                _altFirstPressTs = now;
+
+                            _altPressCount++;
+
+                            if (_altPressCount >= AltRequiredCount)
+                            {
+                                _altPressCount = 0;
+                                _altFirstPressTs = 0;
+                                Dispatcher.Invoke(ToggleRecording);
+                                return (IntPtr)1; // Block this key
+                            }
+                        }
+                        
+                        // Ctrl + Shift + Shift: Phải giữ Ctrl, nhấn Shift 2 lần → thao tác thực (pass through)
+                        if (ctrlDown && vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT)
+                        {
+                            // Reset counter nếu ngoài time window
+                            if (_shiftPressCount > 0 && (now - _shiftFirstPressTs) > ShiftWindowMs)
+                            {
+                                _shiftPressCount = 0;
+                                _shiftFirstPressTs = 0;
+                            }
+
+                            if (_shiftPressCount == 0)
+                                _shiftFirstPressTs = now;
+
+                            _shiftPressCount++;
+
+                            if (_shiftPressCount >= ShiftRequiredCount)
+                            {
+                                _shiftPressCount = 0;
+                                _shiftFirstPressTs = 0;
+                                // Pass through — không block, để Windows xử lý thao tác thực
+                                System.Diagnostics.Debug.WriteLine("[MacroRecorder] Ctrl+Shift+Shift detected - pass through for real action");
+                            }
+                            
+                            // Luôn pass through để không block thao tác
+                            return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+                        }
+
+                        // Reset counters khi không còn giữ Ctrl
+                        if (!ctrlDown)
+                        {
+                            _altPressCount = 0;
+                            _altFirstPressTs = 0;
+                            _shiftPressCount = 0;
+                            _shiftFirstPressTs = 0;
+                        }
+                    }
+
+                    if (vk == VK_ESCAPE)
+                    {
+                        Dispatcher.Invoke(HandleEsc);
                         return (IntPtr)1;
                     }
-                }
 
-                if (vk == VK_ESCAPE)
-                {
-                    Dispatcher.Invoke(HandleEsc);
-                    return (IntPtr)1;
-                }
-
-                if (_state == OverlayState.Recording && !isModifier)
-                {
-                    GetCursorPos(out POINT pt);
-                    long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                    double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
-                    _lastActionTs = ts;
-
-                    var keyName = GetKeyName(vk);
-                    var action = new MacroAction
+                    if (_state == OverlayState.Recording && !isModifier)
                     {
-                        SequenceNumber = ++_sequenceCounter,
-                        Type = "KeyPress",
-                        Timestamp = ts,
-                        X = pt.X,
-                        Y = pt.Y,
-                        Key = keyName
-                    };
-                    _actions.Add(action);
-                    Dispatcher.Invoke(() =>
-                    {
-                        DrawKeyPress(pt.X, pt.Y, keyName, _sequenceCounter, delta);
-                        UpdateActionCount();
-                    });
+                        // Key hold detection: chỉ ghi nếu key chưa được giữ
+                        if (_keysCurrentlyHeld.Contains(vk))
+                        {
+                            // Key đang được giữ → không tạo marker mới
+                            return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+                        }
+
+                        // Đánh dấu key đang được giữ
+                        _keysCurrentlyHeld.Add(vk);
+
+                        GetCursorPos(out POINT pt);
+                        long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
+                        _lastActionTs = ts;
+
+                        var keyName = GetKeyName(vk);
+                        var action = new MacroAction
+                        {
+                            SequenceNumber = ++_sequenceCounter,
+                            Type = "KeyPress",
+                            Timestamp = ts,
+                            X = pt.X,
+                            Y = pt.Y,
+                            Key = keyName
+                        };
+                        _actions.Add(action);
+                        Dispatcher.Invoke(() =>
+                        {
+                            DrawKeyPress(pt.X, pt.Y, keyName, _sequenceCounter, delta);
+                            UpdateActionCount();
+                        });
+                    }
+                }
+                // Handle key up events (WM_KEYUP = 0x0101, WM_SYSKEYUP = 0x0105)
+                else if (wParam == (IntPtr)0x0101 || wParam == (IntPtr)0x0105)
+                {
+                    // Xóa key khỏi danh sách đang giữ
+                    _keysCurrentlyHeld.Remove(vk);
                 }
             }
 
@@ -541,6 +628,11 @@ namespace FlowMy.Views.Overlays
             _lastMoveY = int.MinValue;
             _escPressCount = 0;
             _escFirstPressTs = 0;
+            _altPressCount = 0;
+            _altFirstPressTs = 0;
+            _shiftPressCount = 0;
+            _shiftFirstPressTs = 0;
+            _keysCurrentlyHeld.Clear();
             _recordingStartDateTime = DateTime.Now;
 
             // Show virtual cursor
@@ -674,7 +766,7 @@ namespace FlowMy.Views.Overlays
             {
                 case OverlayState.Idle:
                     StatusIcon.Text = "⏺";
-                    InstructionText.Text = "Nhấn giữ tổ hợp phím Ctrl+Alt+Shift để bắt đầu ghi lại thao tác";
+                    InstructionText.Text = "Nhấn Ctrl+Alt+Alt để bắt đầu ghi (overlay) | Ctrl+Shift+Shift để thao tác thực";
                     TimerPanel.Visibility = Visibility.Collapsed;
                     ActionCountPanel.Visibility = Visibility.Collapsed;
                     EscHintText.Text = "ESC để hủy";
@@ -682,7 +774,7 @@ namespace FlowMy.Views.Overlays
 
                 case OverlayState.Recording:
                     StatusIcon.Text = "🔴";
-                    InstructionText.Text = "Đang ghi... Nhấn Ctrl+Alt+Shift để dừng";
+                    InstructionText.Text = "Đang ghi... Nhấn Ctrl+Alt+Alt để dừng";
                     TimerPanel.Visibility = Visibility.Visible;
                     ActionCountPanel.Visibility = Visibility.Visible;
                     TimerText.Text = "00:00";
@@ -825,9 +917,118 @@ namespace FlowMy.Views.Overlays
 
         private void DrawKeyPress(int screenX, int screenY, string keyName, int seq, double deltaSeconds)
         {
+            var pt = ScreenToCanvas(screenX, screenY);
+            Color fillColor = Color.FromRgb(0xAA, 0x88, 0xFF);
+            int r = MarkerRadius;
+
+            // Kiểm tra xem có phải modifier key hay combo không
+            bool isModifierOrCombo = keyName.Contains("+") || 
+                                      keyName is "Ctrl" or "Shift" or "Alt" or 
+                                      "Control" or "LCtrl" or "RCtrl" or 
+                                      "LShift" or "RShift" or "LAlt" or "RAlt";
+
+            // Outer glow
+            var glow = new Ellipse
+            {
+                Width = (r + 7) * 2,
+                Height = (r + 7) * 2,
+                Fill = new SolidColorBrush(Color.FromArgb(45, fillColor.R, fillColor.G, fillColor.B)),
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(glow, pt.X - (r + 7));
+            Canvas.SetTop(glow, pt.Y - (r + 7));
+            DrawingCanvas.Children.Add(glow);
+
+            // Main circle
+            var circle = new Ellipse
+            {
+                Width = r * 2,
+                Height = r * 2,
+                Fill = new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
+                Stroke = Brushes.White,
+                StrokeThickness = 2,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(circle, pt.X - r);
+            Canvas.SetTop(circle, pt.Y - r);
+            DrawingCanvas.Children.Add(circle);
+
+            // Key label — vị trí phụ thuộc vào loại phím
             string displayKey = keyName.Length > 4 ? keyName[..4] : keyName;
-            DrawMarker(ScreenToCanvas(screenX, screenY),
-                       Color.FromRgb(0xAA, 0x88, 0xFF), displayKey, seq, deltaSeconds);
+            var keyLabel = new TextBlock
+            {
+                Text = displayKey,
+                FontSize = isModifierOrCombo ? 9 : 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false
+            };
+            keyLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+
+            if (isModifierOrCombo)
+            {
+                // Modifier/combo → label ở TOP (trên số thứ tự)
+                Canvas.SetLeft(keyLabel, pt.X - keyLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(keyLabel, pt.Y - r - 28); // Trên số thứ tự
+            }
+            else
+            {
+                // Single key → label ở CENTER
+                Canvas.SetLeft(keyLabel, pt.X - keyLabel.DesiredSize.Width / 2);
+                Canvas.SetTop(keyLabel, pt.Y - keyLabel.DesiredSize.Height / 2);
+            }
+            DrawingCanvas.Children.Add(keyLabel);
+
+            // Seq badge — hình tròn nhỏ nằm trên đỉnh circle
+            var seqBg = new Ellipse
+            {
+                Width = 18,
+                Height = 18,
+                Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
+                Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
+                StrokeThickness = 1.5,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(seqBg, pt.X - 9);
+            Canvas.SetTop(seqBg, pt.Y - r - 9);
+            DrawingCanvas.Children.Add(seqBg);
+
+            var seqTb = new TextBlock
+            {
+                Text = seq.ToString(),
+                FontSize = 9,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                TextAlignment = TextAlignment.Center,
+                IsHitTestVisible = false
+            };
+            seqTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(seqTb, pt.X - seqTb.DesiredSize.Width / 2);
+            Canvas.SetTop(seqTb, pt.Y - r - 9 + (18 - seqTb.DesiredSize.Height) / 2);
+            DrawingCanvas.Children.Add(seqTb);
+
+            // Delta badge bên dưới circle
+            if (deltaSeconds > 0)
+            {
+                var deltaBorder = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(4, 1, 4, 1),
+                    Child = new TextBlock
+                    {
+                        Text = $"+{deltaSeconds:F2}s",
+                        FontSize = 9,
+                        Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 225, 80))
+                    },
+                    IsHitTestVisible = false
+                };
+                deltaBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2);
+                Canvas.SetTop(deltaBorder, pt.Y + r + 4);
+                DrawingCanvas.Children.Add(deltaBorder);
+            }
         }
 
         private void DrawMouseUp(int screenX, int screenY, int seq, double deltaSeconds)
