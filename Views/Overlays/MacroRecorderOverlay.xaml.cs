@@ -307,35 +307,54 @@ namespace FlowMy.Views.Overlays
         }
 
         /// <summary>
-        /// Bật/tắt chế độ thao tác thực:
-        ///   enable=true  → ẩn HitTestRect + thêm WS_EX_TRANSPARENT|WS_EX_NOACTIVATE
-        ///                   → click đi thẳng qua overlay xuống app bên dưới
-        ///   enable=false → hiện lại HitTestRect + xóa các flag đó
+        /// Bật/tắt chế độ click-through:
+        ///   enable=true  → WS_EX_TRANSPARENT + ẩn HitTestRect → click xuyên qua overlay
+        ///   enable=false → xóa WS_EX_TRANSPARENT + hiện HitTestRect → overlay nhận input bình thường
+        /// Phải gọi trên UI thread.
         /// </summary>
-        private void ApplyRealActionWindowStyle(bool enable)
+        private void SetClickThroughMode(bool enable)
         {
-            // Toggle the hit-test rectangle — when hidden, WPF has nothing to capture mouse
+            // 1. Toggle HitTestRect — khi ẩn, WPF không capture mouse nữa
             HitTestRect.IsHitTestVisible = !enable;
             HitTestRect.Fill = enable
-                ? System.Windows.Media.Brushes.Transparent   // fully transparent = no hit
+                ? System.Windows.Media.Brushes.Transparent
                 : new System.Windows.Media.SolidColorBrush(
-                      System.Windows.Media.Color.FromArgb(1, 0, 0, 0)); // #01000000
+                      System.Windows.Media.Color.FromArgb(1, 0, 0, 0));
 
-            // Also apply/remove WS_EX_TRANSPARENT + WS_EX_NOACTIVATE at Win32 level
-            var helper = new System.Windows.Interop.WindowInteropHelper(this);
-            IntPtr hwnd = helper.Handle;
+            // 2. Apply/remove WS_EX_TRANSPARENT at Win32 level
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return;
 
             IntPtr cur = GetWindowLong(hwnd, GWL_EXSTYLE);
             long style = cur.ToInt64();
             if (enable)
-                style |= WS_EX_TRANSPARENT | WS_EX_NOACTIVATE;
+                style |= WS_EX_TRANSPARENT;
             else
-                style &= ~(long)(WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+                style &= ~(long)WS_EX_TRANSPARENT;
 
             SetWindowLong(hwnd, GWL_EXSTYLE, new IntPtr(style));
             SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+            // 3. Update UI feedback
+            if (enable)
+            {
+                InstructionText.Text = "⚡ Thao tác thực — click xuyên overlay — Ctrl+CapsLock+CapsLock để lưu & đóng";
+                StatusIcon.Text = "⚡";
+            }
+            else
+            {
+                if (_state == OverlayState.Recording)
+                {
+                    InstructionText.Text = "Đang ghi... Nhấn Ctrl+Alt+Alt để dừng";
+                    StatusIcon.Text = "🔴";
+                }
+                else
+                {
+                    InstructionText.Text = "Nhấn Ctrl+Alt+Alt để bắt đầu ghi | Ctrl+CapsLock+CapsLock để ghi thao tác thực";
+                    StatusIcon.Text = "⏺";
+                }
+            }
         }
 
         // ─── SendInput P/Invoke (for real-action mode) ───────────────────────────
@@ -442,11 +461,10 @@ namespace FlowMy.Views.Overlays
                     else if (isKeyUp)
                     {
                         _ctrlHeldInHook = false;
-                        // Reset hotkey counters when Ctrl is released
+                        // Reset ALT counter on Ctrl release, but NOT CapsLock counter
+                        // because user releases Ctrl between the two Ctrl+CapsLock combos
                         _altPressCount = 0;
                         _altFirstPressTs = 0;
-                        _capsLockPressCount = 0;
-                        _capsLockFirstPressTs = 0;
                     }
                 }
 
@@ -478,13 +496,15 @@ namespace FlowMy.Views.Overlays
                         {
                             _altPressCount = 0;
                             _altFirstPressTs = 0;
-                            Dispatcher.Invoke(ToggleRecording);
+                            Dispatcher.BeginInvoke(ToggleRecording);
                             return (IntPtr)1;
                         }
                         return (IntPtr)1; // block first Alt press too
                     }
 
-                    // ── Hotkey: Ctrl + CapsLock + CapsLock → toggle real-action mode ──
+                    // ── Hotkey: Ctrl + CapsLock + CapsLock → toggle real-action recording ──
+                    // First pair:  starts recording AND enables click-through (real-action mode)
+                    // Second pair: stops recording, saves, and closes overlay
                     if (ctrlDown && vk == VK_CAPITAL)
                     {
                         long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -497,25 +517,35 @@ namespace FlowMy.Views.Overlays
                         _capsLockPressCount++;
 
                         System.Diagnostics.Debug.WriteLine(
-                            $"[MacroRecorder] Ctrl+CapsLock press #{_capsLockPressCount}");
+                            $"[MacroRecorder] Ctrl+CapsLock press #{_capsLockPressCount}, state={_state}, realMode={_realActionMode}");
 
                         if (_capsLockPressCount >= CapsLockRequiredCount)
                         {
                             _capsLockPressCount = 0;
                             _capsLockFirstPressTs = 0;
-                            _realActionMode = !_realActionMode;
-                            bool mode = _realActionMode;
-                            System.Diagnostics.Debug.WriteLine(
-                                $"[MacroRecorder] Real-action mode = {mode}");
-                            Dispatcher.Invoke(() =>
+
+                            if (!_realActionMode)
                             {
-                                // Visual feedback only — no window style change needed
-                                // (block+reinject approach handles click routing)
-                                InstructionText.Text = mode
-                                    ? "⚡ Chế độ thao tác thực — nhấn Ctrl+CapsLock+CapsLock để quay lại ghi"
-                                    : "Đang ghi... Nhấn Ctrl+Alt+Alt để dừng";
-                                StatusIcon.Text = mode ? "⚡" : "🔴";
-                            });
+                                // First activation: start recording + enable click-through
+                                _realActionMode = true;
+                                Dispatcher.BeginInvoke(() =>
+                                {
+                                    if (_state == OverlayState.Idle)
+                                        StartRecording();
+                                    SetClickThroughMode(true);
+                                });
+                            }
+                            else
+                            {
+                                // Second activation: stop recording and save
+                                _realActionMode = false;
+                                Dispatcher.BeginInvoke(() =>
+                                {
+                                    SetClickThroughMode(false);
+                                    if (_state == OverlayState.Recording)
+                                        StopRecording(save: true);
+                                });
+                            }
                         }
                         // Always pass through so Windows processes CapsLock normally
                         return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
@@ -523,7 +553,7 @@ namespace FlowMy.Views.Overlays
 
                     if (vk == VK_ESCAPE)
                     {
-                        Dispatcher.Invoke(HandleEsc);
+                        Dispatcher.BeginInvoke(HandleEsc);
                         return (IntPtr)1;
                     }
 
@@ -550,7 +580,7 @@ namespace FlowMy.Views.Overlays
                             Y = pt.Y,
                             Key = keyName
                         });
-                        Dispatcher.Invoke(() =>
+                        Dispatcher.BeginInvoke(() =>
                         {
                             DrawKeyPress(pt.X, pt.Y, keyName, _sequenceCounter, delta);
                             UpdateActionCount();
@@ -581,55 +611,7 @@ namespace FlowMy.Views.Overlays
                 if (ms.dwExtraInfo == OurExtraInfo)
                     return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
 
-                // Real-action mode: record the action AND inject a real click to the app below
-                if (_realActionMode)
-                {
-                    if (wParam == (IntPtr)WM_LBUTTONDOWN || wParam == (IntPtr)WM_RBUTTONDOWN
-                        || wParam == (IntPtr)WM_LBUTTONUP)
-                    {
-                        bool isRight = wParam == (IntPtr)WM_RBUTTONDOWN;
-                        bool isDown  = wParam != (IntPtr)WM_LBUTTONUP;
-                        bool shiftHeld = (GetKeyState((int)VK_SHIFT)   & 0x8000) != 0;
-                        bool ctrlHeld  = _ctrlHeldInHook;
-                        bool altHeld   = (GetKeyState((int)VK_MENU)    & 0x8000) != 0;
-
-                        double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
-                        _lastActionTs = ts;
-
-                        string button = isRight ? "Right" : "Left";
-                        string actionType = isRight ? "MouseClick"
-                                          : isDown  ? "MouseDown" : "MouseUp";
-
-                        _actions.Add(new MacroAction
-                        {
-                            SequenceNumber = ++_sequenceCounter,
-                            Type = actionType,
-                            Timestamp = ts,
-                            X = x, Y = y,
-                            Button = button,
-                            ShiftHeld = shiftHeld,
-                            CtrlHeld  = ctrlHeld,
-                            AltHeld   = altHeld
-                        });
-                        int seq = _sequenceCounter;
-                        string displayButton = BuildModifierLabel(button, shiftHeld, ctrlHeld, altHeld);
-
-                        // Draw marker on overlay
-                        Dispatcher.BeginInvoke(() =>
-                        {
-                            DrawClick(x, y, displayButton, seq, delta);
-                            UpdateActionCount();
-                        });
-
-                        // Inject the real click so it reaches the app below
-                        // Block the original event (return 1) then re-inject via SendInput
-                        // so the app below receives it without the overlay intercepting
-                        Task.Run(() => InjectMouseClick(x, y, isRight, isDown));
-                        return (IntPtr)1; // block original, our injected copy will go through
-                    }
-                    // For mouse move and scroll — just pass through normally
-                    return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
-                }
+                // Real-action mode: overlay is minimized, record normally — no special handling needed
 
                 if (wParam == (IntPtr)WM_LBUTTONDOWN)
                 {
@@ -656,7 +638,7 @@ namespace FlowMy.Views.Overlays
                     int seq = _sequenceCounter;
                     string displayButton = BuildModifierLabel(button, shiftHeld, ctrlHeld, altHeld);
                     _mouseDownTs = ts;
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.BeginInvoke(() =>
                     {
                         DrawClick(x, y, displayButton, seq, delta);
                         // Start drag-hold tracking
@@ -707,7 +689,7 @@ namespace FlowMy.Views.Overlays
                         Button = "Left"
                     });
                     int seq = _sequenceCounter;
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.BeginInvoke(() =>
                     {
                         _isDragging = false;
                         // Finalize drag trail endpoint
@@ -743,10 +725,11 @@ namespace FlowMy.Views.Overlays
                         CtrlHeld  = ctrlHeld,
                         AltHeld   = altHeld
                     });
+                    int seqRight = _sequenceCounter;
                     string displayRight = BuildModifierLabel("Right", shiftHeld, ctrlHeld, altHeld);
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.BeginInvoke(() =>
                     {
-                        DrawClick(x, y, displayRight, _sequenceCounter, delta);
+                        DrawClick(x, y, displayRight, seqRight, delta);
                         UpdateActionCount();
                     });
                 }
@@ -768,9 +751,10 @@ namespace FlowMy.Views.Overlays
                         Y = y,
                         ScrollDelta = notches
                     });
-                    Dispatcher.Invoke(() =>
+                    int seqScroll = _sequenceCounter;
+                    Dispatcher.BeginInvoke(() =>
                     {
-                        DrawScroll(x, y, notches, _sequenceCounter, delta);
+                        DrawScroll(x, y, notches, seqScroll, delta);
                         UpdateActionCount();
                     });
                 }
@@ -791,7 +775,7 @@ namespace FlowMy.Views.Overlays
                             X = x,
                             Y = y
                         });
-                        Dispatcher.Invoke(() =>
+                        Dispatcher.BeginInvoke(() =>
                         {
                             var pt = ScreenToCanvas(x, y);
                             if (_isDragging)
@@ -810,7 +794,7 @@ namespace FlowMy.Views.Overlays
                     else
                     {
                         // Below threshold — still update virtual cursor smoothly
-                        Dispatcher.Invoke(() => UpdateVirtualCursor(x, y));
+                        Dispatcher.BeginInvoke(() => UpdateVirtualCursor(x, y));
                     }
                 }
             }
@@ -868,6 +852,8 @@ namespace FlowMy.Views.Overlays
         {
             _timer.Stop();
             _realActionMode = false;
+            // Ensure click-through is off when stopping
+            SetClickThroughMode(false);
 
             // Hide virtual cursor
             VirtualCursor.Visibility = Visibility.Collapsed;
@@ -975,7 +961,7 @@ namespace FlowMy.Views.Overlays
             {
                 case OverlayState.Idle:
                     StatusIcon.Text = "⏺";
-                    InstructionText.Text = "Nhấn Ctrl+Alt+Alt để bắt đầu ghi (overlay) | Ctrl+CapsLock+CapsLock để thao tác thực";
+                    InstructionText.Text = "Nhấn Ctrl+Alt+Alt để bắt đầu ghi (overlay) | Ctrl+CapsLock+CapsLock để ghi thao tác thực";
                     TimerPanel.Visibility = Visibility.Collapsed;
                     ActionCountPanel.Visibility = Visibility.Collapsed;
                     EscHintText.Text = "ESC để hủy";

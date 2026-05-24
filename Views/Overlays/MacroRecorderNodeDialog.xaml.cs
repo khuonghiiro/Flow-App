@@ -44,7 +44,7 @@ namespace FlowMy.Views.Overlays
 
         private void RecordButton_Click(object sender, RoutedEventArgs e)
         {
-            // 0. Flush ShowMouseTrail to node immediately (don't wait for Save)
+            // 0. Flush ShowMouseTrail to node immediately
             _viewModel.SaveShowMouseTrailToNode();
 
             // 1. Minimize app main window
@@ -55,24 +55,43 @@ namespace FlowMy.Views.Overlays
             // 2. Hide this dialog so it doesn't block the overlay
             this.Hide();
 
-            // 3. Show overlay
+            // 3. Show overlay as non-modal — ShowDialog would block UI thread and keep
+            //    this dialog as owner, preventing clicks from reaching the app below
             var overlay = new MacroRecorderOverlay(_viewModel.ShowMouseTrail);
-            overlay.ShowDialog();
 
-            // 4. Restore app window and re-show dialog
-            if (appWindow != null)
+            overlay.Closed += (_, _) =>
             {
-                appWindow.WindowState = WindowState.Normal;
-                appWindow.Activate();
-            }
-            this.Show();
-            this.Activate();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    // Restore app window regardless of outcome
+                    if (appWindow != null)
+                    {
+                        appWindow.WindowState = WindowState.Normal;
+                        appWindow.Activate();
+                    }
 
-            // 5. Update MacroDataJson if overlay has data
-            if (overlay.HasData && overlay.RecordedJson != null)
-            {
-                _viewModel.MacroDataJson = overlay.RecordedJson;
-            }
+                    if (overlay.HasData && overlay.RecordedJson != null)
+                    {
+                        // Data recorded — save to node and close dialog (don't re-show)
+                        _viewModel.MacroDataJson = overlay.RecordedJson;
+                        _viewModel.SaveTitleCommand?.Execute(null);
+                        // Close only if not already closed
+                        try { this.Close(); } catch { }
+                    }
+                    else
+                    {
+                        // Cancelled — re-show dialog so user can try again
+                        try
+                        {
+                            this.Show();
+                            this.Activate();
+                        }
+                        catch { /* window already closed, ignore */ }
+                    }
+                });
+            };
+
+            overlay.Show();
         }
 
         // ─── Button: Export JSON ──────────────────────────────────────────────────
