@@ -22,13 +22,16 @@ namespace FlowMy.Helpers
 
     public static class WindowHelper
     {
-        private const int SW_RESTORE = 9;
+        public const int SW_RESTORE = 9;
+        public const int SW_SHOWNOACTIVATE = 4;
+        public const int SW_SHOWNA = 8;
+        public const int SW_SHOW = 5;
 
         [DllImport("user32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -49,7 +52,13 @@ namespace FlowMy.Helpers
         public static extern bool IsWindowVisible(IntPtr hWnd);
 
         [DllImport("user32.dll")]
+        public static extern bool IsIconic(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
         public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        public static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
 
         [DllImport("user32.dll")]
         public static extern IntPtr FindWindow(string? lpClassName, string lpWindowName);
@@ -161,7 +170,10 @@ namespace FlowMy.Helpers
         public static void BringToFront(IntPtr hwnd)
         {
             if (hwnd == IntPtr.Zero) return;
-            ShowWindow(hwnd, SW_RESTORE);
+            if (IsIconic(hwnd))
+                ShowWindow(hwnd, SW_RESTORE);
+            else
+                ShowWindow(hwnd, SW_SHOW);
             SetForegroundWindow(hwnd);
         }
 
@@ -172,7 +184,10 @@ namespace FlowMy.Helpers
             var helper = new WindowInteropHelper(window);
             IntPtr hwnd = helper.Handle;
 
-            ShowWindow(hwnd, SW_RESTORE);
+            if (IsIconic(hwnd))
+                ShowWindow(hwnd, SW_RESTORE);
+            else
+                ShowWindow(hwnd, SW_SHOW);
             SetForegroundWindow(hwnd);
         }
     }
