@@ -3124,8 +3124,41 @@ window.hostAsync.values = window.hostAsync.values || {};
 
     private void TitleCloseBtn_Click(object sender, RoutedEventArgs e)
     {
+        StopAllSessionsForThisWidget();
         SavePosition();
         Close();
+    }
+
+    /// <summary>
+    /// Dừng tất cả các phiên workflow đang chạy trong widget này.
+    /// Chỉ ảnh hưởng widget hiện tại, không tác động widget khác.
+    /// </summary>
+    private void StopAllSessionsForThisWidget()
+    {
+        try
+        {
+            var sessions = GetManualSessionsSnapshot();
+            if (sessions.Count == 0) return;
+
+            var vm = _host?.ViewModel;
+            if (vm == null) return;
+
+            foreach (var session in sessions)
+            {
+                try
+                {
+                    vm.CancelManualRunSession(session.SessionId);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[FloatingWidget] Error stopping session {session.SessionId}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] StopAllSessionsForThisWidget error: {ex.Message}");
+        }
     }
 
     private void TitleMaxRestoreBtn_Click(object sender, RoutedEventArgs e)
