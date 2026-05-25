@@ -353,6 +353,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // Safety: release all modifier keys in case a MouseDown with modifiers
                 // was recorded but MouseUp was never reached (e.g. workflow cancelled)
                 env.Service.MouseInput.ReleaseAllModifiers();
+                env.Service.KeyboardInput.ReleaseAllModifiers();
 
                 if (overlay != null)
                 {

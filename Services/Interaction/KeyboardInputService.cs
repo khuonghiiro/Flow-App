@@ -684,6 +684,25 @@ namespace FlowMy.Services.Interaction
             public List<Key> Modifiers { get; set; } = new();
             public List<Key> MainKeys { get; set; } = new();
         }
+
+        /// <summary>
+        /// Giải phóng tất cả các modifier keys để tránh bị kẹt phím.
+        /// </summary>
+        public void ReleaseAllModifiers()
+        {
+            var modifiers = new[]
+            {
+                Key.LeftCtrl, Key.RightCtrl,
+                Key.LeftAlt, Key.RightAlt,
+                Key.LeftShift, Key.RightShift,
+                Key.LWin, Key.RWin
+            };
+
+            foreach (var mod in modifiers)
+            {
+                SendKeyUp(mod);
+            }
+        }
     }
 }
 

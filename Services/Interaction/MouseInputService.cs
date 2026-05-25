@@ -172,10 +172,10 @@ namespace FlowMy.Services.Interaction
             SendRawUp(button);
             Thread.Sleep(10);
             
-            // Thả modifier keys
-            if (shiftHeld) keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYUP, IntPtr.Zero);
-            if (altHeld)   keybd_event(VK_MENU,    0, KEYEVENTF_KEYUP, IntPtr.Zero);
-            if (ctrlHeld)  keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            // Luôn đảm bảo thả modifier keys để tránh bị kẹt (ví dụ: user nhả Shift trước khi nhả chuột khi ghi)
+            keybd_event(VK_SHIFT,   0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            keybd_event(VK_MENU,    0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
             
             // Trả chuột về vị trí user ban đầu
             SetCursorPos(_savedPosBeforeDrag.X, _savedPosBeforeDrag.Y);
