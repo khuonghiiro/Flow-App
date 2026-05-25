@@ -277,14 +277,13 @@ namespace FlowMy.Views.Overlays
         }
 
         /// <summary>Draw a click marker at screen coordinates.</summary>
-        public void DrawClick(int screenX, int screenY, string button, int seq)
+        public void DrawClick(int screenX, int screenY, bool isRight, int seq, string label)
         {
             Dispatcher.BeginInvoke(() =>
             {
                 var pt = ScreenToCanvas(screenX, screenY);
                 int r = MarkerRadius;
 
-                bool isRight = button == "Right" || button == "R" || button.EndsWith("+R");
                 Color fillColor = isRight ? ColorRightClick : ColorLeftClick;
 
                 // The main marker border that adapts its width
@@ -332,9 +331,6 @@ namespace FlowMy.Views.Overlays
                 DrawingCanvas.Children.Add(mainMarker);
 
                 // Action badge: sleek pill next to circle showing the combo/keys
-                string modPart = ExtractModifierPart(button);
-                string centerText = "+" + (string.IsNullOrEmpty(modPart) ? "" : $" {modPart}");
-                
                 var actionBadge = new Border
                 {
                     Background = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
@@ -344,7 +340,7 @@ namespace FlowMy.Views.Overlays
                     Padding = new Thickness(8, 2, 8, 2),
                     Child = new TextBlock
                     {
-                        Text = centerText,
+                        Text = label,
                         FontSize = 10,
                         FontWeight = FontWeights.SemiBold,
                         Foreground = Brushes.White,

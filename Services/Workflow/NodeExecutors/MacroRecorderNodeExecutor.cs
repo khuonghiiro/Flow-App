@@ -208,7 +208,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+                                    overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
@@ -236,7 +236,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, action.Button ?? "Left", action.SequenceNumber);
+                                    overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 

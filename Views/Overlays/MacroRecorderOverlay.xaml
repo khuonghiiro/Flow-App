@@ -14,8 +14,8 @@
         <!-- Viền xanh khi đang ghi — hiển thị để biết overlay đang active -->
         <Border x:Name="RecordingBorder"
                 IsHitTestVisible="False"
-                BorderBrush="#FF2299FF"
-                BorderThickness="4"
+                BorderBrush="#FF0077FF"
+                BorderThickness="1"
                 CornerRadius="0"
                 Margin="0"
                 Background="Transparent"
@@ -23,8 +23,8 @@
                 Visibility="Collapsed">
             
             <!-- Hiệu ứng đậm đến nhạt từ viền ngoài vào trong -->
-            <Border BorderBrush="#882299FF" BorderThickness="8" CornerRadius="0" Background="Transparent">
-                <Border BorderBrush="#332299FF" BorderThickness="16" CornerRadius="0" Background="Transparent">
+            <Border BorderBrush="#AA0077FF" BorderThickness="8" CornerRadius="0" Background="Transparent">
+                <Border BorderBrush="#550077FF" BorderThickness="16" CornerRadius="0" Background="Transparent">
                 </Border>
             </Border>
 

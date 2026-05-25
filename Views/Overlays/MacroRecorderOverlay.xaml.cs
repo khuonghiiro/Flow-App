@@ -212,6 +212,9 @@ namespace FlowMy.Views.Overlays
         // Modifier hold timing for combo label: key → press timestamp
         private readonly Dictionary<uint, long> _modifierHoldStart = new();
 
+        // Marker visual elements tracking to persist on screen while held
+        private readonly Dictionary<uint, UIElement[]> _modifierMarkers = new();
+
         // Real-action mode: when true, mouse hook skips recording so clicks pass through unrecorded
         // Toggled by Ctrl+CapsLock+CapsLock
         private volatile bool _realActionMode = false;
@@ -621,14 +624,14 @@ namespace FlowMy.Views.Overlays
                             Dispatcher.BeginInvoke(() =>
                             {
                                 var pt2 = ScreenToCanvas(modPt.X, modPt.Y);
-                                var color = Color.FromArgb(220, 0, 180, 255); // Cyan/blue
+                                var color = Color.FromArgb(220, 50, 205, 50); // Lime Green (Xanh lá)
                                 int r2 = MarkerRadius; // 12, so 24x24
 
                                 var diamond = new Border
                                 {
                                     Width = r2 * 2 + 8,
                                     Height = r2 * 2 + 8,
-                                    Background = new SolidColorBrush(Color.FromArgb(160, color.R, color.G, color.B)),
+                                    Background = new SolidColorBrush(Color.FromArgb(180, color.R, color.G, color.B)),
                                     BorderBrush = Brushes.White,
                                     BorderThickness = new Thickness(1.5),
                                     RenderTransform = new RotateTransform(45),
@@ -655,14 +658,8 @@ namespace FlowMy.Views.Overlays
                                 Canvas.SetTop(container2, pt2.Y - container2.Height / 2);
                                 DrawingCanvas.Children.Add(container2);
 
-                                var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-                                t.Tick += (_, _) =>
-                                {
-                                    t.Stop();
-                                    DrawingCanvas.Children.Remove(diamond);
-                                    DrawingCanvas.Children.Remove(container2);
-                                };
-                                t.Start();
+                                // Save elements instead of fading to persist while held
+                                _modifierMarkers[vk] = new UIElement[] { diamond, container2 };
                             });
                         }
                     }
@@ -672,6 +669,17 @@ namespace FlowMy.Views.Overlays
                     _keysCurrentlyHeld.Remove(vk);
                     // Clear modifier hold timing on release
                     _modifierHoldStart.Remove(vk);
+                    
+                    if (_modifierMarkers.TryGetValue(vk, out var elems))
+                    {
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            foreach (var e in elems)
+                                DrawingCanvas.Children.Remove(e);
+                        });
+                        _modifierMarkers.Remove(vk);
+                    }
+
                     UpdateHeldKeysUI();
                 }
             }
