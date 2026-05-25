@@ -42,6 +42,9 @@ namespace FlowMy.Views.Overlays
         private static extern short GetKeyState(int nVirtKey);
 
         [DllImport("user32.dll")]
+        private static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
+        [DllImport("user32.dll")]
         private static extern IntPtr GetWindowLong(IntPtr hwnd, int nIndex);
 
         [DllImport("user32.dll")]
@@ -242,6 +245,12 @@ namespace FlowMy.Views.Overlays
         private readonly DispatcherTimer _timer = new();
         private DateTime _recordingStartDateTime;
 
+        // Target App Mode
+        private MacroExecutionMode _executionMode;
+        private string _targetProcess;
+        private string _targetTitle;
+        private IntPtr _targetHwnd = IntPtr.Zero;
+
         // ─── Public result ────────────────────────────────────────────────────────
 
         public string? RecordedJson { get; private set; }
@@ -249,11 +258,15 @@ namespace FlowMy.Views.Overlays
 
         // ─── Constructor ─────────────────────────────────────────────────────────
 
-        public MacroRecorderOverlay(bool showMouseTrail = false)
+        public MacroRecorderOverlay(bool showMouseTrail, MacroExecutionMode executionMode = MacroExecutionMode.Free, string targetProcess = "", string targetTitle = "")
         {
             InitializeComponent();
 
             _showMouseTrail = showMouseTrail;
+            _executionMode = executionMode;
+            _targetProcess = targetProcess;
+            _targetTitle = targetTitle;
+
             _keyboardProc = KeyboardHookCallback;
             _mouseProc = MouseHookCallback;
 
@@ -268,6 +281,22 @@ namespace FlowMy.Views.Overlays
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            if (_executionMode == MacroExecutionMode.TargetApp && !string.IsNullOrEmpty(_targetProcess))
+            {
+                var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
+                var match = windows.FirstOrDefault(w => w.Title == _targetTitle && w.ProcessName == _targetProcess);
+                if (match != null)
+                {
+                    _targetHwnd = match.Handle;
+                    InstructionText.Text = $"Chờ ghi thao tác... (Chỉ định: {_targetProcess})";
+                }
+                else
+                {
+                    MessageBox.Show($"Không tìm thấy ứng dụng đích '{_targetTitle}' ({_targetProcess}). Sẽ chuyển về chế độ Tự do toàn màn hình.", "Cảnh báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    _executionMode = MacroExecutionMode.Free;
+                }
+            }
+
             using var proc = System.Diagnostics.Process.GetCurrentProcess();
             using var module = proc.MainModule;
             var hMod = GetModuleHandle(module?.ModuleName ?? string.Empty);
@@ -586,13 +615,14 @@ namespace FlowMy.Views.Overlays
                         // Build combo timing label for visual display
                         string? comboLabel = BuildComboLabel(ts, keyName);
 
+                        var coords = GetActionCoords(pt.X, pt.Y);
                         _actions.Add(new MacroAction
                         {
                             SequenceNumber = ++_sequenceCounter,
                             Type = "KeyPress",
                             Timestamp = ts,
-                            X = pt.X,
-                            Y = pt.Y,
+                            X = coords.X,
+                            Y = coords.Y,
                             Key = comboKey  // store full combo e.g. "Ctrl+C"
                         });
                         int seqKey = _sequenceCounter;
@@ -715,12 +745,13 @@ namespace FlowMy.Views.Overlays
 
                     // Build display label for visual feedback
                     string button = "Left";
+                    var coords = GetActionCoords(x, y);
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
                         Type = "MouseDown",
                         Timestamp = ts,
-                        X = x, Y = y,
+                        X = coords.X, Y = coords.Y,
                         Button = button,
                         ShiftHeld = shiftHeld,
                         CtrlHeld  = ctrlHeld,
@@ -785,13 +816,14 @@ namespace FlowMy.Views.Overlays
                     else
                     {
                         // Real drag — keep MouseDown + add MouseUp
+                        var coords = GetActionCoords(x, y);
                         _actions.Add(new MacroAction
                         {
                             SequenceNumber = ++_sequenceCounter,
                             Type = "MouseUp",
                             Timestamp = ts,
-                            X = x,
-                            Y = y,
+                            X = coords.X,
+                            Y = coords.Y,
                             Button = "Left"
                         });
                         int seq = _sequenceCounter;
@@ -817,12 +849,13 @@ namespace FlowMy.Views.Overlays
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
+                    var coords = GetActionCoords(x, y);
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
                         Type = "MouseClick",
                         Timestamp = ts,
-                        X = x, Y = y,
+                        X = coords.X, Y = coords.Y,
                         Button = "Right",
                         ShiftHeld = shiftHeld,
                         CtrlHeld  = ctrlHeld,
@@ -845,13 +878,14 @@ namespace FlowMy.Views.Overlays
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
+                    var coords = GetActionCoords(x, y);
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
                         Type = "MouseScroll",
                         Timestamp = ts,
-                        X = x,
-                        Y = y,
+                        X = coords.X,
+                        Y = coords.Y,
                         ScrollDelta = notches
                     });
                     int seqScroll = _sequenceCounter;
@@ -870,13 +904,14 @@ namespace FlowMy.Views.Overlays
                         _lastMoveX = x;
                         _lastMoveY = y;
 
+                        var coords = GetActionCoords(x, y);
                         _actions.Add(new MacroAction
                         {
                             SequenceNumber = ++_sequenceCounter,
                             Type = "MouseMove",
                             Timestamp = ts,
-                            X = x,
-                            Y = y
+                            X = coords.X,
+                            Y = coords.Y
                         });
                         Dispatcher.BeginInvoke(() =>
                         {
@@ -1020,12 +1055,13 @@ namespace FlowMy.Views.Overlays
                     double delta = _lastActionTs > 0 ? (ts - _lastActionTs) / 1000.0 : 0;
                     _lastActionTs = ts;
 
+                    var coords = GetActionCoords(pt.X, pt.Y);
                     _actions.Add(new MacroAction
                     {
                         SequenceNumber = ++_sequenceCounter,
                         Type = "KeyPress",
                         Timestamp = ts,
-                        X = pt.X, Y = pt.Y,
+                        X = coords.X, Y = coords.Y,
                         Key = "Escape"
                     });
                     int seqEsc = _sequenceCounter;
@@ -1615,6 +1651,17 @@ namespace FlowMy.Views.Overlays
 
             parts.Add(mainKey);
             return string.Join(" + ", parts);
+        }
+
+        private (int X, int Y) GetActionCoords(int screenX, int screenY)
+        {
+            if (_executionMode == MacroExecutionMode.TargetApp && _targetHwnd != IntPtr.Zero)
+            {
+                var pt = new POINT { X = screenX, Y = screenY };
+                ScreenToClient(_targetHwnd, ref pt);
+                return (pt.X, pt.Y);
+            }
+            return (screenX, screenY);
         }
     }
 }

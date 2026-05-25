@@ -161,6 +161,51 @@
                                      Margin="0,0,0,12"
                                      Text="{Binding MacroDataJson, Mode=OneWay}"/>
 
+                            <!-- Execution Mode Combo Box -->
+                            <TextBlock Text="Phạm vi hoạt động:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <ComboBox x:Name="ExecutionModeComboBox"
+                                      Height="36"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      Margin="0,0,0,16"
+                                      ItemsSource="{Binding ExecutionModeOptions}"
+                                      SelectedItem="{Binding SelectedExecutionMode, Mode=TwoWay}"/>
+
+                            <!-- Target App Combo Box (ẩn/hiện theo IsTargetAppVisible) -->
+                            <StackPanel Visibility="{Binding IsTargetAppVisible, Converter={StaticResource BoolToVisibility}}"
+                                        Margin="0,0,0,16">
+                                <TextBlock Text="Chọn ứng dụng đích:"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="TargetAppComboBox"
+                                              Grid.Column="0"
+                                              Height="36"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding ActiveWindows}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                    <Button Grid.Column="1"
+                                            Content="↻"
+                                            Height="36"
+                                            Width="36"
+                                            Margin="8,0,0,0"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Command="{Binding LoadWindowsCommand}"
+                                            ToolTip="Tải lại danh sách cửa sổ"
+                                            Cursor="Hand"/>
+                                </Grid>
+                            </StackPanel>
+
                             <!-- Button: Ghi lại thao tác -->
                             <Button x:Name="RecordButton"
                                     Content="🔴 Ghi lại thao tác"

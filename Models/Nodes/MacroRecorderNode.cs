@@ -23,6 +23,15 @@ namespace FlowMy.Models
     }
 
     /// <summary>
+    /// Chế độ thực thi: Tự do (gửi sự kiện toàn cầu) hoặc TargetApp (gửi sự kiện ngầm tới client area của process/cửa sổ cụ thể).
+    /// </summary>
+    public enum MacroExecutionMode
+    {
+        Free,
+        TargetApp
+    }
+
+    /// <summary>
     /// Node ghi lại và phát lại thao tác chuột/bàn phím.
     /// </summary>
     public sealed class MacroRecorderNode : WorkflowNode
@@ -30,6 +39,9 @@ namespace FlowMy.Models
         private string _outputKey = "macroData";
         private string _macroDataJson = "";
         private MacroPlaybackMode _playbackMode = MacroPlaybackMode.Once;
+        private MacroExecutionMode _executionMode = MacroExecutionMode.Free;
+        private string _targetProcessName = "";
+        private string _targetWindowTitle = "";
         private int _repeatIntervalMs = 500;
         private int _repeatCount = 1;
         private VisualPlaybackMode _visualPlaybackMode = VisualPlaybackMode.Live;
@@ -107,6 +119,50 @@ namespace FlowMy.Models
             {
                 if (_playbackMode == value) return;
                 _playbackMode = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Chế độ thực thi: Free hoặc TargetApp.
+        /// </summary>
+        public MacroExecutionMode ExecutionMode
+        {
+            get => _executionMode;
+            set
+            {
+                if (_executionMode == value) return;
+                _executionMode = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Tên tiến trình (chỉ dùng nếu ExecutionMode = TargetApp).
+        /// </summary>
+        public string TargetProcessName
+        {
+            get => _targetProcessName;
+            set
+            {
+                var s = value ?? "";
+                if (_targetProcessName == s) return;
+                _targetProcessName = s;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Tiêu đề cửa sổ (chỉ dùng nếu ExecutionMode = TargetApp).
+        /// </summary>
+        public string TargetWindowTitle
+        {
+            get => _targetWindowTitle;
+            set
+            {
+                var s = value ?? "";
+                if (_targetWindowTitle == s) return;
+                _targetWindowTitle = s;
                 OnPropertyChanged();
             }
         }

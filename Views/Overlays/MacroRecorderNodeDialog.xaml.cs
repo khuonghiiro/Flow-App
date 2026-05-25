@@ -58,8 +58,12 @@ namespace FlowMy.Views.Overlays
             foreach (var w in allWindows)
                 w.Hide();
 
+            var executionMode = _viewModel.SelectedExecutionMode == "Chỉ định Ứng dụng" ? MacroExecutionMode.TargetApp : MacroExecutionMode.Free;
+            var targetProcess = _viewModel.SelectedTargetWindow?.ProcessName ?? "";
+            var targetTitle = _viewModel.SelectedTargetWindow?.Title ?? "";
+
             // 2. Create overlay
-            var overlay = new MacroRecorderOverlay(_viewModel.ShowMouseTrail);
+            var overlay = new MacroRecorderOverlay(_viewModel.ShowMouseTrail, executionMode, targetProcess, targetTitle);
 
             overlay.Closed += (_, _) =>
             {
