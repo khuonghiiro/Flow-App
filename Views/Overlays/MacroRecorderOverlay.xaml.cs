@@ -510,55 +510,50 @@ namespace FlowMy.Views.Overlays
                     // Falls through to the modifier recording block at the bottom
 
                     // ── Hotkey: Ctrl + CapsLock + CapsLock → toggle real-action recording ──
-                    // First pair:  starts recording AND enables click-through (real-action mode)
-                    // Second pair: stops recording, saves, and closes overlay
-                    if (ctrlDown && vk == VK_CAPITAL)
+                    if (ctrlDown && vk == VK_CAPITAL && !_modifierHoldStart.ContainsKey(vk))
                     {
                         long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                        if (_capsLockPressCount > 0 && (now - _capsLockFirstPressTs) > CapsLockWindowMs)
+
+                        // Only apply double-tap logic if we are NOT in the regular overlay mode
+                        if (!(_state == OverlayState.Recording && !_realActionMode))
                         {
-                            _capsLockPressCount = 0;
-                            _capsLockFirstPressTs = 0;
-                        }
-                        if (_capsLockPressCount == 0) _capsLockFirstPressTs = now;
-                        _capsLockPressCount++;
-
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[MacroRecorder] Ctrl+CapsLock press #{_capsLockPressCount}, state={_state}, realMode={_realActionMode}");
-
-                        if (_capsLockPressCount >= CapsLockRequiredCount)
-                        {
-                            _capsLockPressCount = 0;
-                            _capsLockFirstPressTs = 0;
-
-                            if (!_realActionMode)
+                            if (_capsLockPressCount > 0 && (now - _capsLockFirstPressTs) > CapsLockWindowMs)
                             {
-                                // First activation: start recording + enable click-through
-                                // Set _state immediately on hook thread so mouse hook starts
-                                // recording right away — before BeginInvoke runs on UI thread
-                                _realActionMode = true;
-                                _state = OverlayState.Recording;
-                                Dispatcher.BeginInvoke(() =>
-                                {
-                                    StartRecording(); // full UI init: timer, visuals, counters
-                                    SetClickThroughMode(true);
-                                });
+                                _capsLockPressCount = 0;
                             }
-                            else
+                            if (_capsLockPressCount == 0) _capsLockFirstPressTs = now;
+                            _capsLockPressCount++;
+
+                            if (_capsLockPressCount >= CapsLockRequiredCount)
                             {
-                                // Second activation: stop recording and save
-                                _realActionMode = false;
-                                Dispatcher.BeginInvoke(() =>
+                                _capsLockPressCount = 0;
+                                _capsLockFirstPressTs = 0;
+
+                                if (!_realActionMode)
                                 {
-                                    SetClickThroughMode(false);
-                                    if (_state == OverlayState.Recording)
-                                        StopRecording(save: true);
-                                });
+                                    _realActionMode = true;
+                                    _state = OverlayState.Recording;
+                                    Dispatcher.BeginInvoke(() =>
+                                    {
+                                        StartRecording();
+                                        SetClickThroughMode(true);
+                                    });
+                                }
+                                else
+                                {
+                                    _realActionMode = false;
+                                    Dispatcher.BeginInvoke(() =>
+                                    {
+                                        SetClickThroughMode(false);
+                                        if (_state == OverlayState.Recording)
+                                            StopRecording(save: true);
+                                    });
+                                }
+                                return (IntPtr)1; // Consume the 2nd key completely
                             }
                         }
-                        // Always pass through so Windows processes CapsLock normally
-                        return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
                     }
+                    // We let the first press or single press fall through down to the modifier block so it renders visually!
 
                     if (vk == VK_ESCAPE)
                     {
@@ -623,7 +618,52 @@ namespace FlowMy.Views.Overlays
                                 _          => GetKeyName(vk)
                             };
                             GetCursorPos(out POINT modPt);
-                            // Draw a small dim marker logic removed — HeldKeysPanel handles this globally now.
+                            Dispatcher.BeginInvoke(() =>
+                            {
+                                var pt2 = ScreenToCanvas(modPt.X, modPt.Y);
+                                var color = Color.FromArgb(220, 0, 180, 255); // Cyan/blue
+                                int r2 = MarkerRadius; // 12, so 24x24
+
+                                var diamond = new Border
+                                {
+                                    Width = r2 * 2 + 8,
+                                    Height = r2 * 2 + 8,
+                                    Background = new SolidColorBrush(Color.FromArgb(160, color.R, color.G, color.B)),
+                                    BorderBrush = Brushes.White,
+                                    BorderThickness = new Thickness(1.5),
+                                    RenderTransform = new RotateTransform(45),
+                                    RenderTransformOrigin = new Point(0.5, 0.5),
+                                    IsHitTestVisible = false
+                                };
+                                Canvas.SetLeft(diamond, pt2.X - diamond.Width / 2);
+                                Canvas.SetTop(diamond, pt2.Y - diamond.Height / 2);
+                                DrawingCanvas.Children.Add(diamond);
+
+                                var container2 = new Grid { Width = r2 * 2 + 8, Height = r2 * 2 + 8, IsHitTestVisible = false };
+                                container2.Children.Add(new TextBlock
+                                {
+                                    Text = modName, 
+                                    FontSize = 9.5, 
+                                    FontWeight = FontWeights.Bold,
+                                    Foreground = Brushes.White,
+                                    HorizontalAlignment = HorizontalAlignment.Center,
+                                    VerticalAlignment = VerticalAlignment.Center,
+                                    IsHitTestVisible = false
+                                });
+                                // Keep text container upright
+                                Canvas.SetLeft(container2, pt2.X - container2.Width / 2);
+                                Canvas.SetTop(container2, pt2.Y - container2.Height / 2);
+                                DrawingCanvas.Children.Add(container2);
+
+                                var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                                t.Tick += (_, _) =>
+                                {
+                                    t.Stop();
+                                    DrawingCanvas.Children.Remove(diamond);
+                                    DrawingCanvas.Children.Remove(container2);
+                                };
+                                t.Start();
+                            });
                         }
                     }
                 }

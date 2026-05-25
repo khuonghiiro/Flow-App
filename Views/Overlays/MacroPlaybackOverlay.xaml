@@ -12,17 +12,21 @@
         Focusable="False">
 
     <Grid>
-        <!-- Viền sáng primary khi đang phát lại thao tác -->
+        <!-- Khung viền sáng nhấp nháy báo hiệu đang phát Macro -->
         <Border x:Name="GlowBorder"
                 IsHitTestVisible="False"
                 BorderBrush="#FF2299FF"
-                BorderThickness="6"
-                CornerRadius="8"
-                Margin="8"
+                BorderThickness="4"
+                CornerRadius="0"
+                Margin="0"
                 Opacity="0.85">
-            <Border.Effect>
-                <DropShadowEffect Color="#2299FF" BlurRadius="25" ShadowDepth="0" Opacity="0.9"/>
-            </Border.Effect>
+            
+            <!-- Hiệu ứng đậm đến nhạt từ viền ngoài vào trong -->
+            <Border BorderBrush="#882299FF" BorderThickness="8" CornerRadius="0" Background="Transparent">
+                <Border BorderBrush="#332299FF" BorderThickness="16" CornerRadius="0" Background="Transparent">
+                </Border>
+            </Border>
+
             <!-- Hiệu ứng sáng viền (pulse) -->
             <Border.Style>
                 <Style TargetType="Border">
@@ -31,7 +35,7 @@
                             <DataTrigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard RepeatBehavior="Forever">
-                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1.0" Duration="0:0:1.0" AutoReverse="True"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.1" To="1.0" Duration="0:0:1.0" AutoReverse="True"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </DataTrigger.EnterActions>
