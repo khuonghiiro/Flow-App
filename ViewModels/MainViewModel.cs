@@ -518,7 +518,7 @@ namespace FlowMy.ViewModels
                     var title = nodeEl.TryGetProperty("Title", out var titleEl) ? (titleEl.GetString() ?? string.Empty) : string.Empty;
                     var colorKey = nodeEl.TryGetProperty("ColorKey", out var colorKeyEl) ? (colorKeyEl.GetString() ?? string.Empty) : string.Empty;
                     var type = ParseNodeType(nodeEl);
-                    if (type == FlowMy.Models.NodeType.Start || type == FlowMy.Models.NodeType.End) continue;
+                    if (type == FlowMy.Models.NodeType.End) continue;
 
                     FlowMy.Models.FloatingWidgetConfig? floating = null;
                     if (nodeEl.TryGetProperty("Properties", out var propsEl)

@@ -1,4 +1,4 @@
-﻿<Window x:Class="FlowMy.Views.MainWindow"
+<Window x:Class="FlowMy.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -23,6 +23,7 @@
         <conv:BoolToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <conv:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
+        <conv:StringStartsWithConverter x:Key="StringStartsWithConverter"/>
         <conv:InverseStringNullOrEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter"/>
 
         <!-- Subtle drop shadow for cards -->
@@ -548,9 +549,39 @@
                                                                     <GradientStop Color="#EC4899" Offset="1"/>
                                                                 </LinearGradientBrush>
                                                             </Border.Background>
-                                                            <controls:SvgViewboxEx Width="18" Height="18"
-                                                                                    Fill="White"
-                                                                                   Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}"/>
+                                                            <Grid>
+                                                                <controls:SvgViewboxEx Width="18" Height="18"
+                                                                                        Fill="White"
+                                                                                       Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}">
+                                                                    <controls:SvgViewboxEx.Style>
+                                                                        <Style TargetType="controls:SvgViewboxEx">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IconKey, Converter={StaticResource StringStartsWithConverter}}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </controls:SvgViewboxEx.Style>
+                                                                </controls:SvgViewboxEx>
+                                                                <TextBlock Text="{Binding IconKey}"
+                                                                           FontSize="18"
+                                                                           Foreground="White"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Style.Triggers>
+                                                                                <!-- Show emoji/text when IconKey is NOT a valid SVG icon -->
+                                                                                <DataTrigger Binding="{Binding IconKey, Converter={StaticResource StringStartsWithConverter}}" Value="False">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </Grid>
                                                         </Border>
 
                                                         <!-- Texts -->

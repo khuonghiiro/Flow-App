@@ -127,6 +127,12 @@ namespace FlowMy.Views
             {
                 Owner = this
             };
+
+            if (ViewModel?.SelectedNode != null)
+            {
+                dialog.SelectNodeById(ViewModel.SelectedNode.Id);
+            }
+
             dialog.ShowDialog();
         }
 
