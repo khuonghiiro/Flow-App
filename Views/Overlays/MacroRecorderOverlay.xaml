@@ -15,12 +15,14 @@
         <Border x:Name="RecordingBorder"
                 IsHitTestVisible="False"
                 BorderBrush="#CC2299FF"
-                BorderThickness="4"
+                BorderThickness="6"
+                CornerRadius="8"
+                Margin="8"
                 Background="Transparent"
                 Panel.ZIndex="100"
                 Visibility="Collapsed">
             <Border.Effect>
-                <DropShadowEffect Color="#2299FF" BlurRadius="20" ShadowDepth="0" Opacity="0.9"/>
+                <DropShadowEffect Color="#2299FF" BlurRadius="25" ShadowDepth="0" Opacity="0.9"/>
             </Border.Effect>
             <!-- Hiệu ứng sáng viền (pulse) -->
             <Border.Style>
@@ -30,7 +32,7 @@
                             <DataTrigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard RepeatBehavior="Forever">
-                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.5" To="1.0" Duration="0:0:1.2" AutoReverse="True"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1.0" Duration="0:0:1.0" AutoReverse="True"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </DataTrigger.EnterActions>

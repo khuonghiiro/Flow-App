@@ -623,48 +623,7 @@ namespace FlowMy.Views.Overlays
                                 _          => GetKeyName(vk)
                             };
                             GetCursorPos(out POINT modPt);
-                            double modDelta = _lastActionTs > 0 ? (modTs - _lastActionTs) / 1000.0 : 0;
-                            int modSeq = _sequenceCounter; // don't increment — modifier is not a separate action
-                            Dispatcher.BeginInvoke(() =>
-                            {
-                                // Draw a small dim marker to show modifier is held (no seq badge)
-                                var pt2 = ScreenToCanvas(modPt.X, modPt.Y);
-                                var color = Color.FromArgb(160, 0xAA, 0x88, 0xFF);
-                                int r2 = MarkerRadius - 3;
-                                var circle2 = new Ellipse
-                                {
-                                    Width = r2 * 2, Height = r2 * 2,
-                                    Fill = new SolidColorBrush(Color.FromArgb(180, color.R, color.G, color.B)),
-                                    Stroke = Brushes.White, StrokeThickness = 1,
-                                    IsHitTestVisible = false
-                                };
-                                Canvas.SetLeft(circle2, pt2.X - r2);
-                                Canvas.SetTop(circle2, pt2.Y - r2);
-                                DrawingCanvas.Children.Add(circle2);
-
-                                var container2 = new Grid { Width = r2 * 2, Height = r2 * 2, IsHitTestVisible = false };
-                                container2.Children.Add(new TextBlock
-                                {
-                                    Text = modName, FontSize = 8, FontWeight = FontWeights.Bold,
-                                    Foreground = Brushes.White,
-                                    HorizontalAlignment = HorizontalAlignment.Center,
-                                    VerticalAlignment = VerticalAlignment.Center,
-                                    IsHitTestVisible = false
-                                });
-                                Canvas.SetLeft(container2, pt2.X - r2);
-                                Canvas.SetTop(container2, pt2.Y - r2);
-                                DrawingCanvas.Children.Add(container2);
-
-                                // Fade out after 1s
-                                var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-                                t.Tick += (_, _) =>
-                                {
-                                    t.Stop();
-                                    DrawingCanvas.Children.Remove(circle2);
-                                    DrawingCanvas.Children.Remove(container2);
-                                };
-                                t.Start();
-                            });
+                            // Draw a small dim marker logic removed — HeldKeysPanel handles this globally now.
                         }
                     }
                 }
@@ -1143,54 +1102,51 @@ namespace FlowMy.Views.Overlays
         {
             int r = MarkerRadius;
 
-            // Outer glow — tight, just 3px beyond circle edge
-            var glow = new Ellipse
+            // The main marker border that adapts its width
+            var mainMarker = new Border
             {
-                Width  = (r + 3) * 2,
-                Height = (r + 3) * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(glow, pt.X - (r + 3));
-            Canvas.SetTop(glow,  pt.Y - (r + 3));
-            DrawingCanvas.Children.Add(glow);
-
-            // Main circle
-            var circle = new Ellipse
-            {
-                Width  = r * 2,
-                Height = r * 2,
-                Fill   = hollow
+                Background = hollow 
                     ? new SolidColorBrush(Color.FromArgb(55, fillColor.R, fillColor.G, fillColor.B))
                     : new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
-                Stroke          = Brushes.White,
-                StrokeThickness = 1.5,
+                BorderBrush = Brushes.White,
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(r),
+                MinWidth = r * 2,
+                MinHeight = r * 2,
+                Padding = new Thickness(5, 0, 5, 0),
+                Child = new TextBlock
+                {
+                    Text = seq.ToString(),
+                    FontSize = 11,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    IsHitTestVisible = false
+                },
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(circle, pt.X - r);
-            Canvas.SetTop(circle,  pt.Y - r);
-            DrawingCanvas.Children.Add(circle);
 
-            // Label at center (the sequence number)
-            var centerContainer = new Grid
+            mainMarker.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double cw = Math.Max(r * 2, mainMarker.DesiredSize.Width);
+            double ch = r * 2;
+
+            // Outer glow — tight, adapts to width
+            var glow = new Border
             {
-                Width  = r * 2,
-                Height = r * 2,
+                Width = cw + 6,
+                Height = ch + 6,
+                CornerRadius = new CornerRadius(r + 3),
+                Background = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
-            centerContainer.Children.Add(new TextBlock
-            {
-                Text       = seq.ToString(),
-                FontSize   = 11,
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment   = VerticalAlignment.Center,
-                IsHitTestVisible    = false
-            });
-            Canvas.SetLeft(centerContainer, pt.X - r);
-            Canvas.SetTop(centerContainer,  pt.Y - r);
-            DrawingCanvas.Children.Add(centerContainer);
+            Canvas.SetLeft(glow, pt.X - cw / 2.0 - 3);
+            Canvas.SetTop(glow,  pt.Y - ch / 2.0 - 3);
+            DrawingCanvas.Children.Add(glow);
+
+            Canvas.SetLeft(mainMarker, pt.X - cw / 2.0);
+            Canvas.SetTop(mainMarker,  pt.Y - ch / 2.0);
+            DrawingCanvas.Children.Add(mainMarker);
 
             // Action type badge adjacent to the circle (sleek pill shape)
             if (!string.IsNullOrEmpty(centerText) && centerText != "+")
@@ -1213,8 +1169,8 @@ namespace FlowMy.Views.Overlays
                     IsHitTestVisible = false
                 };
                 actionBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(actionBadge, pt.X + r + 6);
-                Canvas.SetTop(actionBadge,  pt.Y - actionBadge.DesiredSize.Height / 2);
+                Canvas.SetLeft(actionBadge, pt.X + cw / 2.0 + 6);
+                Canvas.SetTop(actionBadge,  pt.Y - actionBadge.DesiredSize.Height / 2.0);
                 DrawingCanvas.Children.Add(actionBadge);
             }
 
@@ -1235,8 +1191,8 @@ namespace FlowMy.Views.Overlays
                     IsHitTestVisible = false
                 };
                 deltaBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2);
-                Canvas.SetTop(deltaBorder,  pt.Y + r + 3);
+                Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2.0);
+                Canvas.SetTop(deltaBorder,  pt.Y + ch / 2.0 + 3);
                 DrawingCanvas.Children.Add(deltaBorder);
             }
         }
@@ -1267,43 +1223,48 @@ namespace FlowMy.Views.Overlays
 
             int r = isCombo ? MarkerRadius + 4 : MarkerRadius; // slightly larger for combos
 
-            // Outer glow
-            var glow = new Ellipse
+            var mainMarker = new Border
             {
-                Width = (r + 4) * 2, Height = (r + 4) * 2,
-                Fill = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
+                Background = new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
+                BorderBrush = Brushes.White,
+                BorderThickness = new Thickness(isCombo ? 2 : 1.5),
+                CornerRadius = new CornerRadius(r),
+                MinWidth = r * 2,
+                MinHeight = r * 2,
+                Padding = new Thickness(5, 0, 5, 0),
+                Child = new TextBlock
+                {
+                    Text = seq.ToString(),
+                    FontSize = 11,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    IsHitTestVisible = false
+                },
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(glow, pt.X - (r + 4));
-            Canvas.SetTop(glow, pt.Y - (r + 4));
+
+            mainMarker.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double cw = Math.Max(r * 2, mainMarker.DesiredSize.Width);
+            double ch = r * 2;
+
+            // Outer glow
+            var glow = new Border
+            {
+                Width = cw + 8,
+                Height = ch + 8,
+                CornerRadius = new CornerRadius(r + 4),
+                Background = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(glow, pt.X - cw / 2.0 - 4);
+            Canvas.SetTop(glow, pt.Y - ch / 2.0 - 4);
             DrawingCanvas.Children.Add(glow);
 
-            // Main circle — dashed border for combos to further distinguish
-            var circle = new Ellipse
-            {
-                Width = r * 2, Height = r * 2,
-                Fill = new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
-                Stroke = Brushes.White, StrokeThickness = isCombo ? 2 : 1.5,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(circle, pt.X - r);
-            Canvas.SetTop(circle, pt.Y - r);
-            DrawingCanvas.Children.Add(circle);
-
-            // Center label: Seq number inside the circle
-            var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
-            centerContainer.Children.Add(new TextBlock
-            {
-                Text = seq.ToString(),
-                FontSize = 11, FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                IsHitTestVisible = false
-            });
-            Canvas.SetLeft(centerContainer, pt.X - r);
-            Canvas.SetTop(centerContainer, pt.Y - r);
-            DrawingCanvas.Children.Add(centerContainer);
+            Canvas.SetLeft(mainMarker, pt.X - cw / 2.0);
+            Canvas.SetTop(mainMarker, pt.Y - ch / 2.0);
+            DrawingCanvas.Children.Add(mainMarker);
 
             // Action badge: sleek pill next to circle showing the combo/keys
             var actionBadge = new Border
@@ -1324,12 +1285,12 @@ namespace FlowMy.Views.Overlays
                 IsHitTestVisible = false
             };
             actionBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(actionBadge, pt.X + r + 6);
-            Canvas.SetTop(actionBadge, pt.Y - actionBadge.DesiredSize.Height / 2);
+            Canvas.SetLeft(actionBadge, pt.X + cw / 2.0 + 6);
+            Canvas.SetTop(actionBadge, pt.Y - actionBadge.DesiredSize.Height / 2.0);
             DrawingCanvas.Children.Add(actionBadge);
 
             // Delta badge below circle
-            double badgeTop = pt.Y + r + 3;
+            double badgeTop = pt.Y + ch / 2.0 + 3;
             if (deltaSeconds > 0)
             {
                 var deltaBorder = new Border

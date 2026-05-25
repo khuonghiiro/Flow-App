@@ -1,11 +1,9 @@
 using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
-using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
