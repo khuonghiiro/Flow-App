@@ -4,10 +4,8 @@ using FlowMy.Services;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
 using FlowMy.Views.NodeControls;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -48,7 +46,7 @@ namespace FlowMy.Views.Overlays
             InitializeComponent();
 
             _nodes = (nodes ?? Enumerable.Empty<WorkflowNode>())
-                .Where(n => n != null && n.Type != NodeType.Start && n.Type != NodeType.End)
+                .Where(n => n != null && n.Type != NodeType.End)
                 .OrderBy(n => string.IsNullOrWhiteSpace(n.Title) ? n.Id : n.Title)
                 .ToList();
             _host = host;
@@ -74,6 +72,8 @@ namespace FlowMy.Views.Overlays
 
         private void PopulateNodeList()
         {
+            var oldSelectedId = NodeComboBox.SelectedValue as string;
+
             _nodeOptions.Clear();
             foreach (var node in _nodes)
             {
@@ -82,9 +82,16 @@ namespace FlowMy.Views.Overlays
 
             NodeComboBox.ItemsSource = _nodeOptions;
             if (_nodeOptions.Count > 0)
-                NodeComboBox.SelectedValue = _nodeOptions[0].NodeId;
+            {
+                if (oldSelectedId != null && _nodeOptions.Any(x => x.NodeId == oldSelectedId))
+                    NodeComboBox.SelectedValue = oldSelectedId;
+                else
+                    NodeComboBox.SelectedValue = _nodeOptions[0].NodeId;
+            }
             else
+            {
                 WidgetStatusText.Text = "Canvas chưa có node nào.";
+            }
         }
 
         /// <summary>
@@ -356,26 +363,63 @@ namespace FlowMy.Views.Overlays
                 _idleForegroundColorHex = cfg.IdleForegroundColor;
                 UpdateIdleColorPreviews();
 
-                UseRatioSizeCheckBox.IsChecked = cfg.UseRatioSize;
-                AllowResizeCheckBox.IsChecked = cfg.AllowResize;
+                var isStartNode = _selectedNode?.Type == NodeType.Start;
 
-                if (cfg.UseRatioSize)
+                if (isStartNode)
                 {
-                    ExpandedWidthTextBox.Text = cfg.WidthRatio.ToString("0.##", CultureInfo.InvariantCulture);
-                    ExpandedHeightTextBox.Text = cfg.HeightRatio.ToString("0.##", CultureInfo.InvariantCulture);
-                    MinWidthTextBox.Text = cfg.MinWidthRatio.ToString("0.##", CultureInfo.InvariantCulture);
-                    MinHeightTextBox.Text = cfg.MinHeightRatio.ToString("0.##", CultureInfo.InvariantCulture);
-                    MaxWidthTextBox.Text = cfg.MaxWidthRatio.ToString("0.##", CultureInfo.InvariantCulture);
-                    MaxHeightTextBox.Text = cfg.MaxHeightRatio.ToString("0.##", CultureInfo.InvariantCulture);
+                    UseRatioSizeCheckBox.IsChecked = false;
+                    UseRatioSizeCheckBox.IsEnabled = false;
+
+                    AllowResizeCheckBox.IsChecked = false;
+                    AllowResizeCheckBox.IsEnabled = false;
+
+                    ExpandedWidthTextBox.Text = "340";
+                    ExpandedHeightTextBox.Text = "34";
+                    MinWidthTextBox.Text = "340";
+                    MinHeightTextBox.Text = "34";
+                    MaxWidthTextBox.Text = "340";
+                    MaxHeightTextBox.Text = "34";
+
+                    ExpandedWidthTextBox.IsEnabled = false;
+                    ExpandedHeightTextBox.IsEnabled = false;
+                    MinWidthTextBox.IsEnabled = false;
+                    MinHeightTextBox.IsEnabled = false;
+                    MaxWidthTextBox.IsEnabled = false;
+                    MaxHeightTextBox.IsEnabled = false;
                 }
                 else
                 {
-                    ExpandedWidthTextBox.Text = cfg.ExpandedWidth.ToString("0.#", CultureInfo.InvariantCulture);
-                    ExpandedHeightTextBox.Text = cfg.ExpandedHeight.ToString("0.#", CultureInfo.InvariantCulture);
-                    MinWidthTextBox.Text = cfg.MinExpandedWidth.ToString("0.#", CultureInfo.InvariantCulture);
-                    MinHeightTextBox.Text = cfg.MinExpandedHeight.ToString("0.#", CultureInfo.InvariantCulture);
-                    MaxWidthTextBox.Text = cfg.MaxExpandedWidth.ToString("0.#", CultureInfo.InvariantCulture);
-                    MaxHeightTextBox.Text = cfg.MaxExpandedHeight.ToString("0.#", CultureInfo.InvariantCulture);
+                    UseRatioSizeCheckBox.IsEnabled = true;
+                    AllowResizeCheckBox.IsEnabled = true;
+
+                    ExpandedWidthTextBox.IsEnabled = true;
+                    ExpandedHeightTextBox.IsEnabled = true;
+                    MinWidthTextBox.IsEnabled = true;
+                    MinHeightTextBox.IsEnabled = true;
+                    MaxWidthTextBox.IsEnabled = true;
+                    MaxHeightTextBox.IsEnabled = true;
+
+                    UseRatioSizeCheckBox.IsChecked = cfg.UseRatioSize;
+                    AllowResizeCheckBox.IsChecked = cfg.AllowResize;
+
+                    if (cfg.UseRatioSize)
+                    {
+                        ExpandedWidthTextBox.Text = cfg.WidthRatio.ToString("0.##", CultureInfo.InvariantCulture);
+                        ExpandedHeightTextBox.Text = cfg.HeightRatio.ToString("0.##", CultureInfo.InvariantCulture);
+                        MinWidthTextBox.Text = cfg.MinWidthRatio.ToString("0.##", CultureInfo.InvariantCulture);
+                        MinHeightTextBox.Text = cfg.MinHeightRatio.ToString("0.##", CultureInfo.InvariantCulture);
+                        MaxWidthTextBox.Text = cfg.MaxWidthRatio.ToString("0.##", CultureInfo.InvariantCulture);
+                        MaxHeightTextBox.Text = cfg.MaxHeightRatio.ToString("0.##", CultureInfo.InvariantCulture);
+                    }
+                    else
+                    {
+                        ExpandedWidthTextBox.Text = cfg.ExpandedWidth.ToString("0.#", CultureInfo.InvariantCulture);
+                        ExpandedHeightTextBox.Text = cfg.ExpandedHeight.ToString("0.#", CultureInfo.InvariantCulture);
+                        MinWidthTextBox.Text = cfg.MinExpandedWidth.ToString("0.#", CultureInfo.InvariantCulture);
+                        MinHeightTextBox.Text = cfg.MinExpandedHeight.ToString("0.#", CultureInfo.InvariantCulture);
+                        MaxWidthTextBox.Text = cfg.MaxExpandedWidth.ToString("0.#", CultureInfo.InvariantCulture);
+                        MaxHeightTextBox.Text = cfg.MaxExpandedHeight.ToString("0.#", CultureInfo.InvariantCulture);
+                    }
                 }
 
                 UpdateSizeLabels(cfg.UseRatioSize);
@@ -399,12 +443,26 @@ namespace FlowMy.Views.Overlays
                 ShowInTaskbarCheckBox.IsChecked = cfg.ShowInTaskbar;
                 SelectComboByTag(TaskbarIconShapeComboBox, cfg.TaskbarIconShape.ToString());
                 TaskbarIconSizeTextBox.Text = cfg.TaskbarIconSize.ToString("0.#", CultureInfo.InvariantCulture);
-                if (!cfg.ShowTitleBar)
-                    TitleBarHiddenRadio.IsChecked = true;
-                else if (cfg.AutoHideTitleBar)
-                    TitleBarAutoHideRadio.IsChecked = true;
-                else
+                if (isStartNode)
+                {
+                    // Start node: always show title bar — lock UI
                     TitleBarAlwaysVisibleRadio.IsChecked = true;
+                    TitleBarAutoHideRadio.IsChecked = false;
+                    TitleBarHiddenRadio.IsChecked = false;
+                    TitleBarAutoHideRadio.IsEnabled = false;
+                    TitleBarHiddenRadio.IsEnabled = false;
+                }
+                else
+                {
+                    TitleBarAutoHideRadio.IsEnabled = true;
+                    TitleBarHiddenRadio.IsEnabled = true;
+                    if (!cfg.ShowTitleBar)
+                        TitleBarHiddenRadio.IsChecked = true;
+                    else if (cfg.AutoHideTitleBar)
+                        TitleBarAutoHideRadio.IsChecked = true;
+                    else
+                        TitleBarAlwaysVisibleRadio.IsChecked = true;
+                }
                 ShowSideActionButtonCheckBox.IsChecked = cfg.ShowSideActionButton;
                 TitleBarHideTimeoutTextBox.Text = cfg.TitleBarHideTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
                 UpdateTitleTimeoutState();

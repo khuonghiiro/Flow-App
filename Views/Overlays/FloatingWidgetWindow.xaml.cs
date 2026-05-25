@@ -129,7 +129,7 @@ public partial class FloatingWidgetWindow : Window
         ShowInTaskbar = Config.ShowInTaskbar;
 
         // Set title (ưu tiên WidgetName, fallback node.Title)
-        TitleText.Text = ResolveDisplayTitle(node);
+        TitleText.Text = ResolveDisplayTitle(node, _host);
 
         // Window position
         WindowStartupLocation = WindowStartupLocation.Manual;
@@ -171,6 +171,12 @@ public partial class FloatingWidgetWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        if (_node.Type == NodeType.Start)
+        {
+            ContentArea.Visibility = Visibility.Collapsed;
+            TitleMaxRestoreBtn.Visibility = Visibility.Collapsed;
+        }
+
         ApplyTaskbarVisualIdentity();
         UpdateTitleMaxRestoreVisualState();
 
@@ -1893,7 +1899,7 @@ public partial class FloatingWidgetWindow : Window
             EnsureTitleRevealHost();
             UpdateOutsideCollapseToggleButtonState();
             UpdatePinToggleButtonState();
-            TitleText.Text = ResolveDisplayTitle(_node);
+            TitleText.Text = ResolveDisplayTitle(_node, _host);
 
             if (_isExpanded)
             {
@@ -3867,7 +3873,7 @@ window.hostAsync.values = window.hostAsync.values || {};
         {
             Dispatcher.BeginInvoke(() =>
             {
-                TitleText.Text = ResolveDisplayTitle(_node);
+                TitleText.Text = ResolveDisplayTitle(_node, _host);
             });
         }
 
@@ -3961,10 +3967,15 @@ window.hostAsync.values = window.hostAsync.values || {};
         }
     }
 
-    private static string ResolveDisplayTitle(WorkflowNode node)
+    private static string ResolveDisplayTitle(WorkflowNode node, IWorkflowEditorHost? host)
     {
         var custom = node.FloatingWidget?.WidgetName;
         if (!string.IsNullOrWhiteSpace(custom)) return custom;
+        if (node.Type == NodeType.Start && host?.ViewModel?.CurrentWorkflowName != null)
+        {
+            var wfTitle = host.ViewModel.CurrentWorkflowName;
+            if (!string.IsNullOrWhiteSpace(wfTitle)) return wfTitle;
+        }
         return string.IsNullOrWhiteSpace(node.Title) ? "Widget" : node.Title;
     }
 
