@@ -612,6 +612,7 @@ namespace FlowMy.Views.Overlays
                         {
                             long modTs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                             _modifierHoldStart[vk] = modTs;
+                            UpdateHeldKeysUI();
 
                             string modName = vk switch
                             {
@@ -672,6 +673,7 @@ namespace FlowMy.Views.Overlays
                     _keysCurrentlyHeld.Remove(vk);
                     // Clear modifier hold timing on release
                     _modifierHoldStart.Remove(vk);
+                    UpdateHeldKeysUI();
                 }
             }
 
@@ -1085,6 +1087,51 @@ namespace FlowMy.Views.Overlays
         private void UpdateActionCount() =>
             ActionCountText.Text = $"{_actions.Count} thao tác";
 
+        private void UpdateHeldKeysUI()
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                var heldMods = _keysCurrentlyHeld
+                    .Where(vk => vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL
+                                    or VK_MENU or VK_LMENU or VK_RMENU
+                                    or VK_SHIFT or VK_LSHIFT or VK_RSHIFT
+                                    or VK_CAPITAL)
+                    .Select(vk => vk switch
+                    {
+                        VK_CONTROL or VK_LCONTROL or VK_RCONTROL => "Ctrl",
+                        VK_MENU or VK_LMENU or VK_RMENU => "Alt",
+                        VK_SHIFT or VK_LSHIFT or VK_RSHIFT => "Shift",
+                        VK_CAPITAL => "Caps",
+                        _ => GetKeyName(vk)
+                    })
+                    .Distinct()
+                    .ToList();
+
+                if (heldMods.Count > 0)
+                {
+                    HeldKeysPanel.Visibility = Visibility.Visible;
+                    HeldKeysStack.Children.Clear();
+                    foreach (var name in heldMods)
+                    {
+                        var b = new Border
+                        {
+                            Background = new SolidColorBrush(Color.FromArgb(200, 30, 120, 255)),
+                            CornerRadius = new CornerRadius(4),
+                            Padding = new Thickness(8, 4, 8, 4),
+                            Margin = new Thickness(0, 0, 4, 0)
+                        };
+                        b.Child = new TextBlock { Text = name, Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 12 };
+                        HeldKeysStack.Children.Add(b);
+                    }
+                }
+                else
+                {
+                    HeldKeysPanel.Visibility = Visibility.Collapsed;
+                    HeldKeysStack.Children.Clear();
+                }
+            });
+        }
+
         // ─── Visual feedback ──────────────────────────────────────────────────────
 
         /// <summary>
@@ -1124,7 +1171,7 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(circle,  pt.Y - r);
             DrawingCanvas.Children.Add(circle);
 
-            // Center label — Grid container ensures true centering inside the circle
+            // Label at center (the sequence number)
             var centerContainer = new Grid
             {
                 Width  = r * 2,
@@ -1133,46 +1180,43 @@ namespace FlowMy.Views.Overlays
             };
             centerContainer.Children.Add(new TextBlock
             {
-                Text       = centerText,
-                FontSize   = centerFontSize,
+                Text       = seq.ToString(),
+                FontSize   = 11,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
-                TextAlignment       = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center,
-                TextWrapping        = TextWrapping.Wrap,
                 IsHitTestVisible    = false
             });
             Canvas.SetLeft(centerContainer, pt.X - r);
             Canvas.SetTop(centerContainer,  pt.Y - r);
             DrawingCanvas.Children.Add(centerContainer);
 
-            // Seq badge — pill above the circle with 8px gap (mirrors delta badge below)
-            var seqBorder = new Border
+            // Action type badge adjacent to the circle (sleek pill shape)
+            if (!string.IsNullOrEmpty(centerText) && centerText != "+")
             {
-                Background   = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
-                BorderBrush  = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Padding      = new Thickness(4, 1, 4, 1),
-                Child        = new TextBlock
+                var actionBadge = new Border
                 {
-                    Text       = seq.ToString(),
-                    FontSize   = 9,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White,
-                    IsHitTestVisible = false,
-                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    Background   = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                    BorderBrush  = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(10),
+                    Padding      = new Thickness(6, 2, 6, 2),
+                    Child        = new TextBlock
                     {
-                        Color = Colors.Black, BlurRadius = 3, ShadowDepth = 0, Opacity = 1
-                    }
-                },
-                IsHitTestVisible = false
-            };
-            seqBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(seqBorder, pt.X - seqBorder.DesiredSize.Width / 2);
-            Canvas.SetTop(seqBorder,  pt.Y - r - seqBorder.DesiredSize.Height - 8); // 8px gap above circle
-            DrawingCanvas.Children.Add(seqBorder);
+                        Text       = centerText,
+                        FontSize   = 10,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = Brushes.White,
+                        IsHitTestVisible = false
+                    },
+                    IsHitTestVisible = false
+                };
+                actionBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(actionBadge, pt.X + r + 6);
+                Canvas.SetTop(actionBadge,  pt.Y - actionBadge.DesiredSize.Height / 2);
+                DrawingCanvas.Children.Add(actionBadge);
+            }
 
             // Delta badge below circle
             if (deltaSeconds > 0)
@@ -1246,65 +1290,43 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(circle, pt.Y - r);
             DrawingCanvas.Children.Add(circle);
 
-            // Center label — for combos show "Ctrl+C" split nicely, for single keys show key name
-            string displayText;
-            double fontSize;
-            if (isCombo)
-            {
-                // Split combo into two lines: modifiers on top, main key on bottom
-                // e.g. "Ctrl+Shift+C" → "Ctrl+Shift\nC"
-                int lastPlus = keyName.LastIndexOf('+');
-                string modPart = keyName[..lastPlus];   // "Ctrl+Shift"
-                string keyPart = keyName[(lastPlus + 1)..]; // "C"
-                displayText = $"{modPart}\n{keyPart}";
-                fontSize = modPart.Length > 8 ? 7 : 8;
-            }
-            else
-            {
-                displayText = keyName.Length > 5 ? keyName[..5] : keyName;
-                fontSize = 9;
-            }
-
+            // Center label: Seq number inside the circle
             var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
             centerContainer.Children.Add(new TextBlock
             {
-                Text = displayText,
-                FontSize = fontSize, FontWeight = FontWeights.Bold,
+                Text = seq.ToString(),
+                FontSize = 11, FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
-                TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                TextWrapping = TextWrapping.Wrap,
-                LineHeight = fontSize + 2,
                 IsHitTestVisible = false
             });
             Canvas.SetLeft(centerContainer, pt.X - r);
             Canvas.SetTop(centerContainer, pt.Y - r);
             DrawingCanvas.Children.Add(centerContainer);
 
-            // Seq badge — pill above circle with 8px gap
-            var seqBorder = new Border
+            // Action badge: sleek pill next to circle showing the combo/keys
+            var actionBadge = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
-                BorderBrush  = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
+                Background = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Padding      = new Thickness(4, 1, 4, 1),
-                Child        = new TextBlock
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(8, 2, 8, 2),
+                Child = new TextBlock
                 {
-                    Text = seq.ToString(), FontSize = 9, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White, IsHitTestVisible = false,
-                    Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    {
-                        Color = Colors.Black, BlurRadius = 3, ShadowDepth = 0, Opacity = 1
-                    }
+                    Text = isCombo ? keyName.Replace("+", " + ") : keyName, // Better spacing
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brushes.White,
+                    IsHitTestVisible = false
                 },
                 IsHitTestVisible = false
             };
-            seqBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(seqBorder, pt.X - seqBorder.DesiredSize.Width / 2);
-            Canvas.SetTop(seqBorder,  pt.Y - r - seqBorder.DesiredSize.Height - 8);
-            DrawingCanvas.Children.Add(seqBorder);
+            actionBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(actionBadge, pt.X + r + 6);
+            Canvas.SetTop(actionBadge, pt.Y - actionBadge.DesiredSize.Height / 2);
+            DrawingCanvas.Children.Add(actionBadge);
 
             // Delta badge below circle
             double badgeTop = pt.Y + r + 3;

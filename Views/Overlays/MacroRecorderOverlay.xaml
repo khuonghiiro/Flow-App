@@ -22,6 +22,22 @@
             <Border.Effect>
                 <DropShadowEffect Color="#2299FF" BlurRadius="20" ShadowDepth="0" Opacity="0.9"/>
             </Border.Effect>
+            <!-- Hiệu ứng sáng viền (pulse) -->
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Visibility, RelativeSource={RelativeSource Self}}" Value="Visible">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.5" To="1.0" Duration="0:0:1.2" AutoReverse="True"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
         </Border>
 
         <!-- Lớp phủ trong suốt — rất nhẹ, chỉ để overlay có nền -->
@@ -132,6 +148,23 @@
                        FontSize="12"
                        Foreground="#AAFFFFFF"
                        Text="ESC để hủy"/>
+        </Border>
+
+        <!-- Hiển thị các phím Modifier đang giữ (Góc dưới phải) -->
+        <Border x:Name="HeldKeysPanel"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Margin="0,0,24,24"
+                Background="#D00A0A0A"
+                CornerRadius="8"
+                Padding="16,10"
+                Visibility="Collapsed">
+            <StackPanel Orientation="Vertical">
+                <TextBlock Text="ĐANG GIỮ PHÍM" FontSize="11" Foreground="#AAFFFFFF" FontWeight="Bold" Margin="0,0,0,6" TextAlignment="Center"/>
+                <StackPanel x:Name="HeldKeysStack" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <!-- Sẽ được thêm bằng code-behind -->
+                </StackPanel>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>

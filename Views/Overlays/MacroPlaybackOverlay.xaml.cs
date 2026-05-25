@@ -242,6 +242,40 @@ namespace FlowMy.Views.Overlays
             });
         }
 
+        public void UpdateHeldModifiers(bool shift, bool ctrl, bool alt)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                var heldMods = new List<string>();
+                if (ctrl) heldMods.Add("Ctrl");
+                if (alt) heldMods.Add("Alt");
+                if (shift) heldMods.Add("Shift");
+
+                if (heldMods.Count > 0)
+                {
+                    HeldKeysPanel.Visibility = Visibility.Visible;
+                    HeldKeysStack.Children.Clear();
+                    foreach (var name in heldMods)
+                    {
+                        var b = new Border
+                        {
+                            Background = new SolidColorBrush(Color.FromArgb(200, 30, 120, 255)),
+                            CornerRadius = new CornerRadius(4),
+                            Padding = new Thickness(8, 4, 8, 4),
+                            Margin = new Thickness(0, 0, 4, 0)
+                        };
+                        b.Child = new TextBlock { Text = name, Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 12 };
+                        HeldKeysStack.Children.Add(b);
+                    }
+                }
+                else
+                {
+                    HeldKeysPanel.Visibility = Visibility.Collapsed;
+                    HeldKeysStack.Children.Clear();
+                }
+            });
+        }
+
         /// <summary>Draw a click marker at screen coordinates.</summary>
         public void DrawClick(int screenX, int screenY, string button, int seq)
         {
@@ -256,13 +290,13 @@ namespace FlowMy.Views.Overlays
                 // Outer glow
                 var glow = new Ellipse
                 {
-                    Width  = (r + 6) * 2,
-                    Height = (r + 6) * 2,
+                    Width  = (r + 4) * 2,
+                    Height = (r + 4) * 2,
                     Fill   = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(glow, pt.X - (r + 6));
-                Canvas.SetTop(glow,  pt.Y - (r + 6));
+                Canvas.SetLeft(glow, pt.X - (r + 4));
+                Canvas.SetTop(glow,  pt.Y - (r + 4));
                 DrawingCanvas.Children.Add(glow);
 
                 // Main circle
@@ -270,85 +304,57 @@ namespace FlowMy.Views.Overlays
                 {
                     Width  = r * 2,
                     Height = r * 2,
-                    Fill   = new SolidColorBrush(Color.FromArgb(230, fillColor.R, fillColor.G, fillColor.B)),
+                    Fill   = new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
                     Stroke = Brushes.White,
-                    StrokeThickness = 2,
+                    StrokeThickness = 1.5,
                     IsHitTestVisible = false
                 };
                 Canvas.SetLeft(circle, pt.X - r);
                 Canvas.SetTop(circle,  pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center label: "+" — color already distinguishes left/right
-                string label = "+";
-                var centerContainer = new Grid
-                {
-                    Width = r * 2,
-                    Height = r * 2,
-                    IsHitTestVisible = false
-                };
+                // Center label: Seq number inside the circle
+                var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
                 centerContainer.Children.Add(new TextBlock
                 {
-                    Text = label,
-                    FontSize = 14,
-                    FontWeight = FontWeights.Bold,
+                    Text = seq.ToString(),
+                    FontSize = 11, FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
-                    TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     IsHitTestVisible = false
                 });
                 Canvas.SetLeft(centerContainer, pt.X - r);
-                Canvas.SetTop(centerContainer,  pt.Y - r);
+                Canvas.SetTop(centerContainer, pt.Y - r);
                 DrawingCanvas.Children.Add(centerContainer);
 
-                // Số thứ tự — seq badge on top
-                var seqBg = new Ellipse
+                // Action badge: sleek pill next to circle showing the combo/keys
+                string modPart = ExtractModifierPart(button);
+                string centerText = "+" + (string.IsNullOrEmpty(modPart) ? "" : $" {modPart}");
+                
+                var actionBadge = new Border
                 {
-                    Width = 18, Height = 18,
-                    Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
-                    Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
-                    StrokeThickness = 1.5,
+                    Background = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(10),
+                    Padding = new Thickness(8, 2, 8, 2),
+                    Child = new TextBlock
+                    {
+                        Text = centerText,
+                        FontSize = 10,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = Brushes.White,
+                        IsHitTestVisible = false
+                    },
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(seqBg, pt.X - 9);
-                Canvas.SetTop(seqBg,  pt.Y - r - 9);
-                DrawingCanvas.Children.Add(seqBg);
+                actionBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(actionBadge, pt.X + r + 6);
+                Canvas.SetTop(actionBadge, pt.Y - actionBadge.DesiredSize.Height / 2);
+                DrawingCanvas.Children.Add(actionBadge);
 
-                var seqContainer = new Grid { Width = 18, Height = 18, IsHitTestVisible = false };
-                seqContainer.Children.Add(new TextBlock
-                {
-                    Text = seq.ToString(),
-                    FontSize = 9, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White,
-                    TextAlignment = TextAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    IsHitTestVisible = false
-                });
-                Canvas.SetLeft(seqContainer, pt.X - 9);
-                Canvas.SetTop(seqContainer,  pt.Y - r - 9);
-                DrawingCanvas.Children.Add(seqContainer);
-
-                // Modifier label left of circle (if any)
-                string modPart = ExtractModifierPart(button);
-                if (!string.IsNullOrEmpty(modPart))
-                {
-                    var modLabel = new TextBlock
-                    {
-                        Text       = modPart,
-                        FontSize   = 9,
-                        FontWeight = FontWeights.SemiBold,
-                        Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 220, 100)),
-                        IsHitTestVisible = false
-                    };
-                    modLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                    Canvas.SetLeft(modLabel, pt.X - r - modLabel.DesiredSize.Width - 4);
-                    Canvas.SetTop(modLabel,  pt.Y - modLabel.DesiredSize.Height / 2);
-                    DrawingCanvas.Children.Add(modLabel);
-                }
-
-                FadeOutAndRemove(glow, circle, centerContainer, seqBg, seqContainer);
+                FadeOutAndRemove(glow, circle, centerContainer, actionBadge);
             });
         }
 
@@ -359,49 +365,56 @@ namespace FlowMy.Views.Overlays
             {
                 var pt = ScreenToCanvas(screenX, screenY);
                 int r = MarkerRadius;
-                string arrow = notches >= 0 ? "↑" : "↓";
+                string arrow = notches >= 0 ? "↑ Scroll" : "↓ Scroll";
 
                 var glow = new Ellipse
                 {
-                    Width  = (r + 6) * 2, Height = (r + 6) * 2,
+                    Width  = (r + 4) * 2, Height = (r + 4) * 2,
                     Fill   = new SolidColorBrush(Color.FromArgb(50, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(glow, pt.X - (r + 6)); Canvas.SetTop(glow, pt.Y - (r + 6));
+                Canvas.SetLeft(glow, pt.X - (r + 4)); Canvas.SetTop(glow, pt.Y - (r + 4));
                 DrawingCanvas.Children.Add(glow);
 
                 var circle = new Ellipse
                 {
                     Width  = r * 2, Height = r * 2,
                     Fill   = new SolidColorBrush(Color.FromArgb(220, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
-                    Stroke = Brushes.White, StrokeThickness = 2, IsHitTestVisible = false
+                    Stroke = Brushes.White, StrokeThickness = 1.5, IsHitTestVisible = false
                 };
                 Canvas.SetLeft(circle, pt.X - r); Canvas.SetTop(circle, pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Tâm: mũi tên scroll
-                var centerLabel = new TextBlock
+                // Center: Seq
+                var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
+                centerContainer.Children.Add(new TextBlock
                 {
-                    Text = arrow, FontSize = 14, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
-                };
-                centerLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(centerLabel, pt.X - centerLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(centerLabel,  pt.Y - centerLabel.DesiredSize.Height / 2);
-                DrawingCanvas.Children.Add(centerLabel);
+                    Text = seq.ToString(), FontSize = 11, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false
+                });
+                Canvas.SetLeft(centerContainer, pt.X - r); Canvas.SetTop(centerContainer, pt.Y - r);
+                DrawingCanvas.Children.Add(centerContainer);
 
-                // Số thứ tự — trên đỉnh
-                var seqLabel = new TextBlock
+                // Pill
+                var actionBadge = new Border
                 {
-                    Text = seq.ToString(), FontSize = 10, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White, TextAlignment = TextAlignment.Center, IsHitTestVisible = false
+                    Background = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(180, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(10),
+                    Padding = new Thickness(8, 2, 8, 2),
+                    Child = new TextBlock
+                    {
+                        Text = arrow, FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, IsHitTestVisible = false
+                    },
+                    IsHitTestVisible = false
                 };
-                seqLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(seqLabel, pt.X - seqLabel.DesiredSize.Width / 2);
-                Canvas.SetTop(seqLabel,  pt.Y - r - seqLabel.DesiredSize.Height - 2);
-                DrawingCanvas.Children.Add(seqLabel);
+                actionBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(actionBadge, pt.X + r + 6);
+                Canvas.SetTop(actionBadge, pt.Y - actionBadge.DesiredSize.Height / 2);
+                DrawingCanvas.Children.Add(actionBadge);
 
-                FadeOutAndRemove(glow, circle, centerLabel, seqLabel);
+                FadeOutAndRemove(glow, circle, centerContainer, actionBadge);
             });
         }
 
@@ -432,70 +445,43 @@ namespace FlowMy.Views.Overlays
                 var circle = new Ellipse
                 {
                     Width  = r * 2, Height = r * 2,
-                    Fill   = new SolidColorBrush(Color.FromArgb(210, fillColor.R, fillColor.G, fillColor.B)),
+                    Fill   = new SolidColorBrush(Color.FromArgb(225, fillColor.R, fillColor.G, fillColor.B)),
                     Stroke = Brushes.White, StrokeThickness = isCombo ? 2 : 1.5, IsHitTestVisible = false
                 };
                 Canvas.SetLeft(circle, pt.X - r); Canvas.SetTop(circle, pt.Y - r);
                 DrawingCanvas.Children.Add(circle);
 
-                // Center: combo split into two lines, single key truncated
-                string displayText;
-                double fontSize;
-                if (isCombo)
-                {
-                    int lastPlus = keyName.LastIndexOf('+');
-                    string modPart = keyName[..lastPlus];
-                    string keyPart = keyName[(lastPlus + 1)..];
-                    displayText = $"{modPart}\n{keyPart}";
-                    fontSize = modPart.Length > 8 ? 7 : 8;
-                }
-                else
-                {
-                    displayText = keyName.Length > 5 ? keyName[..5] : keyName;
-                    fontSize = 9;
-                }
-
+                // Center Seq
                 var centerContainer = new Grid { Width = r * 2, Height = r * 2, IsHitTestVisible = false };
                 centerContainer.Children.Add(new TextBlock
                 {
-                    Text = displayText, FontSize = fontSize, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White,
-                    TextAlignment = TextAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    TextWrapping = TextWrapping.Wrap,
-                    LineHeight = fontSize + 2,
-                    IsHitTestVisible = false
+                    Text = seq.ToString(), FontSize = 11, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false
                 });
-                Canvas.SetLeft(centerContainer, pt.X - r);
-                Canvas.SetTop(centerContainer,  pt.Y - r);
+                Canvas.SetLeft(centerContainer, pt.X - r); Canvas.SetTop(centerContainer, pt.Y - r);
                 DrawingCanvas.Children.Add(centerContainer);
 
-                // Seq badge
-                var seqBg = new Ellipse
+                // Pill Badge
+                var actionBadge = new Border
                 {
-                    Width = 18, Height = 18,
-                    Fill = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
-                    Stroke = new SolidColorBrush(Color.FromArgb(200, fillColor.R, fillColor.G, fillColor.B)),
-                    StrokeThickness = 1.5, IsHitTestVisible = false
-                };
-                Canvas.SetLeft(seqBg, pt.X - 9); Canvas.SetTop(seqBg, pt.Y - r - 9);
-                DrawingCanvas.Children.Add(seqBg);
-
-                var seqContainer = new Grid { Width = 18, Height = 18, IsHitTestVisible = false };
-                seqContainer.Children.Add(new TextBlock
-                {
-                    Text = seq.ToString(), FontSize = 9, FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.White,
-                    TextAlignment = TextAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
+                    Background = new SolidColorBrush(Color.FromArgb(220, 20, 20, 20)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(10),
+                    Padding = new Thickness(8, 2, 8, 2),
+                    Child = new TextBlock
+                    {
+                        Text = isCombo ? keyName.Replace("+", " + ") : keyName, // Better spacing
+                        FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, IsHitTestVisible = false
+                    },
                     IsHitTestVisible = false
-                });
-                Canvas.SetLeft(seqContainer, pt.X - 9); Canvas.SetTop(seqContainer, pt.Y - r - 9);
-                DrawingCanvas.Children.Add(seqContainer);
+                };
+                actionBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(actionBadge, pt.X + r + 6);
+                Canvas.SetTop(actionBadge, pt.Y - actionBadge.DesiredSize.Height / 2);
+                DrawingCanvas.Children.Add(actionBadge);
 
-                FadeOutAndRemove(glow, circle, centerContainer, seqBg, seqContainer);
+                FadeOutAndRemove(glow, circle, centerContainer, actionBadge);
             });
         }
 

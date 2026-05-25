@@ -193,6 +193,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
 
                         var action = actions[i];
+                        
+                        // Cập nhật trạng thái hiển thị các phím Modifier đang giữ trên Overlay
+                        overlay?.UpdateHeldModifiers(action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+
                         switch (action.Type)
                         {
                             case "MouseClick":
