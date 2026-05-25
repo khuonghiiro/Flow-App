@@ -13,10 +13,10 @@ using System.Windows.Threading;
 namespace FlowMy.Views.Overlays
 {
     /// <summary>
-    /// Lightweight fullscreen overlay shown during MacroRecorderNode playback.
+    /// Lightweight overlay shown during MacroRecorderNode playback.
+    /// In Free mode: fullscreen (WindowState=Maximized).
+    /// In TargetApp mode: sized/positioned over the target window via PositionOverTarget().
     /// Click-through (WS_EX_TRANSPARENT) — input passes through to the window below.
-    /// Call UpdateProgress() from the executor to update the display.
-    /// Call Close() when playback finishes.
     /// </summary>
     public partial class MacroPlaybackOverlay : Window
     {
@@ -27,8 +27,29 @@ namespace FlowMy.Views.Overlays
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hwnd, int nIndex, int dwNewLong);
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetCursorPos(out POINT pt);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X, Y; }
+
         private const int GWL_EXSTYLE       = -20;
         private const int WS_EX_TRANSPARENT = 0x00000020;
+
+        // ─── Target-mode positioning ──────────────────────────────────────────────
+        /// <summary>True when overlay is positioned over a specific target window (not fullscreen).</summary>
+        private bool _isTargetMode = false;
+        /// <summary>Screen-pixel offset of the overlay's top-left corner (used in ScreenToCanvas).</summary>
+        private double _overlayScreenLeft = 0;
+        private double _overlayScreenTop  = 0;
         // Trail polyline for mouse move
         private Polyline? _trailPolyline;
 
@@ -52,6 +73,9 @@ namespace FlowMy.Views.Overlays
         /// </summary>
         public Task WhenLoaded => _loadedTcs.Task;
 
+        // ─── Hover-fade timer ─────────────────────────────────────────────────────
+        private DispatcherTimer? _hoverTimer;
+
         public MacroPlaybackOverlay()
         {
             InitializeComponent();
@@ -66,12 +90,70 @@ namespace FlowMy.Views.Overlays
             };
             Loaded += (_, _) =>
             {
+                // Free mode: go fullscreen
+                WindowState = WindowState.Maximized;
                 DrawingCanvas.Children.Add(_trailPolyline);
-                // Make window click-through so input reaches the app below
                 MakeClickThrough();
-                // Signal that the overlay is fully ready for drawing
+                StartHoverFadeTimer();
                 _loadedTcs.TrySetResult();
             };
+        }
+
+        /// <summary>
+        /// Position this overlay exactly over the given target window (TargetApp mode).
+        /// Must be called BEFORE Show(), or immediately after Show() before WhenLoaded resolves.
+        /// </summary>
+        public void PositionOverTarget(IntPtr targetHwnd)
+        {
+            if (targetHwnd == IntPtr.Zero) return;
+            if (!GetWindowRect(targetHwnd, out RECT r)) return;
+
+            _isTargetMode    = true;
+            _overlayScreenLeft = r.Left;
+            _overlayScreenTop  = r.Top;
+
+            // Convert screen pixels → WPF device-independent units
+            // We need the DPI scale; use SystemParameters as a fallback before the window is loaded.
+            double dpiX = 96.0, dpiY = 96.0;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                dpiX = 96.0 * source.CompositionTarget.TransformToDevice.M11;
+                dpiY = 96.0 * source.CompositionTarget.TransformToDevice.M22;
+            }
+
+            Left   = r.Left   / (dpiX / 96.0);
+            Top    = r.Top    / (dpiY / 96.0);
+            Width  = (r.Right  - r.Left) / (dpiX / 96.0);
+            Height = (r.Bottom - r.Top)  / (dpiY / 96.0);
+        }
+
+        /// <summary>
+        /// Variant of PositionOverTarget that runs on the UI thread and waits for the
+        /// window to be loaded so PresentationSource is available for accurate DPI scaling.
+        /// Call this after Show() + await WhenLoaded.
+        /// </summary>
+        public void PositionOverTargetAfterLoad(IntPtr targetHwnd)
+        {
+            if (targetHwnd == IntPtr.Zero) return;
+            if (!GetWindowRect(targetHwnd, out RECT r)) return;
+
+            _isTargetMode      = true;
+            _overlayScreenLeft = r.Left;
+            _overlayScreenTop  = r.Top;
+
+            double scaleX = 1.0, scaleY = 1.0;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                scaleX = source.CompositionTarget.TransformToDevice.M11;
+                scaleY = source.CompositionTarget.TransformToDevice.M22;
+            }
+
+            Left   = r.Left   / scaleX;
+            Top    = r.Top    / scaleY;
+            Width  = (r.Right  - r.Left) / scaleX;
+            Height = (r.Bottom - r.Top)  / scaleY;
         }
 
         /// <summary>
@@ -88,6 +170,51 @@ namespace FlowMy.Views.Overlays
             int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
             // Only add WS_EX_TRANSPARENT — WPF already sets WS_EX_LAYERED via AllowsTransparency
             SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TRANSPARENT);
+        }
+
+        /// <summary>
+        /// Poll real cursor position every 100 ms.
+        /// If the cursor is over StatusPanel or ProgressPanel → fade those panels to 20% opacity.
+        /// When cursor leaves → restore to 100%.
+        /// </summary>
+        private void StartHoverFadeTimer()
+        {
+            _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+            _hoverTimer.Tick += (_, _) =>
+            {
+                if (!GetCursorPos(out POINT cur)) return;
+
+                bool overStatus   = IsPointOverElement(StatusPanel,   cur.X, cur.Y);
+                bool overProgress = IsPointOverElement(ProgressPanel, cur.X, cur.Y);
+
+                SetPanelOpacity(StatusPanel,   overStatus   ? 0.2 : 1.0);
+                SetPanelOpacity(ProgressPanel, overProgress ? 0.2 : 1.0);
+            };
+            _hoverTimer.Start();
+
+            // Stop timer when window closes
+            Closed += (_, _) => _hoverTimer?.Stop();
+        }
+
+        /// <summary>Check whether a screen-pixel point (px, py) lies within a FrameworkElement's screen bounds.</summary>
+        private bool IsPointOverElement(FrameworkElement el, int px, int py)
+        {
+            if (!el.IsVisible) return false;
+            try
+            {
+                var topLeft     = el.PointToScreen(new System.Windows.Point(0, 0));
+                var bottomRight = el.PointToScreen(new System.Windows.Point(el.ActualWidth, el.ActualHeight));
+                return px >= topLeft.X && px <= bottomRight.X
+                    && py >= topLeft.Y && py <= bottomRight.Y;
+            }
+            catch { return false; }
+        }
+
+        private static void SetPanelOpacity(UIElement el, double target)
+        {
+            if (Math.Abs(el.Opacity - target) < 0.01) return;
+            var anim = new DoubleAnimation(target, TimeSpan.FromMilliseconds(150));
+            el.BeginAnimation(UIElement.OpacityProperty, anim);
         }
 
         // ─── Public API called from executor ─────────────────────────────────────
@@ -857,8 +984,22 @@ namespace FlowMy.Views.Overlays
         {
             var source = PresentationSource.FromVisual(this);
             if (source?.CompositionTarget != null)
+            {
+                if (_isTargetMode)
+                {
+                    // In target mode the overlay starts at (_overlayScreenLeft, _overlayScreenTop).
+                    // Subtract the overlay origin so coordinates are relative to the overlay's top-left.
+                    double scaleX = source.CompositionTarget.TransformToDevice.M11;
+                    double scaleY = source.CompositionTarget.TransformToDevice.M22;
+                    double relX = screenX - _overlayScreenLeft;
+                    double relY = screenY - _overlayScreenTop;
+                    // Convert device pixels → WPF DIPs
+                    return new System.Windows.Point(relX / scaleX, relY / scaleY);
+                }
+                // Free / fullscreen mode: standard device→DIP transform
                 return source.CompositionTarget.TransformFromDevice
                              .Transform(new System.Windows.Point(screenX, screenY));
+            }
             return new System.Windows.Point(screenX, screenY);
         }
 

@@ -172,6 +172,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Free Mode targetHwnd=0x{targetHwnd:X}");
             }
 
+            // ── TargetApp mode: position overlay over the target window ──────────
+            if (isTargetApp && overlay != null && targetHwnd != IntPtr.Zero && dispatcher != null)
+            {
+                await dispatcher.InvokeAsync(() =>
+                {
+                    overlay.PositionOverTargetAfterLoad(targetHwnd);
+                }, DispatcherPriority.Normal);
+                System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Overlay positioned over target HWND=0x{targetHwnd:X}");
+            }
+
             try
             {
                 // Track mouse button states for correct WM_MOUSEMOVE params
@@ -190,7 +200,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
 
                     // Ghost mode: pre-draw all markers before starting execution
-                    if (!isTargetApp && visualMode == VisualPlaybackMode.Ghost && overlay != null)
+                    if (visualMode == VisualPlaybackMode.Ghost && overlay != null)
                     {
                         await dispatcher!.InvokeAsync(() =>
                         {
@@ -229,14 +239,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
-                                if (!isTargetApp)
-                                {
-                                    overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                    if (visualMode == VisualPlaybackMode.Live)
-                                        overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
-                                    else if (visualMode == VisualPlaybackMode.Ghost)
-                                        overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                }
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                if (visualMode == VisualPlaybackMode.Live)
+                                    overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
+                                else if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
                                 
                                 if (isTargetApp)
                                 {
@@ -275,14 +282,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
-                                if (!isTargetApp)
-                                {
-                                    overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                    if (visualMode == VisualPlaybackMode.Live)
-                                        overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
-                                    else if (visualMode == VisualPlaybackMode.Ghost)
-                                        overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                }
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                if (visualMode == VisualPlaybackMode.Live)
+                                    overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
+                                else if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 if (isTargetApp)
                                 {
@@ -317,13 +321,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseUp":
                             {
-                                if (!isTargetApp)
-                                {
-                                    overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                    
-                                    if (visualMode == VisualPlaybackMode.Ghost)
-                                        overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                }
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                
+                                if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 if (isTargetApp)
                                 {
@@ -362,13 +363,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     
                                     overlay?.ShowRightActionInfo(keyDisplay, desc);
                                     
-                                    if (!isTargetApp)
-                                    {
-                                        if (visualMode == VisualPlaybackMode.Live)
-                                            overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
-                                        else if (visualMode == VisualPlaybackMode.Ghost)
-                                            overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                    }
+                                    if (visualMode == VisualPlaybackMode.Live)
+                                        overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
+                                    else if (visualMode == VisualPlaybackMode.Ghost)
+                                        overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                     if (isTargetApp)
                                     {
@@ -430,14 +428,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     
                                     FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk, lParam);
                                 }
-                                else
-                                {
-                                    overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: false);
-                                    if (visualMode != VisualPlaybackMode.Silent)
-                                        overlay?.AddTrailPoint(action.X, action.Y);
-                                    if (visualMode == VisualPlaybackMode.Ghost)
-                                        overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                }
+                                // Always update visual cursor regardless of mode
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: false);
+                                if (visualMode != VisualPlaybackMode.Silent)
+                                    overlay?.AddTrailPoint(action.X, action.Y);
+                                if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
                                 break;
 
                             case "MouseScroll":
@@ -447,14 +443,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 overlay?.ShowRightActionInfo("Scroll", desc);
                                 
-                                if (!isTargetApp)
-                                {
-                                    overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
-                                    if (visualMode == VisualPlaybackMode.Live)
-                                        overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
-                                    else if (visualMode == VisualPlaybackMode.Ghost)
-                                        overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                }
+                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                if (visualMode == VisualPlaybackMode.Live)
+                                    overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
+                                else if (visualMode == VisualPlaybackMode.Ghost)
+                                    overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 if (isTargetApp)
                                 {
