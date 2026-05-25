@@ -47,9 +47,15 @@ namespace FlowMy.Views.Overlays
         // ─── Target-mode positioning ──────────────────────────────────────────────
         /// <summary>True when overlay is positioned over a specific target window (not fullscreen).</summary>
         private bool _isTargetMode = false;
+        /// <summary>Exposed so executor can skip sync visual calls when in target mode.</summary>
+        public bool IsTargetMode => _isTargetMode;
         /// <summary>Screen-pixel offset of the overlay's top-left corner (used in ScreenToCanvas).</summary>
         private double _overlayScreenLeft = 0;
         private double _overlayScreenTop  = 0;
+
+        // ─── Foreground tracking (TargetApp mode) — poll-based ───────────────────
+        private IntPtr _targetHwnd  = IntPtr.Zero;
+        private DispatcherTimer? _foregroundTimer;
         // Trail polyline for mouse move
         private Polyline? _trailPolyline;
 
@@ -100,38 +106,10 @@ namespace FlowMy.Views.Overlays
         }
 
         /// <summary>
-        /// Position this overlay exactly over the given target window (TargetApp mode).
-        /// Must be called BEFORE Show(), or immediately after Show() before WhenLoaded resolves.
-        /// </summary>
-        public void PositionOverTarget(IntPtr targetHwnd)
-        {
-            if (targetHwnd == IntPtr.Zero) return;
-            if (!GetWindowRect(targetHwnd, out RECT r)) return;
-
-            _isTargetMode    = true;
-            _overlayScreenLeft = r.Left;
-            _overlayScreenTop  = r.Top;
-
-            // Convert screen pixels → WPF device-independent units
-            // We need the DPI scale; use SystemParameters as a fallback before the window is loaded.
-            double dpiX = 96.0, dpiY = 96.0;
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
-            {
-                dpiX = 96.0 * source.CompositionTarget.TransformToDevice.M11;
-                dpiY = 96.0 * source.CompositionTarget.TransformToDevice.M22;
-            }
-
-            Left   = r.Left   / (dpiX / 96.0);
-            Top    = r.Top    / (dpiY / 96.0);
-            Width  = (r.Right  - r.Left) / (dpiX / 96.0);
-            Height = (r.Bottom - r.Top)  / (dpiY / 96.0);
-        }
-
-        /// <summary>
         /// Variant of PositionOverTarget that runs on the UI thread and waits for the
         /// window to be loaded so PresentationSource is available for accurate DPI scaling.
         /// Call this after Show() + await WhenLoaded.
+        /// Also starts the foreground-tracking timer.
         /// </summary>
         public void PositionOverTargetAfterLoad(IntPtr targetHwnd)
         {
@@ -139,6 +117,7 @@ namespace FlowMy.Views.Overlays
             if (!GetWindowRect(targetHwnd, out RECT r)) return;
 
             _isTargetMode      = true;
+            _targetHwnd        = targetHwnd;
             _overlayScreenLeft = r.Left;
             _overlayScreenTop  = r.Top;
 
@@ -154,6 +133,84 @@ namespace FlowMy.Views.Overlays
             Top    = r.Top    / scaleY;
             Width  = (r.Right  - r.Left) / scaleX;
             Height = (r.Bottom - r.Top)  / scaleY;
+
+            StartForegroundTimer();
+        }
+
+        /// <summary>
+        /// Poll GetForegroundWindow every 150ms.
+        /// - If target window is foreground → show overlay + reposition if moved.
+        /// - If another window is foreground → hide overlay.
+        /// Using a timer (not WinEventHook) avoids re-entrancy issues when the overlay
+        /// itself triggers foreground events on Show/Hide.
+        /// </summary>
+        private void StartForegroundTimer()
+        {
+            _foregroundTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            _foregroundTimer.Tick += (_, _) =>
+            {
+                if (_targetHwnd == IntPtr.Zero) return;
+
+                IntPtr fg = GetForegroundWindow();
+                // Walk up to root in case a child window is foreground
+                IntPtr fgRoot = fg != IntPtr.Zero ? GetAncestor(fg, GA_ROOT) : IntPtr.Zero;
+                bool targetIsFg = (fg == _targetHwnd || fgRoot == _targetHwnd);
+
+                if (targetIsFg)
+                {
+                    // Reposition overlay to follow target window (handles move/resize)
+                    RefreshPosition();
+                    if (!IsVisible) Show();
+                }
+                else
+                {
+                    if (IsVisible) Hide();
+                }
+            };
+            _foregroundTimer.Start();
+
+            Closed += (_, _) => _foregroundTimer?.Stop();
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+        private const uint GA_ROOT = 2;
+
+        /// <summary>Re-read target window rect and reposition overlay to match.</summary>
+        private void RefreshPosition()
+        {
+            if (_targetHwnd == IntPtr.Zero) return;
+            if (!GetWindowRect(_targetHwnd, out RECT r)) return;
+
+            // Only update if position/size actually changed (avoid unnecessary layout passes)
+            double scaleX = 1.0, scaleY = 1.0;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                scaleX = source.CompositionTarget.TransformToDevice.M11;
+                scaleY = source.CompositionTarget.TransformToDevice.M22;
+            }
+
+            double newLeft   = r.Left   / scaleX;
+            double newTop    = r.Top    / scaleY;
+            double newWidth  = (r.Right  - r.Left) / scaleX;
+            double newHeight = (r.Bottom - r.Top)  / scaleY;
+
+            bool changed = Math.Abs(Left - newLeft) > 0.5 || Math.Abs(Top - newTop) > 0.5
+                        || Math.Abs(Width - newWidth) > 0.5 || Math.Abs(Height - newHeight) > 0.5;
+
+            if (changed)
+            {
+                _overlayScreenLeft = r.Left;
+                _overlayScreenTop  = r.Top;
+                Left   = newLeft;
+                Top    = newTop;
+                Width  = newWidth;
+                Height = newHeight;
+            }
         }
 
         /// <summary>
@@ -257,6 +314,7 @@ namespace FlowMy.Views.Overlays
         /// Di chuyển chuột ảo đến tọa độ màn hình (screenX, screenY).
         /// syncBeforeAction=true: dùng Invoke (sync) để cursor hiển thị trước khi action thực thi.
         /// syncBeforeAction=false: dùng BeginInvoke (async) cho MouseMove liên tục, không block executor.
+        /// Khi IsTargetMode=true, luôn dùng BeginInvoke để không block executor khi overlay bị ẩn.
         /// </summary>
         public void MoveVirtualCursor(int screenX, int screenY, bool syncBeforeAction = false)
         {
@@ -270,7 +328,8 @@ namespace FlowMy.Views.Overlays
                 RepositionHint(pt.X, pt.Y);
             }
 
-            if (syncBeforeAction)
+            // In target mode the overlay may be hidden — never block the executor thread
+            if (syncBeforeAction && !_isTargetMode)
                 Dispatcher.Invoke(Update);
             else
                 Dispatcher.BeginInvoke(Update);
@@ -378,27 +437,33 @@ namespace FlowMy.Views.Overlays
                 if (alt) heldMods.Add("Alt");
                 if (shift) heldMods.Add("Shift");
 
+                var pnl = this.FindName("HeldKeysPanel") as Border;
+                var stk = this.FindName("HeldKeysStack") as StackPanel;
+
                 if (heldMods.Count > 0)
                 {
-                    HeldKeysPanel.Visibility = Visibility.Visible;
-                    HeldKeysStack.Children.Clear();
-                    foreach (var name in heldMods)
+                    if (pnl != null) pnl.Visibility = Visibility.Visible;
+                    if (stk != null)
                     {
-                        var b = new Border
+                        stk.Children.Clear();
+                        foreach (var name in heldMods)
                         {
-                            Background = new SolidColorBrush(Color.FromArgb(200, 30, 120, 255)),
-                            CornerRadius = new CornerRadius(4),
-                            Padding = new Thickness(8, 4, 8, 4),
-                            Margin = new Thickness(0, 0, 4, 0)
-                        };
-                        b.Child = new TextBlock { Text = name, Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 12 };
-                        HeldKeysStack.Children.Add(b);
+                            var b = new Border
+                            {
+                                Background = new SolidColorBrush(Color.FromArgb(200, 30, 120, 255)),
+                                CornerRadius = new CornerRadius(4),
+                                Padding = new Thickness(8, 4, 8, 4),
+                                Margin = new Thickness(0, 0, 4, 0)
+                            };
+                            b.Child = new TextBlock { Text = name, Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 12 };
+                            stk.Children.Add(b);
+                        }
                     }
                 }
                 else
                 {
-                    HeldKeysPanel.Visibility = Visibility.Collapsed;
-                    HeldKeysStack.Children.Clear();
+                    if (pnl != null) pnl.Visibility = Visibility.Collapsed;
+                    if (stk != null) stk.Children.Clear();
                 }
             });
         }
@@ -1003,12 +1068,12 @@ namespace FlowMy.Views.Overlays
             return new System.Windows.Point(screenX, screenY);
         }
 
-        /// <summary>Fade out elements after 1.5 s and remove from canvas.</summary>
+        /// <summary>Fade out elements after 0.5 s and remove from canvas.</summary>
         private void FadeOutAndRemove(params UIElement[] elements)
         {
             var timer = new System.Windows.Threading.DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(1200)
+                Interval = TimeSpan.FromMilliseconds(500)
             };
             timer.Tick += (_, _) =>
             {
@@ -1016,7 +1081,7 @@ namespace FlowMy.Views.Overlays
                 foreach (var el in elements)
                 {
                     if (!DrawingCanvas.Children.Contains(el)) continue;
-                    var anim = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(400));
+                    var anim = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(200));
                     anim.Completed += (_, _) =>
                     {
                         if (DrawingCanvas.Children.Contains(el))

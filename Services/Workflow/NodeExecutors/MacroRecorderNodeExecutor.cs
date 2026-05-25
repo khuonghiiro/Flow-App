@@ -247,15 +247,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 if (isTargetApp)
                                 {
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
-                                    uint msgDown = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
-                                    uint msgUp   = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP   : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
-                                    int mk = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
-                                    
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgDown, (IntPtr)mk, lParam);
-                                    await Task.Delay(50);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgUp, IntPtr.Zero, lParam);
+                                    // Đưa Chrome lên z-top KHÔNG kích hoạt (không náy titlebar)
+                                    // rồi SendInput vào tọa độ tuyệt đối — Windows sẽ hit-test và gửi cho Chrome
+                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
+                                    FlowMy.Helpers.WindowHelper.SendHwMouseClick(action.X, action.Y, action.Button == "Right");
                                 }
                                 else
                                 {
@@ -290,18 +285,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    if (action.Button == "Left") isLeftDown = true;
-                                    else if (action.Button == "Right") isRightDown = true;
-
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
-                                    uint msgDown = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
-                                    
-                                    int mk = 0;
-                                    if (isLeftDown) mk |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
-                                    if (isRightDown) mk |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
-
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk, lParam);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgDown, (IntPtr)mk, lParam);
+                                    // MouseDown: RaiseNoActivate + SendInput DOWN only
+                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
+                                    var (childHwnd2, clientX2, clientY2) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lParam2 = FlowMy.Helpers.WindowHelper.MakeLParam(clientX2, clientY2);
+                                    uint msgDown2 = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
+                                    int mk2 = 0;
+                                    if (isLeftDown) mk2 |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                                    if (isRightDown) mk2 |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
+                                    var stDown = FlowMy.Helpers.WindowHelper.SilentActivate(targetHwnd);
+                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwnd2, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk2, lParam2);
+                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwnd2, msgDown2, (IntPtr)mk2, lParam2);
+                                    FlowMy.Helpers.WindowHelper.SilentDeactivate(stDown);
                                 }
                                 else
                                 {
@@ -328,18 +323,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    if (action.Button == "Left") isLeftDown = false;
-                                    else if (action.Button == "Right") isRightDown = false;
-
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
-                                    uint msgUp = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
-                                    
-                                    int mk = 0;
-                                    if (isLeftDown) mk |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
-                                    if (isRightDown) mk |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
-
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk, lParam);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgUp, (IntPtr)mk, lParam);
+                                    // MouseUp: RaiseNoActivate + SilentActivate
+                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
+                                    var stUp = FlowMy.Helpers.WindowHelper.SilentActivate(targetHwnd);
+                                    var (childHwndUp, clientXUp, clientYUp) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lParamUp = FlowMy.Helpers.WindowHelper.MakeLParam(clientXUp, clientYUp);
+                                    uint msgUpMsg = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
+                                    int mkUp = 0;
+                                    if (isLeftDown) mkUp |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                                    if (isRightDown) mkUp |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
+                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwndUp, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mkUp, lParamUp);
+                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwndUp, msgUpMsg, (IntPtr)mkUp, lParamUp);
+                                    FlowMy.Helpers.WindowHelper.SilentDeactivate(stUp);
                                 }
                                 else
                                 {
@@ -370,30 +365,35 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                     if (isTargetApp)
                                     {
-                                        System.Diagnostics.Debug.WriteLine($"[MacroExecutor] PostMessage KeyPress: '{action.Key}' to HWND 0x{targetHwnd:X}");
-                                        // Send text characters to the root window (or deepest child if we prefer, but root usually routes it if focused).
-                                        // However, background inputs rarely route keyboard messages from child to parent automatically.
-                                        // Let's send keys to the root window first. If we wanted, we could send it to child.
+                                        // Keyboard: SilentKeyboardFocus (AttachThreadInput+SetFocus) không đổi foreground
+                                        // -> không náy màn hình, Chrome nhận bàn phím qua SendInput
+                                        FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
+                                        var kbToken = FlowMy.Helpers.WindowHelper.SilentKeyboardFocus(targetHwnd);
+
                                         if (action.Key.Length == 1)
                                         {
-                                            char c = action.Key[0];
-                                            uint vk = c switch
-                                            {
-                                                >= 'a' and <= 'z' => (uint)c - 32,
-                                                >= 'A' and <= 'Z' => (uint)c,
-                                                _ => (uint)c
-                                            };
-                                            FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_KEYDOWN, (IntPtr)vk, IntPtr.Zero);
-                                            FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_CHAR, (IntPtr)c, IntPtr.Zero);
-                                            FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_KEYUP, (IntPtr)vk, IntPtr.Zero);
+                                            FlowMy.Helpers.WindowHelper.SendHwChar(action.Key[0]);
                                         }
-                                        else 
+                                        else
                                         {
-                                            // Fallback for complex keys like "Enter", "Space"
-                                            if (action.Key == "Enter") FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_KEYDOWN, (IntPtr)0x0D, IntPtr.Zero);
-                                            else if (action.Key == "Space") FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_KEYDOWN, (IntPtr)0x20, IntPtr.Zero);
-                                            else if (action.Key == "Escape") FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_KEYDOWN, (IntPtr)0x1B, IntPtr.Zero);
+                                            ushort vk = action.Key switch
+                                            {
+                                                "Enter"  => 0x0D,
+                                                "Space"  => 0x20,
+                                                "Escape" => 0x1B,
+                                                "Tab"    => 0x09,
+                                                "Back"   => 0x08,
+                                                "Delete" => 0x2E,
+                                                "Left"   => 0x25,
+                                                "Right"  => 0x27,
+                                                "Up"     => 0x26,
+                                                "Down"   => 0x28,
+                                                _        => 0
+                                            };
+                                            if (vk != 0) FlowMy.Helpers.WindowHelper.SendHwVKey(vk);
                                         }
+
+                                        FlowMy.Helpers.WindowHelper.SilentKeyboardFocusRestore(kbToken);
                                     }
                                     else
                                     {
@@ -421,12 +421,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             case "MouseMove":
                                 if (isTargetApp)
                                 {
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
-                                    int mk = 0;
-                                    if (isLeftDown) mk |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
-                                    if (isRightDown) mk |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
-                                    
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk, lParam);
+                                    var (childHwndMv, clientXMv, clientYMv) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lParamMv = FlowMy.Helpers.WindowHelper.MakeLParam(clientXMv, clientYMv);
+                                    int mkMv = 0;
+                                    if (isLeftDown) mkMv |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                                    if (isRightDown) mkMv |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childHwndMv, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mkMv, lParamMv);
                                 }
                                 // Always update visual cursor regardless of mode
                                 overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: false);
@@ -451,12 +451,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    var pt = new FlowMy.Helpers.WindowHelper.POINT { X = action.X, Y = action.Y };
-                                    FlowMy.Helpers.WindowHelper.ClientToScreen(targetHwnd, ref pt);
-                                    
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(pt.X, pt.Y);
-                                    uint wheelData = (uint)((action.ScrollDelta * 120) << 16);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEWHEEL, (IntPtr)wheelData, lParam);
+                                    // Scroll: RaiseNoActivate + SendInput (không nháy)
+                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
+                                    FlowMy.Helpers.WindowHelper.SendHwMouseScroll(action.X, action.Y, action.ScrollDelta);
                                 }
                                 else
                                 {

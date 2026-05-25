@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Windows.Media.Animation;
 
 namespace FlowMy.Views.Overlays
 {
@@ -1150,27 +1151,33 @@ namespace FlowMy.Views.Overlays
                     .Distinct()
                     .ToList();
 
+                var pnl = this.FindName("HeldKeysPanel") as Border;
+                var stk = this.FindName("HeldKeysStack") as StackPanel;
+
                 if (heldMods.Count > 0)
                 {
-                    HeldKeysPanel.Visibility = Visibility.Visible;
-                    HeldKeysStack.Children.Clear();
-                    foreach (var name in heldMods)
+                    if (pnl != null) pnl.Visibility = Visibility.Visible;
+                    if (stk != null)
                     {
-                        var b = new Border
+                        stk.Children.Clear();
+                        foreach (var name in heldMods)
                         {
-                            Background = new SolidColorBrush(Color.FromArgb(200, 30, 120, 255)),
-                            CornerRadius = new CornerRadius(4),
-                            Padding = new Thickness(8, 4, 8, 4),
-                            Margin = new Thickness(0, 0, 4, 0)
-                        };
-                        b.Child = new TextBlock { Text = name, Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 12 };
-                        HeldKeysStack.Children.Add(b);
+                            var b = new Border
+                            {
+                                Background = new SolidColorBrush(Color.FromArgb(200, 30, 120, 255)),
+                                CornerRadius = new CornerRadius(4),
+                                Padding = new Thickness(8, 4, 8, 4),
+                                Margin = new Thickness(0, 0, 4, 0)
+                            };
+                            b.Child = new TextBlock { Text = name, Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 12 };
+                            stk.Children.Add(b);
+                        }
                     }
                 }
                 else
                 {
-                    HeldKeysPanel.Visibility = Visibility.Collapsed;
-                    HeldKeysStack.Children.Clear();
+                    if (pnl != null) pnl.Visibility = Visibility.Collapsed;
+                    if (stk != null) stk.Children.Clear();
                 }
             });
         }
@@ -1232,6 +1239,9 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(mainMarker,  pt.Y - ch / 2.0);
             DrawingCanvas.Children.Add(mainMarker);
 
+            // Collect all elements for fade-out
+            var allElements = new List<UIElement> { glow, mainMarker };
+
             // Action type badge adjacent to the circle (sleek pill shape)
             if (!string.IsNullOrEmpty(centerText) && centerText != "+")
             {
@@ -1256,6 +1266,7 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetLeft(actionBadge, pt.X + cw / 2.0 + 6);
                 Canvas.SetTop(actionBadge,  pt.Y - actionBadge.DesiredSize.Height / 2.0);
                 DrawingCanvas.Children.Add(actionBadge);
+                allElements.Add(actionBadge);
             }
 
             // Delta badge below circle
@@ -1278,7 +1289,37 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2.0);
                 Canvas.SetTop(deltaBorder,  pt.Y + ch / 2.0 + 3);
                 DrawingCanvas.Children.Add(deltaBorder);
+                allElements.Add(deltaBorder);
             }
+
+            // Auto-fade: stay fully visible for 1s, then fade out over 0.3s and remove
+            FadeOutAndRemove(1000, 300, allElements.ToArray());
+        }
+
+        /// <summary>
+        /// Fade out elements after <paramref name="holdMs"/> ms, animating over <paramref name="fadeMs"/> ms,
+        /// then remove them from DrawingCanvas.
+        /// </summary>
+        private void FadeOutAndRemove(int holdMs, int fadeMs, params UIElement[] elements)
+        {
+            var holdTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(holdMs) };
+            holdTimer.Tick += (_, _) =>
+            {
+                holdTimer.Stop();
+                var anim = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(fadeMs));
+                anim.Completed += (_, _) =>
+                {
+                    foreach (var el in elements)
+                    {
+                        if (DrawingCanvas.Children.Contains(el))
+                            DrawingCanvas.Children.Remove(el);
+                    }
+                };
+                // Animate all elements together
+                foreach (var el in elements)
+                    el.BeginAnimation(UIElement.OpacityProperty, anim);
+            };
+            holdTimer.Start();
         }
 
         private void DrawClick(int screenX, int screenY, string button, int seq, double deltaSeconds)
@@ -1350,6 +1391,8 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(mainMarker, pt.Y - ch / 2.0);
             DrawingCanvas.Children.Add(mainMarker);
 
+            var allKeyElements = new List<UIElement> { glow, mainMarker };
+
             // Action badge: sleek pill next to circle showing the combo/keys
             var actionBadge = new Border
             {
@@ -1360,7 +1403,7 @@ namespace FlowMy.Views.Overlays
                 Padding = new Thickness(8, 2, 8, 2),
                 Child = new TextBlock
                 {
-                    Text = isCombo ? keyName.Replace("+", " + ") : keyName, // Better spacing
+                    Text = isCombo ? keyName.Replace("+", " + ") : keyName,
                     FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = Brushes.White,
@@ -1372,6 +1415,7 @@ namespace FlowMy.Views.Overlays
             Canvas.SetLeft(actionBadge, pt.X + cw / 2.0 + 6);
             Canvas.SetTop(actionBadge, pt.Y - actionBadge.DesiredSize.Height / 2.0);
             DrawingCanvas.Children.Add(actionBadge);
+            allKeyElements.Add(actionBadge);
 
             // Delta badge below circle
             double badgeTop = pt.Y + ch / 2.0 + 3;
@@ -1394,10 +1438,11 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetLeft(deltaBorder, pt.X - deltaBorder.DesiredSize.Width / 2);
                 Canvas.SetTop(deltaBorder, badgeTop);
                 DrawingCanvas.Children.Add(deltaBorder);
+                allKeyElements.Add(deltaBorder);
                 badgeTop += deltaBorder.DesiredSize.Height + 2;
             }
 
-            // Combo timing label below delta — e.g. "Ctrl (3.12s) + Shift (1.2s) + B (0.1s)"
+            // Combo timing label below delta
             if (!string.IsNullOrEmpty(comboLabel))
             {
                 var comboBorder = new Border
@@ -1421,7 +1466,11 @@ namespace FlowMy.Views.Overlays
                 Canvas.SetLeft(comboBorder, pt.X - comboBorder.DesiredSize.Width / 2);
                 Canvas.SetTop(comboBorder, badgeTop);
                 DrawingCanvas.Children.Add(comboBorder);
+                allKeyElements.Add(comboBorder);
             }
+
+            // Auto-fade after 1s
+            FadeOutAndRemove(1000, 300, allKeyElements.ToArray());
         }
 
         private void DrawMouseUp(int screenX, int screenY, int seq, double deltaSeconds)
@@ -1655,12 +1704,8 @@ namespace FlowMy.Views.Overlays
 
         private (int X, int Y) GetActionCoords(int screenX, int screenY)
         {
-            if (_executionMode == MacroExecutionMode.TargetApp && _targetHwnd != IntPtr.Zero)
-            {
-                var pt = new POINT { X = screenX, Y = screenY };
-                ScreenToClient(_targetHwnd, ref pt);
-                return (pt.X, pt.Y);
-            }
+            // Always store screen coordinates in MacroAction.
+            // The executor is responsible for converting to client coords at playback time.
             return (screenX, screenY);
         }
     }
