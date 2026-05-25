@@ -174,6 +174,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
+                // Track mouse button states for correct WM_MOUSEMOVE params
+                bool isLeftDown = false;
+                bool isRightDown = false;
+
                 for (int cycle = 0; cycle < cycles; cycle++)
                 {
                     env.CancellationToken.ThrowIfCancellationRequested();
@@ -236,14 +240,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 if (isTargetApp)
                                 {
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
+                                    var target = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(target.ClientX, target.ClientY);
                                     uint msgDown = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
                                     uint msgUp   = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP   : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
                                     int mk = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgDown, (IntPtr)mk, lParam);
+                                    
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, msgDown, (IntPtr)mk, lParam);
                                     await Task.Delay(50);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgUp, IntPtr.Zero, lParam);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, msgUp, IntPtr.Zero, lParam);
                                 }
                                 else
                                 {
@@ -281,11 +287,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
+                                    if (action.Button == "Left") isLeftDown = true;
+                                    else if (action.Button == "Right") isRightDown = true;
+
+                                    var target = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(target.ClientX, target.ClientY);
                                     uint msgDown = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
-                                    int mk = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgDown, (IntPtr)mk, lParam);
+                                    
+                                    int mk = 0;
+                                    if (isLeftDown) mk |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                                    if (isRightDown) mk |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
+
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk, lParam);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, msgDown, (IntPtr)mk, lParam);
                                 }
                                 else
                                 {
@@ -315,10 +329,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
+                                    if (action.Button == "Left") isLeftDown = false;
+                                    else if (action.Button == "Right") isRightDown = false;
+
+                                    var target = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(target.ClientX, target.ClientY);
                                     uint msgUp = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgUp, IntPtr.Zero, lParam);
+                                    
+                                    int mk = 0;
+                                    if (isLeftDown) mk |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                                    if (isRightDown) mk |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
+
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk, lParam);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, msgUp, (IntPtr)mk, lParam);
                                 }
                                 else
                                 {
@@ -353,12 +376,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     if (isTargetApp)
                                     {
                                         System.Diagnostics.Debug.WriteLine($"[MacroExecutor] PostMessage KeyPress: '{action.Key}' to HWND 0x{targetHwnd:X}");
-                                        // Mặc dù gửi phím background là khả thi, nếu app chặn thì sẽ không nhận.
-                                        // Demo MVP chỉ gửi text character (A-Z) đơn giản hoặc cần parser phức tạp cho VirtualKeys.
-                                        // Để an toàn, chúng ta lợi dụng KeyboardInputService bằng cách SetForegroundWindow tạm thời
-                                        // vì SendInput bắt buộc foreground. Tuy nhiên, gửi chuỗi tin nhắn WM_KEYDOWN ngầm cũng được.
-                                        // Phương án tốt nhất: nếu user chọn Targeted App, SendInput + ForegroundFocus sẽ cướp màn hình.
-                                        // Nên ta sử dụng SendMessage WM_KEYDOWN -> WM_CHAR -> WM_KEYUP ngầm nhé.
+                                        // Send text characters to the root window (or deepest child if we prefer, but root usually routes it if focused).
+                                        // However, background inputs rarely route keyboard messages from child to parent automatically.
+                                        // Let's send keys to the root window first. If we wanted, we could send it to child.
                                         if (action.Key.Length == 1)
                                         {
                                             char c = action.Key[0];
@@ -406,8 +426,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             case "MouseMove":
                                 if (isTargetApp)
                                 {
-                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
-                                    FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
+                                    var target = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(target.ClientX, target.ClientY);
+                                    int mk = 0;
+                                    if (isLeftDown) mk |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                                    if (isRightDown) mk |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
+                                    
+                                    FlowMy.Helpers.WindowHelper.PostMessage(target.Hwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk, lParam);
                                 }
                                 else
                                 {

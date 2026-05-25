@@ -60,6 +60,12 @@ namespace FlowMy.Helpers
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll")]
+        public static extern IntPtr ChildWindowFromPointEx(IntPtr hwndParent, POINT pt, uint uFlags);
+
+        [DllImport("user32.dll")]
+        public static extern int MapWindowPoints(IntPtr hWndFrom, IntPtr hWndTo, ref POINT lpPoints, uint cPoints);
+
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT
         {
@@ -85,6 +91,29 @@ namespace FlowMy.Helpers
         public static IntPtr MakeLParam(int loWord, int hiWord)
         {
             return (IntPtr)((hiWord << 16) | (loWord & 0xFFFF));
+        }
+
+        public static (IntPtr Hwnd, int ClientX, int ClientY) GetDeepestChildFromPoint(IntPtr hWndParent, int x, int y)
+        {
+            IntPtr current = hWndParent;
+            POINT pt = new POINT { X = x, Y = y };
+            
+            // CWP_SKIPINVISIBLE = 0x0001
+            // CWP_SKIPDISABLED = 0x0002
+            // CWP_SKIPTRANSPARENT = 0x0004
+            uint flags = 0x0001 | 0x0002 | 0x0004;
+
+            while (true)
+            {
+                IntPtr child = ChildWindowFromPointEx(current, pt, flags);
+                if (child == IntPtr.Zero || child == current)
+                    break;
+
+                MapWindowPoints(current, child, ref pt, 1);
+                current = child;
+            }
+
+            return (current, pt.X, pt.Y);
         }
 
         public static List<WindowInfo> GetActiveWindows()
@@ -127,6 +156,13 @@ namespace FlowMy.Helpers
             }, IntPtr.Zero);
 
             return windows.OrderBy(w => w.ProcessName).ThenBy(w => w.Title).ToList();
+        }
+
+        public static void BringToFront(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            ShowWindow(hwnd, SW_RESTORE);
+            SetForegroundWindow(hwnd);
         }
 
         public static void BringToFront(Window window)

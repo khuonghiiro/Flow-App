@@ -62,6 +62,12 @@ namespace FlowMy.Views.Overlays
             var targetProcess = _viewModel.SelectedTargetWindow?.ProcessName ?? "";
             var targetTitle = _viewModel.SelectedTargetWindow?.Title ?? "";
 
+            // Bring target app to front if in App Targeted mode
+            if (executionMode == MacroExecutionMode.TargetApp && _viewModel.SelectedTargetWindow != null)
+            {
+                FlowMy.Helpers.WindowHelper.BringToFront(_viewModel.SelectedTargetWindow.Handle);
+            }
+
             // 2. Create overlay
             var overlay = new MacroRecorderOverlay(_viewModel.ShowMouseTrail, executionMode, targetProcess, targetTitle);
 
