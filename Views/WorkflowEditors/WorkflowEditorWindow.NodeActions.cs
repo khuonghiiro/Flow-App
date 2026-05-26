@@ -709,8 +709,19 @@ namespace FlowMy.Views
             // 5) Type-specific clone - copy ALL properties exactly
             if (source is ScreenPositionPickerNode srcPos && node is ScreenPositionPickerNode dstPos)
             {
-                dstPos.HasPosition = srcPos.HasPosition;
-                dstPos.SelectedPosition = srcPos.SelectedPosition;
+                dstPos.HasPosition       = srcPos.HasPosition;
+                dstPos.SelectedPosition  = srcPos.SelectedPosition;
+                dstPos.CoordSourceNodeId    = srcPos.CoordSourceNodeId;
+                dstPos.CoordSourceOutputKey = srcPos.CoordSourceOutputKey;
+                dstPos.MouseAction       = srcPos.MouseAction;
+                dstPos.ClickCount        = srcPos.ClickCount;
+                dstPos.HoldDurationMs    = srcPos.HoldDurationMs;
+                dstPos.ScrollCount       = srcPos.ScrollCount;
+                dstPos.ScrollIntervalMs  = srcPos.ScrollIntervalMs;
+                dstPos.TitleDisplayMode  = srcPos.TitleDisplayMode;
+                dstPos.TitleColorMode    = srcPos.TitleColorMode;
+                dstPos.TitleColorKey     = srcPos.TitleColorKey;
+                dstPos.NotifyTitleChanged();
             }
 
             if (source is ScreenCaptureNode srcCap && node is ScreenCaptureNode dstCap)

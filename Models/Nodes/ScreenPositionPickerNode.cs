@@ -1,20 +1,46 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 
 namespace FlowMy.Models
 {
     /// <summary>
-    /// Model cho Screen Position Picker Node - node đặc biệt để chọn vị trí trên màn hình
+    /// Hành động chuột sẽ thực hiện tại vị trí đã chọn.
+    /// </summary>
+    public enum ScreenPositionMouseAction
+    {
+        None,
+        LeftClick,
+        RightClick,
+        ScrollUp,
+        ScrollDown
+    }
+
+    /// <summary>
+    /// Model cho Screen Position Picker Node — chọn vị trí màn hình và tuỳ chọn thực hiện thao tác chuột.
     /// </summary>
     public class ScreenPositionPickerNode : WorkflowNode
     {
         private Point _selectedPosition;
         private bool _hasPosition;
 
-        /// <summary>
-        /// Vị trí đã chọn trên màn hình (tọa độ tuyệt đối)
-        /// </summary>
+        // ── Combobox input toạ độ từ node khác ──
+        private string? _coordSourceNodeId;
+        private string? _coordSourceOutputKey;
+
+        // ── Hành động chuột ──
+        private ScreenPositionMouseAction _mouseAction = ScreenPositionMouseAction.None;
+
+        // ── Left / Right click ──
+        private int _clickCount = 1;
+        private int _holdDurationMs = 1;
+
+        // ── Scroll ──
+        private int _scrollCount = 1;
+        private int _scrollIntervalMs = 1000;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Vị trí đã chọn thủ công
+        // ─────────────────────────────────────────────────────────────────────
+
         public Point SelectedPosition
         {
             get => _selectedPosition;
@@ -28,9 +54,6 @@ namespace FlowMy.Models
             }
         }
 
-        /// <summary>
-        /// Kiểm tra xem đã chọn vị trí chưa
-        /// </summary>
         public bool HasPosition
         {
             get => _hasPosition;
@@ -43,12 +66,67 @@ namespace FlowMy.Models
             }
         }
 
-        /// <summary>
-        /// Text hiển thị tọa độ (X: 123, Y: 456)
-        /// </summary>
         public string PositionText => _hasPosition
             ? $"X: {(int)_selectedPosition.X}, Y: {(int)_selectedPosition.Y}"
             : "Chưa chọn vị trí";
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Nguồn toạ độ từ node khác (ưu tiên hơn SelectedPosition khi chạy)
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>Node Id cung cấp toạ độ (x, y hoặc position).</summary>
+        public string? CoordSourceNodeId
+        {
+            get => _coordSourceNodeId;
+            set { if (_coordSourceNodeId != value) { _coordSourceNodeId = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Output key của node nguồn (x / y / position).</summary>
+        public string? CoordSourceOutputKey
+        {
+            get => _coordSourceOutputKey;
+            set { if (_coordSourceOutputKey != value) { _coordSourceOutputKey = value; OnPropertyChanged(); } }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Hành động chuột
+        // ─────────────────────────────────────────────────────────────────────
+
+        public ScreenPositionMouseAction MouseAction
+        {
+            get => _mouseAction;
+            set { if (_mouseAction != value) { _mouseAction = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Số lần nhấn (áp dụng cho LeftClick / RightClick).</summary>
+        public int ClickCount
+        {
+            get => _clickCount;
+            set { if (_clickCount != value) { _clickCount = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Thời gian giữ chuột trước khi nhả (ms).</summary>
+        public int HoldDurationMs
+        {
+            get => _holdDurationMs;
+            set { if (_holdDurationMs != value) { _holdDurationMs = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Số lần lăn scroll.</summary>
+        public int ScrollCount
+        {
+            get => _scrollCount;
+            set { if (_scrollCount != value) { _scrollCount = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Khoảng cách giữa mỗi lần lăn (ms).</summary>
+        public int ScrollIntervalMs
+        {
+            get => _scrollIntervalMs;
+            set { if (_scrollIntervalMs != value) { _scrollIntervalMs = value; OnPropertyChanged(); } }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
 
         public ScreenPositionPickerNode()
         {

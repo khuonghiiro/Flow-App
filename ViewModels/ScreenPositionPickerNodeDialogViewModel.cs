@@ -1,0 +1,159 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using FlowMy.Models;
+using FlowMy.Services.Interaction;
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+
+namespace FlowMy.ViewModels
+{
+    /// <summary>Option cho combobox hành động chuột.</summary>
+    public sealed class MouseActionOption
+    {
+        public ScreenPositionMouseAction Value { get; }
+        public string DisplayName { get; }
+        public MouseActionOption(ScreenPositionMouseAction value, string displayName)
+        {
+            Value = value;
+            DisplayName = displayName;
+        }
+    }
+
+    public partial class ScreenPositionPickerNodeDialogViewModel : BaseNodeDialogViewModel
+    {
+        private readonly ScreenPositionPickerNode _node;
+
+        // ── Toạ độ nguồn từ node khác ──
+        [ObservableProperty] private string? _coordSourceNodeId;
+        [ObservableProperty] private string? _coordSourceOutputKey;
+
+        // ── Hành động chuột ──
+        [ObservableProperty] private ScreenPositionMouseAction _mouseAction;
+
+        // ── Click ──
+        [ObservableProperty] private int _clickCount = 1;
+        [ObservableProperty] private int _holdDurationMs = 1;
+
+        // ── Scroll ──
+        [ObservableProperty] private int _scrollCount = 1;
+        [ObservableProperty] private int _scrollIntervalMs = 1000;
+
+        // ── Visibility flags ──
+        [ObservableProperty] private bool _isClickAction;
+        [ObservableProperty] private bool _isScrollAction;
+
+        // ── Collections ──
+        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
+        public ObservableCollection<WorkflowOutputKeyOption> AvailableOutputKeyOptions { get; } = new();
+
+        public ObservableCollection<MouseActionOption> MouseActionOptions { get; } = new()
+        {
+            new MouseActionOption(ScreenPositionMouseAction.None,        "Không xử lý"),
+            new MouseActionOption(ScreenPositionMouseAction.LeftClick,   "Chuột trái"),
+            new MouseActionOption(ScreenPositionMouseAction.RightClick,  "Chuột phải"),
+            new MouseActionOption(ScreenPositionMouseAction.ScrollUp,    "Scroll lên (top)"),
+            new MouseActionOption(ScreenPositionMouseAction.ScrollDown,  "Scroll xuống (bottom)"),
+        };
+
+        public ScreenPositionPickerNodeDialogViewModel(ScreenPositionPickerNode node, IWorkflowEditorHost host)
+            : base(node, host)
+        {
+            _node = node ?? throw new ArgumentNullException(nameof(node));
+
+            // Sync từ node → VM
+            CoordSourceNodeId    = node.CoordSourceNodeId;
+            CoordSourceOutputKey = node.CoordSourceOutputKey;
+            MouseAction          = node.MouseAction;
+            ClickCount           = node.ClickCount;
+            HoldDurationMs       = node.HoldDurationMs;
+            ScrollCount          = node.ScrollCount;
+            ScrollIntervalMs     = node.ScrollIntervalMs;
+
+            UpdateActionFlags();
+            RefreshAvailableNodes();
+            RefreshOutputKeyOptions();
+        }
+
+        protected override string GetDefaultTitle() => "Screen Position";
+
+        // ── Partial callbacks (CommunityToolkit.Mvvm) ──
+
+        partial void OnMouseActionChanged(ScreenPositionMouseAction value)
+        {
+            UpdateActionFlags();
+        }
+
+        partial void OnCoordSourceNodeIdChanged(string? value)
+        {
+            RefreshOutputKeyOptions();
+        }
+
+        // ── Helpers ──
+
+        private void UpdateActionFlags()
+        {
+            IsClickAction  = MouseAction == ScreenPositionMouseAction.LeftClick
+                          || MouseAction == ScreenPositionMouseAction.RightClick;
+            IsScrollAction = MouseAction == ScreenPositionMouseAction.ScrollUp
+                          || MouseAction == ScreenPositionMouseAction.ScrollDown;
+        }
+
+        private void RefreshAvailableNodes()
+        {
+            AvailableNodeOptions.Clear();
+            if (_host.ViewModel?.Nodes == null) return;
+
+            foreach (var n in _host.ViewModel.Nodes)
+            {
+                if (ReferenceEquals(n, _node)) continue;
+                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                AvailableNodeOptions.Add(CreateDataSourceOption(n));
+            }
+        }
+
+        private void RefreshOutputKeyOptions()
+        {
+            AvailableOutputKeyOptions.Clear();
+            if (string.IsNullOrWhiteSpace(CoordSourceNodeId) || _host.ViewModel?.Nodes == null) return;
+
+            var src = _host.ViewModel.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, CoordSourceNodeId, StringComparison.OrdinalIgnoreCase));
+            if (src?.DynamicOutputs == null) return;
+
+            foreach (var o in src.DynamicOutputs)
+            {
+                var key = o.Key ?? string.Empty;
+                AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
+                {
+                    Key = key,
+                    DisplayName = o.DisplayName ?? key,
+                    Type = o.OutputType ?? o.ConvertType
+                });
+            }
+        }
+
+        protected override void OnSaveTitle()
+        {
+            bool needSync = false;
+
+            void Sync<T>(ref T field, T value, Action<T> setter) where T : IEquatable<T>
+            {
+                if (!field.Equals(value)) { setter(value); needSync = true; }
+            }
+
+            _node.CoordSourceNodeId    = CoordSourceNodeId;
+            _node.CoordSourceOutputKey = CoordSourceOutputKey;
+
+            if (_node.MouseAction != MouseAction)    { _node.MouseAction    = MouseAction;    needSync = true; }
+            if (_node.ClickCount  != ClickCount)     { _node.ClickCount     = ClickCount;     needSync = true; }
+            if (_node.HoldDurationMs != HoldDurationMs) { _node.HoldDurationMs = HoldDurationMs; needSync = true; }
+            if (_node.ScrollCount != ScrollCount)    { _node.ScrollCount    = ScrollCount;    needSync = true; }
+            if (_node.ScrollIntervalMs != ScrollIntervalMs) { _node.ScrollIntervalMs = ScrollIntervalMs; needSync = true; }
+
+            if (needSync)
+                _host.RequestSyncDataPanels(immediate: true);
+
+            _node.NotifyTitleChanged();
+        }
+    }
+}

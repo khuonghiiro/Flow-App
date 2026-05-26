@@ -1003,6 +1003,21 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
             if (properties.TryGetValue("HasPosition", out var hp))
                 pos.HasPosition = bool.Parse(hp.ToString()!);
+            if (properties.TryGetValue("CoordSourceNodeId", out var csni))
+                pos.CoordSourceNodeId = csni?.ToString();
+            if (properties.TryGetValue("CoordSourceOutputKey", out var csok))
+                pos.CoordSourceOutputKey = csok?.ToString();
+            if (properties.TryGetValue("MouseAction", out var ma) &&
+                Enum.TryParse<ScreenPositionMouseAction>(ma?.ToString(), out var maVal))
+                pos.MouseAction = maVal;
+            if (properties.TryGetValue("ClickCount", out var cc) && int.TryParse(cc?.ToString(), out var ccVal))
+                pos.ClickCount = ccVal;
+            if (properties.TryGetValue("HoldDurationMs", out var hd) && int.TryParse(hd?.ToString(), out var hdVal))
+                pos.HoldDurationMs = hdVal;
+            if (properties.TryGetValue("ScrollCount", out var sc) && int.TryParse(sc?.ToString(), out var scVal))
+                pos.ScrollCount = scVal;
+            if (properties.TryGetValue("ScrollIntervalMs", out var si) && int.TryParse(si?.ToString(), out var siVal))
+                pos.ScrollIntervalMs = siVal;
         }
         else if (node is ScreenCaptureNode cap)
         {
@@ -4259,6 +4274,15 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["X_Pos"] = pos.SelectedPosition.X;
             dict["Y_Pos"] = pos.SelectedPosition.Y;
             dict["HasPosition"] = pos.HasPosition;
+            if (!string.IsNullOrEmpty(pos.CoordSourceNodeId))
+                dict["CoordSourceNodeId"] = pos.CoordSourceNodeId;
+            if (!string.IsNullOrEmpty(pos.CoordSourceOutputKey))
+                dict["CoordSourceOutputKey"] = pos.CoordSourceOutputKey;
+            dict["MouseAction"]     = pos.MouseAction.ToString();
+            dict["ClickCount"]      = pos.ClickCount;
+            dict["HoldDurationMs"]  = pos.HoldDurationMs;
+            dict["ScrollCount"]     = pos.ScrollCount;
+            dict["ScrollIntervalMs"] = pos.ScrollIntervalMs;
         }
         else if (node is ScreenCaptureNode cap)
         {

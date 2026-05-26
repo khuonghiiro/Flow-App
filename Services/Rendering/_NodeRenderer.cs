@@ -181,15 +181,7 @@ namespace FlowMy.Services.Rendering
 
             if (node is ScreenPositionPickerNode screenNode)
             {
-                node.Border = _screenPositionNodeRenderer.CreateBorder(screenNode);
-                NodeChrome.Apply(node.Border, node, _host);
-                AttachNodeBorderHandlers(node.Border, node);
-                node.Border.ContextMenu = _host.CreateNodeContextMenu(node);
-                Canvas.SetLeft(node.Border, node.X);
-                Canvas.SetTop(node.Border, node.Y);
-                canvas.Children.Add(node.Border);
-                _host.ZIndexManager.InitializeNodeZIndex(node, node.Border);
-                RenderNodePorts(node, canvas);
+                _screenPositionNodeRenderer.RenderNode(screenNode, canvas);
                 return;
             }
 
