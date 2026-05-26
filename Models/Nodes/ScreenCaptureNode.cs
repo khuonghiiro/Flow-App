@@ -41,7 +41,7 @@ namespace FlowMy.Models.Nodes
         private string _imagePath = string.Empty;
 
         // ── Kích thước node ──────────────────────────────────────────────────
-        private bool _useNativeWidth = true;   // true = theo kích thước ảnh gốc (không giới hạn)
+        private bool _useNativeWidth = false;   // true = theo kích thước ảnh gốc (không giới hạn)
         private double _maxNodeWidth = 500;    // giới hạn width khi UseNativeWidth = false
 
         // ── SkipOutputs (giống ImageProcessingNode) ──────────────────────────

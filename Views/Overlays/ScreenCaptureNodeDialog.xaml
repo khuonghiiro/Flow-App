@@ -127,7 +127,7 @@
                                 <TextBlock Text="Input — Toạ độ &amp; Kích thước vùng chụp:"
                                            Foreground="{DynamicResource TextBrush}"
                                            FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <Grid Margin="0,0,0,16">
+                                <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
@@ -149,6 +149,41 @@
                                                   IsSynchronizedWithCurrentItem="False"/>
                                     </StackPanel>
                                 </Grid>
+
+                                <!-- Hint format value toạ độ -->
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4">
+                                            <Run Text="💡 Format value key toạ độ được hỗ trợ:"/>
+                                        </TextBlock>
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap">
+                                            <Run Text="• "/>
+                                            <Run Text="x,y,w,h" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                            <Run Text=" — ví dụ: "/>
+                                            <Run Text="100,200,640,480" FontFamily="Consolas"/>
+                                            <Run Text=" (đầy đủ nhất)"/>
+                                        </TextBlock>
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap">
+                                            <Run Text="• "/>
+                                            <Run Text="(x, y, w, h)" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                            <Run Text=" — có ngoặc, dấu phẩy hoặc khoảng trắng"/>
+                                        </TextBlock>
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap">
+                                            <Run Text="• "/>
+                                            <Run Text="x,y" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                            <Run Text=" — chỉ vị trí, dùng Width/Height đã lưu trong node"/>
+                                        </TextBlock>
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0">
+                                            <Run Text="→ Key gợi ý: "/>
+                                            <Run Text="captureRect" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}"/>
+                                            <Run Text=" từ node ScreenCapture khác, hoặc "/>
+                                            <Run Text="position" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}"/>
+                                            <Run Text=" từ ScreenPositionPicker."/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
 
                             </StackPanel>
 

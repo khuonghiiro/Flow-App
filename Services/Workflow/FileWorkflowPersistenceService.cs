@@ -1039,6 +1039,55 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                     cap.CapturedImage = restored;
                 }
             }
+
+            // Chế độ hoạt động
+            if (properties.TryGetValue("CaptureMode", out var cmObj) &&
+                Enum.TryParse<ScreenCaptureMode>(cmObj?.ToString(), out var cm))
+                cap.CaptureMode = cm;
+
+            // Input node — toạ độ
+            if (properties.TryGetValue("CoordSourceNodeId", out var csnId))
+                cap.CoordSourceNodeId = csnId?.ToString();
+            if (properties.TryGetValue("CoordSourceOutputKey", out var csnKey))
+                cap.CoordSourceOutputKey = csnKey?.ToString();
+
+            // Input node — Path/URL
+            if (properties.TryGetValue("PathSourceNodeId", out var psnId))
+                cap.PathSourceNodeId = psnId?.ToString();
+            if (properties.TryGetValue("PathSourceOutputKey", out var psnKey))
+                cap.PathSourceOutputKey = psnKey?.ToString();
+
+            // Path/URL nhập tay
+            if (properties.TryGetValue("ImagePath", out var ipObj))
+                cap.ImagePath = ipObj?.ToString() ?? string.Empty;
+
+            // Kích thước node
+            if (properties.TryGetValue("UseNativeWidth", out var unwObj) &&
+                bool.TryParse(unwObj?.ToString(), out var unw))
+                cap.UseNativeWidth = unw;
+            if (properties.TryGetValue("MaxNodeWidth", out var mnwObj) &&
+                double.TryParse(mnwObj?.ToString(), System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var mnw))
+                cap.MaxNodeWidth = mnw;
+
+            // SkipOutputs
+            if (properties.TryGetValue("SkipOutputs", out var soObj) && soObj != null)
+            {
+                try
+                {
+                    string? json = soObj is string s ? s
+                        : soObj is System.Text.Json.JsonElement je && je.ValueKind == System.Text.Json.JsonValueKind.String ? je.GetString()
+                        : soObj is System.Text.Json.JsonElement je2 && je2.ValueKind == System.Text.Json.JsonValueKind.Array ? je2.GetRawText()
+                        : null;
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        var list = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<string>>(json);
+                        if (list != null)
+                            cap.SkipOutputs = new System.Collections.Generic.HashSet<string>(list, StringComparer.OrdinalIgnoreCase);
+                    }
+                }
+                catch { /* best-effort */ }
+            }
         }
         else if (node is LoopBodyNode loopBody)
         {
@@ -4293,9 +4342,34 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
 
             var b64 = TryEncodeBitmapSourceToPngBase64(cap.CapturedImage);
             if (!string.IsNullOrWhiteSpace(b64))
-            {
                 dict["CapturedImageBase64"] = b64;
-            }
+
+            // Chế độ hoạt động
+            dict["CaptureMode"] = cap.CaptureMode.ToString();
+
+            // Input node — toạ độ
+            if (!string.IsNullOrWhiteSpace(cap.CoordSourceNodeId))
+                dict["CoordSourceNodeId"] = cap.CoordSourceNodeId;
+            if (!string.IsNullOrWhiteSpace(cap.CoordSourceOutputKey))
+                dict["CoordSourceOutputKey"] = cap.CoordSourceOutputKey;
+
+            // Input node — Path/URL
+            if (!string.IsNullOrWhiteSpace(cap.PathSourceNodeId))
+                dict["PathSourceNodeId"] = cap.PathSourceNodeId;
+            if (!string.IsNullOrWhiteSpace(cap.PathSourceOutputKey))
+                dict["PathSourceOutputKey"] = cap.PathSourceOutputKey;
+
+            // Path/URL nhập tay
+            if (!string.IsNullOrWhiteSpace(cap.ImagePath))
+                dict["ImagePath"] = cap.ImagePath;
+
+            // Kích thước node
+            dict["UseNativeWidth"] = cap.UseNativeWidth;
+            dict["MaxNodeWidth"]   = cap.MaxNodeWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            // SkipOutputs
+            if (cap.SkipOutputs != null && cap.SkipOutputs.Count > 0)
+                dict["SkipOutputs"] = System.Text.Json.JsonSerializer.Serialize(cap.SkipOutputs.ToList());
         }
         else if (node is LoopBodyNode loopBody)
         {

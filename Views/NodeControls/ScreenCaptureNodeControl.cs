@@ -400,41 +400,17 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        // ── Helper: dialog xem ảnh full size (chỉ mở bằng click trái) ──────
+        // ── Helper: popup xem ảnh full size với zoom/pan (giống MediaGalleryNodeControl) ──
         private static void ShowImagePreviewDialog(ScreenCaptureNode node, Window ownerWindow)
         {
             if (node.CapturedImage == null) return;
 
-            double maxW = Math.Min(node.CaptureWidth,  1200);
-            double maxH = Math.Min(node.CaptureHeight, 800);
-            maxW = Math.Max(maxW, 200);
-            maxH = Math.Max(maxH, 150);
-
-            var imgControl = new Image
+            var bitmap = node.CapturedImage;
+            var w = new Window
             {
-                Source  = node.CapturedImage,
-                Stretch = Stretch.Uniform,
-                Margin  = new Thickness(8)
-            };
-
-            var infoBar = new TextBlock
-            {
-                Text                = $"{node.CaptureWidth} × {node.CaptureHeight} px  |  ({node.CaptureX}, {node.CaptureY})",
-                FontSize            = 12,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin              = new Thickness(0, 0, 0, 8)
-            };
-            infoBar.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
-
-            var stack = new StackPanel();
-            stack.Children.Add(imgControl);
-            stack.Children.Add(infoBar);
-
-            var viewer = new Window
-            {
-                Title                 = $"Preview – {node.Title}",
-                Width                 = maxW + 32,
-                Height                = maxH + 80,
+                Title                 = $"Preview – {node.Title}  ({node.CaptureWidth} × {node.CaptureHeight} px)",
+                Width                 = Math.Min(Math.Max(bitmap.PixelWidth + 32, 300), 1400),
+                Height                = Math.Min(Math.Max(bitmap.PixelHeight + 80, 200), 900),
                 MinWidth              = 200,
                 MinHeight             = 150,
                 Owner                 = ownerWindow,
@@ -442,10 +418,122 @@ namespace FlowMy.Views.NodeControls
                 WindowStyle           = WindowStyle.ToolWindow,
                 ResizeMode            = ResizeMode.CanResize,
                 ShowInTaskbar         = false,
-                Content               = stack
+                Background            = new SolidColorBrush(Color.FromRgb(0x1E, 0x29, 0x3B))
             };
-            viewer.SetResourceReference(Window.BackgroundProperty, "WindowBackgroundBrush");
-            viewer.ShowDialog();
+
+            var imgControl = new Image
+            {
+                Source              = bitmap,
+                Stretch             = Stretch.None,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment   = VerticalAlignment.Top,
+                Width               = bitmap.PixelWidth,
+                Height              = bitmap.PixelHeight
+            };
+            RenderOptions.SetBitmapScalingMode(imgControl, BitmapScalingMode.HighQuality);
+
+            var scale = new ScaleTransform(1.0, 1.0);
+            imgControl.LayoutTransform = scale;
+
+            var infoBar = new TextBlock
+            {
+                Text                = $"{node.CaptureWidth} × {node.CaptureHeight} px  |  ({node.CaptureX}, {node.CaptureY})",
+                FontSize            = 11,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin              = new Thickness(0, 4, 0, 4),
+                Foreground          = Brushes.White,
+                Opacity             = 0.8
+            };
+            //infoBar.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+
+            var contentGrid = new Grid();
+            contentGrid.Children.Add(imgControl);
+
+            var scrollViewer = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility   = ScrollBarVisibility.Auto,
+                Padding                       = new Thickness(8),
+                Content                       = contentGrid,
+                Focusable                     = true
+            };
+            RenderOptions.SetBitmapScalingMode(scrollViewer, BitmapScalingMode.HighQuality);
+
+            var rootStack = new DockPanel();
+            DockPanel.SetDock(infoBar, Dock.Bottom);
+            rootStack.Children.Add(infoBar);
+            rootStack.Children.Add(scrollViewer);
+            w.Content = rootStack;
+
+            // Fit ảnh vào cửa sổ khi mở
+            w.Loaded += (_, _) =>
+            {
+                double availW = scrollViewer.ActualWidth  - 16;
+                double availH = scrollViewer.ActualHeight - 16;
+                if (availW <= 0 || availH <= 0) return;
+                double sx = availW  / bitmap.PixelWidth;
+                double sy = availH / bitmap.PixelHeight;
+                double initial = Math.Min(sx, sy);
+                if (initial > 1.0) initial = 1.0;
+                scale.ScaleX = initial;
+                scale.ScaleY = initial;
+            };
+
+            // Zoom bằng Ctrl+Scroll hoặc Scroll thường
+            scrollViewer.PreviewMouseWheel += (s, e) =>
+            {
+                e.Handled = true;
+                var pos      = e.GetPosition(scrollViewer);
+                var oldScale = scale.ScaleX;
+                double factor = e.Delta > 0 ? 1.12 : 0.89;
+                var newScale = Math.Max(0.02, Math.Min(oldScale * factor, 50.0));
+                if (Math.Abs(newScale - oldScale) < 0.0001) return;
+
+                double relX = 0.5, relY = 0.5;
+                if (scrollViewer.ExtentWidth  > 0) relX = (scrollViewer.HorizontalOffset + pos.X) / scrollViewer.ExtentWidth;
+                if (scrollViewer.ExtentHeight > 0) relY = (scrollViewer.VerticalOffset   + pos.Y) / scrollViewer.ExtentHeight;
+
+                scale.ScaleX = newScale;
+                scale.ScaleY = newScale;
+                scrollViewer.UpdateLayout();
+
+                if (scrollViewer.ExtentWidth  > 0) scrollViewer.ScrollToHorizontalOffset(Math.Max(0, relX * scrollViewer.ExtentWidth  - pos.X));
+                if (scrollViewer.ExtentHeight > 0) scrollViewer.ScrollToVerticalOffset  (Math.Max(0, relY * scrollViewer.ExtentHeight - pos.Y));
+            };
+
+            // Pan bằng giữ chuột trái
+            bool isPanning = false;
+            Point panStart = default;
+            double panOX = 0, panOY = 0;
+
+            scrollViewer.PreviewMouseLeftButtonDown += (s, e) =>
+            {
+                isPanning = true;
+                panStart  = e.GetPosition(scrollViewer);
+                panOX     = scrollViewer.HorizontalOffset;
+                panOY     = scrollViewer.VerticalOffset;
+                scrollViewer.Cursor = Cursors.SizeAll;
+                scrollViewer.CaptureMouse();
+                e.Handled = true;
+            };
+            scrollViewer.PreviewMouseLeftButtonUp += (s, e) =>
+            {
+                if (!isPanning) return;
+                isPanning = false;
+                scrollViewer.Cursor = Cursors.Arrow;
+                scrollViewer.ReleaseMouseCapture();
+                e.Handled = true;
+            };
+            scrollViewer.PreviewMouseMove += (s, e) =>
+            {
+                if (!isPanning) return;
+                var pos = e.GetPosition(scrollViewer);
+                scrollViewer.ScrollToHorizontalOffset(panOX - (pos.X - panStart.X));
+                scrollViewer.ScrollToVerticalOffset  (panOY - (pos.Y - panStart.Y));
+                e.Handled = true;
+            };
+
+            w.ShowDialog();
         }
     }
 }
