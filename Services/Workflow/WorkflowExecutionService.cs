@@ -583,6 +583,7 @@ namespace FlowMy.Services.Workflow
                 new NodeExecutors.FolderFilePathsNodeExecutor(),
                 new NodeExecutors.GitSourceNodeExecutor(),
                 new NodeExecutors.MacroRecorderNodeExecutor(),
+                new NodeExecutors.ScreenPositionPickerNodeExecutor(),
                 new NodeExecutors.DefaultNodeExecutor()
             };
         }
