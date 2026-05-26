@@ -182,6 +182,10 @@ namespace FlowMy.Services.Rendering
             // Screen Capture
             if (node is ScreenCaptureNode cap)
             {
+                // Kiểm tra SkipOutputs: key bị unchecked trong dialog → trả về "—" (không output)
+                if (cap.SkipOutputs != null && cap.SkipOutputs.Contains(key))
+                    return "—";
+
                 var has = cap.CapturedImage != null;
                 var w = has ? cap.CapturedImage!.PixelWidth : cap.CaptureWidth;
                 var h = has ? cap.CapturedImage!.PixelHeight : cap.CaptureHeight;

@@ -27,6 +27,10 @@ namespace FlowMy.ViewModels
         // ── Path / URL nhập tay ──────────────────────────────────────────────
         [ObservableProperty] private string _imagePath = string.Empty;
 
+        // ── Kích thước node ──────────────────────────────────────────────────
+        [ObservableProperty] private bool _useNativeWidth = true;
+        [ObservableProperty] private double _maxNodeWidth = 500;
+
         // ── Danh sách node có thể chọn ──────────────────────────────────────
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -45,6 +49,10 @@ namespace FlowMy.ViewModels
             PathSourceOutputKey = node.PathSourceOutputKey;
 
             ImagePath = node.ImagePath;
+
+            // Kích thước node
+            UseNativeWidth = node.UseNativeWidth;
+            MaxNodeWidth   = node.MaxNodeWidth;
 
             // Load danh sách node
             RefreshAllNodesWithOutputs(AvailableNodeOptions);
@@ -94,6 +102,9 @@ namespace FlowMy.ViewModels
             _scNode.PathSourceOutputKey = string.IsNullOrWhiteSpace(PathSourceOutputKey) ? null : PathSourceOutputKey;
 
             _scNode.ImagePath = ImagePath ?? string.Empty;
+
+            _scNode.UseNativeWidth = UseNativeWidth;
+            _scNode.MaxNodeWidth   = MaxNodeWidth;
 
             _scNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);

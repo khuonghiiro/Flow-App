@@ -17,7 +17,6 @@ namespace FlowMy.Views.NodeControls
     public static class ScreenCaptureNodeControl
     {
         // ── Giới hạn kích thước node ────────────────────────────────────────
-        private const double MaxNodeDim    = 500;   // chiều dài tối đa (px logical)
         private const double MinNodeW      = 160;   // chiều rộng tối thiểu khi có ảnh
         private const double MinNodeH      = 80;    // chiều cao tối thiểu khi có ảnh
         private const double ImagePadding  = 5;     // khoảng cách ảnh cách viền node
@@ -34,9 +33,12 @@ namespace FlowMy.Views.NodeControls
                 Stretch             = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center,
-                // Margin = padding ảnh cách viền (top/left/right — bottom là button bar)
                 Margin              = new Thickness(ImagePadding)
             };
+            // Fix ảnh mờ: dùng NearestNeighbor để ảnh pixel-perfect khi scale nhỏ,
+            // HighQuality khi scale lớn hơn kích thước gốc
+            RenderOptions.SetBitmapScalingMode(previewImage, BitmapScalingMode.HighQuality);
+            RenderOptions.SetEdgeMode(previewImage, EdgeMode.Aliased);
 
             // Zoom nhẹ khi hover (không resize node)
             previewImage.RenderTransformOrigin = new Point(0.5, 0.5);
@@ -221,19 +223,30 @@ namespace FlowMy.Views.NodeControls
                 double pw = img.PixelWidth;
                 double ph = img.PixelHeight;
 
-                // Tính kích thước node theo tỉ lệ ảnh (chấp nhận cả ảnh nhỏ hơn 100px)
+                // Tính kích thước node theo tỉ lệ ảnh
+                // UseNativeWidth = true  → không giới hạn width, dùng kích thước ảnh gốc
+                // UseNativeWidth = false → giới hạn theo node.MaxNodeWidth
                 double nodeW, nodeH;
+                double maxW = node.UseNativeWidth ? double.MaxValue : Math.Max(node.MaxNodeWidth, MinNodeW);
+
                 if (pw >= ph)
                 {
                     // Landscape: giới hạn width
-                    nodeW = Math.Min(pw, MaxNodeDim);
+                    nodeW = Math.Min(pw, maxW);
                     nodeH = nodeW * ph / pw;
                 }
                 else
                 {
-                    // Portrait: giới hạn height
-                    nodeH = Math.Min(ph, MaxNodeDim);
+                    // Portrait: tính từ height tương ứng với maxW
+                    double maxH = maxW * ph / pw;
+                    nodeH = Math.Min(ph, maxH);
                     nodeW = nodeH * pw / ph;
+                    // Nếu width vẫn vượt maxW (ảnh rất rộng), clamp lại
+                    if (nodeW > maxW)
+                    {
+                        nodeW = maxW;
+                        nodeH = nodeW * ph / pw;
+                    }
                 }
 
                 // Đảm bảo không quá nhỏ để button bar vẫn dùng được
@@ -252,7 +265,9 @@ namespace FlowMy.Views.NodeControls
 
             node.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(ScreenCaptureNode.CapturedImage))
+                if (e.PropertyName == nameof(ScreenCaptureNode.CapturedImage)
+                    || e.PropertyName == nameof(ScreenCaptureNode.UseNativeWidth)
+                    || e.PropertyName == nameof(ScreenCaptureNode.MaxNodeWidth))
                     Application.Current?.Dispatcher.Invoke(UpdateNodeSize);
             };
 

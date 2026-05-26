@@ -40,6 +40,10 @@ namespace FlowMy.Models.Nodes
         // ── Path / URL nhập tay ──────────────────────────────────────────────
         private string _imagePath = string.Empty;
 
+        // ── Kích thước node ──────────────────────────────────────────────────
+        private bool _useNativeWidth = true;   // true = theo kích thước ảnh gốc (không giới hạn)
+        private double _maxNodeWidth = 500;    // giới hạn width khi UseNativeWidth = false
+
         // ── SkipOutputs (giống ImageProcessingNode) ──────────────────────────
         /// <summary>Danh sách output keys bị tắt (unchecked trong dialog).</summary>
         public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -121,6 +125,21 @@ namespace FlowMy.Models.Nodes
         {
             get => _imagePath;
             set { if (_imagePath != value) { _imagePath = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        // ── Kích thước node ──────────────────────────────────────────────────
+        /// <summary>true = node rộng theo kích thước ảnh gốc (không giới hạn); false = giới hạn theo MaxNodeWidth.</summary>
+        public bool UseNativeWidth
+        {
+            get => _useNativeWidth;
+            set { if (_useNativeWidth != value) { _useNativeWidth = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Giới hạn width tối đa của node khi UseNativeWidth = false. Mặc định 500px.</summary>
+        public double MaxNodeWidth
+        {
+            get => _maxNodeWidth;
+            set { if (Math.Abs(_maxNodeWidth - value) > 0.01) { _maxNodeWidth = Math.Max(80, value); OnPropertyChanged(); } }
         }
     }
 }

@@ -213,6 +213,29 @@
 
                             </StackPanel>
 
+                            <!-- ══ KÍCH THƯỚC NODE ══ -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <CheckBox IsChecked="{Binding UseNativeWidth, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,8">
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center">
+                                            <Run Text="Hiển thị theo kích thước ảnh gốc (không giới hạn width)"/>
+                                        </TextBlock>
+                                    </CheckBox>
+                                    <!-- Textbox max-width: chỉ hiện khi unchecked -->
+                                    <StackPanel Visibility="{Binding UseNativeWidth,
+                                                             Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        <TextBlock Text="Max width node (px):"
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding MaxNodeWidth, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0}}"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 Height="32" Width="120" HorizontalAlignment="Left"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
                             <!-- ══ OUTPUTS ══ -->
                             <TextBlock Text="Outputs (Tích là key được output):"
                                        Foreground="{DynamicResource TextBrush}"
