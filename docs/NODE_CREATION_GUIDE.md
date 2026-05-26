@@ -383,9 +383,11 @@ Chỉ khai báo trong `customPropertyHandlers` những gì **đặc thù của n
                         <Button Width="24" Height="24" Content="▶" FontSize="12"
                                 Style="{DynamicResource PrimaryButton}" Cursor="Hand"
                                 Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                                Padding = "0"
                                 Command="{Binding RunSingleNodeCommand}"/>
                         <Button x:Name="CloseButton" Width="24" Height="24"
                                 Style="{DynamicResource DangerButton}"
+                                Padding = "0"
                                 Content="×" FontSize="12" FontWeight="Bold" Cursor="Hand"
                                 Margin="8,0,0,0" Click="CloseButton_Click"/>
                     </StackPanel>
