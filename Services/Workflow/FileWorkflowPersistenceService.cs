@@ -3742,6 +3742,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("CountdownSeconds", out var csObj) &&
                 int.TryParse(csObj?.ToString(), out var cs))
                 macroRecorderNode.CountdownSeconds = Math.Max(0, Math.Min(10, cs));
+            if (properties.TryGetValue("StayOnTargetAfterExecution", out var staeObj) &&
+                bool.TryParse(staeObj?.ToString(), out var stae))
+                macroRecorderNode.StayOnTargetAfterExecution = stae;
             if (properties.TryGetValue("ExecutionMode", out var emObj) &&
                 Enum.TryParse<MacroExecutionMode>(emObj?.ToString(), out var em))
                 macroRecorderNode.ExecutionMode = em;
@@ -5312,6 +5315,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["VisualPlaybackMode"] = macroNode.VisualPlaybackMode.ToString();
             dict["ShowMouseTrail"] = macroNode.ShowMouseTrail;
             dict["CountdownSeconds"] = macroNode.CountdownSeconds;
+            dict["StayOnTargetAfterExecution"] = macroNode.StayOnTargetAfterExecution;
             dict["ExecutionMode"] = macroNode.ExecutionMode.ToString();
             if (!string.IsNullOrEmpty(macroNode.TargetProcessName))
                 dict["TargetProcessName"] = macroNode.TargetProcessName;

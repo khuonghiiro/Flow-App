@@ -22,6 +22,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _selectedVisualPlaybackMode;
         [ObservableProperty] private bool   _showMouseTrail;
         [ObservableProperty] private int    _countdownSeconds;
+        [ObservableProperty] private bool   _stayOnTargetAfterExecution;
 
         // Target App properties
         [ObservableProperty] private string _selectedExecutionMode;
@@ -68,6 +69,7 @@ namespace FlowMy.ViewModels
             _selectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
             _showMouseTrail          = node.ShowMouseTrail;
             _countdownSeconds        = node.CountdownSeconds;
+            _stayOnTargetAfterExecution = node.StayOnTargetAfterExecution;
 
             _selectedExecutionMode   = node.ExecutionMode == MacroExecutionMode.TargetApp ? "Chỉ định Ứng dụng" : "Tự do (Toàn màn hình)";
 
@@ -99,6 +101,8 @@ namespace FlowMy.ViewModels
                         SelectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
                     else if (e.PropertyName == nameof(MacroRecorderNode.ShowMouseTrail))
                         ShowMouseTrail = node.ShowMouseTrail;
+                    else if (e.PropertyName == nameof(MacroRecorderNode.StayOnTargetAfterExecution))
+                        StayOnTargetAfterExecution = node.StayOnTargetAfterExecution;
                     else if (e.PropertyName == nameof(MacroRecorderNode.ExecutionMode))
                         SelectedExecutionMode = node.ExecutionMode == MacroExecutionMode.TargetApp ? "Chỉ định Ứng dụng" : "Tự do (Toàn màn hình)";
                     else if (e.PropertyName == nameof(MacroRecorderNode.TargetProcessName) || e.PropertyName == nameof(MacroRecorderNode.TargetWindowTitle))
@@ -173,6 +177,9 @@ namespace FlowMy.ViewModels
 
             if (_macroRecorderNode.ShowMouseTrail != ShowMouseTrail)
             { _macroRecorderNode.ShowMouseTrail = ShowMouseTrail; needSync = true; }
+
+            if (_macroRecorderNode.StayOnTargetAfterExecution != StayOnTargetAfterExecution)
+            { _macroRecorderNode.StayOnTargetAfterExecution = StayOnTargetAfterExecution; needSync = true; }
 
             if (_macroRecorderNode.CountdownSeconds != CountdownSeconds)
             { _macroRecorderNode.CountdownSeconds = CountdownSeconds; needSync = true; }

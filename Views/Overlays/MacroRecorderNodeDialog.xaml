@@ -225,6 +225,16 @@
                                       Foreground="{DynamicResource TextBrush}"
                                       FontSize="12"
                                       Opacity="0.85"
+                                      Margin="0,0,0,8"
+                                      Cursor="Hand"/>
+
+                            <!-- Checkbox: ở lại màn hình thao tác sau khi chạy xong -->
+                            <CheckBox x:Name="StayOnTargetCheckBox"
+                                      Content="Ở lại màn hình thao tác sau khi chạy xong"
+                                      IsChecked="{Binding StayOnTargetAfterExecution, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="12"
+                                      Opacity="0.85"
                                       Margin="0,0,0,16"
                                       Cursor="Hand"/>
 

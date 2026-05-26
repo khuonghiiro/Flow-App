@@ -47,6 +47,7 @@ namespace FlowMy.Models
         private VisualPlaybackMode _visualPlaybackMode = VisualPlaybackMode.Live;
         private bool _showMouseTrail = false;
         private int _countdownSeconds = 3;
+        private bool _stayOnTargetAfterExecution = true;
 
         public MacroRecorderNode()
         {
@@ -237,6 +238,22 @@ namespace FlowMy.Models
             {
                 if (_showMouseTrail == value) return;
                 _showMouseTrail = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Khi true: sau khi chạy xong macro, giữ nguyên focus ở app đích (không restore FlowMy).
+        /// Khi false: restore FlowMy về foreground như cũ.
+        /// Mặc định: true.
+        /// </summary>
+        public bool StayOnTargetAfterExecution
+        {
+            get => _stayOnTargetAfterExecution;
+            set
+            {
+                if (_stayOnTargetAfterExecution == value) return;
+                _stayOnTargetAfterExecution = value;
                 OnPropertyChanged();
             }
         }

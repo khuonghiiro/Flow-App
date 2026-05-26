@@ -749,8 +749,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }, DispatcherPriority.Normal);
                 }
 
-                // Restore main window sau khi macro xong
-                if (dispatcher != null)
+                // Restore main window sau khi macro xong (chỉ khi StayOnTargetAfterExecution = false)
+                if (dispatcher != null && !macroNode.StayOnTargetAfterExecution)
                 {
                     dispatcher.BeginInvoke(() =>
                     {
