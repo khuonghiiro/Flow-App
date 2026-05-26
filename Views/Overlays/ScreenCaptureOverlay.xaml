@@ -14,20 +14,37 @@
         KeyDown="Window_KeyDown">
 
     <Grid>
-        <!-- Lớp phủ tối nhẹ -->
-        <Rectangle x:Name="DarkOverlay"
-                   Fill="#55000000"
-                   IsHitTestVisible="False"/>
+        <!--
+            Lớp phủ tối kiểu Snipping Tool:
+            Dùng Path với CombinedGeometry để "đục lỗ" vùng chọn.
+            Code-behind sẽ cập nhật _holeGeometry theo vùng kéo.
+        -->
+        <Path x:Name="DimPath"
+              IsHitTestVisible="False"
+              Fill="#88000000">
+            <Path.Data>
+                <CombinedGeometry GeometryCombineMode="Exclude">
+                    <!-- Nền toàn màn hình – code-behind sẽ gán kích thước thực -->
+                    <CombinedGeometry.Geometry1>
+                        <RectangleGeometry x:Name="FullScreenGeometry"/>
+                    </CombinedGeometry.Geometry1>
+                    <!-- Lỗ trống (vùng chọn sáng) – ban đầu rỗng -->
+                    <CombinedGeometry.Geometry2>
+                        <RectangleGeometry x:Name="HoleGeometry"/>
+                    </CombinedGeometry.Geometry2>
+                </CombinedGeometry>
+            </Path.Data>
+        </Path>
 
-        <!-- Canvas khung chọn -->
+        <!-- Viền xanh quanh vùng chọn -->
         <Canvas x:Name="SelectionCanvas">
-            <Rectangle x:Name="SelectionRectangle"
+            <Rectangle x:Name="SelectionBorder"
                        Stroke="#00D4FF"
                        StrokeThickness="2"
-                       StrokeDashArray="6 3"
-                       Fill="#22FFFFFF"
+                       Fill="Transparent"
                        Visibility="Collapsed"/>
 
+            <!-- Info panel: kích thước vùng chọn -->
             <Border x:Name="InfoPanel"
                     Background="#DD111827"
                     BorderBrush="#00D4FF"
@@ -43,7 +60,8 @@
         </Canvas>
 
         <!-- Hướng dẫn -->
-        <Border VerticalAlignment="Top"
+        <Border x:Name="HintPanel"
+                VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 Margin="0,20,0,0"
                 Background="#DD111827"
@@ -60,17 +78,12 @@
             </TextBlock>
         </Border>
 
-        <!-- Custom cursor: crosshair ngắn quanh con trỏ, không kéo dài toàn màn hình -->
+        <!-- Custom cursor: crosshair ngắn quanh con trỏ -->
         <Canvas x:Name="CrosshairCanvas" IsHitTestVisible="False">
-            <!-- Ngang trái -->
-            <Line x:Name="CH_Left"   Stroke="White" StrokeThickness="1.5"/>
-            <!-- Ngang phải -->
-            <Line x:Name="CH_Right"  Stroke="White" StrokeThickness="1.5"/>
-            <!-- Dọc trên -->
-            <Line x:Name="CH_Up"     Stroke="White" StrokeThickness="1.5"/>
-            <!-- Dọc dưới -->
-            <Line x:Name="CH_Down"   Stroke="White" StrokeThickness="1.5"/>
-            <!-- Chấm tâm -->
+            <Line x:Name="CH_Left"  Stroke="White" StrokeThickness="1.5"/>
+            <Line x:Name="CH_Right" Stroke="White" StrokeThickness="1.5"/>
+            <Line x:Name="CH_Up"    Stroke="White" StrokeThickness="1.5"/>
+            <Line x:Name="CH_Down"  Stroke="White" StrokeThickness="1.5"/>
             <Ellipse x:Name="CH_Dot"
                      Width="4" Height="4"
                      Fill="#00D4FF"/>

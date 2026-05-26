@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace FlowMy.Views.Overlays
@@ -20,6 +21,9 @@ namespace FlowMy.Views.Overlays
         private System.Windows.Point _startPoint;
         private bool _isSelecting;
 
+        // Vùng chọn hiện tại (logical px)
+        private double _selX, _selY, _selW, _selH;
+
         // DPI scale so với 96 dpi chuẩn
         private double _dpiScaleX = 1.0;
         private double _dpiScaleY = 1.0;
@@ -30,15 +34,12 @@ namespace FlowMy.Views.Overlays
         public int CaptureHeight { get; private set; }
         public BitmapImage? CapturedImage { get; private set; }
 
-        // P/Invoke để lấy tọa độ window thực tế (physical pixel) từ OS
+        // P/Invoke để lấy tọa độ window thực tế (physical pixel)
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT { public int Left, Top, Right, Bottom; }
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
 
         public ScreenCaptureOverlay()
         {
@@ -49,7 +50,18 @@ namespace FlowMy.Views.Overlays
             Width  = SystemParameters.VirtualScreenWidth;
             Height = SystemParameters.VirtualScreenHeight;
 
-            Loaded += (_, _) => ReadDpiScale();
+            Loaded += OnLoaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            ReadDpiScale();
+
+            // Gán kích thước nền toàn màn hình cho geometry đục lỗ
+            FullScreenGeometry.Rect = new Rect(0, 0, ActualWidth, ActualHeight);
+
+            // Lỗ ban đầu rỗng (Rect.Empty → không đục gì)
+            HoleGeometry.Rect = Rect.Empty;
         }
 
         private void ReadDpiScale()
@@ -77,21 +89,26 @@ namespace FlowMy.Views.Overlays
             Canvas.SetTop(CH_Dot,  cy - 2);
         }
 
+        // ── Cập nhật "lỗ sáng" trên lớp phủ tối ─────────────────────────
+        private void UpdateHole(double x, double y, double w, double h)
+        {
+            HoleGeometry.Rect = w > 0 && h > 0
+                ? new Rect(x, y, w, h)
+                : Rect.Empty;
+        }
+
         // ── Mouse events ──────────────────────────────────────────────────
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed) return;
 
-            _startPoint = e.GetPosition(this);
+            _startPoint  = e.GetPosition(this);
             _isSelecting = true;
 
-            SelectionRectangle.Visibility = Visibility.Visible;
-            InfoPanel.Visibility          = Visibility.Visible;
-
-            Canvas.SetLeft(SelectionRectangle, _startPoint.X);
-            Canvas.SetTop(SelectionRectangle,  _startPoint.Y);
-            SelectionRectangle.Width  = 0;
-            SelectionRectangle.Height = 0;
+            // Reset lỗ và viền
+            HoleGeometry.Rect = Rect.Empty;
+            SelectionBorder.Visibility = Visibility.Collapsed;
+            InfoPanel.Visibility       = Visibility.Collapsed;
         }
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
@@ -101,22 +118,28 @@ namespace FlowMy.Views.Overlays
 
             if (!_isSelecting) return;
 
-            var x = Math.Min(_startPoint.X, p.X);
-            var y = Math.Min(_startPoint.Y, p.Y);
-            var w = Math.Abs(p.X - _startPoint.X);
-            var h = Math.Abs(p.Y - _startPoint.Y);
+            _selX = Math.Min(_startPoint.X, p.X);
+            _selY = Math.Min(_startPoint.Y, p.Y);
+            _selW = Math.Abs(p.X - _startPoint.X);
+            _selH = Math.Abs(p.Y - _startPoint.Y);
 
-            Canvas.SetLeft(SelectionRectangle, x);
-            Canvas.SetTop(SelectionRectangle,  y);
-            SelectionRectangle.Width  = w;
-            SelectionRectangle.Height = h;
+            // Đục lỗ sáng theo vùng đang kéo
+            UpdateHole(_selX, _selY, _selW, _selH);
 
-            InfoText.Text = $"{(int)w} × {(int)h} px";
+            // Cập nhật viền xanh
+            Canvas.SetLeft(SelectionBorder, _selX);
+            Canvas.SetTop(SelectionBorder,  _selY);
+            SelectionBorder.Width  = _selW;
+            SelectionBorder.Height = _selH;
+            SelectionBorder.Visibility = Visibility.Visible;
 
-            double infoTop = y - 34;
-            if (infoTop < 4) infoTop = y + 8;
-            Canvas.SetLeft(InfoPanel, x);
+            // Info panel kích thước
+            InfoText.Text = $"{(int)_selW} × {(int)_selH} px";
+            double infoTop = _selY - 34;
+            if (infoTop < 4) infoTop = _selY + 8;
+            Canvas.SetLeft(InfoPanel, _selX);
             Canvas.SetTop(InfoPanel,  infoTop);
+            InfoPanel.Visibility = Visibility.Visible;
         }
 
         private async void Window_MouseUp(object sender, MouseButtonEventArgs e)
@@ -124,21 +147,16 @@ namespace FlowMy.Views.Overlays
             if (!_isSelecting) return;
             _isSelecting = false;
 
-            var p = e.GetPosition(this);
-            var x = Math.Min(_startPoint.X, p.X);
-            var y = Math.Min(_startPoint.Y, p.Y);
-            var w = Math.Abs(p.X - _startPoint.X);
-            var h = Math.Abs(p.Y - _startPoint.Y);
-
-            if (w < 10 || h < 10)
+            if (_selW < 10 || _selH < 10)
             {
-                SelectionRectangle.Visibility = Visibility.Collapsed;
-                InfoPanel.Visibility          = Visibility.Collapsed;
+                // Vùng quá nhỏ → reset
+                HoleGeometry.Rect          = Rect.Empty;
+                SelectionBorder.Visibility = Visibility.Collapsed;
+                InfoPanel.Visibility       = Visibility.Collapsed;
                 return;
             }
 
             // ── Tính tọa độ physical pixel ────────────────────────────────
-            // Lấy vị trí thực tế của window từ OS (physical pixel, không bị ảnh hưởng bởi DPI quirks)
             var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
             int winPhysLeft = 0, winPhysTop = 0;
             if (GetWindowRect(hwnd, out var wr))
@@ -148,29 +166,29 @@ namespace FlowMy.Views.Overlays
             }
             else
             {
-                // Fallback nếu P/Invoke thất bại
                 winPhysLeft = (int)Math.Round(Left * _dpiScaleX);
                 winPhysTop  = (int)Math.Round(Top  * _dpiScaleY);
             }
 
-            int physX = winPhysLeft + (int)Math.Round(x * _dpiScaleX);
-            int physY = winPhysTop  + (int)Math.Round(y * _dpiScaleY);
-            int physW = (int)Math.Round(w * _dpiScaleX);
-            int physH = (int)Math.Round(h * _dpiScaleY);
+            int physX = winPhysLeft + (int)Math.Round(_selX * _dpiScaleX);
+            int physY = winPhysTop  + (int)Math.Round(_selY * _dpiScaleY);
+            int physW = (int)Math.Round(_selW * _dpiScaleX);
+            int physH = (int)Math.Round(_selH * _dpiScaleY);
 
             // Lưu tọa độ logical để node hiển thị
-            CaptureX      = (int)Math.Round(x + Left);
-            CaptureY      = (int)Math.Round(y + Top);
-            CaptureWidth  = (int)Math.Round(w);
-            CaptureHeight = (int)Math.Round(h);
+            CaptureX      = (int)Math.Round(_selX + Left);
+            CaptureY      = (int)Math.Round(_selY + Top);
+            CaptureWidth  = (int)Math.Round(_selW);
+            CaptureHeight = (int)Math.Round(_selH);
 
-            // ── Ẩn hoàn toàn window trước khi chụp ───────────────────────
-            // Dùng Opacity=0 thay vì Hide() để window vẫn còn là dialog (DialogResult vẫn set được)
-            // IsHitTestVisible=false để không nhận mouse event trong lúc chờ
-            Opacity = 0;
-            IsHitTestVisible = false;
+            // ── Ẩn toàn bộ overlay trước khi chụp (giống Snipping Tool) ──
+            // Ẩn hết các lớp UI: dim, viền, crosshair, hint
+            DimPath.Visibility        = Visibility.Collapsed;
+            SelectionCanvas.Visibility = Visibility.Collapsed;
+            CrosshairCanvas.Visibility = Visibility.Collapsed;
+            HintPanel.Visibility       = Visibility.Collapsed;
 
-            // Chờ đủ lâu để DWM composite lại màn hình phía sau (2 frame @ 60fps ≈ 33ms, dùng 80ms cho chắc)
+            // Chờ DWM composite lại màn hình thực phía sau (2 frame @ 60fps ≈ 33ms, dùng 80ms cho chắc)
             await Task.Delay(80);
 
             CapturedImage = CaptureScreenRegion(physX, physY, physW, physH);
@@ -194,7 +212,7 @@ namespace FlowMy.Views.Overlays
             if (width <= 0 || height <= 0) return null;
             try
             {
-                using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+                using var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 using var g = Graphics.FromImage(bitmap);
                 g.CopyFromScreen(x, y, 0, 0,
                     new System.Drawing.Size(width, height),
