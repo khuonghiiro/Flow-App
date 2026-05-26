@@ -53,6 +53,15 @@ namespace FlowMy.Views.Overlays
         private double _overlayScreenLeft = 0;
         private double _overlayScreenTop  = 0;
 
+        /// <summary>
+        /// Call BEFORE Show() to tell the overlay it will be positioned over a target
+        /// window (prevents the Loaded handler from going fullscreen).
+        /// </summary>
+        public void PrepareForTargetMode()
+        {
+            _isTargetMode = true;
+        }
+
         // ─── Foreground tracking (TargetApp mode) — poll-based ───────────────────
         private IntPtr _targetHwnd  = IntPtr.Zero;
         private DispatcherTimer? _foregroundTimer;
@@ -96,8 +105,10 @@ namespace FlowMy.Views.Overlays
             };
             Loaded += (_, _) =>
             {
-                // Free mode: go fullscreen
-                WindowState = WindowState.Maximized;
+                // Free mode: go fullscreen; TargetApp mode will be repositioned
+                // after load via PositionOverTargetAfterLoad()
+                if (!_isTargetMode)
+                    WindowState = WindowState.Maximized;
                 DrawingCanvas.Children.Add(_trailPolyline);
                 MakeClickThrough();
                 StartHoverFadeTimer();
@@ -109,9 +120,15 @@ namespace FlowMy.Views.Overlays
         /// Variant of PositionOverTarget that runs on the UI thread and waits for the
         /// window to be loaded so PresentationSource is available for accurate DPI scaling.
         /// Call this after Show() + await WhenLoaded.
-        /// Also starts the foreground-tracking timer.
         /// </summary>
-        public void PositionOverTargetAfterLoad(IntPtr targetHwnd)
+        /// <param name="targetHwnd">HWND of the target application window.</param>
+        /// <param name="alwaysVisible">
+        /// When <c>true</c> (automated playback), the overlay stays visible at all times
+        /// and only repositions to follow the target window move/resize.
+        /// When <c>false</c>, the overlay shows/hides based on whether the target window
+        /// is the foreground window (monitoring mode).
+        /// </param>
+        public void PositionOverTargetAfterLoad(IntPtr targetHwnd, bool alwaysVisible = false)
         {
             if (targetHwnd == IntPtr.Zero) return;
             if (!GetWindowRect(targetHwnd, out RECT r)) return;
@@ -134,7 +151,29 @@ namespace FlowMy.Views.Overlays
             Width  = (r.Right  - r.Left) / scaleX;
             Height = (r.Bottom - r.Top)  / scaleY;
 
-            StartForegroundTimer();
+            if (alwaysVisible)
+                StartRepositionOnlyTimer();   // playback: always show, just follow position
+            else
+                StartForegroundTimer();       // monitoring: show/hide based on foreground
+        }
+
+        /// <summary>
+        /// Used during automated playback — polls the target window's rect every 200 ms
+        /// and repositions the overlay to follow it. The overlay is NEVER hidden.
+        /// </summary>
+        private void StartRepositionOnlyTimer()
+        {
+            _foregroundTimer?.Stop();
+            _foregroundTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            _foregroundTimer.Tick += (_, _) =>
+            {
+                if (_targetHwnd == IntPtr.Zero) return;
+                RefreshPosition();
+                // During playback always stay visible
+                if (!IsVisible) Show();
+            };
+            _foregroundTimer.Start();
+            Closed += (_, _) => _foregroundTimer?.Stop();
         }
 
         /// <summary>

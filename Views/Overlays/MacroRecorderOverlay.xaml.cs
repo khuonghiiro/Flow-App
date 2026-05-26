@@ -238,6 +238,8 @@ namespace FlowMy.Views.Overlays
 
         // Trail polyline
         private Polyline? _trailPolyline;
+        // Track ALL trail polylines so we can fade them all out on stop
+        private readonly List<Polyline> _allTrailPolylines = new();
         private readonly bool _showMouseTrail;
         // Drag trail (separate polyline while dragging, distinct color)
         private Polyline? _dragTrailPolyline;
@@ -965,6 +967,7 @@ namespace FlowMy.Views.Overlays
             _capsLockFirstPressTs = 0;
             _keysCurrentlyHeld.Clear();
             _modifierHoldStart.Clear();
+            _allTrailPolylines.Clear();
             _recordingStartDateTime = DateTime.Now;
 
             // Show virtual cursor and recording border
@@ -983,6 +986,7 @@ namespace FlowMy.Views.Overlays
                     IsHitTestVisible = false
                 };
                 DrawingCanvas.Children.Add(_trailPolyline);
+                _allTrailPolylines.Add(_trailPolyline);
             }
 
             _timer.Start();
@@ -999,6 +1003,20 @@ namespace FlowMy.Views.Overlays
             // Hide virtual cursor and recording border
             VirtualCursor.Visibility = Visibility.Collapsed;
             RecordingBorder.Visibility = Visibility.Collapsed;
+
+            // Fade out all trail polylines (dashed move trail + drag trails)
+            if (_allTrailPolylines.Count > 0)
+            {
+                var trailsToFade = _allTrailPolylines.ToArray();
+                _allTrailPolylines.Clear();
+                _trailPolyline = null;
+                FadeOutAndRemove(0, 250, trailsToFade);
+            }
+            if (_dragTrailPolyline != null)
+            {
+                FadeOutAndRemove(0, 250, _dragTrailPolyline);
+                _dragTrailPolyline = null;
+            }
 
             if (save && _actions.Count > 0)
             {
@@ -1569,6 +1587,7 @@ namespace FlowMy.Views.Overlays
                     IsHitTestVisible = false
                 };
                 DrawingCanvas.Children.Add(_trailPolyline);
+                _allTrailPolylines.Add(_trailPolyline);
             }
 
             _trailPolyline.Points.Add(pt);

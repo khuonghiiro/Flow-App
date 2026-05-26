@@ -103,6 +103,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     try
                     {
                         overlay = new MacroPlaybackOverlay();
+                        // TargetApp: tell overlay NOT to go fullscreen in Loaded
+                        if (macroNode.ExecutionMode == MacroExecutionMode.TargetApp)
+                            overlay.PrepareForTargetMode();
                         loadedTask = overlay.WhenLoaded;
                         overlay.Show();
                         overlay.Activate();
@@ -177,7 +180,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 await dispatcher.InvokeAsync(() =>
                 {
-                    overlay.PositionOverTargetAfterLoad(targetHwnd);
+                    // alwaysVisible:true → overlay luôn hiển thị trong suốt quá trình phát lại
+                    // (không ẩn khi app đích mất focus, chỉ theo dõi vị trí cửa sổ)
+                    overlay.PositionOverTargetAfterLoad(targetHwnd, alwaysVisible: true);
                 }, DispatcherPriority.Normal);
                 System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Overlay positioned over target HWND=0x{targetHwnd:X}");
             }
@@ -247,10 +252,21 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 if (isTargetApp)
                                 {
-                                    // Đưa Chrome lên z-top KHÔNG kích hoạt (không náy titlebar)
-                                    // rồi SendInput vào tọa độ tuyệt đối — Windows sẽ hit-test và gửi cho Chrome
-                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
-                                    FlowMy.Helpers.WindowHelper.SendHwMouseClick(action.X, action.Y, action.Button == "Right");
+                                    // Đảm bảo app đích ở foreground trước khi gửi message
+                                    ForceForeground(targetHwnd);
+                                    await Task.Delay(30);
+                                    // PostMessage thuần túy: không chiếm chuột thật, không kích hoạt app
+                                    var (childClick, cxClick, cyClick) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    IntPtr lpClick = FlowMy.Helpers.WindowHelper.MakeLParam(cxClick, cyClick);
+                                    uint btnDown = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
+                                    uint btnUp   = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP   : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
+                                    int mkClick = 0;
+                                    if (action.Button == "Right") mkClick |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
+                                    else mkClick |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                                    // WM_MOUSEMOVE trước để target biết vị trí cursor
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childClick, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lpClick);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childClick, btnDown, (IntPtr)mkClick, lpClick);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childClick, btnUp, IntPtr.Zero, lpClick);
                                 }
                                 else
                                 {
@@ -265,7 +281,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         altHeld:   action.AltHeld);
                                 }
                                 
-                                await Task.Delay(50); // Đợi click hoàn tất
+                                await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
                                 break;
                             }
@@ -285,18 +301,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    // MouseDown: RaiseNoActivate + SendInput DOWN only
-                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
+                                    // Đảm bảo app đích ở foreground trước khi gửi message
+                                    ForceForeground(targetHwnd);
+                                    await Task.Delay(30);
+                                    // PostMessage thuần túy — không SilentActivate
                                     var (childHwnd2, clientX2, clientY2) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
                                     IntPtr lParam2 = FlowMy.Helpers.WindowHelper.MakeLParam(clientX2, clientY2);
                                     uint msgDown2 = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
                                     int mk2 = 0;
                                     if (isLeftDown) mk2 |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                                     if (isRightDown) mk2 |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
-                                    var stDown = FlowMy.Helpers.WindowHelper.SilentActivate(targetHwnd);
-                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwnd2, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk2, lParam2);
-                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwnd2, msgDown2, (IntPtr)mk2, lParam2);
-                                    FlowMy.Helpers.WindowHelper.SilentDeactivate(stDown);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childHwnd2, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mk2, lParam2);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childHwnd2, msgDown2, (IntPtr)mk2, lParam2);
                                 }
                                 else
                                 {
@@ -323,18 +339,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    // MouseUp: RaiseNoActivate + SilentActivate
-                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
-                                    var stUp = FlowMy.Helpers.WindowHelper.SilentActivate(targetHwnd);
+                                    // PostMessage thuần túy — không RaiseNoActivate, không SilentActivate
                                     var (childHwndUp, clientXUp, clientYUp) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
                                     IntPtr lParamUp = FlowMy.Helpers.WindowHelper.MakeLParam(clientXUp, clientYUp);
                                     uint msgUpMsg = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
                                     int mkUp = 0;
                                     if (isLeftDown) mkUp |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                                     if (isRightDown) mkUp |= FlowMy.Helpers.WindowHelper.MK_RBUTTON;
-                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwndUp, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mkUp, lParamUp);
-                                    FlowMy.Helpers.WindowHelper.SendMessage(childHwndUp, msgUpMsg, (IntPtr)mkUp, lParamUp);
-                                    FlowMy.Helpers.WindowHelper.SilentDeactivate(stUp);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childHwndUp, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mkUp, lParamUp);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childHwndUp, msgUpMsg, IntPtr.Zero, lParamUp);
                                 }
                                 else
                                 {
@@ -365,14 +378,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                     if (isTargetApp)
                                     {
-                                        // Keyboard: SilentKeyboardFocus (AttachThreadInput+SetFocus) không đổi foreground
-                                        // -> không náy màn hình, Chrome nhận bàn phím qua SendInput
-                                        FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
-                                        var kbToken = FlowMy.Helpers.WindowHelper.SilentKeyboardFocus(targetHwnd);
+                                        // Đảm bảo app đích ở foreground trước khi gửi key message
+                                        ForceForeground(targetHwnd);
+                                        await Task.Delay(30);
+                                        // PostMessage thuần túy cho keyboard — không chiếm focus
+                                        var (childKey, _, _) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
 
                                         if (action.Key.Length == 1)
                                         {
-                                            FlowMy.Helpers.WindowHelper.SendHwChar(action.Key[0]);
+                                            // Single char → WM_CHAR
+                                            FlowMy.Helpers.WindowHelper.PostMessage(childKey, FlowMy.Helpers.WindowHelper.WM_CHAR, (IntPtr)action.Key[0], IntPtr.Zero);
                                         }
                                         else
                                         {
@@ -390,10 +405,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                                 "Down"   => 0x28,
                                                 _        => 0
                                             };
-                                            if (vk != 0) FlowMy.Helpers.WindowHelper.SendHwVKey(vk);
+                                            if (vk != 0)
+                                            {
+                                                FlowMy.Helpers.WindowHelper.PostMessage(childKey, FlowMy.Helpers.WindowHelper.WM_KEYDOWN, (IntPtr)vk, IntPtr.Zero);
+                                                FlowMy.Helpers.WindowHelper.PostMessage(childKey, FlowMy.Helpers.WindowHelper.WM_KEYUP,   (IntPtr)vk, IntPtr.Zero);
+                                            }
                                         }
-
-                                        FlowMy.Helpers.WindowHelper.SilentKeyboardFocusRestore(kbToken);
                                     }
                                     else
                                     {
@@ -451,9 +468,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                                 if (isTargetApp)
                                 {
-                                    // Scroll: RaiseNoActivate + SendInput (không nháy)
-                                    FlowMy.Helpers.WindowHelper.RaiseNoActivate(targetHwnd);
-                                    FlowMy.Helpers.WindowHelper.SendHwMouseScroll(action.X, action.Y, action.ScrollDelta);
+                                    // Đảm bảo app đích ở foreground trước khi gửi scroll message
+                                    ForceForeground(targetHwnd);
+                                    await Task.Delay(30);
+                                    // PostMessage WM_MOUSEWHEEL — không chiếm cursor, không kích hoạt
+                                    var (childScroll, cxScroll, cyScroll) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    // wParam: HIWORD = wheel delta (units of 120), LOWORD = key state
+                                    int wParamScroll = (action.ScrollDelta * 120) << 16;
+                                    // lParam: screen coords (WM_MOUSEWHEEL uses screen, not client)
+                                    IntPtr lpScroll = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
+                                    FlowMy.Helpers.WindowHelper.PostMessage(childScroll, FlowMy.Helpers.WindowHelper.WM_MOUSEWHEEL, (IntPtr)wParamScroll, lpScroll);
                                 }
                                 else
                                 {

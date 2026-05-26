@@ -254,6 +254,31 @@ namespace FlowMy.Helpers
         }
 
         /// <summary>
+        /// Temporarily makes <paramref name="hwnd"/> topmost (above ALL other windows,
+        /// including other topmost windows) so that <c>SendInput</c> reliably hit-tests
+        /// to it even when the window is not the foreground window.
+        /// Must be paired with <see cref="RestoreNonTopmost"/> after the input is sent.
+        /// Using <c>SWP_NOACTIVATE</c> prevents titlebar activation flash.
+        /// </summary>
+        public static void RaiseTopmost(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        }
+
+        /// <summary>
+        /// Removes the always-on-top flag from <paramref name="hwnd"/>,
+        /// returning it to the normal (non-topmost) Z-order layer.
+        /// </summary>
+        public static void RestoreNonTopmost(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+
+        /// <summary>
         /// Silently redirects keyboard (SendInput) to <paramref name="targetHwnd"/> via
         /// AttachThreadInput + SetFocus — without touching the foreground window.
         /// Returns the previous focus handle so you can restore it.
