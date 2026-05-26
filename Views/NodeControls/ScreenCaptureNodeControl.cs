@@ -3,6 +3,7 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls.Helpers;
 using FlowMy.Views.Overlays;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -43,7 +44,7 @@ namespace FlowMy.Views.NodeControls
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                              // Button
 
             // === HEADER ===
-            var headerTextBrush = GetTextBrushFromColorKey(node.ColorKey) ?? new SolidColorBrush(Colors.White);
+            // Dùng SetResourceReference để text tự động ăn theo theme, không hardcode màu
             var headerPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -56,19 +57,19 @@ namespace FlowMy.Views.NodeControls
                 Text = "📸",
                 FontSize = 14,
                 FontWeight = FontWeights.Bold,
-                Foreground = headerTextBrush,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 6, 0)
             };
+            headerIcon.SetResourceReference(TextBlock.ForegroundProperty, $"TextOn{node.ColorKey}Brush");
 
             var headerTitle = new TextBlock
             {
                 Text = node.Title,
                 FontSize = 14,
                 FontWeight = FontWeights.Bold,
-                Foreground = headerTextBrush,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            headerTitle.SetResourceReference(TextBlock.ForegroundProperty, $"TextOn{node.ColorKey}Brush");
 
             // Allow "✎ edit title" button to update the UI
             node.TitleTextBlockUI = headerTitle;
@@ -111,16 +112,7 @@ namespace FlowMy.Views.NodeControls
             {
                 if (node.CapturedImage != null)
                 {
-                    var viewer = new Window
-                    {
-                        Title = "Preview - Screen Capture",
-                        Width = Math.Min(node.CaptureWidth, 1200),
-                        Height = Math.Min(node.CaptureHeight, 800),
-                        Content = new Image { Source = node.CapturedImage, Stretch = Stretch.Uniform },
-                        WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                        WindowStyle = WindowStyle.ToolWindow
-                    };
-                    viewer.ShowDialog();
+                    ShowImagePreviewDialog(node, ownerWindow);
                 }
                 e.Handled = true;
             };
@@ -129,11 +121,11 @@ namespace FlowMy.Views.NodeControls
             {
                 Text = "Chưa có ảnh preview",
                 FontSize = 11,
-                Foreground = headerTextBrush,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(10)
             };
+            placeholderText.SetResourceReference(TextBlock.ForegroundProperty, $"TextOn{node.ColorKey}Brush");
 
             void UpdatePreview()
             {
@@ -162,11 +154,11 @@ namespace FlowMy.Views.NodeControls
             var regionText = new TextBlock
             {
                 FontSize = 10,
-                Foreground = headerTextBrush,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(10, 0, 10, 5)
             };
+            regionText.SetResourceReference(TextBlock.ForegroundProperty, $"TextOn{node.ColorKey}Brush");
 
             void UpdateRegionText()
             {
@@ -228,12 +220,21 @@ namespace FlowMy.Views.NodeControls
             // for the fluent API context but keep the real title management inline above.
             if (host != null)
             {
-                // Node-specific property handlers for NodeBrush changes
+                // Node-specific property handlers for NodeBrush/ColorKey changes
                 var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
                 {
                     [nameof(WorkflowNode.NodeBrush)] = ctx =>
                     {
                         border.Background = node.NodeBrush;
+                    },
+                    [nameof(WorkflowNode.ColorKey)] = ctx =>
+                    {
+                        // Cập nhật lại resource reference khi ColorKey thay đổi
+                        var key = $"TextOn{node.ColorKey}Brush";
+                        headerIcon.SetResourceReference(TextBlock.ForegroundProperty, key);
+                        headerTitle.SetResourceReference(TextBlock.ForegroundProperty, key);
+                        placeholderText.SetResourceReference(TextBlock.ForegroundProperty, key);
+                        regionText.SetResourceReference(TextBlock.ForegroundProperty, key);
                     }
                 };
 
@@ -252,14 +253,54 @@ namespace FlowMy.Views.NodeControls
             return border;
         }
 
-        private static Brush? GetTextBrushFromColorKey(string? colorKey)
+        private static void ShowImagePreviewDialog(ScreenCaptureNode node, Window ownerWindow)
         {
-            if (string.IsNullOrEmpty(colorKey)) return null;
-            try
+            if (node.CapturedImage == null) return;
+
+            double maxW = Math.Min(node.CaptureWidth, 1200);
+            double maxH = Math.Min(node.CaptureHeight, 800);
+
+            // Outer border dùng theme resource
+            var imgControl = new Image
             {
-                return Application.Current.TryFindResource($"TextOn{colorKey}Brush") as Brush;
-            }
-            catch { return null; }
+                Source = node.CapturedImage,
+                Stretch = Stretch.Uniform,
+                Margin = new Thickness(8)
+            };
+
+            var infoBar = new TextBlock
+            {
+                Text = $"{node.CaptureWidth} × {node.CaptureHeight} px  |  ({node.CaptureX}, {node.CaptureY})",
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            infoBar.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+
+            var stack = new StackPanel();
+            stack.Children.Add(imgControl);
+            stack.Children.Add(infoBar);
+
+            var viewer = new Window
+            {
+                Title = $"Preview – {node.Title}",
+                Width = maxW + 32,
+                Height = maxH + 80,
+                MinWidth = 200,
+                MinHeight = 150,
+                Owner = ownerWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                WindowStyle = WindowStyle.ToolWindow,
+                ResizeMode = ResizeMode.CanResize,
+                ShowInTaskbar = false,
+                Content = stack
+            };
+
+            // Ăn theo theme của app
+            viewer.SetResourceReference(Window.BackgroundProperty, "WindowBackgroundBrush");
+
+            viewer.ShowDialog();
         }
+
     }
 }

@@ -7,37 +7,38 @@
         Background="Transparent"
         Topmost="True"
         WindowState="Maximized"
-        Cursor="Cross"
+        Cursor="None"
         MouseDown="Window_MouseDown"
         MouseMove="Window_MouseMove"
         MouseUp="Window_MouseUp"
         KeyDown="Window_KeyDown">
 
     <Grid>
-        <!-- Lớp phủ tối -->
-        <Rectangle x:Name="DarkOverlay" 
-                   Fill="#80000000"
+        <!-- Lớp phủ tối nhẹ -->
+        <Rectangle x:Name="DarkOverlay"
+                   Fill="#55000000"
                    IsHitTestVisible="False"/>
 
-        <!-- Canvas để vẽ khung chọn -->
+        <!-- Canvas khung chọn -->
         <Canvas x:Name="SelectionCanvas">
-            <!-- Khung chọn -->
             <Rectangle x:Name="SelectionRectangle"
-                       Stroke="#0078D4"
+                       Stroke="#00D4FF"
                        StrokeThickness="2"
-                       Fill="Transparent"
+                       StrokeDashArray="6 3"
+                       Fill="#22FFFFFF"
                        Visibility="Collapsed"/>
 
-            <!-- Hiển thị kích thước -->
             <Border x:Name="InfoPanel"
-                    Background="#E0FFFFFF"
+                    Background="#DD111827"
+                    BorderBrush="#00D4FF"
+                    BorderThickness="1"
                     CornerRadius="4"
-                    Padding="8,4"
+                    Padding="10,4"
                     Visibility="Collapsed">
                 <TextBlock x:Name="InfoText"
                            FontSize="12"
-                           FontWeight="Medium"
-                           Foreground="{DynamicResource TextBrush}"/>
+                           FontWeight="SemiBold"
+                           Foreground="#FFFFFF"/>
             </Border>
         </Canvas>
 
@@ -45,16 +46,34 @@
         <Border VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 Margin="0,20,0,0"
-                Background="#E0FFFFFF"
+                Background="#DD111827"
+                BorderBrush="#00D4FF"
+                BorderThickness="1"
                 CornerRadius="6"
                 Padding="16,8">
-            <TextBlock FontSize="14" 
-                       Foreground="{DynamicResource TextBrush}"
+            <TextBlock FontSize="14"
+                       Foreground="#FFFFFF"
                        FontWeight="Medium">
                 <Run Text="Kéo chuột để chọn vùng cần chụp"/>
-                <Run Text=" • " FontWeight="Bold"/>
+                <Run Text="   •   " Foreground="#00D4FF"/>
                 <Run Text="ESC để hủy"/>
             </TextBlock>
         </Border>
+
+        <!-- Custom cursor: crosshair ngắn quanh con trỏ, không kéo dài toàn màn hình -->
+        <Canvas x:Name="CrosshairCanvas" IsHitTestVisible="False">
+            <!-- Ngang trái -->
+            <Line x:Name="CH_Left"   Stroke="White" StrokeThickness="1.5"/>
+            <!-- Ngang phải -->
+            <Line x:Name="CH_Right"  Stroke="White" StrokeThickness="1.5"/>
+            <!-- Dọc trên -->
+            <Line x:Name="CH_Up"     Stroke="White" StrokeThickness="1.5"/>
+            <!-- Dọc dưới -->
+            <Line x:Name="CH_Down"   Stroke="White" StrokeThickness="1.5"/>
+            <!-- Chấm tâm -->
+            <Ellipse x:Name="CH_Dot"
+                     Width="4" Height="4"
+                     Fill="#00D4FF"/>
+        </Canvas>
     </Grid>
 </Window>
