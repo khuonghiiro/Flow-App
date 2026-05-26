@@ -33,6 +33,14 @@ namespace FlowMy.Views.Overlays
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetCursorPos(out POINT pt);
 
         [StructLayout(LayoutKind.Sequential)]
@@ -131,12 +139,33 @@ namespace FlowMy.Views.Overlays
         public void PositionOverTargetAfterLoad(IntPtr targetHwnd, bool alwaysVisible = false)
         {
             if (targetHwnd == IntPtr.Zero) return;
-            if (!GetWindowRect(targetHwnd, out RECT r)) return;
 
             _isTargetMode      = true;
             _targetHwnd        = targetHwnd;
-            _overlayScreenLeft = r.Left;
-            _overlayScreenTop  = r.Top;
+
+            if (!ApplyClientRect(targetHwnd)) return;
+
+            if (alwaysVisible)
+                StartRepositionOnlyTimer();
+            else
+                StartForegroundTimer();
+        }
+
+        /// <summary>
+        /// Đọc client rect của target window và định vị overlay khớp đúng client area.
+        /// Trả về false nếu không lấy được rect hợp lệ.
+        /// </summary>
+        private bool ApplyClientRect(IntPtr hwnd)
+        {
+            if (!GetClientRect(hwnd, out RECT cr)) return false;
+            if (cr.Right <= 0 || cr.Bottom <= 0) return false;
+
+            // ClientToScreen: top-left của client area trong screen coords
+            var ptOrigin = new POINT { X = 0, Y = 0 };
+            ClientToScreen(hwnd, ref ptOrigin);
+
+            _overlayScreenLeft = ptOrigin.X;
+            _overlayScreenTop  = ptOrigin.Y;
 
             double scaleX = 1.0, scaleY = 1.0;
             var source = PresentationSource.FromVisual(this);
@@ -146,15 +175,11 @@ namespace FlowMy.Views.Overlays
                 scaleY = source.CompositionTarget.TransformToDevice.M22;
             }
 
-            Left   = r.Left   / scaleX;
-            Top    = r.Top    / scaleY;
-            Width  = (r.Right  - r.Left) / scaleX;
-            Height = (r.Bottom - r.Top)  / scaleY;
-
-            if (alwaysVisible)
-                StartRepositionOnlyTimer();   // playback: always show, just follow position
-            else
-                StartForegroundTimer();       // monitoring: show/hide based on foreground
+            Left   = ptOrigin.X / scaleX;
+            Top    = ptOrigin.Y / scaleY;
+            Width  = cr.Right   / scaleX;
+            Height = cr.Bottom  / scaleY;
+            return true;
         }
 
         /// <summary>
@@ -218,38 +243,11 @@ namespace FlowMy.Views.Overlays
         private static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
         private const uint GA_ROOT = 2;
 
-        /// <summary>Re-read target window rect and reposition overlay to match.</summary>
+        /// <summary>Re-read target window client rect and reposition overlay to match.</summary>
         private void RefreshPosition()
         {
             if (_targetHwnd == IntPtr.Zero) return;
-            if (!GetWindowRect(_targetHwnd, out RECT r)) return;
-
-            // Only update if position/size actually changed (avoid unnecessary layout passes)
-            double scaleX = 1.0, scaleY = 1.0;
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
-            {
-                scaleX = source.CompositionTarget.TransformToDevice.M11;
-                scaleY = source.CompositionTarget.TransformToDevice.M22;
-            }
-
-            double newLeft   = r.Left   / scaleX;
-            double newTop    = r.Top    / scaleY;
-            double newWidth  = (r.Right  - r.Left) / scaleX;
-            double newHeight = (r.Bottom - r.Top)  / scaleY;
-
-            bool changed = Math.Abs(Left - newLeft) > 0.5 || Math.Abs(Top - newTop) > 0.5
-                        || Math.Abs(Width - newWidth) > 0.5 || Math.Abs(Height - newHeight) > 0.5;
-
-            if (changed)
-            {
-                _overlayScreenLeft = r.Left;
-                _overlayScreenTop  = r.Top;
-                Left   = newLeft;
-                Top    = newTop;
-                Width  = newWidth;
-                Height = newHeight;
-            }
+            ApplyClientRect(_targetHwnd);
         }
 
         /// <summary>

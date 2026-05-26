@@ -22,6 +22,45 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
         [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X, Y; }
+
+        /// <summary>
+        /// Chuyển đổi tọa độ action về screen coords thực tế tại thời điểm playback.
+        /// - Nếu action có RelX/RelY (TargetApp mode): scale theo client rect hiện tại của target window.
+        /// - Nếu không: dùng X/Y gốc (Free mode).
+        /// </summary>
+        private static (int screenX, int screenY) ResolveScreenCoords(MacroAction action, IntPtr targetHwnd, bool isTargetApp)
+        {
+            if (isTargetApp && targetHwnd != IntPtr.Zero
+                && (action.RelX > 0 || action.RelY > 0)
+                && GetClientRect(targetHwnd, out RECT cr)
+                && cr.Right > 0 && cr.Bottom > 0)
+            {
+                // Scale relative coords to current client size
+                int clientX = (int)(action.RelX * cr.Right);
+                int clientY = (int)(action.RelY * cr.Bottom);
+
+                // Convert client → screen
+                var pt = new POINT { X = clientX, Y = clientY };
+                ClientToScreen(targetHwnd, ref pt);
+                return (pt.X, pt.Y);
+            }
+
+            return (action.X, action.Y);
+        }
+
         /// <summary>
         /// Đưa targetHwnd lên foreground một cách đáng tin cậy bằng AttachThreadInput.
         /// SetForegroundWindow thông thường bị Windows chặn từ background thread.
@@ -51,6 +90,210 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             PropertyNameCaseInsensitive = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        // ─── SendInput keyboard helpers ───────────────────────────────────────────
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SENDINPUT_INPUT
+        {
+            public uint type;
+            public SENDINPUT_UNION u;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct SENDINPUT_UNION
+        {
+            [FieldOffset(0)] public SENDINPUT_KI ki;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SENDINPUT_KI
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint   dwFlags;
+            public uint   time;
+            public IntPtr dwExtraInfo;
+        }
+
+        private const uint INPUT_KEYBOARD    = 1;
+        private const uint KEYEVENTF_KEYUP   = 0x0002;
+        private const uint KEYEVENTF_UNICODE = 0x0004;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, SENDINPUT_INPUT[] pInputs, int cbSize);
+
+        [DllImport("user32.dll")]
+        private static extern short VkKeyScan(char ch);
+
+        /// <summary>
+        /// Gửi một key (hoặc combo "Ctrl+C") qua SendInput — hoạt động với mọi app kể cả trình duyệt.
+        /// </summary>
+        private static void SendKeyViaSendInput(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+
+            // Combo: "Ctrl+C", "Shift+Alt+F4", v.v.
+            if (key.Contains('+'))
+            {
+                var parts = key.Split('+');
+                string mainKey = parts[^1];
+                bool ctrl  = parts.Any(p => p.Equals("Ctrl",  StringComparison.OrdinalIgnoreCase));
+                bool alt   = parts.Any(p => p.Equals("Alt",   StringComparison.OrdinalIgnoreCase));
+                bool shift = parts.Any(p => p.Equals("Shift", StringComparison.OrdinalIgnoreCase));
+
+                var inputs = new List<SENDINPUT_INPUT>();
+
+                // Press modifiers
+                if (ctrl)  inputs.Add(MakeKeyInput(0x11, false)); // VK_CONTROL
+                if (alt)   inputs.Add(MakeKeyInput(0x12, false)); // VK_MENU
+                if (shift) inputs.Add(MakeKeyInput(0x10, false)); // VK_SHIFT
+
+                ushort mainVk = KeyNameToVk(mainKey);
+                if (mainVk != 0)
+                {
+                    inputs.Add(MakeKeyInput(mainVk, false));
+                    inputs.Add(MakeKeyInput(mainVk, true));
+                }
+                else if (mainKey.Length == 1)
+                {
+                    // Single char — use Unicode injection
+                    inputs.Add(MakeUnicodeInput(mainKey[0], false));
+                    inputs.Add(MakeUnicodeInput(mainKey[0], true));
+                }
+
+                // Release modifiers (reverse order)
+                if (shift) inputs.Add(MakeKeyInput(0x10, true));
+                if (alt)   inputs.Add(MakeKeyInput(0x12, true));
+                if (ctrl)  inputs.Add(MakeKeyInput(0x11, true));
+
+                if (inputs.Count > 0)
+                    SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<SENDINPUT_INPUT>());
+                return;
+            }
+
+            // Single key
+            ushort vk = KeyNameToVk(key);
+            if (vk != 0)
+            {
+                var inputs = new[]
+                {
+                    MakeKeyInput(vk, false),
+                    MakeKeyInput(vk, true)
+                };
+                SendInput(2, inputs, Marshal.SizeOf<SENDINPUT_INPUT>());
+            }
+            else if (key.Length == 1)
+            {
+                // Single printable char — use VkKeyScan to get VK + shift state
+                short vkScan = VkKeyScan(key[0]);
+                if (vkScan != -1)
+                {
+                    ushort charVk    = (ushort)(vkScan & 0xFF);
+                    bool   needShift = (vkScan & 0x100) != 0;
+                    var inputs = new List<SENDINPUT_INPUT>();
+                    if (needShift) inputs.Add(MakeKeyInput(0x10, false));
+                    inputs.Add(MakeKeyInput(charVk, false));
+                    inputs.Add(MakeKeyInput(charVk, true));
+                    if (needShift) inputs.Add(MakeKeyInput(0x10, true));
+                    SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<SENDINPUT_INPUT>());
+                }
+                else
+                {
+                    // Fallback: Unicode injection
+                    var inputs = new[]
+                    {
+                        MakeUnicodeInput(key[0], false),
+                        MakeUnicodeInput(key[0], true)
+                    };
+                    SendInput(2, inputs, Marshal.SizeOf<SENDINPUT_INPUT>());
+                }
+            }
+        }
+
+        private static SENDINPUT_INPUT MakeKeyInput(ushort vk, bool keyUp) => new SENDINPUT_INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new SENDINPUT_UNION
+            {
+                ki = new SENDINPUT_KI
+                {
+                    wVk    = vk,
+                    dwFlags = keyUp ? KEYEVENTF_KEYUP : 0
+                }
+            }
+        };
+
+        private static SENDINPUT_INPUT MakeUnicodeInput(char c, bool keyUp) => new SENDINPUT_INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new SENDINPUT_UNION
+            {
+                ki = new SENDINPUT_KI
+                {
+                    wVk    = 0,
+                    wScan  = c,
+                    dwFlags = KEYEVENTF_UNICODE | (keyUp ? KEYEVENTF_KEYUP : 0)
+                }
+            }
+        };
+
+        /// <summary>
+        /// Map tên key (từ GetKeyName trong recorder) → VK code.
+        /// Bao gồm đầy đủ: phím số, chữ, F-keys, navigation, numpad, ký tự đặc biệt.
+        /// </summary>
+        private static ushort KeyNameToVk(string name) => name switch
+        {
+            // Navigation / editing
+            "Backspace" => 0x08,
+            "Tab"       => 0x09,
+            "Enter"     => 0x0D,
+            "Pause"     => 0x13,
+            "CapsLock"  => 0x14,
+            "Escape"    => 0x1B,
+            "Space"     => 0x20,
+            "PageUp"    => 0x21,
+            "PageDown"  => 0x22,
+            "End"       => 0x23,
+            "Home"      => 0x24,
+            "←"         => 0x25,
+            "↑"         => 0x26,
+            "→"         => 0x27,
+            "↓"         => 0x28,
+            "PrtSc"     => 0x2C,
+            "Insert"    => 0x2D,
+            "Delete"    => 0x2E,
+            // Digits 0–9
+            "0" => 0x30, "1" => 0x31, "2" => 0x32, "3" => 0x33, "4" => 0x34,
+            "5" => 0x35, "6" => 0x36, "7" => 0x37, "8" => 0x38, "9" => 0x39,
+            // Letters A–Z (VK = uppercase ASCII)
+            "A" => 0x41, "B" => 0x42, "C" => 0x43, "D" => 0x44, "E" => 0x45,
+            "F" => 0x46, "G" => 0x47, "H" => 0x48, "I" => 0x49, "J" => 0x4A,
+            "K" => 0x4B, "L" => 0x4C, "M" => 0x4D, "N" => 0x4E, "O" => 0x4F,
+            "P" => 0x50, "Q" => 0x51, "R" => 0x52, "S" => 0x53, "T" => 0x54,
+            "U" => 0x55, "V" => 0x56, "W" => 0x57, "X" => 0x58, "Y" => 0x59,
+            "Z" => 0x5A,
+            // Numpad
+            "Num0" => 0x60, "Num1" => 0x61, "Num2" => 0x62, "Num3" => 0x63,
+            "Num4" => 0x64, "Num5" => 0x65, "Num6" => 0x66, "Num7" => 0x67,
+            "Num8" => 0x68, "Num9" => 0x69,
+            "Num*" => 0x6A, "Num+" => 0x6B, "Num-" => 0x6D, "Num." => 0x6E, "Num/" => 0x6F,
+            // F-keys F1–F24
+            "F1"  => 0x70, "F2"  => 0x71, "F3"  => 0x72, "F4"  => 0x73,
+            "F5"  => 0x74, "F6"  => 0x75, "F7"  => 0x76, "F8"  => 0x77,
+            "F9"  => 0x78, "F10" => 0x79, "F11" => 0x7A, "F12" => 0x7B,
+            "F13" => 0x7C, "F14" => 0x7D, "F15" => 0x7E, "F16" => 0x7F,
+            "F17" => 0x80, "F18" => 0x81, "F19" => 0x82, "F20" => 0x83,
+            "F21" => 0x84, "F22" => 0x85, "F23" => 0x86, "F24" => 0x87,
+            // Lock keys
+            "NumLock"    => 0x90,
+            "ScrollLock" => 0x91,
+            // OEM punctuation (US layout)
+            ";" => 0xBA, "=" => 0xBB, "," => 0xBC, "-" => 0xBD,
+            "." => 0xBE, "/" => 0xBF, "`" => 0xC0,
+            "[" => 0xDB, "\\" => 0xDC, "]" => 0xDD, "'" => 0xDE,
+            _   => 0
         };
 
         public bool CanExecute(WorkflowNode node) => node is MacroRecorderNode;
@@ -158,11 +401,21 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (isTargetApp)
             {
                 var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
-                var match = windows.FirstOrDefault(w => w.Title == macroNode.TargetWindowTitle && w.ProcessName == macroNode.TargetProcessName);
+
+                // Ưu tiên match chính xác (title + process) — dùng khi tab không đổi
+                var match = windows.FirstOrDefault(w =>
+                    w.ProcessName == macroNode.TargetProcessName &&
+                    w.Title == macroNode.TargetWindowTitle);
+
+                // Fallback: match chỉ theo ProcessName — xử lý trường hợp tab trình duyệt đổi
+                // hoặc title cửa sổ thay đổi sau khi ghi
+                if (match == null)
+                    match = windows.FirstOrDefault(w => w.ProcessName == macroNode.TargetProcessName);
+
                 if (match != null)
                 {
                     targetHwnd = match.Handle;
-                    System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Resolved TargetApp HWND=0x{targetHwnd:X} ({macroNode.TargetProcessName})");
+                    System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Resolved TargetApp HWND=0x{targetHwnd:X} ({match.ProcessName} | {match.Title})");
                 }
                 else
                 {
@@ -175,7 +428,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Free Mode targetHwnd=0x{targetHwnd:X}");
             }
 
-            // ── TargetApp mode: position overlay over the target window ──────────
+            // ── TargetApp mode: bring target to front first, then position overlay ─
+            if (isTargetApp && targetHwnd != IntPtr.Zero)
+            {
+                // Bring target app to foreground BEFORE measuring its rect for the overlay.
+                // This ensures the window is restored (not minimized) and at its real size.
+                ForceForeground(targetHwnd);
+                await Task.Delay(150); // let Windows finish restoring/resizing the window
+            }
+
             if (isTargetApp && overlay != null && targetHwnd != IntPtr.Zero && dispatcher != null)
             {
                 await dispatcher.InvokeAsync(() =>
@@ -232,6 +493,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                         var action = actions[i];
                         
+                        // Resolve actual screen coords (handles TargetApp resize scaling)
+                        var (ax, ay) = ResolveScreenCoords(action, targetHwnd, isTargetApp);
+
+                        // Đảm bảo target app luôn là foreground trước mỗi action.
+                        // SendInput chỉ hoạt động khi target là foreground window.
+                        // Chỉ gọi khi cần (tránh gọi liên tục làm chậm).
+                        if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd)
+                            && GetForegroundWindow() != targetHwnd)
+                        {
+                            ForceForeground(targetHwnd);
+                            await Task.Delay(40, env.CancellationToken);
+                        }
+
                         // Cập nhật trạng thái hiển thị các phím Modifier đang giữ trên Overlay
                         overlay?.UpdateHeldModifiers(action.ShiftHeld, action.CtrlHeld, action.AltHeld);
 
@@ -244,20 +518,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
-                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
+                                    overlay?.DrawClick(ax, ay, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
                                 
                                 if (isTargetApp)
                                 {
-                                    // Đảm bảo app đích ở foreground trước khi gửi message
-                                    ForceForeground(targetHwnd);
-                                    await Task.Delay(30);
                                     // PostMessage thuần túy: không chiếm chuột thật, không kích hoạt app
-                                    var (childClick, cxClick, cyClick) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
-                                    IntPtr lpClick = FlowMy.Helpers.WindowHelper.MakeLParam(cxClick, cyClick);
+                                    var (childClick, cxClick, cyClick) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, ax, ay);                                    IntPtr lpClick = FlowMy.Helpers.WindowHelper.MakeLParam(cxClick, cyClick);
                                     uint btnDown = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
                                     uint btnUp   = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP   : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
                                     int mkClick = 0;
@@ -270,9 +540,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
                                 else
                                 {
-                                    if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
-                                        ForceForeground(targetHwnd);
-
                                     var btn = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
                                     env.Service.MouseInput.SendMouseClickAt(
                                         action.X, action.Y, btn,
@@ -293,19 +560,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 overlay?.ShowRightActionInfo(hint, desc);
                                 
-                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawClick(action.X, action.Y, action.Button == "Right", action.SequenceNumber, hint);
+                                    overlay?.DrawClick(ax, ay, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 if (isTargetApp)
                                 {
-                                    // Đảm bảo app đích ở foreground trước khi gửi message
-                                    ForceForeground(targetHwnd);
-                                    await Task.Delay(30);
                                     // PostMessage thuần túy — không SilentActivate
-                                    var (childHwnd2, clientX2, clientY2) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    var (childHwnd2, clientX2, clientY2) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, ax, ay);
                                     IntPtr lParam2 = FlowMy.Helpers.WindowHelper.MakeLParam(clientX2, clientY2);
                                     uint msgDown2 = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
                                     int mk2 = 0;
@@ -316,12 +580,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
                                 else
                                 {
-                                    if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
-                                        ForceForeground(targetHwnd);
-
                                     var btnDown = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
                                     env.Service.MouseInput.SendMouseDownAt(
-                                        action.X, action.Y, btnDown,
+                                        ax, ay, btnDown,
                                         shiftHeld: action.ShiftHeld,
                                         ctrlHeld:  action.CtrlHeld,
                                         altHeld:   action.AltHeld);
@@ -332,7 +593,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseUp":
                             {
-                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 
                                 if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
@@ -340,7 +601,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (isTargetApp)
                                 {
                                     // PostMessage thuần túy — không RaiseNoActivate, không SilentActivate
-                                    var (childHwndUp, clientXUp, clientYUp) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    var (childHwndUp, clientXUp, clientYUp) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, ax, ay);
                                     IntPtr lParamUp = FlowMy.Helpers.WindowHelper.MakeLParam(clientXUp, clientYUp);
                                     uint msgUpMsg = action.Button == "Right" ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
                                     int mkUp = 0;
@@ -353,7 +614,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 {
                                     var btnUp = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
                                     env.Service.MouseInput.SendMouseUpAt(
-                                        action.X, action.Y, btnUp,
+                                        ax, ay, btnUp,
                                         shiftHeld: action.ShiftHeld,
                                         ctrlHeld:  action.CtrlHeld,
                                         altHeld:   action.AltHeld);
@@ -372,54 +633,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     overlay?.ShowRightActionInfo(keyDisplay, desc);
                                     
                                     if (visualMode == VisualPlaybackMode.Live)
-                                        overlay?.DrawKeyPress(action.X, action.Y, action.Key, action.SequenceNumber);
+                                        overlay?.DrawKeyPress(ax, ay, action.Key, action.SequenceNumber);
                                     else if (visualMode == VisualPlaybackMode.Ghost)
                                         overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                     if (isTargetApp)
                                     {
-                                        // Đảm bảo app đích ở foreground trước khi gửi key message
-                                        ForceForeground(targetHwnd);
-                                        await Task.Delay(30);
-                                        // PostMessage thuần túy cho keyboard — không chiếm focus
-                                        var (childKey, _, _) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
-
-                                        if (action.Key.Length == 1)
-                                        {
-                                            // Single char → WM_CHAR
-                                            FlowMy.Helpers.WindowHelper.PostMessage(childKey, FlowMy.Helpers.WindowHelper.WM_CHAR, (IntPtr)action.Key[0], IntPtr.Zero);
-                                        }
-                                        else
-                                        {
-                                            ushort vk = action.Key switch
-                                            {
-                                                "Enter"  => 0x0D,
-                                                "Space"  => 0x20,
-                                                "Escape" => 0x1B,
-                                                "Tab"    => 0x09,
-                                                "Back"   => 0x08,
-                                                "Delete" => 0x2E,
-                                                "Left"   => 0x25,
-                                                "Right"  => 0x27,
-                                                "Up"     => 0x26,
-                                                "Down"   => 0x28,
-                                                _        => 0
-                                            };
-                                            if (vk != 0)
-                                            {
-                                                FlowMy.Helpers.WindowHelper.PostMessage(childKey, FlowMy.Helpers.WindowHelper.WM_KEYDOWN, (IntPtr)vk, IntPtr.Zero);
-                                                FlowMy.Helpers.WindowHelper.PostMessage(childKey, FlowMy.Helpers.WindowHelper.WM_KEYUP,   (IntPtr)vk, IntPtr.Zero);
-                                            }
-                                        }
+                                        // Trình duyệt và nhiều app hiện đại không nhận PostMessage keyboard.
+                                        // Dùng SendInput (hardware-level) — ForceForeground đã được gọi ở đầu loop.
+                                        SendKeyViaSendInput(action.Key);
                                     }
                                     else
                                     {
-                                        // Ensure target window has focus BEFORE sending keys
-                                        if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
-                                        {
-                                            ForceForeground(targetHwnd);
-                                            await Task.Delay(30); // let focus settle
-                                        }
+                                        // Free mode: target đã là foreground (đảm bảo bởi check đầu loop)
+                                        await Task.Delay(30); // let focus settle
 
                                         System.Diagnostics.Debug.WriteLine($"[MacroExecutor] SendInput KeyPress: '{action.Key}' isCombo={action.Key.Contains('+')}");
 
@@ -438,7 +665,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             case "MouseMove":
                                 if (isTargetApp)
                                 {
-                                    var (childHwndMv, clientXMv, clientYMv) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
+                                    var (childHwndMv, clientXMv, clientYMv) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, ax, ay);
                                     IntPtr lParamMv = FlowMy.Helpers.WindowHelper.MakeLParam(clientXMv, clientYMv);
                                     int mkMv = 0;
                                     if (isLeftDown) mkMv |= FlowMy.Helpers.WindowHelper.MK_LBUTTON;
@@ -446,9 +673,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     FlowMy.Helpers.WindowHelper.PostMessage(childHwndMv, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mkMv, lParamMv);
                                 }
                                 // Always update visual cursor regardless of mode
-                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: false);
+                                overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent)
-                                    overlay?.AddTrailPoint(action.X, action.Y);
+                                    overlay?.AddTrailPoint(ax, ay);
                                 if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
                                 break;
@@ -460,30 +687,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 
                                 overlay?.ShowRightActionInfo("Scroll", desc);
                                 
-                                overlay?.MoveVirtualCursor(action.X, action.Y, syncBeforeAction: true);
+                                overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live)
-                                    overlay?.DrawScroll(action.X, action.Y, action.ScrollDelta, action.SequenceNumber);
+                                    overlay?.DrawScroll(ax, ay, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost)
                                     overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 if (isTargetApp)
                                 {
-                                    // Đảm bảo app đích ở foreground trước khi gửi scroll message
-                                    ForceForeground(targetHwnd);
-                                    await Task.Delay(30);
-                                    // PostMessage WM_MOUSEWHEEL — không chiếm cursor, không kích hoạt
-                                    var (childScroll, cxScroll, cyScroll) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, action.X, action.Y);
-                                    // wParam: HIWORD = wheel delta (units of 120), LOWORD = key state
+                                    var (childScroll, cxScroll, cyScroll) = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(targetHwnd, ax, ay);
                                     int wParamScroll = (action.ScrollDelta * 120) << 16;
                                     // lParam: screen coords (WM_MOUSEWHEEL uses screen, not client)
-                                    IntPtr lpScroll = FlowMy.Helpers.WindowHelper.MakeLParam(action.X, action.Y);
+                                    IntPtr lpScroll = FlowMy.Helpers.WindowHelper.MakeLParam(ax, ay);
                                     FlowMy.Helpers.WindowHelper.PostMessage(childScroll, FlowMy.Helpers.WindowHelper.WM_MOUSEWHEEL, (IntPtr)wParamScroll, lpScroll);
                                 }
                                 else
                                 {
-                                    if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd))
-                                        ForceForeground(targetHwnd);
-                                    env.Service.MouseInput.SendMouseScrollAt(action.X, action.Y, action.ScrollDelta);
+                                    env.Service.MouseInput.SendMouseScrollAt(ax, ay, action.ScrollDelta);
                                 }
                                 
                                 await Task.Delay(50);

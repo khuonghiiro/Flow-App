@@ -75,7 +75,7 @@ namespace FlowMy.ViewModels
             if (node.ExecutionMode == MacroExecutionMode.TargetApp)
             {
                 ExecuteLoadWindows();
-                _selectedTargetWindow = ActiveWindows.FirstOrDefault(w => w.Title == node.TargetWindowTitle && w.ProcessName == node.TargetProcessName);
+                // ExecuteLoadWindows đã tự resolve SelectedTargetWindow với fallback theo ProcessName
             }
 
             if (node is INotifyPropertyChanged npc)
@@ -103,7 +103,11 @@ namespace FlowMy.ViewModels
                         SelectedExecutionMode = node.ExecutionMode == MacroExecutionMode.TargetApp ? "Chỉ định Ứng dụng" : "Tự do (Toàn màn hình)";
                     else if (e.PropertyName == nameof(MacroRecorderNode.TargetProcessName) || e.PropertyName == nameof(MacroRecorderNode.TargetWindowTitle))
                     {
-                        SelectedTargetWindow = ActiveWindows.FirstOrDefault(w => w.Title == node.TargetWindowTitle && w.ProcessName == node.TargetProcessName);
+                        // Exact match trước, fallback theo ProcessName
+                        var w = ActiveWindows.FirstOrDefault(x =>
+                            x.Title == node.TargetWindowTitle && x.ProcessName == node.TargetProcessName)
+                            ?? ActiveWindows.FirstOrDefault(x => x.ProcessName == node.TargetProcessName);
+                        SelectedTargetWindow = w;
                     }
 
                     OnNodePropertyChanged(e.PropertyName);
@@ -210,15 +214,27 @@ namespace FlowMy.ViewModels
 
         private void ExecuteLoadWindows()
         {
+            // Ghi nhớ process đang chọn trước khi reload
+            string? prevProcess = SelectedTargetWindow?.ProcessName
+                                  ?? _macroRecorderNode.TargetProcessName;
+            string? prevTitle   = SelectedTargetWindow?.Title
+                                  ?? _macroRecorderNode.TargetWindowTitle;
+
             var windows = WindowHelper.GetActiveWindows();
             ActiveWindows.Clear();
             foreach (var w in windows)
-            {
                 ActiveWindows.Add(w);
-            }
-            if (SelectedTargetWindow != null)
+
+            if (!string.IsNullOrEmpty(prevProcess))
             {
-                var match = ActiveWindows.FirstOrDefault(x => x.ProcessName == SelectedTargetWindow.ProcessName && x.Title == SelectedTargetWindow.Title);
+                // Ưu tiên exact match (title + process) — giữ nguyên nếu tab không đổi
+                var match = ActiveWindows.FirstOrDefault(x =>
+                    x.ProcessName == prevProcess && x.Title == prevTitle);
+
+                // Fallback: chỉ cần đúng process — xử lý khi tab trình duyệt đổi
+                if (match == null)
+                    match = ActiveWindows.FirstOrDefault(x => x.ProcessName == prevProcess);
+
                 SelectedTargetWindow = match;
             }
         }

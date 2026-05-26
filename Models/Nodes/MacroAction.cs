@@ -13,8 +13,18 @@ namespace FlowMy.Models
         public string Type { get; set; } = string.Empty;
 
         public long Timestamp { get; set; }
+
+        /// <summary>Tọa độ màn hình tuyệt đối (screen pixels). Dùng khi ExecutionMode = Free.</summary>
         public int X { get; set; }
         public int Y { get; set; }
+
+        /// <summary>
+        /// Tọa độ tương đối so với client area của target app (0.0 – 1.0).
+        /// Chỉ có giá trị khi ExecutionMode = TargetApp (RelX > 0 hoặc RelY > 0).
+        /// Khi playback, executor convert về screen coords dựa trên kích thước thực tế của app.
+        /// </summary>
+        public double RelX { get; set; }
+        public double RelY { get; set; }
 
         /// <summary>
         /// Nút chuột: "Left" | "Right" | "Middle" | null.

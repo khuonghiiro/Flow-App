@@ -46,6 +46,17 @@ namespace FlowMy.Views.Overlays
         private static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
 
         [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [DllImport("user32.dll")]
         private static extern IntPtr GetWindowLong(IntPtr hwnd, int nIndex);
 
         [DllImport("user32.dll")]
@@ -243,6 +254,12 @@ namespace FlowMy.Views.Overlays
         private readonly bool _showMouseTrail;
         // Drag trail (separate polyline while dragging, distinct color)
         private Polyline? _dragTrailPolyline;
+
+        // Trail segment lifetime: each segment fades out this many ms after it was created
+        private const int TrailSegmentLifeMs  = 1800; // hold fully visible
+        private const int TrailSegmentFadeMs  = 500;  // then fade over this duration
+        // Minimum points before we start a new color-segment (avoids creating too many tiny polylines)
+        private const int TrailSegmentMinPoints = 6;
 
         // Timer
         private readonly DispatcherTimer _timer = new();
@@ -626,6 +643,8 @@ namespace FlowMy.Views.Overlays
                             Timestamp = ts,
                             X = coords.X,
                             Y = coords.Y,
+                            RelX = coords.RelX,
+                            RelY = coords.RelY,
                             Key = comboKey  // store full combo e.g. "Ctrl+C"
                         });
                         int seqKey = _sequenceCounter;
@@ -755,6 +774,7 @@ namespace FlowMy.Views.Overlays
                         Type = "MouseDown",
                         Timestamp = ts,
                         X = coords.X, Y = coords.Y,
+                        RelX = coords.RelX, RelY = coords.RelY,
                         Button = button,
                         ShiftHeld = shiftHeld,
                         CtrlHeld  = ctrlHeld,
@@ -827,6 +847,8 @@ namespace FlowMy.Views.Overlays
                             Timestamp = ts,
                             X = coords.X,
                             Y = coords.Y,
+                            RelX = coords.RelX,
+                            RelY = coords.RelY,
                             Button = "Left"
                         });
                         int seq = _sequenceCounter;
@@ -859,6 +881,7 @@ namespace FlowMy.Views.Overlays
                         Type = "MouseClick",
                         Timestamp = ts,
                         X = coords.X, Y = coords.Y,
+                        RelX = coords.RelX, RelY = coords.RelY,
                         Button = "Right",
                         ShiftHeld = shiftHeld,
                         CtrlHeld  = ctrlHeld,
@@ -889,6 +912,8 @@ namespace FlowMy.Views.Overlays
                         Timestamp = ts,
                         X = coords.X,
                         Y = coords.Y,
+                        RelX = coords.RelX,
+                        RelY = coords.RelY,
                         ScrollDelta = notches
                     });
                     int seqScroll = _sequenceCounter;
@@ -914,7 +939,9 @@ namespace FlowMy.Views.Overlays
                             Type = "MouseMove",
                             Timestamp = ts,
                             X = coords.X,
-                            Y = coords.Y
+                            Y = coords.Y,
+                            RelX = coords.RelX,
+                            RelY = coords.RelY
                         });
                         Dispatcher.BeginInvoke(() =>
                         {
@@ -1004,7 +1031,7 @@ namespace FlowMy.Views.Overlays
             VirtualCursor.Visibility = Visibility.Collapsed;
             RecordingBorder.Visibility = Visibility.Collapsed;
 
-            // Fade out all trail polylines (dashed move trail + drag trails)
+            // Immediately fade out any remaining trail polylines
             if (_allTrailPolylines.Count > 0)
             {
                 var trailsToFade = _allTrailPolylines.ToArray();
@@ -1081,6 +1108,7 @@ namespace FlowMy.Views.Overlays
                         Type = "KeyPress",
                         Timestamp = ts,
                         X = coords.X, Y = coords.Y,
+                        RelX = coords.RelX, RelY = coords.RelY,
                         Key = "Escape"
                     });
                     int seqEsc = _sequenceCounter;
@@ -1570,27 +1598,59 @@ namespace FlowMy.Views.Overlays
 
         private void AddTrailPoint(int screenX, int screenY)
         {
-            if (!_showMouseTrail || _trailPolyline == null) return;
+            if (!_showMouseTrail) return;
             var pt = ScreenToCanvas(screenX, screenY);
 
             // Sample pixel color at current position and update trail stroke if contrast changed
             var contrastColor = GetContrastingTrailColor(screenX, screenY);
-            var currentBrush = _trailPolyline.Stroke as SolidColorBrush;
-            if (currentBrush == null || currentBrush.Color != contrastColor)
+
+            bool needNewSegment = _trailPolyline == null
+                || !DrawingCanvas.Children.Contains(_trailPolyline) // was faded out
+                || (_trailPolyline.Stroke as SolidColorBrush)?.Color != contrastColor
+                || _trailPolyline.Points.Count >= 80; // cap segment length to keep rendering fast
+
+            if (needNewSegment)
             {
-                // Start a new polyline segment with the new color
-                _trailPolyline = new Polyline
+                var seg = new Polyline
                 {
                     Stroke = new SolidColorBrush(contrastColor),
                     StrokeThickness = 1.5,
                     StrokeDashArray = new DoubleCollection { 4, 3 },
                     IsHitTestVisible = false
                 };
-                DrawingCanvas.Children.Add(_trailPolyline);
-                _allTrailPolylines.Add(_trailPolyline);
+                DrawingCanvas.Children.Add(seg);
+                _allTrailPolylines.Add(seg);
+                _trailPolyline = seg;
+
+                // Schedule this segment to fade out automatically after TrailSegmentLifeMs
+                ScheduleTrailSegmentFade(seg);
             }
 
-            _trailPolyline.Points.Add(pt);
+            _trailPolyline!.Points.Add(pt);
+        }
+
+        /// <summary>
+        /// Lên lịch fade out cho một segment trail cụ thể.
+        /// Segment sẽ giữ nguyên TrailSegmentLifeMs ms rồi fade dần trong TrailSegmentFadeMs ms.
+        /// </summary>
+        private void ScheduleTrailSegmentFade(Polyline segment)
+        {
+            var holdTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TrailSegmentLifeMs) };
+            holdTimer.Tick += (_, _) =>
+            {
+                holdTimer.Stop();
+                if (!DrawingCanvas.Children.Contains(segment)) return;
+
+                var anim = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(TrailSegmentFadeMs));
+                anim.Completed += (_, _) =>
+                {
+                    if (DrawingCanvas.Children.Contains(segment))
+                        DrawingCanvas.Children.Remove(segment);
+                    _allTrailPolylines.Remove(segment);
+                };
+                segment.BeginAnimation(UIElement.OpacityProperty, anim);
+            };
+            holdTimer.Start();
         }
 
         private System.Windows.Point ScreenToCanvas(int screenX, int screenY)
@@ -1721,11 +1781,24 @@ namespace FlowMy.Views.Overlays
             return string.Join(" + ", parts);
         }
 
-        private (int X, int Y) GetActionCoords(int screenX, int screenY)
+        private (int X, int Y, double RelX, double RelY) GetActionCoords(int screenX, int screenY)
         {
-            // Always store screen coordinates in MacroAction.
-            // The executor is responsible for converting to client coords at playback time.
-            return (screenX, screenY);
+            // TargetApp mode: also compute relative coords (0.0–1.0) within the target's client area.
+            // These allow the executor to rescale positions when the app is resized at playback time.
+            if (_executionMode == MacroExecutionMode.TargetApp && _targetHwnd != IntPtr.Zero
+                && GetClientRect(_targetHwnd, out RECT cr) && cr.Right > 0 && cr.Bottom > 0)
+            {
+                // Convert screen → client coords of target window
+                var pt = new POINT { X = screenX, Y = screenY };
+                ScreenToClient(_targetHwnd, ref pt);
+
+                double relX = Math.Clamp((double)pt.X / cr.Right,  0.0, 1.0);
+                double relY = Math.Clamp((double)pt.Y / cr.Bottom, 0.0, 1.0);
+                return (screenX, screenY, relX, relY);
+            }
+
+            // Free mode: no relative coords
+            return (screenX, screenY, 0.0, 0.0);
         }
     }
 }
