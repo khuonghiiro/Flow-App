@@ -1088,6 +1088,12 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 }
                 catch { /* best-effort */ }
             }
+
+            // Target app
+            if (properties.TryGetValue("TargetProcessName", out var tpnObj))
+                cap.TargetProcessName = tpnObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("TargetWindowTitle", out var twtObj))
+                cap.TargetWindowTitle = twtObj?.ToString() ?? string.Empty;
         }
         else if (node is LoopBodyNode loopBody)
         {
@@ -4370,6 +4376,12 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             // SkipOutputs
             if (cap.SkipOutputs != null && cap.SkipOutputs.Count > 0)
                 dict["SkipOutputs"] = System.Text.Json.JsonSerializer.Serialize(cap.SkipOutputs.ToList());
+
+            // Target app
+            if (!string.IsNullOrWhiteSpace(cap.TargetProcessName))
+                dict["TargetProcessName"] = cap.TargetProcessName;
+            if (!string.IsNullOrWhiteSpace(cap.TargetWindowTitle))
+                dict["TargetWindowTitle"] = cap.TargetWindowTitle;
         }
         else if (node is LoopBodyNode loopBody)
         {

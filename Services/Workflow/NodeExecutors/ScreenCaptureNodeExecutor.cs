@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
@@ -88,6 +89,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             if (w <= 0 || h <= 0) return;
+
+            // Đưa app lên trước nếu được cấu hình
+            if (!string.IsNullOrWhiteSpace(cap.TargetProcessName))
+            {
+                var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
+                var match = windows.FirstOrDefault(wnd =>
+                    wnd.ProcessName == cap.TargetProcessName && wnd.Title == cap.TargetWindowTitle)
+                    ?? windows.FirstOrDefault(wnd => wnd.ProcessName == cap.TargetProcessName);
+
+                if (match != null)
+                {
+                    FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
+                    // Chờ ngắn để window kịp render lên trước
+                    await Task.Delay(150, env.CancellationToken);
+                }
+            }
 
             // Chụp màn hình (chạy trên background thread để không block UI)
             var bitmap = await Task.Run(() => CaptureScreen(x, y, w, h));

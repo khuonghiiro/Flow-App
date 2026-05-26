@@ -44,6 +44,10 @@ namespace FlowMy.Models.Nodes
         private bool _useNativeWidth = false;   // true = theo kích thước ảnh gốc (không giới hạn)
         private double _maxNodeWidth = 500;    // giới hạn width khi UseNativeWidth = false
 
+        // ── Chọn app để chụp (chỉ dùng khi CaptureMode = ScreenCapture) ─────
+        private string _targetProcessName = string.Empty;
+        private string _targetWindowTitle = string.Empty;
+
         // ── SkipOutputs (giống ImageProcessingNode) ──────────────────────────
         /// <summary>Danh sách output keys bị tắt (unchecked trong dialog).</summary>
         public HashSet<string> SkipOutputs { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -140,6 +144,21 @@ namespace FlowMy.Models.Nodes
         {
             get => _maxNodeWidth;
             set { if (Math.Abs(_maxNodeWidth - value) > 0.01) { _maxNodeWidth = Math.Max(80, value); OnPropertyChanged(); } }
+        }
+
+        // ── Chọn app để chụp ────────────────────────────────────────────────
+        /// <summary>Tên process của app cần đưa lên trước khi chụp (ví dụ: "chrome").</summary>
+        public string TargetProcessName
+        {
+            get => _targetProcessName;
+            set { if (_targetProcessName != value) { _targetProcessName = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Tiêu đề cửa sổ của app cần đưa lên trước khi chụp.</summary>
+        public string TargetWindowTitle
+        {
+            get => _targetWindowTitle;
+            set { if (_targetWindowTitle != value) { _targetWindowTitle = value ?? string.Empty; OnPropertyChanged(); } }
         }
     }
 }

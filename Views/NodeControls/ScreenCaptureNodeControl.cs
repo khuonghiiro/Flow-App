@@ -6,6 +6,7 @@ using FlowMy.Views.Overlays;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -283,6 +284,21 @@ namespace FlowMy.Views.NodeControls
                 ownerWindow.Hide();
                 try
                 {
+                    // Đưa app đã chọn lên trước nếu được cấu hình
+                    if (!string.IsNullOrWhiteSpace(node.TargetProcessName))
+                    {
+                        var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
+                        var match = windows.FirstOrDefault(wnd =>
+                            wnd.ProcessName == node.TargetProcessName && wnd.Title == node.TargetWindowTitle)
+                            ?? windows.FirstOrDefault(wnd => wnd.ProcessName == node.TargetProcessName);
+
+                        if (match != null)
+                            FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
+                    }
+
+                    // Chờ ngắn để app kịp render lên trước khi overlay xuất hiện
+                    System.Threading.Thread.Sleep(150);
+
                     var overlay = new ScreenCaptureOverlay();
                     if (overlay.ShowDialog() == true)
                     {

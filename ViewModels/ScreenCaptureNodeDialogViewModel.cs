@@ -1,8 +1,11 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace FlowMy.ViewModels
 {
@@ -31,6 +34,11 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _useNativeWidth = true;
         [ObservableProperty] private double _maxNodeWidth = 500;
 
+        // ── Chọn app để đưa lên trước khi chụp ──────────────────────────────
+        [ObservableProperty] private WindowInfo? _selectedTargetWindow;
+        public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
+        public IRelayCommand LoadWindowsCommand { get; }
+
         // ── Danh sách node có thể chọn ──────────────────────────────────────
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -57,6 +65,13 @@ namespace FlowMy.ViewModels
             // Load danh sách node
             RefreshAllNodesWithOutputs(AvailableNodeOptions);
 
+            // Load windows command
+            LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
+
+            // Load danh sách cửa sổ ngay nếu đang ở chế độ ScreenCapture
+            if (IsScreenCaptureMode)
+                ExecuteLoadWindows();
+
             // Refresh key options khi đổi node
             this.PropertyChanged += (s, e) =>
             {
@@ -64,6 +79,8 @@ namespace FlowMy.ViewModels
                     RefreshCoordKeyOptions();
                 else if (e.PropertyName == nameof(PathSourceNodeId))
                     RefreshPathKeyOptions();
+                else if (e.PropertyName == nameof(IsScreenCaptureMode) && IsScreenCaptureMode && ActiveWindows.Count == 0)
+                    ExecuteLoadWindows();
             };
 
             // Khởi tạo key options
@@ -72,6 +89,27 @@ namespace FlowMy.ViewModels
         }
 
         protected override string GetDefaultTitle() => "Screen Capture";
+
+        // ── Load danh sách cửa sổ đang mở ───────────────────────────────────
+        private void ExecuteLoadWindows()
+        {
+            string? prevProcess = SelectedTargetWindow?.ProcessName ?? _scNode.TargetProcessName;
+            string? prevTitle   = SelectedTargetWindow?.Title       ?? _scNode.TargetWindowTitle;
+
+            var windows = WindowHelper.GetActiveWindows();
+            ActiveWindows.Clear();
+            foreach (var w in windows)
+                ActiveWindows.Add(w);
+
+            if (!string.IsNullOrWhiteSpace(prevProcess))
+            {
+                // Ưu tiên exact match (title + process)
+                var match = ActiveWindows.FirstOrDefault(x =>
+                    x.ProcessName == prevProcess && x.Title == prevTitle)
+                    ?? ActiveWindows.FirstOrDefault(x => x.ProcessName == prevProcess);
+                SelectedTargetWindow = match;
+            }
+        }
 
         // ── Refresh key options ──────────────────────────────────────────────
         public void RefreshCoordKeyOptions()
@@ -105,6 +143,10 @@ namespace FlowMy.ViewModels
 
             _scNode.UseNativeWidth = UseNativeWidth;
             _scNode.MaxNodeWidth   = MaxNodeWidth;
+
+            // Lưu target app
+            _scNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
+            _scNode.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;
 
             _scNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
