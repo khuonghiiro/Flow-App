@@ -179,28 +179,35 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             if (cap.DynamicOutputs == null) return;
 
-            // Encode PNG một lần để dùng cho cả imageBase64 và imageSizeBytes
-            byte[]? pngBytes = null;
-            if (!cap.SkipOutputs.Contains("imageBase64") || !cap.SkipOutputs.Contains("imageSizeBytes"))
-                pngBytes = TryEncodePng(bitmap);
+            // Chỉ encode PNG khi có ít nhất 1 key cần bytes (imageBase64 hoặc imageSizeBytes)
+            // và key đó KHÔNG bị skip → tránh encode ảnh lớn vô ích
+            bool needBase64   = !cap.SkipOutputs.Contains("imageBase64");
+            bool needSizeBytes = !cap.SkipOutputs.Contains("imageSizeBytes");
+            byte[]? pngBytes = (needBase64 || needSizeBytes) ? TryEncodePng(bitmap) : null;
 
             foreach (var port in cap.DynamicOutputs)
             {
                 var key = port.Key ?? string.Empty;
-                if (cap.SkipOutputs.Contains(key)) { port.UserValueOverride = string.Empty; continue; }
+                if (cap.SkipOutputs.Contains(key))
+                {
+                    // Clear giá trị cũ để downstream không đọc nhầm
+                    port.UserValueOverride = string.Empty;
+                    continue;
+                }
 
                 port.UserValueOverride = key.ToLowerInvariant() switch
                 {
-                    "capturex"      => cap.CaptureX.ToString(),
-                    "capturey"      => cap.CaptureY.ToString(),
-                    "capturewidth"  => cap.CaptureWidth.ToString(),
-                    "captureheight" => cap.CaptureHeight.ToString(),
-                    "capturerect"   => $"{cap.CaptureX},{cap.CaptureY},{cap.CaptureWidth},{cap.CaptureHeight}",
-                    "imagewidth"    => bitmap.PixelWidth.ToString(),
-                    "imageheight"   => bitmap.PixelHeight.ToString(),
-                    "imagesizebytes"=> pngBytes != null ? pngBytes.Length.ToString() : string.Empty,
-                    "imagebase64"   => pngBytes != null ? Convert.ToBase64String(pngBytes) : string.Empty,
-                    _               => string.Empty
+                    "capturex"       => cap.CaptureX.ToString(),
+                    "capturey"       => cap.CaptureY.ToString(),
+                    "capturewidth"   => cap.CaptureWidth.ToString(),
+                    "captureheight"  => cap.CaptureHeight.ToString(),
+                    "capturerect"    => $"{cap.CaptureX},{cap.CaptureY},{cap.CaptureWidth},{cap.CaptureHeight}",
+                    "imagewidth"     => bitmap.PixelWidth.ToString(),
+                    "imageheight"    => bitmap.PixelHeight.ToString(),
+                    "imagesizebytes" => pngBytes != null ? pngBytes.Length.ToString() : string.Empty,
+                    // Trả về full base64 để downstream dùng được; UI dialog tự truncate khi hiển thị
+                    "imagebase64"    => pngBytes != null ? Convert.ToBase64String(pngBytes) : string.Empty,
+                    _                => string.Empty
                 };
             }
         }

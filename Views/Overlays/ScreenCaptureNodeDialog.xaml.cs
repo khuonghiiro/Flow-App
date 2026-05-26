@@ -78,20 +78,24 @@ namespace FlowMy.Views.Overlays
 
             stack.Children.Add(grid);
 
-            // Hiển thị giá trị hiện tại (nếu có)
+            // Hiển thị giá trị — base64 chỉ hiện 50 ký tự đầu + "..."
+            bool isBase64Key = outputVm.Key != null &&
+                (outputVm.Key.IndexOf("base64", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 outputVm.Key.IndexOf("Base64", StringComparison.OrdinalIgnoreCase) >= 0);
+
+            string displayValue = outputVm.Value ?? string.Empty;
+            if (isBase64Key && displayValue.Length > 50)
+                displayValue = displayValue.Substring(0, 50) + "...";
+
             var valueText = new TextBlock
             {
-                FontSize = 11,
-                Opacity = 0.75,
-                Margin = new Thickness(24, 2, 0, 0),
+                Text         = displayValue,
+                FontSize     = 11,
+                Opacity      = 0.75,
+                Margin       = new Thickness(24, 2, 0, 0),
                 TextWrapping = TextWrapping.Wrap
             };
             BindThemeResource(valueText, TextBlock.ForegroundProperty, "TextBrush");
-            valueText.SetBinding(TextBlock.TextProperty,
-                new System.Windows.Data.Binding(nameof(OutputItemViewModel.Value))
-                {
-                    Source = outputVm
-                });
             stack.Children.Add(valueText);
 
             return stack;

@@ -225,7 +225,8 @@ namespace FlowMy.Services.Rendering
                             var bytes = TryEncodePngBytes(cap.CapturedImage);
                             if (bytes == null) return "—";
                             var b64 = Convert.ToBase64String(bytes);
-                            return b64.Length > 80 ? b64.Substring(0, 80) + "…" : b64;
+                            // Chỉ hiển thị 50 ký tự đầu để tránh nặng UI
+                            return b64.Length > 50 ? b64.Substring(0, 50) + "…" : b64;
                         }
                     case "image":
                         // legacy key
