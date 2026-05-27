@@ -70,6 +70,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private static async Task ExecuteScreenCaptureMode(ScreenCaptureNode cap, NodeExecutionEnvironment env)
         {
             int x = cap.CaptureX, y = cap.CaptureY, w = cap.CaptureWidth, h = cap.CaptureHeight;
+            bool shouldCapture = false;
 
             // Đọc toạ độ từ node nguồn nếu được cấu hình
             if (!string.IsNullOrWhiteSpace(cap.CoordSourceNodeId))
@@ -80,12 +81,29 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     cap.CoordSourceOutputKey,
                     env);
 
+                System.Diagnostics.Debug.WriteLine($"[ScreenCaptureNode {cap.Title}] Received raw coordinates: '{raw}' from node {cap.CoordSourceNodeId}, key {cap.CoordSourceOutputKey}");
+
                 if (!string.IsNullOrWhiteSpace(raw) && raw != "—")
                 {
                     var parsed = TryParseRect(raw, cap.CoordSourceOutputKey, cap.CaptureWidth, cap.CaptureHeight);
                     if (parsed.HasValue)
+                    {
                         (x, y, w, h) = parsed.Value;
+                        shouldCapture = true; // Có input toạ độ → cần chụp lại
+                        System.Diagnostics.Debug.WriteLine($"[ScreenCaptureNode {cap.Title}] Parsed coordinates: x={x}, y={y}, w={w}, h={h}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ScreenCaptureNode {cap.Title}] Failed to parse coordinates from: '{raw}'");
+                    }
                 }
+            }
+
+            // Nếu không có input toạ độ và đã có ảnh → giữ nguyên ảnh, không chụp lại
+            if (!shouldCapture && cap.CapturedImage != null)
+            {
+                PublishOutputs(cap, cap.CapturedImage, env);
+                return;
             }
 
             if (w <= 0 || h <= 0) return;
@@ -273,12 +291,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (width <= 0 || height <= 0) return null;
             try
             {
-                using var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-                using var g   = Graphics.FromImage(bmp);
-                g.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(width, height), CopyPixelOperation.SourceCopy);
+                // Xử lý DPI scaling: convert toạ độ logic sang physical
+                using var g = Graphics.FromHwnd(IntPtr.Zero);
+                var dpiX = g.DpiX;
+                var dpiY = g.DpiY;
+                // Standard DPI là 96
+                var scaleX = dpiX / 96.0;
+                var scaleY = dpiY / 96.0;
+
+                var physicalX = (int)(x * scaleX);
+                var physicalY = (int)(y * scaleY);
+                var physicalW = (int)(width * scaleX);
+                var physicalH = (int)(height * scaleY);
+
+                System.Diagnostics.Debug.WriteLine($"[CaptureScreen] DPI: {dpiX}x{dpiY}, Scale: {scaleX:F2}x{scaleY:F2}");
+                System.Diagnostics.Debug.WriteLine($"[CaptureScreen] Logical: ({x},{y},{width},{height}) -> Physical: ({physicalX},{physicalY},{physicalW},{physicalH})");
+
+                using var bmp = new Bitmap(physicalW, physicalH, PixelFormat.Format32bppArgb);
+                using var graphics = Graphics.FromImage(bmp);
+                graphics.CopyFromScreen(physicalX, physicalY, 0, 0, new System.Drawing.Size(physicalW, physicalH), CopyPixelOperation.SourceCopy);
+
+                // Scale lại về kích thước gốc (logic) để đảm bảo kích thước ảnh đúng như mong đợi
+                using var scaledBmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+                using var scaledGraphics = Graphics.FromImage(scaledBmp);
+                scaledGraphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                scaledGraphics.DrawImage(bmp, 0, 0, width, height);
 
                 using var ms = new MemoryStream();
-                bmp.Save(ms, ImageFormat.Png);
+                scaledBmp.Save(ms, ImageFormat.Png);
                 ms.Position = 0;
 
                 var img = new BitmapImage();
