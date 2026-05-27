@@ -195,6 +195,25 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- ═══ Toạ độ thủ công ═══ -->
+                    <TextBlock Text="Toạ độ thủ công (dùng khi không có node nguồn):"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock x:Name="PositionDisplayText"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="13" Margin="0,0,0,10"
+                                       Text="Chưa chọn vị trí"/>
+                            <Button x:Name="PickPositionButton"
+                                    Content="🎯 Chọn vị trí trên màn hình"
+                                    Height="36" Style="{DynamicResource PrimaryButton}"
+                                    Cursor="Hand" Click="PickPositionButton_Click"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- ═══ Click tại toạ độ ═══ -->
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"

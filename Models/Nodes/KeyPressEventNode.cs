@@ -73,6 +73,10 @@ namespace FlowMy.Models
         private bool _clickOnPosition = true;
         private int _clickDurationMs = 1;
 
+        // ── Toạ độ thủ công (fallback khi không có node nguồn) ───────────────
+        private System.Windows.Point _manualPosition;
+        private bool _hasManualPosition;
+
         // ── Chọn app để focus trước khi nhấn phím ────────────────────────────
         private string _targetProcessName = string.Empty;
         private string _targetWindowTitle = string.Empty;
@@ -170,9 +174,31 @@ namespace FlowMy.Models
             set { if (_clickDurationMs != value) { _clickDurationMs = value < 0 ? 0 : value; OnPropertyChanged(); } }
         }
 
-        // ── Chọn app để focus ────────────────────────────────────────────────
+        /// <summary>Toạ độ thủ công (fallback khi không có node nguồn).</summary>
+        public System.Windows.Point ManualPosition
+        {
+            get => _manualPosition;
+            set
+            {
+                if (_manualPosition == value) return;
+                _manualPosition = value;
+                HasManualPosition = true;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PositionText));
+            }
+        }
 
-        /// <summary>Tên process của app cần focus trước khi nhấn phím.</summary>
+        public bool HasManualPosition
+        {
+            get => _hasManualPosition;
+            set { if (_hasManualPosition != value) { _hasManualPosition = value; OnPropertyChanged(); OnPropertyChanged(nameof(PositionText)); } }
+        }
+
+        public string PositionText => _hasManualPosition
+            ? $"X: {(int)_manualPosition.X}, Y: {(int)_manualPosition.Y}"
+            : "Chưa chọn vị trí";
+
+        // ── Chọn app để focus trước khi nhấn phím ────────────────────────────
         public string TargetProcessName
         {
             get => _targetProcessName;

@@ -11,10 +11,12 @@ namespace FlowMy.Views.Overlays
     public partial class HotkeyPressEventNodeDialog : BaseNodeDialog
     {
         private readonly HotkeyPressEventNodeDialogViewModel _viewModel;
+        private readonly HotkeyPressEventNode _node;
 
         public HotkeyPressEventNodeDialog(HotkeyPressEventNode node, IWorkflowEditorHost host, Window? owner)
             : base()
         {
+            _node = node;
             InitializeComponent();
 
             // Initialize base after InitializeComponent
@@ -91,6 +93,43 @@ namespace FlowMy.Views.Overlays
                 // Không phải số hợp lệ, reset về giá trị hiện tại của ViewModel
                 PressDelayTextBox.Text = _viewModel.PressDelayMs.ToString();
             }
+        }
+
+        private void PickPositionButton_Click(object sender, RoutedEventArgs e)
+        {
+            var windowsToHide = new System.Collections.Generic.List<Window>();
+            foreach (Window w in Application.Current.Windows)
+            {
+                if (w.IsVisible) windowsToHide.Add(w);
+            }
+            foreach (var w in windowsToHide) w.Hide();
+
+            try
+            {
+                var overlay = new ScreenPositionPickerOverlay();
+                var result = overlay.ShowDialog();
+                if (result == true && overlay.SelectedPosition.HasValue)
+                {
+                    _node.ManualPosition = overlay.SelectedPosition.Value;
+                    RefreshPositionDisplay();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi khi chọn vị trí: {ex.Message}", "Lỗi",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                foreach (var w in windowsToHide) w.Show();
+                Activate();
+            }
+        }
+
+        private void RefreshPositionDisplay()
+        {
+            if (PositionDisplayText != null)
+                PositionDisplayText.Text = _node.PositionText;
         }
     }
 }

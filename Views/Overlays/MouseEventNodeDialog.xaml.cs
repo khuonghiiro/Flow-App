@@ -11,10 +11,12 @@ namespace FlowMy.Views.Overlays
     public partial class MouseEventNodeDialog : BaseNodeDialog
     {
         private readonly MouseEventNodeDialogViewModel _viewModel;
+        private readonly MouseEventNode _node;
 
         public MouseEventNodeDialog(MouseEventNode node, IWorkflowEditorHost host, Window? owner)
             : base()
         {
+            _node = node;
             InitializeComponent();
 
             // Initialize base after InitializeComponent
@@ -226,6 +228,43 @@ namespace FlowMy.Views.Overlays
                     ExtraTextBox.Text = _viewModel.HoldDuration.ToString("F2");
                 }
             }
+        }
+
+        private void PickPositionButton_Click(object sender, RoutedEventArgs e)
+        {
+            var windowsToHide = new System.Collections.Generic.List<Window>();
+            foreach (Window w in Application.Current.Windows)
+            {
+                if (w.IsVisible) windowsToHide.Add(w);
+            }
+            foreach (var w in windowsToHide) w.Hide();
+
+            try
+            {
+                var overlay = new ScreenPositionPickerOverlay();
+                var result = overlay.ShowDialog();
+                if (result == true && overlay.SelectedPosition.HasValue)
+                {
+                    _node.ManualPosition = overlay.SelectedPosition.Value;
+                    RefreshPositionDisplay();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi khi chọn vị trí: {ex.Message}", "Lỗi",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                foreach (var w in windowsToHide) w.Show();
+                Activate();
+            }
+        }
+
+        private void RefreshPositionDisplay()
+        {
+            if (PositionDisplayText != null)
+                PositionDisplayText.Text = _node.PositionText;
         }
     }
 }
