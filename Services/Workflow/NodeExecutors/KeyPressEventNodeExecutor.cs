@@ -76,7 +76,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static (int x, int y) ResolveCoordinates(KeyPressEventNode keyNode, NodeExecutionEnvironment env)
         {
-            // Ưu tiên: đọc từ node nguồn
+            // Ưu tiên 1: đọc từ node nguồn
             if (!string.IsNullOrWhiteSpace(keyNode.CoordSourceNodeId))
             {
                 var raw = env.Service.ResolveValueByNodeIdAndKeyForExecution(
@@ -92,12 +92,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
-            // Fallback: dùng toạ độ thủ công
+            // Ưu tiên 2: dùng toạ độ thủ công
             if (keyNode.HasManualPosition)
                 return ((int)keyNode.ManualPosition.X, (int)keyNode.ManualPosition.Y);
 
-            return (0, 0);
+            // Ưu tiên 3: toạ độ chuột hiện tại
+            GetCursorPos(out var pt);
+            return (pt.X, pt.Y);
         }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
 
         private static (int x, int y)? TryParseCoordString(string raw)
         {
