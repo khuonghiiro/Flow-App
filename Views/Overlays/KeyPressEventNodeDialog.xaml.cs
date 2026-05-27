@@ -35,6 +35,9 @@ namespace FlowMy.Views.Overlays
             {
                 try
                 {
+                    // Reload danh sách cửa sổ khi dialog mở để cập nhật tab mới
+                    _viewModel.LoadWindowsCommand.Execute(null);
+
                     var inputsPanel = GetInputsPanel();
                     var outputsPanel = GetOutputsPanel();
 

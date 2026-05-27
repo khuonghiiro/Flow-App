@@ -82,6 +82,8 @@ namespace FlowMy.Views.Overlays
         protected override void OnLoaded()
         {
             base.OnLoaded();
+            // Reload danh sách cửa sổ khi dialog mở để cập nhật tab mới
+            _viewModel.LoadWindowsCommand.Execute(null);
             UpdateExtraPanel();
             UpdateRepeatCountTextBoxState();
             RefreshPositionDisplay();
