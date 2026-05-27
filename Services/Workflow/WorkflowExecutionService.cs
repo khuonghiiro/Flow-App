@@ -2180,11 +2180,7 @@ namespace FlowMy.Services.Workflow
             {
                 srcNode = matchingConnection.FromNode;
             }
-            else if (upstreamConnections.Count > 0 && upstreamConnections[0].FromNode != null)
-            {
-                // Fallback: dùng connection đầu tiên
-                srcNode = upstreamConnections[0].FromNode;
-            }
+            // Không fallback về connection đầu tiên — nếu SelectedSourceNodeId không match thì không resolve
 
             if (srcNode == null) return string.Empty;
 

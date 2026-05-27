@@ -493,11 +493,46 @@ namespace FlowMy.ViewModels
         }
 
         /// <summary>
+        /// Sync toàn bộ ReuseRoutes từ ViewModel vào _node.ReuseRoutes ngay lập tức.
+        /// Gọi trước khi chạy workflow để đảm bảo route hiện tại trong dialog được áp dụng,
+        /// kể cả khi user chưa click Save.
+        /// </summary>
+        protected void SyncReuseRoutesToNode()
+        {
+            if (!SupportsReuseRoutes || _node.ReuseRoutes == null) return;
+
+            _node.ReuseRoutes.Clear();
+            foreach (var routeVm in ReuseRoutes)
+            {
+                // Route không có IncomingNodeId hoặc chưa chọn OutgoingNode thì bỏ qua
+                if (string.IsNullOrWhiteSpace(routeVm.IncomingNodeId) ||
+                    string.IsNullOrWhiteSpace(routeVm.SelectedOutgoingNodeId))
+                {
+                    continue;
+                }
+
+                var lineStyleKey = routeVm.SelectedLineStyleKey;
+                if (string.Equals(lineStyleKey, "WorkflowDefault", StringComparison.OrdinalIgnoreCase))
+                {
+                    lineStyleKey = null;
+                }
+
+                _node.ReuseRoutes.Add(new NodeReuseRoute
+                {
+                    IncomingNodeId = routeVm.IncomingNodeId,
+                    OutgoingNodeId = routeVm.SelectedOutgoingNodeId,
+                    LineStyleKey = lineStyleKey
+                });
+            }
+        }
+
+        /// <summary>
         /// Chạy logic của node này (từ nút Play trong dialog). Chỉ thực thi node đó, cập nhật output.
         /// </summary>
         [RelayCommand]
         protected void RunSingleNode()
         {
+            SyncReuseRoutesToNode(); // Đảm bảo route hiện tại được áp dụng trước khi chạy
             _host.RequestRunSingleNode(_node);
         }
 
@@ -508,6 +543,7 @@ namespace FlowMy.ViewModels
         [RelayCommand(AllowConcurrentExecutions = true)]
         protected async Task RunWorkflowFromNode()
         {
+            SyncReuseRoutesToNode(); // Đảm bảo route hiện tại được áp dụng trước khi chạy
             var vm = _host.ViewModel;
             if (vm == null) return;
 

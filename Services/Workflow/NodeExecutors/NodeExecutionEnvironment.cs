@@ -161,8 +161,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (RefreshOnly)
                 return Task.CompletedTask;
             
-            // Pass a COPY of execution path to avoid polluting the current path
-            // when parallel branches are executed
+            // Pass a COPY of execution path to avoid polluting sibling branches
+            // (e.g. StorageNode runs in parallel with the main chain).
+            // Loop detection uses the accumulated path: if the same node appears twice
+            // in the path copy, it means we have a cycle.
             return Service.ExecuteNodeAsync(
                 node,
                 Connections,
@@ -174,7 +176,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 viaConnection,
                 ReachableToEnd,
                 false, // isReuseRouteTerminal is deprecated
-                new List<string>(ExecutionPath), // Pass copy of execution path
+                new List<string>(ExecutionPath), // Copy so sibling branches don't interfere
                 ExecutionId,
                 FlowScopeId,
                 BranchId,
@@ -208,10 +210,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             // System.Diagnostics.Debug.WriteLine($"[TraverseOutputs] Node: {node.Id} ({node.Title})");
             
-            // Add current node to execution path for loop detection
+            // Detect cycle: nếu node này đã xuất hiện trong path hiện tại → đang chạy vòng lặp vô hạn.
+            // Dùng Contains thay vì Count > MAX để phát hiện sớm ngay khi cycle xảy ra.
+            if (ExecutionPath.Contains(node.Id, StringComparer.OrdinalIgnoreCase))
+            {
+                var cyclePath = string.Join(" → ", ExecutionPath.Select(id =>
+                {
+                    var n = Connections.SelectMany(c => new[] { c.FromNode, c.ToNode })
+                                      .FirstOrDefault(x => x?.Id == id);
+                    return n != null ? $"{n.Title}" : id;
+                }));
+
+                var errorMsg = $"⚠️ Vòng lặp vô hạn được phát hiện!\n\n" +
+                              $"Node \"{node.Title}\" đã được thực thi trước đó trong luồng này.\n" +
+                              $"Đường đi: {cyclePath} → {node.Title}\n\n" +
+                              $"Kiểm tra lại cấu hình ReuseRoutes hoặc connections trong workflow.";
+
+                OnNodeFailed?.Invoke(node, errorMsg);
+                return;
+            }
+
+            // Add current node to execution path
             ExecutionPath.Add(node.Id);
 
-            // Check for infinite loop
+            // Fallback: nếu path quá dài (ví dụ workflow hợp lệ nhưng rất dài), dừng để tránh stack overflow
             if (ExecutionPath.Count > MAX_EXECUTION_DEPTH)
             {
                 var recentPath = string.Join(" → ", ExecutionPath.TakeLast(10).Select(id => 
@@ -221,13 +243,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     return n != null ? $"{n.Title} ({id.Substring(0, 8)}...)" : id;
                 }));
 
-                var errorMsg = $"⚠️ Infinite loop detected!\n\n" +
-                              $"Execution has passed through {ExecutionPath.Count} nodes.\n" +
-                              $"Recent path (last 10 nodes):\n{recentPath}\n\n" +
-                              $"Please check your workflow connections and ReuseRoutes configuration.";
-                
-                // System.Diagnostics.Debug.WriteLine($"[TraverseOutputs] ❌ LOOP DETECTED! Path count: {ExecutionPath.Count}");
-                // System.Diagnostics.Debug.WriteLine($"[TraverseOutputs] Recent path: {recentPath}");
+                var errorMsg = $"⚠️ Workflow quá dài!\n\n" +
+                              $"Đã thực thi qua {ExecutionPath.Count} nodes.\n" +
+                              $"Các node gần đây:\n{recentPath}\n\n" +
+                              $"Kiểm tra lại cấu hình ReuseRoutes và connections.";
                 
                 OnNodeFailed?.Invoke(node, errorMsg);
                 return;

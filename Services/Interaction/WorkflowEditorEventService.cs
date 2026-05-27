@@ -669,9 +669,8 @@ namespace FlowMy.Services.Interaction
                     {
                         dynIn.AvailableSources = options;
 
-                        // ✅ QUAN TRỌNG: Giữ lại SelectedSourceNodeId đã được restore từ JSON
-                        // Chỉ auto-select node đầu tiên nếu SelectedSourceNodeId chưa được set (null hoặc empty)
-                        // Nếu đã có SelectedSourceNodeId nhưng không có trong options, VẪN GIỮ LẠI để có thể restore sau
+                        // Chỉ restore SelectedSourceNodeId đã được user chọn trước đó (từ JSON).
+                        // KHÔNG tự chọn node đầu tiên khi chưa có giá trị — user phải chọn thủ công.
                         if (!string.IsNullOrWhiteSpace(dynIn.SelectedSourceNodeId))
                         {
                             // Đã có SelectedSourceNodeId (có thể từ JSON restore)
@@ -679,13 +678,9 @@ namespace FlowMy.Services.Interaction
                             {
                                 // Có trong options, giữ nguyên
                             }
-                            // Nếu không có trong options, VẪN GIỮ LẠI (không reset) để có thể restore sau khi connections được thiết lập đầy đủ
+                            // Nếu không có trong options, VẪN GIỮ LẠI để có thể restore sau khi connections được thiết lập đầy đủ
                         }
-                        else
-                        {
-                            // Chưa có SelectedSourceNodeId, auto-select node đầu tiên
-                            dynIn.SelectedSourceNodeId = options.FirstOrDefault()?.NodeId;
-                        }
+                        // Nếu chưa có SelectedSourceNodeId → giữ null, không tự chọn
 
                         if (dynIn.SourceSelectorUI != null)
                         {
@@ -738,17 +733,9 @@ namespace FlowMy.Services.Interaction
                         }
                         else
                         {
-                            // Chưa có SelectedSourceOutputKey, fallback logic: prefer input.Key, else first
-                            var prefer = (dynIn.Key ?? string.Empty).Trim();
-                            if (!string.IsNullOrWhiteSpace(prefer) &&
-                                outputKeyOptions.Any(k => string.Equals(k.Key, prefer, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                dynIn.SelectedSourceOutputKey = outputKeyOptions.First(k => string.Equals(k.Key, prefer, StringComparison.OrdinalIgnoreCase)).Key;
-                            }
-                            else
-                            {
-                                dynIn.SelectedSourceOutputKey = outputKeyOptions.FirstOrDefault()?.Key;
-                            }
+                            // Chưa có SelectedSourceOutputKey → giữ null, không tự chọn.
+                            // User phải chọn thủ công.
+                            dynIn.SelectedSourceOutputKey = null;
                         }
 
                         if (dynIn.OutputKeySelectorUI != null)
