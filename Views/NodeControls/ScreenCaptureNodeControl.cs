@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -48,18 +49,6 @@ namespace FlowMy.Views.NodeControls
             previewImage.MouseEnter += (s, e) => { scaleTransform.ScaleX = 1.06; scaleTransform.ScaleY = 1.06; };
             previewImage.MouseLeave += (s, e) => { scaleTransform.ScaleX = 1.0;  scaleTransform.ScaleY = 1.0; };
 
-            // Click trái → xem full size; chuột phải → để bubble lên border (WithDialogSupport xử lý)
-            previewImage.Cursor = Cursors.Hand;
-            previewImage.MouseDown += (s, e) =>
-            {
-                if (e.ChangedButton == System.Windows.Input.MouseButton.Left && node.CapturedImage != null)
-                {
-                    ShowImagePreviewDialog(node, ownerWindow);
-                    e.Handled = true;
-                }
-                // Chuột phải: KHÔNG handle → bubble lên border để WithDialogSupport mở dialog node
-            };
-
             // ── 2. PLACEHOLDER (icon khi chưa có ảnh) ───────────────────────
             var placeholderPanel = new StackPanel
             {
@@ -98,7 +87,7 @@ namespace FlowMy.Views.NodeControls
                 Child               = placeholderPanel
             };
 
-            // ── 4. BUTTON BAR (3 nút dưới cùng) ─────────────────────────────
+            // ── 4. BUTTON BAR (4 nút dưới cùng) ─────────────────────────────
             var captureButton = new Button
             {
                 Content    = node.HasCaptureRegion ? "📸 Chụp lại" : "📸 Chụp vùng",
@@ -121,6 +110,17 @@ namespace FlowMy.Views.NodeControls
                 Style      = Application.Current.FindResource("PrimaryButton") as Style
             };
 
+            var previewButton = new Button
+            {
+                Content    = "👁 Preview",
+                Height     = ButtonHeight,
+                FontSize   = 11,
+                FontWeight = FontWeights.Medium,
+                Cursor     = Cursors.Hand,
+                ToolTip    = "Xem ảnh full size",
+                Style      = Application.Current.FindResource("InfoButton") as Style
+            };
+
             var clearButton = new Button
             {
                 Content   = "x",
@@ -138,12 +138,16 @@ namespace FlowMy.Views.NodeControls
             buttonBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
             buttonBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             buttonBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+            buttonBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            buttonBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
             buttonBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             Grid.SetColumn(captureButton,  0);
             Grid.SetColumn(pickFileButton, 2);
-            Grid.SetColumn(clearButton,    4);
+            Grid.SetColumn(previewButton, 4);
+            Grid.SetColumn(clearButton,    6);
             buttonBar.Children.Add(captureButton);
             buttonBar.Children.Add(pickFileButton);
+            buttonBar.Children.Add(previewButton);
             buttonBar.Children.Add(clearButton);
 
             // ── 5. MAIN GRID ─────────────────────────────────────────────────
@@ -200,11 +204,13 @@ namespace FlowMy.Views.NodeControls
                 {
                     captureButton.Content  = "📸";
                     pickFileButton.Content = "🖼";
+                    previewButton.Content = "👁";
                 }
                 else
                 {
                     captureButton.Content  = node.HasCaptureRegion ? "📸 Chụp lại" : "📸 Chụp vùng";
                     pickFileButton.Content = "🖼 Chọn ảnh";
+                    previewButton.Content = "👁 Preview";
                 }
             }
 
@@ -351,6 +357,16 @@ namespace FlowMy.Views.NodeControls
                 }
             };
 
+            // Nút preview ảnh
+            previewButton.Click += (s, e) =>
+            {
+                e.Handled = true;
+                if (node.CapturedImage != null)
+                {
+                    ShowImagePreviewPopup(node, ownerWindow);
+                }
+            };
+
             // Nút xoá ảnh
             clearButton.Click += (s, e) =>
             {
@@ -416,7 +432,161 @@ namespace FlowMy.Views.NodeControls
             }
         }
 
-        // ── Helper: popup xem ảnh full size với zoom/pan (giống MediaGalleryNodeControl) ──
+        // ── Helper: popup xem ảnh full size với zoom/pan (Popup style, đóng khi click ra bên ngoài) ──
+        private static void ShowImagePreviewPopup(ScreenCaptureNode node, Window ownerWindow)
+        {
+            if (node.CapturedImage == null) return;
+
+            var bitmap = node.CapturedImage;
+
+            // Tạo popup với StaysOpen=false để tự đóng khi click ra bên ngoài
+            var popup = new Popup
+            {
+                StaysOpen = false,
+                Placement = PlacementMode.Center,
+                PlacementTarget = ownerWindow,
+                AllowsTransparency = true,
+                PopupAnimation = PopupAnimation.Fade
+            };
+
+            // Tạo border làm container cho popup
+            var popupBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x29, 0x3B)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(60, 60, 70)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Direction = 270,
+                    ShadowDepth = 8,
+                    BlurRadius = 16,
+                    Opacity = 0.6
+                },
+                Width = Math.Min(Math.Max(bitmap.PixelWidth + 32, 300), 1400),
+                Height = Math.Min(Math.Max(bitmap.PixelHeight + 80, 200), 900),
+                MinWidth = 200,
+                MinHeight = 150
+            };
+
+            var imgControl = new Image
+            {
+                Source = bitmap,
+                Stretch = Stretch.None,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Width = bitmap.PixelWidth,
+                Height = bitmap.PixelHeight
+            };
+            RenderOptions.SetBitmapScalingMode(imgControl, BitmapScalingMode.HighQuality);
+
+            var scale = new ScaleTransform(1.0, 1.0);
+            imgControl.LayoutTransform = scale;
+
+            var infoBar = new TextBlock
+            {
+                Text = $"{node.CaptureWidth} × {node.CaptureHeight} px  |  ({node.CaptureX}, {node.CaptureY})",
+                FontSize = 11,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 4, 0, 4),
+                Foreground = Brushes.White,
+                Opacity = 0.8
+            };
+
+            var contentGrid = new Grid();
+            contentGrid.Children.Add(imgControl);
+
+            var scrollViewer = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Padding = new Thickness(8),
+                Content = contentGrid,
+                Focusable = true
+            };
+            RenderOptions.SetBitmapScalingMode(scrollViewer, BitmapScalingMode.HighQuality);
+
+            var rootStack = new DockPanel();
+            DockPanel.SetDock(infoBar, Dock.Bottom);
+            rootStack.Children.Add(infoBar);
+            rootStack.Children.Add(scrollViewer);
+            popupBorder.Child = rootStack;
+            popup.Child = popupBorder;
+
+            // Fit ảnh vào popup khi mở
+            popup.Opened += (_, _) =>
+            {
+                double availW = scrollViewer.ActualWidth - 16;
+                double availH = scrollViewer.ActualHeight - 16;
+                if (availW <= 0 || availH <= 0) return;
+                double sx = availW / bitmap.PixelWidth;
+                double sy = availH / bitmap.PixelHeight;
+                double initial = Math.Min(sx, sy);
+                if (initial > 1.0) initial = 1.0;
+                scale.ScaleX = initial;
+                scale.ScaleY = initial;
+            };
+
+            // Zoom bằng Ctrl+Scroll hoặc Scroll thường
+            scrollViewer.PreviewMouseWheel += (s, e) =>
+            {
+                e.Handled = true;
+                var pos = e.GetPosition(scrollViewer);
+                var oldScale = scale.ScaleX;
+                double factor = e.Delta > 0 ? 1.12 : 0.89;
+                var newScale = Math.Max(0.02, Math.Min(oldScale * factor, 50.0));
+                if (Math.Abs(newScale - oldScale) < 0.0001) return;
+
+                double relX = 0.5, relY = 0.5;
+                if (scrollViewer.ExtentWidth > 0) relX = (scrollViewer.HorizontalOffset + pos.X) / scrollViewer.ExtentWidth;
+                if (scrollViewer.ExtentHeight > 0) relY = (scrollViewer.VerticalOffset + pos.Y) / scrollViewer.ExtentHeight;
+
+                scale.ScaleX = newScale;
+                scale.ScaleY = newScale;
+                scrollViewer.UpdateLayout();
+
+                if (scrollViewer.ExtentWidth > 0) scrollViewer.ScrollToHorizontalOffset(Math.Max(0, relX * scrollViewer.ExtentWidth - pos.X));
+                if (scrollViewer.ExtentHeight > 0) scrollViewer.ScrollToVerticalOffset(Math.Max(0, relY * scrollViewer.ExtentHeight - pos.Y));
+            };
+
+            // Pan bằng giữ chuột trái
+            bool isPanning = false;
+            Point panStart = default;
+            double panOX = 0, panOY = 0;
+
+            scrollViewer.PreviewMouseLeftButtonDown += (s, e) =>
+            {
+                isPanning = true;
+                panStart = e.GetPosition(scrollViewer);
+                panOX = scrollViewer.HorizontalOffset;
+                panOY = scrollViewer.VerticalOffset;
+                scrollViewer.Cursor = Cursors.SizeAll;
+                scrollViewer.CaptureMouse();
+                e.Handled = true;
+            };
+            scrollViewer.PreviewMouseLeftButtonUp += (s, e) =>
+            {
+                if (!isPanning) return;
+                isPanning = false;
+                scrollViewer.Cursor = Cursors.Arrow;
+                scrollViewer.ReleaseMouseCapture();
+                e.Handled = true;
+            };
+            scrollViewer.PreviewMouseMove += (s, e) =>
+            {
+                if (!isPanning) return;
+                var pos = e.GetPosition(scrollViewer);
+                scrollViewer.ScrollToHorizontalOffset(panOX - (pos.X - panStart.X));
+                scrollViewer.ScrollToVerticalOffset(panOY - (pos.Y - panStart.Y));
+                e.Handled = true;
+            };
+
+            // Mở popup
+            popup.IsOpen = true;
+        }
+
+        // ── Helper: popup xem ảnh full size với zoom/pan (giống MediaGalleryNodeControl) - giữ lại cho backward compatibility ──
         private static void ShowImagePreviewDialog(ScreenCaptureNode node, Window ownerWindow)
         {
             if (node.CapturedImage == null) return;
