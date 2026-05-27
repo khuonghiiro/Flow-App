@@ -46,6 +46,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _clickOnPosition = true;
         [ObservableProperty] private int _clickDurationMs = 1;
 
+        // ── Toạ độ thủ công — hiển thị text trong dialog ─────────────────────
+        [ObservableProperty] private string _positionText = "Chưa chọn vị trí";
+
         // ── Chọn app để focus ────────────────────────────────────────────────
         [ObservableProperty] private WindowInfo? _selectedTargetWindow;
         public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
@@ -75,9 +78,10 @@ namespace FlowMy.ViewModels
             CoordSourceOutputKey = node.CoordSourceOutputKey;
             ClickOnPosition      = node.ClickOnPosition;
             ClickDurationMs      = node.ClickDurationMs;
+            PositionText         = node.PositionText;
 
-            // Load danh sách node có output
-            RefreshAllNodesWithOutputs(AvailableNodeOptions);
+            // Load danh sách node có output (chỉ upstream nodes)
+            RefreshUpstreamNodes();
 
             // Load windows command
             LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
@@ -128,6 +132,40 @@ namespace FlowMy.ViewModels
         partial void OnCoordSourceNodeIdChanged(string? value)
         {
             RefreshOutputKeyOptions();
+        }
+
+        // ── Lấy danh sách upstream nodes (kết nối đến port IN) ───────────────
+        private void RefreshUpstreamNodes()
+        {
+            AvailableNodeOptions.Clear();
+            if (_host.ViewModel?.Nodes == null || _host.ViewModel.Connections == null) return;
+
+            var connections = _host.ViewModel.Connections;
+            var upstream = new System.Collections.Generic.HashSet<WorkflowNode>();
+            var stack = new System.Collections.Generic.Stack<WorkflowNode>();
+            stack.Push(_node);
+
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+                var incoming = connections
+                    .Where(c => c.ToNode == current && c.FromNode != null)
+                    .ToList();
+
+                foreach (var conn in incoming)
+                {
+                    var src = conn.FromNode;
+                    if (src == null || ReferenceEquals(src, _node)) continue;
+                    if (upstream.Add(src))
+                        stack.Push(src);
+                }
+            }
+
+            foreach (var n in upstream)
+            {
+                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                AvailableNodeOptions.Add(CreateDataSourceOption(n));
+            }
         }
 
         // ── Load danh sách cửa sổ đang mở ───────────────────────────────────
@@ -241,6 +279,8 @@ namespace FlowMy.ViewModels
             _mouseEventNode.CoordSourceOutputKey = string.IsNullOrWhiteSpace(CoordSourceOutputKey) ? null : CoordSourceOutputKey;
             _mouseEventNode.ClickOnPosition  = ClickOnPosition;
             _mouseEventNode.ClickDurationMs  = ClickDurationMs;
+
+            // ManualPosition đã được set trực tiếp vào node từ PickPositionButton_Click
 
             _mouseEventNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
             _mouseEventNode.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;

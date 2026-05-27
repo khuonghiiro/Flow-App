@@ -187,7 +187,7 @@
                             <TextBlock x:Name="PositionDisplayText"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="13" Margin="0,0,0,10"
-                                       Text="Chưa chọn vị trí"/>
+                                       Text="{Binding PositionText}"/>
                             <Button x:Name="PickPositionButton"
                                     Content="🎯 Chọn vị trí trên màn hình"
                                     Height="36" Style="{DynamicResource PrimaryButton}"

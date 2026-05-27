@@ -105,6 +105,12 @@ namespace FlowMy.Views.Overlays
         protected override Panel? GetInputsPanel() => InputsPanel;
         protected override Panel? GetOutputsPanel() => OutputsPanel;
 
+        protected override void OnLoaded()
+        {
+            base.OnLoaded();
+            RefreshPositionDisplay();
+        }
+
         protected override void BeforeSaveOnClose()
         {
             FlushTextBoxBinding(ClickDurationTextBox);
@@ -149,6 +155,14 @@ namespace FlowMy.Views.Overlays
 
         private void PickPositionButton_Click(object sender, RoutedEventArgs e)
         {
+            // Focus app được chọn trước khi mở overlay
+            var targetWindow = _viewModel.SelectedTargetWindow;
+            if (targetWindow != null)
+            {
+                FlowMy.Helpers.WindowHelper.BringToFront(targetWindow.Handle);
+                System.Threading.Thread.Sleep(300);
+            }
+
             var windowsToHide = new System.Collections.Generic.List<Window>();
             foreach (Window w in Application.Current.Windows)
             {
@@ -180,8 +194,7 @@ namespace FlowMy.Views.Overlays
 
         private void RefreshPositionDisplay()
         {
-            if (PositionDisplayText != null)
-                PositionDisplayText.Text = _node.PositionText;
+            _viewModel.PositionText = _node.PositionText;
         }
     }
 }

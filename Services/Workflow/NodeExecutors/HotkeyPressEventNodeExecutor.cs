@@ -24,10 +24,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await FocusTargetAppAsync(hotkeyNode.TargetProcessName, hotkeyNode.TargetWindowTitle, env.CancellationToken);
 
             // ── 2. Click toạ độ trước khi nhấn hotkey (nếu có) ──
-            if (!string.IsNullOrWhiteSpace(hotkeyNode.CoordSourceNodeId))
+            bool hasCoord = !string.IsNullOrWhiteSpace(hotkeyNode.CoordSourceNodeId) || hotkeyNode.HasManualPosition;
+            if (hasCoord)
             {
                 var (x, y) = ResolveCoordinates(hotkeyNode, env);
-                if (hotkeyNode.ClickOnPosition)
+                if (hotkeyNode.ClickOnPosition && (x != 0 || y != 0))
                 {
                     var mouse = env.Service.MouseInput;
                     mouse.SendMouseDownAt(x, y, Services.Interaction.MouseButton.Left);
@@ -75,17 +76,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static (int x, int y) ResolveCoordinates(HotkeyPressEventNode hotkeyNode, NodeExecutionEnvironment env)
         {
-            var raw = env.Service.ResolveValueByNodeIdAndKeyForExecution(
-                env.Connections,
-                hotkeyNode.CoordSourceNodeId,
-                hotkeyNode.CoordSourceOutputKey,
-                env);
-
-            if (!string.IsNullOrWhiteSpace(raw) && raw != "—")
+            // Ưu tiên: đọc từ node nguồn
+            if (!string.IsNullOrWhiteSpace(hotkeyNode.CoordSourceNodeId))
             {
-                var parsed = TryParseCoordString(raw);
-                if (parsed.HasValue) return parsed.Value;
+                var raw = env.Service.ResolveValueByNodeIdAndKeyForExecution(
+                    env.Connections,
+                    hotkeyNode.CoordSourceNodeId,
+                    hotkeyNode.CoordSourceOutputKey,
+                    env);
+
+                if (!string.IsNullOrWhiteSpace(raw) && raw != "—")
+                {
+                    var parsed = TryParseCoordString(raw);
+                    if (parsed.HasValue) return parsed.Value;
+                }
             }
+
+            // Fallback: dùng toạ độ thủ công
+            if (hotkeyNode.HasManualPosition)
+                return ((int)hotkeyNode.ManualPosition.X, (int)hotkeyNode.ManualPosition.Y);
+
             return (0, 0);
         }
 

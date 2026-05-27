@@ -23,8 +23,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // ── 1. Focus app nếu được cấu hình ──
                 await FocusTargetAppAsync(mouseNode.TargetProcessName, mouseNode.TargetWindowTitle, env.CancellationToken);
 
-                // ── 2. Resolve toạ độ từ node nguồn (nếu có) ──
-                bool hasCoord = !string.IsNullOrWhiteSpace(mouseNode.CoordSourceNodeId);
+                // ── 2. Resolve toạ độ từ node nguồn hoặc thủ công ──
+                bool hasCoord = !string.IsNullOrWhiteSpace(mouseNode.CoordSourceNodeId) || mouseNode.HasManualPosition;
                 int cx = 0, cy = 0;
                 if (hasCoord)
                     (cx, cy) = ResolveCoordinates(mouseNode, env);
@@ -94,17 +94,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static (int x, int y) ResolveCoordinates(MouseEventNode mouseNode, NodeExecutionEnvironment env)
         {
-            var raw = env.Service.ResolveValueByNodeIdAndKeyForExecution(
-                env.Connections,
-                mouseNode.CoordSourceNodeId,
-                mouseNode.CoordSourceOutputKey,
-                env);
-
-            if (!string.IsNullOrWhiteSpace(raw) && raw != "—")
+            // Ưu tiên: đọc từ node nguồn
+            if (!string.IsNullOrWhiteSpace(mouseNode.CoordSourceNodeId))
             {
-                var parsed = TryParseCoordString(raw);
-                if (parsed.HasValue) return parsed.Value;
+                var raw = env.Service.ResolveValueByNodeIdAndKeyForExecution(
+                    env.Connections,
+                    mouseNode.CoordSourceNodeId,
+                    mouseNode.CoordSourceOutputKey,
+                    env);
+
+                if (!string.IsNullOrWhiteSpace(raw) && raw != "—")
+                {
+                    var parsed = TryParseCoordString(raw);
+                    if (parsed.HasValue) return parsed.Value;
+                }
             }
+
+            // Fallback: dùng toạ độ thủ công
+            if (mouseNode.HasManualPosition)
+                return ((int)mouseNode.ManualPosition.X, (int)mouseNode.ManualPosition.Y);
+
             return (0, 0);
         }
 

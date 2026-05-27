@@ -170,6 +170,22 @@
                              VerticalContentAlignment="Center"
                              Margin="0,0,0,16"/>
 
+                    <!-- Inputs Section -->
+                    <TextBlock Text="Inputs:"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <Border Style="{DynamicResource DialogOuterBorder}"
+                            CornerRadius="8"
+                            Padding="12"
+                            Margin="0,0,0,16">
+                        <StackPanel x:Name="InputsPanel">
+                            <!-- Inputs sẽ được thêm động ở đây -->
+                        </StackPanel>
+                    </Border>
+
                     <!-- ═══ Toạ độ từ node khác ═══ -->
                     <TextBlock Text="Toạ độ click/scroll (từ node khác):"
                                Foreground="{DynamicResource TextBrush}"
@@ -206,7 +222,7 @@
                             <TextBlock x:Name="PositionDisplayText"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="13" Margin="0,0,0,10"
-                                       Text="Chưa chọn vị trí"/>
+                                       Text="{Binding PositionText}"/>
                             <Button x:Name="PickPositionButton"
                                     Content="🎯 Chọn vị trí trên màn hình"
                                     Height="36" Style="{DynamicResource PrimaryButton}"
@@ -273,22 +289,6 @@
                                 ToolTip="Tải lại danh sách cửa sổ"
                                 Cursor="Hand"/>
                     </Grid>
-
-                    <!-- Inputs Section -->
-                    <TextBlock Text="Inputs:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-
-                    <Border Style="{DynamicResource DialogOuterBorder}"
-                            CornerRadius="8"
-                            Padding="12"
-                            Margin="0,0,0,16">
-                        <StackPanel x:Name="InputsPanel">
-                            <!-- Inputs sẽ được thêm động ở đây -->
-                        </StackPanel>
-                    </Border>
 
                     <!-- Outputs Section -->
                     <TextBlock Text="Outputs:" x:Name="TextBlockOutputPanel"
