@@ -2,9 +2,11 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
+using FlowMy.Helpers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 
@@ -34,6 +36,21 @@ namespace FlowMy.ViewModels
 
         public bool IsRepeatCountEnabled => !IsRepeatCountConnected && !IsScrollMode;
 
+        // ── Toạ độ từ node khác ──────────────────────────────────────────────
+        [ObservableProperty] private string? _coordSourceNodeId;
+        [ObservableProperty] private string? _coordSourceOutputKey;
+        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
+        public ObservableCollection<WorkflowOutputKeyOption> AvailableOutputKeyOptions { get; } = new();
+
+        // ── Click tại vị trí toạ độ ──────────────────────────────────────────
+        [ObservableProperty] private bool _clickOnPosition = true;
+        [ObservableProperty] private int _clickDurationMs = 1;
+
+        // ── Chọn app để focus ────────────────────────────────────────────────
+        [ObservableProperty] private WindowInfo? _selectedTargetWindow;
+        public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
+        public IRelayCommand LoadWindowsCommand { get; }
+
         // Options cho ComboBox MouseButton
         public System.Collections.ObjectModel.ObservableCollection<string> MouseButtonOptions { get; } = new()
         {
@@ -52,6 +69,27 @@ namespace FlowMy.ViewModels
             _repeatCount = node.RepeatCount;
             _holdDuration = node.HoldDuration;
             _scrollSpeed = node.ScrollSpeed;
+
+            // Sync toạ độ & click
+            CoordSourceNodeId    = node.CoordSourceNodeId;
+            CoordSourceOutputKey = node.CoordSourceOutputKey;
+            ClickOnPosition      = node.ClickOnPosition;
+            ClickDurationMs      = node.ClickDurationMs;
+
+            // Load danh sách node có output
+            RefreshAllNodesWithOutputs(AvailableNodeOptions);
+
+            // Load windows command
+            LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
+            ExecuteLoadWindows();
+
+            // Refresh key options khi đổi node nguồn
+            this.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(CoordSourceNodeId))
+                    RefreshOutputKeyOptions();
+            };
+            RefreshOutputKeyOptions();
 
             UpdateRepeatCountConnectionStatus();
             UpdateScrollMode();
@@ -84,6 +122,39 @@ namespace FlowMy.ViewModels
         }
 
         protected override string GetDefaultTitle() => "Mouse Event";
+
+        // ── Partial callbacks ────────────────────────────────────────────────
+
+        partial void OnCoordSourceNodeIdChanged(string? value)
+        {
+            RefreshOutputKeyOptions();
+        }
+
+        // ── Load danh sách cửa sổ đang mở ───────────────────────────────────
+        private void ExecuteLoadWindows()
+        {
+            string? prevProcess = SelectedTargetWindow?.ProcessName ?? _mouseEventNode.TargetProcessName;
+            string? prevTitle   = SelectedTargetWindow?.Title       ?? _mouseEventNode.TargetWindowTitle;
+
+            var windows = WindowHelper.GetActiveWindows();
+            ActiveWindows.Clear();
+            foreach (var w in windows)
+                ActiveWindows.Add(w);
+
+            if (!string.IsNullOrWhiteSpace(prevProcess))
+            {
+                var match = ActiveWindows.FirstOrDefault(x =>
+                    x.ProcessName == prevProcess && x.Title == prevTitle)
+                    ?? ActiveWindows.FirstOrDefault(x => x.ProcessName == prevProcess);
+                SelectedTargetWindow = match;
+            }
+        }
+
+        // ── Refresh output key options ───────────────────────────────────────
+        private void RefreshOutputKeyOptions()
+        {
+            FillOutputKeys(CoordSourceNodeId, AvailableOutputKeyOptions);
+        }
 
         internal void UpdateRepeatCountConnectionStatus()
         {
@@ -165,6 +236,14 @@ namespace FlowMy.ViewModels
                 _mouseEventNode.ScrollSpeed = ScrollSpeed;
                 _host.RequestSyncDataPanels(immediate: true);
             }
+
+            _mouseEventNode.CoordSourceNodeId    = string.IsNullOrWhiteSpace(CoordSourceNodeId)    ? null : CoordSourceNodeId;
+            _mouseEventNode.CoordSourceOutputKey = string.IsNullOrWhiteSpace(CoordSourceOutputKey) ? null : CoordSourceOutputKey;
+            _mouseEventNode.ClickOnPosition  = ClickOnPosition;
+            _mouseEventNode.ClickDurationMs  = ClickDurationMs;
+
+            _mouseEventNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
+            _mouseEventNode.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;
         }
     }
 }

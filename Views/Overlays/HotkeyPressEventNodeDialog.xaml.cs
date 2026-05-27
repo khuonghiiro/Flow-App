@@ -51,6 +51,14 @@ namespace FlowMy.Views.Overlays
         protected override Panel? GetInputsPanel() => InputsPanel;
         protected override Panel? GetOutputsPanel() => OutputsPanel;
 
+        protected override void BeforeSaveOnClose()
+        {
+            FlushTextBoxBinding(ClickDurationTextBox);
+        }
+
+        private static void FlushTextBoxBinding(System.Windows.Controls.TextBox? tb)
+            => tb?.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+
         private void HotkeyButton_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.CaptureHotkeyCommand.Execute(null);

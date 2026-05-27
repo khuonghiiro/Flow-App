@@ -170,6 +170,91 @@
                              VerticalContentAlignment="Center"
                              Margin="0,0,0,16"/>
 
+                    <!-- ═══ Toạ độ từ node khác ═══ -->
+                    <TextBlock Text="Toạ độ click/scroll (từ node khác):"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Node nguồn"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                            <controls:NodeSearchComboBoxUserControl Height="36" Margin="0,0,0,10"
+                                      ItemsSource="{Binding AvailableNodeOptions}"
+                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                      SelectedValue="{Binding CoordSourceNodeId, Mode=TwoWay}"/>
+                            <TextBlock Text="Output key (x / y / position)"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                            <ComboBox Height="36" Style="{DynamicResource BaseComboBox}"
+                                      ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                      SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding CoordSourceOutputKey, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ═══ Click tại toạ độ ═══ -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                        <StackPanel>
+                            <CheckBox IsChecked="{Binding ClickOnPosition, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,8">
+                                <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                           VerticalAlignment="Center">
+                                    <Run Text="Click vào vị trí toạ độ trước khi thực hiện"/>
+                                </TextBlock>
+                            </CheckBox>
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ClickOnPosition}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Thời gian giữ chuột khi click (ms):"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                <TextBox x:Name="ClickDurationTextBox"
+                                         Height="36" Style="{DynamicResource BaseTextBoxV2}"
+                                         Text="{Binding ClickDurationMs, UpdateSourceTrigger=PropertyChanged}"
+                                         VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ═══ Chọn ứng dụng ═══ -->
+                    <TextBlock Text="Ứng dụng cần click:"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                               TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="Chọn app để tự động focus trước khi click. Để trống = dùng cửa sổ hiện tại."/>
+                    </TextBlock>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" Height="36"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  ItemsSource="{Binding ActiveWindows}"
+                                  DisplayMemberPath="DisplayName"
+                                  SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                        <Button Grid.Column="1"
+                                Content="↻" Height="36" Width="36" Padding="0"
+                                Margin="8,0,0,0"
+                                Style="{DynamicResource SecondaryButton}"
+                                Command="{Binding LoadWindowsCommand}"
+                                ToolTip="Tải lại danh sách cửa sổ"
+                                Cursor="Hand"/>
+                    </Grid>
+
                     <!-- Inputs Section -->
                     <TextBlock Text="Inputs:"
                                Foreground="{DynamicResource TextBrush}"
