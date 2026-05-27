@@ -84,6 +84,27 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetTop(node.Border, y);
             }
 
+            // ⚠️ CRITICAL: Update title TextBlock position
+            if (node is ScreenCaptureNode captureNode && captureNode.TitleTextBlockUI != null && Host.WorkflowCanvas != null)
+            {
+                var title = captureNode.TitleTextBlockUI;
+                if (!Host.WorkflowCanvas.Children.Contains(title))
+                {
+                    Host.WorkflowCanvas.Children.Add(title);
+                    Panel.SetZIndex(title, 20000);
+                }
+                if (node.Border != null)
+                {
+                    if (title.ActualWidth == 0 || title.ActualHeight == 0)
+                    {
+                        title.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                        title.Arrange(new Rect(title.DesiredSize));
+                    }
+                    Canvas.SetLeft(title, x + (node.Border.ActualWidth / 2) - (title.ActualWidth / 2));
+                    Canvas.SetTop(title, y - title.ActualHeight - 4);
+                }
+            }
+
             foreach (var port in node.Ports.Where(p => p.IsVisible && p.PortUI != null))
             {
                 var portColor = ResolvePortColor(port);
@@ -102,6 +123,14 @@ namespace FlowMy.Services.Rendering
 
         public void RemoveNode(WorkflowNode node, Canvas canvas)
         {
+            // ⚠️ CRITICAL: Remove title TextBlock và clear reference
+            if (node is ScreenCaptureNode captureNode && captureNode.TitleTextBlockUI != null)
+            {
+                if (canvas.Children.Contains(captureNode.TitleTextBlockUI))
+                    canvas.Children.Remove(captureNode.TitleTextBlockUI);
+                captureNode.TitleTextBlockUI = null;
+            }
+
             if (node.Border != null && canvas.Children.Contains(node.Border))
                 canvas.Children.Remove(node.Border);
 

@@ -37,6 +37,10 @@ namespace FlowMy.Models
         private int _scrollCount = 1;
         private int _scrollIntervalMs = 1000;
 
+        // ── Chọn app để focus trước khi chọn vị trí ──
+        private string _targetProcessName = string.Empty;
+        private string _targetWindowTitle = string.Empty;
+
         // ─────────────────────────────────────────────────────────────────────
         // Vị trí đã chọn thủ công
         // ─────────────────────────────────────────────────────────────────────
@@ -124,6 +128,24 @@ namespace FlowMy.Models
         {
             get => _scrollIntervalMs;
             set { if (_scrollIntervalMs != value) { _scrollIntervalMs = value; OnPropertyChanged(); } }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Chọn app để focus trước khi chọn vị trí
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>Tên process của app cần focus trước khi chọn vị trí (ví dụ: "chrome").</summary>
+        public string TargetProcessName
+        {
+            get => _targetProcessName;
+            set { if (_targetProcessName != value) { _targetProcessName = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Tiêu đề cửa sổ của app cần focus trước khi chọn vị trí.</summary>
+        public string TargetWindowTitle
+        {
+            get => _targetWindowTitle;
+            set { if (_targetWindowTitle != value) { _targetWindowTitle = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
         // ─────────────────────────────────────────────────────────────────────

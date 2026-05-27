@@ -1,7 +1,9 @@
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -27,7 +29,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
-                // ── 1. Giải toạ độ ──
+                // ── 1. Focus app nếu được cấu hình ──
+                await FocusTargetAppAsync(posNode.TargetProcessName, posNode.TargetWindowTitle, env.CancellationToken);
+
+                // ── 2. Giải toạ độ ──
                 var (x, y) = ResolveCoordinates(posNode, env);
 
                 // ── 2. Thực hiện hành động ──
@@ -202,6 +207,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // Chờ ScrollIntervalMs trước lần tiếp theo (kể cả lần cuối để đúng timing)
                 if (scrollIntervalMs > 0)
                     await Task.Delay(scrollIntervalMs, ct);
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Focus target app
+        // ─────────────────────────────────────────────────────────────────────
+
+        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(processName)) return;
+            var windows = WindowHelper.GetActiveWindows();
+            var match = windows.FirstOrDefault(w => w.ProcessName == processName && w.Title == windowTitle)
+                     ?? windows.FirstOrDefault(w => w.ProcessName == processName);
+            if (match != null)
+            {
+                WindowHelper.BringToFront(match.Handle);
+                await Task.Delay(150, ct);
             }
         }
     }

@@ -44,6 +44,8 @@ namespace FlowMy.Views.Overlays
         protected override void OnLoaded()
         {
             base.OnLoaded();
+            // Reload danh sách cửa sổ khi dialog mở để cập nhật tab mới
+            _viewModel.LoadWindowsCommand.Execute(null);
             RefreshPositionDisplay();
             SyncMouseActionComboBox();
         }
@@ -72,6 +74,14 @@ namespace FlowMy.Views.Overlays
         // ── Nút chọn vị trí thủ công — ẩn toàn bộ app ──
         private void PickPositionButton_Click(object sender, RoutedEventArgs e)
         {
+            // Focus app được chọn trước khi mở overlay
+            var targetWindow = _viewModel.SelectedTargetWindow;
+            if (targetWindow != null)
+            {
+                FlowMy.Helpers.WindowHelper.BringToFront(targetWindow.Handle);
+                System.Threading.Thread.Sleep(300);
+            }
+
             // Thu thập tất cả windows đang hiển thị để ẩn
             _windowsToHide.Clear();
             foreach (Window w in Application.Current.Windows)

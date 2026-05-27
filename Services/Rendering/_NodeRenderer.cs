@@ -300,6 +300,13 @@ namespace FlowMy.Services.Rendering
                 return;
             }
 
+            // ✅ Delegate ScreenPositionPickerNode to its own renderer
+            if (node is ScreenPositionPickerNode screenPosNode)
+            {
+                _screenPositionNodeRenderer.UpdateNodePosition(screenPosNode, x, y);
+                return;
+            }
+
             // ── Dictionary dispatch cho các node delegate thuần túy ──
             if (_rendererMap.TryGetValue(node.GetType(), out var posRenderer))
             {
@@ -430,6 +437,13 @@ namespace FlowMy.Services.Rendering
             if (node.Type == NodeType.Start || node.Type == NodeType.End)
             {
                 RemoveSimpleNode(node, canvas);
+                return;
+            }
+
+            // ✅ Delegate ScreenPositionPickerNode to its own renderer
+            if (node is ScreenPositionPickerNode screenPosNode)
+            {
+                _screenPositionNodeRenderer.RemoveNode(screenPosNode, canvas);
                 return;
             }
 

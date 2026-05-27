@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Services.Interaction;
 using System;
@@ -42,6 +44,11 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _isClickAction;
         [ObservableProperty] private bool _isScrollAction;
 
+        // ── Chọn app để focus trước khi chọn vị trí ──
+        [ObservableProperty] private WindowInfo? _selectedTargetWindow;
+        public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
+        public IRelayCommand LoadWindowsCommand { get; }
+
         // ── Collections ──
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
         public ObservableCollection<WorkflowOutputKeyOption> AvailableOutputKeyOptions { get; } = new();
@@ -68,6 +75,10 @@ namespace FlowMy.ViewModels
             HoldDurationMs       = node.HoldDurationMs;
             ScrollCount          = node.ScrollCount;
             ScrollIntervalMs     = node.ScrollIntervalMs;
+
+            // Load windows command
+            LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
+            ExecuteLoadWindows();
 
             UpdateActionFlags();
             RefreshAvailableNodes();
@@ -132,6 +143,27 @@ namespace FlowMy.ViewModels
             }
         }
 
+        // ── Load danh sách cửa sổ đang mở ───────────────────────────────────
+        private void ExecuteLoadWindows()
+        {
+            string? prevProcess = SelectedTargetWindow?.ProcessName ?? _node.TargetProcessName;
+            string? prevTitle   = SelectedTargetWindow?.Title       ?? _node.TargetWindowTitle;
+
+            var windows = WindowHelper.GetActiveWindows();
+            ActiveWindows.Clear();
+            foreach (var w in windows)
+                ActiveWindows.Add(w);
+
+            if (!string.IsNullOrWhiteSpace(prevProcess))
+            {
+                // Ưu tiên exact match (title + process)
+                var match = ActiveWindows.FirstOrDefault(x =>
+                    x.ProcessName == prevProcess && x.Title == prevTitle)
+                    ?? ActiveWindows.FirstOrDefault(x => x.ProcessName == prevProcess);
+                SelectedTargetWindow = match;
+            }
+        }
+
         protected override void OnSaveTitle()
         {
             bool needSync = false;
@@ -149,6 +181,10 @@ namespace FlowMy.ViewModels
             if (_node.HoldDurationMs != HoldDurationMs) { _node.HoldDurationMs = HoldDurationMs; needSync = true; }
             if (_node.ScrollCount != ScrollCount)    { _node.ScrollCount    = ScrollCount;    needSync = true; }
             if (_node.ScrollIntervalMs != ScrollIntervalMs) { _node.ScrollIntervalMs = ScrollIntervalMs; needSync = true; }
+
+            // Lưu target app
+            _node.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
+            _node.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;
 
             if (needSync)
                 _host.RequestSyncDataPanels(immediate: true);

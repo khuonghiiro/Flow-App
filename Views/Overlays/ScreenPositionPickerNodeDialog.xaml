@@ -110,6 +110,33 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- ═══ Chọn ứng dụng ═══ -->
+                            <TextBlock Text="Ứng dụng cần chọn vị trí:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                       TextWrapping="Wrap" Margin="0,0,0,8">
+                                <Run Text="Chọn app để tự động focus trước khi chọn vị trí. Để trống = dùng màn hình hiện tại."/>
+                            </TextBlock>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" Height="36"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding ActiveWindows}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                <Button Grid.Column="1"
+                                        Content="↻" Height="36" Width="36" Padding="0"
+                                        Margin="8,0,0,0"
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Command="{Binding LoadWindowsCommand}"
+                                        ToolTip="Tải lại danh sách cửa sổ"
+                                        Cursor="Hand"/>
+                            </Grid>
+
                             <!-- ═══ Toạ độ thủ công ═══ -->
                             <TextBlock Text="Toạ độ thủ công (dùng khi không có node nguồn):"
                                        Foreground="{DynamicResource TextBrush}"
