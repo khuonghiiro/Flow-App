@@ -26,6 +26,36 @@ namespace FlowMy.Views.Overlays
         protected override Panel? GetInputsPanel() => null;
         protected override Panel? GetOutputsPanel() => OutputsPanel;
 
+        protected override void BeforeSaveOnClose()
+        {
+            // Flush NodeSearchComboBoxUserControl bindings (coord source)
+            FlushNodeSearchComboBoxBinding(CoordSourceNodeId);
+
+            // Flush output key combobox (coord)
+            FlushComboBoxBinding(CoordSourceOutputKey);
+
+            // Flush target window combobox
+            FlushComboBoxBinding(SelectedTargetWindow);
+
+            // Flush NodeSearchComboBoxUserControl bindings (path source)
+            FlushNodeSearchComboBoxBinding(PathSourceNodeId);
+
+            // Flush output key combobox (path)
+            FlushComboBoxBinding(PathSourceOutputKey);
+        }
+
+        private static void FlushComboBoxBinding(System.Windows.Controls.ComboBox? cb)
+            => cb?.GetBindingExpression(System.Windows.Controls.ComboBox.SelectedValueProperty)?.UpdateSource();
+
+        private static void FlushNodeSearchComboBoxBinding(Controls.NodeSearchComboBoxUserControl? nsc)
+        {
+            if (nsc != null)
+            {
+                var be = nsc.GetBindingExpression(Controls.NodeSearchComboBoxUserControl.SelectedValueProperty);
+                be?.UpdateSource();
+            }
+        }
+
         /// <summary>
         /// Tạo UI cho mỗi output item — checkbox bật/tắt từng key output,
         /// giống pattern của ImageProcessingNodeDialog.

@@ -128,14 +128,38 @@ namespace FlowMy.Views.Overlays
 
         protected override void BeforeSaveOnClose()
         {
-            // Flush numeric textbox bindings trước khi lưu
+            // Flush all textbox bindings
             FlushTextBoxBinding(ClickCountTextBox);
             FlushTextBoxBinding(HoldDurationTextBox);
             FlushTextBoxBinding(ScrollCountTextBox);
             FlushTextBoxBinding(ScrollIntervalTextBox);
+
+            // Flush all combobox bindings
+            FlushComboBoxBinding(MouseActionComboBox);
+
+            // Flush NodeSearchComboBoxUserControl bindings (coord source)
+            FlushNodeSearchComboBoxBinding(CoordSourceNodeId);
+
+            // Flush output key combobox
+            FlushComboBoxBinding(CoordSourceOutputKey);
+
+            // Flush target window combobox
+            FlushComboBoxBinding(SelectedTargetWindow);
         }
 
         private static void FlushTextBoxBinding(TextBox? tb)
             => tb?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+
+        private static void FlushComboBoxBinding(System.Windows.Controls.ComboBox? cb)
+            => cb?.GetBindingExpression(System.Windows.Controls.ComboBox.SelectedValueProperty)?.UpdateSource();
+
+        private static void FlushNodeSearchComboBoxBinding(Controls.NodeSearchComboBoxUserControl? nsc)
+        {
+            if (nsc != null)
+            {
+                var be = nsc.GetBindingExpression(Controls.NodeSearchComboBoxUserControl.SelectedValueProperty);
+                be?.UpdateSource();
+            }
+        }
     }
 }

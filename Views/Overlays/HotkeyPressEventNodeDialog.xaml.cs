@@ -63,11 +63,34 @@ namespace FlowMy.Views.Overlays
 
         protected override void BeforeSaveOnClose()
         {
+            // Flush all textbox bindings
+            FlushTextBoxBinding(PressDelayTextBox);
             FlushTextBoxBinding(ClickDurationTextBox);
+
+            // Flush NodeSearchComboBoxUserControl bindings (coord source)
+            FlushNodeSearchComboBoxBinding(CoordSourceNodeId);
+
+            // Flush output key combobox
+            FlushComboBoxBinding(CoordSourceOutputKey);
+
+            // Flush target window combobox
+            FlushComboBoxBinding(SelectedTargetWindow);
         }
 
         private static void FlushTextBoxBinding(System.Windows.Controls.TextBox? tb)
             => tb?.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+
+        private static void FlushComboBoxBinding(System.Windows.Controls.ComboBox? cb)
+            => cb?.GetBindingExpression(System.Windows.Controls.ComboBox.SelectedValueProperty)?.UpdateSource();
+
+        private static void FlushNodeSearchComboBoxBinding(Controls.NodeSearchComboBoxUserControl? nsc)
+        {
+            if (nsc != null)
+            {
+                var be = nsc.GetBindingExpression(Controls.NodeSearchComboBoxUserControl.SelectedValueProperty);
+                be?.UpdateSource();
+            }
+        }
 
         private void HotkeyButton_Click(object sender, RoutedEventArgs e)
         {

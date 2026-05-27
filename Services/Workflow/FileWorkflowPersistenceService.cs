@@ -915,12 +915,64 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
                 keyPressNode.PressDelayMs = pd;
 
+            // Position properties
+            if (properties.TryGetValue("ManualPosition_X", out var posX) && properties.TryGetValue("ManualPosition_Y", out var posY))
+            {
+                keyPressNode.ManualPosition = new Point(double.Parse(posX.ToString()!), double.Parse(posY.ToString()!));
+            }
+            if (properties.TryGetValue("HasManualPosition", out var hasPos))
+                keyPressNode.HasManualPosition = bool.Parse(hasPos.ToString()!);
+
+            // Coord source from other node
+            if (properties.TryGetValue("CoordSourceNodeId", out var csni))
+                keyPressNode.CoordSourceNodeId = csni?.ToString();
+            if (properties.TryGetValue("CoordSourceOutputKey", out var csok))
+                keyPressNode.CoordSourceOutputKey = csok?.ToString();
+
+            // Click on position
+            if (properties.TryGetValue("ClickOnPosition", out var cop))
+                keyPressNode.ClickOnPosition = bool.Parse(cop.ToString()!);
+            if (properties.TryGetValue("ClickDurationMs", out var cdm) && int.TryParse(cdm?.ToString(), out var cdmVal))
+                keyPressNode.ClickDurationMs = cdmVal;
+
+            // Target window
+            if (properties.TryGetValue("TargetProcessName", out var tpn))
+                keyPressNode.TargetProcessName = tpn?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("TargetWindowTitle", out var twt))
+                keyPressNode.TargetWindowTitle = twt?.ToString() ?? string.Empty;
+
         }
         // HotkeyPressEventNode deserialization
         else if (node is HotkeyPressEventNode hotkeyPressNode)
         {
             if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
                 hotkeyPressNode.PressDelayMs = pd;
+
+            // Position properties
+            if (properties.TryGetValue("ManualPosition_X", out var posX) && properties.TryGetValue("ManualPosition_Y", out var posY))
+            {
+                hotkeyPressNode.ManualPosition = new Point(double.Parse(posX.ToString()!), double.Parse(posY.ToString()!));
+            }
+            if (properties.TryGetValue("HasManualPosition", out var hasPos))
+                hotkeyPressNode.HasManualPosition = bool.Parse(hasPos.ToString()!);
+
+            // Coord source from other node
+            if (properties.TryGetValue("CoordSourceNodeId", out var csni))
+                hotkeyPressNode.CoordSourceNodeId = csni?.ToString();
+            if (properties.TryGetValue("CoordSourceOutputKey", out var csok))
+                hotkeyPressNode.CoordSourceOutputKey = csok?.ToString();
+
+            // Click on position
+            if (properties.TryGetValue("ClickOnPosition", out var cop))
+                hotkeyPressNode.ClickOnPosition = bool.Parse(cop.ToString()!);
+            if (properties.TryGetValue("ClickDurationMs", out var cdm) && int.TryParse(cdm?.ToString(), out var cdmVal))
+                hotkeyPressNode.ClickDurationMs = cdmVal;
+
+            // Target window
+            if (properties.TryGetValue("TargetProcessName", out var tpn))
+                hotkeyPressNode.TargetProcessName = tpn?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("TargetWindowTitle", out var twt))
+                hotkeyPressNode.TargetWindowTitle = twt?.ToString() ?? string.Empty;
 
         }
         // StringSplitNode deserialization
@@ -994,6 +1046,32 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("ScrollSpeed", out var speed) && int.TryParse(speed?.ToString(), out var speedVal))
                 mouseNode.ScrollSpeed = speedVal;
 
+            // Position properties
+            if (properties.TryGetValue("ManualPosition_X", out var posX) && properties.TryGetValue("ManualPosition_Y", out var posY))
+            {
+                mouseNode.ManualPosition = new Point(double.Parse(posX.ToString()!), double.Parse(posY.ToString()!));
+            }
+            if (properties.TryGetValue("HasManualPosition", out var hasPos))
+                mouseNode.HasManualPosition = bool.Parse(hasPos.ToString()!);
+
+            // Coord source from other node
+            if (properties.TryGetValue("CoordSourceNodeId", out var csni))
+                mouseNode.CoordSourceNodeId = csni?.ToString();
+            if (properties.TryGetValue("CoordSourceOutputKey", out var csok))
+                mouseNode.CoordSourceOutputKey = csok?.ToString();
+
+            // Click on position
+            if (properties.TryGetValue("ClickOnPosition", out var cop))
+                mouseNode.ClickOnPosition = bool.Parse(cop.ToString()!);
+            if (properties.TryGetValue("ClickDurationMs", out var cdm) && int.TryParse(cdm?.ToString(), out var cdmVal))
+                mouseNode.ClickDurationMs = cdmVal;
+
+            // Target window
+            if (properties.TryGetValue("TargetProcessName", out var tpn))
+                mouseNode.TargetProcessName = tpn?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("TargetWindowTitle", out var twt))
+                mouseNode.TargetWindowTitle = twt?.ToString() ?? string.Empty;
+
         }
         else if (node is ScreenPositionPickerNode pos)
         {
@@ -1018,6 +1096,12 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 pos.ScrollCount = scVal;
             if (properties.TryGetValue("ScrollIntervalMs", out var si) && int.TryParse(si?.ToString(), out var siVal))
                 pos.ScrollIntervalMs = siVal;
+
+            // Target window
+            if (properties.TryGetValue("TargetProcessName", out var tpn))
+                pos.TargetProcessName = tpn?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("TargetWindowTitle", out var twt))
+                pos.TargetWindowTitle = twt?.ToString() ?? string.Empty;
         }
         else if (node is ScreenCaptureNode cap)
         {
@@ -4284,6 +4368,27 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (kp.PressDelayMs != 50)
                 dict["PressDelayMs"] = kp.PressDelayMs;
 
+            // Position properties
+            dict["ManualPosition_X"] = kp.ManualPosition.X;
+            dict["ManualPosition_Y"] = kp.ManualPosition.Y;
+            dict["HasManualPosition"] = kp.HasManualPosition;
+
+            // Coord source from other node
+            if (!string.IsNullOrEmpty(kp.CoordSourceNodeId))
+                dict["CoordSourceNodeId"] = kp.CoordSourceNodeId;
+            if (!string.IsNullOrEmpty(kp.CoordSourceOutputKey))
+                dict["CoordSourceOutputKey"] = kp.CoordSourceOutputKey;
+
+            // Click on position
+            dict["ClickOnPosition"] = kp.ClickOnPosition;
+            dict["ClickDurationMs"] = kp.ClickDurationMs;
+
+            // Target window
+            if (!string.IsNullOrEmpty(kp.TargetProcessName))
+                dict["TargetProcessName"] = kp.TargetProcessName;
+            if (!string.IsNullOrEmpty(kp.TargetWindowTitle))
+                dict["TargetWindowTitle"] = kp.TargetWindowTitle;
+
         }
         // HotkeyPressEventNode serialization
         else if (node is HotkeyPressEventNode hk)
@@ -4292,6 +4397,27 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["RepeatCount"] = hk.RepeatCount;
             if (hk.PressDelayMs != 50)
                 dict["PressDelayMs"] = hk.PressDelayMs;
+
+            // Position properties
+            dict["ManualPosition_X"] = hk.ManualPosition.X;
+            dict["ManualPosition_Y"] = hk.ManualPosition.Y;
+            dict["HasManualPosition"] = hk.HasManualPosition;
+
+            // Coord source from other node
+            if (!string.IsNullOrEmpty(hk.CoordSourceNodeId))
+                dict["CoordSourceNodeId"] = hk.CoordSourceNodeId;
+            if (!string.IsNullOrEmpty(hk.CoordSourceOutputKey))
+                dict["CoordSourceOutputKey"] = hk.CoordSourceOutputKey;
+
+            // Click on position
+            dict["ClickOnPosition"] = hk.ClickOnPosition;
+            dict["ClickDurationMs"] = hk.ClickDurationMs;
+
+            // Target window
+            if (!string.IsNullOrEmpty(hk.TargetProcessName))
+                dict["TargetProcessName"] = hk.TargetProcessName;
+            if (!string.IsNullOrEmpty(hk.TargetWindowTitle))
+                dict["TargetWindowTitle"] = hk.TargetWindowTitle;
 
         }
         // StringSplitNode serialization
@@ -4323,6 +4449,27 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["HoldDuration"] = mouseNode.HoldDuration;
             dict["ScrollSpeed"] = mouseNode.ScrollSpeed;
 
+            // Position properties
+            dict["ManualPosition_X"] = mouseNode.ManualPosition.X;
+            dict["ManualPosition_Y"] = mouseNode.ManualPosition.Y;
+            dict["HasManualPosition"] = mouseNode.HasManualPosition;
+
+            // Coord source from other node
+            if (!string.IsNullOrEmpty(mouseNode.CoordSourceNodeId))
+                dict["CoordSourceNodeId"] = mouseNode.CoordSourceNodeId;
+            if (!string.IsNullOrEmpty(mouseNode.CoordSourceOutputKey))
+                dict["CoordSourceOutputKey"] = mouseNode.CoordSourceOutputKey;
+
+            // Click on position
+            dict["ClickOnPosition"] = mouseNode.ClickOnPosition;
+            dict["ClickDurationMs"] = mouseNode.ClickDurationMs;
+
+            // Target window
+            if (!string.IsNullOrEmpty(mouseNode.TargetProcessName))
+                dict["TargetProcessName"] = mouseNode.TargetProcessName;
+            if (!string.IsNullOrEmpty(mouseNode.TargetWindowTitle))
+                dict["TargetWindowTitle"] = mouseNode.TargetWindowTitle;
+
         }
         else if (node is ScreenPositionPickerNode pos)
         {
@@ -4338,6 +4485,12 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["HoldDurationMs"]  = pos.HoldDurationMs;
             dict["ScrollCount"]     = pos.ScrollCount;
             dict["ScrollIntervalMs"] = pos.ScrollIntervalMs;
+
+            // Target window
+            if (!string.IsNullOrEmpty(pos.TargetProcessName))
+                dict["TargetProcessName"] = pos.TargetProcessName;
+            if (!string.IsNullOrEmpty(pos.TargetWindowTitle))
+                dict["TargetWindowTitle"] = pos.TargetWindowTitle;
         }
         else if (node is ScreenCaptureNode cap)
         {

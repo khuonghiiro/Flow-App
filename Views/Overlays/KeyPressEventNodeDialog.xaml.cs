@@ -20,68 +20,12 @@ namespace FlowMy.Views.Overlays
 
             // Initialize base after InitializeComponent
             _viewModel = new KeyPressEventNodeDialogViewModel(node, host);
-            
+
             // Initialize base class properties
-            Owner = owner;
-            SetViewModel(_viewModel);
-            DataContext = ViewModel;
-            WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            InitializeBase(_viewModel, owner);
 
             // Update title color preview
             UpdateTitleColorPreview();
-
-            // Load inputs và outputs vào UI sau khi dialog đã được load
-            Loaded += (s, e) =>
-            {
-                try
-                {
-                    // Reload danh sách cửa sổ khi dialog mở để cập nhật tab mới
-                    _viewModel.LoadWindowsCommand.Execute(null);
-
-                    var inputsPanel = GetInputsPanel();
-                    var outputsPanel = GetOutputsPanel();
-
-                    if (inputsPanel != null && ViewModel != null)
-                    {
-                        LoadInputs();
-                    }
-
-                    if (outputsPanel != null && ViewModel != null)
-                    {
-                        LoadOutputs();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error loading inputs/outputs: {ex.Message}");
-                }
-            };
-
-            // Ngăn dialog bị đóng khi click vào nó hoặc mất focus
-            Deactivated += (s, e) =>
-            {
-                // Không làm gì - để dialog vẫn mở
-            };
-
-            // Lưu title khi đóng
-            Closing += (s, e) =>
-            {
-                try
-                {
-                    ViewModel.SaveTitleCommand.Execute(null);
-                }
-                catch { }
-            };
-
-            // Đảm bảo dialog không bị đóng khi click vào nó
-            PreviewMouseDown += (s, e) =>
-            {
-                // Chỉ ngăn event bubble lên owner window
-                // Không set e.Handled = true để các controls bên trong vẫn nhận được events
-            };
-
-            // Setup PropertyChanged handlers
-            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
             // Sync key display text khi ViewModel thay đổi
             _viewModel.PropertyChanged += (s, e) =>
@@ -116,11 +60,34 @@ namespace FlowMy.Views.Overlays
 
         protected override void BeforeSaveOnClose()
         {
+            // Flush all textbox bindings
+            FlushTextBoxBinding(PressDelayTextBox);
             FlushTextBoxBinding(ClickDurationTextBox);
+
+            // Flush NodeSearchComboBoxUserControl bindings (coord source)
+            FlushNodeSearchComboBoxBinding(CoordSourceNodeId);
+
+            // Flush output key combobox
+            FlushComboBoxBinding(CoordSourceOutputKey);
+
+            // Flush target window combobox
+            FlushComboBoxBinding(SelectedTargetWindow);
         }
 
         private static void FlushTextBoxBinding(System.Windows.Controls.TextBox? tb)
             => tb?.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+
+        private static void FlushComboBoxBinding(System.Windows.Controls.ComboBox? cb)
+            => cb?.GetBindingExpression(System.Windows.Controls.ComboBox.SelectedValueProperty)?.UpdateSource();
+
+        private static void FlushNodeSearchComboBoxBinding(Controls.NodeSearchComboBoxUserControl? nsc)
+        {
+            if (nsc != null)
+            {
+                var be = nsc.GetBindingExpression(Controls.NodeSearchComboBoxUserControl.SelectedValueProperty);
+                be?.UpdateSource();
+            }
+        }
 
         private void KeyButton_Click(object sender, RoutedEventArgs e)
         {

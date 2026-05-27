@@ -135,14 +135,14 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <controls:NodeSearchComboBoxUserControl Height="36"
+                                        <controls:NodeSearchComboBoxUserControl x:Name="CoordSourceNodeId" Height="36"
                                                   ItemsSource="{Binding AvailableNodeOptions}"
                                                   SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                   SelectedValue="{Binding CoordSourceNodeId, Mode=TwoWay}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <ComboBox Height="36" Style="{DynamicResource BaseComboBox}"
+                                        <ComboBox x:Name="CoordSourceOutputKey" Height="36" Style="{DynamicResource BaseComboBox}"
                                                   ItemsSource="{Binding CoordKeyOptions}"
                                                   SelectedValuePath="Key" DisplayMemberPath="Key"
                                                   SelectedValue="{Binding CoordSourceOutputKey, Mode=TwoWay}"
@@ -198,7 +198,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0" Height="36"
+                                    <ComboBox x:Name="SelectedTargetWindow" Grid.Column="0" Height="36"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding ActiveWindows}"
                                               DisplayMemberPath="DisplayName"
@@ -236,14 +236,14 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <controls:NodeSearchComboBoxUserControl Height="36"
+                                        <controls:NodeSearchComboBoxUserControl x:Name="PathSourceNodeId" Height="36"
                                                   ItemsSource="{Binding AvailableNodeOptions}"
                                                   SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                   SelectedValue="{Binding PathSourceNodeId, Mode=TwoWay}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <ComboBox Height="36" Style="{DynamicResource BaseComboBox}"
+                                        <ComboBox x:Name="PathSourceOutputKey" Height="36" Style="{DynamicResource BaseComboBox}"
                                                   ItemsSource="{Binding PathKeyOptions}"
                                                   SelectedValuePath="Key" DisplayMemberPath="Key"
                                                   SelectedValue="{Binding PathSourceOutputKey, Mode=TwoWay}"
