@@ -36,8 +36,20 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+        [DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, uint dpiType, out uint dpiX, out uint dpiY);
+
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
+
+        private const int MDT_DEFAULT = 0;
+        private const int MDT_EFFECTIVE_DPI = 0;
 
         public bool CanExecute(WorkflowNode node) => node is ScreenCaptureNode;
 
@@ -286,39 +298,60 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private static bool TryParseInt(string s, out int result)
             => int.TryParse(s.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out result);
 
+        /// <summary>
+        /// Lấy DPI scale cho monitor chứa toạ độ (x, y) cụ thể.
+        /// Trả về (scaleX, scaleY) tương ứng với DPI/96.
+        /// </summary>
+        private static (double scaleX, double scaleY) GetDpiScaleForPoint(int x, int y)
+        {
+            try
+            {
+                var pt = new POINT { X = x, Y = y };
+                IntPtr hMonitor = MonitorFromPoint(pt, 2); // MONITOR_DEFAULTTONEAREST
+                
+                if (hMonitor != IntPtr.Zero && GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, out uint dpiX, out uint dpiY) == 0)
+                {
+                    return (dpiX / 96.0, dpiY / 96.0);
+                }
+            }
+            catch
+            {
+                // Fallback nếu API lỗi
+            }
+
+            // Fallback: dùng DPI từ main window
+            var mainWindow = Application.Current?.MainWindow;
+            if (mainWindow != null)
+            {
+                var source = PresentationSource.FromVisual(mainWindow);
+                if (source?.CompositionTarget != null)
+                {
+                    return (source.CompositionTarget.TransformToDevice.M11,
+                            source.CompositionTarget.TransformToDevice.M22);
+                }
+            }
+
+            // Fallback cuối: dùng GDI+
+            using var g = Graphics.FromHwnd(IntPtr.Zero);
+            return (g.DpiX / 96.0, g.DpiY / 96.0);
+        }
+
         private static BitmapImage? CaptureScreen(int x, int y, int width, int height)
         {
             if (width <= 0 || height <= 0) return null;
             try
             {
-                // Xử lý DPI scaling: convert toạ độ logic sang physical
-                using var g = Graphics.FromHwnd(IntPtr.Zero);
-                var dpiX = g.DpiX;
-                var dpiY = g.DpiY;
-                // Standard DPI là 96
-                var scaleX = dpiX / 96.0;
-                var scaleY = dpiY / 96.0;
+                // Toạ độ nhận được từ ScreenCaptureOverlay giờ là physical pixel (đã scale DPI)
+                // Nên dùng trực tiếp, không cần scale thêm nữa
+                // Điều này đảm bảo chính xác khi dùng toạ độ từ node khác trên monitor với DPI khác nhau
+                System.Diagnostics.Debug.WriteLine($"[CaptureScreen] Physical coordinates: ({x},{y},{width},{height})");
 
-                var physicalX = (int)(x * scaleX);
-                var physicalY = (int)(y * scaleY);
-                var physicalW = (int)(width * scaleX);
-                var physicalH = (int)(height * scaleY);
-
-                System.Diagnostics.Debug.WriteLine($"[CaptureScreen] DPI: {dpiX}x{dpiY}, Scale: {scaleX:F2}x{scaleY:F2}");
-                System.Diagnostics.Debug.WriteLine($"[CaptureScreen] Logical: ({x},{y},{width},{height}) -> Physical: ({physicalX},{physicalY},{physicalW},{physicalH})");
-
-                using var bmp = new Bitmap(physicalW, physicalH, PixelFormat.Format32bppArgb);
+                using var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
                 using var graphics = Graphics.FromImage(bmp);
-                graphics.CopyFromScreen(physicalX, physicalY, 0, 0, new System.Drawing.Size(physicalW, physicalH), CopyPixelOperation.SourceCopy);
-
-                // Scale lại về kích thước gốc (logic) để đảm bảo kích thước ảnh đúng như mong đợi
-                using var scaledBmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-                using var scaledGraphics = Graphics.FromImage(scaledBmp);
-                scaledGraphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                scaledGraphics.DrawImage(bmp, 0, 0, width, height);
+                graphics.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(width, height), CopyPixelOperation.SourceCopy);
 
                 using var ms = new MemoryStream();
-                scaledBmp.Save(ms, ImageFormat.Png);
+                bmp.Save(ms, ImageFormat.Png);
                 ms.Position = 0;
 
                 var img = new BitmapImage();

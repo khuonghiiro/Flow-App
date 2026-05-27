@@ -38,8 +38,19 @@ namespace FlowMy.Views.Overlays
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+        [DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, uint dpiType, out uint dpiX, out uint dpiY);
+
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
+
+        private const int MDT_EFFECTIVE_DPI = 0;
 
         public ScreenCaptureOverlay()
         {
@@ -66,6 +77,26 @@ namespace FlowMy.Views.Overlays
 
         private void ReadDpiScale()
         {
+            // Sử dụng GetDpiForMonitor API để lấy DPI scale chính xác cho monitor chứa overlay
+            // Điều này đồng bộ với ScreenCaptureNodeExecutor
+            try
+            {
+                var pt = new POINT { X = (int)Left, Y = (int)Top };
+                IntPtr hMonitor = MonitorFromPoint(pt, 2); // MONITOR_DEFAULTTONEAREST
+
+                if (hMonitor != IntPtr.Zero && GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, out uint dpiX, out uint dpiY) == 0)
+                {
+                    _dpiScaleX = dpiX / 96.0;
+                    _dpiScaleY = dpiY / 96.0;
+                    return;
+                }
+            }
+            catch
+            {
+                // Fallback nếu API lỗi
+            }
+
+            // Fallback: dùng TransformToDevice từ WPF
             var source = PresentationSource.FromVisual(this);
             if (source?.CompositionTarget != null)
             {
@@ -175,11 +206,12 @@ namespace FlowMy.Views.Overlays
             int physW = (int)Math.Round(_selW * _dpiScaleX);
             int physH = (int)Math.Round(_selH * _dpiScaleY);
 
-            // Lưu tọa độ logical để node hiển thị
-            CaptureX      = (int)Math.Round(_selX + Left);
-            CaptureY      = (int)Math.Round(_selY + Top);
-            CaptureWidth  = (int)Math.Round(_selW);
-            CaptureHeight = (int)Math.Round(_selH);
+            // Lưu tọa độ physical pixel để đảm bảo chính xác khi dùng trên monitor khác với DPI khác nhau
+            // Physical pixel = toạ độ tuyệt đối trên màn hình, không phụ thuộc DPI
+            CaptureX      = physX;
+            CaptureY      = physY;
+            CaptureWidth  = physW;
+            CaptureHeight = physH;
 
             // ── Ẩn toàn bộ overlay trước khi chụp (giống Snipping Tool) ──
             // Ẩn hết các lớp UI: dim, viền, crosshair, hint
