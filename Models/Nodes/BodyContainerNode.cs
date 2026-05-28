@@ -10,7 +10,7 @@ public sealed class BodyContainerNode : WorkflowNode
     private string _bodyBackgroundColorHex = "#5A6B7280";
     private string _bodyBorderColorHex = "#FF6B7280";
     private bool _useUnifiedColors = true;
-    private double _backgroundOpacityPercent = 35;
+    private double _backgroundOpacityPercent = 10;
     private bool _lockInnerNodes;
 
     public BodyContainerNode()

@@ -11,7 +11,7 @@ namespace FlowMy.Services.Interaction
     /// </summary>
     public class CollisionResolver
     {
-        private const double MinNodeSpacing = 10.0; // Khoảng cách tối thiểu giữa các node
+        private const double MinNodeSpacing = 20.0; // Khoảng cách tối thiểu giữa các node
         private const int MaxRecursionDepth = 50; // Giới hạn độ sâu đệ quy để tránh vòng lặp vô hạn
 
         /// <summary>
@@ -63,6 +63,27 @@ namespace FlowMy.Services.Interaction
             {
                 if (otherNode == node || processedNodes.Contains(otherNode)) continue;
                 if (otherNode.Border == null) continue; // Skip node chưa được render
+
+                // Nếu otherNode nằm trong locked body, skip - không được di chuyển
+                var otherOwningLockedBody = FindOwningLockedBody(viewModel, otherNode);
+                if (otherOwningLockedBody != null)
+                {
+                    continue; // Node trong locked body không bị di chuyển
+                }
+
+                // Nếu otherNode là locked body, không cho phép node lọt vào trong nó
+                if (otherNode is BodyContainerNode otherBody && otherBody.LockInnerNodes)
+                {
+                    var otherBodyRect = new Rect(otherBody.X, otherBody.Y, otherBody.BodyWidth, otherBody.BodyHeight);
+                    if (IsNodeInsideBodyRect(node, otherBodyRect))
+                    {
+                        // Node đang lọt vào locked body - cần đẩy node ra ngoài
+                        overlappingNodes.Add((otherNode, otherBodyRect, 0, 0));
+                        continue;
+                    }
+                }
+
+                // Nếu target là locked body, skip các node nằm bên trong nó
                 if (targetIsLockedBody && IsNodeInsideBodyRect(otherNode, targetBodyRect)) continue;
 
                 var otherBounds = GetNodeBounds(otherNode);
@@ -92,12 +113,51 @@ namespace FlowMy.Services.Interaction
             // Đẩy các node bị overlap
             foreach (var (otherNode, otherBounds, overlapX, overlapY) in overlappingNodes)
             {
-                // Tính toán hướng đẩy tốt nhất (ít di chuyển nhất)
-                var pushDirection = CalculatePushDirection(nodeBounds, otherBounds, overlapX, overlapY);
+                double newX, newY;
 
-                // Tính toán vị trí mới cho node bị đẩy
-                double newX = otherNode.X + pushDirection.X;
-                double newY = otherNode.Y + pushDirection.Y;
+                // Nếu otherNode là locked body và node đang lọt vào trong nó, đẩy node (target) ra ngoài
+                if (otherNode is BodyContainerNode otherBody && otherBody.LockInnerNodes && overlapX == 0 && overlapY == 0)
+                {
+                    // Đẩy target node ra ngoài locked body
+                    var pushDir = CalculatePushDirectionOutOfBody(nodeBounds, otherBounds);
+                    newX = node.X + pushDir.X;
+                    newY = node.Y + pushDir.Y;
+
+                    // Cập nhật vị trí target node (không phải otherNode)
+                    viewModel.UpdateNodePosition(node, newX, newY);
+                    host.UpdateNodePosition(node, newX, newY);
+
+                    if (node.Border != null)
+                    {
+                        Canvas.SetLeft(node.Border, newX);
+                        Canvas.SetTop(node.Border, newY);
+                    }
+
+                    UpdatePortsPosition(node, host);
+
+                    foreach (var conn in viewModel.Connections)
+                    {
+                        if (conn.FromNode == node || conn.ToNode == node)
+                        {
+                            host.UpdateConnectionPath(conn);
+                        }
+                    }
+
+                    // Đệ quy kiểm tra target node có overlap với node khác không
+                    ResolveCollisionRecursive(viewModel, node, host, processedNodes, depth + 1);
+                    continue;
+                }
+
+                // Logic bình thường: đẩy otherNode
+                var pushDirection = CalculatePushDirection(nodeBounds, otherBounds, overlapX, overlapY);
+                newX = otherNode.X + pushDirection.X;
+                newY = otherNode.Y + pushDirection.Y;
+
+                // Nếu otherNode là locked body, không di chuyển nó (đứng yên)
+                if (otherNode is BodyContainerNode pushedBody && pushedBody.LockInnerNodes)
+                {
+                    continue; // Locked body đứng yên, không đẩy
+                }
 
                 // Cập nhật vị trí node bị đẩy
                 viewModel.UpdateNodePosition(otherNode, newX, newY);
@@ -134,6 +194,52 @@ namespace FlowMy.Services.Interaction
             var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
             var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
             return bodyRect.Contains(center);
+        }
+
+        private static BodyContainerNode? FindOwningLockedBody(WorkflowEditorViewModel viewModel, WorkflowNode node)
+        {
+            if (node is BodyContainerNode) return null;
+            foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
+            {
+                if (!body.LockInnerNodes) continue;
+                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
+                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+                if (width <= 0 || height <= 0) continue;
+
+                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                    return body;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Tính toán hướng đẩy node ra ngoài locked body
+        /// </summary>
+        private Vector CalculatePushDirectionOutOfBody(Rect nodeBounds, Rect bodyBounds)
+        {
+            // Tính toán khoảng cách từ tâm node đến các cạnh của body
+            double centerX = nodeBounds.Left + nodeBounds.Width / 2;
+            double centerY = nodeBounds.Top + nodeBounds.Height / 2;
+
+            double distToLeft = centerX - bodyBounds.Left;
+            double distToRight = bodyBounds.Right - centerX;
+            double distToTop = centerY - bodyBounds.Top;
+            double distToBottom = bodyBounds.Bottom - centerY;
+
+            // Chọn hướng đẩy ngắn nhất (ra khỏi body)
+            double minDist = Math.Min(Math.Min(distToLeft, distToRight), Math.Min(distToTop, distToBottom));
+            double pushDistance = minDist + MinNodeSpacing + 30; // Tăng buffer để node nằm xa viền body hơn
+
+            if (minDist == distToLeft)
+                return new Vector(-pushDistance, 0); // Đẩy sang trái
+            if (minDist == distToRight)
+                return new Vector(pushDistance, 0); // Đẩy sang phải
+            if (minDist == distToTop)
+                return new Vector(0, -pushDistance); // Đẩy lên trên
+            return new Vector(0, pushDistance); // Đẩy xuống dưới
         }
 
         /// <summary>

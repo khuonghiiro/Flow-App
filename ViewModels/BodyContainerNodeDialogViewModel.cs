@@ -25,7 +25,7 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
     private bool _useUnifiedColors = true;
 
     [ObservableProperty]
-    private double _backgroundOpacityPercent = 35;
+    private double _backgroundOpacityPercent = 20;
 
     [ObservableProperty]
     private bool _lockInnerNodes;
