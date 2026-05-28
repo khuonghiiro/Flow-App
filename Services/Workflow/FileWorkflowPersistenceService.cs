@@ -3794,6 +3794,48 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             {
                 bodyContainerRestore.LockInnerNodes = lockInner;
             }
+            if (properties.TryGetValue("BorderOpacityPercent", out var borderOpacityObj) &&
+                borderOpacityObj != null &&
+                double.TryParse(borderOpacityObj.ToString(), out var borderOpacity))
+            {
+                bodyContainerRestore.BorderOpacityPercent = borderOpacity;
+            }
+            if (properties.TryGetValue("BorderThickness", out var borderThicknessObj) &&
+                borderThicknessObj != null &&
+                double.TryParse(borderThicknessObj.ToString(), out var borderThickness))
+            {
+                bodyContainerRestore.BorderThickness = borderThickness;
+            }
+            if (properties.TryGetValue("BorderDashSpacing", out var borderDashSpacingObj) &&
+                borderDashSpacingObj != null &&
+                double.TryParse(borderDashSpacingObj.ToString(), out var borderDashSpacing))
+            {
+                bodyContainerRestore.BorderDashSpacing = borderDashSpacing;
+            }
+            if (properties.TryGetValue("BorderDashStyle", out var borderDashStyleObj) &&
+                borderDashStyleObj != null &&
+                Enum.TryParse<BorderDashStyle>(borderDashStyleObj.ToString(), out var borderDashStyle))
+            {
+                bodyContainerRestore.BorderDashStyle = borderDashStyle;
+            }
+            if (properties.TryGetValue("IconOpacityPercent", out var iconOpacityObj) &&
+                iconOpacityObj != null &&
+                double.TryParse(iconOpacityObj.ToString(), out var iconOpacity))
+            {
+                bodyContainerRestore.IconOpacityPercent = iconOpacity;
+            }
+            if (properties.TryGetValue("LockCanvasSize", out var lockCanvasSizeObj) &&
+                lockCanvasSizeObj != null &&
+                bool.TryParse(lockCanvasSizeObj.ToString(), out var lockCanvasSize))
+            {
+                bodyContainerRestore.LockCanvasSize = lockCanvasSize;
+            }
+            if (properties.TryGetValue("LockedZoomLevel", out var lockedZoomLevelObj) &&
+                lockedZoomLevelObj != null &&
+                double.TryParse(lockedZoomLevelObj.ToString(), out var lockedZoomLevel))
+            {
+                bodyContainerRestore.LockedZoomLevel = lockedZoomLevel;
+            }
         }
         else if (node is OutputNode outputNode)
         {
@@ -5044,6 +5086,13 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["UseUnifiedColors"] = bodyContainerSer.UseUnifiedColors;
             dict["BackgroundOpacityPercent"] = bodyContainerSer.BackgroundOpacityPercent;
             dict["LockInnerNodes"] = bodyContainerSer.LockInnerNodes;
+            dict["BorderOpacityPercent"] = bodyContainerSer.BorderOpacityPercent;
+            dict["BorderThickness"] = bodyContainerSer.BorderThickness;
+            dict["BorderDashSpacing"] = bodyContainerSer.BorderDashSpacing;
+            dict["BorderDashStyle"] = bodyContainerSer.BorderDashStyle.ToString();
+            dict["IconOpacityPercent"] = bodyContainerSer.IconOpacityPercent;
+            dict["LockCanvasSize"] = bodyContainerSer.LockCanvasSize;
+            dict["LockedZoomLevel"] = bodyContainerSer.LockedZoomLevel;
 
         }
         else if (node is WebNode webNodeForSerialize)

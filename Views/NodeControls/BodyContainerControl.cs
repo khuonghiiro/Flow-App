@@ -40,6 +40,14 @@ public static class BodyContainerControl
             Tag = node
         };
 
+        // Thêm ScaleTransform riêng cho LockCanvasSize
+        if (node.LockCanvasSize)
+        {
+            var scaleTransform = new ScaleTransform(1, 1);
+            border.RenderTransform = scaleTransform;
+            border.RenderTransformOrigin = new Point(0.5, 0.5);
+        }
+
         var root = new Grid();
         root.ClipToBounds = false;
 
@@ -95,10 +103,25 @@ public static class BodyContainerControl
 
     public static void RefreshVisualFromNode(BodyContainerNode node)
     {
-        if (!TryGetVisualElements(node, out _, out var fillRect, out var borderRect, out var titleText, out var lockIcon))
+        if (!TryGetVisualElements(node, out var border, out var fillRect, out var borderRect, out var titleText, out var lockIcon))
             return;
 
-        ApplyNodeVisual(node, node.Border, fillRect, borderRect, titleText, lockIcon);
+        // Cập nhật ScaleTransform cho LockCanvasSize
+        if (node.LockCanvasSize)
+        {
+            if (border.RenderTransform is not ScaleTransform)
+            {
+                border.RenderTransform = new ScaleTransform(1, 1);
+                border.RenderTransformOrigin = new Point(0.5, 0.5);
+            }
+        }
+        else
+        {
+            border.RenderTransform = null;
+            node.LockedZoomLevel = 1.0; // Reset khi bỏ khóa
+        }
+
+        ApplyNodeVisual(node, border, fillRect, borderRect, titleText, lockIcon);
         UpdateTitleVisibility(node, titleText, isHovering: false);
     }
 
@@ -122,12 +145,20 @@ public static class BodyContainerControl
         var alpha = (byte)Math.Round(Math.Clamp(node.BackgroundOpacityPercent / 100.0, 0, 1) * 255);
         backgroundColor.A = alpha;
 
+        // Nếu có độ trong nền, áp dụng độ trong tương ứng cho viền
+        var borderAlpha = (byte)Math.Round(Math.Clamp(node.BorderOpacityPercent / 100.0, 0, 1) * 255);
+        borderColor.A = borderAlpha;
+
         fillRect.Fill = new SolidColorBrush(backgroundColor);
         borderRect.Stroke = new SolidColorBrush(borderColor);
+        borderRect.StrokeThickness = node.BorderThickness;
+        borderRect.StrokeDashArray = GetDashArray(node.BorderDashStyle, node.BorderDashSpacing);
+
         titleText.Text = node.Title;
         titleText.Foreground = ResolveTitleBrush(node, borderColor);
         titleText.FontSize = 12 * titleScale;
         titleText.Margin = new Thickness(0, -26 * titleScale, 0, 0);
+        titleText.Effect = null; // Bỏ shadow của title
 
         // Đổi icon hiển thị giữa tâm border khi check lock/unlock
         var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";
@@ -136,10 +167,24 @@ public static class BodyContainerControl
             null, typeof(Uri), lockIconKey, CultureInfo.CurrentCulture) as Uri;
         lockIcon.InvalidateVisual();
         lockIcon.Fill = new SolidColorBrush(Color.FromArgb(235, 17, 24, 39));
+        lockIcon.Opacity = node.IconOpacityPercent / 100.0;
         lockIcon.Width = Math.Max(32, Math.Min(node.BodyWidth, node.BodyHeight) * 0.18);
         lockIcon.Height = lockIcon.Width;
 
         UpdateResizeHandleScale(border, node.BodyWidth, node.BodyHeight, borderColor, node.LockInnerNodes);
+    }
+
+    private static DoubleCollection GetDashArray(BorderDashStyle style, double spacing)
+    {
+        return style switch
+        {
+            BorderDashStyle.Solid => new DoubleCollection(),
+            BorderDashStyle.Dash => new DoubleCollection { 5, spacing },
+            BorderDashStyle.Dot => new DoubleCollection { 2, spacing },
+            BorderDashStyle.DashDot => new DoubleCollection { 5, spacing, 2, spacing },
+            BorderDashStyle.DashDotDot => new DoubleCollection { 5, spacing, 2, spacing, 2, spacing },
+            _ => new DoubleCollection { 5, spacing }
+        };
     }
 
     public static void UpdateTitleVisibility(BodyContainerNode node, TextBlock titleText, bool isHovering)

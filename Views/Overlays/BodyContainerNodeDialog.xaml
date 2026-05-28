@@ -188,6 +188,117 @@
                             <CheckBox x:Name="LockInnerNodesCheckBox"
                                       Content="Khóa node bên trong body"
                                       IsChecked="{Binding LockInnerNodes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Độ trong suốt viền (%):"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="BorderOpacitySlider"
+                                        Grid.Column="0"
+                                        Minimum="0" Maximum="100"
+                                        Value="{Binding BorderOpacityPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        TickFrequency="5"
+                                        IsSnapToTickEnabled="False"/>
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Text="{Binding BorderOpacityPercent, StringFormat='{}{0:F0}%'}"/>
+                            </Grid>
+
+                            <TextBlock Text="Độ dày viền:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="BorderThicknessSlider"
+                                        Grid.Column="0"
+                                        Minimum="0.5" Maximum="10"
+                                        Value="{Binding BorderThickness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        TickFrequency="0.5"
+                                        IsSnapToTickEnabled="False"/>
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Text="{Binding BorderThickness, StringFormat='{}{0:F1}px'}"/>
+                            </Grid>
+
+                            <TextBlock Text="Khoảng cách nét đứt:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="BorderDashSpacingSlider"
+                                        Grid.Column="0"
+                                        Minimum="0" Maximum="20"
+                                        Value="{Binding BorderDashSpacing, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        TickFrequency="1"
+                                        IsSnapToTickEnabled="False"/>
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Text="{Binding BorderDashSpacing, StringFormat='{}{0:F0}px'}"/>
+                            </Grid>
+
+                            <TextBlock Text="Dạng nét đứt:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <ComboBox Height="36"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      Margin="0,0,0,12"
+                                      ItemsSource="{Binding BorderDashStyleOptions}"
+                                      SelectedValuePath="Style"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding BorderDashStyle, Mode=TwoWay}"/>
+
+                            <TextBlock Text="Độ trong suốt icon (%):"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="IconOpacitySlider"
+                                        Grid.Column="0"
+                                        Minimum="0" Maximum="100"
+                                        Value="{Binding IconOpacityPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        TickFrequency="5"
+                                        IsSnapToTickEnabled="False"/>
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           Text="{Binding IconOpacityPercent, StringFormat='{}{0:F0}%'}"/>
+                            </Grid>
+
+                            <CheckBox x:Name="LockCanvasSizeCheckBox"
+                                      Content="Khóa kích thước khi zoom"
+                                      IsChecked="{Binding LockCanvasSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Foreground="{DynamicResource TextBrush}"/>
                         </StackPanel>
                     </ScrollViewer>

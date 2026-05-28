@@ -36,6 +36,27 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
     [ObservableProperty]
     private string? _bodyBorderColorKey;
 
+    [ObservableProperty]
+    private double _borderOpacityPercent = 100;
+
+    [ObservableProperty]
+    private double _borderThickness = 2;
+
+    [ObservableProperty]
+    private double _borderDashSpacing = 3;
+
+    [ObservableProperty]
+    private BorderDashStyle _borderDashStyle = BorderDashStyle.Dash;
+
+    [ObservableProperty]
+    private double _iconOpacityPercent = 62;
+
+    [ObservableProperty]
+    private bool _lockCanvasSize;
+
+    [ObservableProperty]
+    private double _lockedZoomLevel = 1.0;
+
     public ObservableCollection<BodyColorOption> BodyColorOptions { get; } = new()
     {
         new BodyColorOption("SlateBrush", "Slate"),
@@ -50,6 +71,15 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         new BodyColorOption("LavenderBrush", "Lavender")
     };
 
+    public ObservableCollection<BorderDashStyleOption> BorderDashStyleOptions { get; } = new()
+    {
+        new BorderDashStyleOption(BorderDashStyle.Solid, "Solid (Liền)"),
+        new BorderDashStyleOption(BorderDashStyle.Dash, "Dash (Nét đứt)"),
+        new BorderDashStyleOption(BorderDashStyle.Dot, "Dot (Chấm)"),
+        new BorderDashStyleOption(BorderDashStyle.DashDot, "Dash-Dot"),
+        new BorderDashStyleOption(BorderDashStyle.DashDotDot, "Dash-Dot-Dot")
+    };
+
     public BodyContainerNodeDialogViewModel(BodyContainerNode node, IWorkflowEditorHost host)
         : base(node, host)
     {
@@ -61,6 +91,13 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         _lockInnerNodes = node.LockInnerNodes;
         _bodyBackgroundColorKey = node.BodyBackgroundColorHex;
         _bodyBorderColorKey = node.BodyBorderColorHex;
+        _borderOpacityPercent = node.BorderOpacityPercent;
+        _borderThickness = node.BorderThickness;
+        _borderDashSpacing = node.BorderDashSpacing;
+        _borderDashStyle = node.BorderDashStyle;
+        _iconOpacityPercent = node.IconOpacityPercent;
+        _lockCanvasSize = node.LockCanvasSize;
+        _lockedZoomLevel = node.LockedZoomLevel;
     }
 
     protected override string GetDefaultTitle() => "Body Container";
@@ -76,6 +113,13 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         _nodeRef.UseUnifiedColors = UseUnifiedColors;
         _nodeRef.BackgroundOpacityPercent = BackgroundOpacityPercent;
         _nodeRef.LockInnerNodes = LockInnerNodes;
+        _nodeRef.BorderOpacityPercent = BorderOpacityPercent;
+        _nodeRef.BorderThickness = BorderThickness;
+        _nodeRef.BorderDashSpacing = BorderDashSpacing;
+        _nodeRef.BorderDashStyle = BorderDashStyle;
+        _nodeRef.IconOpacityPercent = IconOpacityPercent;
+        _nodeRef.LockCanvasSize = LockCanvasSize;
+        _nodeRef.LockedZoomLevel = LockedZoomLevel;
         _nodeRef.NotifyTitleChanged();
         RefreshBodyVisualImmediate();
         _host.RequestSyncDataPanels(immediate: true);
@@ -133,6 +177,58 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         RefreshBodyVisualImmediate();
     }
 
+    partial void OnBorderOpacityPercentChanged(double value)
+    {
+        _nodeRef.BorderOpacityPercent = value;
+        RefreshBodyVisualImmediate();
+    }
+
+    partial void OnBorderThicknessChanged(double value)
+    {
+        _nodeRef.BorderThickness = value;
+        RefreshBodyVisualImmediate();
+    }
+
+    partial void OnBorderDashSpacingChanged(double value)
+    {
+        _nodeRef.BorderDashSpacing = value;
+        RefreshBodyVisualImmediate();
+    }
+
+    partial void OnBorderDashStyleChanged(BorderDashStyle value)
+    {
+        _nodeRef.BorderDashStyle = value;
+        RefreshBodyVisualImmediate();
+    }
+
+    partial void OnIconOpacityPercentChanged(double value)
+    {
+        _nodeRef.IconOpacityPercent = value;
+        RefreshBodyVisualImmediate();
+    }
+
+    partial void OnLockCanvasSizeChanged(bool value)
+    {
+        _nodeRef.LockCanvasSize = value;
+        if (value)
+        {
+            // Khi khóa, lưu zoom level hiện tại của canvas
+            _nodeRef.LockedZoomLevel = _host.ZoomLevel;
+        }
+        else
+        {
+            // Khi bỏ khóa, reset
+            _nodeRef.LockedZoomLevel = 1.0;
+        }
+        RefreshBodyVisualImmediate();
+    }
+
+    partial void OnLockedZoomLevelChanged(double value)
+    {
+        _nodeRef.LockedZoomLevel = value;
+        RefreshBodyVisualImmediate();
+    }
+
     private static string? ResolveColorToken(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
@@ -180,5 +276,17 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
     private void RefreshBodyVisualImmediate()
     {
         BodyContainerControl.RefreshVisualFromNode(_nodeRef);
+    }
+
+    public sealed class BorderDashStyleOption
+    {
+        public BorderDashStyleOption(BorderDashStyle style, string displayName)
+        {
+            Style = style;
+            DisplayName = displayName;
+        }
+
+        public BorderDashStyle Style { get; }
+        public string DisplayName { get; }
     }
 }
