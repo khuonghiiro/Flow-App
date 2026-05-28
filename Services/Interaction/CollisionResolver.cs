@@ -64,6 +64,12 @@ namespace FlowMy.Services.Interaction
                 if (otherNode == node || processedNodes.Contains(otherNode)) continue;
                 if (otherNode.Border == null) continue; // Skip node chưa được render
 
+                // Nếu otherNode là unlocked BodyContainerNode, skip collision (cho phép đè lên body)
+                if (otherNode is BodyContainerNode otherBody && !otherBody.LockInnerNodes)
+                {
+                    continue;
+                }
+
                 // Nếu otherNode nằm trong locked body, skip - không được di chuyển
                 var otherOwningLockedBody = FindOwningLockedBody(viewModel, otherNode);
                 if (otherOwningLockedBody != null)
@@ -71,10 +77,15 @@ namespace FlowMy.Services.Interaction
                     continue; // Node trong locked body không bị di chuyển
                 }
 
+                // Nếu otherNode nằm trong unlocked body (không phải body), nó đứng im
+                // node đang di chuyển bị đẩy ra nếu đè lên nó
+                var otherOwningBody = FindOwningBody(viewModel, otherNode);
+                var otherInUnlockedBody = otherOwningBody != null && !otherOwningBody.LockInnerNodes;
+
                 // Nếu otherNode là locked body, không cho phép node lọt vào trong nó
-                if (otherNode is BodyContainerNode otherBody && otherBody.LockInnerNodes)
+                if (otherNode is BodyContainerNode otherBodyLocked && otherBodyLocked.LockInnerNodes)
                 {
-                    var otherBodyRect = new Rect(otherBody.X, otherBody.Y, otherBody.BodyWidth, otherBody.BodyHeight);
+                    var otherBodyRect = new Rect(otherBodyLocked.X, otherBodyLocked.Y, otherBodyLocked.BodyWidth, otherBodyLocked.BodyHeight);
                     if (IsNodeInsideBodyRect(node, otherBodyRect))
                     {
                         // Node đang lọt vào locked body - cần đẩy node ra ngoài
@@ -85,6 +96,49 @@ namespace FlowMy.Services.Interaction
 
                 // Nếu target là locked body, skip các node nằm bên trong nó
                 if (targetIsLockedBody && IsNodeInsideBodyRect(otherNode, targetBodyRect)) continue;
+
+                // Nếu otherNode nằm trong unlocked body, node đang di chuyển bị đẩy ra
+                if (otherInUnlockedBody)
+                {
+                    var otherBounds2 = GetNodeBounds(otherNode);
+                    if (otherBounds2.Width <= 0 || otherBounds2.Height <= 0) continue;
+
+                    // Kiểm tra overlap - nếu có, đẩy node đang di chuyển (node) ra
+                    if (nodeBounds.IntersectsWith(otherBounds2))
+                    {
+                        var pushDirection = CalculatePushDirection(nodeBounds, otherBounds2,
+                            Math.Min(Math.Abs(nodeBounds.Right - otherBounds2.Left), Math.Abs(otherBounds2.Right - nodeBounds.Left)),
+                            Math.Min(Math.Abs(nodeBounds.Bottom - otherBounds2.Top), Math.Abs(otherBounds2.Bottom - nodeBounds.Top)));
+                        // Push in opposite direction (push node away from otherNode)
+                        pushDirection = new Vector(-pushDirection.X, -pushDirection.Y);
+
+                        var newX = node.X + pushDirection.X;
+                        var newY = node.Y + pushDirection.Y;
+
+                        viewModel.UpdateNodePosition(node, newX, newY);
+                        host.UpdateNodePosition(node, newX, newY);
+
+                        if (node.Border != null)
+                        {
+                            Canvas.SetLeft(node.Border, newX);
+                            Canvas.SetTop(node.Border, newY);
+                        }
+
+                        UpdatePortsPosition(node, host);
+
+                        foreach (var conn in viewModel.Connections)
+                        {
+                            if (conn.FromNode == node || conn.ToNode == node)
+                            {
+                                host.UpdateConnectionPath(conn);
+                            }
+                        }
+
+                        // Đệ quy kiểm tra lại sau khi đẩy
+                        ResolveCollisionRecursive(viewModel, node, host, processedNodes, depth + 1);
+                    }
+                    continue;
+                }
 
                 var otherBounds = GetNodeBounds(otherNode);
                 if (otherBounds.Width <= 0 || otherBounds.Height <= 0) continue;
@@ -202,6 +256,24 @@ namespace FlowMy.Services.Interaction
             foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
             {
                 if (!body.LockInnerNodes) continue;
+                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
+                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+                if (width <= 0 || height <= 0) continue;
+
+                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                    return body;
+            }
+            return null;
+        }
+
+        private static BodyContainerNode? FindOwningBody(WorkflowEditorViewModel viewModel, WorkflowNode node)
+        {
+            if (node is BodyContainerNode) return null;
+            foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
+            {
                 var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
                 var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
                 if (width <= 0 || height <= 0) continue;
