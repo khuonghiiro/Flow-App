@@ -496,6 +496,20 @@ public partial class FloatingWidgetWindow : Window
         _isExpanded = true;
         MarkActivity();
 
+        // Only show ContentArea for nodes with window UI (Web, HtmlUi)
+        // For other nodes (like Start), only show title bar
+        var hasWindowUI = _node is WebNode || _node is HtmlUiNode;
+        if (!hasWindowUI)
+        {
+            ContentArea.Visibility = Visibility.Collapsed;
+            TitleMaxRestoreBtn.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ContentArea.Visibility = Visibility.Visible;
+            TitleMaxRestoreBtn.Visibility = Visibility.Visible;
+        }
+
         // Size (px hoặc tỉ lệ theo work area)
         var (w, h) = ResolveExpandedSize();
         Width = w;
@@ -3171,6 +3185,18 @@ window.hostAsync.values = window.hostAsync.values || {};
         StartWorkflowFromWidget();
     }
 
+    private void RunSingleNodeBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _host?.RequestRunSingleNode(_node);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Error running single node: {ex.Message}");
+        }
+    }
+
     private void StopWorkflowBtn_Click(object sender, RoutedEventArgs e)
     {
         if (!StopSessionsPopup.IsOpen)
@@ -3375,6 +3401,7 @@ window.hostAsync.values = window.hostAsync.values || {};
         var runCount = _host?.ViewModel?.ManualExecutionRunsInFlight ?? 0;
         var runCountText = runCount > 99 ? "99+" : runCount.ToString();
         var badgeVisibility = runCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var isRunning = runCount > 0;
 
         if (StartRunCountText != null) StartRunCountText.Text = runCountText;
         if (StopRunCountText != null) StopRunCountText.Text = runCountText;
@@ -3390,6 +3417,14 @@ window.hostAsync.values = window.hostAsync.values || {};
         if (_titleRevealStopBadgeText != null) _titleRevealStopBadgeText.Text = runCountText;
         if (_titleRevealStartBadge != null) _titleRevealStartBadge.Visibility = badgeVisibility;
         if (_titleRevealStopBadge != null) _titleRevealStopBadge.Visibility = badgeVisibility;
+
+        // Update running indicators on idle shapes
+        var indicatorVisibility = isRunning ? Visibility.Visible : Visibility.Collapsed;
+        if (IdleRunningIndicator != null) IdleRunningIndicator.Visibility = indicatorVisibility;
+        if (IdleDiamondRunningIndicator != null) IdleDiamondRunningIndicator.Visibility = indicatorVisibility;
+        if (IdleSquareRunningIndicator != null) IdleSquareRunningIndicator.Visibility = indicatorVisibility;
+        if (IdleRoundedRunningIndicator != null) IdleRoundedRunningIndicator.Visibility = indicatorVisibility;
+        if (EdgeDockRunningIndicator != null) EdgeDockRunningIndicator.Visibility = indicatorVisibility;
     }
 
     private void ShowTitleRevealStopSessionMenu(Button anchorButton)

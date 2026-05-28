@@ -254,6 +254,22 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                    <!-- Running indicator circle -->
+                    <Border x:Name="IdleRunningIndicator"
+                            Width="12"
+                            Height="12"
+                            CornerRadius="6"
+                            Background="{DynamicResource DangerBrush}"
+                            BorderBrush="{DynamicResource TextOnDangerBrush}"
+                            BorderThickness="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-4,-4,0"
+                            Visibility="Collapsed">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="IdleRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -284,6 +300,22 @@
                     <TextBlock x:Name="IdleDiamondIcon" Text="⚡" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                    <!-- Running indicator circle -->
+                    <Border x:Name="IdleDiamondRunningIndicator"
+                            Width="10"
+                            Height="10"
+                            CornerRadius="5"
+                            Background="{DynamicResource DangerBrush}"
+                            BorderBrush="{DynamicResource TextOnDangerBrush}"
+                            BorderThickness="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-2,-2,0"
+                            Visibility="Collapsed">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="IdleDiamondRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -305,6 +337,22 @@
                     <TextBlock x:Name="IdleSquareIcon" Text="⚡" FontSize="20"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                    <!-- Running indicator circle -->
+                    <Border x:Name="IdleSquareRunningIndicator"
+                            Width="12"
+                            Height="12"
+                            CornerRadius="6"
+                            Background="{DynamicResource DangerBrush}"
+                            BorderBrush="{DynamicResource TextOnDangerBrush}"
+                            BorderThickness="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-4,-4,0"
+                            Visibility="Collapsed">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="IdleSquareRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -326,6 +374,22 @@
                     <TextBlock x:Name="IdleRoundedIcon" Text="⚡" FontSize="20"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                    <!-- Running indicator circle -->
+                    <Border x:Name="IdleRoundedRunningIndicator"
+                            Width="12"
+                            Height="12"
+                            CornerRadius="6"
+                            Background="{DynamicResource DangerBrush}"
+                            BorderBrush="{DynamicResource TextOnDangerBrush}"
+                            BorderThickness="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-4,-4,0"
+                            Visibility="Collapsed">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="IdleRoundedRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -347,6 +411,22 @@
                     <TextBlock x:Name="EdgeDockIcon" Text="⚡" FontSize="14"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
+                    <!-- Running indicator circle -->
+                    <Border x:Name="EdgeDockRunningIndicator"
+                            Width="8"
+                            Height="8"
+                            CornerRadius="4"
+                            Background="{DynamicResource DangerBrush}"
+                            BorderBrush="{DynamicResource TextOnDangerBrush}"
+                            BorderThickness="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-2,-2,0"
+                            Visibility="Collapsed">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="EdgeDockRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -435,6 +515,18 @@
                                         Orientation="Horizontal"
                                         VerticalAlignment="Center"
                                         Margin="0,0,8,0">
+                                <Button x:Name="RunSingleNodeBtn"
+                                        Width="24"
+                                        Height="24"
+                                        Margin="0,0,4,0"
+                                        Padding="0"
+                                        Content="▶"
+                                        FontSize="12"
+                                        Cursor="Hand"
+                                        ToolTip="Chạy logic node này"
+                                        Style="{StaticResource WidgetTitleActionButton}"
+                                        Click="RunSingleNodeBtn_Click"/>
+
                                 <Button x:Name="StartWorkflowBtn"
                                         Width="24"
                                         Height="24"
