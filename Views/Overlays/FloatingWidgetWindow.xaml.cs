@@ -19,10 +19,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
-using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
@@ -140,7 +140,10 @@ public partial class FloatingWidgetWindow : Window
             UpdateOutsideCollapseToggleButtonState();
             ReassertTopmostIfNeeded();
         };
-        LocationChanged += (_, _) => UpdateTitleRevealButtonPlacement();
+        LocationChanged += (_, _) =>
+        {
+            UpdateTitleRevealButtonPlacement();
+        };
         SizeChanged += (_, _) => UpdateTitleRevealButtonPlacement();
         Deactivated += FloatingWidgetWindow_Deactivated;
 
@@ -530,10 +533,10 @@ public partial class FloatingWidgetWindow : Window
                 _ = ReloadContentAsync();
                 _ = Dispatcher.InvokeAsync(async () =>
                 {
-                        // Chủ động drain mỗi lần expand để không phụ thuộc hoàn toàn vào event PendingAsyncDataPush
-                        // (event có thể đã fire trước khi widget kịp subscribe).
-                        DrainPendingAsyncQueueToBuffer(htmlNode);
-                        MoveHiddenBacklogToPending();
+                    // Chủ động drain mỗi lần expand để không phụ thuộc hoàn toàn vào event PendingAsyncDataPush
+                    // (event có thể đã fire trước khi widget kịp subscribe).
+                    DrainPendingAsyncQueueToBuffer(htmlNode);
+                    MoveHiddenBacklogToPending();
                     var flushedCount = await FlushBufferedAsyncDataToWidgetAsync(htmlNode);
 #if DEBUG
                     System.Diagnostics.Debug.WriteLine(
@@ -3420,11 +3423,220 @@ window.hostAsync.values = window.hostAsync.values || {};
 
         // Update running indicators on idle shapes
         var indicatorVisibility = isRunning ? Visibility.Visible : Visibility.Collapsed;
-        if (IdleRunningIndicator != null) IdleRunningIndicator.Visibility = indicatorVisibility;
-        if (IdleDiamondRunningIndicator != null) IdleDiamondRunningIndicator.Visibility = indicatorVisibility;
-        if (IdleSquareRunningIndicator != null) IdleSquareRunningIndicator.Visibility = indicatorVisibility;
-        if (IdleRoundedRunningIndicator != null) IdleRoundedRunningIndicator.Visibility = indicatorVisibility;
-        if (EdgeDockRunningIndicator != null) EdgeDockRunningIndicator.Visibility = indicatorVisibility;
+        if (IdleRunningIndicator != null)
+        {
+            IdleRunningIndicator.Visibility = indicatorVisibility;
+            if (isRunning)
+            {
+                StartRunningIndicatorAnimation(IdleRunningIndicator, IdleRunningIndicatorScale);
+                UpdateRunningIndicatorPosition();
+            }
+            else StopRunningIndicatorAnimation(IdleRunningIndicator, IdleRunningIndicatorScale);
+        }
+        if (IdleDiamondRunningIndicator != null)
+        {
+            IdleDiamondRunningIndicator.Visibility = indicatorVisibility;
+            if (isRunning)
+            {
+                StartRunningIndicatorAnimation(IdleDiamondRunningIndicator, IdleDiamondRunningIndicatorScale);
+                UpdateRunningIndicatorPosition();
+            }
+            else StopRunningIndicatorAnimation(IdleDiamondRunningIndicator, IdleDiamondRunningIndicatorScale);
+        }
+        if (IdleSquareRunningIndicator != null)
+        {
+            IdleSquareRunningIndicator.Visibility = indicatorVisibility;
+            if (isRunning)
+            {
+                StartRunningIndicatorAnimation(IdleSquareRunningIndicator, IdleSquareRunningIndicatorScale);
+                UpdateRunningIndicatorPosition();
+            }
+            else StopRunningIndicatorAnimation(IdleSquareRunningIndicator, IdleSquareRunningIndicatorScale);
+        }
+        if (IdleRoundedRunningIndicator != null)
+        {
+            IdleRoundedRunningIndicator.Visibility = indicatorVisibility;
+            if (isRunning)
+            {
+                StartRunningIndicatorAnimation(IdleRoundedRunningIndicator, IdleRoundedRunningIndicatorScale);
+                UpdateRunningIndicatorPosition();
+            }
+            else StopRunningIndicatorAnimation(IdleRoundedRunningIndicator, IdleRoundedRunningIndicatorScale);
+        }
+        if (EdgeDockRunningIndicator != null)
+        {
+            EdgeDockRunningIndicator.Visibility = indicatorVisibility;
+            if (isRunning)
+            {
+                StartRunningIndicatorAnimation(EdgeDockRunningIndicator, EdgeDockRunningIndicatorScale);
+                UpdateRunningIndicatorPosition();
+            }
+            else StopRunningIndicatorAnimation(EdgeDockRunningIndicator, EdgeDockRunningIndicatorScale);
+        }
+    }
+
+    private void StartRunningIndicatorAnimation(Border indicator, ScaleTransform scaleTransform)
+    {
+        try
+        {
+            if (indicator == null || scaleTransform == null) return;
+
+            // Heartbeat animation
+            var scaleAnimation = new DoubleAnimation(1.0, 1.2, TimeSpan.FromMilliseconds(420))
+            {
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+
+            // Color animation: Red -> Blue -> Orange -> Red
+            // Need to create a SolidColorBrush to animate the Color property
+            var brush = new SolidColorBrush(Color.FromRgb(255, 74, 74));
+            indicator.Background = brush;
+
+            var colorAnimation1 = new ColorAnimation(Color.FromRgb(255, 74, 74), Color.FromRgb(33, 150, 243), TimeSpan.FromSeconds(1));
+            var colorAnimation2 = new ColorAnimation(Color.FromRgb(33, 150, 243), Color.FromRgb(255, 152, 0), TimeSpan.FromSeconds(1))
+            {
+                BeginTime = TimeSpan.FromSeconds(1)
+            };
+            var colorAnimation3 = new ColorAnimation(Color.FromRgb(255, 152, 0), Color.FromRgb(255, 74, 74), TimeSpan.FromSeconds(1))
+            {
+                BeginTime = TimeSpan.FromSeconds(2)
+            };
+
+            // Create a color animation storyboard
+            var colorStoryboard = new Storyboard
+            {
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            Storyboard.SetTarget(colorAnimation1, indicator);
+            Storyboard.SetTargetProperty(colorAnimation1, new PropertyPath("(Border.Background).(SolidColorBrush.Color)"));
+            Storyboard.SetTarget(colorAnimation2, indicator);
+            Storyboard.SetTargetProperty(colorAnimation2, new PropertyPath("(Border.Background).(SolidColorBrush.Color)"));
+            Storyboard.SetTarget(colorAnimation3, indicator);
+            Storyboard.SetTargetProperty(colorAnimation3, new PropertyPath("(Border.Background).(SolidColorBrush.Color)"));
+
+            colorStoryboard.Children.Add(colorAnimation1);
+            colorStoryboard.Children.Add(colorAnimation2);
+            colorStoryboard.Children.Add(colorAnimation3);
+
+            colorStoryboard.Begin();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Error starting running indicator animation: {ex.Message}");
+        }
+    }
+
+    private void StopRunningIndicatorAnimation(Border indicator, ScaleTransform scaleTransform)
+    {
+        try
+        {
+            if (indicator == null || scaleTransform == null) return;
+
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            indicator.BeginAnimation(Border.BackgroundProperty, null);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Error stopping running indicator animation: {ex.Message}");
+        }
+    }
+
+    private void UpdateRunningIndicatorPosition()
+    {
+        try
+        {
+            var workArea = SystemParameters.WorkArea;
+            var widgetCenterX = Left + Width / 2;
+            var widgetCenterY = Top + Height / 2;
+            var workAreaCenterX = workArea.Left + workArea.Width / 2;
+            var workAreaCenterY = workArea.Top + workArea.Height / 2;
+
+            // Determine which edge the widget is closest to
+            var isOnLeft = widgetCenterX < workAreaCenterX;
+            var isOnRight = widgetCenterX > workAreaCenterX;
+            var isOnTop = widgetCenterY < workAreaCenterY;
+            var isOnBottom = widgetCenterY > workAreaCenterY;
+
+            Thickness margin;
+            HorizontalAlignment hAlign;
+            VerticalAlignment vAlign;
+
+            // Left edge → right-bottom
+            if (isOnLeft && !isOnBottom)
+            {
+                margin = new Thickness(0, 0, -4, -4);
+                hAlign = HorizontalAlignment.Right;
+                vAlign = VerticalAlignment.Bottom;
+            }
+            // Top edge → right-bottom
+            else if (isOnTop && !isOnRight)
+            {
+                margin = new Thickness(0, 0, -4, -4);
+                hAlign = HorizontalAlignment.Right;
+                vAlign = VerticalAlignment.Bottom;
+            }
+            // Right edge → left-bottom
+            else if (isOnRight)
+            {
+                margin = new Thickness(-4, 0, 0, -4);
+                hAlign = HorizontalAlignment.Left;
+                vAlign = VerticalAlignment.Bottom;
+            }
+            // Bottom edge → right-top
+            else if (isOnBottom)
+            {
+                margin = new Thickness(0, -4, -4, 0);
+                hAlign = HorizontalAlignment.Right;
+                vAlign = VerticalAlignment.Top;
+            }
+            // Default (center) → right-bottom
+            else
+            {
+                margin = new Thickness(0, 0, -4, -4);
+                hAlign = HorizontalAlignment.Right;
+                vAlign = VerticalAlignment.Bottom;
+            }
+
+            // Apply to all running indicators
+            if (IdleRunningIndicator != null)
+            {
+                IdleRunningIndicator.Margin = margin;
+                IdleRunningIndicator.HorizontalAlignment = hAlign;
+                IdleRunningIndicator.VerticalAlignment = vAlign;
+            }
+            if (IdleDiamondRunningIndicator != null)
+            {
+                IdleDiamondRunningIndicator.Margin = margin;
+                IdleDiamondRunningIndicator.HorizontalAlignment = hAlign;
+                IdleDiamondRunningIndicator.VerticalAlignment = vAlign;
+            }
+            if (IdleSquareRunningIndicator != null)
+            {
+                IdleSquareRunningIndicator.Margin = margin;
+                IdleSquareRunningIndicator.HorizontalAlignment = hAlign;
+                IdleSquareRunningIndicator.VerticalAlignment = vAlign;
+            }
+            if (IdleRoundedRunningIndicator != null)
+            {
+                IdleRoundedRunningIndicator.Margin = margin;
+                IdleRoundedRunningIndicator.HorizontalAlignment = hAlign;
+                IdleRoundedRunningIndicator.VerticalAlignment = vAlign;
+            }
+            if (EdgeDockRunningIndicator != null)
+            {
+                EdgeDockRunningIndicator.Margin = margin;
+                EdgeDockRunningIndicator.HorizontalAlignment = hAlign;
+                EdgeDockRunningIndicator.VerticalAlignment = vAlign;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FloatingWidget] Error updating running indicator position: {ex.Message}");
+        }
     }
 
     private void ShowTitleRevealStopSessionMenu(Button anchorButton)
@@ -4205,34 +4417,34 @@ window.hostAsync.values = window.hostAsync.values || {};
             switch (shape)
             {
                 case WidgetIdleShape.Square:
-                {
-                    var half = radius;
-                    dc.DrawRectangle(accentBrush, pen, new Rect(center.X - half, center.Y - half, half * 2, half * 2));
-                    break;
-                }
-                case WidgetIdleShape.RoundedSquare:
-                {
-                    var half = radius;
-                    var rect = new Rect(center.X - half, center.Y - half, half * 2, half * 2);
-                    var corner = Math.Max(4, half * 0.28);
-                    dc.DrawRoundedRectangle(accentBrush, pen, rect, corner, corner);
-                    break;
-                }
-                case WidgetIdleShape.Diamond:
-                {
-                    var half = radius;
-                    var geo = new StreamGeometry();
-                    using (var g = geo.Open())
                     {
-                        g.BeginFigure(new Point(center.X, center.Y - half), true, true);
-                        g.LineTo(new Point(center.X + half, center.Y), true, false);
-                        g.LineTo(new Point(center.X, center.Y + half), true, false);
-                        g.LineTo(new Point(center.X - half, center.Y), true, false);
+                        var half = radius;
+                        dc.DrawRectangle(accentBrush, pen, new Rect(center.X - half, center.Y - half, half * 2, half * 2));
+                        break;
                     }
-                    geo.Freeze();
-                    dc.DrawGeometry(accentBrush, pen, geo);
-                    break;
-                }
+                case WidgetIdleShape.RoundedSquare:
+                    {
+                        var half = radius;
+                        var rect = new Rect(center.X - half, center.Y - half, half * 2, half * 2);
+                        var corner = Math.Max(4, half * 0.28);
+                        dc.DrawRoundedRectangle(accentBrush, pen, rect, corner, corner);
+                        break;
+                    }
+                case WidgetIdleShape.Diamond:
+                    {
+                        var half = radius;
+                        var geo = new StreamGeometry();
+                        using (var g = geo.Open())
+                        {
+                            g.BeginFigure(new Point(center.X, center.Y - half), true, true);
+                            g.LineTo(new Point(center.X + half, center.Y), true, false);
+                            g.LineTo(new Point(center.X, center.Y + half), true, false);
+                            g.LineTo(new Point(center.X - half, center.Y), true, false);
+                        }
+                        geo.Freeze();
+                        dc.DrawGeometry(accentBrush, pen, geo);
+                        break;
+                    }
                 default:
                     dc.DrawEllipse(accentBrush, pen, center, radius, radius);
                     break;

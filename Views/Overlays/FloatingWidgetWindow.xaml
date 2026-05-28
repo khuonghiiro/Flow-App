@@ -256,15 +256,15 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleRunningIndicator"
-                            Width="12"
-                            Height="12"
-                            CornerRadius="6"
+                            Width="16"
+                            Height="16"
+                            CornerRadius="10"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="1"
+                            BorderThickness="2"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
-                            Margin="0,-4,-4,0"
+                            Margin="0,-2,-2,0"
                             Visibility="Collapsed">
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="IdleRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
@@ -302,12 +302,12 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleDiamondRunningIndicator"
-                            Width="10"
-                            Height="10"
-                            CornerRadius="5"
+                            Width="16"
+                            Height="16"
+                            CornerRadius="10"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="1"
+                            BorderThickness="2"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
                             Margin="0,-2,-2,0"
@@ -339,12 +339,12 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleSquareRunningIndicator"
-                            Width="12"
-                            Height="12"
-                            CornerRadius="6"
+                            Width="16"
+                            Height="16"
+                            CornerRadius="12"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="1"
+                            BorderThickness="2"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
                             Margin="0,-4,-4,0"
@@ -376,12 +376,12 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleRoundedRunningIndicator"
-                            Width="12"
-                            Height="12"
-                            CornerRadius="6"
+                            Width="16"
+                            Height="16"
+                            CornerRadius="16"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="1"
+                            BorderThickness="2"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
                             Margin="0,-4,-4,0"

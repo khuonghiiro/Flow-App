@@ -616,7 +616,7 @@ namespace FlowMy.Views.Overlays
             cfg.SlideToEdgeWhenIdle = SlideToEdgeCheckBox.IsChecked == true;
             cfg.EdgeDockAsSquare = EdgeDockAsSquareCheckBox.IsChecked == true;
             cfg.IdleTimeoutSeconds = (int)ParseDouble(IdleTimeoutTextBox.Text, cfg.IdleTimeoutSeconds);
-            cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent * 100.0) / 100.0;
+            cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent) / 200.0;
 
             // Ưu tiên chế độ ghim: tắt các cơ chế tự ẩn theo thời gian/ngoài màn.
             if (cfg.PinnedNoAutoHide)

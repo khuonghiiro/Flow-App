@@ -362,7 +362,7 @@ namespace FlowMy.Models
             set { var v = Math.Max(16, Math.Min(80, value)); if (Math.Abs(_edgeDockSquareSize - v) > 0.01) { _edgeDockSquareSize = v; OnPropertyChanged(); } }
         }
 
-        private double _slideHidePercent = 0.5;
+        private double _slideHidePercent = 0.0;
         /// <summary>
         /// Phần trăm widget ẩn đi khi dock vào cạnh (0.0–0.95). 0.5 = ẩn nửa widget.
         /// </summary>
