@@ -58,6 +58,11 @@ namespace FlowMy.Views
         double IWorkflowEditorHost.EnergyRunSpeed { get => _energyRunSpeed; set => _energyRunSpeed = value; }
         double IWorkflowEditorHost.EnergyTextSpinSeconds { get => _energyTextSpinSeconds; set => _energyTextSpinSeconds = value; }
         bool IWorkflowEditorHost.EnergyMeteorMode { get => _energyMeteorMode; set => _energyMeteorMode = value; }
+        bool IWorkflowEditorHost.AdvancedFlowStyleEnabled { get => _advancedFlowStyleEnabled; set => _advancedFlowStyleEnabled = value; }
+        double IWorkflowEditorHost.MeteorTailLength { get => _meteorTailLength; set => _meteorTailLength = value; }
+        double IWorkflowEditorHost.MeteorTailBlur { get => _meteorTailBlur; set => _meteorTailBlur = value; }
+        double IWorkflowEditorHost.MeteorTailOpacity { get => _meteorTailOpacity; set => _meteorTailOpacity = value; }
+        double IWorkflowEditorHost.MeteorTailThickness { get => _meteorTailThickness; set => _meteorTailThickness = value; }
 
         string IWorkflowEditorHost.NodeAppearanceMode { get => _nodeAppearanceMode; set => _nodeAppearanceMode = string.IsNullOrWhiteSpace(value) ? "Solid" : value; }
 

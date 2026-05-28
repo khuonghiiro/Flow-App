@@ -63,6 +63,11 @@ namespace FlowMy.Services.Interaction
         double EnergyRunSpeed { get; set; }
         double EnergyTextSpinSeconds { get; set; }
         bool EnergyMeteorMode { get; set; }
+        bool AdvancedFlowStyleEnabled { get; set; }
+        double MeteorTailLength { get; set; }
+        double MeteorTailBlur { get; set; }
+        double MeteorTailOpacity { get; set; }
+        double MeteorTailThickness { get; set; }
 
         // Node appearance mode: "Solid" (default) or "LiquidGlass"
         string NodeAppearanceMode { get; set; }

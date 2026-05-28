@@ -206,6 +206,8 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -229,15 +231,22 @@
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="Độ dày cộng thêm (Thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
                             <TextBlock Grid.Row="4" Grid.Column="1" x:Name="EnergyDotThicknessValueText" Text="0.8" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
                             <Slider Grid.Row="5" Grid.ColumnSpan="2" x:Name="EnergyDotThicknessSlider" Minimum="0" Maximum="8" TickFrequency="0.2" IsSnapToTickEnabled="False"/>
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Tốc độ chạy (Run speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" x:Name="EnergyRunSpeedValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
+                            <Slider Grid.Row="7" Grid.ColumnSpan="2" x:Name="EnergyRunSpeedSlider" Minimum="0.2" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+
+                            <CheckBox Grid.Row="8" Grid.ColumnSpan="2" x:Name="AdvancedFlowStyleCheckBox" Content="Style luồng nâng cao" Foreground="{DynamicResource TextBrush}" Margin="0,30,0,0" FontWeight="SemiBold"/>
                         </Grid>
                     </Border>
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Energy nâng cao" Style="{StaticResource HttpTabItemStyle}">
+            <TabItem Header="Energy nâng cao" Style="{StaticResource HttpTabItemStyle}" Visibility="Collapsed">
                 <Grid Margin="10">
-                    <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
-                        <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                            <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
@@ -261,28 +270,92 @@
                             <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Text thay cho chấm (để trống = chỉ chấm)" Foreground="{DynamicResource TextBrush}" Opacity="0.85"/>
                             <TextBox Grid.Row="2" Grid.ColumnSpan="2" x:Name="EnergyDotTextTextBox" Style="{DynamicResource BaseTextBoxV2}" Margin="0,4,0,8"/>
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Tốc độ chạy (Run speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,6,0,2"/>
-                            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="EnergyRunSpeedValueText" Text="1.0" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,6,0,2"/>
-                            <Slider Grid.Row="4" Grid.ColumnSpan="2" x:Name="EnergyRunSpeedSlider" Minimum="0.2" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Giây/vòng xoay (Spin sec)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="EnergySpinSpeedValueText" Text="0.7" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
+                            <Slider Grid.Row="4" Grid.ColumnSpan="2" x:Name="EnergySpinSpeedSlider" Minimum="0.2" Maximum="8" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
 
-                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Giây/vòng xoay (Spin sec)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,10,0,2"/>
-                            <TextBlock Grid.Row="5" Grid.Column="1" x:Name="EnergySpinSpeedValueText" Text="0.7" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Margin="0,10,0,2"/>
-                            <Slider Grid.Row="6" Grid.ColumnSpan="2" x:Name="EnergySpinSpeedSlider" Minimum="0.2" Maximum="8" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
-
-                            <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
+                            <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
                                 <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="EnergyDotRotateCheckBox" Content="Text xoay 360 độ" Margin="0,0,16,0"/>
-                                <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="EnergyMeteorModeCheckBox" Content="Hiệu ứng thiên thạch"/>
+                                <CheckBox  Foreground="{DynamicResource TextBrush}" x:Name="EnergyMeteorModeCheckBox" Content="✨ Hiệu ứng phát sáng (Glow Pulse)" FontWeight="SemiBold"/>
                             </StackPanel>
+                            <TextBlock Grid.Row="6" Grid.ColumnSpan="2" Text="Tạo hiệu ứng phát sáng nhấp nháy mượt mà theo đường nối."
+                                       Foreground="{DynamicResource TextBrush}" Opacity="0.7" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="7" Grid.ColumnSpan="2" Text="💡 Cần GPU ON để hiệu ứng glow hoạt động tốt nhất."
+                                       Foreground="{DynamicResource TextBrush}" Opacity="0.6" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,12"/>
+
+                            <Border Grid.Row="8" Grid.ColumnSpan="2" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,1,0,0" Margin="0,0,0,12" Padding="0,12,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="✨ Cấu hình Glow Pulse" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                    
+                                    <TextBlock Text="Độ sáng glow (Glow intensity)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="60"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="MeteorTailLengthSlider" Minimum="5" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="False"/>
+                                        <TextBlock x:Name="MeteorTailLengthValueText" Text="15" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
+                                    </Grid>
+
+                                    <TextBlock Text="Bán kính glow (Glow radius)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="60"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="MeteorTailBlurSlider" Minimum="3" Maximum="25" TickFrequency="1" IsSnapToTickEnabled="False"/>
+                                        <TextBlock x:Name="MeteorTailBlurValueText" Text="10" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
+                                    </Grid>
+
+                                    <TextBlock Text="Tốc độ nhấp nháy (Pulse speed)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="60"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="MeteorTailOpacitySlider" Minimum="0.5" Maximum="3.0" TickFrequency="0.1" IsSnapToTickEnabled="False"/>
+                                        <TextBlock x:Name="MeteorTailOpacityValueText" Text="1.5" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
+                                    </Grid>
+
+                                    <TextBlock Text="Độ dày glow (Glow thickness+)" Foreground="{DynamicResource TextBrush}" Opacity="0.85" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="60"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="MeteorTailThicknessSlider" Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="False"/>
+                                        <TextBlock x:Name="MeteorTailThicknessValueText" Text="4" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right" Grid.Column="1" Margin="8,0,0,0"/>
+                                    </Grid>
+
+                                    <TextBlock Text="⚡ Preset nhanh" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,8,0,8"/>
+                                    <WrapPanel>
+                                        <Button Content="Nhẹ" Tag="Light" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
+                                        <Button Content="Vừa" Tag="Medium" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
+                                        <Button Content="Mạnh" Tag="Strong" Click="MeteorPresetButton_Click" MinWidth="60" Margin="0,0,6,6" Style="{DynamicResource SecondaryButton}"/>
+                                        <Button Content="Rất mạnh" Tag="VeryStrong" Click="MeteorPresetButton_Click" MinWidth="70" Style="{DynamicResource SecondaryButton}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
                         </Grid>
                     </Border>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Style node chạy" Style="{StaticResource HttpTabItemStyle}">
-                <Grid Margin="10">
+            <TabItem Header="Style node chạy" Style="{StaticResource HttpTabItemStyle}" x:Name="StyleNodeRunningTabItem" Visibility="Collapsed">
+                <Grid >
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
+                        <Border Margin="10" Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="10" Padding="12">
                             <StackPanel>
+                                <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="⚠️ Lưu ý quan trọng" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" FontSize="13" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Để hiển thị style node chạy bên dưới, bạn cần chọn radio 'Tắt Animation' hoặc 'Hiển thị nét đứt' trong tab [Kết nối]." 
+                                                   Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Nếu đang ở chế độ 'Bật Animation', style node chạy sẽ không hiển thị." 
+                                                   Foreground="{DynamicResource TextBrush}" Opacity="0.8" FontSize="11" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
                                 <CheckBox x:Name="NodeSpinnerArcModeCheckBox"
                                           Content="Vòng quay 1 góc (arc mode như hiện tại)"
                                           Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>

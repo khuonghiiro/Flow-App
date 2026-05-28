@@ -177,6 +177,257 @@ Các node không có WebView2 / queue tương tự (vd. **Image Processing**) ch
 
 ---
 
-## 9. Tóm tắt một dòng cho agent
+## 9. Thêm Running Indicator & Play Button vào FloatingWidgetWindow
 
-**Widget vs canvas (Image): dùng `chromeBorder == null` + `freezeScaleInWidget` — widget thì `LayoutTransform = Identity`, chỉnh DIP / `dipNativeLayout`, bỏ Viewbox nội bộ; canvas thì responsive theo vùng (không scale cả cây vô tội vạ). Trên canvas: đừng gắn `DropShadowEffect` + `BitmapCache` lên `Border` bọc toàn XAML — dùng cùng nhánh `ApplyEditorGpuChrome` như Image/Video, cấu trúc `shadowPlate` nếu cần bóng. XAML: layout rounding, snap pixel, font nguyên, `TextOptions` hợp lý. `FloatingWidgetManager` whitelist khi cần ẩn node canvas.**
+### 9.1 Play Button (Chạy logic node đơn lẻ)
+
+**Mục đích**: Thêm button vào title bar để chạy logic của node đang chọn (tương tự CodeNodeDialog).
+
+**File cần sửa**: `Views/Overlays/FloatingWidgetWindow.xaml`
+
+**Thêm vào TitleBar StackPanel** (tìm phần có `TitleTextBlock`):
+```xml
+<Button x:Name="RunSingleNodeBtn"
+        Padding="0,0,0,0"
+        Width="24"
+        Height="24"
+        Content="▶"
+        FontSize="12"
+        Style="{DynamicResource PrimaryButton}"
+        Cursor="Hand"
+        Margin="8,0,0,0"
+        ToolTip="Chạy logic node này"
+        Click="RunSingleNodeBtn_Click"/>
+```
+
+**File cần sửa**: `Views/Overlays/FloatingWidgetWindow.xaml.cs`
+
+**Thêm event handler**:
+```csharp
+private void RunSingleNodeBtn_Click(object sender, RoutedEventArgs e)
+{
+    _host.RequestRunSingleNode(_node);
+}
+```
+
+### 9.2 Running Indicator Circle (Hiển thị khi workflow/node đang chạy)
+
+**Mục đích**: Hiển thị hình tròn nhỏ ở góc widget khi workflow hoặc node đang chạy, với animation heartbeat và đổi màu.
+
+**File cần sửa**: `Views/Overlays/FloatingWidgetWindow.xaml`
+
+**Thêm vào mỗi idle shape** (IdleCircle, IdleDiamond, IdleSquare, IdleRoundedSquare, EdgeDockSquare):
+
+```xml
+<!-- Running indicator circle -->
+<Border x:Name="IdleRunningIndicator"
+        Width="16"
+        Height="16"
+        CornerRadius="10"
+        Background="{DynamicResource DangerBrush}"
+        BorderBrush="{DynamicResource TextOnDangerBrush}"
+        BorderThickness="2"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Top"
+        Margin="0,-2,-2,0"
+        Visibility="Collapsed">
+    <Border.RenderTransform>
+        <ScaleTransform x:Name="IdleRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
+    </Border.RenderTransform>
+</Border>
+```
+
+**Lưu ý**: Tương tự cho các shape khác với tên tương ứng:
+- `IdleDiamondRunningIndicator` + `IdleDiamondRunningIndicatorScale`
+- `IdleSquareRunningIndicator` + `IdleSquareRunningIndicatorScale`
+- `IdleRoundedRunningIndicator` + `IdleRoundedRunningIndicatorScale`
+- `EdgeDockRunningIndicator` + `EdgeDockRunningIndicatorScale`
+
+**File cần sửa**: `Views/Overlays/FloatingWidgetWindow.xaml.cs`
+
+**Cập nhật `UpdateRunButtonsState()`**:
+```csharp
+// Update running indicators on idle shapes
+var indicatorVisibility = isRunning ? Visibility.Visible : Visibility.Collapsed;
+if (IdleRunningIndicator != null)
+{
+    IdleRunningIndicator.Visibility = indicatorVisibility;
+    if (isRunning)
+    {
+        StartRunningIndicatorAnimation(IdleRunningIndicator, IdleRunningIndicatorScale);
+        UpdateRunningIndicatorPosition();
+    }
+    else StopRunningIndicatorAnimation(IdleRunningIndicator, IdleRunningIndicatorScale);
+}
+// ... tương tự cho các indicator khác
+```
+
+**Thêm method animation**:
+```csharp
+private void StartRunningIndicatorAnimation(Border indicator, ScaleTransform scaleTransform)
+{
+    try
+    {
+        if (indicator == null || scaleTransform == null) return;
+
+        // Heartbeat animation
+        var scaleAnimation = new DoubleAnimation(1.0, 1.2, TimeSpan.FromMilliseconds(420))
+        {
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever
+        };
+        scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
+        scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+
+        // Color animation: Red -> Blue -> Orange -> Red
+        var brush = new SolidColorBrush(Color.FromRgb(255, 74, 74));
+        indicator.Background = brush;
+
+        var colorAnimation1 = new ColorAnimation(Color.FromRgb(255, 74, 74), Color.FromRgb(33, 150, 243), TimeSpan.FromSeconds(1));
+        var colorAnimation2 = new ColorAnimation(Color.FromRgb(33, 150, 243), Color.FromRgb(255, 152, 0), TimeSpan.FromSeconds(1))
+        {
+            BeginTime = TimeSpan.FromSeconds(1)
+        };
+        var colorAnimation3 = new ColorAnimation(Color.FromRgb(255, 152, 0), Color.FromRgb(255, 74, 74), TimeSpan.FromSeconds(1))
+        {
+            BeginTime = TimeSpan.FromSeconds(2)
+        };
+
+        var colorStoryboard = new Storyboard
+        {
+            RepeatBehavior = RepeatBehavior.Forever
+        };
+        Storyboard.SetTarget(colorAnimation1, indicator);
+        Storyboard.SetTargetProperty(colorAnimation1, new PropertyPath("(Border.Background).(SolidColorBrush.Color)"));
+        Storyboard.SetTarget(colorAnimation2, indicator);
+        Storyboard.SetTargetProperty(colorAnimation2, new PropertyPath("(Border.Background).(SolidColorBrush.Color)"));
+        Storyboard.SetTarget(colorAnimation3, indicator);
+        Storyboard.SetTargetProperty(colorAnimation3, new PropertyPath("(Border.Background).(SolidColorBrush.Color)"));
+
+        colorStoryboard.Children.Add(colorAnimation1);
+        colorStoryboard.Children.Add(colorAnimation2);
+        colorStoryboard.Children.Add(colorAnimation3);
+
+        colorStoryboard.Begin();
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[FloatingWidget] Error starting running indicator animation: {ex.Message}");
+    }
+}
+
+private void StopRunningIndicatorAnimation(Border indicator, ScaleTransform scaleTransform)
+{
+    try
+    {
+        if (indicator == null || scaleTransform == null) return;
+        scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        indicator.BeginAnimation(Border.BackgroundProperty, null);
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[FloatingWidget] Error stopping running indicator animation: {ex.Message}");
+    }
+}
+```
+
+**Thêm method vị trí động**:
+```csharp
+private void UpdateRunningIndicatorPosition()
+{
+    try
+    {
+        var workArea = SystemParameters.WorkArea;
+        var widgetCenterX = Left + Width / 2;
+        var widgetCenterY = Top + Height / 2;
+        var workAreaCenterX = workArea.Left + workArea.Width / 2;
+        var workAreaCenterY = workArea.Top + workArea.Height / 2;
+
+        // Determine which edge the widget is closest to
+        var isOnLeft = widgetCenterX < workAreaCenterX;
+        var isOnRight = widgetCenterX > workAreaCenterX;
+        var isOnTop = widgetCenterY < workAreaCenterY;
+        var isOnBottom = widgetCenterY > workAreaCenterY;
+
+        Thickness margin;
+        HorizontalAlignment hAlign;
+        VerticalAlignment vAlign;
+
+        // Left edge → right-bottom
+        if (isOnLeft && !isOnBottom)
+        {
+            margin = new Thickness(0, 0, -4, -4);
+            hAlign = HorizontalAlignment.Right;
+            vAlign = VerticalAlignment.Bottom;
+        }
+        // Top edge → right-bottom
+        else if (isOnTop && !isOnRight)
+        {
+            margin = new Thickness(0, 0, -4, -4);
+            hAlign = HorizontalAlignment.Right;
+            vAlign = VerticalAlignment.Bottom;
+        }
+        // Right edge → left-bottom
+        else if (isOnRight)
+        {
+            margin = new Thickness(-4, 0, 0, -4);
+            hAlign = HorizontalAlignment.Left;
+            vAlign = VerticalAlignment.Bottom;
+        }
+        // Bottom edge → right-top
+        else if (isOnBottom)
+        {
+            margin = new Thickness(0, -4, -4, 0);
+            hAlign = HorizontalAlignment.Right;
+            vAlign = VerticalAlignment.Top;
+        }
+        // Default (center) → right-bottom
+        else
+        {
+            margin = new Thickness(0, 0, -4, -4);
+            hAlign = HorizontalAlignment.Right;
+            vAlign = VerticalAlignment.Bottom;
+        }
+
+        // Apply to all running indicators
+        if (IdleRunningIndicator != null)
+        {
+            IdleRunningIndicator.Margin = margin;
+            IdleRunningIndicator.HorizontalAlignment = hAlign;
+            IdleRunningIndicator.VerticalAlignment = vAlign;
+        }
+        // ... tương tự cho các indicator khác
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[FloatingWidget] Error updating running indicator position: {ex.Message}");
+    }
+}
+```
+
+### 9.3 SlideHidePercent Workaround (Fix lỗi nhân đôi)
+
+**Vấn đề**: Khi nhập 30% thì ẩn 60% (nhân đôi).
+
+**Giải pháp**: Chia 200 thay vì 100 khi lưu, mặc định 0% thay vì 50%.
+
+**File cần sửa**: `Models/FloatingWidgetConfig.cs`
+
+```csharp
+private double _slideHidePercent = 0.0; // Thay vì 0.5
+```
+
+**File cần sửa**: `Views/Overlays/FloatingWidgetConfigDialog.xaml.cs`
+
+```csharp
+cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent) / 200.0; // Thay vì / 100.0
+```
+
+**Logic**: Nhập 30% → lưu 15% → nếu logic nhân đôi → 30% ẩn đúng.
+
+---
+
+## 10. Tóm tắt một dòng cho agent
+
+**Widget vs canvas (Image): dùng `chromeBorder == null` + `freezeScaleInWidget` — widget thì `LayoutTransform = Identity`, chỉnh DIP / `dipNativeLayout`, bỏ Viewbox nội bộ; canvas thì responsive theo vùng (không scale cả cây vô tội vạ). Trên canvas: đừng gắn `DropShadowEffect` + `BitmapCache` lên `Border` bọc toàn XAML — dùng cùng nhánh `ApplyEditorGpuChrome` như Image/Video, cấu trúc `shadowPlate` nếu cần bóng. XAML: layout rounding, snap pixel, font nguyên, `TextOptions` hợp lý. `FloatingWidgetManager` whitelist khi cần ẩn node canvas. Running indicator: thêm Border vào idle shape, animation heartbeat + color trong code-behind, vị trí động theo edge màn hình. Play button: event handler gọi `_host.RequestRunSingleNode(_node)`. SlideHidePercent: chia 200 thay vì 100 để workaround lỗi nhân đôi.**

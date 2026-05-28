@@ -1,6 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using FlowMy.Models;
+using FlowMy.Models.Nodes;
+using FlowMy.Services.Geometry;
+using FlowMy.Services.Interaction;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -9,10 +10,6 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using ShapesPath = System.Windows.Shapes.Path;
-using FlowMy.Models;
-using FlowMy.Models.Nodes;
-using FlowMy.Services.Geometry;
-using FlowMy.Services.Interaction;
 
 namespace FlowMy.Services.Rendering
 {
@@ -23,7 +20,7 @@ namespace FlowMy.Services.Rendering
             public string Type { get; set; } = "Connection";
             public ShapesPath? ArrowHead { get; set; }
         }
-        
+
         /// <summary>
         /// Cache for connection path geometry to avoid expensive recalculations
         /// </summary>
@@ -34,7 +31,7 @@ namespace FlowMy.Services.Rendering
             public Point LastEndPos { get; set; }
             public double LastZoomLevel { get; set; }
             public ConnectionLineStyle LastLineStyle { get; set; }
-            
+
             /// <summary>
             /// Kiểm tra xem cache có cần update không (nếu nodes di chuyển >5px hoặc zoom thay đổi)
             /// </summary>
@@ -42,14 +39,14 @@ namespace FlowMy.Services.Rendering
             {
                 const double threshold = 5.0; // pixels - chỉ recalculate khi di chuyển >5px
                 const double zoomThreshold = 0.1; // zoom change threshold
-                
+
                 return CachedPath == null ||
                        LastLineStyle != lineStyle ||
                        (start - LastStartPos).Length > threshold ||
                        (end - LastEndPos).Length > threshold ||
                        Math.Abs(zoom - LastZoomLevel) > zoomThreshold;
             }
-            
+
             /// <summary>
             /// Cập nhật cache với path mới
             /// </summary>
@@ -92,6 +89,10 @@ namespace FlowMy.Services.Rendering
         private double EnergyRunSpeed => Host.EnergyRunSpeed;
         private double EnergyTextSpinSeconds => Host.EnergyTextSpinSeconds;
         private bool EnergyMeteorMode => Host.EnergyMeteorMode;
+        private double MeteorTailLength => Host.MeteorTailLength;
+        private double MeteorTailBlur => Host.MeteorTailBlur;
+        private double MeteorTailOpacity => Host.MeteorTailOpacity;
+        private double MeteorTailThickness => Host.MeteorTailThickness;
 
         private readonly IPathGeometryGenerator _bezier;
         private readonly IPathGeometryGenerator _orthogonal;
@@ -103,7 +104,7 @@ namespace FlowMy.Services.Rendering
         private bool _isWindRenderingActive;
         private DateTime _lastWindFrameTime = DateTime.MinValue;
         private readonly Random _windRandom = new Random();
-        
+
         // Random cho thời gian wave (2-5 giây)
         private double GetRandomWaveInterval()
         {
@@ -123,7 +124,7 @@ namespace FlowMy.Services.Rendering
             _straight = straight ?? throw new ArgumentNullException(nameof(straight));
             _orthogonalV2 = orthogonalV2 ?? throw new ArgumentNullException(nameof(orthogonalV2));
         }
-        
+
         /// <summary>
         /// Lấy số lượng connections tối đa được phép animate dựa trên GPU quality
         /// Low/Medium quality sẽ giới hạn animations để cải thiện performance
@@ -140,7 +141,7 @@ namespace FlowMy.Services.Rendering
                 _ => 30
             };
         }
-        
+
         /// <summary>
         /// Tính khoảng cách từ connection đến viewport center (để ưu tiên animate gần center)
         /// </summary>
@@ -148,21 +149,21 @@ namespace FlowMy.Services.Rendering
         {
             if (conn.FromNode == null || conn.ToNode == null)
                 return double.MaxValue;
-            
+
             // Lấy viewport center
             var host = Host;
             var scrollViewer = host.ScrollViewer;
             double viewportCenterX = scrollViewer.HorizontalOffset + (scrollViewer.ViewportWidth / 2);
             double viewportCenterY = scrollViewer.VerticalOffset + (scrollViewer.ViewportHeight / 2);
-            
+
             // Tính trung điểm của connection
             double connMidX = (conn.FromNode.X + conn.ToNode.X) / 2.0;
             double connMidY = (conn.FromNode.Y + conn.ToNode.Y) / 2.0;
-            
+
             // Khoảng cách Manhattan (nhanh hơn Euclidean, đủ dùng cho sorting)
             double dx = Math.Abs(connMidX - viewportCenterX);
             double dy = Math.Abs(connMidY - viewportCenterY);
-            
+
             return dx + dy;
         }
 
@@ -279,7 +280,7 @@ namespace FlowMy.Services.Rendering
             {
                 UpdateConnectionPath(connection);
                 UpdateConnectionColor(connection);
-                
+
                 // Đảm bảo nút xóa vẫn hiển thị/ẩn đúng theo thuộc tính IsDeleteVisible
                 CreateDeleteButton(connection, requestDeleteConnection, setSelectedConnection);
                 return;
@@ -337,14 +338,14 @@ namespace FlowMy.Services.Rendering
 
             PathGeometry geometry = lineStyle switch
             {
-                ConnectionLineStyle.Orthogonal        => _orthogonal.Generate(start, end, startDirection, endDirection),
-                ConnectionLineStyle.Straight          => _straight.Generate(start, end, startDirection, endDirection),
-                ConnectionLineStyle.SmoothOrthogonal  => _orthogonal.Generate(start, end, startDirection, endDirection),
-                ConnectionLineStyle.Arc               => GenerateArcGeometry(start, end, startDirection, endDirection),
-                ConnectionLineStyle.RadialFanout      => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
-                ConnectionLineStyle.Windy             => _bezier.Generate(start, end, startDirection, endDirection),
-                ConnectionLineStyle.OrthogonalV2      => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
-                _                                     => _bezier.Generate(start, end, startDirection, endDirection),
+                ConnectionLineStyle.Orthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
+                ConnectionLineStyle.Straight => _straight.Generate(start, end, startDirection, endDirection),
+                ConnectionLineStyle.SmoothOrthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
+                ConnectionLineStyle.Arc => GenerateArcGeometry(start, end, startDirection, endDirection),
+                ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
+                ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
+                ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
+                _ => _bezier.Generate(start, end, startDirection, endDirection),
             };
 
             path.Data = geometry;
@@ -423,7 +424,7 @@ namespace FlowMy.Services.Rendering
 
             CreateDeleteButton(connection, requestDeleteConnection, setSelectedConnection);
             ApplyConnectionZIndex(connection, start, end);
-            
+
             // Đảm bảo wind rendering loop chạy nếu connection là Windy style
             if (IsWindyStyle(connection))
             {
@@ -479,10 +480,10 @@ namespace FlowMy.Services.Rendering
             {
                 connection.PathCache = new ConnectionPathCache();
             }
-            
+
             PathGeometry geometry;
             double currentZoom = 1.0; // Placeholder - can enhance later with actual zoom
-            
+
             // Check if we can reuse cached path  
             if (!connection.PathCache.NeedsUpdate(start, end, currentZoom, lineStyle))
             {
@@ -494,22 +495,22 @@ namespace FlowMy.Services.Rendering
                 // Recalculate path geometry
                 geometry = lineStyle switch
                 {
-                    ConnectionLineStyle.Orthogonal        => _orthogonal.Generate(start, end, startDirection, endDirection),
-                    ConnectionLineStyle.Straight          => _straight.Generate(start, end, startDirection, endDirection),
-                    ConnectionLineStyle.SmoothOrthogonal  => _orthogonal.Generate(start, end, startDirection, endDirection),
-                    ConnectionLineStyle.Arc               => GenerateArcGeometry(start, end, startDirection, endDirection),
-                    ConnectionLineStyle.RadialFanout      => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
-                    ConnectionLineStyle.Windy             => _bezier.Generate(start, end, startDirection, endDirection),
-                    ConnectionLineStyle.OrthogonalV2      => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
-                    _                                     => _bezier.Generate(start, end, startDirection, endDirection),
+                    ConnectionLineStyle.Orthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
+                    ConnectionLineStyle.Straight => _straight.Generate(start, end, startDirection, endDirection),
+                    ConnectionLineStyle.SmoothOrthogonal => _orthogonal.Generate(start, end, startDirection, endDirection),
+                    ConnectionLineStyle.Arc => GenerateArcGeometry(start, end, startDirection, endDirection),
+                    ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startDirection, endDirection),
+                    ConnectionLineStyle.Windy => _bezier.Generate(start, end, startDirection, endDirection),
+                    ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startDirection, endDirection, GetObstacleRects(connection)),
+                    _ => _bezier.Generate(start, end, startDirection, endDirection),
                 };
-                
+
                 // ✅ Update cache with new path
                 connection.PathCache.UpdateCache(geometry, start, end, currentZoom, lineStyle);
             }
 
             connection.LineUI.Data = geometry;
-            
+
             // Tối ưu: Không invalidate mỗi lần update - chỉ update Data, WPF sẽ tự render
             // Invalidate chỉ khi thực sự cần (khi drag kết thúc hoặc có thay đổi lớn)
             // Điều này giúp GPU render hiệu quả hơn và giảm lag
@@ -603,10 +604,10 @@ namespace FlowMy.Services.Rendering
             connection.EnergyUI = overlay;
             _canvas.Children.Add(overlay);
             Panel.SetZIndex(overlay, GetZBaseForConnection(connection) + 1);
-            
+
             // Áp dụng GPU optimization cho energy overlay (không cache vì có animation)
             GpuOptimizationHelper.ApplyToPath(overlay, allowCache: false);
-            
+
             return overlay;
         }
 
@@ -696,10 +697,10 @@ namespace FlowMy.Services.Rendering
             connection.EnergyBallUI = ball;
             _canvas.Children.Add(ball);
             Panel.SetZIndex(ball, GetZBaseForConnection(connection) + 2);
-            
+
             // Áp dụng GPU optimization cho energy ball (không cache vì có animation)
             GpuOptimizationHelper.ApplyToShape(ball);
-            
+
             return ball;
         }
 
@@ -798,7 +799,7 @@ namespace FlowMy.Services.Rendering
                 Child = text,
                 IsHitTestVisible = false,
                 Tag = connection,
-                Effect = GpuOptimizationHelper.CreateDropShadowEffect()  
+                Effect = GpuOptimizationHelper.CreateDropShadowEffect()
             };
 
             // Center on path point + optional rotation
@@ -958,16 +959,16 @@ namespace FlowMy.Services.Rendering
             // ✅ OPTIMIZATION: Throttle animations based on GPU quality
             var maxAnimated = GetMaxAnimatedConnections();
             var connectionList = connections.ToList();
-            
+
             // Phân loại connections: execution active vs idle animations
             var activeConnections = connectionList.Where(c => c.IsExecutionActive).ToList();
             var idleConnections = connectionList.Where(c => !c.IsExecutionActive).ToList();
-            
+
             // ✅ OPTIMIZATION: Ưu tiên animate connections gần viewport center nhất
             // Execution animations luôn được ưu tiên (không throttle)
             // Idle animations sẽ được throttle dựa trên quality settings
             HashSet<WorkflowConnection> connectionsToAnimate;
-            
+
             if (maxAnimated >= connectionList.Count)
             {
                 // Enough budget for all connections
@@ -976,10 +977,10 @@ namespace FlowMy.Services.Rendering
             else
             {
                 connectionsToAnimate = new HashSet<WorkflowConnection>();
-                
+
                 // Luôn animate tất cả execution active connections
                 connectionsToAnimate.UnionWith(activeConnections);
-                
+
                 // Còn budget cho idle connections không?
                 int remainingBudget = maxAnimated - activeConnections.Count;
                 if (remainingBudget > 0 && idleConnections.Count > 0)
@@ -991,7 +992,7 @@ namespace FlowMy.Services.Rendering
                     connectionsToAnimate.UnionWith(sortedIdle);
                 }
             }
-            
+
             foreach (var conn in connectionList)
             {
                 if (conn.LineUI == null) continue;
@@ -1021,6 +1022,15 @@ namespace FlowMy.Services.Rendering
 
                 if (conn.IsExecutionActive)
                 {
+                    // Glow Pulse mode: DISABLED - tab "Energy nâng cao" is hidden
+                    // Future: re-enable if needed by setting tab Visibility to Visible
+                    /*
+                    if (EnergyMeteorMode && AnimationDisplayMode != ConnectionAnimationDisplayMode.Off)
+                    {
+                        // Glow Pulse logic disabled
+                    }
+                    */
+
                     if (AnimationDisplayMode == ConnectionAnimationDisplayMode.Dashed)
                     {
                         conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, null);
@@ -1101,109 +1111,38 @@ namespace FlowMy.Services.Rendering
                     }
                     else
                     {
-                        if (EnergyMeteorMode)
+                        // Line chấm tròn chạy: dash length rất nhỏ + dashcap Round
+                        double dot = 0.0;
+                        double gap = Math.Max(1.0, EnergyDotGap);
+                        double pattern = dot + gap;
+
+                        conn.LineUI.Opacity = 1.0;
+                        conn.LineUI.StrokeDashCap = PenLineCap.Round;
+                        conn.LineUI.StrokeDashArray = new DoubleCollection { dot, gap };
+                        conn.LineUI.StrokeDashOffset = 0;
+
+                        if (shouldAnimate)
                         {
-                            var energyColor = GetEnergyColor(conn);
-                            // Meteor mode: spacing rõ để tránh cảm giác "gần như line liền"
-                            var dashLength = Math.Max(7.0, EnergyDotGap * 1.2);
-                            var dashGap = Math.Max(12.0, EnergyDotGap * 2.6);
-                            var dashPattern = dashLength + dashGap;
-
-                            conn.LineUI.Opacity = 0.78;
-                            conn.LineUI.StrokeDashCap = PenLineCap.Flat;
-                            conn.LineUI.StrokeDashArray = new DoubleCollection { dashLength, dashGap };
-                            conn.LineUI.StrokeDashOffset = 0;
-
-                            var overlay = EnsureEnergyOverlay(conn);
-                            overlay.Data = conn.LineUI.Data;
-                            overlay.Stroke = new SolidColorBrush(Color.FromArgb(170, energyColor.R, energyColor.G, energyColor.B));
-                            overlay.StrokeThickness = conn.LineUI.StrokeThickness + 6.0;
-                            overlay.StrokeDashCap = PenLineCap.Round;
-                            // Chỉ giữ 1 "đuôi thiên thạch" nổi bật đang chạy
-                            var tailLength = 26.0;
-                            var tailGap = Math.Max(120.0, dashGap * 8.0);
-                            overlay.StrokeDashArray = new DoubleCollection { tailLength, tailGap };
-                            overlay.StrokeDashOffset = 0;
-                            overlay.Opacity = 0.66;
-                            overlay.Effect = new BlurEffect { Radius = 7.5 };
-
-                            if (shouldAnimate)
+                            var speed = Math.Max(0.05, EnergyRunSpeed);
+                            var fast = new DoubleAnimation
                             {
-                                var speed = Math.Max(0.05, EnergyRunSpeed);
-                                var fast = new DoubleAnimation
-                                {
-                                    From = 0,
-                                    To = -dashPattern,
-                                    Duration = new Duration(TimeSpan.FromSeconds(0.24 / speed)),
-                                    RepeatBehavior = RepeatBehavior.Forever,
-                                    EasingFunction = null
-                                };
-                                conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, fast);
+                                From = 0,
+                                To = -pattern,
+                                Duration = new Duration(TimeSpan.FromSeconds(0.28 / speed)),
+                                RepeatBehavior = RepeatBehavior.Forever,
+                                EasingFunction = null
+                            };
 
-                                var tailPattern = tailLength + tailGap;
-                                var tail = new DoubleAnimation
-                                {
-                                    From = 0,
-                                    To = -tailPattern,
-                                    Duration = new Duration(TimeSpan.FromSeconds(0.24 / speed)),
-                                    RepeatBehavior = RepeatBehavior.Forever,
-                                    EasingFunction = null
-                                };
-                                overlay.BeginAnimation(Shape.StrokeDashOffsetProperty, tail);
-                                overlay.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation
-                                {
-                                    From = 0.45,
-                                    To = 0.75,
-                                    Duration = new Duration(TimeSpan.FromSeconds(0.28)),
-                                    AutoReverse = true,
-                                    RepeatBehavior = RepeatBehavior.Forever
-                                });
-
-                                if (conn.LineUI.Data is PathGeometry geo)
-                                {
-                                    StartEnergyBallAnimation(conn, geo, energyColor);
-                                }
-                            }
-                            else
-                            {
-                                RemoveEnergyOverlay(conn);
-                                RemoveEnergyBall(conn);
-                            }
-                        }
-                        else
-                        {
-                            // Line chấm tròn chạy: dash length rất nhỏ + dashcap Round
-                            double dot = 0.0;
-                            double gap = Math.Max(1.0, EnergyDotGap);
-                            double pattern = dot + gap;
-
-                            conn.LineUI.Opacity = 1.0;
-                            conn.LineUI.StrokeDashCap = PenLineCap.Round;
-                            conn.LineUI.StrokeDashArray = new DoubleCollection { dot, gap };
-                            conn.LineUI.StrokeDashOffset = 0;
-
-                            if (shouldAnimate)
-                            {
-                                var speed = Math.Max(0.05, EnergyRunSpeed);
-                                var fast = new DoubleAnimation
-                                {
-                                    From = 0,
-                                    To = -pattern,
-                                    Duration = new Duration(TimeSpan.FromSeconds(0.28 / speed)),
-                                    RepeatBehavior = RepeatBehavior.Forever,
-                                    EasingFunction = null
-                                };
-
-                                conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, fast);
-                            }
-
-                            RemoveEnergyOverlay(conn);
-                            RemoveEnergyBall(conn);
+                            conn.LineUI.BeginAnimation(Shape.StrokeDashOffsetProperty, fast);
                         }
 
-                        RemoveEnergyText(conn);
+                        RemoveEnergyOverlay(conn);
+                        RemoveEnergyBall(conn);
                     }
+
+                    RemoveEnergyText(conn);
                 }
+
                 else if (AnimationDisplayMode == ConnectionAnimationDisplayMode.Dashed)
                 {
                     conn.LineUI.StrokeDashCap = PenLineCap.Flat;
@@ -1268,7 +1207,7 @@ namespace FlowMy.Services.Rendering
                     hasWindy = true;
                 }
             }
-            
+
             // Đảm bảo wind rendering loop chạy nếu có connection Windy
             if (hasWindy)
             {
@@ -1302,14 +1241,14 @@ namespace FlowMy.Services.Rendering
 
             PathGeometry geometry = LineStyle switch
             {
-                ConnectionLineStyle.Orthogonal        => _orthogonal.Generate(start, end, startPortPosition, endPortPosition),
-                ConnectionLineStyle.Straight          => _straight.Generate(start, end, startPortPosition, endPortPosition),
-                ConnectionLineStyle.SmoothOrthogonal  => _orthogonal.Generate(start, end, startPortPosition, endPortPosition),
-                ConnectionLineStyle.Arc               => GenerateArcGeometry(start, end, startPortPosition, endPortPosition),
-                ConnectionLineStyle.RadialFanout      => GenerateRadialFanoutGeometry(start, end, startPortPosition, endPortPosition),
-                ConnectionLineStyle.Windy             => _bezier.Generate(start, end, startPortPosition, endPortPosition),
-                ConnectionLineStyle.OrthogonalV2      => _orthogonalV2.Generate(start, end, startPortPosition, endPortPosition),
-                _                                     => _bezier.Generate(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.Orthogonal => _orthogonal.Generate(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.Straight => _straight.Generate(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.SmoothOrthogonal => _orthogonal.Generate(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.Arc => GenerateArcGeometry(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.RadialFanout => GenerateRadialFanoutGeometry(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.Windy => _bezier.Generate(start, end, startPortPosition, endPortPosition),
+                ConnectionLineStyle.OrthogonalV2 => _orthogonalV2.Generate(start, end, startPortPosition, endPortPosition),
+                _ => _bezier.Generate(start, end, startPortPosition, endPortPosition),
             };
 
             path.Data = geometry;
@@ -1419,7 +1358,7 @@ namespace FlowMy.Services.Rendering
             {
                 _canvas.Children.Remove(connection.DeleteButton);
             }
-            
+
             // Clear references để tránh memory leak
             connection.LineUI = null;
             connection.HitArea = null;
@@ -1689,7 +1628,7 @@ namespace FlowMy.Services.Rendering
                 // Pháp tuyến 90° (xoay trái) - hướng vuông góc với đường thẳng
                 var n = new Vector(-v.Y, v.X);
                 connection.WindNormal = n;
-                
+
                 // Khởi tạo các giá trị mới
                 connection.WindTime = 0.0;
                 // Bắt đầu wave ngay lập tức để dễ thấy hiệu ứng
@@ -1711,9 +1650,9 @@ namespace FlowMy.Services.Rendering
             {
                 connection.NextWaveTime = GetRandomWaveInterval();
             }
-            
+
             connection.WindTime += dt;
-            
+
             // Kiểm tra xem đã đến lúc tạo wave mới chưa
             if (!connection.IsWaveActive && connection.WindTime >= connection.NextWaveTime)
             {
@@ -1723,7 +1662,7 @@ namespace FlowMy.Services.Rendering
                 connection.WindTime = 0.0; // Reset timer để đếm lại
                 connection.NextWaveTime = GetRandomWaveInterval(); // Set thời gian cho lần tiếp theo
             }
-            
+
             // Nếu wave đang active, cập nhật progress
             double waveOffset = 0.0;
             if (connection.IsWaveActive)
@@ -1731,7 +1670,7 @@ namespace FlowMy.Services.Rendering
                 // Wave di chuyển từ 0.0 (đầu trái) đến 1.0 (đầu phải)
                 const double waveDuration = 1.5; // Thời gian wave chạy từ đầu đến cuối (giây) - tăng để dễ thấy hơn
                 connection.WaveProgress += dt / waveDuration;
-                
+
                 if (connection.WaveProgress >= 1.0)
                 {
                     // Wave đã hoàn thành, reset và chờ lần tiếp theo
@@ -1745,21 +1684,21 @@ namespace FlowMy.Services.Rendering
                     // Sử dụng sin wave để tạo hiệu ứng sóng lượn
                     // Wave có biên độ lớn nhất ở giữa và giảm dần ở 2 đầu
                     double wavePhase = connection.WaveProgress * Math.PI * 2.0 * 3.0; // Tăng tần số để có nhiều sóng hơn
-                    
+
                     // Envelope function: tăng dần từ 0, đạt max ở giữa, giảm dần về 0
                     // Sử dụng sin để tạo envelope mượt mà
                     double envelope = Math.Sin(connection.WaveProgress * Math.PI);
-                    
+
                     // Wave offset: sin wave với envelope - tăng biên độ để dễ thấy
                     // Sử dụng biên độ đầy đủ để wave rõ ràng hơn
                     waveOffset = Math.Sin(wavePhase) * envelope * connection.WaveAmplitude;
-                    
+
                     // Thêm một wave phụ với tần số khác để tạo hiệu ứng tự nhiên hơn
                     double waveOffset2 = Math.Sin(wavePhase * 1.5 + Math.PI * 0.2) * envelope * (connection.WaveAmplitude * 0.6);
                     waveOffset = (waveOffset + waveOffset2) * 0.9; // Kết hợp với tỷ lệ cao hơn
                 }
             }
-            
+
             // Đảm bảo wave amplitude luôn ở mức đủ lớn để dễ thấy
             if (connection.WaveAmplitude < 20.0)
             {
@@ -1786,34 +1725,34 @@ namespace FlowMy.Services.Rendering
             // Phân bố offset cho 2 control points dựa trên vị trí wave
             // Wave di chuyển từ đầu trái (control point 1) đến đầu phải (control point 2)
             double k1, k2;
-            
+
             if (connection.IsWaveActive)
             {
                 // Khi wave đang chạy, phân bố offset dựa trên vị trí wave
                 // Wave di chuyển từ control point 1 (đầu trái, progress = 0.0) 
                 // đến control point 2 (đầu phải, progress = 1.0)
                 double progress = connection.WaveProgress;
-                
+
                 // Control point 1 ở đầu trái (progress = 0.0)
                 // Control point 2 ở đầu phải (progress = 1.0)
                 // Wave ảnh hưởng mạnh nhất ở vị trí hiện tại của nó
-                
+
                 // Tính ảnh hưởng của wave lên từng control point
                 // Control point 1 ở đầu trái (progress = 0.0)
                 // Control point 2 ở đầu phải (progress = 1.0)
                 // Wave ảnh hưởng mạnh nhất ở vị trí hiện tại của nó
-                
+
                 // Sử dụng Gaussian-like distribution để tạo hiệu ứng mượt mà
                 double sigma = 0.35; // Độ rộng ảnh hưởng
-                
+
                 // Control point 1: ảnh hưởng mạnh khi wave ở gần đầu trái
                 double dist1 = progress; // Khoảng cách từ wave đến control point 1
                 k1 = Math.Exp(-(dist1 * dist1) / (2.0 * sigma * sigma));
-                
+
                 // Control point 2: ảnh hưởng mạnh khi wave ở gần đầu phải
                 double dist2 = 1.0 - progress; // Khoảng cách từ wave đến control point 2
                 k2 = Math.Exp(-(dist2 * dist2) / (2.0 * sigma * sigma));
-                
+
                 // Normalize để đảm bảo tổng ảnh hưởng hợp lý
                 double total = k1 + k2;
                 if (total > 0.001)
@@ -2119,7 +2058,7 @@ namespace FlowMy.Services.Rendering
                 button.Background = new SolidColorBrush(Color.FromArgb(255, 220, 38, 38));
                 button.Width = 32;
                 button.Height = 32;
-                
+
                 Point start, end;
                 if (connection.FromPort != null && connection.ToPort != null)
                 {
@@ -2153,7 +2092,7 @@ namespace FlowMy.Services.Rendering
                 button.Background = new SolidColorBrush(Color.FromArgb(220, 239, 68, 68));
                 button.Width = 28;
                 button.Height = 28;
-                
+
                 Point start, end;
                 if (connection.FromPort != null && connection.ToPort != null)
                 {
@@ -2404,7 +2343,7 @@ namespace FlowMy.Services.Rendering
 
             // Flatten geometry để lấy các điểm trên đường line
             var flat = geometry.GetFlattenedPathGeometry(0.5, ToleranceType.Absolute);
-            
+
             if (flat.Figures.Count == 0)
                 return new Point(0, 0);
 
@@ -2453,7 +2392,7 @@ namespace FlowMy.Services.Rendering
             for (int i = 0; i < points.Count - 1; i++)
             {
                 double segLen = (points[i + 1] - points[i]).Length;
-                
+
                 if (accumulatedLength + segLen >= targetLength)
                 {
                     // Điểm nằm trong segment này

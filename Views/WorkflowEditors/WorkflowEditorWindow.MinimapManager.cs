@@ -506,6 +506,11 @@ namespace FlowMy.Views
                 EnergyRunSpeed = _energyRunSpeed,
                 EnergyTextSpinSeconds = _energyTextSpinSeconds,
                 EnergyMeteorMode = _energyMeteorMode,
+                AdvancedFlowStyleEnabled = _advancedFlowStyleEnabled,
+                MeteorTailLength = _meteorTailLength,
+                MeteorTailBlur = _meteorTailBlur,
+                MeteorTailOpacity = _meteorTailOpacity,
+                MeteorTailThickness = _meteorTailThickness,
                 NodeAppearanceMode = _nodeAppearanceMode,
                 NodeSpinnerArcMode = _nodeSpinnerArcMode,
                 NodeSpinnerMultiColor = _nodeSpinnerMultiColor,
@@ -661,6 +666,11 @@ namespace FlowMy.Views
             _energyRunSpeed = preferences.EnergyRunSpeed > 0 ? preferences.EnergyRunSpeed : _energyRunSpeed;
             _energyTextSpinSeconds = preferences.EnergyTextSpinSeconds > 0 ? preferences.EnergyTextSpinSeconds : _energyTextSpinSeconds;
             _energyMeteorMode = preferences.EnergyMeteorMode;
+            _advancedFlowStyleEnabled = preferences.AdvancedFlowStyleEnabled;
+            _meteorTailLength = preferences.MeteorTailLength > 0 ? preferences.MeteorTailLength : _meteorTailLength;
+            _meteorTailBlur = preferences.MeteorTailBlur > 0 ? preferences.MeteorTailBlur : _meteorTailBlur;
+            _meteorTailOpacity = preferences.MeteorTailOpacity > 0 ? preferences.MeteorTailOpacity : _meteorTailOpacity;
+            _meteorTailThickness = preferences.MeteorTailThickness > 0 ? preferences.MeteorTailThickness : _meteorTailThickness;
 
             // Node appearance mode: Solid / LiquidGlass
             var newAppearanceMode = string.IsNullOrWhiteSpace(preferences.NodeAppearanceMode) ? "Solid" : preferences.NodeAppearanceMode;

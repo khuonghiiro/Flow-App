@@ -80,6 +80,11 @@ namespace FlowMy.Views
         private double _energyRunSpeed = Settings.Default.EnergyRunSpeed <= 0 ? 1.0 : Settings.Default.EnergyRunSpeed; // multiplier
         private double _energyTextSpinSeconds = Settings.Default.EnergyTextSpinSeconds <= 0 ? 0.7 : Settings.Default.EnergyTextSpinSeconds; // seconds / vòng 360
         private bool _energyMeteorMode;
+        private bool _advancedFlowStyleEnabled;
+        private double _meteorTailLength = 15.0;
+        private double _meteorTailBlur = 10.0;
+        private double _meteorTailOpacity = 1.5;
+        private double _meteorTailThickness = 4.0;
         private string _nodeAppearanceMode = "Solid";
         private bool _isApplyingEnergyMenuState = false;
         private bool _headlessCanvasOptimizationEnabled;

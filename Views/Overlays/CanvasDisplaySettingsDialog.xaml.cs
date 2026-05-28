@@ -133,6 +133,13 @@ namespace FlowMy.Views.Overlays
             EnergyRunSpeedSlider.Value = preferences.EnergyRunSpeed;
             EnergySpinSpeedSlider.Value = preferences.EnergyTextSpinSeconds;
             EnergyMeteorModeCheckBox.IsChecked = preferences.EnergyMeteorMode;
+            AdvancedFlowStyleCheckBox.IsChecked = preferences.AdvancedFlowStyleEnabled;
+            // Trigger the visibility change after loading preferences
+            AdvancedFlowStyleCheckBox_Changed(null, null);
+            MeteorTailLengthSlider.Value = preferences.MeteorTailLength > 0 ? preferences.MeteorTailLength : 15.0;
+            MeteorTailBlurSlider.Value = preferences.MeteorTailBlur > 0 ? preferences.MeteorTailBlur : 10.0;
+            MeteorTailOpacitySlider.Value = preferences.MeteorTailOpacity > 0 ? preferences.MeteorTailOpacity : 1.5;
+            MeteorTailThicknessSlider.Value = preferences.MeteorTailThickness > 0 ? preferences.MeteorTailThickness : 4.0;
             NodeSpinnerArcModeCheckBox.IsChecked = preferences.NodeSpinnerArcMode;
             NodeSpinnerMultiColorCheckBox.IsChecked = preferences.NodeSpinnerMultiColor;
             NodeSpinnerSizeSlider.Value = preferences.NodeSpinnerSize > 8 ? preferences.NodeSpinnerSize : 26.0;
@@ -293,6 +300,11 @@ namespace FlowMy.Views.Overlays
                 EnergyRunSpeed = speed > 0 ? speed : 1.0,
                 EnergyTextSpinSeconds = spin > 0 ? spin : 0.7,
                 EnergyMeteorMode = EnergyMeteorModeCheckBox.IsChecked == true,
+                AdvancedFlowStyleEnabled = AdvancedFlowStyleCheckBox.IsChecked == true,
+                MeteorTailLength = MeteorTailLengthSlider.Value,
+                MeteorTailBlur = MeteorTailBlurSlider.Value,
+                MeteorTailOpacity = MeteorTailOpacitySlider.Value,
+                MeteorTailThickness = MeteorTailThicknessSlider.Value,
                 NodeSpinnerArcMode = NodeSpinnerArcModeCheckBox.IsChecked == true,
                 NodeSpinnerMultiColor = NodeSpinnerMultiColorCheckBox.IsChecked == true,
                 NodeSpinnerSize = NodeSpinnerSizeSlider.Value > 8 ? NodeSpinnerSizeSlider.Value : 26.0,
@@ -434,6 +446,12 @@ namespace FlowMy.Views.Overlays
             EnergySpinSpeedSlider.ValueChanged += AnyControlChanged;
             EnergyMeteorModeCheckBox.Checked += AnyControlChanged;
             EnergyMeteorModeCheckBox.Unchecked += AnyControlChanged;
+            MeteorTailLengthSlider.ValueChanged += AnyControlChanged;
+            MeteorTailBlurSlider.ValueChanged += AnyControlChanged;
+            MeteorTailOpacitySlider.ValueChanged += AnyControlChanged;
+            MeteorTailThicknessSlider.ValueChanged += AnyControlChanged;
+            AdvancedFlowStyleCheckBox.Checked += AdvancedFlowStyleCheckBox_Changed;
+            AdvancedFlowStyleCheckBox.Unchecked += AdvancedFlowStyleCheckBox_Changed;
             NodeSpinnerSizeSlider.ValueChanged += AnyControlChanged;
             NodeSpinnerSizeRatioSlider.ValueChanged += AnyControlChanged;
             NodeSpinnerStrokeThicknessSlider.ValueChanged += AnyControlChanged;
@@ -441,6 +459,18 @@ namespace FlowMy.Views.Overlays
             NodeSpinnerBlinkIntensitySlider.ValueChanged += AnyControlChanged;
             NodeSpinnerBlinkBaseOpacitySlider.ValueChanged += AnyControlChanged;
             NodeSpinnerBlinkPeakOpacitySlider.ValueChanged += AnyControlChanged;
+        }
+
+        private void AdvancedFlowStyleCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (AdvancedFlowStyleCheckBox.IsChecked == true)
+            {
+                StyleNodeRunningTabItem.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                StyleNodeRunningTabItem.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void AnyControlChanged(object sender, TextChangedEventArgs e)
@@ -484,6 +514,10 @@ namespace FlowMy.Views.Overlays
             if (EnergyDotThicknessValueText != null) EnergyDotThicknessValueText.Text = EnergyDotThicknessSlider.Value.ToString("0.0");
             if (EnergyRunSpeedValueText != null) EnergyRunSpeedValueText.Text = EnergyRunSpeedSlider.Value.ToString("0.0");
             if (EnergySpinSpeedValueText != null) EnergySpinSpeedValueText.Text = EnergySpinSpeedSlider.Value.ToString("0.0");
+            if (MeteorTailLengthValueText != null) MeteorTailLengthValueText.Text = MeteorTailLengthSlider.Value.ToString("0");
+            if (MeteorTailBlurValueText != null) MeteorTailBlurValueText.Text = MeteorTailBlurSlider.Value.ToString("0");
+            if (MeteorTailOpacityValueText != null) MeteorTailOpacityValueText.Text = MeteorTailOpacitySlider.Value.ToString("0.0");
+            if (MeteorTailThicknessValueText != null) MeteorTailThicknessValueText.Text = MeteorTailThicknessSlider.Value.ToString("0");
             if (NodeSpinnerSizeValueText != null) NodeSpinnerSizeValueText.Text = NodeSpinnerSizeSlider.Value.ToString("0.0");
             if (NodeSpinnerSizeRatioValueText != null) NodeSpinnerSizeRatioValueText.Text = NodeSpinnerSizeRatioSlider.Value.ToString("0.00");
             if (NodeSpinnerStrokeThicknessValueText != null) NodeSpinnerStrokeThicknessValueText.Text = NodeSpinnerStrokeThicknessSlider.Value.ToString("0.0");
@@ -491,6 +525,45 @@ namespace FlowMy.Views.Overlays
             if (NodeSpinnerBlinkIntensityValueText != null) NodeSpinnerBlinkIntensityValueText.Text = NodeSpinnerBlinkIntensitySlider.Value.ToString("0.00");
             if (NodeSpinnerBlinkBaseOpacityValueText != null) NodeSpinnerBlinkBaseOpacityValueText.Text = NodeSpinnerBlinkBaseOpacitySlider.Value.ToString("0.00");
             if (NodeSpinnerBlinkPeakOpacityValueText != null) NodeSpinnerBlinkPeakOpacityValueText.Text = NodeSpinnerBlinkPeakOpacitySlider.Value.ToString("0.00");
+        }
+
+        private void MeteorPresetButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isApplying) return;
+            if (sender is not Button btn || btn.Tag is not string presetTag) return;
+
+            _isApplying = true;
+            EnergyMeteorModeCheckBox.IsChecked = true;
+            switch (presetTag)
+            {
+                case "Light":
+                    MeteorTailLengthSlider.Value = 10.0;
+                    MeteorTailBlurSlider.Value = 5.0;
+                    MeteorTailOpacitySlider.Value = 0.8;
+                    MeteorTailThicknessSlider.Value = 2.0;
+                    break;
+                case "Strong":
+                    MeteorTailLengthSlider.Value = 20.0;
+                    MeteorTailBlurSlider.Value = 15.0;
+                    MeteorTailOpacitySlider.Value = 2.0;
+                    MeteorTailThicknessSlider.Value = 6.0;
+                    break;
+                case "VeryStrong":
+                    MeteorTailLengthSlider.Value = 28.0;
+                    MeteorTailBlurSlider.Value = 22.0;
+                    MeteorTailOpacitySlider.Value = 2.8;
+                    MeteorTailThicknessSlider.Value = 9.0;
+                    break;
+                default:
+                    MeteorTailLengthSlider.Value = 15.0;
+                    MeteorTailBlurSlider.Value = 10.0;
+                    MeteorTailOpacitySlider.Value = 1.5;
+                    MeteorTailThicknessSlider.Value = 4.0;
+                    break;
+            }
+            _isApplying = false;
+            UpdateSliderTexts();
+            QueuePreferencesApply();
         }
 
         private void BlinkPresetButton_Click(object sender, RoutedEventArgs e)

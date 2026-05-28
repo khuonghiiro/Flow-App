@@ -27,6 +27,14 @@ namespace FlowMy.Services.Utilities
         public double EnergyRunSpeed { get; set; } = 1.0;
         public double EnergyTextSpinSeconds { get; set; } = 0.7;
         public bool EnergyMeteorMode { get; set; } = false;
+        public bool AdvancedFlowStyleEnabled { get; set; } = false;
+        
+        // Glow Pulse effect configuration
+        public double MeteorTailLength { get; set; } = 15.0;
+        public double MeteorTailBlur { get; set; } = 10.0;
+        public double MeteorTailOpacity { get; set; } = 1.5;
+        public double MeteorTailThickness { get; set; } = 4.0;
+        
         public int ApplyDebounceMs { get; set; } = 70;
 
         // Node execution spinner style
