@@ -64,6 +64,8 @@ public static class BodyContainerControl
             FontSize = 12,
             FontWeight = FontWeights.SemiBold
         };
+        // Đảm bảo không có style mặc định từ WPF
+        titleText.Style = null;
         node.TitleTextBlockUI = titleText;
         root.Children.Add(titleText);
 
@@ -138,8 +140,6 @@ public static class BodyContainerControl
         titleText.Foreground = ResolveTitleBrush(node, borderColor);
         titleText.FontSize = 12 * titleScale;
         titleText.Margin = new Thickness(0, -26 * titleScale, 0, 0);
-        titleText.Effect = null; // Bỏ shadow của title
-        titleText.ClearValue(TextBlock.EffectProperty); // Đảm bảo effect được xóa hoàn toàn
 
         // Đổi icon hiển thị giữa tâm border khi check lock/unlock
         var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";
@@ -364,19 +364,33 @@ public static class BodyContainerControl
 
     private static Brush ResolveTitleBrush(BodyContainerNode node, Color fallback)
     {
+        Brush resultBrush;
         if (node.TitleColorMode != Models.TitleColorMode.CustomColor ||
             string.IsNullOrWhiteSpace(node.TitleColorKey) ||
             string.Equals(node.TitleColorKey, "NodeColor", StringComparison.OrdinalIgnoreCase))
         {
-            return new SolidColorBrush(fallback);
+            resultBrush = new SolidColorBrush(fallback);
+        }
+        else if (string.Equals(node.TitleColorKey, "LimeGreen", StringComparison.OrdinalIgnoreCase))
+        {
+            resultBrush = new SolidColorBrush(Colors.LimeGreen);
+        }
+        else
+        {
+            var resource = Application.Current.TryFindResource(node.TitleColorKey);
+            if (resource is Brush brush)
+                resultBrush = brush;
+            else if (resource is Color color)
+                resultBrush = new SolidColorBrush(color);
+            else
+                resultBrush = new SolidColorBrush(fallback);
         }
 
-        if (string.Equals(node.TitleColorKey, "LimeGreen", StringComparison.OrdinalIgnoreCase))
-            return new SolidColorBrush(Colors.LimeGreen);
-
-        var resource = Application.Current.TryFindResource(node.TitleColorKey);
-        if (resource is Brush brush) return brush;
-        if (resource is Color color) return new SolidColorBrush(color);
-        return new SolidColorBrush(fallback);
+        // Đảm bảo brush không có effect
+        if (resultBrush is SolidColorBrush solidBrush)
+        {
+            // SolidColorBrush không có effect property
+        }
+        return resultBrush;
     }
 }

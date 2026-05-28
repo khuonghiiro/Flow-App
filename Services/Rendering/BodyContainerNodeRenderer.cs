@@ -31,7 +31,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
         var border = BodyContainerControl.CreateBorder(bodyNode);
         bodyNode.Border = border;
-        NodeChrome.Apply(border, bodyNode, Host);
+        // Skip NodeChrome.Apply() để tránh Liquid Glass shadow trên title
         border.ContextMenu = Host.CreateNodeContextMenu(bodyNode);
         AttachBodyDragHandlers(bodyNode, border);
         AttachHoverTitleBehavior(bodyNode, border);
@@ -40,6 +40,13 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         Canvas.SetTop(border, bodyNode.Y);
         canvas.Children.Add(border);
         Host.ZIndexManager.InitializeNodeZIndex(bodyNode, border);
+        // Đảm bảo border không có shadow từ Canvas
+        border.Effect = null;
+        canvas.Effect = null;
+        // Clear style để tránh implicit style từ WPF
+        border.Style = null;
+        // Xóa effect cho tất cả element con
+        ClearEffectsRecursive(border);
 
         if (bodyNode is INotifyPropertyChanged notifier)
         {
@@ -279,6 +286,21 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         foreach (var moved in movedNodes)
         {
             _collisionResolver.ResolveCollision(vm, moved, Host);
+        }
+    }
+
+    private static void ClearEffectsRecursive(DependencyObject parent)
+    {
+        if (parent is UIElement uiElement)
+        {
+            uiElement.Effect = null;
+        }
+
+        int childrenCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < childrenCount; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            ClearEffectsRecursive(child);
         }
     }
 }
