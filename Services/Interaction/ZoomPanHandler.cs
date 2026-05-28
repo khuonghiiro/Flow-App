@@ -411,78 +411,12 @@ namespace FlowMy.Services.Interaction
                 host.GridTranslateTransform.X = newTranslateX;
                 host.GridTranslateTransform.Y = newTranslateY;
             }
-
-            // Xử lý LockCanvasSize: áp dụng scale ngược cho các node có LockCanvasSize = true
-            UpdateLockedCanvasSizeNodes(newZoom);
         }
 
         private void UpdateLockedCanvasSizeNodes(double zoomLevel)
         {
-            var viewModel = Host.ViewModel;
-            if (viewModel == null) return;
-
-            // Tìm tất cả BodyContainerNode có LockCanvasSize = true
-            foreach (var node in viewModel.Nodes.OfType<BodyContainerNode>())
-            {
-                if (!node.LockCanvasSize) continue;
-                if (node.Border == null) continue;
-
-                // Lưu zoom level khi lần đầu khóa
-                if (node.LockedZoomLevel <= 0)
-                {
-                    node.LockedZoomLevel = zoomLevel;
-                }
-
-                // Tính scale để giữ nguyên kích thước hiển thị tại locked zoom
-                double scaleRatio = node.LockedZoomLevel / zoomLevel;
-
-                if (node.Border.RenderTransform is ScaleTransform scaleTransform)
-                {
-                    scaleTransform.ScaleX = scaleRatio;
-                    scaleTransform.ScaleY = scaleRatio;
-                }
-                else
-                {
-                    var newScaleTransform = new ScaleTransform(scaleRatio, scaleRatio);
-                    node.Border.RenderTransform = newScaleTransform;
-                    node.Border.RenderTransformOrigin = new Point(0.5, 0.5);
-                }
-
-                // Cập nhật scale cho các node bên trong locked body
-                if (node.LockInnerNodes)
-                {
-                    var bodyBounds = new Rect(node.X, node.Y, node.BodyWidth, node.BodyHeight);
-                    foreach (var innerNode in viewModel.Nodes)
-                    {
-                        if (innerNode == node || innerNode is BodyContainerNode) continue;
-                        if (innerNode.Border == null) continue;
-
-                        // Kiểm tra node có nằm trong body không
-                        var nodeW = innerNode.Border.ActualWidth > 1 ? innerNode.Border.ActualWidth : 150;
-                        var nodeH = innerNode.Border.ActualHeight > 1 ? innerNode.Border.ActualHeight : 80;
-                        var center = new Point(innerNode.X + nodeW / 2.0, innerNode.Y + nodeH / 2.0);
-                        if (bodyBounds.Contains(center))
-                        {
-                            // Áp dụng cùng scale ratio
-                            if (innerNode.Border.RenderTransform is ScaleTransform innerScaleTransform)
-                            {
-                                innerScaleTransform.ScaleX = scaleRatio;
-                                innerScaleTransform.ScaleY = scaleRatio;
-                                innerScaleTransform.CenterX = nodeW / 2;
-                                innerScaleTransform.CenterY = nodeH / 2;
-                            }
-                            else
-                            {
-                                var newScaleTransform = new ScaleTransform(scaleRatio, scaleRatio);
-                                newScaleTransform.CenterX = nodeW / 2;
-                                newScaleTransform.CenterY = nodeH / 2;
-                                innerNode.Border.RenderTransform = newScaleTransform;
-                                innerNode.Border.RenderTransformOrigin = new Point(0.5, 0.5);
-                            }
-                        }
-                    }
-                }
-            }
+            // Hoàn tác logic LockCanvasSize vì gây lỗi
+            // Tính năng này sẽ được implement lại sau
         }
 
         private void EnsureZoomEndTimer()

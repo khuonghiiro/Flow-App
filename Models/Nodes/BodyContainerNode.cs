@@ -28,6 +28,8 @@ public sealed class BodyContainerNode : WorkflowNode
     private double _iconOpacityPercent = 62;
     private bool _lockCanvasSize;
     private double _lockedZoomLevel = 1.0;
+    private double _lockedX;
+    private double _lockedY;
 
     public BodyContainerNode()
     {
@@ -195,6 +197,28 @@ public sealed class BodyContainerNode : WorkflowNode
         {
             if (Math.Abs(_lockedZoomLevel - value) < 0.001) return;
             _lockedZoomLevel = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double LockedX
+    {
+        get => _lockedX;
+        set
+        {
+            if (Math.Abs(_lockedX - value) < 0.001) return;
+            _lockedX = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double LockedY
+    {
+        get => _lockedY;
+        set
+        {
+            if (Math.Abs(_lockedY - value) < 0.001) return;
+            _lockedY = value;
             OnPropertyChanged();
         }
     }

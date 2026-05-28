@@ -3836,6 +3836,18 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             {
                 bodyContainerRestore.LockedZoomLevel = lockedZoomLevel;
             }
+            if (properties.TryGetValue("LockedX", out var lockedXObj) &&
+                lockedXObj != null &&
+                double.TryParse(lockedXObj.ToString(), out var lockedX))
+            {
+                bodyContainerRestore.LockedX = lockedX;
+            }
+            if (properties.TryGetValue("LockedY", out var lockedYObj) &&
+                lockedYObj != null &&
+                double.TryParse(lockedYObj.ToString(), out var lockedY))
+            {
+                bodyContainerRestore.LockedY = lockedY;
+            }
         }
         else if (node is OutputNode outputNode)
         {
@@ -5093,6 +5105,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["IconOpacityPercent"] = bodyContainerSer.IconOpacityPercent;
             dict["LockCanvasSize"] = bodyContainerSer.LockCanvasSize;
             dict["LockedZoomLevel"] = bodyContainerSer.LockedZoomLevel;
+            dict["LockedX"] = bodyContainerSer.LockedX;
+            dict["LockedY"] = bodyContainerSer.LockedY;
 
         }
         else if (node is WebNode webNodeForSerialize)

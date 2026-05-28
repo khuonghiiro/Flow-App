@@ -40,14 +40,6 @@ public static class BodyContainerControl
             Tag = node
         };
 
-        // Thêm ScaleTransform riêng cho LockCanvasSize
-        if (node.LockCanvasSize)
-        {
-            var scaleTransform = new ScaleTransform(1, 1);
-            border.RenderTransform = scaleTransform;
-            border.RenderTransformOrigin = new Point(0.5, 0.5);
-        }
-
         var root = new Grid();
         root.ClipToBounds = false;
 
@@ -106,20 +98,8 @@ public static class BodyContainerControl
         if (!TryGetVisualElements(node, out var border, out var fillRect, out var borderRect, out var titleText, out var lockIcon))
             return;
 
-        // Cập nhật ScaleTransform cho LockCanvasSize
-        if (node.LockCanvasSize)
-        {
-            if (border.RenderTransform is not ScaleTransform)
-            {
-                border.RenderTransform = new ScaleTransform(1, 1);
-                border.RenderTransformOrigin = new Point(0.5, 0.5);
-            }
-        }
-        else
-        {
-            border.RenderTransform = null;
-            node.LockedZoomLevel = 1.0; // Reset khi bỏ khóa
-        }
+        // Hoàn tác logic LockCanvasSize vì gây lỗi
+        // Tính năng này sẽ được implement lại sau
 
         ApplyNodeVisual(node, border, fillRect, borderRect, titleText, lockIcon);
         UpdateTitleVisibility(node, titleText, isHovering: false);
@@ -159,6 +139,7 @@ public static class BodyContainerControl
         titleText.FontSize = 12 * titleScale;
         titleText.Margin = new Thickness(0, -26 * titleScale, 0, 0);
         titleText.Effect = null; // Bỏ shadow của title
+        titleText.ClearValue(TextBlock.EffectProperty); // Đảm bảo effect được xóa hoàn toàn
 
         // Đổi icon hiển thị giữa tâm border khi check lock/unlock
         var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";

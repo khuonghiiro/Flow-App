@@ -57,6 +57,12 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
     [ObservableProperty]
     private double _lockedZoomLevel = 1.0;
 
+    [ObservableProperty]
+    private double _lockedX;
+
+    [ObservableProperty]
+    private double _lockedY;
+
     public ObservableCollection<BodyColorOption> BodyColorOptions { get; } = new()
     {
         new BodyColorOption("SlateBrush", "Slate"),
@@ -98,6 +104,8 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         _iconOpacityPercent = node.IconOpacityPercent;
         _lockCanvasSize = node.LockCanvasSize;
         _lockedZoomLevel = node.LockedZoomLevel;
+        _lockedX = node.LockedX;
+        _lockedY = node.LockedY;
     }
 
     protected override string GetDefaultTitle() => "Body Container";
@@ -120,6 +128,8 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         _nodeRef.IconOpacityPercent = IconOpacityPercent;
         _nodeRef.LockCanvasSize = LockCanvasSize;
         _nodeRef.LockedZoomLevel = LockedZoomLevel;
+        _nodeRef.LockedX = LockedX;
+        _nodeRef.LockedY = LockedY;
         _nodeRef.NotifyTitleChanged();
         RefreshBodyVisualImmediate();
         _host.RequestSyncDataPanels(immediate: true);
@@ -210,16 +220,8 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
     partial void OnLockCanvasSizeChanged(bool value)
     {
         _nodeRef.LockCanvasSize = value;
-        if (value)
-        {
-            // Khi khóa, lưu zoom level hiện tại của canvas
-            _nodeRef.LockedZoomLevel = _host.ZoomLevel;
-        }
-        else
-        {
-            // Khi bỏ khóa, reset
-            _nodeRef.LockedZoomLevel = 1.0;
-        }
+        // Hoàn tác logic LockCanvasSize vì gây lỗi
+        // Tính năng này sẽ được implement lại sau
         RefreshBodyVisualImmediate();
     }
 
