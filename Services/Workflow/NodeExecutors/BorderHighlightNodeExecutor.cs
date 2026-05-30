@@ -40,6 +40,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     try
                     {
                         overlay = new BorderHighlightOverlay();
+                        
+                        // Chuẩn bị target mode trước khi show (tránh maximize fullscreen)
+                        if (borderNode.HighlightMode == BorderHighlightMode.TargetApp)
+                            overlay.PrepareForTargetMode();
+                        
                         overlay.Configure(
                             borderNode.BorderColorHex,
                             borderNode.BorderThickness,
@@ -48,8 +53,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             borderNode.EffectType
                         );
                         loadedTask = overlay.WhenLoaded;
-                        overlay.Show();
-                        overlay.Activate();
+                        
+                        // Trong TargetApp mode, không show ngay - chỉ show khi target app active
+                        if (borderNode.HighlightMode != BorderHighlightMode.TargetApp)
+                        {
+                            overlay.Show();
+                            overlay.Activate();
+                        }
+                        else
+                        {
+                            // Show nhưng ẩn ngay lập tức, timer sẽ show khi target app active
+                            overlay.Show();
+                            overlay.Hide();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -72,42 +88,78 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 if (borderNode.HighlightMode == BorderHighlightMode.TargetApp)
                 {
-                    // Tìm target window từ SelectedWindowJson hoặc từ TargetProcessName/TargetWindowTitle (fallback)
-                    WindowInfo? targetWindow = null;
-                    if (!string.IsNullOrWhiteSpace(borderNode.SelectedWindowJson))
+                    // Tìm target window bằng ProcessId (ưu tiên) hoặc ProcessName/Title (fallback)
+                    IntPtr foundHwnd = IntPtr.Zero;
+                    
+                    // Ưu tiên dùng ProcessId nếu có
+                    if (borderNode.TargetProcessId != 0)
                     {
-                        try
-                        {
-                            targetWindow = JsonSerializer.Deserialize<WindowInfo>(borderNode.SelectedWindowJson);
-                        }
-                        catch { }
-                    }
-
-                    if (targetWindow != null)
-                    {
-                        targetHwnd = targetWindow.Handle;
-                    }
-                    else
-                    {
-                        // Fallback: tìm theo ProcessName/Title
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Using ProcessId: {borderNode.TargetProcessId}");
                         var windows = WindowHelper.GetActiveWindows();
+                        var match = windows.FirstOrDefault(w => w.ProcessId == borderNode.TargetProcessId);
+                        if (match != null)
+                        {
+                            foundHwnd = match.Handle;
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found window by ProcessId: ProcessName={match.ProcessName}, Title={match.Title}, Handle={match.Handle}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] No window found with ProcessId={borderNode.TargetProcessId}");
+                        }
+                    }
+                    
+                    // Fallback: tìm theo ProcessName/Title
+                    if (foundHwnd == IntPtr.Zero)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] ProcessId not available or not found, using fallback");
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Looking for: ProcessName={borderNode.TargetProcessName}, Title={borderNode.TargetWindowTitle}");
+                        
+                        var windows = WindowHelper.GetActiveWindows();
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found {windows.Count} active windows");
+                        
+                        foreach (var w in windows.Take(10))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor]   - {w.ProcessName} | {w.Title}");
+                        }
+                        
                         var match = windows.FirstOrDefault(w =>
                             w.ProcessName == borderNode.TargetProcessName &&
                             w.Title == borderNode.TargetWindowTitle);
 
                         if (match == null)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Exact match not found, trying ProcessName only");
                             match = windows.FirstOrDefault(w => w.ProcessName == borderNode.TargetProcessName);
+                        }
 
                         if (match != null)
-                            targetHwnd = match.Handle;
+                        {
+                            foundHwnd = match.Handle;
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found match: ProcessName={match.ProcessName}, Title={match.Title}, Handle={match.Handle}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] No match found for ProcessName={borderNode.TargetProcessName}");
+                        }
                     }
+                    
+                    targetHwnd = foundHwnd;
 
                     if (targetHwnd != IntPtr.Zero)
                     {
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Target window handle: {targetHwnd}");
                         await dispatcher.InvokeAsync(() =>
                         {
+                            // PositionOverTarget sẽ start timer và set target handle
                             overlay.PositionOverTarget(targetHwnd);
+                            // Sau đó mới ẩn - timer sẽ show khi target app active
+                            overlay.Hide();
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Overlay hidden, timer should show when target app is active");
                         }, DispatcherPriority.Normal);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Target window handle is ZERO - cannot position overlay");
                     }
                 }
                 // Fullscreen mode - overlay đã maximize trong Loaded handler

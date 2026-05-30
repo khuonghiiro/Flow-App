@@ -1646,6 +1646,9 @@ namespace FlowMy.ViewModels
                     DispatcherPriority.Background,
                     new Action(() => _executionVisualizer.CancelTimersForManualRunSession(sessionId)));
             }
+
+            // Cleanup BorderHighlight overlays khi session dừng
+            FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
         }
 
         /// <summary>Luôn queue lên Dispatcher — không chạy đồng bộ trên UI (tránh chặn animation khi workflow báo từ thread nền hoặc async trên UI).</summary>

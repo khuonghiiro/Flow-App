@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Interop;
 using System.Windows;
@@ -11,13 +12,15 @@ namespace FlowMy.Helpers
 {
     public class WindowInfo
     {
+        [JsonIgnore]
         public IntPtr Handle { get; set; }
+        public uint ProcessId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string ProcessName { get; set; } = string.Empty;
         public string DisplayName => $"[{ProcessName}] {Title}";
 
-        public override bool Equals(object? obj) => obj is WindowInfo info && Handle == info.Handle;
-        public override int GetHashCode() => Handle.GetHashCode();
+        public override bool Equals(object? obj) => obj is WindowInfo info && ProcessId == info.ProcessId;
+        public override int GetHashCode() => ProcessId.GetHashCode();
     }
 
     public static class WindowHelper
@@ -409,6 +412,7 @@ namespace FlowMy.Helpers
                         windows.Add(new WindowInfo
                         {
                             Handle = hWnd,
+                            ProcessId = processId,
                             Title = title,
                             ProcessName = processName
                         });

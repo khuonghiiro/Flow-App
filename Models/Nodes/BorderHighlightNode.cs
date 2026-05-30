@@ -35,6 +35,7 @@ namespace FlowMy.Models
         private string _targetProcessName = "";
         private string _targetWindowTitle = "";
         private string _selectedWindowJson = "";
+        private uint _targetProcessId = 0;
         private int _durationMs = 5000;
         private bool _waitForCompletion = true;
         private string _nodesToDisableJson = "[]";
@@ -192,6 +193,21 @@ namespace FlowMy.Models
                 var s = value ?? "";
                 if (_selectedWindowJson == s) return;
                 _selectedWindowJson = s;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Process ID của ứng dụng đích (chỉ dùng khi HighlightMode = TargetApp).
+        /// Dùng ProcessId thay vì Handle vì Handle không thể serialize.
+        /// </summary>
+        public uint TargetProcessId
+        {
+            get => _targetProcessId;
+            set
+            {
+                if (_targetProcessId == value) return;
+                _targetProcessId = value;
                 OnPropertyChanged();
             }
         }

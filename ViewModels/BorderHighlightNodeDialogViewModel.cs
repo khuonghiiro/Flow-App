@@ -199,12 +199,14 @@ namespace FlowMy.ViewModels
                     _node.SelectedWindowJson = JsonSerializer.Serialize(value);
                     _node.TargetProcessName = value.ProcessName;
                     _node.TargetWindowTitle = value.Title;
+                    _node.TargetProcessId = value.ProcessId;
                 }
                 else
                 {
                     _node.SelectedWindowJson = "";
                     _node.TargetProcessName = "";
                     _node.TargetWindowTitle = "";
+                    _node.TargetProcessId = 0;
                 }
             }
         }

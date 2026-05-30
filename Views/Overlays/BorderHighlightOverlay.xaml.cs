@@ -36,6 +36,9 @@ namespace FlowMy.Views.Overlays
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -49,6 +52,12 @@ namespace FlowMy.Views.Overlays
         private bool _isTargetMode = false;
         private IntPtr _targetHwnd = IntPtr.Zero;
         private DispatcherTimer? _repositionTimer;
+
+        // ─── Prepare target mode before showing ────────────────────────────────────
+        public void PrepareForTargetMode()
+        {
+            _isTargetMode = true;
+        }
 
         // ─── Animation ─────────────────────────────────────────────────────────────
         private Storyboard? _animationStoryboard;
@@ -151,8 +160,33 @@ namespace FlowMy.Views.Overlays
             _repositionTimer.Tick += (_, _) =>
             {
                 if (_targetHwnd == IntPtr.Zero) return;
+                
+                // Check if target window is the foreground window
+                IntPtr foregroundHwnd = GetForegroundWindow();
+                bool isTargetActive = (foregroundHwnd == _targetHwnd);
+                
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Foreground: {foregroundHwnd}, Target: {_targetHwnd}, IsTargetActive: {isTargetActive}, IsVisible: {IsVisible}");
+                
                 RefreshPosition();
-                if (!IsVisible) Show();
+                
+                // Only show overlay when target window is active
+                if (isTargetActive)
+                {
+                    if (!IsVisible) 
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Showing overlay");
+                        Show();
+                    }
+                }
+                else
+                {
+                    if (IsVisible) 
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Hiding overlay");
+                        Hide();
+                    }
+                }
             };
             _repositionTimer.Start();
             Closed += (_, _) => _repositionTimer?.Stop();

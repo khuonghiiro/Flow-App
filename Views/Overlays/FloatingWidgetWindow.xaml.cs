@@ -3171,6 +3171,9 @@ window.hostAsync.values = window.hostAsync.values || {};
                     Debug.WriteLine($"[FloatingWidget] Error stopping session {session.SessionId}: {ex.Message}");
                 }
             }
+
+            // Cleanup BorderHighlight overlays khi workflow dừng
+            FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
         }
         catch (Exception ex)
         {
@@ -3287,6 +3290,10 @@ window.hostAsync.values = window.hostAsync.values || {};
     {
         if (sender is not Button btn || btn.Tag is not string sessionId) return;
         _host?.ViewModel?.CancelManualRunSession(sessionId);
+        
+        // Cleanup BorderHighlight overlays khi session dừng
+        FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
+        
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
             BuildStopSessionsButtons();
