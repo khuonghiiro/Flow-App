@@ -203,12 +203,30 @@
                             </StackPanel>
 
                             <!-- Duration -->
-                            <TextBlock Text="Thời gian hiển thị (ms, 0 = mãi):"
+                            <TextBlock Text="Thời gian hiển thị (0 = mãi):"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <TextBox Height="36" Text="{Binding DurationMs, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Padding="8,0,8,0" VerticalContentAlignment="Center" Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Height="36"
+                                         Text="{Binding DurationValue, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}"
+                                         Padding="8,0,8,0"
+                                         VerticalContentAlignment="Center"/>
+                                <ComboBox Grid.Column="1"
+                                          Height="36"
+                                          Width="120"
+                                          Margin="8,0,0,0"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding DurationUnitOptions}"
+                                          SelectedValuePath="Value"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding DurationUnit, Mode=TwoWay}"/>
+                            </Grid>
 
                             <!-- Checkbox: Chờ hết thời gian trước khi chạy node tiếp theo -->
                             <CheckBox Content="Chờ hết thời gian trước khi chạy node tiếp theo"

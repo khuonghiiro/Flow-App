@@ -88,40 +88,84 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 if (borderNode.HighlightMode == BorderHighlightMode.TargetApp)
                 {
-                    // Tìm target window bằng ProcessId (ưu tiên) hoặc ProcessName/Title (fallback)
+                    // Tìm target window bằng Handle từ JSON (ưu tiên nhất) hoặc ProcessId (ưu tiên 2) hoặc ProcessName/Title (fallback)
                     IntPtr foundHwnd = IntPtr.Zero;
-                    
-                    // Ưu tiên dùng ProcessId nếu có
-                    if (borderNode.TargetProcessId != 0)
+
+                    // Ưu tiên 1: dùng Handle từ JSON nếu có (Handle không đổi cho cùng một window)
+                    WindowInfo? savedWindow = null;
+                    if (!string.IsNullOrWhiteSpace(borderNode.SelectedWindowJson))
+                    {
+                        try
+                        {
+                            savedWindow = JsonSerializer.Deserialize<WindowInfo>(borderNode.SelectedWindowJson);
+                            if (savedWindow != null && savedWindow.Handle != IntPtr.Zero)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Using Handle from JSON: {savedWindow.Handle}");
+                                var windows = WindowHelper.GetActiveWindows();
+                                var match = windows.FirstOrDefault(w => w.Handle == savedWindow.Handle);
+                                if (match != null)
+                                {
+                                    foundHwnd = match.Handle;
+                                    System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found window by Handle: ProcessName={match.ProcessName}, Title={match.Title}, Handle={match.Handle}");
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] No window found with Handle={savedWindow.Handle}, window might be closed");
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // Ưu tiên 2: dùng ProcessId nếu Handle không tìm thấy
+                    if (foundHwnd == IntPtr.Zero && borderNode.TargetProcessId != 0)
                     {
                         System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Using ProcessId: {borderNode.TargetProcessId}");
                         var windows = WindowHelper.GetActiveWindows();
-                        var match = windows.FirstOrDefault(w => w.ProcessId == borderNode.TargetProcessId);
-                        if (match != null)
+                        var matches = windows.Where(w => w.ProcessId == borderNode.TargetProcessId).ToList();
+
+                        if (matches.Count == 1)
                         {
-                            foundHwnd = match.Handle;
-                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found window by ProcessId: ProcessName={match.ProcessName}, Title={match.Title}, Handle={match.Handle}");
+                            // Chỉ có 1 window với ProcessId này - dùng luôn
+                            foundHwnd = matches[0].Handle;
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found single window by ProcessId: ProcessName={matches[0].ProcessName}, Title={matches[0].Title}, Handle={matches[0].Handle}");
+                        }
+                        else if (matches.Count > 1)
+                        {
+                            // Có nhiều window cùng ProcessId (ví dụ: nhiều tab Chrome) - dùng title để match
+                            var match = matches.FirstOrDefault(w => w.Title == borderNode.TargetWindowTitle);
+                            if (match != null)
+                            {
+                                foundHwnd = match.Handle;
+                                System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found window by ProcessId+Title: ProcessName={match.ProcessName}, Title={match.Title}, Handle={match.Handle}");
+                            }
+                            else
+                            {
+                                // Title không match, dùng window đầu tiên
+                                foundHwnd = matches[0].Handle;
+                                System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Multiple windows with same ProcessId, using first one: ProcessName={matches[0].ProcessName}, Title={matches[0].Title}, Handle={matches[0].Handle}");
+                            }
                         }
                         else
                         {
                             System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] No window found with ProcessId={borderNode.TargetProcessId}");
                         }
                     }
-                    
+
                     // Fallback: tìm theo ProcessName/Title
                     if (foundHwnd == IntPtr.Zero)
                     {
                         System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] ProcessId not available or not found, using fallback");
                         System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Looking for: ProcessName={borderNode.TargetProcessName}, Title={borderNode.TargetWindowTitle}");
-                        
+
                         var windows = WindowHelper.GetActiveWindows();
                         System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Found {windows.Count} active windows");
-                        
+
                         foreach (var w in windows.Take(10))
                         {
                             System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor]   - {w.ProcessName} | {w.Title}");
                         }
-                        
+
                         var match = windows.FirstOrDefault(w =>
                             w.ProcessName == borderNode.TargetProcessName &&
                             w.Title == borderNode.TargetWindowTitle);
@@ -142,7 +186,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] No match found for ProcessName={borderNode.TargetProcessName}");
                         }
                     }
-                    
+
                     targetHwnd = foundHwnd;
 
                     if (targetHwnd != IntPtr.Zero)
@@ -191,13 +235,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         ov.StopAnimation();
                                         ov.Close();
                                         _activeOverlays.Remove(borderNode.Id);
+                                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Overlay closed after DurationMs (parallel mode)");
                                     }
                                 });
                             }
                         }
-                        catch (OperationCanceledException) { }
-                        catch { }
+                        catch (OperationCanceledException)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Parallel mode task cancelled");
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Parallel mode task error: {ex.Message}");
+                        }
                     }, env.CancellationToken);
+                }
+                else
+                {
+                    // DurationMs = 0: overlay sẽ được cleanup khi workflow dừng hoặc node khác tắt nó
+                    System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] DurationMs = 0, overlay will persist until workflow stops or disabled");
                 }
 
                 sw.Stop();
@@ -219,8 +275,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     overlay.StopAnimation();
                     overlay.Close();
+                    System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Overlay closed after DurationMs (sequential mode)");
                 });
                 _activeOverlays.Remove(borderNode.Id);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Overlay is null or dispatcher is null, cannot close");
             }
 
             sw.Stop();
@@ -304,6 +365,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher == null) return;
 
+            System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] CleanupAll called, active overlays: {_activeOverlays.Count}");
+
             dispatcher.Invoke(() =>
             {
                 foreach (var overlay in _activeOverlays.Values)
@@ -312,10 +375,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         overlay.StopAnimation();
                         overlay.Close();
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Overlay closed by CleanupAll");
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] Failed to close overlay: {ex.Message}");
+                    }
                 }
                 _activeOverlays.Clear();
+                System.Diagnostics.Debug.WriteLine($"[BorderHighlightExecutor] CleanupAll completed, active overlays cleared");
             });
         }
     }

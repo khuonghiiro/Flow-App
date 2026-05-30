@@ -159,21 +159,25 @@ namespace FlowMy.Views.Overlays
             _repositionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
             _repositionTimer.Tick += (_, _) =>
             {
+                // Check if window is still valid and window is not closed
                 if (_targetHwnd == IntPtr.Zero) return;
-                
+
+                // Check if overlay window is still open
+                if (!IsLoaded) return;
+
                 // Check if target window is the foreground window
                 IntPtr foregroundHwnd = GetForegroundWindow();
                 bool isTargetActive = (foregroundHwnd == _targetHwnd);
-                
+
                 // Debug output
-                System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Foreground: {foregroundHwnd}, Target: {_targetHwnd}, IsTargetActive: {isTargetActive}, IsVisible: {IsVisible}");
-                
+                System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Foreground: {foregroundHwnd}, Target: {_targetHwnd}, IsTargetActive: {isTargetActive}, IsVisible: {IsVisible}, IsLoaded: {IsLoaded}");
+
                 RefreshPosition();
-                
+
                 // Only show overlay when target window is active
                 if (isTargetActive)
                 {
-                    if (!IsVisible) 
+                    if (!IsVisible)
                     {
                         System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Showing overlay");
                         Show();
@@ -181,7 +185,7 @@ namespace FlowMy.Views.Overlays
                 }
                 else
                 {
-                    if (IsVisible) 
+                    if (IsVisible)
                     {
                         System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Hiding overlay");
                         Hide();
@@ -189,7 +193,17 @@ namespace FlowMy.Views.Overlays
                 }
             };
             _repositionTimer.Start();
-            Closed += (_, _) => _repositionTimer?.Stop();
+            Closed += (_, _) =>
+            {
+                _repositionTimer?.Stop();
+                System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Timer stopped on window closed");
+            };
+        }
+
+        public void StopRepositionTimer()
+        {
+            _repositionTimer?.Stop();
+            System.Diagnostics.Debug.WriteLine($"[BorderHighlight] Timer stopped explicitly");
         }
 
         private void RefreshPosition()
@@ -324,6 +338,7 @@ namespace FlowMy.Views.Overlays
         {
             _animationStoryboard?.Stop();
             _animationStoryboard = null;
+            StopRepositionTimer();
         }
     }
 }

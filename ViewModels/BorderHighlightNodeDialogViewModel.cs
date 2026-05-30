@@ -53,6 +53,9 @@ namespace FlowMy.ViewModels
             _durationMs = node.DurationMs;
             _waitForCompletion = node.WaitForCompletion;
 
+            // Load duration value và unit từ node
+            LoadDurationFromNode();
+
             LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
             if (_highlightMode == BorderHighlightMode.TargetApp)
             {
@@ -213,6 +216,38 @@ namespace FlowMy.ViewModels
 
         public ICommand LoadWindowsCommand { get; }
 
+        // ─── Duration property (user-friendly value in selected unit) ─────────────────────────
+
+        private int _durationValue = 5;
+
+        public int DurationValue
+        {
+            get => _durationValue;
+            set
+            {
+                if (_durationValue == value) return;
+                _durationValue = value;
+                OnPropertyChanged();
+                UpdateDurationMs();
+            }
+        }
+
+        // ─── DurationUnit property ─────────────────────────────────────────────────────────
+
+        private DurationUnit _durationUnit = DurationUnit.Seconds;
+
+        public DurationUnit DurationUnit
+        {
+            get => _durationUnit;
+            set
+            {
+                if (_durationUnit == value) return;
+                _durationUnit = value;
+                OnPropertyChanged();
+                UpdateDurationMs();
+            }
+        }
+
         // ─── WaitForCompletion property ───────────────────────────────────────────────────
 
         public bool WaitForCompletion
@@ -256,6 +291,43 @@ namespace FlowMy.ViewModels
             new DisplayValuePair<BorderHighlightMode>(BorderHighlightMode.TargetApp, "Cửa sổ cụ thể")
         };
 
+        public List<DisplayValuePair<DurationUnit>> DurationUnitOptions => new()
+        {
+            new DisplayValuePair<DurationUnit>(DurationUnit.Milliseconds, "Mili giây (ms)"),
+            new DisplayValuePair<DurationUnit>(DurationUnit.Seconds, "Giây (s)"),
+            new DisplayValuePair<DurationUnit>(DurationUnit.Minutes, "Phút (m)"),
+            new DisplayValuePair<DurationUnit>(DurationUnit.Hours, "Giờ (h)")
+        };
+
+        // ─── Helper methods ───────────────────────────────────────────────────────────
+
+        private void UpdateDurationMs()
+        {
+            int ms = _durationUnit switch
+            {
+                DurationUnit.Milliseconds => _durationValue,
+                DurationUnit.Seconds => _durationValue * 1000,
+                DurationUnit.Minutes => _durationValue * 60 * 1000,
+                DurationUnit.Hours => _durationValue * 60 * 60 * 1000,
+                _ => _durationValue * 1000
+            };
+            _node.DurationMs = ms;
+            _node.DurationUnit = _durationUnit;
+        }
+
+        private void LoadDurationFromNode()
+        {
+            _durationUnit = _node.DurationUnit;
+            _durationValue = _durationUnit switch
+            {
+                DurationUnit.Milliseconds => _node.DurationMs,
+                DurationUnit.Seconds => _node.DurationMs / 1000,
+                DurationUnit.Minutes => _node.DurationMs / (60 * 1000),
+                DurationUnit.Hours => _node.DurationMs / (60 * 60 * 1000),
+                _ => _node.DurationMs / 1000
+            };
+        }
+
         // ─── Helper methods ───────────────────────────────────────────────────────────
 
         private void ExecuteLoadWindows()
@@ -267,15 +339,26 @@ namespace FlowMy.ViewModels
                 ActiveWindows.Add(w);
             }
 
-            // Resolve selected window from saved JSON
-            if (!string.IsNullOrWhiteSpace(_node.SelectedWindowJson))
+            // Resolve selected window from saved ProcessId (ưu tiên) hoặc JSON (fallback)
+            if (_node.TargetProcessId != 0)
+            {
+                // Ưu tiên match bằng ProcessId - không đổi khi tab đổi title
+                SelectedTargetWindow = ActiveWindows.FirstOrDefault(w => w.ProcessId == _node.TargetProcessId);
+            }
+
+            // Fallback: dùng JSON cũ để match
+            if (SelectedTargetWindow == null && !string.IsNullOrWhiteSpace(_node.SelectedWindowJson))
             {
                 try
                 {
                     var savedWindow = JsonSerializer.Deserialize<WindowInfo>(_node.SelectedWindowJson);
                     if (savedWindow != null)
                     {
-                        SelectedTargetWindow = ActiveWindows.FirstOrDefault(w => w.Handle == savedWindow.Handle);
+                        // Ưu tiên match bằng ProcessId từ JSON
+                        if (savedWindow.ProcessId != 0)
+                        {
+                            SelectedTargetWindow = ActiveWindows.FirstOrDefault(w => w.ProcessId == savedWindow.ProcessId);
+                        }
                         // Fallback: match by ProcessName and Title
                         if (SelectedTargetWindow == null)
                         {

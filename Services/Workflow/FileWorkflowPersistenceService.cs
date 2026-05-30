@@ -3987,6 +3987,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("DurationMs", out var dmObj) &&
                 int.TryParse(dmObj?.ToString(), out var dm))
                 borderHighlightNode.DurationMs = Math.Max(0, dm);
+            if (properties.TryGetValue("DurationUnit", out var duObj) &&
+                Enum.TryParse<DurationUnit>(duObj?.ToString(), out var du))
+                borderHighlightNode.DurationUnit = du;
             if (properties.TryGetValue("WaitForCompletion", out var wfcObj) &&
                 bool.TryParse(wfcObj?.ToString(), out var wfc))
                 borderHighlightNode.WaitForCompletion = wfc;
@@ -3994,6 +3997,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 borderHighlightNode.SelectedWindowJson = swjObj?.ToString() ?? "";
             if (properties.TryGetValue("NodesToDisableJson", out var ntdObj))
                 borderHighlightNode.NodesToDisableJson = ntdObj?.ToString() ?? "[]";
+            if (properties.TryGetValue("TargetProcessId", out var tpidObj) &&
+                uint.TryParse(tpidObj?.ToString(), out var tpid))
+                borderHighlightNode.TargetProcessId = tpid;
         }
         else if (node is NotificationNode notificationNode)
         {
@@ -5695,10 +5701,13 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (!string.IsNullOrEmpty(borderHighlightNode.TargetWindowTitle))
                 dict["TargetWindowTitle"] = borderHighlightNode.TargetWindowTitle;
             dict["DurationMs"] = borderHighlightNode.DurationMs;
+            dict["DurationUnit"] = borderHighlightNode.DurationUnit.ToString();
             dict["WaitForCompletion"] = borderHighlightNode.WaitForCompletion;
             if (!string.IsNullOrEmpty(borderHighlightNode.SelectedWindowJson))
                 dict["SelectedWindowJson"] = borderHighlightNode.SelectedWindowJson;
             dict["NodesToDisableJson"] = borderHighlightNode.NodesToDisableJson ?? "[]";
+            if (borderHighlightNode.TargetProcessId != 0)
+                dict["TargetProcessId"] = borderHighlightNode.TargetProcessId;
         }
         else if (node is NotificationNode notificationNode)
         {

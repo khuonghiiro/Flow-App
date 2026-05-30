@@ -21,6 +21,17 @@ namespace FlowMy.Models
     }
 
     /// <summary>
+    /// Đơn vị thời gian cho Duration.
+    /// </summary>
+    public enum DurationUnit
+    {
+        Milliseconds,
+        Seconds,
+        Minutes,
+        Hours
+    }
+
+    /// <summary>
     /// Node hiển thị viền sáng màn hình (border highlight) với cấu hình màu, độ dày, hiệu ứng.
     /// Có thể chọn tắt các node BorderHighlight khác trước khi chạy.
     /// </summary>
@@ -37,6 +48,7 @@ namespace FlowMy.Models
         private string _selectedWindowJson = "";
         private uint _targetProcessId = 0;
         private int _durationMs = 5000;
+        private DurationUnit _durationUnit = DurationUnit.Seconds;
         private bool _waitForCompletion = true;
         private string _nodesToDisableJson = "[]";
 
@@ -223,6 +235,20 @@ namespace FlowMy.Models
                 var v = value < 0 ? 0 : value;
                 if (_durationMs == v) return;
                 _durationMs = v;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Đơn vị thời gian cho Duration.
+        /// </summary>
+        public DurationUnit DurationUnit
+        {
+            get => _durationUnit;
+            set
+            {
+                if (_durationUnit == value) return;
+                _durationUnit = value;
                 OnPropertyChanged();
             }
         }

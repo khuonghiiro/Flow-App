@@ -3677,6 +3677,8 @@ window.hostAsync.values = window.hostAsync.values || {};
                 if (btn.Tag is string sessionId)
                 {
                     _host?.ViewModel?.CancelManualRunSession(sessionId);
+                    // Cleanup BorderHighlight overlays khi session dừng
+                    FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
                     Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                     {
                         UpdateRunButtonsState();

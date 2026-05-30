@@ -2268,6 +2268,9 @@ namespace FlowMy.ViewModels
             lock (_manualRunCtsLock)
                 snapshot = new List<CancellationTokenSource>(_manualRunCtsBySession.Values);
 
+            // Cleanup BorderHighlight overlays khi workflow dừng
+            FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
+
             // Stop visual effects immediately even when cancellation callbacks are still draining.
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher != null)
