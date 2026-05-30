@@ -160,6 +160,17 @@ namespace FlowMy.Models
             set { if (_idleForegroundColor != value) { _idleForegroundColor = value; OnPropertyChanged(); } }
         }
 
+        private bool _useOriginalColors;
+        /// <summary>
+        /// Nếu true, icon SVG sẽ dùng màu gốc từ file SVG (không bị tô màu bởi IdleForegroundColor).
+        /// Nếu false, icon SVG sẽ được tô màu bởi IdleForegroundColor.
+        /// </summary>
+        public bool UseOriginalColors
+        {
+            get => _useOriginalColors;
+            set { if (_useOriginalColors != value) { _useOriginalColors = value; OnPropertyChanged(); } }
+        }
+
         // ── Kích thước khi mở rộng (Expanded) ──
         private double _expandedWidth = 400;
         public double ExpandedWidth

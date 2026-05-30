@@ -346,7 +346,16 @@ public partial class FloatingWidgetWindow : Window
 
         void PaintIcon(Controls.SvgViewboxEx svg, TextBlock tb)
         {
-            svg.Fill = fg;
+            // If UseOriginalColors is true, don't set Fill for SVG (use original colors)
+            // Otherwise, use the foreground color
+            if (!Config.UseOriginalColors)
+            {
+                svg.Fill = fg;
+            }
+            else
+            {
+                svg.Fill = null; // Use original SVG colors
+            }
             tb.Foreground = fg;
         }
 
@@ -4378,6 +4387,18 @@ window.hostAsync.values = window.hostAsync.values || {};
             var accentBrush = ResolveWidgetAccentBrush();
             var iconBrush = ResolveWidgetIconBrush();
             Icon = BuildTaskbarIcon(accentBrush, iconBrush, Config.TaskbarIconShape, Config.TaskbarIconSize);
+            
+            // Force taskbar to refresh the icon by toggling ShowInTaskbar
+            if (Config.ShowInTaskbar)
+            {
+                var originalShowInTaskbar = ShowInTaskbar;
+                ShowInTaskbar = false;
+                // Small delay to ensure Windows processes the change
+                Dispatcher.InvokeAsync(() =>
+                {
+                    ShowInTaskbar = true;
+                }, DispatcherPriority.ContextIdle);
+            }
         }
         catch { }
     }
@@ -4415,8 +4436,12 @@ window.hostAsync.values = window.hostAsync.values || {};
         var center = new Point(size / 2d, size / 2d);
         var iconColor = iconBrush is SolidColorBrush iconSolid ? iconSolid.Color : Colors.White;
         var iconName = Config.IdleIconText;
+        
+        // If UseOriginalColors is true, get SVG without tinting; otherwise tint with iconColor
         var iconDrawing = FlowMy.IconResources.IconExists(iconName)
-            ? FlowMy.IconResources.GetSvgImage(iconName, iconColor)?.Drawing
+            ? (Config.UseOriginalColors
+                ? FlowMy.IconResources.GetSvgImage(iconName)?.Drawing
+                : FlowMy.IconResources.GetSvgImage(iconName, iconColor)?.Drawing)
             : null;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())

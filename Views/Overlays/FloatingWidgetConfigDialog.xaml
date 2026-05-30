@@ -323,6 +323,12 @@
                                         </Grid>
                                     </StackPanel>
                                 </Grid>
+
+                                <CheckBox x:Name="UseOriginalColorsCheckBox"
+                                          Content="Lấy màu mặc định icon (không tô màu)"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          Margin="0,6,0,0"
+                                          ToolTip="Bật: icon SVG dùng màu gốc từ file. Tắt: icon SVG được tô màu bởi màu icon/chữ đã chọn."/>
                             </StackPanel>
                         </Border>
 

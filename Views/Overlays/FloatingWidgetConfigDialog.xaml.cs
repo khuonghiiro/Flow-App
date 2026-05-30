@@ -363,6 +363,8 @@ namespace FlowMy.Views.Overlays
                 _idleForegroundColorHex = cfg.IdleForegroundColor;
                 UpdateIdleColorPreviews();
 
+                UseOriginalColorsCheckBox.IsChecked = cfg.UseOriginalColors;
+
                 var isStartNode = _selectedNode?.Type == NodeType.Start;
 
                 if (isStartNode)
@@ -581,6 +583,7 @@ namespace FlowMy.Views.Overlays
             cfg.IdleForegroundColor = string.IsNullOrWhiteSpace(_idleForegroundColorHex)
                 ? null
                 : _idleForegroundColorHex;
+            cfg.UseOriginalColors = UseOriginalColorsCheckBox.IsChecked == true;
 
             cfg.UseRatioSize = UseRatioSizeCheckBox.IsChecked == true;
             cfg.AllowResize = AllowResizeCheckBox.IsChecked == true;
