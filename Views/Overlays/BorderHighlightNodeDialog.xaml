@@ -144,10 +144,22 @@
                             <TextBlock Text="Hiệu ứng:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,16"
-                                      ItemsSource="{Binding EffectTypeOptions}"
-                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding EffectType, Mode=TwoWay}"/>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="EffectTypeComboBox" Grid.Column="0" Height="36"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding EffectTypeOptions}"
+                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding EffectType, Mode=TwoWay}"
+                                          SelectionChanged="EffectTypeComboBox_SelectionChanged"/>
+                                <Border x:Name="EffectPreview" Grid.Column="1" Width="60" Height="36"
+                                        BorderThickness="2" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource AzureBlueBrush}"
+                                        Background="Transparent"/>
+                            </Grid>
 
                             <!-- Highlight Mode -->
                             <TextBlock Text="Chế độ hiển thị:"

@@ -253,18 +253,29 @@ namespace FlowMy.Views.Overlays
                     break;
 
                 case BorderEffectType.Rainbow:
-                    // Rainbow effect - cycle through hues
+                    // Rainbow effect - cycle through multiple colors
                     _animationStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
-                    var colorAnim = new ColorAnimation
+                    
+                    // Animate through rainbow colors
+                    var colors = new[] { Colors.Red, Colors.Orange, Colors.Yellow, Colors.Green, Colors.Blue, Colors.Indigo, Colors.Violet };
+                    var totalDuration = TimeSpan.FromSeconds(7); // 1 second per color
+                    
+                    for (int i = 0; i < colors.Length; i++)
                     {
-                        From = Colors.Red,
-                        To = Colors.Blue,
-                        Duration = TimeSpan.FromSeconds(3),
-                        AutoReverse = true
-                    };
-                    Storyboard.SetTarget(colorAnim, OuterBorder);
-                    Storyboard.SetTargetProperty(colorAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Color)"));
-                    _animationStoryboard.Children.Add(colorAnim);
+                        var colorAnim = new ColorAnimation
+                        {
+                            From = colors[i],
+                            To = colors[(i + 1) % colors.Length],
+                            Duration = TimeSpan.FromSeconds(1),
+                            BeginTime = TimeSpan.FromSeconds(i)
+                        };
+                        
+                        // Animate OuterBorder
+                        Storyboard.SetTarget(colorAnim, OuterBorder);
+                        Storyboard.SetTargetProperty(colorAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Color)"));
+                        _animationStoryboard.Children.Add(colorAnim);
+                    }
+                    
                     _animationStoryboard.Begin();
                     break;
 
