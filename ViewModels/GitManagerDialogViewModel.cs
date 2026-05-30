@@ -29,6 +29,8 @@ namespace FlowMy.ViewModels
         // Clone tab
         [ObservableProperty] private string _repoUrl = string.Empty;
         [ObservableProperty] private string _localPath = string.Empty;
+        [ObservableProperty] private string _gitFolderName = string.Empty;
+        [ObservableProperty] private string _baseLocalPath = string.Empty;
         [ObservableProperty] private string _branch = "main";
 
         // Hiển thị tab
@@ -129,11 +131,26 @@ namespace FlowMy.ViewModels
             _host = host;
 
             var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            LocalPath = Path.Combine(docs, "FlowMy", "FlowMy_CloneGit");
+            BaseLocalPath = Path.Combine(docs, "FlowMy", "FlowMy_CloneGit");
+            LocalPath = BaseLocalPath;
 
             // Sync from node if already configured
-            if (!string.IsNullOrWhiteSpace(node.RepoUrl)) RepoUrl = node.RepoUrl;
-            if (!string.IsNullOrWhiteSpace(node.LocalPath)) LocalPath = node.LocalPath;
+            if (!string.IsNullOrWhiteSpace(node.RepoUrl))
+            {
+                RepoUrl = node.RepoUrl;
+                GitFolderName = ExtractRepoNameFromUrl(RepoUrl) ?? string.Empty;
+            }
+            if (!string.IsNullOrWhiteSpace(node.LocalPath))
+            {
+                LocalPath = node.LocalPath;
+                // Try to extract git folder name from existing local path
+                var dirName = new DirectoryInfo(LocalPath).Name;
+                var parentDir = Directory.GetParent(LocalPath)?.FullName;
+                if (!string.IsNullOrWhiteSpace(parentDir) && parentDir.Equals(BaseLocalPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    GitFolderName = dirName;
+                }
+            }
             if (!string.IsNullOrWhiteSpace(node.Branch)) Branch = node.Branch;
             if (!string.IsNullOrWhiteSpace(node.DisplayName)) DisplayName = node.DisplayName;
             if (!string.IsNullOrWhiteSpace(node.IconKey)) IconKey = node.IconKey;
@@ -280,6 +297,49 @@ namespace FlowMy.ViewModels
             TryLoadBranchesFromLocalPath();
         }
 
+        /// <summary>Khi RepoUrl thay đổi → tự động trích xuất tên folder git.</summary>
+        partial void OnRepoUrlChanged(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+
+            var repoName = ExtractRepoNameFromUrl(value);
+            if (!string.IsNullOrWhiteSpace(repoName))
+            {
+                GitFolderName = repoName;
+                UpdateLocalPathFromComponents();
+            }
+        }
+
+        /// <summary>Khi GitFolderName thay đổi → cập nhật LocalPath.</summary>
+        partial void OnGitFolderNameChanged(string value)
+        {
+            UpdateLocalPathFromComponents();
+        }
+
+        /// <summary>Khi BaseLocalPath thay đổi → cập nhật LocalPath.</summary>
+        partial void OnBaseLocalPathChanged(string value)
+        {
+            UpdateLocalPathFromComponents();
+        }
+
+        /// <summary>Cập nhật LocalPath từ BaseLocalPath + GitFolderName.</summary>
+        private void UpdateLocalPathFromComponents()
+        {
+            if (string.IsNullOrWhiteSpace(BaseLocalPath))
+            {
+                LocalPath = string.Empty;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(GitFolderName))
+            {
+                LocalPath = BaseLocalPath;
+                return;
+            }
+
+            LocalPath = Path.Combine(BaseLocalPath, GitFolderName);
+        }
+
         // ═══════════════════════════════════════════
         // CLONE / PULL
         // ═══════════════════════════════════════════
@@ -294,19 +354,28 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(repoName))
             { AppendLog("❌ URL không hợp lệ."); return; }
 
-            if (string.IsNullOrWhiteSpace(LocalPath))
-            { AppendLog("❌ Chọn thư mục đích."); return; }
+            // Use GitFolderName if set, otherwise use extracted repo name
+            var targetFolderName = string.IsNullOrWhiteSpace(GitFolderName) ? repoName : GitFolderName;
 
-            if (!Directory.Exists(LocalPath))
-                Directory.CreateDirectory(LocalPath);
+            if (string.IsNullOrWhiteSpace(BaseLocalPath))
+            { AppendLog("❌ Chọn thư mục gốc."); return; }
 
-            var clonePath = Path.Combine(LocalPath, repoName);
+            if (!Directory.Exists(BaseLocalPath))
+                Directory.CreateDirectory(BaseLocalPath);
+
+            var clonePath = Path.Combine(BaseLocalPath, targetFolderName);
             if (Directory.Exists(clonePath) && Directory.GetFileSystemEntries(clonePath).Length > 0)
             {
                 if (_gitService.IsGitRepository(clonePath))
-                { AppendLog($"⚠️ '{repoName}' đã tồn tại. Dùng Pull."); LocalPath = clonePath; return; }
+                {
+                    AppendLog($"⚠️ '{targetFolderName}' đã tồn tại. Dùng Pull.");
+                    // Update GitFolderName to match existing folder
+                    GitFolderName = targetFolderName;
+                    LocalPath = clonePath;
+                    return;
+                }
                 else
-                { AppendLog($"❌ '{repoName}' không rỗng và không phải Git repo."); return; }
+                { AppendLog($"❌ '{targetFolderName}' không rỗng và không phải Git repo."); return; }
             }
 
             _operationCts?.Cancel();
@@ -314,7 +383,7 @@ namespace FlowMy.ViewModels
             var ct = _operationCts.Token;
             IsOperating = true;
             ProgressStatusText = "Đang kết nối...";
-            AppendLog($"🔄 Clone {RepoUrl} → {repoName}/");
+            AppendLog($"🔄 Clone {RepoUrl} → {targetFolderName}/");
 
             try
             {
@@ -324,6 +393,8 @@ namespace FlowMy.ViewModels
                 if (ct.IsCancellationRequested) return;
                 if (result.Success)
                 {
+                    // Update GitFolderName to match the actual cloned folder
+                    GitFolderName = targetFolderName;
                     LocalPath = clonePath;
                     _gitNode.LastCommitHash = result.LastCommitHash;
                     _gitNode.LastPullTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -344,9 +415,9 @@ namespace FlowMy.ViewModels
                     Branch = resolved ?? string.Empty;
                     _suppressBranchCheckout = false;
 
-                    if (string.IsNullOrWhiteSpace(DisplayName)) DisplayName = repoName;
+                    if (string.IsNullOrWhiteSpace(DisplayName)) DisplayName = targetFolderName;
                     _gitNode.RefreshCloneStatus();
-                    AppendLog($"✅ Clone OK! {repoName} ({Branch})");
+                    AppendLog($"✅ Clone OK! {targetFolderName} ({Branch})");
                 }
                 else AppendLog($"❌ {result.ErrorMessage}");
             }
@@ -396,7 +467,32 @@ namespace FlowMy.ViewModels
         private void BrowseLocalPath()
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục" };
-            if (dlg.ShowDialog() == true) LocalPath = dlg.FolderName;
+            if (dlg.ShowDialog() == true)
+            {
+                // When user selects a folder, update BaseLocalPath to the parent
+                var selectedPath = dlg.FolderName;
+                var dirInfo = new DirectoryInfo(selectedPath);
+                var parentDir = dirInfo.Parent?.FullName;
+
+                if (!string.IsNullOrWhiteSpace(parentDir))
+                {
+                    BaseLocalPath = parentDir;
+                    GitFolderName = dirInfo.Name;
+                }
+                else
+                {
+                    // If no parent, use the selected path as base
+                    BaseLocalPath = selectedPath;
+                    GitFolderName = string.Empty;
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void BrowseBaseLocalPath()
+        {
+            var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục gốc" };
+            if (dlg.ShowDialog() == true) BaseLocalPath = dlg.FolderName;
         }
 
         /// <summary>Mở folder Git có sẵn — load toàn bộ thông tin (URL remote, branch, last commit) từ repo đó.</summary>
@@ -413,10 +509,25 @@ namespace FlowMy.ViewModels
             if (!_gitService.IsGitRepository(path))
             { AppendLog($"❌ '{path}' không phải Git repository."); return; }
 
-            // Set LocalPath — sẽ trigger OnLocalPathChanged → load branches
+            // Extract folder name and parent path
+            var dirInfo = new DirectoryInfo(path);
+            var parentDir = dirInfo.Parent?.FullName;
+
             _suppressBranchCheckout = true;
-            LocalPath = path;
-            _suppressBranchCheckout = false;
+
+            // Update BaseLocalPath and GitFolderName
+            if (!string.IsNullOrWhiteSpace(parentDir))
+            {
+                BaseLocalPath = parentDir;
+                GitFolderName = dirInfo.Name;
+            }
+            else
+            {
+                BaseLocalPath = path;
+                GitFolderName = string.Empty;
+            }
+
+            // LocalPath will be updated automatically via UpdateLocalPathFromComponents
 
             // Lấy remote URL
             var remoteUrl = _gitService.GetRemoteUrl(path);
@@ -427,17 +538,17 @@ namespace FlowMy.ViewModels
             var status = _gitService.GetStatus(path);
             if (status.IsValid)
             {
-                _suppressBranchCheckout = true;
                 if (!string.IsNullOrWhiteSpace(status.Branch)) Branch = status.Branch;
-                _suppressBranchCheckout = false;
 
                 _gitNode.LastCommitHash = status.LastCommitHash;
                 _gitNode.LastPullTime = status.LastCommitTime;
                 _gitNode.RefreshCloneStatus();
             }
 
+            _suppressBranchCheckout = false;
+
             // Luôn lấy tên folder cuối cùng làm DisplayName
-            DisplayName = new DirectoryInfo(path).Name;
+            DisplayName = dirInfo.Name;
 
             var repoInfo = string.IsNullOrWhiteSpace(remoteUrl) ? "(không có remote)" : remoteUrl;
             AppendLog($"📂 Đã import: {DisplayName} — {repoInfo} [{Branch}]");
@@ -641,7 +752,25 @@ namespace FlowMy.ViewModels
             // Chặn checkout-loop trong lúc set Branch (sẽ load lại branches sau)
             _suppressBranchCheckout = true;
             RepoUrl = repo.RepoUrl;
-            LocalPath = repo.LocalPath; // OnLocalPathChanged sẽ load branches
+
+            // Extract BaseLocalPath and GitFolderName from LocalPath
+            if (!string.IsNullOrWhiteSpace(repo.LocalPath))
+            {
+                var dirInfo = new DirectoryInfo(repo.LocalPath);
+                var parentDir = dirInfo.Parent?.FullName;
+
+                if (!string.IsNullOrWhiteSpace(parentDir))
+                {
+                    BaseLocalPath = parentDir;
+                    GitFolderName = dirInfo.Name;
+                }
+                else
+                {
+                    BaseLocalPath = repo.LocalPath;
+                    GitFolderName = string.Empty;
+                }
+            }
+
             Branch = repo.Branch;
             _suppressBranchCheckout = false;
 

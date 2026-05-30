@@ -323,17 +323,38 @@
                             <TextBox Text="{Binding RepoUrl, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}" Height="34" Margin="0,0,0,12"/>
 
-                            <TextBlock Text="Thư mục local:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Thư mục gốc (Base Folder):" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding BaseLocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="34"/>
+                                <Button Grid.Column="1" Padding="0" Content="📁" Width="34" Height="34" Margin="6,0,0,0"
+                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                        Command="{Binding BrowseBaseLocalPathCommand}"/>
+                            </Grid>
+
+                            <TextBlock Text="Tên folder Git:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding GitFolderName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="34" Margin="0,0,0,12"
+                                     ToolTip="Tên folder sẽ được tạo từ URL git (tự động điền khi dán link)"/>
+
+                            <TextBlock Text="Thư mục local đầy đủ:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0" Text="{Binding LocalPath, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{DynamicResource BaseTextBoxV2}" Height="34"/>
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="34" IsReadOnly="True"
+                                         Foreground="{DynamicResource TextSecondary}"
+                                         ToolTip="Đường dẫn đầy đủ = Thư mục gốc + Tên folder Git"/>
                                 <Button Grid.Column="1" Padding="0" Content="📁" Width="34" Height="34" Margin="6,0,0,0"
                                         Style="{DynamicResource SecondaryButton}" Cursor="Hand"
-                                        Command="{Binding BrowseLocalPathCommand}"/>
+                                        Command="{Binding BrowseLocalPathCommand}"
+                                        ToolTip="Chọn thư mục local khác (sẽ cập nhật Base Folder)"/>
                             </Grid>
 
                             <TextBlock Text="Branch:" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
