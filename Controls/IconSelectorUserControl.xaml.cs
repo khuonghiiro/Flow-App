@@ -1,4 +1,5 @@
-﻿using SharpVectors.Converters;
+﻿using FlowMy.Controls;
+using SharpVectors.Converters;
 using SharpVectors.Renderers.Wpf;
 using SharpVectors.Runtime;
 using System.ComponentModel;
@@ -45,6 +46,17 @@ namespace FlowMy.Controls
         {
             get { return (double)GetValue(ButtonHeightProperty); }
             set { SetValue(ButtonHeightProperty, value); }
+        }
+
+        // Dependency Property cho việc sử dụng màu gốc của SVG
+        public static readonly DependencyProperty UseOriginalColorsProperty =
+            DependencyProperty.Register("UseOriginalColors", typeof(bool), typeof(IconSelectorUserControl),
+                new PropertyMetadata(false));
+
+        public bool UseOriginalColors
+        {
+            get { return (bool)GetValue(UseOriginalColorsProperty); }
+            set { SetValue(UseOriginalColorsProperty, value); }
         }
 
         // Event callback khi SelectedIcon thay Ä‘á»•i
@@ -101,6 +113,7 @@ namespace FlowMy.Controls
                 };
 
                 // Dùng SvgViewboxEx; Fill fallback về TextBrush nếu theme không có TextOnPrimaryBrush.
+                // Không set UseOriginalColors để auto-detect hoạt động tự động dựa trên folder name (.color)
                 var svgViewbox = new SvgViewboxEx
                 {
                     Source = new Uri(iconPair.Value, UriKind.RelativeOrAbsolute),
@@ -313,6 +326,7 @@ namespace FlowMy.Controls
     public class SvgViewboxEx : Viewbox
     {
         private readonly System.Windows.Controls.Image _image;
+        private bool _useOriginalColorsExplicitlySet = false;
 
         // ── Source ─────────────────────────────────────────────────────────
         public static readonly DependencyProperty SourceProperty =
@@ -349,9 +363,30 @@ namespace FlowMy.Controls
             set => SetValue(StrokeProperty, value);
         }
 
+        // ── UseOriginalColors ───────────────────────────────────────────────
+        public static readonly DependencyProperty UseOriginalColorsProperty =
+            DependencyProperty.Register(nameof(UseOriginalColors), typeof(bool), typeof(SvgViewboxEx),
+                new FrameworkPropertyMetadata(false,
+                    FrameworkPropertyMetadataOptions.AffectsRender,
+                    OnSourceOrFillChanged));
+
+        public bool UseOriginalColors
+        {
+            get => (bool)GetValue(UseOriginalColorsProperty);
+            set
+            {
+                _useOriginalColorsExplicitlySet = true;
+                SetValue(UseOriginalColorsProperty, value);
+            }
+        }
+
         private static void OnSourceOrFillChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is SvgViewboxEx ctrl) ctrl.ReloadIcon();
+            if (d is SvgViewboxEx ctrl)
+            {
+                ctrl.AutoDetectUseOriginalColors();
+                ctrl.ReloadIcon();
+            }
         }
 
         // ── Constructor ─────────────────────────────────────────────────────
@@ -362,10 +397,31 @@ namespace FlowMy.Controls
             Child = _image;
         }
 
+        // ── Auto detect UseOriginalColors based on folder name ─────────────
+        private void AutoDetectUseOriginalColors()
+        {
+            // Only auto-detect if user hasn't explicitly set UseOriginalColors
+            if (_useOriginalColorsExplicitlySet) return;
+
+            var src = Source;
+            if (src == null) return;
+
+            string srcStr = src is Uri u ? u.OriginalString : src.ToString();
+            if (string.IsNullOrEmpty(srcStr)) return;
+
+            // Check if path contains folder with .color suffix
+            // Example: Assets/Icons/duotone-light.color/icon.svg
+            bool hasColorFolder = srcStr.Contains(".color" + System.IO.Path.DirectorySeparatorChar) ||
+                                 srcStr.Contains(".color/");
+
+            SetValue(UseOriginalColorsProperty, hasColorFolder);
+        }
+
         // ── Khi parent đổi, reload để resolve lại màu ───────────────────────
         protected override void OnVisualParentChanged(DependencyObject oldParent)
         {
             base.OnVisualParentChanged(oldParent);
+            AutoDetectUseOriginalColors();
             ReloadIcon();
         }
 
@@ -404,9 +460,12 @@ namespace FlowMy.Controls
                 DrawingGroup drawing = reader.Read(path);
                 if (drawing == null) { _image.Source = null; return; }
 
-                // Apply fill BEFORE any freeze
-                var fill = GetEffectiveFill();
-                if (fill != null) ApplyFillToDrawing(drawing, fill);
+                // Apply fill BEFORE any freeze (chỉ khi không dùng màu gốc)
+                if (!UseOriginalColors)
+                {
+                    var fill = GetEffectiveFill();
+                    if (fill != null) ApplyFillToDrawing(drawing, fill);
+                }
 
                 _image.Source = new DrawingImage(drawing);
             }
@@ -468,3 +527,13 @@ namespace FlowMy.Controls
 }
 
 
+//<controls:SvgViewboxEx Style = "{StaticResource PaletteSvgIconStyle}"
+//                      Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='border-none sharp-duotone-regular'}"
+//                      Fill="{DynamicResource TextOnCharcoalMistBrush}"
+//                      UseOriginalColors="True"/>
+
+//UseOriginalColors="True" → dùng màu gốc của SVG
+//UseOriginalColors="False" hoặc không set → dùng màu từ Fill hoặc màu cha (mặc định)
+
+//<local:IconSelectorUserControl UseOriginalColors = "True" />  < !--Dùng màu gốc SVG -->
+//<local:IconSelectorUserControl UseOriginalColors = "False" /> < !--Dùng màu cha/fill (mặc định) -->

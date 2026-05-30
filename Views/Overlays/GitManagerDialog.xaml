@@ -258,10 +258,11 @@
                                                 </Button>
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"
                                                         Style="{DynamicResource InfoButton}" Cursor="Hand" ToolTip="VS Code"
+                                                        Background="Transparent"
                                                         Command="{Binding DataContext.OpenVsCodeForRepoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding IsGitRepoCloned, Converter={StaticResource BoolToVisibility}}">
-                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='code duotone-regular'}"
+                                                    <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='vscode developer-icons.color'}"
                                                                            Width="15" Height="15" Opacity="0.8"/>
                                                 </Button>
                                                 <Button Width="28" Height="28" Padding="0" Margin="2"

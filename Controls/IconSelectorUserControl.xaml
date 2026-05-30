@@ -51,7 +51,8 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
                              Width="18"
                              Height="18"
                              VerticalAlignment="Center"
-                             Fill="{DynamicResource TextBrush}"/>
+                             Fill="{DynamicResource TextBrush}"
+                             UseOriginalColors="{Binding UseOriginalColors, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <TextBlock x:Name="SelectedIconNameText"
                                    Margin="8,0,0,0"
                                    VerticalAlignment="Center"
@@ -135,7 +136,8 @@ xmlns:conv="clr-namespace:FlowMy.Converters"
                                              ConverterParameter='folder-open duotone-light'}"
                                     Width="18"
                                     Height="18"
-                                    Fill="{DynamicResource TextOnPrimaryBrush}"/>
+                                    Fill="{DynamicResource TextOnPrimaryBrush}"
+                                    UseOriginalColors="{Binding UseOriginalColors, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
 
                 <Button.Style>
                     <Style TargetType="Button">

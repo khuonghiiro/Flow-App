@@ -951,7 +951,7 @@ Cursor="Hand"
                                     </ContextMenu>
                                 </Border.ContextMenu>
                                 <Grid>
-                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                        <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}" 
                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='border-none sharp-duotone-regular'}"
                                                           Fill="{DynamicResource TextOnCharcoalMistBrush}"/>
                                 </Grid>
