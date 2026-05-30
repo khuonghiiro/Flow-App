@@ -3961,6 +3961,35 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("TargetWindowTitle", out var twtObj))
                 macroRecorderNode.TargetWindowTitle = twtObj?.ToString() ?? "";
         }
+        else if (node is BorderHighlightNode borderHighlightNode)
+        {
+            if (properties.TryGetValue("BorderColorHex", out var bchObj))
+                borderHighlightNode.BorderColorHex = bchObj?.ToString() ?? "#00D2FF";
+            if (properties.TryGetValue("BorderThickness", out var btObj) &&
+                int.TryParse(btObj?.ToString(), out var bt))
+                borderHighlightNode.BorderThickness = Math.Max(1, Math.Min(10, bt));
+            if (properties.TryGetValue("GradientSize", out var gsObj) &&
+                int.TryParse(gsObj?.ToString(), out var gs))
+                borderHighlightNode.GradientSize = Math.Max(5, Math.Min(50, gs));
+            if (properties.TryGetValue("Opacity", out var opObj) &&
+                double.TryParse(opObj?.ToString(), out var op))
+                borderHighlightNode.Opacity = Math.Max(0.1, Math.Min(1.0, op));
+            if (properties.TryGetValue("EffectType", out var etObj) &&
+                Enum.TryParse<BorderEffectType>(etObj?.ToString(), out var et))
+                borderHighlightNode.EffectType = et;
+            if (properties.TryGetValue("HighlightMode", out var hmObj) &&
+                Enum.TryParse<BorderHighlightMode>(hmObj?.ToString(), out var hm))
+                borderHighlightNode.HighlightMode = hm;
+            if (properties.TryGetValue("TargetProcessName", out var tpnObj2))
+                borderHighlightNode.TargetProcessName = tpnObj2?.ToString() ?? "";
+            if (properties.TryGetValue("TargetWindowTitle", out var twtObj2))
+                borderHighlightNode.TargetWindowTitle = twtObj2?.ToString() ?? "";
+            if (properties.TryGetValue("DurationMs", out var dmObj) &&
+                int.TryParse(dmObj?.ToString(), out var dm))
+                borderHighlightNode.DurationMs = Math.Max(0, dm);
+            if (properties.TryGetValue("NodesToDisableJson", out var ntdObj))
+                borderHighlightNode.NodesToDisableJson = ntdObj?.ToString() ?? "[]";
+        }
         else if (node is NotificationNode notificationNode)
         {
             if (properties.TryGetValue("DefaultDurationSeconds", out var durObj) &&
@@ -5647,6 +5676,21 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["TargetProcessName"] = macroNode.TargetProcessName;
             if (!string.IsNullOrEmpty(macroNode.TargetWindowTitle))
                 dict["TargetWindowTitle"] = macroNode.TargetWindowTitle;
+        }
+        else if (node is BorderHighlightNode borderHighlightNode)
+        {
+            dict["BorderColorHex"] = borderHighlightNode.BorderColorHex ?? "#00D2FF";
+            dict["BorderThickness"] = borderHighlightNode.BorderThickness;
+            dict["GradientSize"] = borderHighlightNode.GradientSize;
+            dict["Opacity"] = borderHighlightNode.Opacity;
+            dict["EffectType"] = borderHighlightNode.EffectType.ToString();
+            dict["HighlightMode"] = borderHighlightNode.HighlightMode.ToString();
+            if (!string.IsNullOrEmpty(borderHighlightNode.TargetProcessName))
+                dict["TargetProcessName"] = borderHighlightNode.TargetProcessName;
+            if (!string.IsNullOrEmpty(borderHighlightNode.TargetWindowTitle))
+                dict["TargetWindowTitle"] = borderHighlightNode.TargetWindowTitle;
+            dict["DurationMs"] = borderHighlightNode.DurationMs;
+            dict["NodesToDisableJson"] = borderHighlightNode.NodesToDisableJson ?? "[]";
         }
         else if (node is NotificationNode notificationNode)
         {

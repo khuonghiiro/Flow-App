@@ -58,7 +58,9 @@ namespace FlowMy.Models
         /// <summary>Git source — clone/pull repo, mở VSCodium.</summary>
         GitSource,
         /// <summary>Ghi lại và phát lại thao tác chuột/bàn phím.</summary>
-        MacroRecorder
+        MacroRecorder,
+        /// <summary>Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng.</summary>
+        BorderHighlight
     }
 }
 

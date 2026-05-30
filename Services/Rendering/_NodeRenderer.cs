@@ -47,6 +47,7 @@ namespace FlowMy.Services.Rendering
         private readonly BodyContainerNodeRenderer _bodyContainerNodeRenderer;
         private readonly GitSourceNodeRenderer _gitSourceNodeRenderer;
         private readonly MacroRecorderNodeRenderer _macroRecorderNodeRenderer;
+        private readonly BorderHighlightNodeRenderer _borderHighlightNodeRenderer;
 
         // Dispatch map: node concrete type → renderer
         // Dùng cho các node chỉ cần delegate thuần túy (không có inline logic đặc biệt).
@@ -89,7 +90,8 @@ namespace FlowMy.Services.Rendering
             FlowOverwriteNodeRenderer flowOverwriteNodeRenderer,
             BodyContainerNodeRenderer bodyContainerNodeRenderer,
             GitSourceNodeRenderer gitSourceNodeRenderer,
-            MacroRecorderNodeRenderer macroRecorderNodeRenderer
+            MacroRecorderNodeRenderer macroRecorderNodeRenderer,
+            BorderHighlightNodeRenderer borderHighlightNodeRenderer
             )
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
@@ -127,6 +129,7 @@ namespace FlowMy.Services.Rendering
             _bodyContainerNodeRenderer = bodyContainerNodeRenderer ?? throw new ArgumentNullException(nameof(bodyContainerNodeRenderer));
             _gitSourceNodeRenderer = gitSourceNodeRenderer ?? throw new ArgumentNullException(nameof(gitSourceNodeRenderer));
             _macroRecorderNodeRenderer = macroRecorderNodeRenderer ?? throw new ArgumentNullException(nameof(macroRecorderNodeRenderer));
+            _borderHighlightNodeRenderer = borderHighlightNodeRenderer ?? throw new ArgumentNullException(nameof(borderHighlightNodeRenderer));
 
             BuildRendererMap();
         }
@@ -172,6 +175,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(HotkeyPressEventNode)]  = _hotkeyPressEventNodeRenderer,
                 [typeof(GitSourceNode)]         = _gitSourceNodeRenderer,
                 [typeof(MacroRecorderNode)]     = _macroRecorderNodeRenderer,
+                [typeof(BorderHighlightNode)]   = _borderHighlightNodeRenderer,
             };
         }
 

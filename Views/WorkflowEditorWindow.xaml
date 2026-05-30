@@ -814,6 +814,40 @@ Cursor="Hand"
                                                           Fill="{DynamicResource TextOnMangoTangoBrush}"/>
                                 </Grid>
                             </Border>
+
+                            <!-- Border Highlight Node -->
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource AzureBlueBrush}"
+                                    Tag="BorderHighlight">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Border Highlight" FontWeight="Bold"/>
+                                            <TextBlock Text="Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Có thể tắt các node BorderHighlight khác trước khi chạy." Opacity="0.85" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource AzureBlueBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Border Highlight" Foreground="{DynamicResource TextOnAzureBlueBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng. Có thể tắt các node BorderHighlight khác trước khi chạy." Foreground="{DynamicResource TextOnAzureBlueBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt-lightning light'}"
+                                                          Fill="{DynamicResource TextOnAzureBlueBrush}"/>
+                                </Grid>
+                            </Border>
                             
                         </WrapPanel>
 

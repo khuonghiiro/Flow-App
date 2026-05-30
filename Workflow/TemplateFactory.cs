@@ -61,6 +61,7 @@ namespace FlowMy.Workflow
                 "FlowOverwrite" => CreateFlowOverwriteNode(x, y),
                 "GitSource" => CreateGitSourceNode(x, y),
                 "MacroRecorder" => CreateMacroRecorderNode(x, y),
+                "BorderHighlight" => CreateBorderHighlightNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1339,6 +1340,21 @@ namespace FlowMy.Workflow
             return new MacroRecorderNode
             {
                 Id = $"Node_MacroRecorder_{Guid.NewGuid()}",
+                X = x - 75,
+                Y = y - 40,
+                NodeBrush = nodeBrush
+            };
+        }
+
+        private WorkflowNode CreateBorderHighlightNode(double x, double y)
+        {
+            var nodeBrush = _colorThemeService.GetBrush("AzureBlueBrush")
+                            ?? _colorThemeService.GetBrush("PrimaryBrush")
+                            ?? Brushes.DodgerBlue;
+
+            return new BorderHighlightNode
+            {
+                Id = $"Node_BorderHighlight_{Guid.NewGuid()}",
                 X = x - 75,
                 Y = y - 40,
                 NodeBrush = nodeBrush
