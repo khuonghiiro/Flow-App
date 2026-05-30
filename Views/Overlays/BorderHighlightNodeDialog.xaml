@@ -88,6 +88,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="BorderColorTextBox" Grid.Column="0" Height="36"
                                          Text="{Binding BorderColorHex, UpdateSourceTrigger=PropertyChanged}"
@@ -98,7 +99,7 @@
                                         Style="{DynamicResource PrimaryButton}"
                                         Margin="8,0,0,0" Padding="0"
                                         Click="BorderColorPickerButton_Click"/>
-                                <Border x:Name="BorderColorPreview" Grid.Column="1"
+                                <Border x:Name="BorderColorPreview" Grid.Column="2"
                                         Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
                                         BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
                             </Grid>
@@ -157,30 +158,55 @@
                                       SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding HighlightMode, Mode=TwoWay}"/>
 
+                            <!-- Target App Combo Box (ẩn/hiện theo IsTargetAppVisible) -->
+                            <StackPanel x:Name="TargetAppPanel" Margin="0,0,0,16">
+                                <TextBlock Text="Chọn ứng dụng đích:"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="TargetAppComboBox"
+                                              Grid.Column="0"
+                                              Height="36"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding ActiveWindows}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                    <Button Grid.Column="1"
+                                            Content="↻"
+                                            Height="36"
+                                            Width="36"
+                                            Padding = "0"
+                                            Margin="8,0,0,0"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Command="{Binding LoadWindowsCommand}"
+                                            ToolTip="Tải lại danh sách cửa sổ"
+                                            Cursor="Hand"/>
+                                </Grid>
+                            </StackPanel>
+
                             <!-- Duration -->
                             <TextBlock Text="Thời gian hiển thị (ms, 0 = mãi):"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <TextBox Height="36" Text="{Binding DurationMs, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{DynamicResource BaseTextBoxV2}"
-                                     Padding="8,0,8,0" VerticalContentAlignment="Center" Margin="0,0,0,16"/>
+                                     Padding="8,0,8,0" VerticalContentAlignment="Center" Margin="0,0,0,8"/>
 
-                            <!-- Target App (chỉ hiển thị khi HighlightMode = TargetApp) -->
-                            <StackPanel x:Name="TargetAppPanel">
-                                <TextBlock Text="Tên tiến trình đích:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <TextBox Height="36" Text="{Binding TargetProcessName, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         Padding="8,0,8,0" VerticalContentAlignment="Center" Margin="0,0,0,16"/>
-
-                                <TextBlock Text="Tiêu đề cửa sổ đích:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <TextBox Height="36" Text="{Binding TargetWindowTitle, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         Padding="8,0,8,0" VerticalContentAlignment="Center" Margin="0,0,0,16"/>
-                            </StackPanel>
+                            <!-- Checkbox: Chờ hết thời gian trước khi chạy node tiếp theo -->
+                            <CheckBox Content="Chờ hết thời gian trước khi chạy node tiếp theo"
+                                      IsChecked="{Binding WaitForCompletion, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="12"
+                                      Opacity="0.85"
+                                      Margin="0,0,0,16"
+                                      Cursor="Hand"
+                                      ToolTip="Checked: Chờ hết DurationMs mới chạy node tiếp theo (sequential). Unchecked: Chạy node tiếp theo ngay lập tức (parallel), viền sẽ tự tắt sau DurationMs hoặc khi node BorderHighlight khác tắt nó."/>
 
                             <!-- Inputs Panel -->
                             <TextBlock Text="Inputs:" Foreground="{DynamicResource TextBrush}"

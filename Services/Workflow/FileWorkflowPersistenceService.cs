@@ -3987,6 +3987,11 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("DurationMs", out var dmObj) &&
                 int.TryParse(dmObj?.ToString(), out var dm))
                 borderHighlightNode.DurationMs = Math.Max(0, dm);
+            if (properties.TryGetValue("WaitForCompletion", out var wfcObj) &&
+                bool.TryParse(wfcObj?.ToString(), out var wfc))
+                borderHighlightNode.WaitForCompletion = wfc;
+            if (properties.TryGetValue("SelectedWindowJson", out var swjObj))
+                borderHighlightNode.SelectedWindowJson = swjObj?.ToString() ?? "";
             if (properties.TryGetValue("NodesToDisableJson", out var ntdObj))
                 borderHighlightNode.NodesToDisableJson = ntdObj?.ToString() ?? "[]";
         }
@@ -5690,6 +5695,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (!string.IsNullOrEmpty(borderHighlightNode.TargetWindowTitle))
                 dict["TargetWindowTitle"] = borderHighlightNode.TargetWindowTitle;
             dict["DurationMs"] = borderHighlightNode.DurationMs;
+            dict["WaitForCompletion"] = borderHighlightNode.WaitForCompletion;
+            if (!string.IsNullOrEmpty(borderHighlightNode.SelectedWindowJson))
+                dict["SelectedWindowJson"] = borderHighlightNode.SelectedWindowJson;
             dict["NodesToDisableJson"] = borderHighlightNode.NodesToDisableJson ?? "[]";
         }
         else if (node is NotificationNode notificationNode)

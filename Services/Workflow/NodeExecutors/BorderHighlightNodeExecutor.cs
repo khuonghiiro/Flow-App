@@ -67,25 +67,46 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             // ── Định vị overlay theo chế độ ───────────────────────────────────────
+            IntPtr targetHwnd = IntPtr.Zero;
             if (overlay != null && dispatcher != null)
             {
                 if (borderNode.HighlightMode == BorderHighlightMode.TargetApp)
                 {
-                    // Tìm target window
-                    var windows = WindowHelper.GetActiveWindows();
-                    var match = windows.FirstOrDefault(w =>
-                        w.ProcessName == borderNode.TargetProcessName &&
-                        w.Title == borderNode.TargetWindowTitle);
+                    // Tìm target window từ SelectedWindowJson hoặc từ TargetProcessName/TargetWindowTitle (fallback)
+                    WindowInfo? targetWindow = null;
+                    if (!string.IsNullOrWhiteSpace(borderNode.SelectedWindowJson))
+                    {
+                        try
+                        {
+                            targetWindow = JsonSerializer.Deserialize<WindowInfo>(borderNode.SelectedWindowJson);
+                        }
+                        catch { }
+                    }
 
-                    // Fallback: match chỉ theo ProcessName
-                    if (match == null)
-                        match = windows.FirstOrDefault(w => w.ProcessName == borderNode.TargetProcessName);
+                    if (targetWindow != null)
+                    {
+                        targetHwnd = targetWindow.Handle;
+                    }
+                    else
+                    {
+                        // Fallback: tìm theo ProcessName/Title
+                        var windows = WindowHelper.GetActiveWindows();
+                        var match = windows.FirstOrDefault(w =>
+                            w.ProcessName == borderNode.TargetProcessName &&
+                            w.Title == borderNode.TargetWindowTitle);
 
-                    if (match != null)
+                        if (match == null)
+                            match = windows.FirstOrDefault(w => w.ProcessName == borderNode.TargetProcessName);
+
+                        if (match != null)
+                            targetHwnd = match.Handle;
+                    }
+
+                    if (targetHwnd != IntPtr.Zero)
                     {
                         await dispatcher.InvokeAsync(() =>
                         {
-                            overlay.PositionOverTarget(match.Handle);
+                            overlay.PositionOverTarget(targetHwnd);
                         }, DispatcherPriority.Normal);
                     }
                 }
@@ -98,14 +119,49 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 _activeOverlays[borderNode.Id] = overlay;
             }
 
-            // ── Đợi duration hoặc tiếp tục ngay nếu duration = 0 ───────────────────
+            // ── Parallel mode: chạy node tiếp theo ngay lập tức ────────────────────
+            if (!borderNode.WaitForCompletion)
+            {
+                // Bắt đầu task để tắt overlay sau DurationMs
+                if (borderNode.DurationMs > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(borderNode.DurationMs, env.CancellationToken);
+                            if (dispatcher != null)
+                            {
+                                dispatcher.Invoke(() =>
+                                {
+                                    if (_activeOverlays.TryGetValue(borderNode.Id, out var ov))
+                                    {
+                                        ov.StopAnimation();
+                                        ov.Close();
+                                        _activeOverlays.Remove(borderNode.Id);
+                                    }
+                                });
+                            }
+                        }
+                        catch (OperationCanceledException) { }
+                        catch { }
+                    }, env.CancellationToken);
+                }
+
+                sw.Stop();
+                env.OnNodeCompleted?.Invoke(borderNode, sw.Elapsed);
+                await env.TraverseOutputsAsync(node);
+                return;
+            }
+
+            // ── Sequential mode: chờ hết duration trước khi chạy node tiếp theo ─────
             if (borderNode.DurationMs > 0)
             {
                 await Task.Delay(borderNode.DurationMs, env.CancellationToken);
             }
 
-            // ── Nếu duration > 0, tắt overlay sau khi hết thời gian ─────────────────
-            if (borderNode.DurationMs > 0 && overlay != null && dispatcher != null)
+            // ── Tắt overlay sau khi hết thời gian ─────────────────────────────────
+            if (overlay != null && dispatcher != null)
             {
                 dispatcher.Invoke(() =>
                 {

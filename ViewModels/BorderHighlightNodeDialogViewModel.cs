@@ -1,14 +1,17 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Helpers;
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.Json;
 using System.Windows.Input;
 
 namespace FlowMy.ViewModels
 {
-    public class BorderHighlightNodeDialogViewModel : BaseNodeDialogViewModel
+    public partial class BorderHighlightNodeDialogViewModel : BaseNodeDialogViewModel
     {
         private readonly BorderHighlightNode _node;
 
@@ -22,9 +25,16 @@ namespace FlowMy.ViewModels
         private string _targetProcessName;
         private string _targetWindowTitle;
         private int _durationMs;
+        private bool _waitForCompletion;
 
         // Collection cho combobox chọn node khác
         private List<BorderHighlightNodeSelectionItem> _availableBorderHighlightNodes;
+
+        // Window selection properties
+        private WindowInfo? _selectedTargetWindow;
+
+        public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
+        public bool IsTargetAppVisible => HighlightMode == BorderHighlightMode.TargetApp;
 
         public BorderHighlightNodeDialogViewModel(BorderHighlightNode node, IWorkflowEditorHost host)
             : base(node, host)
@@ -41,6 +51,13 @@ namespace FlowMy.ViewModels
             _targetProcessName = node.TargetProcessName;
             _targetWindowTitle = node.TargetWindowTitle;
             _durationMs = node.DurationMs;
+            _waitForCompletion = node.WaitForCompletion;
+
+            LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
+            if (_highlightMode == BorderHighlightMode.TargetApp)
+            {
+                ExecuteLoadWindows();
+            }
 
             // Load danh sách node BorderHighlight khác
             LoadAvailableBorderHighlightNodes();
@@ -118,7 +135,14 @@ namespace FlowMy.ViewModels
                 if (_highlightMode == value) return;
                 _highlightMode = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsTargetAppVisible));
                 _node.HighlightMode = value;
+
+                // Load windows when switching to TargetApp mode
+                if (value == BorderHighlightMode.TargetApp)
+                {
+                    ExecuteLoadWindows();
+                }
             }
         }
 
@@ -158,6 +182,49 @@ namespace FlowMy.ViewModels
             }
         }
 
+        // ─── Window selection properties ────────────────────────────────────────────────
+
+        public WindowInfo? SelectedTargetWindow
+        {
+            get => _selectedTargetWindow;
+            set
+            {
+                if (_selectedTargetWindow == value) return;
+                _selectedTargetWindow = value;
+                OnPropertyChanged();
+
+                // Save selected window to node
+                if (value != null)
+                {
+                    _node.SelectedWindowJson = JsonSerializer.Serialize(value);
+                    _node.TargetProcessName = value.ProcessName;
+                    _node.TargetWindowTitle = value.Title;
+                }
+                else
+                {
+                    _node.SelectedWindowJson = "";
+                    _node.TargetProcessName = "";
+                    _node.TargetWindowTitle = "";
+                }
+            }
+        }
+
+        public ICommand LoadWindowsCommand { get; }
+
+        // ─── WaitForCompletion property ───────────────────────────────────────────────────
+
+        public bool WaitForCompletion
+        {
+            get => _waitForCompletion;
+            set
+            {
+                if (_waitForCompletion == value) return;
+                _waitForCompletion = value;
+                OnPropertyChanged();
+                _node.WaitForCompletion = value;
+            }
+        }
+
         // ─── Collections cho combobox ────────────────────────────────────────────────
 
         public List<BorderHighlightNodeSelectionItem> AvailableBorderHighlightNodes
@@ -188,6 +255,36 @@ namespace FlowMy.ViewModels
         };
 
         // ─── Helper methods ───────────────────────────────────────────────────────────
+
+        private void ExecuteLoadWindows()
+        {
+            ActiveWindows.Clear();
+            var windows = WindowHelper.GetActiveWindows();
+            foreach (var w in windows)
+            {
+                ActiveWindows.Add(w);
+            }
+
+            // Resolve selected window from saved JSON
+            if (!string.IsNullOrWhiteSpace(_node.SelectedWindowJson))
+            {
+                try
+                {
+                    var savedWindow = JsonSerializer.Deserialize<WindowInfo>(_node.SelectedWindowJson);
+                    if (savedWindow != null)
+                    {
+                        SelectedTargetWindow = ActiveWindows.FirstOrDefault(w => w.Handle == savedWindow.Handle);
+                        // Fallback: match by ProcessName and Title
+                        if (SelectedTargetWindow == null)
+                        {
+                            SelectedTargetWindow = ActiveWindows.FirstOrDefault(w =>
+                                w.ProcessName == savedWindow.ProcessName && w.Title == savedWindow.Title);
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
 
         private void LoadAvailableBorderHighlightNodes()
         {

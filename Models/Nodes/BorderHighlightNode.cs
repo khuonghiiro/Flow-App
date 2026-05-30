@@ -34,7 +34,9 @@ namespace FlowMy.Models
         private BorderHighlightMode _highlightMode = BorderHighlightMode.Fullscreen;
         private string _targetProcessName = "";
         private string _targetWindowTitle = "";
+        private string _selectedWindowJson = "";
         private int _durationMs = 5000;
+        private bool _waitForCompletion = true;
         private string _nodesToDisableJson = "[]";
 
         public BorderHighlightNode()
@@ -58,16 +60,6 @@ namespace FlowMy.Models
                 Position = PortPosition.Right,
                 IsVisible = true,
                 ColorKey = "SunsetOrange"
-            });
-
-            // Input port để chọn các node BorderHighlight khác cần tắt
-            Ports.Add(new NodePort
-            {
-                Id = System.Guid.NewGuid().ToString(),
-                IsInput = true,
-                Position = PortPosition.Left,
-                IsVisible = true,
-                ColorKey = "Warning"
             });
         }
 
@@ -190,6 +182,21 @@ namespace FlowMy.Models
         }
 
         /// <summary>
+        /// JSON của cửa sổ được chọn (WindowInfo) - dùng thay cho TargetProcessName/TargetWindowTitle.
+        /// </summary>
+        public string SelectedWindowJson
+        {
+            get => _selectedWindowJson;
+            set
+            {
+                var s = value ?? "";
+                if (_selectedWindowJson == s) return;
+                _selectedWindowJson = s;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// Thời gian hiển thị viền (ms). 0 = hiển thị mãi cho đến khi node tiếp theo chạy.
         /// </summary>
         public int DurationMs
@@ -200,6 +207,21 @@ namespace FlowMy.Models
                 var v = value < 0 ? 0 : value;
                 if (_durationMs == v) return;
                 _durationMs = v;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Nếu true, workflow sẽ chờ hết DurationMs mới chạy node tiếp theo (sequential).
+        /// Nếu false, workflow sẽ chạy node tiếp theo ngay lập tức (parallel), nhưng viền sẽ tự tắt sau DurationMs hoặc khi node BorderHighlight khác tắt nó.
+        /// </summary>
+        public bool WaitForCompletion
+        {
+            get => _waitForCompletion;
+            set
+            {
+                if (_waitForCompletion == value) return;
+                _waitForCompletion = value;
                 OnPropertyChanged();
             }
         }

@@ -21,6 +21,11 @@ namespace FlowMy.Views.Overlays
             UpdateTitleColorPreview();
             UpdateBorderColorPreview();
 
+            // Set initial visibility of target app panel
+            TargetAppPanel.Visibility = _viewModel.HighlightMode == Models.BorderHighlightMode.TargetApp
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
             // Hide/show target app panel based on mode
             _viewModel.PropertyChanged += (s, e) =>
             {
