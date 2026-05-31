@@ -58,7 +58,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _ocrLanguage = "eng";
         [ObservableProperty] private bool _autoDetectLanguage = true;
         [ObservableProperty] private ObservableCollection<object> _selectedLanguages = new();
-        public ObservableCollection<string> OcrLanguageOptions { get; } = new();
+        public ObservableCollection<OcrLanguageOption> OcrLanguageOptions { get; } = new();
         public ObservableCollection<TesseractLanguageOption> AvailableTesseractLanguages { get; } = new();
 
         // ── Chọn app để đưa lên trước khi chụp ────────────────────────────────────
@@ -231,33 +231,33 @@ namespace FlowMy.ViewModels
         private void InitializeOcrLanguageOptions()
         {
             OcrLanguageOptions.Clear();
-            OcrLanguageOptions.Add("eng"); // English
-            OcrLanguageOptions.Add("vie"); // Vietnamese
-            OcrLanguageOptions.Add("jpn"); // Japanese
-            OcrLanguageOptions.Add("kor"); // Korean
-            OcrLanguageOptions.Add("chi_sim"); // Chinese Simplified
-            OcrLanguageOptions.Add("chi_tra"); // Chinese Traditional
-            OcrLanguageOptions.Add("fra"); // French
-            OcrLanguageOptions.Add("deu"); // German
-            OcrLanguageOptions.Add("spa"); // Spanish
-            OcrLanguageOptions.Add("ita"); // Italian
-            OcrLanguageOptions.Add("por"); // Portuguese
-            OcrLanguageOptions.Add("rus"); // Russian
-            OcrLanguageOptions.Add("ara"); // Arabic
-            OcrLanguageOptions.Add("tha"); // Thai
-            OcrLanguageOptions.Add("ind"); // Indonesian
-            OcrLanguageOptions.Add("msa"); // Malay
-            OcrLanguageOptions.Add("nld"); // Dutch
-            OcrLanguageOptions.Add("pol"); // Polish
-            OcrLanguageOptions.Add("tur"); // Turkish
-            OcrLanguageOptions.Add("swe"); // Swedish
-            OcrLanguageOptions.Add("ces"); // Czech
-            OcrLanguageOptions.Add("dan"); // Danish
-            OcrLanguageOptions.Add("fin"); // Finnish
-            OcrLanguageOptions.Add("nor"); // Norwegian
-            OcrLanguageOptions.Add("ell"); // Greek
-            OcrLanguageOptions.Add("heb"); // Hebrew
-            OcrLanguageOptions.Add("hin"); // Hindi
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "eng", DisplayName = "English (Tiếng Anh)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "vie", DisplayName = "Vietnamese (Tiếng Việt)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "jpn", DisplayName = "Japanese (Tiếng Nhật)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "kor", DisplayName = "Korean (Tiếng Hàn)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "chi_sim", DisplayName = "Chinese Simplified (Tiếng Trung giản thể)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "chi_tra", DisplayName = "Chinese Traditional (Tiếng Trung phồn thể)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "fra", DisplayName = "French (Tiếng Pháp)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "deu", DisplayName = "German (Tiếng Đức)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "spa", DisplayName = "Spanish (Tiếng Tây Ban Nha)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "ita", DisplayName = "Italian (Tiếng Ý)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "por", DisplayName = "Portuguese (Tiếng Bồ Đào Nha)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "rus", DisplayName = "Russian (Tiếng Nga)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "ara", DisplayName = "Arabic (Tiếng Ả Rập)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "tha", DisplayName = "Thai (Tiếng Thái)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "ind", DisplayName = "Indonesian (Tiếng Indonesia)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "msa", DisplayName = "Malay (Tiếng Mã Lai)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "nld", DisplayName = "Dutch (Tiếng Hà Lan)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "pol", DisplayName = "Polish (Tiếng Ba Lan)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "tur", DisplayName = "Turkish (Tiếng Thổ Nhĩ Kỳ)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "swe", DisplayName = "Swedish (Tiếng Thụy Điển)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "ces", DisplayName = "Czech (Tiếng Séc)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "dan", DisplayName = "Danish (Tiếng Đan Mạch)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "fin", DisplayName = "Finnish (Tiếng Phần Lan)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "nor", DisplayName = "Norwegian (Tiếng Na Uy)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "ell", DisplayName = "Greek (Tiếng Hy Lạp)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "heb", DisplayName = "Hebrew (Tiếng Do Thái)" });
+            OcrLanguageOptions.Add(new OcrLanguageOption { Code = "hin", DisplayName = "Hindi (Tiếng Hindi)" });
         }
 
         private void LoadAvailableTesseractLanguages()
@@ -515,6 +515,12 @@ namespace FlowMy.ViewModels
     }
 
     public class TesseractLanguageOption
+    {
+        public string Code { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    public class OcrLanguageOption
     {
         public string Code { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
