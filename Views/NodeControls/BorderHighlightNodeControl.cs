@@ -25,7 +25,7 @@ namespace FlowMy.Views.NodeControls
             // ─── 1. ICON ───
             var iconConverter = new IconKeyToPathConverter();
             var iconUri = iconConverter.Convert(null, typeof(Uri),
-                "bolt-lightning light",
+                "bolt-lightning sharp-light",
                 System.Globalization.CultureInfo.CurrentCulture) as Uri;
 
             var iconSvg = new SvgViewboxEx
@@ -35,7 +35,7 @@ namespace FlowMy.Views.NodeControls
                 Height = 32,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)
+                Fill = GetIconBrush(node.ColorKey)
             };
 
             // ─── 2. GRID ───
@@ -95,7 +95,7 @@ namespace FlowMy.Views.NodeControls
                 // Cập nhật icon fill khi ColorKey thay đổi
                 [nameof(WorkflowNode.ColorKey)] = ctx =>
                 {
-                    iconSvg.Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey);
+                    iconSvg.Fill = GetIconBrush(node.ColorKey);
                 }
             };
 
@@ -114,6 +114,16 @@ namespace FlowMy.Views.NodeControls
                 .Build();
 
             return border;
+        }
+
+        private static Brush GetIconBrush(string? colorKey)
+        {
+            if (!string.IsNullOrEmpty(colorKey))
+            {
+                var brush = Application.Current?.TryFindResource($"TextOn{colorKey}Brush") as Brush;
+                if (brush != null) return brush;
+            }
+            return new SolidColorBrush(Color.FromRgb(148, 163, 184));
         }
     }
 }

@@ -129,6 +129,175 @@ Step 6: Persistence Support (REQUIRED - Save/Export JSON)
   - Lưu ý: **Ctrl+S / nút Save** lưu đầy đủ logic + output đã chạy của từng node; **nút Export** chỉ export logic (dùng để chia sẻ/import). Chi tiết xem mục 7.3 bên dưới.
 ```
 
+### Phase 0: Icon & ColorKey Handling (Bắt buộc cho mọi node - TRƯỚC Phase 1)
+
+> Mục tiêu: Đảm bảo icon hiển thị đúng trong ghost (khi kéo từ palette) và màu icon đồng bộ với ColorKey trên canvas.
+
+#### Nguyên nhân lỗi phổ biến:
+- Icon không hiển thị trong ghost → thiếu đăng ký icon key trong TemplateNodeHandler/WorkflowEditorViewModel
+- Màu icon không đồng bộ với ColorKey → dùng sai method để resolve brush (BaseNodeControlHelper.ResolveTextOnColorBrush thay vì TryFindResource)
+- Icon fill không có màu mặc định → thiếu ColorKey trong constructor của node model
+
+#### Checklist bắt buộc:
+
+```yaml
+Step 1: Node Model - Set ColorKey trong constructor
+  - [ ] Trong constructor của YourNode.cs, thêm:
+        ColorKey = "YourColorKey";  // Ví dụ: "AzureBlue", "Amethyst", "MangoTango"
+  - [ ] ⚠️ CRITICAL: ColorKey phải khớp với Background="{DynamicResource YourColorKeyBrush}" trong palette XAML
+
+Step 2: Palette XAML - Đăng ký icon với Fill đúng màu
+  - [ ] Trong Views/WorkflowEditorWindow.xaml, tìm Border node trong palette:
+        <Border Style="{StaticResource PaletteIconNodeStyle}"
+                Background="{DynamicResource YourColorKeyBrush}"
+                Tag="YourNodeTag">
+  - [ ] Thêm icon Grid với SvgViewboxEx:
+        <Grid>
+            <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                  Source="{Binding Source={x:Static sys:String.Empty}, 
+                                          Converter={StaticResource IconKeyToPathConverter}, 
+                                          ConverterParameter='your-icon-key style'}"
+                                  Fill="{DynamicResource TextOnYourColorKeyBrush}"/>
+        </Grid>
+  - [ ] ⚠️ CRITICAL: ConverterParameter phải khớp với icon key trong NodeControl
+  - [ ] ⚠️ CRITICAL: Fill phải dùng TextOnYourColorKeyBrush (không dùng màu khác)
+
+Step 3: TemplateNodeHandler.cs - Đăng ký icon key cho ghost
+  - [ ] Trong Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs
+  - [ ] Tìm switch case trong GetIconNameForNodeType()
+  - [ ] Thêm case cho node mới:
+        "YourNodeTag" => "your-icon-key style",
+  - [ ] ⚠️ CRITICAL: Icon key phải khớp với ConverterParameter trong palette XAML
+
+Step 4: WorkflowEditorViewModel.cs - Đăng ký icon key cho render
+  - [ ] Trong ViewModels/WorkflowEditorViewModel.cs
+  - [ ] Tìm ResolveNodeIconKey() method
+  - [ ] Thêm case cho node mới:
+        NodeType.YourNodeType => "your-icon-key style",
+  - [ ] ⚠️ CRITICAL: Icon key phải khớp với ConverterParameter trong palette XAML
+
+Step 5: TemplateFactory.cs - Set ColorKey khi tạo node
+  - [ ] Trong Workflow/TemplateFactory.cs
+  - [ ] Tìm CreateYourNode() method
+  - [ ] Đảm bảo set ColorKey khi tạo node:
+        var nodeBrush = _colorThemeService.GetBrush("YourColorKeyBrush")
+                        ?? _colorThemeService.GetBrush("PrimaryBrush")
+                        ?? Brushes.YourFallbackColor;
+        
+        return new YourNode
+        {
+            // ...
+            NodeBrush = nodeBrush
+        };
+  - [ ] ⚠️ CRITICAL: ColorKey trong constructor của node model (Step 1) sẽ được dùng, không cần set lại ở đây
+
+Step 6: NodeControl - Resolve icon fill brush đúng cách
+  - [ ] Trong Views/NodeControls/YourNodeControl.cs
+  - [ ] KHÔNG dùng BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)
+  - [ ] Thay vào đó, dùng TryFindResource:
+        private static Brush GetIconBrush(string? colorKey)
+        {
+            if (!string.IsNullOrEmpty(colorKey))
+            {
+                var brush = Application.Current?.TryFindResource($"TextOn{colorKey}Brush") as Brush;
+                if (brush != null) return brush;
+            }
+            return new SolidColorBrush(Color.FromRgb(148, 163, 184));  // Fallback color
+        }
+  - [ ] Trong iconSvg initialization:
+        var iconSvg = new SvgViewboxEx
+        {
+            Source = iconUri,
+            Width = 32,
+            Height = 32,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Fill = GetIconBrush(node.ColorKey)
+        };
+  - [ ] Trong customPropertyHandlers:
+        [nameof(WorkflowNode.ColorKey)] = ctx =>
+        {
+            iconSvg.Fill = GetIconBrush(node.ColorKey);
+        }
+  - [ ] ⚠️ CRITICAL: Luôn dùng TryFindResource($"TextOn{colorKey}Brush") để đồng bộ với palette
+```
+
+#### Ví dụ hoàn chỉnh (BorderHighlightNode):
+
+**Node Model (BorderHighlightNode.cs):**
+```csharp
+public BorderHighlightNode()
+{
+    Type = NodeType.BorderHighlight;
+    Title = "Border Highlight";
+    ColorKey = "AzureBlue";  // ⚠️ CRITICAL
+    // ...
+}
+```
+
+**Palette XAML (WorkflowEditorWindow.xaml):**
+```xml
+<Border Style="{StaticResource PaletteIconNodeStyle}"
+        Background="{DynamicResource AzureBlueBrush}"
+        Tag="BorderHighlight">
+    <Grid>
+        <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                              Source="{Binding Source={x:Static sys:String.Empty}, 
+                                      Converter={StaticResource IconKeyToPathConverter}, 
+                                      ConverterParameter='bolt-lightning sharp-light'}"
+                              Fill="{DynamicResource TextOnAzureBlueBrush}"/>
+    </Grid>
+</Border>
+```
+
+**TemplateNodeHandler.cs:**
+```csharp
+"BorderHighlight" => "bolt-lightning sharp-light",
+```
+
+**WorkflowEditorViewModel.cs:**
+```csharp
+NodeType.BorderHighlight => "bolt-lightning sharp-light",
+```
+
+**NodeControl (BorderHighlightNodeControl.cs):**
+```csharp
+private static Brush GetIconBrush(string? colorKey)
+{
+    if (!string.IsNullOrEmpty(colorKey))
+    {
+        var brush = Application.Current?.TryFindResource($"TextOn{colorKey}Brush") as Brush;
+        if (brush != null) return brush;
+    }
+    return new SolidColorBrush(Color.FromRgb(148, 163, 184));
+}
+
+var iconSvg = new SvgViewboxEx
+{
+    Source = iconUri,
+    Width = 32,
+    Height = 32,
+    HorizontalAlignment = HorizontalAlignment.Center,
+    VerticalAlignment = VerticalAlignment.Center,
+    Fill = GetIconBrush(node.ColorKey)
+};
+
+var customPropertyHandlers = new Dictionary<string, Action<BaseNodeControlHelper.NodeControlContext>>
+{
+    [nameof(WorkflowNode.ColorKey)] = ctx =>
+    {
+        iconSvg.Fill = GetIconBrush(node.ColorKey);
+    }
+};
+```
+
+#### Common Errors:
+- ❌ Dùng `BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)` → icon fill không đúng màu
+- ❌ Thiếu trong TemplateNodeHandler.cs → icon không hiển thị trong ghost
+- ❌ Thiếu trong WorkflowEditorViewModel.cs → icon không render đúng trên canvas
+- ❌ Thiếu ColorKey trong constructor → icon fill không có màu mặc định
+- ❌ Icon key không khớp giữa 4 chỗ → icon không hiển thị hoặc màu sai
+
 ### Phase 2: TitleDisplayMode Support (Optional - chỉ thêm nếu node hỗ trợ)
 
 ```yaml

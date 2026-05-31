@@ -154,6 +154,7 @@ namespace FlowMy.Models
         {
             Type = NodeType.ScreenPosition;
             Title = "Screen Position";
+            ColorKey = "Amethyst";
             _hasPosition = false;
             _selectedPosition = new Point(0, 0);
         }

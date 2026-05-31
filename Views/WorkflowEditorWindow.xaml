@@ -844,7 +844,7 @@ Cursor="Hand"
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt-lightning light'}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='bolt-lightning sharp-light'}"
                                                           Fill="{DynamicResource TextOnAzureBlueBrush}"/>
                                 </Grid>
                             </Border>
@@ -1981,7 +1981,7 @@ Cursor="Hand"
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='crosshairs sharp-duotone-solid'}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='crosshairs light'}"
                                                           Fill="{DynamicResource TextOnAmethystBrush}"/>
                                 </Grid>
                             </Border>
