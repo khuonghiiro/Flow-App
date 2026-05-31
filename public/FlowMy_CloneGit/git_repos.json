@@ -1,0 +1,22 @@
+[
+  {
+    "Id": "Node_GitSource_987f8829-2344-4420-8f9c-f96b15a5b8f2",
+    "Title": "Danh s\u00E1ch model ng\u00F4n ng\u1EEF qu\u00E9t text \u1EA3nh",
+    "RepoUrl": "https://github.com/tesseract-ocr/tessdata.git",
+    "LocalPath": "C:\\Users\\Admin\\OneDrive\\Documents\\FlowMy\\FlowMy_CloneGit\\tessdata",
+    "Branch": "main",
+    "DisplayName": "Danh s\u00E1ch model ng\u00F4n ng\u1EEF qu\u00E9t text \u1EA3nh",
+    "IconKey": "image-stack duotone",
+    "IconColorKey": "#FFFFFF",
+    "ColorKey": "#0080FF",
+    "TooltipText": "Danh s\u00E1ch c\u00E1c model ng\u00F4n ng\u1EEF ch\u1EE9a d\u1EEF li\u1EC7u \u0111\u1EC3 qu\u00E9t text tr\u00EAn \u1EA3nh. Ch\u1EC9 c\u1EA7n t\u1EA3i v\u1EC1 kh\u00F4ng c\u1EA7n c\u00E0i \u0111\u1EB7t. S\u1EED d\u1EE5ng node qu\u00E9t text \u1EA3nh \u0111\u1EC3 s\u1EED d\u1EE5ng n\u00F3",
+    "ContextMenuDescription": "",
+    "VscodiumPath": "vscodium",
+    "CommandText": "",
+    "LastCommitHash": "",
+    "LastPullTime": "",
+    "AutoOpenOnExecute": true,
+    "IsPartialClone": false,
+    "SparsePaths": ""
+  }
+]

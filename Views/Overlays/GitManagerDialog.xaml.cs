@@ -155,5 +155,28 @@ namespace FlowMy.Views.Overlays
         {
             _viewModel.IsCommandTemplatePopupOpen = !_viewModel.IsCommandTemplatePopupOpen;
         }
+
+        // ═══ Sparse checkout path management ═══
+        private void AddSparsePath_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn folder để thêm vào sparse checkout" };
+            if (dlg.ShowDialog() == true)
+            {
+                var folderPath = dlg.FolderName;
+                if (!string.IsNullOrWhiteSpace(folderPath))
+                {
+                    var currentPaths = _viewModel.SparsePaths;
+                    if (!string.IsNullOrWhiteSpace(currentPaths))
+                        currentPaths += Environment.NewLine;
+                    currentPaths += folderPath.Trim();
+                    _viewModel.SparsePaths = currentPaths;
+                }
+            }
+        }
+
+        private void ClearSparsePaths_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.SparsePaths = string.Empty;
+        }
     }
 }

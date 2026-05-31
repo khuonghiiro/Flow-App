@@ -84,12 +84,55 @@ namespace FlowMy.Services.Git
             try
             {
                 var filePath = GetFilePath();
-                if (!File.Exists(filePath)) return new List<GitCmdEntry>();
+                if (!File.Exists(filePath))
+                {
+                    // Thử load từ public folder trước
+                    var publicEntries = LoadFromPublicFolder();
+                    if (publicEntries.Count > 0)
+                    {
+                        WriteAll(publicEntries);
+                        return publicEntries;
+                    }
+                    return new List<GitCmdEntry>();
+                }
 
                 var json = File.ReadAllText(filePath);
-                return JsonSerializer.Deserialize<List<GitCmdEntry>>(json) ?? new List<GitCmdEntry>();
+                var entries = JsonSerializer.Deserialize<List<GitCmdEntry>>(json) ?? new List<GitCmdEntry>();
+
+                // Nếu file rỗng, thử load từ public
+                if (entries.Count == 0)
+                {
+                    var publicEntries = LoadFromPublicFolder();
+                    if (publicEntries.Count > 0)
+                    {
+                        WriteAll(publicEntries);
+                        return publicEntries;
+                    }
+                }
+
+                return entries;
             }
             catch { return new List<GitCmdEntry>(); }
+        }
+
+        /// <summary>Load entries từ public folder (dành cho build với default data).</summary>
+        private static List<GitCmdEntry> LoadFromPublicFolder()
+        {
+            try
+            {
+                var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                var publicPath = Path.Combine(appDir, "public", "FlowMy-CmdGit", "git_commands.json");
+
+                if (!File.Exists(publicPath))
+                    return new List<GitCmdEntry>();
+
+                var json = File.ReadAllText(publicPath);
+                return JsonSerializer.Deserialize<List<GitCmdEntry>>(json) ?? new List<GitCmdEntry>();
+            }
+            catch
+            {
+                return new List<GitCmdEntry>();
+            }
         }
 
         /// <summary>Xóa entry khi xóa repo.</summary>

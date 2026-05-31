@@ -70,7 +70,15 @@ namespace FlowMy.Services.Git
                 var path = GetFilePath();
                 if (!File.Exists(path))
                 {
-                    // Tạo default repos nếu file chưa tồn tại
+                    // Thử load từ public folder trước
+                    var publicRepos = LoadFromPublicFolder();
+                    if (publicRepos.Count > 0)
+                    {
+                        Save(publicRepos);
+                        return publicRepos;
+                    }
+
+                    // Nếu không có trong public, tạo default repos
                     var defaultRepos = CreateDefaultRepos();
                     Save(defaultRepos);
                     return defaultRepos;
@@ -79,15 +87,42 @@ namespace FlowMy.Services.Git
                 var json = File.ReadAllText(path);
                 var repos = DeserializeRepos(json);
 
-                // Nếu file rỗng hoặc không có repos, tạo default
+                // Nếu file rỗng hoặc không có repos, thử load từ public
                 if (repos.Count == 0)
                 {
+                    var publicRepos = LoadFromPublicFolder();
+                    if (publicRepos.Count > 0)
+                    {
+                        Save(publicRepos);
+                        return publicRepos;
+                    }
+
                     var defaultRepos = CreateDefaultRepos();
                     Save(defaultRepos);
                     return defaultRepos;
                 }
 
                 return repos;
+            }
+            catch
+            {
+                return new List<GitSourceNode>();
+            }
+        }
+
+        /// <summary>Load repos từ public folder (dành cho build với default data).</summary>
+        private static List<GitSourceNode> LoadFromPublicFolder()
+        {
+            try
+            {
+                var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                var publicPath = Path.Combine(appDir, "public", "FlowMy_CloneGit", "git_repos.json");
+
+                if (!File.Exists(publicPath))
+                    return new List<GitSourceNode>();
+
+                var json = File.ReadAllText(publicPath);
+                return DeserializeRepos(json);
             }
             catch
             {

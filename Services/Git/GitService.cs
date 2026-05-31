@@ -1,6 +1,9 @@
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace FlowMy.Services.Git
 {
@@ -43,7 +46,15 @@ namespace FlowMy.Services.Git
                     var pct = progress.TotalObjects > 0
                         ? (int)((double)progress.ReceivedObjects / progress.TotalObjects * 100)
                         : 0;
-                    onProgress?.Invoke($"Đang tải objects: {progress.ReceivedObjects}/{progress.TotalObjects} ({pct}%) — {progress.ReceivedBytes / 1024} KB");
+
+                    var bytes = progress.ReceivedBytes;
+                    string sizeStr;
+                    if (bytes < 1024 * 1024)
+                        sizeStr = $"{bytes / 1024} KB";
+                    else
+                        sizeStr = $"{bytes / (1024 * 1024):F2} MB";
+
+                    onProgress?.Invoke($"Đang tải objects: {progress.ReceivedObjects}/{progress.TotalObjects} ({pct}%) — {sizeStr}");
                     return true;
                 };
 
@@ -108,7 +119,15 @@ namespace FlowMy.Services.Git
                     var pct = progress.TotalObjects > 0
                         ? (int)((double)progress.ReceivedObjects / progress.TotalObjects * 100)
                         : 0;
-                    onProgress?.Invoke($"Fetching: {progress.ReceivedObjects}/{progress.TotalObjects} ({pct}%) — {progress.ReceivedBytes / 1024} KB");
+
+                    var bytes = progress.ReceivedBytes;
+                    string sizeStr;
+                    if (bytes < 1024 * 1024)
+                        sizeStr = $"{bytes / 1024} KB";
+                    else
+                        sizeStr = $"{bytes / (1024 * 1024):F2} MB";
+
+                    onProgress?.Invoke($"Fetching: {progress.ReceivedObjects}/{progress.TotalObjects} ({pct}%) — {sizeStr}");
                     return true;
                 };
 
@@ -303,7 +322,15 @@ namespace FlowMy.Services.Git
                     var pct = progress.TotalObjects > 0
                         ? (int)((double)progress.ReceivedObjects / progress.TotalObjects * 100)
                         : 0;
-                    onProgress?.Invoke($"Đang tải objects: {progress.ReceivedObjects}/{progress.TotalObjects} ({pct}%) — {progress.ReceivedBytes / 1024} KB");
+
+                    var bytes = progress.ReceivedBytes;
+                    string sizeStr;
+                    if (bytes < 1024 * 1024)
+                        sizeStr = $"{bytes / 1024} KB";
+                    else
+                        sizeStr = $"{bytes / (1024 * 1024):F2} MB";
+
+                    onProgress?.Invoke($"Đang tải objects: {progress.ReceivedObjects}/{progress.TotalObjects} ({pct}%) — {sizeStr}");
                     return true;
                 };
 
@@ -334,11 +361,7 @@ namespace FlowMy.Services.Git
                 onProgress?.Invoke("Đang reset index để áp dụng sparse checkout...");
 
                 // Reset index để áp dụng sparse checkout
-                var resetOptions = new ResetOptions
-                {
-                    ResetMode = ResetMode.Hard
-                };
-                Commands.Reset(repo, repo.Head, resetOptions);
+                repo.Reset(ResetMode.Hard, repo.Head.Tip);
 
                 onProgress?.Invoke("Đang checkout files...");
 
@@ -400,11 +423,7 @@ namespace FlowMy.Services.Git
                 File.WriteAllLines(sparseCheckoutFile, sparsePaths);
 
                 // Reset index để áp dụng sparse checkout
-                var resetOptions = new ResetOptions
-                {
-                    ResetMode = ResetMode.Hard
-                };
-                Commands.Reset(repo, repo.Head, resetOptions);
+                repo.Reset(ResetMode.Hard, repo.Head.Tip);
 
                 // Checkout để áp dụng sparse checkout paths
                 Commands.Checkout(repo, repo.Head);
@@ -456,6 +475,169 @@ namespace FlowMy.Services.Git
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Clone repo với git command line và --filter=blob:none (true partial clone - chỉ download objects cần thiết).
+        /// Yêu cầu Git 2.19+.
+        /// </summary>
+        public CloneResult CloneRepositoryWithFilter(string repoUrl, string localPath, string? branch = null,
+            List<string>? sparsePaths = null, Action<string>? onProgress = null)
+        {
+            try
+            {
+                // Kiểm tra git command line có available không
+                var gitExe = FindGitExecutable();
+                if (string.IsNullOrEmpty(gitExe))
+                {
+                    return new CloneResult { Success = false, ErrorMessage = "Git command line không tìm thấy. Cần Git 2.19+ để dùng partial clone." };
+                }
+
+                // Tạo folder nếu chưa tồn tại
+                if (!Directory.Exists(localPath))
+                {
+                    Directory.CreateDirectory(localPath);
+                }
+                else if (Directory.GetFileSystemEntries(localPath).Length > 0)
+                {
+                    return new CloneResult { Success = false, ErrorMessage = $"Thư mục '{localPath}' đã tồn tại và không rỗng." };
+                }
+
+                onProgress?.Invoke("Đang clone với --filter=blob:none (chỉ download objects cần thiết)...");
+
+                // Build git clone command với --filter=blob:none
+                var args = new List<string>
+                {
+                    "clone",
+                    "--filter=blob:none", // Chỉ download objects cần thiết cho paths được checkout
+                    "--no-checkout" // Không checkout ngay, sẽ làm sau khi cấu hình sparse
+                };
+
+                if (!string.IsNullOrWhiteSpace(branch))
+                {
+                    args.Add("--branch");
+                    args.Add(branch);
+                }
+
+                args.Add(repoUrl);
+                args.Add(localPath);
+
+                var result = RunGitCommand(gitExe, args, onProgress);
+                if (result.ExitCode != 0)
+                {
+                    return new CloneResult { Success = false, ErrorMessage = $"Git clone failed: {result.Output}" };
+                }
+
+                onProgress?.Invoke("Đang cấu hình sparse checkout...");
+
+                // Cấu hình sparse checkout
+                using var repo = new Repository(localPath);
+                repo.Config.Set("core.sparseCheckout", true);
+
+                if (sparsePaths != null && sparsePaths.Count > 0)
+                {
+                    var sparseCheckoutFile = Path.Combine(localPath, ".git", "info", "sparse-checkout");
+                    var sparseDir = Path.GetDirectoryName(sparseCheckoutFile);
+                    if (!Directory.Exists(sparseDir))
+                        Directory.CreateDirectory(sparseDir);
+
+                    File.WriteAllLines(sparseCheckoutFile, sparsePaths);
+                }
+
+                onProgress?.Invoke("Đang checkout files...");
+                // Checkout trực tiếp - Git sẽ tự động download objects cần thiết theo sparse-checkout
+                Commands.Checkout(repo, repo.Head);
+
+                onProgress?.Invoke("Đang đọc thông tin repository...");
+
+                var head = repo.Head.Tip;
+
+                return new CloneResult
+                {
+                    Success = true,
+                    LocalPath = localPath,
+                    Branch = repo.Head.FriendlyName,
+                    LastCommitHash = head?.Sha ?? string.Empty,
+                    LastCommitMessage = head?.MessageShort ?? string.Empty
+                };
+            }
+            catch (Exception ex)
+            {
+                return new CloneResult { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        /// <summary>Tìm git executable trong system PATH.</summary>
+        private string? FindGitExecutable()
+        {
+            var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            var searchPaths = pathEnv.Split(';').Concat(new[]
+            {
+                @"C:\Program Files\Git\bin",
+                @"C:\Program Files (x86)\Git\bin",
+                @"C:\Program Files\Git\cmd",
+                @"C:\Program Files (x86)\Git\cmd"
+            });
+
+            foreach (var path in searchPaths)
+            {
+                if (string.IsNullOrWhiteSpace(path)) continue;
+
+                var gitPath = Path.Combine(path, "git.exe");
+                if (File.Exists(gitPath))
+                    return gitPath;
+            }
+
+            return null;
+        }
+
+        /// <summary>Chạy git command và trả về kết quả.</summary>
+        private (int ExitCode, string Output) RunGitCommand(string gitExe, List<string> args, Action<string>? onProgress = null)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = gitExe,
+                Arguments = string.Join(" ", args.Select(a => a.Contains(' ') ? $"\"{a}\"" : a)),
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using var proc = Process.Start(psi);
+            if (proc == null)
+                return (1, "Failed to start git process");
+
+            var output = new StringBuilder();
+            var error = new StringBuilder();
+
+            proc.OutputDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    output.AppendLine(e.Data);
+                    onProgress?.Invoke(e.Data);
+                }
+            };
+
+            proc.ErrorDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    error.AppendLine(e.Data);
+                    onProgress?.Invoke($"[ERROR] {e.Data}");
+                }
+            };
+
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
+            proc.WaitForExit();
+
+            var result = output.ToString();
+            if (!string.IsNullOrEmpty(error.ToString()))
+                result += $"\n{error}";
+
+            return (proc.ExitCode, result);
         }
     }
 
