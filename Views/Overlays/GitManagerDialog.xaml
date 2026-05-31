@@ -114,6 +114,7 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Grid Grid.Row="0" Margin="0,0,0,10">
@@ -139,7 +140,19 @@
                             </Button>
                         </StackPanel>
                     </Grid>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+
+                    <!-- Progress display for Tổng hợp tab -->
+                    <Border Grid.Row="1" Margin="0,0,0,10" CornerRadius="6" Padding="10,8"
+                            Background="{DynamicResource CardColor}"
+                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                            Visibility="{Binding IsOperating, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding ProgressStatusText}" Foreground="{DynamicResource AccentBrush}"
+                                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <ProgressBar IsIndeterminate="True" Height="3" Foreground="{DynamicResource AccentBrush}"/>
+                        </StackPanel>
+                    </Border>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding SavedRepos}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>

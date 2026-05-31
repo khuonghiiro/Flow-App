@@ -764,9 +764,16 @@ namespace FlowMy.ViewModels
         private async Task PullSavedRepoAsync(GitSourceNode? repo)
         {
             if (repo == null || string.IsNullOrWhiteSpace(repo.LocalPath)) return;
+            IsOperating = true;
             AppendLog($"🔄 Pull {repo.DisplayName}...");
-            var result = await Task.Run(() => _gitService.PullRepository(repo.LocalPath));
-            AppendLog(result.Success ? $"✅ {repo.DisplayName} pulled." : $"❌ {result.ErrorMessage}");
+            try
+            {
+                var result = await Task.Run(() => _gitService.PullRepository(repo.LocalPath,
+                    onProgress: msg => Application.Current?.Dispatcher.Invoke(() => ProgressStatusText = msg)));
+                AppendLog(result.Success ? $"✅ {repo.DisplayName} pulled." : $"❌ {result.ErrorMessage}");
+            }
+            catch (Exception ex) { AppendLog($"❌ {ex.Message}"); }
+            finally { IsOperating = false; ProgressStatusText = string.Empty; }
         }
 
         [RelayCommand]
@@ -781,10 +788,28 @@ namespace FlowMy.ViewModels
             if (!Directory.Exists(targetPath))
                 Directory.CreateDirectory(targetPath);
 
+            IsOperating = true;
             AppendLog($"⬇ Clone {repo.DisplayName}...");
             try
             {
-                var result = await Task.Run(() => _gitService.CloneRepository(repo.RepoUrl, targetPath, repo.Branch));
+                CloneResult result;
+
+                if (repo.IsPartialClone && !string.IsNullOrWhiteSpace(repo.SparsePaths))
+                {
+                    var sparsePathList = repo.SparsePaths.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p.Trim())
+                        .Where(p => !string.IsNullOrWhiteSpace(p))
+                        .ToList();
+                    AppendLog($"📦 Partial Clone (Saved): {sparsePathList.Count} paths");
+                    result = await Task.Run(() => _gitService.CloneRepositorySparse(repo.RepoUrl, targetPath, repo.Branch, sparsePathList,
+                        onProgress: msg => Application.Current?.Dispatcher.Invoke(() => ProgressStatusText = msg)));
+                }
+                else
+                {
+                    result = await Task.Run(() => _gitService.CloneRepository(repo.RepoUrl, targetPath, repo.Branch,
+                        onProgress: msg => Application.Current?.Dispatcher.Invoke(() => ProgressStatusText = msg)));
+                }
+
                 if (result.Success)
                 {
                     repo.LastCommitHash = result.LastCommitHash;
@@ -796,6 +821,7 @@ namespace FlowMy.ViewModels
                 else AppendLog($"❌ {result.ErrorMessage}");
             }
             catch (Exception ex) { AppendLog($"❌ {ex.Message}"); }
+            finally { IsOperating = false; ProgressStatusText = string.Empty; }
         }
 
         [RelayCommand]
