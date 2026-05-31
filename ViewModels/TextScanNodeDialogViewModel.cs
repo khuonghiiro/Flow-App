@@ -174,16 +174,8 @@ namespace FlowMy.ViewModels
                 Value = OcrEngineMode.Tesseract,
                 DisplayName = "Tesseract OCR (Miễn phí, phổ biến)"
             });
-            OcrEngineModeOptions.Add(new OcrEngineModeOption
-            {
-                Value = OcrEngineMode.WindowsOcr,
-                DisplayName = "Windows.Media.Ocr (Tích hợp Windows)"
-            });
-            OcrEngineModeOptions.Add(new OcrEngineModeOption
-            {
-                Value = OcrEngineMode.OpenCvMlNet,
-                DisplayName = "OpenCV + ML.NET/ONNX (Cần GPU mạnh)"
-            });
+            // WindowsOcr đã bị xóa vì không hỗ trợ trong .NET Framework WPF
+            // OpenCvMlNet đã bị xóa vì chưa được implement
         }
 
         private void InitializeTesseractOptions()

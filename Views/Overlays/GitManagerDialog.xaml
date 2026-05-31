@@ -364,6 +364,26 @@
                                       DropDownClosed="BranchComboBox_DropDownClosed"
                                       Margin="0,0,0,14"/>
 
+                            <CheckBox IsChecked="{Binding IsPartialClone}" Margin="0,0,0,12" Cursor="Hand"
+                                      Foreground="{DynamicResource TextBrush}" FontSize="12">
+                                <TextBlock Text="📦 Chỉ pull một phần (Partial Clone) - Chọn file/folder cụ thể thay vì toàn bộ repo" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                            </CheckBox>
+
+                            <Border Margin="0,0,0,12" Padding="10,8" CornerRadius="6"
+                                    Background="{DynamicResource CardColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                    Visibility="{Binding IsPartialClone, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel>
+                                    <TextBlock Text="Danh sách file/folder cần pull (mỗi dòng một đường dẫn):" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Ví dụ: src/, README.md, package.json, docs/*.md" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,6"/>
+                                    <TextBox Text="{Binding SparsePaths, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" MinHeight="80" MaxHeight="120"
+                                             AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                             FontFamily="Consolas" FontSize="11"
+                                             ToolTip="Nhập đường dẫn file/folder, mỗi dòng một đường dẫn. Có thể dùng wildcard như *.md, src/*.cs"/>
+                                </StackPanel>
+                            </Border>
+
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                 <Button Height="34" MinWidth="90" Margin="0,0,6,0"
                                         Style="{DynamicResource PrimaryButton}" Cursor="Hand"

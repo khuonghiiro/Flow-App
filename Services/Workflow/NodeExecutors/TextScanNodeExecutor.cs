@@ -245,19 +245,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     return await PerformTesseractOcr(image, textScan);
                 }
-                else if (textScan.OcrEngineMode == OcrEngineMode.WindowsOcr)
-                {
-                    // Windows.Media.Ocr is not available in .NET Framework WPF projects
-                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Windows.Media.Ocr is not available in .NET Framework WPF projects.");
-                    return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
-                }
-                else if (textScan.OcrEngineMode == OcrEngineMode.OpenCvMlNet)
-                {
-                    // OpenCV + ML.NET / ONNX Runtime - not yet implemented
-                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] OpenCV + ML.NET/ONNX is not yet implemented.");
-                    return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
-                }
 
+                // WindowsOcr và OpenCvMlNet đã bị xóa vì không hỗ trợ trong .NET Framework WPF
                 return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
             }
             catch (Exception ex)

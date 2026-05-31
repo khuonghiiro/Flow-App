@@ -32,6 +32,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _gitFolderName = string.Empty;
         [ObservableProperty] private string _baseLocalPath = string.Empty;
         [ObservableProperty] private string _branch = "main";
+        [ObservableProperty] private bool _isPartialClone;
+        [ObservableProperty] private string _sparsePaths = string.Empty;
+        [ObservableProperty] private bool _isSparseCheckoutEnabled;
 
         // Hiển thị tab
         [ObservableProperty] private string _displayName = string.Empty;
@@ -378,6 +381,21 @@ namespace FlowMy.ViewModels
                 { AppendLog($"❌ '{targetFolderName}' không rỗng và không phải Git repo."); return; }
             }
 
+            // Validate sparse paths if partial clone is enabled
+            if (IsPartialClone)
+            {
+                var sparsePathList = SparsePaths.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .ToList();
+
+                if (sparsePathList.Count == 0)
+                {
+                    AppendLog("❌ Partial Clone được bật nhưng chưa nhập đường dẫn file/folder.");
+                    return;
+                }
+            }
+
             _operationCts?.Cancel();
             _operationCts = new CancellationTokenSource();
             var ct = _operationCts.Token;
@@ -387,8 +405,24 @@ namespace FlowMy.ViewModels
 
             try
             {
-                var result = await Task.Run(() => _gitService.CloneRepository(RepoUrl, clonePath, Branch,
-                    onProgress: msg => { if (!ct.IsCancellationRequested) Application.Current?.Dispatcher.Invoke(() => ProgressStatusText = msg); }), ct);
+                CloneResult result;
+
+                if (IsPartialClone)
+                {
+                    var sparsePathList = SparsePaths.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p.Trim())
+                        .Where(p => !string.IsNullOrWhiteSpace(p))
+                        .ToList();
+
+                    AppendLog($"📦 Partial Clone: {sparsePathList.Count} paths");
+                    result = await Task.Run(() => _gitService.CloneRepositorySparse(RepoUrl, clonePath, Branch, sparsePathList,
+                        onProgress: msg => { if (!ct.IsCancellationRequested) Application.Current?.Dispatcher.Invoke(() => ProgressStatusText = msg); }), ct);
+                }
+                else
+                {
+                    result = await Task.Run(() => _gitService.CloneRepository(RepoUrl, clonePath, Branch,
+                        onProgress: msg => { if (!ct.IsCancellationRequested) Application.Current?.Dispatcher.Invoke(() => ProgressStatusText = msg); }), ct);
+                }
 
                 if (ct.IsCancellationRequested) return;
                 if (result.Success)
@@ -415,6 +449,9 @@ namespace FlowMy.ViewModels
                     Branch = resolved ?? string.Empty;
                     _suppressBranchCheckout = false;
 
+                    // Update sparse checkout status
+                    IsSparseCheckoutEnabled = _gitService.IsSparseCheckoutEnabled(clonePath);
+
                     if (string.IsNullOrWhiteSpace(DisplayName)) DisplayName = targetFolderName;
                     _gitNode.RefreshCloneStatus();
                     AppendLog($"✅ Clone OK! {targetFolderName} ({Branch})");
@@ -432,6 +469,29 @@ namespace FlowMy.ViewModels
             var path = LocalPath;
             if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             { AppendLog("❌ Thư mục chưa tồn tại."); return; }
+
+            // Update sparse-checkout paths if partial clone is enabled
+            if (IsPartialClone)
+            {
+                var sparsePathList = SparsePaths.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .ToList();
+
+                if (sparsePathList.Count > 0)
+                {
+                    AppendLog($"📦 Cập nhật sparse checkout: {sparsePathList.Count} paths");
+                    var updated = await Task.Run(() => _gitService.UpdateSparseCheckoutPaths(path, sparsePathList));
+                    if (updated)
+                    {
+                        AppendLog($"✅ Đã cập nhật sparse checkout paths");
+                    }
+                    else
+                    {
+                        AppendLog($"⚠️ Không thể cập nhật sparse checkout paths");
+                    }
+                }
+            }
 
             _operationCts?.Cancel();
             _operationCts = new CancellationTokenSource();
@@ -545,6 +605,19 @@ namespace FlowMy.ViewModels
                 _gitNode.RefreshCloneStatus();
             }
 
+            // Load sparse checkout configuration if enabled
+            IsSparseCheckoutEnabled = _gitService.IsSparseCheckoutEnabled(path);
+            if (IsSparseCheckoutEnabled)
+            {
+                var existingSparsePaths = _gitService.GetSparseCheckoutPaths(path);
+                if (existingSparsePaths.Count > 0)
+                {
+                    SparsePaths = string.Join(Environment.NewLine, existingSparsePaths);
+                    IsPartialClone = true;
+                    AppendLog($"📦 Tìm thấy sparse checkout: {existingSparsePaths.Count} paths");
+                }
+            }
+
             _suppressBranchCheckout = false;
 
             // Luôn lấy tên folder cuối cùng làm DisplayName
@@ -574,6 +647,8 @@ namespace FlowMy.ViewModels
             targetNode.ColorKey = NodeColorKey;
             targetNode.TooltipText = TooltipText;
             targetNode.CommandText = CommandText;
+            targetNode.IsPartialClone = IsPartialClone;
+            targetNode.SparsePaths = SparsePaths;
 
             var brush = ResolveBrushFromKey(NodeColorKey);
             targetNode.NodeBrush = brush;
@@ -780,6 +855,8 @@ namespace FlowMy.ViewModels
             NodeColorKey = repo.ColorKey ?? "Indigo";
             TooltipText = repo.TooltipText;
             CommandText = repo.CommandText ?? string.Empty;
+            IsPartialClone = repo.IsPartialClone;
+            SparsePaths = repo.SparsePaths ?? string.Empty;
 
             // Load command + ShowCmdWindow từ Documents/FlowMy-CmdGit/
             var entry = GitCmdStorageService.LoadEntry(repo.Id);

@@ -51,7 +51,9 @@ namespace FlowMy.Services.Git
                     CommandText = r.CommandText,
                     LastCommitHash = r.LastCommitHash,
                     LastPullTime = r.LastPullTime,
-                    AutoOpenOnExecute = r.AutoOpenOnExecute
+                    AutoOpenOnExecute = r.AutoOpenOnExecute,
+                    IsPartialClone = r.IsPartialClone,
+                    SparsePaths = r.SparsePaths
                 }).ToList();
 
                 var json = JsonSerializer.Serialize(dtos, new JsonSerializerOptions { WriteIndented = true });
@@ -66,15 +68,90 @@ namespace FlowMy.Services.Git
             try
             {
                 var path = GetFilePath();
-                if (!File.Exists(path)) return new List<GitSourceNode>();
+                if (!File.Exists(path))
+                {
+                    // Tạo default repos nếu file chưa tồn tại
+                    var defaultRepos = CreateDefaultRepos();
+                    Save(defaultRepos);
+                    return defaultRepos;
+                }
 
                 var json = File.ReadAllText(path);
-                return DeserializeRepos(json);
+                var repos = DeserializeRepos(json);
+
+                // Nếu file rỗng hoặc không có repos, tạo default
+                if (repos.Count == 0)
+                {
+                    var defaultRepos = CreateDefaultRepos();
+                    Save(defaultRepos);
+                    return defaultRepos;
+                }
+
+                return repos;
             }
             catch
             {
                 return new List<GitSourceNode>();
             }
+        }
+
+        /// <summary>Tạo danh sách default repos mẫu.</summary>
+        private static List<GitSourceNode> CreateDefaultRepos()
+        {
+            return new List<GitSourceNode>
+            {
+                new GitSourceNode
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = "React App Template",
+                    DisplayName = "React App Template",
+                    RepoUrl = "https://github.com/facebook/react.git",
+                    LocalPath = string.Empty,
+                    Branch = "main",
+                    IconKey = "react brands",
+                    IconColorKey = "White",
+                    ColorKey = "OceanBrush",
+                    TooltipText = "React official repository - UI library for building user interfaces",
+                    ContextMenuDescription = "Official React repository with examples and documentation",
+                    CommandText = "npm install\nnpm run dev",
+                    IsPartialClone = false,
+                    SparsePaths = string.Empty
+                },
+                new GitSourceNode
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = "Vue.js",
+                    DisplayName = "Vue.js",
+                    RepoUrl = "https://github.com/vuejs/core.git",
+                    LocalPath = string.Empty,
+                    Branch = "main",
+                    IconKey = "vuejs brands",
+                    IconColorKey = "White",
+                    ColorKey = "ForestPine",
+                    TooltipText = "Vue.js core - Progressive JavaScript framework",
+                    ContextMenuDescription = "Vue.js official repository",
+                    CommandText = "npm install\nnpm run dev",
+                    IsPartialClone = false,
+                    SparsePaths = string.Empty
+                },
+                new GitSourceNode
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = ".NET Core",
+                    DisplayName = ".NET Core",
+                    RepoUrl = "https://github.com/dotnet/runtime.git",
+                    LocalPath = string.Empty,
+                    Branch = "main",
+                    IconKey = "dot-net brands",
+                    IconColorKey = "White",
+                    ColorKey = "InfoBrush",
+                    TooltipText = ".NET runtime - Cross-platform implementation of .NET",
+                    ContextMenuDescription = "Official .NET runtime repository",
+                    CommandText = "dotnet build\ndotnet run",
+                    IsPartialClone = false,
+                    SparsePaths = string.Empty
+                }
+            };
         }
 
         /// <summary>
@@ -139,7 +216,9 @@ namespace FlowMy.Services.Git
                     CommandText = r.CommandText,
                     LastCommitHash = r.LastCommitHash,
                     LastPullTime = r.LastPullTime,
-                    AutoOpenOnExecute = r.AutoOpenOnExecute
+                    AutoOpenOnExecute = r.AutoOpenOnExecute,
+                    IsPartialClone = r.IsPartialClone,
+                    SparsePaths = r.SparsePaths
                 }).ToList();
 
                 var json = JsonSerializer.Serialize(dtos, new JsonSerializerOptions { WriteIndented = true });
@@ -170,6 +249,8 @@ namespace FlowMy.Services.Git
             public string? LastCommitHash { get; set; }
             public string? LastPullTime { get; set; }
             public bool AutoOpenOnExecute { get; set; } = true;
+            public bool IsPartialClone { get; set; }
+            public string? SparsePaths { get; set; }
         }
 
         /// <summary>Deserialize JSON string thành danh sách GitSourceNode.</summary>
@@ -197,7 +278,9 @@ namespace FlowMy.Services.Git
                     CommandText = dto.CommandText ?? string.Empty,
                     LastCommitHash = dto.LastCommitHash ?? string.Empty,
                     LastPullTime = dto.LastPullTime ?? string.Empty,
-                    AutoOpenOnExecute = dto.AutoOpenOnExecute
+                    AutoOpenOnExecute = dto.AutoOpenOnExecute,
+                    IsPartialClone = dto.IsPartialClone,
+                    SparsePaths = dto.SparsePaths ?? string.Empty
                 };
 
                 // Resolve NodeBrush from ColorKey

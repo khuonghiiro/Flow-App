@@ -267,6 +267,196 @@ namespace FlowMy.Services.Git
         {
             return !string.IsNullOrWhiteSpace(path) && Repository.IsValid(path);
         }
+
+        /// <summary>
+        /// Clone repo với sparse-checkout (chỉ pull các file/folder được chọn).
+        /// </summary>
+        public CloneResult CloneRepositorySparse(string repoUrl, string localPath, string? branch = null,
+            List<string>? sparsePaths = null, CredentialsHandler? credentialsProvider = null, Action<string>? onProgress = null)
+        {
+            try
+            {
+                // Tạo folder nếu chưa tồn tại
+                if (!Directory.Exists(localPath))
+                {
+                    Directory.CreateDirectory(localPath);
+                }
+                else if (Directory.GetFileSystemEntries(localPath).Length > 0)
+                {
+                    return new CloneResult { Success = false, ErrorMessage = $"Thư mục '{localPath}' đã tồn tại và không rỗng." };
+                }
+
+                onProgress?.Invoke("Đang khởi tạo sparse checkout...");
+
+                var options = new CloneOptions
+                {
+                    BranchName = branch ?? "main",
+                    RecurseSubmodules = false
+                };
+
+                if (credentialsProvider != null)
+                    options.FetchOptions.CredentialsProvider = credentialsProvider;
+
+                // Progress callbacks
+                options.FetchOptions.OnTransferProgress = progress =>
+                {
+                    var pct = progress.TotalObjects > 0
+                        ? (int)((double)progress.ReceivedObjects / progress.TotalObjects * 100)
+                        : 0;
+                    onProgress?.Invoke($"Đang tải objects: {progress.ReceivedObjects}/{progress.TotalObjects} ({pct}%) — {progress.ReceivedBytes / 1024} KB");
+                    return true;
+                };
+
+                onProgress?.Invoke("Đang kết nối tới remote...");
+
+                // Clone với no-checkout trước
+                options.Checkout = false;
+                var resultPath = Repository.Clone(repoUrl, localPath, options);
+
+                onProgress?.Invoke("Đang cấu hình sparse checkout...");
+
+                using var repo = new Repository(resultPath);
+
+                // Enable sparse checkout
+                repo.Config.Set("core.sparseCheckout", true);
+
+                // Thêm các paths vào sparse-checkout file
+                if (sparsePaths != null && sparsePaths.Count > 0)
+                {
+                    var sparseCheckoutFile = Path.Combine(localPath, ".git", "info", "sparse-checkout");
+                    var sparseDir = Path.GetDirectoryName(sparseCheckoutFile);
+                    if (!Directory.Exists(sparseDir))
+                        Directory.CreateDirectory(sparseDir);
+
+                    File.WriteAllLines(sparseCheckoutFile, sparsePaths);
+                }
+
+                onProgress?.Invoke("Đang reset index để áp dụng sparse checkout...");
+
+                // Reset index để áp dụng sparse checkout
+                var resetOptions = new ResetOptions
+                {
+                    ResetMode = ResetMode.Hard
+                };
+                Commands.Reset(repo, repo.Head, resetOptions);
+
+                onProgress?.Invoke("Đang checkout files...");
+
+                // Checkout files
+                var checkoutOptions = new CheckoutOptions
+                {
+                    OnCheckoutProgress = (path, completedSteps, totalSteps) =>
+                    {
+                        if (totalSteps > 0)
+                        {
+                            var pct = (int)((double)completedSteps / totalSteps * 100);
+                            onProgress?.Invoke($"Checkout files: {completedSteps}/{totalSteps} ({pct}%)");
+                        }
+                    }
+                };
+
+                Commands.Checkout(repo, repo.Head, checkoutOptions);
+
+                onProgress?.Invoke("Đang đọc thông tin repository...");
+
+                var head = repo.Head.Tip;
+
+                return new CloneResult
+                {
+                    Success = true,
+                    LocalPath = resultPath,
+                    Branch = repo.Head.FriendlyName,
+                    LastCommitHash = head?.Sha ?? string.Empty,
+                    LastCommitMessage = head?.MessageShort ?? string.Empty
+                };
+            }
+            catch (Exception ex)
+            {
+                return new CloneResult { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật sparse-checkout paths cho repo đã tồn tại.
+        /// </summary>
+        public bool UpdateSparseCheckoutPaths(string localPath, List<string> sparsePaths)
+        {
+            try
+            {
+                if (!Repository.IsValid(localPath))
+                    return false;
+
+                using var repo = new Repository(localPath);
+
+                // Enable sparse checkout
+                repo.Config.Set("core.sparseCheckout", true);
+
+                // Cập nhật sparse-checkout file
+                var sparseCheckoutFile = Path.Combine(localPath, ".git", "info", "sparse-checkout");
+                var sparseDir = Path.GetDirectoryName(sparseCheckoutFile);
+                if (!Directory.Exists(sparseDir))
+                    Directory.CreateDirectory(sparseDir);
+
+                File.WriteAllLines(sparseCheckoutFile, sparsePaths);
+
+                // Reset index để áp dụng sparse checkout
+                var resetOptions = new ResetOptions
+                {
+                    ResetMode = ResetMode.Hard
+                };
+                Commands.Reset(repo, repo.Head, resetOptions);
+
+                // Checkout để áp dụng sparse checkout paths
+                Commands.Checkout(repo, repo.Head);
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách sparse-checkout paths hiện tại.
+        /// </summary>
+        public List<string> GetSparseCheckoutPaths(string localPath)
+        {
+            try
+            {
+                var sparseCheckoutFile = Path.Combine(localPath, ".git", "info", "sparse-checkout");
+                if (!File.Exists(sparseCheckoutFile))
+                    return new List<string>();
+
+                return File.ReadAllLines(sparseCheckoutFile)
+                    .Where(line => !string.IsNullOrWhiteSpace(line))
+                    .ToList();
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+
+        /// <summary>
+        /// Kiểm tra repo có đang dùng sparse-checkout không.
+        /// </summary>
+        public bool IsSparseCheckoutEnabled(string localPath)
+        {
+            try
+            {
+                if (!Repository.IsValid(localPath))
+                    return false;
+
+                using var repo = new Repository(localPath);
+                var sparseConfig = repo.Config.Get<bool>("core.sparseCheckout");
+                return sparseConfig != null && sparseConfig.Value;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 
     public sealed class CloneResult

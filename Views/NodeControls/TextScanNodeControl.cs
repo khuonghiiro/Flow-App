@@ -68,6 +68,7 @@ namespace FlowMy.Views.NodeControls
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 4, 0, 0)
             };
+            placeholderPanel.SetResourceReference(TextBlock.ForegroundProperty, $"TextOn{node.ColorKey}Brush");
             placeholderText.SetResourceReference(TextBlock.ForegroundProperty, $"TextOn{node.ColorKey}Brush");
             placeholderPanel.Children.Add(placeholderIcon);
             placeholderPanel.Children.Add(placeholderText);

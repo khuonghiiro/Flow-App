@@ -10,11 +10,9 @@ namespace FlowMy.Models.Nodes
     public enum OcrEngineMode
     {
         /// <summary>Tesseract OCR - miễn phí, phổ biến, hỗ trợ nhiều ngôn ngữ.</summary>
-        Tesseract = 0,
-        /// <summary>Windows.Media.Ocr - tích hợp sẵn Windows, hỗ trợ nhiều ngôn ngữ.</summary>
-        WindowsOcr = 1,
-        /// <summary>OpenCV + ML.NET/ONNX Runtime - mạnh hơn, cần GPU tốt.</summary>
-        OpenCvMlNet = 2
+        Tesseract = 0
+        // WindowsOcr đã bị xóa vì không hỗ trợ trong .NET Framework WPF
+        // OpenCvMlNet đã bị xóa vì chưa được implement
     }
 
     /// <summary>

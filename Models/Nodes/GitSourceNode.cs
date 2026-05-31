@@ -187,6 +187,22 @@ namespace FlowMy.Models
             set { if (_commandText != value) { _commandText = value ?? string.Empty; OnPropertyChanged(); } }
         }
 
+        private bool _isPartialClone;
+        /// <summary>Bật/tắt chế độ partial clone (chỉ pull một phần của repo).</summary>
+        public bool IsPartialClone
+        {
+            get => _isPartialClone;
+            set { if (_isPartialClone != value) { _isPartialClone = value; OnPropertyChanged(); } }
+        }
+
+        private string _sparsePaths = string.Empty;
+        /// <summary>Danh sách paths cho sparse checkout (mỗi dòng một đường dẫn).</summary>
+        public string SparsePaths
+        {
+            get => _sparsePaths;
+            set { if (_sparsePaths != value) { _sparsePaths = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
         /// <summary>Kiểm tra folder local có tồn tại .git hay không (đã clone).</summary>
         public bool IsGitRepoCloned
         {
