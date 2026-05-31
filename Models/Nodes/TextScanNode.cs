@@ -91,6 +91,7 @@ namespace FlowMy.Models.Nodes
         private string _tessdataPath = string.Empty; // Đường dẫn đến thư mục tessdata
         private TesseractPageSegMode _tesseractPageSegMode = TesseractPageSegMode.Auto;
         private TesseractEngineMode _tesseractEngineMode = TesseractEngineMode.Default;
+        private List<string> _selectedLanguages = new List<string> { "eng", "vie" }; // Danh sách ngôn ngữ đã chọn cho auto-detect
 
         // ── Nguồn ảnh ─────────────────────────────────────────────────────────
         private ImageSourceMode _imageSourceMode = ImageSourceMode.ScreenCapture;
@@ -261,6 +262,13 @@ namespace FlowMy.Models.Nodes
         {
             get => _tesseractEngineMode;
             set { if (_tesseractEngineMode != value) { _tesseractEngineMode = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Danh sách ngôn ngữ đã chọn cho auto-detect.</summary>
+        public List<string> SelectedLanguages
+        {
+            get => _selectedLanguages;
+            set { if (_selectedLanguages != value) { _selectedLanguages = value ?? new List<string>(); OnPropertyChanged(); } }
         }
 
         // ── Chọn app để chụp ────────────────────────────────────────────────────

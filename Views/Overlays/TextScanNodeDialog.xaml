@@ -365,26 +365,33 @@
                                             <Run Text="Tự động phát hiện ngôn ngữ"/>
                                         </TextBlock>
                                     </CheckBox>
-                                    
+
+                                    <!-- Single language selection (when auto-detect is OFF) -->
                                     <StackPanel Visibility="{Binding AutoDetectLanguage,
                                                              Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                                        <TextBlock Text="Ngôn ngữ OCR (ISO 639-2):"
+                                        <TextBlock Text="Ngôn ngữ OCR:"
                                                    Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
                                         <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                   ItemsSource="{Binding OcrLanguageOptions}"
                                                   SelectedValue="{Binding OcrLanguage, Mode=TwoWay}"/>
+                                    </StackPanel>
+
+                                    <!-- Multi language selection (when auto-detect is ON) -->
+                                    <StackPanel Visibility="{Binding AutoDetectLanguage,
+                                                             Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="Chọn ngôn ngữ để phát hiện:"
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                        <controls:MultiSelectComboBoxUserControl
+                                            Height="40"
+                                            Margin="0,5"
+                                            ItemsSource="{Binding AvailableTesseractLanguages}"
+                                            SelectedValues="{Binding SelectedLanguages, Mode=TwoWay}"
+                                            DisplayMemberPath="DisplayName"
+                                            SelectedValuePath="Code"
+                                            PlaceholderText="Chọn ngôn ngữ..."/>
                                         <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10"
                                                    TextWrapping="Wrap" Margin="0,4,0,0">
-                                            <Run Text="Ví dụ: "/>
-                                            <Run Text="en" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
-                                            <Run Text=", "/>
-                                            <Run Text="vi" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
-                                            <Run Text=", "/>
-                                            <Run Text="ja" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
-                                            <Run Text=", "/>
-                                            <Run Text="ko" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
-                                            <Run Text=", "/>
-                                            <Run Text="zh-Hans" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
+                                            <Run Text="💡 Chọn nhiều ngôn ngữ để Tesseract tự động phát hiện. Danh sách ngôn ngữ được tải từ thư mục tessdata."/>
                                         </TextBlock>
                                     </StackPanel>
                                 </StackPanel>

@@ -5,6 +5,7 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 
 namespace FlowMy.ViewModels
@@ -54,9 +55,11 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _base64Image = string.Empty;
 
         // ── Ngôn ngữ OCR ─────────────────────────────────────────────────────────
-        [ObservableProperty] private string _ocrLanguage = "en";
+        [ObservableProperty] private string _ocrLanguage = "eng";
         [ObservableProperty] private bool _autoDetectLanguage = true;
+        [ObservableProperty] private ObservableCollection<object> _selectedLanguages = new();
         public ObservableCollection<string> OcrLanguageOptions { get; } = new();
+        public ObservableCollection<TesseractLanguageOption> AvailableTesseractLanguages { get; } = new();
 
         // ── Chọn app để đưa lên trước khi chụp ────────────────────────────────────
         [ObservableProperty] private WindowInfo? _selectedTargetWindow;
@@ -91,6 +94,20 @@ namespace FlowMy.ViewModels
             OcrLanguage = node.OcrLanguage;
             AutoDetectLanguage = node.AutoDetectLanguage;
 
+            // Sync selected languages
+            SelectedLanguages.Clear();
+            if (node.SelectedLanguages != null && node.SelectedLanguages.Count > 0)
+            {
+                foreach (var lang in node.SelectedLanguages)
+                    SelectedLanguages.Add(lang);
+            }
+            else if (AutoDetectLanguage)
+            {
+                // Default languages if none selected
+                SelectedLanguages.Add("eng");
+                SelectedLanguages.Add("vie");
+            }
+
             // Load danh sách node
             RefreshAllNodesWithOutputs(AvailableNodeOptions);
 
@@ -122,6 +139,19 @@ namespace FlowMy.ViewModels
                 {
                     OnPropertyChanged(nameof(IsTesseractMode));
                 }
+                else if (e.PropertyName == nameof(TessdataPath))
+                {
+                    LoadAvailableTesseractLanguages();
+                }
+                else if (e.PropertyName == nameof(AutoDetectLanguage))
+                {
+                    if (AutoDetectLanguage && SelectedLanguages.Count == 0)
+                    {
+                        // Auto-select common languages when enabling auto-detect
+                        SelectedLanguages.Add("eng");
+                        SelectedLanguages.Add("vie");
+                    }
+                }
             };
 
             // Khởi tạo options
@@ -129,6 +159,7 @@ namespace FlowMy.ViewModels
             InitializeTesseractOptions();
             InitializeImageSourceModeOptions();
             InitializeOcrLanguageOptions();
+            LoadAvailableTesseractLanguages();
             RefreshCoordKeyOptions();
             RefreshImageKeyOptions();
         }
@@ -200,33 +231,194 @@ namespace FlowMy.ViewModels
         private void InitializeOcrLanguageOptions()
         {
             OcrLanguageOptions.Clear();
-            OcrLanguageOptions.Add("en"); // English
-            OcrLanguageOptions.Add("vi"); // Vietnamese
-            OcrLanguageOptions.Add("ja"); // Japanese
-            OcrLanguageOptions.Add("ko"); // Korean
-            OcrLanguageOptions.Add("zh-Hans"); // Chinese Simplified
-            OcrLanguageOptions.Add("zh-Hant"); // Chinese Traditional
-            OcrLanguageOptions.Add("fr"); // French
-            OcrLanguageOptions.Add("de"); // German
-            OcrLanguageOptions.Add("es"); // Spanish
-            OcrLanguageOptions.Add("it"); // Italian
-            OcrLanguageOptions.Add("pt"); // Portuguese
-            OcrLanguageOptions.Add("ru"); // Russian
-            OcrLanguageOptions.Add("ar"); // Arabic
-            OcrLanguageOptions.Add("th"); // Thai
-            OcrLanguageOptions.Add("id"); // Indonesian
-            OcrLanguageOptions.Add("ms"); // Malay
-            OcrLanguageOptions.Add("nl"); // Dutch
-            OcrLanguageOptions.Add("pl"); // Polish
-            OcrLanguageOptions.Add("tr"); // Turkish
-            OcrLanguageOptions.Add("sv"); // Swedish
-            OcrLanguageOptions.Add("cs"); // Czech
-            OcrLanguageOptions.Add("da"); // Danish
-            OcrLanguageOptions.Add("fi"); // Finnish
-            OcrLanguageOptions.Add("no"); // Norwegian
-            OcrLanguageOptions.Add("el"); // Greek
-            OcrLanguageOptions.Add("he"); // Hebrew
-            OcrLanguageOptions.Add("hi"); // Hindi
+            OcrLanguageOptions.Add("eng"); // English
+            OcrLanguageOptions.Add("vie"); // Vietnamese
+            OcrLanguageOptions.Add("jpn"); // Japanese
+            OcrLanguageOptions.Add("kor"); // Korean
+            OcrLanguageOptions.Add("chi_sim"); // Chinese Simplified
+            OcrLanguageOptions.Add("chi_tra"); // Chinese Traditional
+            OcrLanguageOptions.Add("fra"); // French
+            OcrLanguageOptions.Add("deu"); // German
+            OcrLanguageOptions.Add("spa"); // Spanish
+            OcrLanguageOptions.Add("ita"); // Italian
+            OcrLanguageOptions.Add("por"); // Portuguese
+            OcrLanguageOptions.Add("rus"); // Russian
+            OcrLanguageOptions.Add("ara"); // Arabic
+            OcrLanguageOptions.Add("tha"); // Thai
+            OcrLanguageOptions.Add("ind"); // Indonesian
+            OcrLanguageOptions.Add("msa"); // Malay
+            OcrLanguageOptions.Add("nld"); // Dutch
+            OcrLanguageOptions.Add("pol"); // Polish
+            OcrLanguageOptions.Add("tur"); // Turkish
+            OcrLanguageOptions.Add("swe"); // Swedish
+            OcrLanguageOptions.Add("ces"); // Czech
+            OcrLanguageOptions.Add("dan"); // Danish
+            OcrLanguageOptions.Add("fin"); // Finnish
+            OcrLanguageOptions.Add("nor"); // Norwegian
+            OcrLanguageOptions.Add("ell"); // Greek
+            OcrLanguageOptions.Add("heb"); // Hebrew
+            OcrLanguageOptions.Add("hin"); // Hindi
+        }
+
+        private void LoadAvailableTesseractLanguages()
+        {
+            AvailableTesseractLanguages.Clear();
+
+            string tessdataPath = string.IsNullOrWhiteSpace(TessdataPath)
+                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata")
+                : TessdataPath;
+
+            if (!Directory.Exists(tessdataPath))
+                return;
+
+            var trainedDataFiles = Directory.GetFiles(tessdataPath, "*.traineddata");
+            foreach (var file in trainedDataFiles)
+            {
+                var langCode = Path.GetFileNameWithoutExtension(file);
+                var displayName = GetLanguageDisplayName(langCode);
+                AvailableTesseractLanguages.Add(new TesseractLanguageOption
+                {
+                    Code = langCode,
+                    DisplayName = displayName
+                });
+            }
+        }
+
+        private string GetLanguageDisplayName(string code)
+        {
+            return code switch
+            {
+                "afr" => "Afrikaans",
+                "amh" => "Amharic",
+                "ara" => "Arabic (Tiếng Ả Rập)",
+                "asm" => "Assamese",
+                "aze" => "Azerbaijani",
+                "aze_cyrl" => "Azerbaijani (Cyrillic)",
+                "bel" => "Belarusian",
+                "ben" => "Bengali",
+                "bod" => "Tibetan",
+                "bos" => "Bosnian",
+                "bre" => "Breton",
+                "bul" => "Bulgarian",
+                "cat" => "Catalan",
+                "ceb" => "Cebuano",
+                "ces" => "Czech (Tiếng Séc)",
+                "chi_sim" => "Chinese Simplified (Tiếng Trung giản thể)",
+                "chi_sim_vert" => "Chinese Simplified (Vertical)",
+                "chi_tra" => "Chinese Traditional (Tiếng Trung phồn thể)",
+                "chi_tra_vert" => "Chinese Traditional (Vertical)",
+                "chr" => "Cherokee",
+                "cos" => "Corsican",
+                "cym" => "Welsh",
+                "dan" => "Danish (Tiếng Đan Mạch)",
+                "dan_frak" => "Danish (Fraktur)",
+                "deu" => "German (Tiếng Đức)",
+                "deu_frak" => "German (Fraktur)",
+                "deu_latf" => "German (Latin)",
+                "div" => "Dhivehi",
+                "dzo" => "Dzongkha",
+                "ell" => "Greek (Tiếng Hy Lạp)",
+                "eng" => "English (Tiếng Anh)",
+                "enm" => "English (Middle)",
+                "epo" => "Esperanto",
+                "equ" => "Equation",
+                "est" => "Estonian",
+                "eus" => "Basque",
+                "fao" => "Faroese",
+                "fas" => "Persian (Tiếng Ba Tư)",
+                "fil" => "Filipino",
+                "fin" => "Finnish (Tiếng Phần Lan)",
+                "fra" => "French (Tiếng Pháp)",
+                "frm" => "French (Middle)",
+                "fry" => "Western Frisian",
+                "gla" => "Scottish Gaelic",
+                "gle" => "Irish",
+                "glg" => "Galician",
+                "grc" => "Greek (Ancient)",
+                "guj" => "Gujarati",
+                "hat" => "Haitian",
+                "heb" => "Hebrew (Tiêng Do Thái)",
+                "hin" => "Hindi (Tiếng Hindi)",
+                "hrv" => "Croatian",
+                "hun" => "Hungarian (Tiếng Hungary)",
+                "hye" => "Armenian",
+                "iku" => "Inuktitut",
+                "ind" => "Indonesian (Tiếng Indonesia)",
+                "isl" => "Icelandic",
+                "ita" => "Italian (Tiếng Ý)",
+                "ita_old" => "Italian (Old)",
+                "jav" => "Javanese",
+                "jpn" => "Japanese (Tiếng Nhật)",
+                "jpn_vert" => "Japanese (Vertical)",
+                "kan" => "Kannada",
+                "kat" => "Georgian",
+                "kat_old" => "Georgian (Old)",
+                "kaz" => "Kazakh",
+                "khm" => "Khmer",
+                "kir" => "Kyrgyz",
+                "kmr" => "Kurdish",
+                "kor" => "Korean (Tiếng Hàn)",
+                "kor_vert" => "Korean (Vertical)",
+                "lao" => "Lao",
+                "lat" => "Latin",
+                "lav" => "Latvian",
+                "lit" => "Lithuanian",
+                "ltz" => "Luxembourgish",
+                "mal" => "Malayalam",
+                "mar" => "Marathi",
+                "mkd" => "Macedonian",
+                "mlt" => "Maltese",
+                "mon" => "Mongolian",
+                "mri" => "Maori",
+                "msa" => "Malay (Tiếng Mã Lai)",
+                "mya" => "Burmese",
+                "nep" => "Nepali",
+                "nld" => "Dutch (Tiếng Hà Lan)",
+                "nor" => "Norwegian (Tiếng Na Uy)",
+                "oci" => "Occitan",
+                "ori" => "Oriya",
+                "osd" => "Orientation and Script Detection",
+                "pan" => "Punjabi",
+                "pol" => "Polish (Tiếng Ba Lan)",
+                "por" => "Portuguese (Tiếng Bồ Đào Nha)",
+                "pus" => "Pashto",
+                "que" => "Quechua",
+                "ron" => "Romanian",
+                "rus" => "Russian (Tiếng Nga)",
+                "san" => "Sanskrit",
+                "sin" => "Sinhala",
+                "slk" => "Slovak",
+                "slk_frak" => "Slovak (Fraktur)",
+                "slv" => "Slovenian",
+                "snd" => "Sindhi",
+                "spa" => "Spanish (Tiếng Tây Ban Nha)",
+                "spa_old" => "Spanish (Old)",
+                "sqi" => "Albanian",
+                "srp" => "Serbian",
+                "srp_latn" => "Serbian (Latin)",
+                "sun" => "Sundanese",
+                "swa" => "Swahili",
+                "swe" => "Swedish (Tiếng Thụy Điển)",
+                "syr" => "Syriac",
+                "tam" => "Tamil",
+                "tat" => "Tatar",
+                "tel" => "Telugu",
+                "tgk" => "Tajik",
+                "tgl" => "Tagalog",
+                "tha" => "Thai (Tiếng Thái)",
+                "tir" => "Tigrinya",
+                "ton" => "Tongan",
+                "tur" => "Turkish (Tiếng Thổ Nhĩ Kỳ)",
+                "uig" => "Uyghur",
+                "ukr" => "Ukrainian",
+                "urd" => "Urdu",
+                "uzb" => "Uzbek",
+                "uzb_cyrl" => "Uzbek (Cyrillic)",
+                "vie" => "Vietnamese (Tiếng Việt)",
+                "yid" => "Yiddish",
+                "yor" => "Yoruba",
+                _ => code
+            };
         }
 
         // ── Load danh sách cửa sổ đang mở ───────────────────────────────────
@@ -286,6 +478,7 @@ namespace FlowMy.ViewModels
 
             _textScanNode.OcrLanguage = OcrLanguage ?? "eng";
             _textScanNode.AutoDetectLanguage = AutoDetectLanguage;
+            _textScanNode.SelectedLanguages = SelectedLanguages.Cast<string>().ToList();
 
             // Lưu target app
             _textScanNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
@@ -318,6 +511,12 @@ namespace FlowMy.ViewModels
     public class ImageSourceModeOption
     {
         public ImageSourceMode Value { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    public class TesseractLanguageOption
+    {
+        public string Code { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
     }
 }

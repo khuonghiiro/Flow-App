@@ -2887,6 +2887,11 @@ namespace FlowMy.ViewModels
                     textScan.OcrLanguage = ol?.ToString() ?? "eng";
                 if (properties.TryGetValue("AutoDetectLanguage", out var adl))
                     textScan.AutoDetectLanguage = bool.Parse(adl.ToString()!);
+                if (properties.TryGetValue("SelectedLanguages", out var sl))
+                {
+                    var langList = sl.ToString()?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                    textScan.SelectedLanguages = langList ?? new List<string>();
+                }
                 if (properties.TryGetValue("TargetProcessName", out var tpn))
                     textScan.TargetProcessName = tpn?.ToString() ?? string.Empty;
                 if (properties.TryGetValue("TargetWindowTitle", out var twt))
@@ -3207,6 +3212,8 @@ namespace FlowMy.ViewModels
                     dict["Base64Image"] = textScan.Base64Image;
                 dict["OcrLanguage"] = textScan.OcrLanguage;
                 dict["AutoDetectLanguage"] = textScan.AutoDetectLanguage;
+                if (textScan.SelectedLanguages != null && textScan.SelectedLanguages.Count > 0)
+                    dict["SelectedLanguages"] = string.Join(",", textScan.SelectedLanguages);
                 if (!string.IsNullOrWhiteSpace(textScan.TargetProcessName))
                     dict["TargetProcessName"] = textScan.TargetProcessName;
                 if (!string.IsNullOrWhiteSpace(textScan.TargetWindowTitle))

@@ -307,8 +307,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 string langCode;
                 if (textScan.AutoDetectLanguage)
                 {
-                    // Use multiple languages for auto-detection
-                    langCode = "eng+vie+jpn+kor+chi_sim+chi_tra+fra+deu+spa+rus+ara";
+                    // Use selected languages for auto-detection
+                    if (textScan.SelectedLanguages != null && textScan.SelectedLanguages.Count > 0)
+                    {
+                        langCode = string.Join("+", textScan.SelectedLanguages);
+                    }
+                    else
+                    {
+                        // Fallback to default languages
+                        langCode = "eng+vie";
+                    }
                     System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Auto-detect language enabled, using: {langCode}");
                 }
                 else
