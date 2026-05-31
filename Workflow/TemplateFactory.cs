@@ -62,6 +62,7 @@ namespace FlowMy.Workflow
                 "GitSource" => CreateGitSourceNode(x, y),
                 "MacroRecorder" => CreateMacroRecorderNode(x, y),
                 "BorderHighlight" => CreateBorderHighlightNode(x, y),
+                "TextScan" => CreateTextScanNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1359,6 +1360,56 @@ namespace FlowMy.Workflow
                 Y = y - 40,
                 NodeBrush = nodeBrush
             };
+        }
+
+        private WorkflowNode CreateTextScanNode(double x, double y)
+        {
+            var nodeBrush = _colorThemeService.GetBrush("VioletDeepBrush")
+                            ?? _colorThemeService.GetBrush("PrimaryBrush")
+                            ?? Brushes.MediumPurple;
+
+            var node = new TextScanNode
+            {
+                Id = $"Node_TextScan_{Guid.NewGuid()}",
+                Title = "Text Scan (OCR)",
+                X = x - 110,
+                Y = y - 70,
+                NodeBrush = nodeBrush,
+                ColorKey = "VioletDeep",
+                Type = NodeType.TextScan
+            };
+
+            // Thêm ports
+            node.Ports.Add(new NodePort
+            {
+                IsInput = true,
+                Position = PortPosition.Left,
+                IsVisible = true,
+                ColorKey = "Info"
+            });
+
+            node.Ports.Add(new NodePort
+            {
+                IsInput = false,
+                Position = PortPosition.Right,
+                IsVisible = true,
+                ColorKey = "SunsetOrange"
+            });
+
+            // Dynamic data (outputs)
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "extractedText", DisplayName = "Extracted Text", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "extractedTextLines", DisplayName = "Extracted Text (Lines)", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "wordCount", DisplayName = "Word Count", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "imageWidth", DisplayName = "Image - Width", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "imageHeight", DisplayName = "Image - Height", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "imageBase64", DisplayName = "Image - Base64 (PNG)", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "captureX", DisplayName = "Capture - X", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "captureY", DisplayName = "Capture - Y", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "captureWidth", DisplayName = "Capture - Width", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "captureHeight", DisplayName = "Capture - Height", IsMultiple = false });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "ocrLanguage", DisplayName = "OCR Language", IsMultiple = false });
+
+            return node;
         }
 
         private Brush GetRandomBrush()

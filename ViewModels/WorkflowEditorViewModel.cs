@@ -1110,6 +1110,7 @@ namespace FlowMy.ViewModels
                 NodeType.Function => "calculator",
                 NodeType.ScreenPosition => "crosshairs light",
                 NodeType.ScreenCapture => "camera-viewfinder duotone-light",
+                NodeType.TextScan => "camera-circle-ellipsis duotone-light",
                 NodeType.StringSplit => "scissors light",
                 NodeType.ListOut => "list-radio regular",
                 NodeType.AssignData => "arrows-left-right duotone",
@@ -2850,6 +2851,50 @@ namespace FlowMy.ViewModels
                     }
                 }
             }
+            else if (node is TextScanNode textScan)
+            {
+                if (properties.TryGetValue("OcrEngineMode", out var ocrEngineMode))
+                    textScan.OcrEngineMode = (OcrEngineMode)int.Parse(ocrEngineMode.ToString()!);
+                if (properties.TryGetValue("ImageSourceMode", out var imageSourceMode))
+                    textScan.ImageSourceMode = (ImageSourceMode)int.Parse(imageSourceMode.ToString()!);
+                if (properties.TryGetValue("CaptureX", out var tx))
+                    textScan.CaptureX = int.Parse(tx.ToString()!);
+                if (properties.TryGetValue("CaptureY", out var ty))
+                    textScan.CaptureY = int.Parse(ty.ToString()!);
+                if (properties.TryGetValue("CaptureWidth", out var tw))
+                    textScan.CaptureWidth = int.Parse(tw.ToString()!);
+                if (properties.TryGetValue("CaptureHeight", out var th))
+                    textScan.CaptureHeight = int.Parse(th.ToString()!);
+                if (properties.TryGetValue("CoordSourceNodeId", out var csnid))
+                    textScan.CoordSourceNodeId = csnid?.ToString();
+                if (properties.TryGetValue("CoordSourceOutputKey", out var csok))
+                    textScan.CoordSourceOutputKey = csok?.ToString();
+                if (properties.TryGetValue("ImageSourceNodeId", out var isnid))
+                    textScan.ImageSourceNodeId = isnid?.ToString();
+                if (properties.TryGetValue("ImageSourceOutputKey", out var isok))
+                    textScan.ImageSourceOutputKey = isok?.ToString();
+                if (properties.TryGetValue("ImagePath", out var ip))
+                    textScan.ImagePath = ip?.ToString() ?? string.Empty;
+                if (properties.TryGetValue("Base64Image", out var bi))
+                    textScan.Base64Image = bi?.ToString() ?? string.Empty;
+                if (properties.TryGetValue("OcrLanguage", out var ol))
+                    textScan.OcrLanguage = ol?.ToString() ?? "en";
+                if (properties.TryGetValue("AutoDetectLanguage", out var adl))
+                    textScan.AutoDetectLanguage = bool.Parse(adl.ToString()!);
+                if (properties.TryGetValue("TargetProcessName", out var tpn))
+                    textScan.TargetProcessName = tpn?.ToString() ?? string.Empty;
+                if (properties.TryGetValue("TargetWindowTitle", out var twt))
+                    textScan.TargetWindowTitle = twt?.ToString() ?? string.Empty;
+                if (properties.TryGetValue("CapturedImageBase64", out var b64Obj))
+                {
+                    var b64 = b64Obj?.ToString();
+                    var restored = TryDecodePngBase64ToBitmapImage(b64);
+                    if (restored != null)
+                    {
+                        textScan.CapturedImage = restored;
+                    }
+                }
+            }
             else if (node is WebNode webNode)
             {
                 if (properties.TryGetValue("Web_LastHost", out var hostObj))
@@ -3128,6 +3173,40 @@ namespace FlowMy.ViewModels
                 if (!string.IsNullOrWhiteSpace(b64))
                 {
                     dict["CapturedImageBase64"] = b64;
+                }
+            }
+            else if (node is TextScanNode textScan)
+            {
+                dict["OcrEngineMode"] = (int)textScan.OcrEngineMode;
+                dict["ImageSourceMode"] = (int)textScan.ImageSourceMode;
+                dict["CaptureX"] = textScan.CaptureX;
+                dict["CaptureY"] = textScan.CaptureY;
+                dict["CaptureWidth"] = textScan.CaptureWidth;
+                dict["CaptureHeight"] = textScan.CaptureHeight;
+                if (!string.IsNullOrWhiteSpace(textScan.CoordSourceNodeId))
+                    dict["CoordSourceNodeId"] = textScan.CoordSourceNodeId;
+                if (!string.IsNullOrWhiteSpace(textScan.CoordSourceOutputKey))
+                    dict["CoordSourceOutputKey"] = textScan.CoordSourceOutputKey;
+                if (!string.IsNullOrWhiteSpace(textScan.ImageSourceNodeId))
+                    dict["ImageSourceNodeId"] = textScan.ImageSourceNodeId;
+                if (!string.IsNullOrWhiteSpace(textScan.ImageSourceOutputKey))
+                    dict["ImageSourceOutputKey"] = textScan.ImageSourceOutputKey;
+                if (!string.IsNullOrWhiteSpace(textScan.ImagePath))
+                    dict["ImagePath"] = textScan.ImagePath;
+                if (!string.IsNullOrWhiteSpace(textScan.Base64Image))
+                    dict["Base64Image"] = textScan.Base64Image;
+                dict["OcrLanguage"] = textScan.OcrLanguage;
+                dict["AutoDetectLanguage"] = textScan.AutoDetectLanguage;
+                if (!string.IsNullOrWhiteSpace(textScan.TargetProcessName))
+                    dict["TargetProcessName"] = textScan.TargetProcessName;
+                if (!string.IsNullOrWhiteSpace(textScan.TargetWindowTitle))
+                    dict["TargetWindowTitle"] = textScan.TargetWindowTitle;
+
+                // Lưu ảnh dạng base64 (PNG)
+                var b64TextScan = TryEncodeBitmapSourceToPngBase64(textScan.CapturedImage);
+                if (!string.IsNullOrWhiteSpace(b64TextScan))
+                {
+                    dict["CapturedImageBase64"] = b64TextScan;
                 }
             }
             else if (node is WebNode webNode)

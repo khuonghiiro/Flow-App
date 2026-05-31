@@ -355,6 +355,7 @@ namespace FlowMy.Views
                 "Function" => "calculator",
                 "ScreenPosition" => "crosshairs light",
                 "ScreenCapture" => "camera-viewfinder duotone-light",
+                "TextScan" => "camera-circle-ellipsis duotone-light",
                 "StringSplit" => "scissors light",
                 "ListOut" => "list-radio regular",
                 "AssignData" => "arrows-left-right duotone",

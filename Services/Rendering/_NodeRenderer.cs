@@ -18,6 +18,7 @@ namespace FlowMy.Services.Rendering
         private readonly AsyncTaskNodeRenderer _asyncTaskNodeRenderer;
         private readonly ScreenPositionNodeRenderer _screenPositionNodeRenderer;
         private readonly ScreenCaptureNodeRenderer _screenCaptureNodeRenderer;
+        private readonly TextScanNodeRenderer _textScanNodeRenderer;
         private readonly LoopNodeRenderer _loopNodeRenderer;
         private readonly InputNodeRenderer _inputNodeRenderer;
         private readonly DelayNodeRenderer _delayNodeRenderer;
@@ -62,6 +63,7 @@ namespace FlowMy.Services.Rendering
             AsyncTaskNodeRenderer asyncTaskNodeRenderer,
             ScreenPositionNodeRenderer screenPositionNodeRenderer,
             ScreenCaptureNodeRenderer screenCaptureNodeRenderer,
+            TextScanNodeRenderer textScanNodeRenderer,
             LoopNodeRenderer loopNodeRenderer,
             InputNodeRenderer inputNodeRenderer,
             DelayNodeRenderer delayNodeRenderer,
@@ -100,6 +102,7 @@ namespace FlowMy.Services.Rendering
             _asyncTaskNodeRenderer = asyncTaskNodeRenderer ?? throw new ArgumentNullException(nameof(asyncTaskNodeRenderer));
             _screenPositionNodeRenderer = screenPositionNodeRenderer ?? throw new ArgumentNullException(nameof(screenPositionNodeRenderer));
             _screenCaptureNodeRenderer = screenCaptureNodeRenderer ?? throw new ArgumentNullException(nameof(screenCaptureNodeRenderer));
+            _textScanNodeRenderer = textScanNodeRenderer ?? throw new ArgumentNullException(nameof(textScanNodeRenderer));
             _loopNodeRenderer = loopNodeRenderer ?? throw new ArgumentNullException(nameof(loopNodeRenderer));
             _inputNodeRenderer = inputNodeRenderer ?? throw new ArgumentNullException(nameof(inputNodeRenderer));
             _delayNodeRenderer = delayNodeRenderer ?? throw new ArgumentNullException(nameof(delayNodeRenderer));
@@ -169,6 +172,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(NotificationNode)]      = _notificationNodeRenderer,
                 [typeof(HttpRequestNode)]       = _httpRequestNodeRenderer,
                 [typeof(ScreenCaptureNode)]     = _screenCaptureNodeRenderer,
+                [typeof(TextScanNode)]          = _textScanNodeRenderer,
                 [typeof(InputNode)]             = _inputNodeRenderer,
                 [typeof(DelayNode)]             = _delayNodeRenderer,
                 [typeof(KeyPressEventNode)]     = _keyPressEventNodeRenderer,

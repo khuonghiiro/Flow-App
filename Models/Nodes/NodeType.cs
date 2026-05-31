@@ -60,7 +60,9 @@ namespace FlowMy.Models
         /// <summary>Ghi lại và phát lại thao tác chuột/bàn phím.</summary>
         MacroRecorder,
         /// <summary>Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng.</summary>
-        BorderHighlight
+        BorderHighlight,
+        /// <summary>Quét text từ ảnh (OCR) với Windows.Media.Ocr hoặc OpenCV/ML.NET.</summary>
+        TextScan
     }
 }
 

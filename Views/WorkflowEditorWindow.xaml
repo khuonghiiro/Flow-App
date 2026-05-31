@@ -2017,6 +2017,38 @@ Cursor="Hand"
                                                           Fill="{DynamicResource TextOnSuccessBrush}"/>
                                 </Grid>
                             </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource VioletDeepBrush}"
+                                    Tag="TextScan">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="220">
+                                            <TextBlock Text="Text Scan (OCR)" FontWeight="Bold"/>
+                                            <TextBlock Text="Quét text từ ảnh bằng Windows.Media.Ocr hoặc OpenCV+ML.NET." TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource VioletDeepBrush}" CornerRadius="10" Padding="10" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Text Scan (OCR)" Foreground="{DynamicResource TextOnVioletDeepBrush}" FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Quét text từ ảnh bằng Windows.Media.Ocr hoặc OpenCV+ML.NET." Foreground="{DynamicResource TextOnVioletDeepBrush}" Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='camera-circle-ellipsis duotone-light'}"
+                                                          Fill="{DynamicResource TextOnVioletDeepBrush}"/>
+                                </Grid>
+                            </Border>
                         </WrapPanel>
 
                         <!-- Git Repos palette — TẠM COMMENT: logic chuyển sang GitManagerDialog tab Tổng hợp -->

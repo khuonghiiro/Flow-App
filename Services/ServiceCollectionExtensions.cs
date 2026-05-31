@@ -63,6 +63,7 @@ namespace FlowMy.Services
             services.AddScoped<AsyncTaskNodeRenderer>();
             services.AddScoped<ScreenPositionNodeRenderer>();
             services.AddScoped<ScreenCaptureNodeRenderer>();
+            services.AddScoped<TextScanNodeRenderer>();
             services.AddScoped<LoopNodeRenderer>();
             services.AddScoped<InputNodeRenderer>();
             services.AddScoped<DelayNodeRenderer>();
