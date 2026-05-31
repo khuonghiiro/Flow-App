@@ -304,27 +304,59 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 // Map language code to Tesseract format
-                string langCode = textScan.OcrLanguage?.ToLowerInvariant() ?? "eng";
-                // Common mappings
-                langCode = langCode switch
+                string langCode;
+                if (textScan.AutoDetectLanguage)
                 {
-                    "en" => "eng",
-                    "vi" => "vie",
-                    "ja" => "jpn",
-                    "ko" => "kor",
-                    "zh-hans" => "chi_sim",
-                    "zh-hant" => "chi_tra",
-                    _ => langCode
-                };
-
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language code: {langCode}");
-
-                // Check if the language file exists
-                string langFile = Path.Combine(tessdataPath, $"{langCode}.traineddata");
-                if (!File.Exists(langFile))
+                    // Use multiple languages for auto-detection
+                    langCode = "eng+vie+jpn+kor+chi_sim+chi_tra+fra+deu+spa+rus+ara";
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Auto-detect language enabled, using: {langCode}");
+                }
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language file not found: {langFile}");
-                    return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                    langCode = textScan.OcrLanguage?.ToLowerInvariant() ?? "eng";
+                    // Common mappings
+                    langCode = langCode switch
+                    {
+                        "en" => "eng",
+                        "vi" => "vie",
+                        "ja" => "jpn",
+                        "ko" => "kor",
+                        "zh-hans" => "chi_sim",
+                        "zh-hant" => "chi_tra",
+                        _ => langCode
+                    };
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language code: {langCode}");
+                }
+
+                // Check if the language file(s) exist
+                if (textScan.AutoDetectLanguage)
+                {
+                    // Check all language files for auto-detection
+                    var langCodes = langCode.Split('+');
+                    var missingFiles = new List<string>();
+                    foreach (var code in langCodes)
+                    {
+                        string langFile = Path.Combine(tessdataPath, $"{code}.traineddata");
+                        if (!File.Exists(langFile))
+                        {
+                            missingFiles.Add($"{code}.traineddata");
+                        }
+                    }
+                    if (missingFiles.Count > 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Missing language files: {string.Join(", ", missingFiles)}");
+                        return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                    }
+                }
+                else
+                {
+                    // Check single language file
+                    string langFile = Path.Combine(tessdataPath, $"{langCode}.traineddata");
+                    if (!File.Exists(langFile))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language file not found: {langFile}");
+                        return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                    }
                 }
 
                 // Convert TesseractPageSegMode to Tesseract.PageSegMode
