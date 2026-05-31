@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using Tesseract;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -240,30 +241,187 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         {
             try
             {
-                // Placeholder OCR implementation
-                // Windows.Media.Ocr is not available in .NET Framework WPF projects
-                // To implement actual OCR, consider using:
-                // - Tesseract OCR via Tesseract.Net wrapper
-                // - OpenCV + ML.NET / ONNX Runtime (as mentioned in the original spec)
-                // - Azure Computer Vision API
-                // - Google Cloud Vision API
-
-                // For now, return empty results
-                await Task.Delay(10); // Simulate async work
-
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] OCR Mode: {textScan.OcrEngineMode}, Language: {textScan.OcrLanguage}, AutoDetect: {textScan.AutoDetectLanguage}");
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] OCR is not yet implemented. Please integrate Tesseract or other OCR library.");
-
-                return new OcrResult
+                if (textScan.OcrEngineMode == OcrEngineMode.Tesseract)
                 {
-                    Text = string.Empty,
-                    Lines = string.Empty,
-                    Words = new Dictionary<string, string>()
-                };
+                    return await PerformTesseractOcr(image, textScan);
+                }
+                else if (textScan.OcrEngineMode == OcrEngineMode.WindowsOcr)
+                {
+                    // Windows.Media.Ocr is not available in .NET Framework WPF projects
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Windows.Media.Ocr is not available in .NET Framework WPF projects.");
+                    return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                }
+                else if (textScan.OcrEngineMode == OcrEngineMode.OpenCvMlNet)
+                {
+                    // OpenCV + ML.NET / ONNX Runtime - not yet implemented
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] OpenCV + ML.NET/ONNX is not yet implemented.");
+                    return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                }
+
+                return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] OCR Error: {ex.Message}");
+                return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+            }
+        }
+
+        private static async Task<OcrResult> PerformTesseractOcr(BitmapImage image, TextScanNode textScan)
+        {
+            try
+            {
+                // Convert BitmapImage to byte array
+                byte[] imageBytes;
+                using (var ms = new MemoryStream())
+                {
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(image));
+                    encoder.Save(ms);
+                    imageBytes = ms.ToArray();
+                }
+
+                // Determine tessdata path
+                string tessdataPath = string.IsNullOrWhiteSpace(textScan.TessdataPath)
+                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata")
+                    : textScan.TessdataPath;
+
+                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tessdata path: {tessdataPath}");
+
+                // Ensure tessdata directory exists
+                if (!Directory.Exists(tessdataPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tessdata directory not found: {tessdataPath}");
+                    return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                }
+
+                // List available .traineddata files
+                var trainedDataFiles = Directory.GetFiles(tessdataPath, "*.traineddata");
+                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Found {trainedDataFiles.Length} .traineddata files in tessdata directory");
+                foreach (var file in trainedDataFiles)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] - {Path.GetFileNameWithoutExtension(file)}");
+                }
+
+                // Map language code to Tesseract format
+                string langCode = textScan.OcrLanguage?.ToLowerInvariant() ?? "eng";
+                // Common mappings
+                langCode = langCode switch
+                {
+                    "en" => "eng",
+                    "vi" => "vie",
+                    "ja" => "jpn",
+                    "ko" => "kor",
+                    "zh-hans" => "chi_sim",
+                    "zh-hant" => "chi_tra",
+                    _ => langCode
+                };
+
+                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language code: {langCode}");
+
+                // Check if the language file exists
+                string langFile = Path.Combine(tessdataPath, $"{langCode}.traineddata");
+                if (!File.Exists(langFile))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language file not found: {langFile}");
+                    return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                }
+
+                // Convert TesseractPageSegMode to Tesseract.PageSegMode
+                var pageSegMode = textScan.TesseractPageSegMode switch
+                {
+                    TesseractPageSegMode.OsdOnly => PageSegMode.OsdOnly,
+                    TesseractPageSegMode.AutoOsd => PageSegMode.AutoOsd,
+                    TesseractPageSegMode.Auto => PageSegMode.Auto,
+                    TesseractPageSegMode.SingleColumn => PageSegMode.SingleColumn,
+                    TesseractPageSegMode.SingleBlockVertText => PageSegMode.SingleBlockVertText,
+                    TesseractPageSegMode.SingleBlock => PageSegMode.SingleBlock,
+                    TesseractPageSegMode.SingleLine => PageSegMode.SingleLine,
+                    TesseractPageSegMode.SingleWord => PageSegMode.SingleWord,
+                    TesseractPageSegMode.CircleWord => PageSegMode.CircleWord,
+                    TesseractPageSegMode.SingleChar => PageSegMode.SingleChar,
+                    TesseractPageSegMode.SparseText => PageSegMode.SparseText,
+                    TesseractPageSegMode.SparseTextOsd => PageSegMode.SparseTextOsd,
+                    TesseractPageSegMode.RawLine => PageSegMode.RawLine,
+                    _ => PageSegMode.Auto
+                };
+
+                // Convert TesseractEngineMode to Tesseract.EngineMode
+                var engineMode = textScan.TesseractEngineMode switch
+                {
+                    TesseractEngineMode.Lstm => EngineMode.LstmOnly,
+                    TesseractEngineMode.Default => EngineMode.Default,
+                    _ => EngineMode.Default
+                };
+
+                // Run OCR on background thread
+                return await Task.Run(() =>
+                {
+                    try
+                    {
+                        using (var engine = new TesseractEngine(tessdataPath, langCode, engineMode))
+                        {
+                            engine.SetVariable("tessedit_pageseg_mode", ((int)pageSegMode).ToString());
+
+                            using (var pix = Pix.LoadFromMemory(imageBytes))
+                            {
+                                using (var page = engine.Process(pix))
+                                {
+                                    var text = page.GetText();
+                                    var lines = new StringBuilder();
+                                    var words = new Dictionary<string, string>();
+
+                                    using (var iter = page.GetIterator())
+                                    {
+                                        iter.Begin();
+                                        do
+                                        {
+                                            if (lines.Length > 0)
+                                                lines.AppendLine();
+                                            lines.Append(iter.GetText(PageIteratorLevel.TextLine));
+
+                                            // Get word-level information
+                                            using (var wordIter = page.GetIterator())
+                                            {
+                                                wordIter.Begin();
+                                                do
+                                                {
+                                                    var wordText = wordIter.GetText(PageIteratorLevel.Word);
+                                                    if (!string.IsNullOrWhiteSpace(wordText))
+                                                    {
+                                                        if (wordIter.TryGetBoundingBox(PageIteratorLevel.Word, out var rect))
+                                                        {
+                                                            var boundsStr = $"[{rect.X1},{rect.Y1},{rect.X2},{rect.Y2}]";
+                                                            words[wordText.Trim()] = boundsStr;
+                                                        }
+                                                    }
+                                                } while (wordIter.Next(PageIteratorLevel.Word));
+                                            }
+                                        } while (iter.Next(PageIteratorLevel.TextLine));
+                                    }
+
+                                    return new OcrResult
+                                    {
+                                        Text = text?.Trim() ?? string.Empty,
+                                        Lines = lines.ToString(),
+                                        Words = words
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tesseract Error: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] StackTrace: {ex.StackTrace}");
+                        return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tesseract OCR Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] StackTrace: {ex.StackTrace}");
                 return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
             }
         }
@@ -317,7 +475,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 graphics.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(width, height), CopyPixelOperation.SourceCopy);
 
                 using var ms = new MemoryStream();
-                bmp.Save(ms, ImageFormat.Png);
+                bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
                 ms.Position = 0;
 
                 var img = new BitmapImage();

@@ -156,5 +156,34 @@ namespace FlowMy.Views.Overlays
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+
+        private void BrowseTessdataButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Use OpenFileDialog to select a file, then get its directory
+                var dlg = new OpenFileDialog
+                {
+                    Title = "Chọn một file trong thư mục tessdata",
+                    Filter = "Trained Data Files (*.traineddata)|*.traineddata|All Files|*.*",
+                    CheckFileExists = true,
+                    Multiselect = false
+                };
+
+                if (dlg.ShowDialog(this) == true)
+                {
+                    var directory = System.IO.Path.GetDirectoryName(dlg.FileName);
+                    if (!string.IsNullOrEmpty(directory))
+                    {
+                        _viewModel.TessdataPath = directory;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không chọn được thư mục: " + ex.Message, "Tessdata",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
     }
 }

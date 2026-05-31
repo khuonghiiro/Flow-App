@@ -9,12 +9,62 @@ namespace FlowMy.Models.Nodes
     /// </summary>
     public enum OcrEngineMode
     {
+        /// <summary>Tesseract OCR - miễn phí, phổ biến, hỗ trợ nhiều ngôn ngữ.</summary>
+        Tesseract = 0,
         /// <summary>Windows.Media.Ocr - tích hợp sẵn Windows, hỗ trợ nhiều ngôn ngữ.</summary>
-        WindowsOcr = 0,
+        WindowsOcr = 1,
         /// <summary>OpenCV + ML.NET/ONNX Runtime - mạnh hơn, cần GPU tốt.</summary>
-        OpenCvMlNet = 1,
-        /// <summary>Tự động phát hiện ngôn ngữ.</summary>
-        AutoDetect = 2
+        OpenCvMlNet = 2
+    }
+
+    /// <summary>
+    /// Chế độ phân trang Tesseract (Page Segmentation Mode).
+    /// </summary>
+    public enum TesseractPageSegMode
+    {
+        /// <summary>Orientation and script detection (OSD) only.</summary>
+        OsdOnly = 0,
+        /// <summary>Automatic page segmentation with OSD.</summary>
+        AutoOsd = 1,
+        /// <summary>Automatic page segmentation, but no OSD.</summary>
+        Auto = 2,
+        /// <summary>Fully automatic page segmentation, but no OSD or OCR.</summary>
+        AutoNoOcr = 3,
+        /// <summary>Assume a single column of text of variable sizes.</summary>
+        SingleColumn = 4,
+        /// <summary>Assume a single uniform block of vertically aligned text.</summary>
+        SingleBlockVertText = 5,
+        /// <summary>Assume a single uniform block of text.</summary>
+        SingleBlock = 6,
+        /// <summary>Treat the image as a single text line.</summary>
+        SingleLine = 7,
+        /// <summary>Treat the image as a single word.</summary>
+        SingleWord = 8,
+        /// <summary>Treat the image as a single word in a circle.</summary>
+        CircleWord = 9,
+        /// <summary>Treat the image as a single character.</summary>
+        SingleChar = 10,
+        /// <summary>Sparse text. Find as much text as possible in no particular order.</summary>
+        SparseText = 11,
+        /// <summary>Sparse text with OSD.</summary>
+        SparseTextOsd = 12,
+        /// <summary>Raw line. Treat the image as a single text line, bypassing hacks that are Tesseract-specific.</summary>
+        RawLine = 13
+    }
+
+    /// <summary>
+    /// Chế độ engine Tesseract (OCR Engine Mode).
+    /// </summary>
+    public enum TesseractEngineMode
+    {
+        /// <summary>Legacy engine only.</summary>
+        Legacy = 0,
+        /// <summary>LSTM neural network engine only.</summary>
+        Lstm = 1,
+        /// <summary>Legacy + LSTM.</summary>
+        LegacyLstm = 2,
+        /// <summary>Default, based on what is available.</summary>
+        Default = 3
     }
 
     /// <summary>
@@ -35,7 +85,12 @@ namespace FlowMy.Models.Nodes
     public sealed class TextScanNode : WorkflowNode
     {
         // ── Chế độ OCR engine ─────────────────────────────────────────────────
-        private OcrEngineMode _ocrEngineMode = OcrEngineMode.WindowsOcr;
+        private OcrEngineMode _ocrEngineMode = OcrEngineMode.Tesseract;
+
+        // ── Tesseract settings ─────────────────────────────────────────────────
+        private string _tessdataPath = string.Empty; // Đường dẫn đến thư mục tessdata
+        private TesseractPageSegMode _tesseractPageSegMode = TesseractPageSegMode.Auto;
+        private TesseractEngineMode _tesseractEngineMode = TesseractEngineMode.Default;
 
         // ── Nguồn ảnh ─────────────────────────────────────────────────────────
         private ImageSourceMode _imageSourceMode = ImageSourceMode.ScreenCapture;
@@ -172,11 +227,11 @@ namespace FlowMy.Models.Nodes
         }
 
         // ── Ngôn ngữ OCR ───────────────────────────────────────────────────────
-        /// <summary>Mã ngôn ngữ OCR (ISO 639-2): en, vi, ja, ko, zh-Hans, zh-Hant, etc.</summary>
+        /// <summary>Mã ngôn ngữ OCR (ISO 639-2): en, vie, jpn, kor, chi_sim, chi_tra, etc.</summary>
         public string OcrLanguage
         {
             get => _ocrLanguage;
-            set { if (_ocrLanguage != value) { _ocrLanguage = value ?? "en"; OnPropertyChanged(); } }
+            set { if (_ocrLanguage != value) { _ocrLanguage = value ?? "eng"; OnPropertyChanged(); } }
         }
 
         /// <summary>Tự động phát hiện ngôn ngữ từ ảnh.</summary>
@@ -184,6 +239,28 @@ namespace FlowMy.Models.Nodes
         {
             get => _autoDetectLanguage;
             set { if (_autoDetectLanguage != value) { _autoDetectLanguage = value; OnPropertyChanged(); } }
+        }
+
+        // ── Tesseract settings ─────────────────────────────────────────────────
+        /// <summary>Đường dẫn đến thư mục tessdata (chứa file .traineddata).</summary>
+        public string TessdataPath
+        {
+            get => _tessdataPath;
+            set { if (_tessdataPath != value) { _tessdataPath = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Chế độ phân trang Tesseract.</summary>
+        public TesseractPageSegMode TesseractPageSegMode
+        {
+            get => _tesseractPageSegMode;
+            set { if (_tesseractPageSegMode != value) { _tesseractPageSegMode = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Chế độ engine Tesseract.</summary>
+        public TesseractEngineMode TesseractEngineMode
+        {
+            get => _tesseractEngineMode;
+            set { if (_tesseractEngineMode != value) { _tesseractEngineMode = value; OnPropertyChanged(); } }
         }
 
         // ── Chọn app để chụp ────────────────────────────────────────────────────

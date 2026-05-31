@@ -2857,6 +2857,12 @@ namespace FlowMy.ViewModels
                     textScan.OcrEngineMode = (OcrEngineMode)int.Parse(ocrEngineMode.ToString()!);
                 if (properties.TryGetValue("ImageSourceMode", out var imageSourceMode))
                     textScan.ImageSourceMode = (ImageSourceMode)int.Parse(imageSourceMode.ToString()!);
+                if (properties.TryGetValue("TessdataPath", out var tessdataPath))
+                    textScan.TessdataPath = tessdataPath?.ToString() ?? string.Empty;
+                if (properties.TryGetValue("TesseractPageSegMode", out var tpsm))
+                    textScan.TesseractPageSegMode = (TesseractPageSegMode)int.Parse(tpsm.ToString()!);
+                if (properties.TryGetValue("TesseractEngineMode", out var tem))
+                    textScan.TesseractEngineMode = (TesseractEngineMode)int.Parse(tem.ToString()!);
                 if (properties.TryGetValue("CaptureX", out var tx))
                     textScan.CaptureX = int.Parse(tx.ToString()!);
                 if (properties.TryGetValue("CaptureY", out var ty))
@@ -2878,7 +2884,7 @@ namespace FlowMy.ViewModels
                 if (properties.TryGetValue("Base64Image", out var bi))
                     textScan.Base64Image = bi?.ToString() ?? string.Empty;
                 if (properties.TryGetValue("OcrLanguage", out var ol))
-                    textScan.OcrLanguage = ol?.ToString() ?? "en";
+                    textScan.OcrLanguage = ol?.ToString() ?? "eng";
                 if (properties.TryGetValue("AutoDetectLanguage", out var adl))
                     textScan.AutoDetectLanguage = bool.Parse(adl.ToString()!);
                 if (properties.TryGetValue("TargetProcessName", out var tpn))
@@ -3179,6 +3185,10 @@ namespace FlowMy.ViewModels
             {
                 dict["OcrEngineMode"] = (int)textScan.OcrEngineMode;
                 dict["ImageSourceMode"] = (int)textScan.ImageSourceMode;
+                if (!string.IsNullOrWhiteSpace(textScan.TessdataPath))
+                    dict["TessdataPath"] = textScan.TessdataPath;
+                dict["TesseractPageSegMode"] = (int)textScan.TesseractPageSegMode;
+                dict["TesseractEngineMode"] = (int)textScan.TesseractEngineMode;
                 dict["CaptureX"] = textScan.CaptureX;
                 dict["CaptureY"] = textScan.CaptureY;
                 dict["CaptureWidth"] = textScan.CaptureWidth;

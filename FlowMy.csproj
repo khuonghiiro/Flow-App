@@ -127,6 +127,7 @@
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
 		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.7" />
 		<PackageReference Include="VirtualizingWrapPanel" Version="2.3.2" />
+		<PackageReference Include="Tesseract" Version="5.0.0" />
 	</ItemGroup>
 
 	  <ItemGroup>

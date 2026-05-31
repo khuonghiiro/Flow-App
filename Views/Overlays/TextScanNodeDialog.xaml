@@ -102,6 +102,70 @@
                                       SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding OcrEngineMode, Mode=TwoWay}"/>
 
+                            <!-- ══ PANEL: TESSERACT SETTINGS ══ -->
+                            <StackPanel x:Name="TesseractPanel"
+                                        Visibility="{Binding IsTesseractMode,
+                                                     Converter={StaticResource BoolToVisibilityConverter}}">
+
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,12">
+                                    <Run Text="Cấu hình Tesseract OCR. Cần file .traineddata cho ngôn ngữ tương ứng."/>
+                                </TextBlock>
+
+                                <!-- Tessdata Path -->
+                                <TextBlock Text="Thư mục tessdata:"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,8">
+                                    <Run Text="Đường dẫn đến thư mục chứa file .traineddata (ví dụ: C:\tessdata). Để trống = dùng thư mục mặc định."/>
+                                </TextBlock>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TessdataPathTextBox" Grid.Column="0" Height="36"
+                                             Text="{Binding TessdataPath, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             VerticalContentAlignment="Center"/>
+                                    <Button Grid.Column="1"
+                                            Content="📁" Height="36" Width="36" Padding="0"
+                                            Margin="8,0,0,0"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Click="BrowseTessdataButton_Click"
+                                            ToolTip="Chọn thư mục tessdata"
+                                            Cursor="Hand"/>
+                                </Grid>
+
+                                <!-- Tesseract Page Seg Mode -->
+                                <TextBlock Text="Chế độ phân trang (Page Seg Mode):"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,8">
+                                    <Run Text="Cách Tesseract phân tích bố cục trang. Auto = tự động phát hiện."/>
+                                </TextBlock>
+                                <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,12"
+                                          ItemsSource="{Binding TesseractPageSegModeOptions}"
+                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TesseractPageSegMode, Mode=TwoWay}"/>
+
+                                <!-- Tesseract Engine Mode -->
+                                <TextBlock Text="Chế độ engine (Engine Mode):"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,8">
+                                    <Run Text="LSTM = chính xác hơn, Legacy = nhanh hơn. Default = tự động chọn."/>
+                                </TextBlock>
+                                <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,16"
+                                          ItemsSource="{Binding TesseractEngineModeOptions}"
+                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TesseractEngineMode, Mode=TwoWay}"/>
+
+                            </StackPanel>
+
                             <!-- ══ IMAGE SOURCE MODE ══ -->
                             <TextBlock Text="Nguồn ảnh:"
                                        Foreground="{DynamicResource TextBrush}"

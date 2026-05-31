@@ -14,8 +14,18 @@ namespace FlowMy.ViewModels
         private readonly TextScanNode _textScanNode;
 
         // ── OCR Engine Mode ─────────────────────────────────────────────────────
-        [ObservableProperty] private OcrEngineMode _ocrEngineMode = OcrEngineMode.WindowsOcr;
+        [ObservableProperty] private OcrEngineMode _ocrEngineMode = OcrEngineMode.Tesseract;
         public ObservableCollection<OcrEngineModeOption> OcrEngineModeOptions { get; } = new();
+
+        // ── Tesseract settings ─────────────────────────────────────────────────────
+        [ObservableProperty] private string _tessdataPath = string.Empty;
+        [ObservableProperty] private TesseractPageSegMode _tesseractPageSegMode = TesseractPageSegMode.Auto;
+        [ObservableProperty] private TesseractEngineMode _tesseractEngineMode = TesseractEngineMode.Default;
+        public ObservableCollection<TesseractPageSegModeOption> TesseractPageSegModeOptions { get; } = new();
+        public ObservableCollection<TesseractEngineModeOption> TesseractEngineModeOptions { get; } = new();
+
+        // ── Visibility helpers ────────────────────────────────────────────────────
+        public bool IsTesseractMode => OcrEngineMode == OcrEngineMode.Tesseract;
 
         // ── Image Source Mode ────────────────────────────────────────────────────
         [ObservableProperty] private ImageSourceMode _imageSourceMode = ImageSourceMode.ScreenCapture;
@@ -65,6 +75,10 @@ namespace FlowMy.ViewModels
             OcrEngineMode = node.OcrEngineMode;
             ImageSourceMode = node.ImageSourceMode;
 
+            TessdataPath = node.TessdataPath;
+            TesseractPageSegMode = node.TesseractPageSegMode;
+            TesseractEngineMode = node.TesseractEngineMode;
+
             CoordSourceNodeId = node.CoordSourceNodeId;
             CoordSourceOutputKey = node.CoordSourceOutputKey;
 
@@ -104,10 +118,15 @@ namespace FlowMy.ViewModels
                     OnPropertyChanged(nameof(IsPathUrlMode));
                     OnPropertyChanged(nameof(IsBase64Mode));
                 }
+                else if (e.PropertyName == nameof(OcrEngineMode))
+                {
+                    OnPropertyChanged(nameof(IsTesseractMode));
+                }
             };
 
             // Khởi tạo options
             InitializeOcrEngineModeOptions();
+            InitializeTesseractOptions();
             InitializeImageSourceModeOptions();
             InitializeOcrLanguageOptions();
             RefreshCoordKeyOptions();
@@ -121,6 +140,11 @@ namespace FlowMy.ViewModels
             OcrEngineModeOptions.Clear();
             OcrEngineModeOptions.Add(new OcrEngineModeOption
             {
+                Value = OcrEngineMode.Tesseract,
+                DisplayName = "Tesseract OCR (Miễn phí, phổ biến)"
+            });
+            OcrEngineModeOptions.Add(new OcrEngineModeOption
+            {
                 Value = OcrEngineMode.WindowsOcr,
                 DisplayName = "Windows.Media.Ocr (Tích hợp Windows)"
             });
@@ -129,11 +153,23 @@ namespace FlowMy.ViewModels
                 Value = OcrEngineMode.OpenCvMlNet,
                 DisplayName = "OpenCV + ML.NET/ONNX (Cần GPU mạnh)"
             });
-            OcrEngineModeOptions.Add(new OcrEngineModeOption
-            {
-                Value = OcrEngineMode.AutoDetect,
-                DisplayName = "Tự động phát hiện"
-            });
+        }
+
+        private void InitializeTesseractOptions()
+        {
+            TesseractPageSegModeOptions.Clear();
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.Auto, DisplayName = "Auto (Tự động)" });
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.AutoOsd, DisplayName = "Auto + OSD" });
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.SingleColumn, DisplayName = "Single Column" });
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.SingleBlock, DisplayName = "Single Block" });
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.SingleLine, DisplayName = "Single Line" });
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.SingleWord, DisplayName = "Single Word" });
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.SingleChar, DisplayName = "Single Character" });
+            TesseractPageSegModeOptions.Add(new TesseractPageSegModeOption { Value = TesseractPageSegMode.SparseText, DisplayName = "Sparse Text" });
+
+            TesseractEngineModeOptions.Clear();
+            TesseractEngineModeOptions.Add(new TesseractEngineModeOption { Value = TesseractEngineMode.Default, DisplayName = "Default (Tự động)" });
+            TesseractEngineModeOptions.Add(new TesseractEngineModeOption { Value = TesseractEngineMode.Lstm, DisplayName = "LSTM (Chính xác hơn)" });
         }
 
         private void InitializeImageSourceModeOptions()
@@ -235,6 +271,10 @@ namespace FlowMy.ViewModels
             _textScanNode.OcrEngineMode = OcrEngineMode;
             _textScanNode.ImageSourceMode = ImageSourceMode;
 
+            _textScanNode.TessdataPath = TessdataPath ?? string.Empty;
+            _textScanNode.TesseractPageSegMode = TesseractPageSegMode;
+            _textScanNode.TesseractEngineMode = TesseractEngineMode;
+
             _textScanNode.CoordSourceNodeId = string.IsNullOrWhiteSpace(CoordSourceNodeId) ? null : CoordSourceNodeId;
             _textScanNode.CoordSourceOutputKey = string.IsNullOrWhiteSpace(CoordSourceOutputKey) ? null : CoordSourceOutputKey;
 
@@ -244,7 +284,7 @@ namespace FlowMy.ViewModels
             _textScanNode.ImagePath = ImagePath ?? string.Empty;
             _textScanNode.Base64Image = Base64Image ?? string.Empty;
 
-            _textScanNode.OcrLanguage = OcrLanguage ?? "en";
+            _textScanNode.OcrLanguage = OcrLanguage ?? "eng";
             _textScanNode.AutoDetectLanguage = AutoDetectLanguage;
 
             // Lưu target app
@@ -260,6 +300,18 @@ namespace FlowMy.ViewModels
     public class OcrEngineModeOption
     {
         public OcrEngineMode Value { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    public class TesseractPageSegModeOption
+    {
+        public TesseractPageSegMode Value { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    public class TesseractEngineModeOption
+    {
+        public TesseractEngineMode Value { get; set; }
         public string DisplayName { get; set; } = string.Empty;
     }
 
