@@ -3,8 +3,10 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using FlowMy.Models;
+using FlowMy.Models.Enums;
 using FlowMy.Models.Nodes;
 using FlowMy.Helpers;
+using FlowMy.Services.Interaction;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -23,7 +25,70 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             // ── 1. Focus app nếu được cấu hình ──
             await FocusTargetAppAsync(hotkeyNode.TargetProcessName, hotkeyNode.TargetWindowTitle, env.CancellationToken);
 
-            // ── 2. Click toạ độ trước khi nhấn hotkey (nếu có) ──
+            // ── 2. Xử lý theo chế độ TriggerMode ──
+            if (hotkeyNode.TriggerMode == HotkeyTriggerModeEnum.Listen)
+            {
+                // Chế độ Listen: Chờ người dùng nhấn phím đúng
+                await ExecuteListenModeAsync(hotkeyNode, env, hotkeyText);
+            }
+            else
+            {
+                // Chế độ Send: Workflow tự động nhấn phím (logic hiện tại)
+                await ExecuteSendModeAsync(hotkeyNode, env, hotkeyText, connections);
+            }
+
+            sw.Stop();
+            env.OnNodeCompleted?.Invoke(hotkeyNode, sw.Elapsed);
+
+            await env.Service.TraverseSingleOutputAndLegacyAsync(
+                hotkeyNode, connections, env.CancellationToken,
+                env.OnEnteringNode, env.OnNodeStarted, env.OnNodeCompleted,
+                env.OnNodeFailed, env.ReachableToEnd,
+                env.ExecutionId, env.FlowScopeId, env.BranchId, env.ParentFlowScopeId,
+                new List<string>(env.ExecutionPath));
+        }
+
+        private async Task ExecuteListenModeAsync(HotkeyPressEventNode hotkeyNode, NodeExecutionEnvironment env, string? hotkeyText)
+        {
+            if (string.IsNullOrWhiteSpace(hotkeyText))
+            {
+                System.Diagnostics.Debug.WriteLine($"HotkeyPressEventNode (Listen mode): Hotkey text is empty or null");
+                return;
+            }
+
+            try
+            {
+                // Sử dụng GlobalKeyboardHookService để chờ người dùng nhấn phím đúng
+                // Service này đã được tối ưu hóa để hạn chế sử dụng RAM trong thời gian chờ
+                var keyboardHook = env.Service.GlobalKeyboardHook;
+                if (keyboardHook == null)
+                {
+                    throw new InvalidOperationException("GlobalKeyboardHookService không khả dụng");
+                }
+
+                // Chờ người dùng nhấn tổ hợp phím đúng
+                // Task này sẽ hoàn thành khi người dùng nhấn đúng phím, hoặc bị hủy bởi cancellation token
+                var pressedHotkey = await keyboardHook.WaitForHotkeyAsync(hotkeyText, env.CancellationToken);
+
+                System.Diagnostics.Debug.WriteLine($"HotkeyPressEventNode (Listen mode): User pressed '{pressedHotkey}'");
+            }
+            catch (OperationCanceledException)
+            {
+                // Được hủy bởi cancellation token (workflow stop)
+                System.Diagnostics.Debug.WriteLine($"HotkeyPressEventNode (Listen mode): Operation cancelled");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"HotkeyPressEventNode (Listen mode): Error waiting for hotkey '{hotkeyText}': {ex.Message}");
+                env.OnNodeFailed?.Invoke(hotkeyNode, ex.Message);
+                throw;
+            }
+        }
+
+        private async Task ExecuteSendModeAsync(HotkeyPressEventNode hotkeyNode, NodeExecutionEnvironment env, string? hotkeyText, IReadOnlyList<WorkflowConnection> connections)
+        {
+            // ── Click toạ độ trước khi nhấn hotkey (nếu có) ──
             bool hasCoord = !string.IsNullOrWhiteSpace(hotkeyNode.CoordSourceNodeId) || hotkeyNode.HasManualPosition;
             if (hasCoord)
             {
@@ -39,7 +104,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
-            // ── 3. Nhấn hotkey ──
+            // ── Nhấn hotkey ──
             var repeatCount = env.Service.GetRepeatCountFromDynamicInputs(hotkeyNode, connections, env) ?? hotkeyNode.RepeatCount;
             var delayMs = hotkeyNode.PressDelayMs;
 
@@ -60,16 +125,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 System.Diagnostics.Debug.WriteLine($"HotkeyPressEventNode: Hotkey text is empty or null");
             }
-
-            sw.Stop();
-            env.OnNodeCompleted?.Invoke(hotkeyNode, sw.Elapsed);
-
-            await env.Service.TraverseSingleOutputAndLegacyAsync(
-                hotkeyNode, connections, env.CancellationToken,
-                env.OnEnteringNode, env.OnNodeStarted, env.OnNodeCompleted,
-                env.OnNodeFailed, env.ReachableToEnd,
-                env.ExecutionId, env.FlowScopeId, env.BranchId, env.ParentFlowScopeId,
-                new List<string>(env.ExecutionPath));
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────

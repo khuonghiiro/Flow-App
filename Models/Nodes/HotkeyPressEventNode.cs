@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using FlowMy.Models.Enums;
 
 namespace FlowMy.Models
 {
@@ -11,6 +12,7 @@ namespace FlowMy.Models
     {
         private int _repeatCount = 1;
         private int _pressDelayMs = 100;
+        private HotkeyTriggerModeEnum _triggerMode = HotkeyTriggerModeEnum.Send;
 
         // ── Toạ độ từ node khác ──────────────────────────────────────────────
         private string? _coordSourceNodeId;
@@ -157,6 +159,15 @@ namespace FlowMy.Models
         {
             get => _targetWindowTitle;
             set { if (_targetWindowTitle != value) { _targetWindowTitle = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Chế độ kích hoạt: Send (gửi phím) hoặc Listen (nghe phím từ user).
+        /// </summary>
+        public HotkeyTriggerModeEnum TriggerMode
+        {
+            get => _triggerMode;
+            set { if (_triggerMode != value) { _triggerMode = value; OnPropertyChanged(); } }
         }
 
         /// <summary>

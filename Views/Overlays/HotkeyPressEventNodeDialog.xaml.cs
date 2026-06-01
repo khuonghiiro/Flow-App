@@ -1,4 +1,5 @@
 using FlowMy.Models;
+using FlowMy.Models.Enums;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.ViewModels;
@@ -21,7 +22,7 @@ namespace FlowMy.Views.Overlays
 
             // Initialize base after InitializeComponent
             _viewModel = new HotkeyPressEventNodeDialogViewModel(node, host);
-            
+
             // Initialize base class properties
             InitializeBase(_viewModel, owner);
 
@@ -48,6 +49,9 @@ namespace FlowMy.Views.Overlays
                 // Chỉ cho phép nhập số
                 e.Handled = !System.Text.RegularExpressions.Regex.IsMatch(e.Text, "^[0-9]+$");
             };
+
+            // Set initial radio button state based on TriggerMode
+            UpdateRadioButtons();
         }
 
         protected override Panel? GetInputsPanel() => InputsPanel;
@@ -168,6 +172,28 @@ namespace FlowMy.Views.Overlays
         private void RefreshPositionDisplay()
         {
             _viewModel.PositionText = _node.PositionText;
+        }
+
+        private void UpdateRadioButtons()
+        {
+            if (_node.TriggerMode == HotkeyTriggerModeEnum.Send)
+            {
+                SendModeRadio.IsChecked = true;
+            }
+            else
+            {
+                ListenModeRadio.IsChecked = true;
+            }
+        }
+
+        private void SendModeRadio_Checked(object sender, RoutedEventArgs e)
+        {
+            _viewModel.TriggerMode = HotkeyTriggerModeEnum.Send;
+        }
+
+        private void ListenModeRadio_Checked(object sender, RoutedEventArgs e)
+        {
+            _viewModel.TriggerMode = HotkeyTriggerModeEnum.Listen;
         }
     }
 }

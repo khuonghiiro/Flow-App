@@ -948,6 +948,13 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
                 hotkeyPressNode.PressDelayMs = pd;
 
+            // Trigger mode
+            if (properties.TryGetValue("TriggerMode", out var tmObj))
+            {
+                if (Enum.TryParse<Models.Enums.HotkeyTriggerModeEnum>(tmObj?.ToString(), out var tm))
+                    hotkeyPressNode.TriggerMode = tm;
+            }
+
             // Position properties
             if (properties.TryGetValue("ManualPosition_X", out var posX) && properties.TryGetValue("ManualPosition_Y", out var posY))
             {
@@ -4603,6 +4610,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["RepeatCount"] = hk.RepeatCount;
             if (hk.PressDelayMs != 50)
                 dict["PressDelayMs"] = hk.PressDelayMs;
+
+            // Trigger mode
+            if (hk.TriggerMode != Models.Enums.HotkeyTriggerModeEnum.Send)
+                dict["TriggerMode"] = hk.TriggerMode.ToString();
 
             // Position properties
             dict["ManualPosition_X"] = hk.ManualPosition.X;

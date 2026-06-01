@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowMy.Helpers;
 using FlowMy.Models;
+using FlowMy.Models.Enums;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
@@ -22,6 +23,9 @@ namespace FlowMy.ViewModels
 
         [ObservableProperty]
         private int _pressDelayMs;
+
+        [ObservableProperty]
+        private HotkeyTriggerModeEnum _triggerMode;
 
         // ── Toạ độ từ node khác ──────────────────────────────────────────────
         [ObservableProperty] private string? _coordSourceNodeId;
@@ -47,6 +51,7 @@ namespace FlowMy.ViewModels
             _hotkeyPressNode = node;
             _hotkeyDisplayText = FormatHotkeyText(node.Key);
             _pressDelayMs = node.PressDelayMs;
+            _triggerMode = node.TriggerMode;
 
             // Sync toạ độ & click
             CoordSourceNodeId    = node.CoordSourceNodeId;
@@ -85,6 +90,10 @@ namespace FlowMy.ViewModels
                         HotkeyDisplayText = FormatHotkeyText(node.Key);
                         // Reload outputs để hiển thị key mới ngay lập tức
                         LoadOutputs();
+                    }
+                    else if (e.PropertyName == nameof(HotkeyPressEventNode.TriggerMode))
+                    {
+                        TriggerMode = node.TriggerMode;
                     }
                     OnNodePropertyChanged(e.PropertyName);
                 };
@@ -179,6 +188,7 @@ namespace FlowMy.ViewModels
             _hotkeyPressNode.CoordSourceOutputKey = string.IsNullOrWhiteSpace(CoordSourceOutputKey) ? null : CoordSourceOutputKey;
             _hotkeyPressNode.ClickOnPosition  = ClickOnPosition;
             _hotkeyPressNode.ClickDurationMs  = ClickDurationMs;
+            _hotkeyPressNode.TriggerMode     = TriggerMode;
 
             // ManualPosition đã được set trực tiếp vào node từ PickPositionButton_Click
             // Không cần sync lại ở đây

@@ -135,7 +135,55 @@
                             Margin="0,0,0,16"
                             Click="HotkeyButton_Click"/>
 
-                    <!-- Press Delay -->
+                    <!-- Trigger Mode Selection -->
+                    <TextBlock Text="Chế độ kích hoạt:"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12"
+                            Margin="0,0,0,16">
+                        <StackPanel>
+                            <RadioButton x:Name="SendModeRadio"
+                                         GroupName="TriggerMode"
+                                         Cursor="Hand"
+                                         Margin="0,0,0,8"
+                                         Checked="SendModeRadio_Checked">
+                                <TextBlock Text="Gửi phím (Workflow tự động nhấn phím)"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13"
+                                           TextWrapping="Wrap"/>
+                            </RadioButton>
+                            <RadioButton x:Name="ListenModeRadio"
+                                         GroupName="TriggerMode"
+                                         Cursor="Hand"
+                                         Checked="ListenModeRadio_Checked">
+                                <TextBlock Text="Nghe phím (Chờ người dùng nhấn phím đúng)"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13"
+                                           TextWrapping="Wrap"/>
+                            </RadioButton>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Press Delay and related settings (only visible in Send mode) -->
+                    <StackPanel x:Name="SendModePanel">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TriggerMode}" Value="Listen">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
                     <TextBlock Text="Thời gian delay giữa các lần nhấn (ms):"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="14"
@@ -270,6 +318,7 @@
                             <!-- Inputs sẽ được thêm động ở đây -->
                         </StackPanel>
                     </Border>
+                    </StackPanel> <!-- End SendModePanel -->
 
                     <!-- Outputs Section -->
                     <TextBlock Text="Giá trị trả về:"

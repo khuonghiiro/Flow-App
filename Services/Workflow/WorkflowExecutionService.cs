@@ -54,6 +54,7 @@ namespace FlowMy.Services.Workflow
 
         internal MouseInputService MouseInput => _mouseInput;
         internal FlowMy.Services.Interaction.KeyboardInputService KeyboardInput => _keyboardInput;
+        internal GlobalKeyboardHookService GlobalKeyboardHook => _keyboardHook;
 
         internal void SetScopedNodeStringOutput(string executionId, string nodeId, string key, string? value)
         {
