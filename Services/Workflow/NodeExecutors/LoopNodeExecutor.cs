@@ -145,10 +145,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     {
                                         if (conn.ToNode != null)
                                         {
-                                            // ✅ Reset executionPath cho mỗi iteration để tránh false positive cycle detection
-                                            // khi cùng node xuất hiện nhiều lần trong loop body
-                                            // Tạo path rỗng để mỗi iteration độc lập, vẫn detect cycle trong cùng iteration
-                                            var iterationExecutionPath = new List<string>();
                                             tasks.Add(env.Service.ExecuteNodeAsync(
                                                 conn.ToNode,
                                                 connections,
@@ -162,8 +158,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                                 executionId: env.ExecutionId,
                                                 flowScopeId: env.FlowScopeId,
                                                 branchId: iterationBranchScope,
-                                                parentFlowScopeId: env.ParentFlowScopeId,
-                                                executionPath: iterationExecutionPath));
+                                                parentFlowScopeId: env.ParentFlowScopeId));
                                         }
                                     }
 
