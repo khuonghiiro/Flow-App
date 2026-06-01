@@ -268,6 +268,13 @@
                              Margin="0,0,0,16"
                              FontSize="13"/>
 
+                    <!-- Save to Clipboard Section -->
+                    <CheckBox Content="Lưu vào clipboard (Ctrl+V để paste)"
+                              IsChecked="{Binding SaveToClipboard, Mode=TwoWay}"
+                              Margin="0,0,0,16"
+                              Foreground="{DynamicResource TextBrush}"
+                              FontSize="13"/>
+
                     <!-- Info -->
                     <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,16">
                         <StackPanel>

@@ -4,6 +4,7 @@ using FlowMy.Models.Nodes;
 using FlowMy.Services.Rendering;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Windows;
 
 namespace FlowMy.Services.Workflow.NodeExecutors
 {
@@ -165,6 +166,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
 
                 outputNode.OutputText = outputText;
+
+                // Copy to clipboard if SaveToClipboard is enabled
+                if (outputNode.SaveToClipboard && !string.IsNullOrWhiteSpace(outputText))
+                {
+                    try
+                    {
+                        Application.Current?.Dispatcher.Invoke(() =>
+                        {
+                            Clipboard.SetText(outputText);
+                        });
+                        System.Diagnostics.Debug.WriteLine($"OutputNode: Copied to clipboard");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"OutputNode: Failed to copy to clipboard: {ex.Message}");
+                    }
+                }
 
                 System.Diagnostics.Debug.WriteLine($"OutputNode: Formatted output = {outputText}");
             }

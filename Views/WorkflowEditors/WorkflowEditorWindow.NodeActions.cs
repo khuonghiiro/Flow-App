@@ -865,6 +865,9 @@ namespace FlowMy.Views
                 // Copy FormatString
                 dstOutput.FormatString = srcOutput.FormatString;
 
+                // Copy SaveToClipboard
+                dstOutput.SaveToClipboard = srcOutput.SaveToClipboard;
+
                 // Copy InputVariables (clone list để tránh reference sharing)
                 if (srcOutput.InputVariables != null && srcOutput.InputVariables.Count > 0)
                 {

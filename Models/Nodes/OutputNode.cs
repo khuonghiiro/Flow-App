@@ -82,6 +82,7 @@ namespace FlowMy.Models.Nodes
         private List<InputVariable> _inputVariables = new();
         private string _formatString = string.Empty;
         private string _outputText = string.Empty;
+        private bool _saveToClipboard = false;
 
         [System.Text.Json.Serialization.JsonIgnore]
         private readonly object _parallelDispatchAccumulateGate = new object();
@@ -172,6 +173,22 @@ namespace FlowMy.Models.Nodes
                 if (_outputText != value)
                 {
                     _outputText = value ?? string.Empty;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Khi được check, tự động copy output text vào clipboard sau khi node chạy xong.
+        /// </summary>
+        public bool SaveToClipboard
+        {
+            get => _saveToClipboard;
+            set
+            {
+                if (_saveToClipboard != value)
+                {
+                    _saveToClipboard = value;
                     OnPropertyChanged();
                 }
             }

@@ -210,6 +210,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private string _formatString = string.Empty;
 
+        [ObservableProperty]
+        private bool _saveToClipboard = false;
+
         public ObservableCollection<InputVariableItemViewModel> Variables { get; } = new();
 
         [ObservableProperty]
@@ -224,6 +227,7 @@ namespace FlowMy.ViewModels
             OutputKey = _outputNode.OutputKey;
             FormatString = _outputNode.FormatString;
             TitleDisplayMode = _outputNode.TitleDisplayMode;
+            SaveToClipboard = _outputNode.SaveToClipboard;
 
             // Load existing variables
             LoadVariables();
@@ -248,6 +252,10 @@ namespace FlowMy.ViewModels
                     else if (e.PropertyName == nameof(OutputNode.TitleDisplayMode))
                     {
                         TitleDisplayMode = _outputNode.TitleDisplayMode;
+                    }
+                    else if (e.PropertyName == nameof(OutputNode.SaveToClipboard))
+                    {
+                        SaveToClipboard = _outputNode.SaveToClipboard;
                     }
                     OnNodePropertyChanged(e.PropertyName ?? string.Empty);
                 };
@@ -352,6 +360,14 @@ namespace FlowMy.ViewModels
             if (_outputNode.TitleDisplayMode != value)
             {
                 _outputNode.TitleDisplayMode = value;
+            }
+        }
+
+        partial void OnSaveToClipboardChanged(bool value)
+        {
+            if (_outputNode.SaveToClipboard != value)
+            {
+                _outputNode.SaveToClipboard = value;
             }
         }
 

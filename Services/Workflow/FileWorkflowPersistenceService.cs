@@ -3978,6 +3978,11 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("FormatString", out var formatStrObj))
                 outputNode.FormatString = formatStrObj?.ToString() ?? string.Empty;
 
+            // Deserialize SaveToClipboard
+            if (properties.TryGetValue("SaveToClipboard", out var saveToClipboardObj) &&
+                bool.TryParse(saveToClipboardObj?.ToString(), out var saveToClipboard))
+                outputNode.SaveToClipboard = saveToClipboard;
+
             // Deserialize InputVariables
             if (properties.TryGetValue("InputVariables", out var variablesObj))
             {
@@ -5843,6 +5848,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             // Serialize FormatString
             if (!string.IsNullOrWhiteSpace(outputNode.FormatString))
                 dict["FormatString"] = outputNode.FormatString;
+
+            // Serialize SaveToClipboard
+            dict["SaveToClipboard"] = outputNode.SaveToClipboard.ToString();
 
             // Serialize InputVariables
             if (outputNode.InputVariables != null && outputNode.InputVariables.Count > 0)
