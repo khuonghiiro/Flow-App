@@ -733,6 +733,64 @@ namespace FlowMy.Views
                 dstCap.CapturedImage = srcCap.CapturedImage; // Copy image reference
             }
 
+            if (source is TextScanNode srcTextScan && node is TextScanNode dstTextScan)
+            {
+                // OCR Engine Mode
+                dstTextScan.OcrEngineMode = srcTextScan.OcrEngineMode;
+
+                // Tesseract settings
+                dstTextScan.TessdataPath = srcTextScan.TessdataPath;
+                dstTextScan.TesseractPageSegMode = srcTextScan.TesseractPageSegMode;
+                dstTextScan.TesseractEngineMode = srcTextScan.TesseractEngineMode;
+
+                // Deep copy SelectedLanguages
+                if (srcTextScan.SelectedLanguages != null && srcTextScan.SelectedLanguages.Count > 0)
+                    dstTextScan.SelectedLanguages = new List<string>(srcTextScan.SelectedLanguages);
+
+                // Image Source Mode
+                dstTextScan.ImageSourceMode = srcTextScan.ImageSourceMode;
+
+                // Capture region
+                dstTextScan.CaptureX = srcTextScan.CaptureX;
+                dstTextScan.CaptureY = srcTextScan.CaptureY;
+                dstTextScan.CaptureWidth = srcTextScan.CaptureWidth;
+                dstTextScan.CaptureHeight = srcTextScan.CaptureHeight;
+                dstTextScan.CapturedImage = srcTextScan.CapturedImage; // Copy image reference
+
+                // Input node — coordinates
+                dstTextScan.CoordSourceNodeId = srcTextScan.CoordSourceNodeId;
+                dstTextScan.CoordSourceOutputKey = srcTextScan.CoordSourceOutputKey;
+
+                // Input node — image
+                dstTextScan.ImageSourceNodeId = srcTextScan.ImageSourceNodeId;
+                dstTextScan.ImageSourceOutputKey = srcTextScan.ImageSourceOutputKey;
+
+                // Path / URL
+                dstTextScan.ImagePath = srcTextScan.ImagePath;
+
+                // Base64 image
+                dstTextScan.Base64Image = srcTextScan.Base64Image;
+
+                // OCR Language
+                dstTextScan.OcrLanguage = srcTextScan.OcrLanguage;
+                dstTextScan.AutoDetectLanguage = srcTextScan.AutoDetectLanguage;
+
+                // Target app
+                dstTextScan.TargetProcessName = srcTextScan.TargetProcessName;
+                dstTextScan.TargetWindowTitle = srcTextScan.TargetWindowTitle;
+
+                // Deep copy SkipOutputs
+                if (srcTextScan.SkipOutputs != null && srcTextScan.SkipOutputs.Count > 0)
+                    dstTextScan.SkipOutputs = new HashSet<string>(srcTextScan.SkipOutputs, StringComparer.OrdinalIgnoreCase);
+
+                // Title properties
+                dstTextScan.TitleDisplayMode = srcTextScan.TitleDisplayMode;
+                dstTextScan.TitleColorMode = srcTextScan.TitleColorMode;
+                dstTextScan.TitleColorKey = srcTextScan.TitleColorKey;
+
+                dstTextScan.NotifyTitleChanged();
+            }
+
             if (source is KeyPressEventNode srcKey && node is KeyPressEventNode dstKey)
             {
                 dstKey.RepeatCount = srcKey.RepeatCount;
