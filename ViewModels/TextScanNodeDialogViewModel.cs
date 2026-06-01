@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using FlowMy.Helpers;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using FlowMy.Services.Git;
 using FlowMy.Services.Interaction;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -81,6 +82,16 @@ namespace FlowMy.ViewModels
             TessdataPath = node.TessdataPath;
             TesseractPageSegMode = node.TesseractPageSegMode;
             TesseractEngineMode = node.TesseractEngineMode;
+
+            // Auto-detect tessdata path from cloned git repo if path is empty
+            if (string.IsNullOrWhiteSpace(TessdataPath))
+            {
+                var tessdataGitPath = GetTessdataGitRepoPath();
+                if (!string.IsNullOrWhiteSpace(tessdataGitPath))
+                {
+                    TessdataPath = tessdataGitPath;
+                }
+            }
 
             CoordSourceNodeId = node.CoordSourceNodeId;
             CoordSourceOutputKey = node.CoordSourceOutputKey;
@@ -165,6 +176,33 @@ namespace FlowMy.ViewModels
         }
 
         protected override string GetDefaultTitle() => "Text Scan (OCR)";
+
+        /// <summary>
+        /// Tìm đường dẫn đến thư mục tessdata từ git repo đã clone.
+        /// Tìm repo có URL chứa "tesseract-ocr/tessdata" và đã được clone.
+        /// </summary>
+        private string? GetTessdataGitRepoPath()
+        {
+            try
+            {
+                var savedRepos = GitRepoStorageService.Load();
+                var tessdataRepo = savedRepos.FirstOrDefault(r =>
+                    r.RepoUrl.Contains("tesseract-ocr/tessdata", StringComparison.OrdinalIgnoreCase) &&
+                    r.IsGitRepoCloned);
+
+                if (tessdataRepo != null && !string.IsNullOrWhiteSpace(tessdataRepo.LocalPath) &&
+                    Directory.Exists(tessdataRepo.LocalPath))
+                {
+                    return tessdataRepo.LocalPath;
+                }
+            }
+            catch
+            {
+                // Silent fail - nếu không tìm được thì user sẽ tự chọn path
+            }
+
+            return null;
+        }
 
         private void InitializeOcrEngineModeOptions()
         {

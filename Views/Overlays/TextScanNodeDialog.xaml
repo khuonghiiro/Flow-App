@@ -118,7 +118,9 @@
                                            FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                 <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
                                            TextWrapping="Wrap" Margin="0,0,0,8">
-                                    <Run Text="Đường dẫn đến thư mục chứa file .traineddata (ví dụ: C:\tessdata). Để trống = dùng thư mục mặc định."/>
+                                    <Run Text="Đường dẫn đến thư mục chứa file .traineddata (ví dụ: C:\tessdata)."/>
+                                    <LineBreak/>
+                                    <Run Text="💡 Nếu để trống: Vào màn hình quản lý Git để clone/pull repo tessdata, hoặc tự chọn folder chứa các file .traineddata."/>
                                 </TextBlock>
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>

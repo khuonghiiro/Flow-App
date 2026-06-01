@@ -22,7 +22,7 @@
 
         <!-- Main tab radio style -->
         <Style x:Key="GitTabRadioStyle" TargetType="RadioButton">
-            <Setter Property="Foreground" Value="{DynamicResource TextOnPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -378,6 +378,7 @@
                                       Margin="0,0,0,14"/>
 
                             <CheckBox IsChecked="{Binding IsPartialClone}" Margin="0,0,0,12" Cursor="Hand"
+                                      Visibility="Collapsed"
                                       Foreground="{DynamicResource TextBrush}" FontSize="12">
                                 <TextBlock Text="📦 Chỉ pull một phần (Partial Clone) - Chọn file/folder cụ thể thay vì toàn bộ repo" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
                             </CheckBox>

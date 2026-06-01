@@ -77,11 +77,12 @@
 
         <!-- Modern ComboBox Style -->
         <Style x:Key="ModernMultiSelectComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="35"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
             <Setter Property="Background" Value="{StaticResource HeaderBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
             <Setter Property="Template">
@@ -229,7 +230,7 @@
                                             <!-- 🔤 TextBox nhập tìm kiếm -->
                                             <TextBox Style="{StaticResource RoundedSearchTextBoxWithIcon}"
                                                      x:Name="SearchTextBox"
-                                                     Height="40"
+                                                     Height="35"
                                                          Grid.Column="0"
                                                      Text="{Binding SearchText, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
                                                      FontSize="14"
@@ -291,20 +292,20 @@
                                                 <Button x:Name="SelectAllButton"
                                                      Content="✅"
                                                      Style="{StaticResource PrimaryButton}"
-                                                     FontSize="12"
-                                                        Height="40"
-                                                        Width="40"
+                                                     FontSize="14"
+                                                        Height="35"
+                                                        Width="35"
                                                         ToolTip="Chọn tất cả"
                                                      Padding="8,4"
-                                                     Margin="0"
+                                                     Margin="5,0"
                                                      Click="SelectAllButton_Click"/>
                                                 <Button x:Name="ClearAllButton"
                                                      Content="❎"
-                                                         Height="40"
- Width="40"
+                                                         Height="35"
+ Width="35"
                                                         ToolTip="Bỏ chọn tất cả"
                                                      Style="{StaticResource DangerButton}"
-                                                     FontSize="12"
+                                                     FontSize="14"
                                                      Padding="8,4"
                                                      Click="ClearAllButton_Click"/>
                                             </StackPanel>
