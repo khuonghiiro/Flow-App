@@ -135,6 +135,15 @@ namespace FlowMy.ViewModels
         };
 
         /// <summary>
+        /// Options cho combobox chức năng trong tab "Tái sử dụng flow".
+        /// </summary>
+        public ObservableCollection<FunctionTypeOption> FunctionTypeOptions { get; } = new()
+        {
+            new FunctionTypeOption { Value = null, DisplayName = "Chạy mặc định" },
+            new FunctionTypeOption { Value = "Capture", DisplayName = "Chụp ảnh" }
+        };
+
+        /// <summary>
         /// Vị trí cổng IN (input port) của node hiện tại.
         /// Mặc định lấy từ port input đầu tiên trong <see cref="WorkflowNode.Ports"/>.
         /// </summary>
@@ -481,11 +490,16 @@ namespace FlowMy.ViewModels
                     item.SelectedLineStyleKey = string.IsNullOrWhiteSpace(existing.LineStyleKey)
                         ? "WorkflowDefault"
                         : existing.LineStyleKey;
+
+                    // Load FunctionType
+                    item.SelectedFunctionType = existing.FunctionType;
                 }
                 else
                 {
                     // Mặc định: theo cấu hình workflow
                     item.SelectedLineStyleKey = "WorkflowDefault";
+                    // Mặc định: Chạy mặc định (null)
+                    item.SelectedFunctionType = null;
                 }
 
                 ReuseRoutes.Add(item);
@@ -521,7 +535,8 @@ namespace FlowMy.ViewModels
                 {
                     IncomingNodeId = routeVm.IncomingNodeId,
                     OutgoingNodeId = routeVm.SelectedOutgoingNodeId,
-                    LineStyleKey = lineStyleKey
+                    LineStyleKey = lineStyleKey,
+                    FunctionType = routeVm.SelectedFunctionType
                 });
             }
         }

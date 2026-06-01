@@ -31,6 +31,14 @@ namespace FlowMy.ViewModels
         /// </summary>
         [ObservableProperty]
         private string? _selectedLineStyleKey;
+
+        /// <summary>
+        /// Loại chức năng thực thi khi workflow chạy đến node này.
+        /// - null hoặc "Default": Chạy logic mặc định
+        /// - "Capture": Chụp ảnh trước khi chạy logic (cho TextScanNode, ScreenCaptureNode)
+        /// </summary>
+        [ObservableProperty]
+        private string? _selectedFunctionType;
     }
 }
 

@@ -1377,6 +1377,11 @@ namespace FlowMy.Services.Workflow
             onEnteringNode?.Invoke(incomingConnection);
             onNodeStarted?.Invoke(node, incomingConnection);
 
+            // ── AutoTrigger: Kiểm tra và kích hoạt chức năng tự động từ ReuseRoutes ──
+            // Khi workflow chạy đến node này, kiểm tra xem có node nào cấu hình FunctionType trong ReuseRoutes không
+            // Nếu có FunctionType = "Capture", kích hoạt cơ chế chụp ảnh trước khi chạy logic
+            await ProcessReuseRouteFunctionTypeAsync(node, connectionList, cancellationToken).ConfigureAwait(false);
+
             // Flow-control trong LoopBody (Break / Continue)
             if (node is BreakNode)
             {
@@ -1473,6 +1478,43 @@ namespace FlowMy.Services.Workflow
             var executor = _nodeExecutors.FirstOrDefault(e => e.CanExecute(node))
                            ?? _nodeExecutors.Last();
             await executor.ExecuteAsync(node, env);
+        }
+
+        /// <summary>
+        /// Xử lý FunctionType từ ReuseRoutes: Khi workflow chạy đến node này, kiểm tra xem có node nào cấu hình FunctionType trong ReuseRoutes không
+        /// Nếu có FunctionType = "Capture", kích hoạt cơ chế chụp ảnh trước khi chạy logic
+        /// </summary>
+        private async Task ProcessReuseRouteFunctionTypeAsync(
+            WorkflowNode node,
+            List<WorkflowConnection> connections,
+            CancellationToken cancellationToken)
+        {
+            if (node == null || connections == null) return;
+            if (node.ReuseRoutes == null || node.ReuseRoutes.Count == 0) return;
+
+            // Kiểm tra xem có ReuseRoute nào có FunctionType = "Capture" không
+            // Nếu có, kích hoạt cơ chế chụp ảnh trước khi chạy logic
+            foreach (var route in node.ReuseRoutes)
+            {
+                if (string.Equals(route.FunctionType, "Capture", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Kích hoạt cơ chế chụp ảnh cho node này
+                    await ExecuteScreenCaptureAsync(node, cancellationToken).ConfigureAwait(false);
+                    break; // Chỉ cần kích hoạt 1 lần
+                }
+            }
+        }
+
+        /// <summary>
+        /// Thực thi chụp màn hình cho node
+        /// </summary>
+        private async Task ExecuteScreenCaptureAsync(WorkflowNode node, CancellationToken cancellationToken)
+        {
+            // TODO: Implement screen capture logic
+            // This should trigger the same logic as when user clicks the capture button in the node control
+            // For now, this is a placeholder
+            System.Diagnostics.Debug.WriteLine($"AutoTrigger: Executing screen capture for {node.Type} node {node.Id}");
+            await Task.CompletedTask;
         }
 
         private static string ResolveFlowScopeId(

@@ -223,6 +223,13 @@ namespace FlowMy.Models
         /// hoặc null/empty để dùng style workflow hiện tại.
         /// </summary>
         public string? LineStyleKey { get; set; }
+
+        /// <summary>
+        /// Loại chức năng thực thi khi workflow chạy đến node này.
+        /// - null hoặc "Default": Chạy logic mặc định
+        /// - "Capture": Chụp ảnh trước khi chạy logic (cho TextScanNode, ScreenCaptureNode)
+        /// </summary>
+        public string? FunctionType { get; set; }
     }
 
     /// <summary>
