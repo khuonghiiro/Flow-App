@@ -209,25 +209,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             // System.Diagnostics.Debug.WriteLine($"[TraverseOutputs] Node: {node.Id} ({node.Title})");
-            
-            // Detect cycle: nếu node này đã xuất hiện trong path hiện tại → đang chạy vòng lặp vô hạn.
-            // Dùng Contains thay vì Count > MAX để phát hiện sớm ngay khi cycle xảy ra.
-            if (ExecutionPath.Contains(node.Id, StringComparer.OrdinalIgnoreCase))
+
+            // Detect cycle: chỉ báo lỗi khi node xuất hiện liên tiếp trong path (cycle ngắn)
+            // hoặc node xuất hiện quá nhiều lần (> 10 lần) trong path hiện tại.
+            // Điều này cho phép node được truy cập lại từ các nhánh khác nhau hợp lệ.
+            var nodeIndex = ExecutionPath.FindIndex(id => string.Equals(id, node.Id, StringComparison.OrdinalIgnoreCase));
+            if (nodeIndex >= 0)
             {
-                var cyclePath = string.Join(" → ", ExecutionPath.Select(id =>
+                // Kiểm tra nếu node xuất hiện liên tiếp (cycle ngắn) hoặc xuất hiện quá nhiều lần
+                var isConsecutiveCycle = nodeIndex == ExecutionPath.Count - 1;
+                var occurrenceCount = ExecutionPath.Count(id => string.Equals(id, node.Id, StringComparison.OrdinalIgnoreCase));
+
+                if (isConsecutiveCycle || occurrenceCount > 10)
                 {
-                    var n = Connections.SelectMany(c => new[] { c.FromNode, c.ToNode })
-                                      .FirstOrDefault(x => x?.Id == id);
-                    return n != null ? $"{n.Title}" : id;
-                }));
+                    var cyclePath = string.Join(" → ", ExecutionPath.Select(id =>
+                    {
+                        var n = Connections.SelectMany(c => new[] { c.FromNode, c.ToNode })
+                                          .FirstOrDefault(x => x?.Id == id);
+                        return n != null ? $"{n.Title}" : id;
+                    }));
 
-                var errorMsg = $"⚠️ Vòng lặp vô hạn được phát hiện!\n\n" +
-                              $"Node \"{node.Title}\" đã được thực thi trước đó trong luồng này.\n" +
-                              $"Đường đi: {cyclePath} → {node.Title}\n\n" +
-                              $"Kiểm tra lại cấu hình ReuseRoutes hoặc connections trong workflow.";
+                    var errorMsg = $"⚠️ Vòng lặp vô hạn được phát hiện!\n\n" +
+                                  $"Node \"{node.Title}\" đã được thực thi trước đó trong luồng này.\n" +
+                                  $"Đường đi: {cyclePath} → {node.Title}\n\n" +
+                                  $"Kiểm tra lại cấu hình ReuseRoutes hoặc connections trong workflow.";
 
-                OnNodeFailed?.Invoke(node, errorMsg);
-                return;
+                    OnNodeFailed?.Invoke(node, errorMsg);
+                    return;
+                }
             }
 
             // Add current node to execution path
