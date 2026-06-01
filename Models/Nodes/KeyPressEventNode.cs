@@ -221,19 +221,11 @@ namespace FlowMy.Models
 
             // KeyPressEventNode chỉ có 1 output duy nhất, luôn cập nhật output đầu tiên
             var output = DynamicOutputs.FirstOrDefault();
-            
+
             if (output != null)
             {
-                // Nếu Key rỗng hoặc null, đặt về "key" để backward compatible
-                // Nếu Key có giá trị, cập nhật output key
-                if (string.IsNullOrWhiteSpace(Key))
-                {
-                    output.Key = "key";
-                }
-                else
-                {
-                    output.Key = Key;
-                }
+                // Dùng tên cố định "key" thay vì giá trị Key thực tế
+                output.Key = "key";
             }
         }
     }

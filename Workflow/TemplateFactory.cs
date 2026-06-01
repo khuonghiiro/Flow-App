@@ -973,11 +973,10 @@ namespace FlowMy.Workflow
             node.Ports.Add(new NodePort { IsInput = true, Position = PortPosition.Left, IsVisible = true });
             node.Ports.Add(new NodePort { IsInput = false, Position = PortPosition.Right, IsVisible = true });
 
-            // Dynamic data (output): selected key - sử dụng Key từ node, nếu Key rỗng thì dùng "key" làm default
-            var outputKey = string.IsNullOrWhiteSpace(node.Key) ? "key" : node.Key;
+            // Dynamic data (output): selected key - dùng tên cố định "key"
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort
             {
-                Key = outputKey,
+                Key = "key",
                 DisplayName = "Key",
                 IsMultiple = false,
                 OutputType = WorkflowDataType.String
@@ -1010,11 +1009,10 @@ namespace FlowMy.Workflow
             node.Ports.Add(new NodePort { IsInput = true, Position = PortPosition.Left, IsVisible = true });
             node.Ports.Add(new NodePort { IsInput = false, Position = PortPosition.Right, IsVisible = true });
 
-            // Dynamic data (output): selected hotkey - sử dụng Key từ node, nếu Key rỗng thì dùng "key" làm default
-            var outputKey = string.IsNullOrWhiteSpace(node.Key) ? "key" : node.Key;
+            // Dynamic data (output): selected hotkey - dùng tên cố định "hotkey"
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort
             {
-                Key = outputKey,
+                Key = "hotkey",
                 DisplayName = "Hotkey",
                 IsMultiple = false,
                 OutputType = WorkflowDataType.String
