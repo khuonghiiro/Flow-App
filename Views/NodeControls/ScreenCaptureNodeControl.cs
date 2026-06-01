@@ -288,39 +288,7 @@ namespace FlowMy.Views.NodeControls
             captureButton.Click += (s, e) =>
             {
                 e.Handled = true; // không bubble lên border
-                ownerWindow.Hide();
-                try
-                {
-                    // Đưa app đã chọn lên trước nếu được cấu hình
-                    if (!string.IsNullOrWhiteSpace(node.TargetProcessName))
-                    {
-                        var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
-                        var match = windows.FirstOrDefault(wnd =>
-                            wnd.ProcessName == node.TargetProcessName && wnd.Title == node.TargetWindowTitle)
-                            ?? windows.FirstOrDefault(wnd => wnd.ProcessName == node.TargetProcessName);
-
-                        if (match != null)
-                            FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
-                    }
-
-                    // Chờ ngắn để app kịp render lên trước khi overlay xuất hiện
-                    System.Threading.Thread.Sleep(150);
-
-                    var overlay = new ScreenCaptureOverlay();
-                    if (overlay.ShowDialog() == true)
-                    {
-                        node.CaptureX      = overlay.CaptureX;
-                        node.CaptureY      = overlay.CaptureY;
-                        node.CaptureWidth  = overlay.CaptureWidth;
-                        node.CaptureHeight = overlay.CaptureHeight;
-                        node.CapturedImage = overlay.CapturedImage;
-                    }
-                }
-                finally
-                {
-                    ownerWindow.Show();
-                    ownerWindow.Activate();
-                }
+                FlowMy.Helpers.ScreenCaptureHelper.CaptureForScreenCaptureNode(node, ownerWindow);
             };
 
             // Nút chọn ảnh từ file

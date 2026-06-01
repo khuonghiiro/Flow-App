@@ -42,6 +42,72 @@ namespace FlowMy.Views.Overlays
 
             // Flush output key combobox (image)
             FlushComboBoxBinding(ImageSourceOutputKey);
+
+            // Flush ReuseRoutes ComboBox bindings (including FunctionType)
+            FlushReuseRoutesComboBoxBindings();
+
+            // Debug: print all ReuseRoutes values
+            System.Diagnostics.Debug.WriteLine("=== BeforeSaveOnClose - ReuseRoutes ===");
+            foreach (var route in _viewModel.ReuseRoutes)
+            {
+                System.Diagnostics.Debug.WriteLine($"  IncomingNodeId={route.IncomingNodeId}, SelectedFunctionType={route.SelectedFunctionType}");
+            }
+        }
+
+        private void FlushReuseRoutesComboBoxBindings()
+        {
+            // Find all ComboBox controls in the ReuseRoutes ItemsControl and flush their bindings
+            var itemsControl = this.FindName("ReuseRoutesItemsControl") as ItemsControl;
+            if (itemsControl != null)
+            {
+                foreach (var item in itemsControl.Items)
+                {
+                    if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is ContentPresenter contentPresenter)
+                    {
+                        // Find all ComboBox controls in the visual tree
+                        var comboBoxes = FindVisualChildren<ComboBox>(contentPresenter);
+                        foreach (var comboBox in comboBoxes)
+                        {
+                            comboBox.GetBindingExpression(ComboBox.SelectedValueProperty)?.UpdateSource();
+                            comboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
+                        }
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) yield break;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T result)
+                {
+                    yield return result;
+                }
+
+                foreach (var descendant in FindVisualChildren<T>(child))
+                {
+                    yield return descendant;
+                }
+            }
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            if (parent is T result) return result;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                var childResult = FindVisualChild<T>(child);
+                if (childResult != null) return childResult;
+            }
+
+            return null;
         }
 
         private static void FlushComboBoxBinding(System.Windows.Controls.ComboBox? cb)

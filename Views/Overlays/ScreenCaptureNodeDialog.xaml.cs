@@ -133,8 +133,51 @@ namespace FlowMy.Views.Overlays
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
+            // Flush ReuseRoutes ComboBox bindings (including FunctionType)
+            FlushReuseRoutesComboBoxBindings();
             ViewModel.SaveTitleCommand.Execute(null);
             Close();
+        }
+
+        private void FlushReuseRoutesComboBoxBindings()
+        {
+            // Find all ComboBox controls in the ReuseRoutes ItemsControl and flush their bindings
+            var itemsControl = this.FindName("ReuseRoutesItemsControl") as ItemsControl;
+            if (itemsControl != null)
+            {
+                foreach (var item in itemsControl.Items)
+                {
+                    if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is ContentPresenter contentPresenter)
+                    {
+                        // Find all ComboBox controls in the visual tree
+                        var comboBoxes = FindVisualChildren<ComboBox>(contentPresenter);
+                        foreach (var comboBox in comboBoxes)
+                        {
+                            comboBox.GetBindingExpression(ComboBox.SelectedValueProperty)?.UpdateSource();
+                            comboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
+                        }
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) yield break;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T result)
+                {
+                    yield return result;
+                }
+
+                foreach (var descendant in FindVisualChildren<T>(child))
+                {
+                    yield return descendant;
+                }
+            }
         }
 
         private void BrowseImageButton_Click(object sender, RoutedEventArgs e)

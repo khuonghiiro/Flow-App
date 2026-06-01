@@ -1,12 +1,10 @@
 using FlowMy.Models;
+using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Linq;
-using System.Collections.Generic;
 using System.Text.Json;
-using FlowMy.Models.Nodes;
+using System.Windows;
 
 namespace FlowMy.Services.Workflow
 {
@@ -1380,7 +1378,7 @@ namespace FlowMy.Services.Workflow
             // ── AutoTrigger: Kiểm tra và kích hoạt chức năng tự động từ ReuseRoutes ──
             // Khi workflow chạy đến node này, kiểm tra xem có node nào cấu hình FunctionType trong ReuseRoutes không
             // Nếu có FunctionType = "Capture", kích hoạt cơ chế chụp ảnh trước khi chạy logic
-            await ProcessReuseRouteFunctionTypeAsync(node, connectionList, cancellationToken).ConfigureAwait(false);
+            await ProcessReuseRouteFunctionTypeAsync(node, incomingConnection, connectionList, cancellationToken).ConfigureAwait(false);
 
             // Flow-control trong LoopBody (Break / Continue)
             if (node is BreakNode)
@@ -1486,22 +1484,39 @@ namespace FlowMy.Services.Workflow
         /// </summary>
         private async Task ProcessReuseRouteFunctionTypeAsync(
             WorkflowNode node,
+            WorkflowConnection? incomingConnection,
             List<WorkflowConnection> connections,
             CancellationToken cancellationToken)
         {
             if (node == null || connections == null) return;
             if (node.ReuseRoutes == null || node.ReuseRoutes.Count == 0) return;
 
-            // Kiểm tra xem có ReuseRoute nào có FunctionType = "Capture" không
-            // Nếu có, kích hoạt cơ chế chụp ảnh trước khi chạy logic
-            foreach (var route in node.ReuseRoutes)
+            // Debug log: hiển thị tất cả ReuseRoute của node
+            System.Diagnostics.Debug.WriteLine($"ProcessReuseRouteFunctionType: Node {node.Title} ({node.Id}) has {node.ReuseRoutes.Count} ReuseRoutes, IncomingConnection: {incomingConnection?.FromNode?.Title ?? "null"}");
+
+            // Tìm ReuseRoute tương ứng với incoming connection hiện tại
+            var incomingNodeId = incomingConnection?.FromNode?.Id;
+            var matchingRoute = node.ReuseRoutes.FirstOrDefault(r => 
+                string.Equals(r.IncomingNodeId, incomingNodeId, StringComparison.OrdinalIgnoreCase));
+
+            if (matchingRoute != null)
             {
-                if (string.Equals(route.FunctionType, "Capture", StringComparison.OrdinalIgnoreCase))
+                System.Diagnostics.Debug.WriteLine($"  - Found matching route: Incoming: {matchingRoute.IncomingNodeId}, Outgoing: {matchingRoute.OutgoingNodeId}, FunctionType: '{matchingRoute.FunctionType}'");
+
+                // Chỉ trigger capture nếu ReuseRoute tương ứng có FunctionType = "Capture"
+                if (string.Equals(matchingRoute.FunctionType, "Capture", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Kích hoạt cơ chế chụp ảnh cho node này
+                    System.Diagnostics.Debug.WriteLine($"ProcessReuseRouteFunctionType: Triggering capture for route from {matchingRoute.IncomingNodeId} to {matchingRoute.OutgoingNodeId}");
                     await ExecuteScreenCaptureAsync(node, cancellationToken).ConfigureAwait(false);
-                    break; // Chỉ cần kích hoạt 1 lần
                 }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProcessReuseRouteFunctionType: FunctionType is '{matchingRoute.FunctionType}', not triggering capture");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"  - No matching route found for incoming node {incomingNodeId}");
             }
         }
 
@@ -1510,11 +1525,50 @@ namespace FlowMy.Services.Workflow
         /// </summary>
         private async Task ExecuteScreenCaptureAsync(WorkflowNode node, CancellationToken cancellationToken)
         {
-            // TODO: Implement screen capture logic
-            // This should trigger the same logic as when user clicks the capture button in the node control
-            // For now, this is a placeholder
-            System.Diagnostics.Debug.WriteLine($"AutoTrigger: Executing screen capture for {node.Type} node {node.Id}");
-            await Task.CompletedTask;
+            // Khi FunctionType = "Capture", luôn trigger capture mỗi lần workflow chạy vào node
+            // Không check xem node đã có ảnh hay chưa
+            System.Diagnostics.Debug.WriteLine($"AutoTrigger: Triggering screen capture for {node.Type} node {node.Id}");
+
+            // Gọi ScreenCaptureHelper trực tiếp trên UI thread
+            bool captureResult = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                try
+                {
+                    // Lấy main window
+                    var mainWindow = System.Windows.Application.Current.MainWindow;
+                    if (mainWindow == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"AutoTrigger: Main window not found");
+                        return false;
+                    }
+
+                    // Sử dụng ScreenCaptureHelper để thực hiện capture
+                    if (node is TextScanNode textScanNode)
+                    {
+                        return FlowMy.Helpers.ScreenCaptureHelper.CaptureForTextScanNode(textScanNode, mainWindow);
+                    }
+                    else if (node is ScreenCaptureNode screenCaptureNode)
+                    {
+                        return FlowMy.Helpers.ScreenCaptureHelper.CaptureForScreenCaptureNode(screenCaptureNode, mainWindow);
+                    }
+
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"AutoTrigger: Error during screen capture: {ex.Message}");
+                    return false;
+                }
+            });
+
+            if (captureResult)
+            {
+                System.Diagnostics.Debug.WriteLine($"AutoTrigger: Screen capture completed for {node.Type} node {node.Id}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"AutoTrigger: Screen capture cancelled for {node.Type} node {node.Id}");
+            }
         }
 
         private static string ResolveFlowScopeId(
@@ -1801,30 +1855,30 @@ namespace FlowMy.Services.Workflow
             switch (asyncTaskNode.DispatchLoopType)
             {
                 case LoopType.ForEachArray:
-                {
-                    var items = ResolveLoopArray(asyncTaskNode, connections, env);
-                    for (int i = 0; i < items.Count; i++)
-                        yield return (i, items[i]);
-                    yield break;
-                }
+                    {
+                        var items = ResolveLoopArray(asyncTaskNode, connections, env);
+                        for (int i = 0; i < items.Count; i++)
+                            yield return (i, items[i]);
+                        yield break;
+                    }
                 case LoopType.ForLoop:
-                {
-                    var start = asyncTaskNode.StartIndex;
-                    var end = asyncTaskNode.EndIndex;
-                    var step = start <= end ? 1 : -1;
-                    for (int i = start; step > 0 ? i <= end : i >= end; i += step)
-                        yield return (i, null);
-                    yield break;
-                }
+                    {
+                        var start = asyncTaskNode.StartIndex;
+                        var end = asyncTaskNode.EndIndex;
+                        var step = start <= end ? 1 : -1;
+                        for (int i = start; step > 0 ? i <= end : i >= end; i += step)
+                            yield return (i, null);
+                        yield break;
+                    }
                 case LoopType.RepeatN:
                 default:
-                {
-                    var count = ResolveLoopCount(asyncTaskNode, connections, env) ?? asyncTaskNode.RepeatCount;
-                    if (count < 1) count = 1;
-                    for (int i = 0; i < count; i++)
-                        yield return (i, null);
-                    yield break;
-                }
+                    {
+                        var count = ResolveLoopCount(asyncTaskNode, connections, env) ?? asyncTaskNode.RepeatCount;
+                        if (count < 1) count = 1;
+                        for (int i = 0; i < count; i++)
+                            yield return (i, null);
+                        yield break;
+                    }
             }
         }
 
@@ -1836,36 +1890,36 @@ namespace FlowMy.Services.Workflow
             switch (loopNode.LoopType)
             {
                 case LoopType.ForEachArray:
-                {
-                    var items = ResolveLoopArray(loopNode, connections, env);
-                    for (int i = 0; i < items.Count; i++)
                     {
-                        yield return (i, items[i]);
+                        var items = ResolveLoopArray(loopNode, connections, env);
+                        for (int i = 0; i < items.Count; i++)
+                        {
+                            yield return (i, items[i]);
+                        }
+                        yield break;
                     }
-                    yield break;
-                }
                 case LoopType.ForLoop:
-                {
-                    var start = loopNode.StartIndex;
-                    var end = loopNode.EndIndex;
-                    var step = start <= end ? 1 : -1;
-                    for (int i = start; step > 0 ? i <= end : i >= end; i += step)
                     {
-                        yield return (i, null);
+                        var start = loopNode.StartIndex;
+                        var end = loopNode.EndIndex;
+                        var step = start <= end ? 1 : -1;
+                        for (int i = start; step > 0 ? i <= end : i >= end; i += step)
+                        {
+                            yield return (i, null);
+                        }
+                        yield break;
                     }
-                    yield break;
-                }
                 case LoopType.RepeatN:
                 default:
-                {
-                    var count = ResolveLoopCount(loopNode, connections, env) ?? loopNode.RepeatCount;
-                    if (count < 1) count = 1;
-                    for (int i = 0; i < count; i++)
                     {
-                        yield return (i, null);
+                        var count = ResolveLoopCount(loopNode, connections, env) ?? loopNode.RepeatCount;
+                        if (count < 1) count = 1;
+                        for (int i = 0; i < count; i++)
+                        {
+                            yield return (i, null);
+                        }
+                        yield break;
                     }
-                    yield break;
-                }
             }
         }
 
@@ -2164,7 +2218,7 @@ namespace FlowMy.Services.Workflow
 
             // Ưu tiên UserValueOverride (value từ textbox)
             var valueText = input.UserValueOverride?.Trim();
-            
+
             // Nếu không có UserValueOverride, resolve từ output key của source node
             if (string.IsNullOrWhiteSpace(valueText) && connections != null && !string.IsNullOrWhiteSpace(input.SelectedSourceNodeId))
             {
@@ -2207,7 +2261,7 @@ namespace FlowMy.Services.Workflow
             if (string.IsNullOrWhiteSpace(input.SelectedSourceNodeId)) return string.Empty;
 
             var connectionList = connections.ToList();
-            
+
             // Tìm source node từ upstream connections
             var upstreamConnections = connectionList
                 .Where(c => c.ToNode == toNode && c.FromNode != null)

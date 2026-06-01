@@ -334,6 +334,7 @@ namespace FlowMy.ViewModels
             SaveExecutionTracePreferencesSafe();
         }
 
+
         partial void OnIsExecutionTracePanelExpandedChanged(bool value)
         {
             if (_isApplyingExecutionTracePreferences)

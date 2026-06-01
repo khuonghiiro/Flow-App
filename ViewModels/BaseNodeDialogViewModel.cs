@@ -139,7 +139,7 @@ namespace FlowMy.ViewModels
         /// </summary>
         public ObservableCollection<FunctionTypeOption> FunctionTypeOptions { get; } = new()
         {
-            new FunctionTypeOption { Value = null, DisplayName = "Chạy mặc định" },
+            new FunctionTypeOption { Value = string.Empty, DisplayName = "Chạy mặc định" },
             new FunctionTypeOption { Value = "Capture", DisplayName = "Chụp ảnh" }
         };
 
@@ -491,15 +491,25 @@ namespace FlowMy.ViewModels
                         ? "WorkflowDefault"
                         : existing.LineStyleKey;
 
-                    // Load FunctionType
-                    item.SelectedFunctionType = existing.FunctionType;
+                    // Load FunctionType - use empty string if null
+                    item.SelectedFunctionType = string.IsNullOrWhiteSpace(existing.FunctionType)
+                        ? string.Empty
+                        : existing.FunctionType;
+
+                    // Also set SelectedFunctionTypeItem for ComboBox binding
+                    item.SelectedFunctionTypeItem = FunctionTypeOptions.FirstOrDefault(o =>
+                        string.Equals(o.Value, item.SelectedFunctionType, StringComparison.OrdinalIgnoreCase));
+
+                    System.Diagnostics.Debug.WriteLine($"LoadReuseRoutes: IncomingNodeId={item.IncomingNodeId}, FunctionType={item.SelectedFunctionType}, FunctionTypeItem={item.SelectedFunctionTypeItem?.DisplayName}");
                 }
                 else
                 {
                     // Mặc định: theo cấu hình workflow
                     item.SelectedLineStyleKey = "WorkflowDefault";
-                    // Mặc định: Chạy mặc định (null)
-                    item.SelectedFunctionType = null;
+                    // Mặc định: Chạy mặc định (empty string)
+                    item.SelectedFunctionType = string.Empty;
+                    // Set default FunctionTypeItem
+                    item.SelectedFunctionTypeItem = FunctionTypeOptions.FirstOrDefault();
                 }
 
                 ReuseRoutes.Add(item);
@@ -631,8 +641,11 @@ namespace FlowMy.ViewModels
                     {
                         IncomingNodeId = routeVm.IncomingNodeId,
                         OutgoingNodeId = routeVm.SelectedOutgoingNodeId,
-                        LineStyleKey = lineStyleKey
+                        LineStyleKey = lineStyleKey,
+                        FunctionType = string.IsNullOrWhiteSpace(routeVm.SelectedFunctionType) ? null : routeVm.SelectedFunctionType
                     });
+
+                    System.Diagnostics.Debug.WriteLine($"SaveTitle: IncomingNodeId={routeVm.IncomingNodeId}, FunctionType={routeVm.SelectedFunctionType}, FunctionTypeItem={routeVm.SelectedFunctionTypeItem?.DisplayName}");
                 }
 
                 reuseChanged = true;

@@ -446,7 +446,7 @@
                             <TextBlock Text="Tái sử dụng flow:"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <ItemsControl ItemsSource="{Binding ReuseRoutes}">
+                            <ItemsControl x:Name="ReuseRoutesItemsControl" ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,12"
@@ -474,6 +474,10 @@
                                                                   ItemsSource="{Binding OutgoingOptions}"
                                                                   SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                                   SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
+                                                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,0"
+                                                                   TextWrapping="Wrap">
+                                                            <Run Text="Chọn node OUT để cấu hình chức năng tự động kích hoạt khi workflow chạy đến node này."/>
+                                                        </TextBlock>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Text="Kiểu line OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
@@ -485,7 +489,7 @@
                                                 </Grid>
                                                 <StackPanel Grid.Row="1" Margin="0,8,0,0">
                                                     <TextBlock Text="Chức năng" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
-                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                    <ComboBox x:Name="FunctionTypeComboBox" Height="32" Style="{DynamicResource BaseComboBox}"
                                                               ItemsSource="{Binding DataContext.FunctionTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                                               SelectedValue="{Binding SelectedFunctionType, Mode=TwoWay}"/>

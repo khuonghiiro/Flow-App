@@ -38,7 +38,27 @@ namespace FlowMy.ViewModels
         /// - "Capture": Chụp ảnh trước khi chạy logic (cho TextScanNode, ScreenCaptureNode)
         /// </summary>
         [ObservableProperty]
-        private string? _selectedFunctionType;
+        private string _selectedFunctionType = string.Empty;
+
+        /// <summary>
+        /// Selected item for ComboBox binding (used instead of SelectedValue)
+        /// </summary>
+        [ObservableProperty]
+        private FunctionTypeOption? _selectedFunctionTypeItem;
+
+        partial void OnSelectedFunctionTypeChanged(string value)
+        {
+            System.Diagnostics.Debug.WriteLine($"ReuseRouteItemViewModel: SelectedFunctionType changed to '{value}' for IncomingNodeId={IncomingNodeId}");
+        }
+
+        partial void OnSelectedFunctionTypeItemChanged(FunctionTypeOption? value)
+        {
+            System.Diagnostics.Debug.WriteLine($"ReuseRouteItemViewModel: SelectedFunctionTypeItem changed to '{value?.DisplayName}' for IncomingNodeId={IncomingNodeId}");
+            if (value != null)
+            {
+                SelectedFunctionType = value.Value ?? string.Empty;
+            }
+        }
     }
 }
 

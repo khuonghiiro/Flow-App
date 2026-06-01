@@ -5,12 +5,12 @@ namespace FlowMy.ViewModels
     /// </summary>
     public sealed class FunctionTypeOption
     {
-        public string? Value { get; set; }
+        public string Value { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
 
         public FunctionTypeOption() { }
 
-        public FunctionTypeOption(string? value, string displayName)
+        public FunctionTypeOption(string value, string displayName)
         {
             Value = value;
             DisplayName = displayName;
