@@ -80,6 +80,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     case ImageSourceMode.Base64:
                         image = GetImageFromBase64(textScan);
                         break;
+                    case ImageSourceMode.ManualRegion:
+                        image = await GetImageFromManualRegion(textScan, env);
+                        break;
                 }
 
                 if (image == null)
@@ -116,6 +119,37 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         }
 
         // ── Lấy ảnh theo các chế độ ─────────────────────────────────────────────
+
+        private static async Task<BitmapImage?> GetImageFromManualRegion(TextScanNode textScan, NodeExecutionEnvironment env)
+        {
+            // ManualRegion mode: chụp theo vùng đã lưu trong node, không đọc từ input node
+            int x = textScan.CaptureX, y = textScan.CaptureY, w = textScan.CaptureWidth, h = textScan.CaptureHeight;
+
+            if (w <= 0 || h <= 0)
+            {
+                System.Diagnostics.Debug.WriteLine("[TextScanNodeExecutor] ManualRegion: vùng chụp chưa được cấu hình (width hoặc height = 0)");
+                return null;
+            }
+
+            // Đưa app lên trước nếu được cấu hình
+            if (!string.IsNullOrWhiteSpace(textScan.TargetProcessName))
+            {
+                var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
+                var match = windows.FirstOrDefault(wnd =>
+                    wnd.ProcessName == textScan.TargetProcessName && wnd.Title == textScan.TargetWindowTitle)
+                    ?? windows.FirstOrDefault(wnd => wnd.ProcessName == textScan.TargetProcessName);
+
+                if (match != null)
+                {
+                    FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
+                    await Task.Delay(150, env.CancellationToken);
+                }
+            }
+
+            // Chụp màn hình theo vùng đã lưu
+            var bitmap = await Task.Run(() => CaptureScreen(x, y, w, h));
+            return bitmap;
+        }
 
         private static async Task<BitmapImage?> GetImageFromScreenCapture(TextScanNode textScan, NodeExecutionEnvironment env)
         {
