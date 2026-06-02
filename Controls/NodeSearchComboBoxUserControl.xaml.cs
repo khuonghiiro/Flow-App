@@ -333,6 +333,8 @@ namespace FlowMy.Controls
                 "FolderFilePaths" => "file-import duotone-light",
                 "AsyncTaskDispatchCollect" => "list-radio regular",
                 "ListOut" => "list-radio regular",
+                "MacroRecorder" => "chart-network light",
+                "TextScan" => "camera-circle-ellipsis duotone-light",
                 _ => "cog"
             };
         }

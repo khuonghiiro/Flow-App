@@ -1472,6 +1472,8 @@ case YourNode yourNode:
 - [ ] TemplateFactory: string switch case + CreateYourNode()
 - [ ] WorkflowEditorWindow.TemplateNodeHandler.cs: GetIconNameForNodeType
 - [ ] WorkflowEditorViewModel.cs: ResolveNodeIconKey
+- [ ] BaseNodeDialogViewModel.cs: ResolveNodeIconKey method (cho icon hiển thị trong dialog)
+- [ ] NodeSearchComboBoxUserControl.xaml.cs: ResolveIconKey method (cho icon hiển thị trong NodeSearchComboBox)
 - [ ] _NodeRenderer.cs: field + constructor + if branch trong 3 methods
 - [ ] DI container: services.AddSingleton<YourNodeRenderer>()
 - [ ] WorkflowExecutionService: thêm executor vào _nodeExecutors (nếu có)
@@ -1482,7 +1484,7 @@ case YourNode yourNode:
 
 ---
 
-## 11.A IconKey / ColorKey — 4 chỗ phải khớp nhau
+## 11.A IconKey / ColorKey — 6 chỗ phải khớp nhau
 
 > Thiếu bất kỳ chỗ nào → node bị fallback icon `circle-question`, nền `AccentBrush`, icon màu sai.
 
@@ -1492,6 +1494,8 @@ case YourNode yourNode:
 | 2 | `Views/WorkflowEditors/WorkflowEditorWindow.TemplateNodeHandler.cs` | `case "NodeTypeName" => "<iconKey>"` trong `GetIconNameForNodeType` |
 | 3 | `Services/Workflow/TemplateFactory.cs` | `ColorKey = "<ColorKey>"` trong `CreateYourNode()` |
 | 4 | `ViewModels/WorkflowEditorViewModel.cs` | `NodeType.YourType => "<iconKey>"` trong `ResolveNodeIconKey` |
+| 5 | `Controls/NodeSearchComboBoxUserControl.xaml.cs` | `"YourNodeType" => "<iconKey>"` trong `ResolveIconKey` method |
+| 6 | `ViewModels/BaseNodeDialogViewModel.cs` | `NodeType.YourType => "<iconKey>"` trong `ResolveNodeIconKey` method |
 
 **Quy tắc ColorKey:**
 - Nền node/palette: `{DynamicResource <ColorKey>Brush}` — brush phải có trong `Themes/Base/Colors/Common.xaml`

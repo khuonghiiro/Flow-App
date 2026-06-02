@@ -923,6 +923,8 @@ namespace FlowMy.ViewModels
                 NodeType.LoopContext => "arrows-spin duotone",
                 NodeType.Condition => "list-tree sharp-light",
                 NodeType.GitSource => "git-alt brands",
+                NodeType.MacroRecorder => "chart-network light",
+                NodeType.TextScan => "camera-circle-ellipsis duotone-light",
                 _ => "circle-question chisel-regular"
             };
         }

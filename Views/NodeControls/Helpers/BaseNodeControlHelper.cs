@@ -1,11 +1,7 @@
-using FlowMy.Controls;
 using FlowMy.Models;
-using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
 using System.Windows;
@@ -359,7 +355,7 @@ namespace FlowMy.Views.NodeControls.Helpers
                 {
                     _context.Border.Focusable = true;
                     _context.Border.FocusVisualStyle = null;
-                    
+
                     _context.Border.MouseEnter += (s, e) => HandleMouseEnter(_context);
                     _context.Border.MouseLeave += (s, e) => HandleMouseLeave(_context);
                 });
@@ -413,7 +409,7 @@ namespace FlowMy.Views.NodeControls.Helpers
             {
                 _eventRegistrations.Add(() =>
                 {
-                    _context.Border.MouseRightButtonUp += (s, e) => 
+                    _context.Border.MouseRightButtonUp += (s, e) =>
                         HandleMouseRightButtonUp(_context, e, dialogFactory);
                 });
                 return this;
@@ -1089,7 +1085,7 @@ namespace FlowMy.Views.NodeControls.Helpers
                 {
                     // Stop timer
                     timer.Stop();
-                    
+
                     // Update title position
                     UpdateTitlePosition(context);
                 };
@@ -1189,10 +1185,10 @@ namespace FlowMy.Views.NodeControls.Helpers
             // Map arrow keys to port positions
             PortPosition? newPos = e.Key switch
             {
-                Key.Left  => PortPosition.Left,
-                Key.Up    => PortPosition.Top,
+                Key.Left => PortPosition.Left,
+                Key.Up => PortPosition.Top,
                 Key.Right => PortPosition.Right,
-                Key.Down  => PortPosition.Bottom,
+                Key.Down => PortPosition.Bottom,
                 _ => null
             };
 
