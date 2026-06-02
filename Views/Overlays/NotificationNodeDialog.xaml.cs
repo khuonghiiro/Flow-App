@@ -30,6 +30,26 @@ namespace FlowMy.Views.Overlays
 
         protected override Panel? GetOutputsPanel() => null;
 
+        protected override void OnLoaded()
+        {
+            base.OnLoaded();
+
+            // Dùng DispatcherPriority.Loaded để chờ UI render xong trước khi populate collections.
+            // RefreshAllSources() đã xử lý cả việc restore SelectedOutputKey đúng cách
+            // thông qua guard _isRestoringFromNode — không cần set lại SelectedValue thủ công.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _viewModel.RefreshAllSources();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        protected override void BeforeSaveOnClose()
+        {
+            // Flush bindings to ensure values are saved to model
+            // This is needed for NodeSearchComboBoxUserControl which may not update binding immediately
+            base.BeforeSaveOnClose();
+        }
+
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.SaveTitleCommand.Execute(null);

@@ -13,6 +13,12 @@ namespace FlowMy.ViewModels
     {
         private readonly NotificationNode _notificationNode;
 
+        /// <summary>
+        /// Guard: khi true, các partial OnXxxChanged sẽ KHÔNG reset SelectedOutputKey về FirstOrDefault.
+        /// Dùng khi load dữ liệu từ node vào VM (RefreshAllSources).
+        /// </summary>
+        private bool _isRestoringFromNode;
+
         [ObservableProperty]
         private TitleDisplayMode _titleDisplayMode = TitleDisplayMode.Always;
 
@@ -84,29 +90,26 @@ namespace FlowMy.ViewModels
             _toastBackgroundColorKey = _notificationNode.ToastBackgroundColorKey;
             _toastBackgroundOpacity = _notificationNode.ToastBackgroundOpacity;
 
-            RefreshAllSources();
-
-            // Load existing mappings AFTER RefreshAllSources() so collections are ready
+            // Load existing mappings - follow OutputNode pattern
             if (_notificationNode.TitleInput != null)
             {
                 _titleSelectedSourceNodeId = _notificationNode.TitleInput.SourceNodeId;
-                RefreshOutputKeysForTitle();
                 _titleSelectedSourceOutputKey = _notificationNode.TitleInput.SourceOutputKey;
             }
 
             if (_notificationNode.ContentInput != null)
             {
                 _contentSelectedSourceNodeId = _notificationNode.ContentInput.SourceNodeId;
-                RefreshOutputKeysForContent();
                 _contentSelectedSourceOutputKey = _notificationNode.ContentInput.SourceOutputKey;
             }
 
             if (_notificationNode.DurationInput != null)
             {
                 _durationSelectedSourceNodeId = _notificationNode.DurationInput.SourceNodeId;
-                RefreshOutputKeysForDuration();
                 _durationSelectedSourceOutputKey = _notificationNode.DurationInput.SourceOutputKey;
             }
+
+            // Don't call RefreshAllSources here - it will be called in OnLoaded after UI is loaded
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -128,8 +131,13 @@ namespace FlowMy.ViewModels
 
         protected override string GetDefaultTitle() => "Notification";
 
-        private void RefreshAllSources()
+        public void RefreshAllSources()
         {
+            // Lưu lại các OutputKey đang được chọn TRƯỚC khi refresh, để restore sau
+            var savedTitleKey    = _notificationNode.TitleInput?.SourceOutputKey    ?? _titleSelectedSourceOutputKey;
+            var savedContentKey  = _notificationNode.ContentInput?.SourceOutputKey  ?? _contentSelectedSourceOutputKey;
+            var savedDurationKey = _notificationNode.DurationInput?.SourceOutputKey ?? _durationSelectedSourceOutputKey;
+
             TitleSourceNodes.Clear();
             ContentSourceNodes.Clear();
             DurationSourceNodes.Clear();
@@ -182,9 +190,80 @@ namespace FlowMy.ViewModels
                 DurationSourceNodes.Add(CreateDataSourceOption_Clone(option));
             }
 
-            RefreshOutputKeysForTitle();
-            RefreshOutputKeysForContent();
-            RefreshOutputKeysForDuration();
+            // Bật guard để ngăn OnChanged reset output key
+            _isRestoringFromNode = true;
+            try
+            {
+                // Populate output keys cho node đang được chọn
+                if (!string.IsNullOrEmpty(TitleSelectedSourceNodeId))
+                {
+                    RefreshOutputKeysForTitle();
+                    // Restore key đã chọn nếu còn tồn tại trong list mới
+                    if (!string.IsNullOrEmpty(savedTitleKey) &&
+                        TitleOutputKeys.Any(k => k.Key == savedTitleKey))
+                    {
+                        TitleSelectedSourceOutputKey = savedTitleKey;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(ContentSelectedSourceNodeId))
+                {
+                    RefreshOutputKeysForContent();
+                    if (!string.IsNullOrEmpty(savedContentKey) &&
+                        ContentOutputKeys.Any(k => k.Key == savedContentKey))
+                    {
+                        ContentSelectedSourceOutputKey = savedContentKey;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(DurationSelectedSourceNodeId))
+                {
+                    RefreshOutputKeysForDuration();
+                    if (!string.IsNullOrEmpty(savedDurationKey) &&
+                        DurationOutputKeys.Any(k => k.Key == savedDurationKey))
+                    {
+                        DurationSelectedSourceOutputKey = savedDurationKey;
+                    }
+                }
+            }
+            finally
+            {
+                _isRestoringFromNode = false;
+            }
+
+            // WPF ComboBox có thể reset SelectedValue về null sau khi ItemsSource thay đổi
+            // (do binding re-evaluation). Dùng Dispatcher để re-set lại sau khi WPF xử lý xong.
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _isRestoringFromNode = true;
+                try
+                {
+                    if (!string.IsNullOrEmpty(savedTitleKey) &&
+                        TitleOutputKeys.Any(k => k.Key == savedTitleKey) &&
+                        TitleSelectedSourceOutputKey != savedTitleKey)
+                    {
+                        TitleSelectedSourceOutputKey = savedTitleKey;
+                    }
+
+                    if (!string.IsNullOrEmpty(savedContentKey) &&
+                        ContentOutputKeys.Any(k => k.Key == savedContentKey) &&
+                        ContentSelectedSourceOutputKey != savedContentKey)
+                    {
+                        ContentSelectedSourceOutputKey = savedContentKey;
+                    }
+
+                    if (!string.IsNullOrEmpty(savedDurationKey) &&
+                        DurationOutputKeys.Any(k => k.Key == savedDurationKey) &&
+                        DurationSelectedSourceOutputKey != savedDurationKey)
+                    {
+                        DurationSelectedSourceOutputKey = savedDurationKey;
+                    }
+                }
+                finally
+                {
+                    _isRestoringFromNode = false;
+                }
+            }), System.Windows.Threading.DispatcherPriority.DataBind);
         }
 
         private void RefreshOutputKeysForTitle()
@@ -253,8 +332,15 @@ namespace FlowMy.ViewModels
             {
                 _notificationNode.TitleInput = new InputVariable();
             }
+            _notificationNode.TitleInput.VariableKey = "title";
             _notificationNode.TitleInput.SourceNodeId = value;
             RefreshOutputKeysForTitle();
+            // Reset output key chỉ khi user thực sự đổi node (không phải khi đang restore từ file)
+            if (!_isRestoringFromNode &&
+                !TitleOutputKeys.Any(k => k.Key == TitleSelectedSourceOutputKey))
+            {
+                TitleSelectedSourceOutputKey = TitleOutputKeys.FirstOrDefault()?.Key ?? string.Empty;
+            }
         }
 
         partial void OnContentSelectedSourceNodeIdChanged(string value)
@@ -263,8 +349,15 @@ namespace FlowMy.ViewModels
             {
                 _notificationNode.ContentInput = new InputVariable();
             }
+            _notificationNode.ContentInput.VariableKey = "content";
             _notificationNode.ContentInput.SourceNodeId = value;
             RefreshOutputKeysForContent();
+            // Reset output key chỉ khi user thực sự đổi node (không phải khi đang restore từ file)
+            if (!_isRestoringFromNode &&
+                !ContentOutputKeys.Any(k => k.Key == ContentSelectedSourceOutputKey))
+            {
+                ContentSelectedSourceOutputKey = ContentOutputKeys.FirstOrDefault()?.Key ?? string.Empty;
+            }
         }
 
         partial void OnDurationSelectedSourceNodeIdChanged(string value)
@@ -273,8 +366,15 @@ namespace FlowMy.ViewModels
             {
                 _notificationNode.DurationInput = new InputVariable();
             }
+            _notificationNode.DurationInput.VariableKey = "duration";
             _notificationNode.DurationInput.SourceNodeId = value;
             RefreshOutputKeysForDuration();
+            // Reset output key chỉ khi user thực sự đổi node (không phải khi đang restore từ file)
+            if (!_isRestoringFromNode &&
+                !DurationOutputKeys.Any(k => k.Key == DurationSelectedSourceOutputKey))
+            {
+                DurationSelectedSourceOutputKey = DurationOutputKeys.FirstOrDefault()?.Key ?? string.Empty;
+            }
         }
 
         partial void OnTitleSelectedSourceOutputKeyChanged(string value)

@@ -106,11 +106,12 @@
                                                FontSize="11"
                                                Margin="0,0,0,4"/>
                                     <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                            x:Name="TitleSourceNodeComboBox"
                                                                             ItemsSource="{Binding TitleSourceNodes}"
-                                                                            SelectedValue="{Binding TitleSelectedSourceNodeId, Mode=TwoWay}"
+                                                                            SelectedValue="{Binding TitleSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                             SelectedValuePath="NodeId"
                                                                             DisplayMemberPath="Title"
-                                                                            PlaceholderText="Tìm node nguồn..." />
+                                                                            PlaceholderText="Tìm node nguồn..."/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1">
@@ -121,7 +122,7 @@
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding TitleOutputKeys}"
-                                              SelectedValue="{Binding TitleSelectedSourceOutputKey, Mode=TwoWay}"
+                                              SelectedValue="{Binding TitleSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="Key"
                                               DisplayMemberPath="DisplayName"/>
                                 </StackPanel>
@@ -145,8 +146,9 @@
                                                FontSize="11"
                                                Margin="0,0,0,4"/>
                                     <controls:NodeSearchComboBoxUserControl Height="32"
+                                              x:Name="ContentSourceNodeComboBox"
                                               ItemsSource="{Binding ContentSourceNodes}"
-                                              SelectedValue="{Binding ContentSelectedSourceNodeId, Mode=TwoWay}"
+                                              SelectedValue="{Binding ContentSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="NodeId"
                                               DisplayMemberPath="Title"/>
                                 </StackPanel>
@@ -159,7 +161,7 @@
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding ContentOutputKeys}"
-                                              SelectedValue="{Binding ContentSelectedSourceOutputKey, Mode=TwoWay}"
+                                              SelectedValue="{Binding ContentSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="Key"
                                               DisplayMemberPath="DisplayName"/>
                                 </StackPanel>
@@ -212,9 +214,10 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <controls:NodeSearchComboBoxUserControl Grid.Column="0"
+                                                  x:Name="DurationSourceNodeComboBox"
                                                   Height="32"
                                                   ItemsSource="{Binding DurationSourceNodes}"
-                                                  SelectedValue="{Binding DurationSelectedSourceNodeId, Mode=TwoWay}"
+                                                  SelectedValue="{Binding DurationSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   SelectedValuePath="NodeId"
                                                   DisplayMemberPath="Title"
                                                   Margin="0,0,4,0"/>
@@ -222,7 +225,7 @@
                                                   Height="32"
                                                   Style="{DynamicResource BaseComboBox}"
                                                   ItemsSource="{Binding DurationOutputKeys}"
-                                                  SelectedValue="{Binding DurationSelectedSourceOutputKey, Mode=TwoWay}"
+                                                  SelectedValue="{Binding DurationSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   SelectedValuePath="Key"
                                                   DisplayMemberPath="DisplayName"/>
                                     </Grid>

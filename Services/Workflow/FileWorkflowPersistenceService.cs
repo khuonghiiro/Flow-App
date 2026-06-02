@@ -4144,11 +4144,30 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 notificationNode.TitleColorKey = tck?.ToString();
 
             // TitleInput
-            if (properties.TryGetValue("TitleInput", out var titleInputObj) && titleInputObj is string titleJson)
+            if (properties.TryGetValue("TitleInput", out var titleInputObj) && titleInputObj != null)
             {
                 try
                 {
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(titleJson);
+                    Dictionary<string, object?>? dict = null;
+
+                    if (titleInputObj is string titleJson && !string.IsNullOrWhiteSpace(titleJson))
+                    {
+                        dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(titleJson);
+                    }
+                    else if (titleInputObj is JsonElement titleJe)
+                    {
+                        if (titleJe.ValueKind == JsonValueKind.String)
+                        {
+                            var jsonStr = titleJe.GetString();
+                            if (!string.IsNullOrWhiteSpace(jsonStr))
+                                dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(jsonStr);
+                        }
+                        else if (titleJe.ValueKind == JsonValueKind.Object)
+                        {
+                            dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(titleJe.GetRawText());
+                        }
+                    }
+
                     if (dict != null)
                     {
                         notificationNode.TitleInput = new InputVariable
@@ -4163,11 +4182,30 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
 
             // ContentInput
-            if (properties.TryGetValue("ContentInput", out var contentInputObj) && contentInputObj is string contentJson)
+            if (properties.TryGetValue("ContentInput", out var contentInputObj) && contentInputObj != null)
             {
                 try
                 {
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(contentJson);
+                    Dictionary<string, object?>? dict = null;
+
+                    if (contentInputObj is string contentJson && !string.IsNullOrWhiteSpace(contentJson))
+                    {
+                        dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(contentJson);
+                    }
+                    else if (contentInputObj is JsonElement contentJe)
+                    {
+                        if (contentJe.ValueKind == JsonValueKind.String)
+                        {
+                            var jsonStr = contentJe.GetString();
+                            if (!string.IsNullOrWhiteSpace(jsonStr))
+                                dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(jsonStr);
+                        }
+                        else if (contentJe.ValueKind == JsonValueKind.Object)
+                        {
+                            dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(contentJe.GetRawText());
+                        }
+                    }
+
                     if (dict != null)
                     {
                         notificationNode.ContentInput = new InputVariable
@@ -4182,11 +4220,30 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
 
             // DurationInput
-            if (properties.TryGetValue("DurationInput", out var durationInputObj) && durationInputObj is string durationJson)
+            if (properties.TryGetValue("DurationInput", out var durationInputObj) && durationInputObj != null)
             {
                 try
                 {
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(durationJson);
+                    Dictionary<string, object?>? dict = null;
+
+                    if (durationInputObj is string durationJson && !string.IsNullOrWhiteSpace(durationJson))
+                    {
+                        dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(durationJson);
+                    }
+                    else if (durationInputObj is JsonElement durationJe)
+                    {
+                        if (durationJe.ValueKind == JsonValueKind.String)
+                        {
+                            var jsonStr = durationJe.GetString();
+                            if (!string.IsNullOrWhiteSpace(jsonStr))
+                                dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(jsonStr);
+                        }
+                        else if (durationJe.ValueKind == JsonValueKind.Object)
+                        {
+                            dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(durationJe.GetRawText());
+                        }
+                    }
+
                     if (dict != null)
                     {
                         notificationNode.DurationInput = new InputVariable
