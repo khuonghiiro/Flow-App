@@ -356,6 +356,74 @@
 
                             </StackPanel>
 
+                            <!-- ══ PANEL: MANUAL REGION ══ -->
+                            <StackPanel x:Name="ManualRegionPanel"
+                                        Visibility="{Binding IsManualRegionMode,
+                                                     Converter={StaticResource BoolToVisibilityConverter}}">
+
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,12">
+                                    <Run Text="Chụp vùng thủ công một lần, lưu toạ độ. Khi chạy workflow, tự động chụp lại vùng đó."/>
+                                </TextBlock>
+
+                                <!-- Chọn app để chụp -->
+                                <TextBlock Text="Ứng dụng cần chụp:"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,8">
+                                    <Run Text="Chọn app để tự động đưa lên trước màn hình trước khi chụp. Để trống = chụp màn hình hiện tại."/>
+                                </TextBlock>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="ManualRegionTargetWindow" Grid.Column="0" Height="36"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding ActiveWindows}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                    <Button Grid.Column="1"
+                                            Content="↻" Height="36" Width="36" Padding="0"
+                                            Margin="8,0,0,0"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Command="{Binding LoadWindowsCommand}"
+                                            ToolTip="Tải lại danh sách cửa sổ"
+                                            Cursor="Hand"/>
+                                </Grid>
+
+                                <!-- Capture region button + display coordinates -->
+                                <TextBlock Text="Vùng chụp:"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <Button x:Name="ManualCaptureButton"
+                                        Content="📸 Chụp vùng thủ công"
+                                        Height="40"
+                                        Style="{DynamicResource PrimaryButton}"
+                                        Margin="0,0,0,12"
+                                        Cursor="Hand"
+                                        Click="ManualCaptureButton_Click"
+                                        ToolTip="Chụp vùng màn hình và lưu toạ độ"/>
+
+                                <!-- Display region coordinates -->
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="Vùng đã chọn:"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <TextBlock x:Name="ManualRegionCoordinates"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="11"
+                                                   FontFamily="Consolas"
+                                                   Text="Chưa chụp vùng nào"/>
+                                    </StackPanel>
+                                </Border>
+
+                            </StackPanel>
+
                             <!-- ══ LANGUAGE SETTINGS ══ -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"

@@ -38,6 +38,7 @@ namespace FlowMy.ViewModels
         public bool IsFromNodeMode => ImageSourceMode == ImageSourceMode.FromNode;
         public bool IsPathUrlMode => ImageSourceMode == ImageSourceMode.PathOrUrl;
         public bool IsBase64Mode => ImageSourceMode == ImageSourceMode.Base64;
+        public bool IsManualRegionMode => ImageSourceMode == ImageSourceMode.ManualRegion;
 
         // ── Input node — toạ độ & kích thước vùng cắt ───────────────────────────
         [ObservableProperty] private string? _coordSourceNodeId;
@@ -125,8 +126,8 @@ namespace FlowMy.ViewModels
             // Load windows command
             LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
 
-            // Load danh sách cửa sổ ngay nếu đang ở chế độ ScreenCapture
-            if (IsScreenCaptureMode)
+            // Load danh sách cửa sổ ngay nếu đang ở chế độ ScreenCapture hoặc ManualRegion
+            if (IsScreenCaptureMode || IsManualRegionMode)
                 ExecuteLoadWindows();
 
             // Refresh key options khi đổi node
@@ -145,6 +146,11 @@ namespace FlowMy.ViewModels
                     OnPropertyChanged(nameof(IsFromNodeMode));
                     OnPropertyChanged(nameof(IsPathUrlMode));
                     OnPropertyChanged(nameof(IsBase64Mode));
+                    OnPropertyChanged(nameof(IsManualRegionMode));
+                    
+                    // Load windows for ManualRegion mode as well
+                    if (IsManualRegionMode && ActiveWindows.Count == 0)
+                        ExecuteLoadWindows();
                 }
                 else if (e.PropertyName == nameof(OcrEngineMode))
                 {
@@ -255,6 +261,11 @@ namespace FlowMy.ViewModels
             {
                 Value = ImageSourceMode.Base64,
                 DisplayName = "Base64 string"
+            });
+            ImageSourceModeOptions.Add(new ImageSourceModeOption
+            {
+                Value = ImageSourceMode.ManualRegion,
+                DisplayName = "Tự chọn vị trí vùng ảnh"
             });
         }
 

@@ -77,7 +77,9 @@ namespace FlowMy.Models.Nodes
         /// <summary>Lấy ảnh từ đường dẫn file hoặc URL.</summary>
         PathOrUrl = 2,
         /// <summary>Lấy ảnh từ base64 string.</summary>
-        Base64 = 3
+        Base64 = 3,
+        /// <summary>Tự chọn vị trí vùng ảnh - chụp thủ công một lần, tự động chụp lại khi chạy workflow.</summary>
+        ManualRegion = 4
     }
 
     public sealed class TextScanNode : WorkflowNode

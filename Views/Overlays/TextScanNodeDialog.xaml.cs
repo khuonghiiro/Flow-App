@@ -34,8 +34,9 @@ namespace FlowMy.Views.Overlays
             // Flush output key combobox (coord)
             FlushComboBoxBinding(CoordSourceOutputKey);
 
-            // Flush target window combobox
+            // Flush target window comboboxes (both ScreenCapturePanel and ManualRegionPanel)
             FlushComboBoxBinding(SelectedTargetWindow);
+            FlushComboBoxBinding(ManualRegionTargetWindow);
 
             // Flush NodeSearchComboBoxUserControl bindings (image source)
             FlushNodeSearchComboBoxBinding(ImageSourceNodeId);
@@ -249,6 +250,49 @@ namespace FlowMy.Views.Overlays
             {
                 MessageBox.Show("Không chọn được thư mục: " + ex.Message, "Tessdata",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void ManualCaptureButton_Click(object sender, RoutedEventArgs e)
+        {
+            var node = _viewModel.Node as TextScanNode;
+            if (node == null) return;
+
+            // Use ScreenCaptureHelper to capture region
+            bool success = Helpers.ScreenCaptureHelper.CaptureForTextScanNode(node, this);
+
+            if (success)
+            {
+                // Update coordinate display
+                UpdateManualRegionCoordinates();
+            }
+        }
+
+        protected override void OnLoaded()
+        {
+            base.OnLoaded();
+            
+            // Update manual region coordinates display on load
+            UpdateManualRegionCoordinates();
+        }
+
+        private void UpdateManualRegionCoordinates()
+        {
+            var node = _viewModel.Node as TextScanNode;
+            if (node == null) return;
+
+            var coordText = this.FindName("ManualRegionCoordinates") as TextBlock;
+            if (coordText == null) return;
+
+            if (node.HasCaptureRegion)
+            {
+                coordText.Text = $"X: {node.CaptureX}, Y: {node.CaptureY}, W: {node.CaptureWidth}, H: {node.CaptureHeight}";
+                BindThemeResource(coordText, TextBlock.ForegroundProperty, "SuccessBrush");
+            }
+            else
+            {
+                coordText.Text = "Chưa chụp vùng nào";
+                BindThemeResource(coordText, TextBlock.ForegroundProperty, "TextMuted");
             }
         }
     }
