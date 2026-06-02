@@ -4133,6 +4133,16 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 notificationNode.DefaultDurationSeconds = dur;
             }
 
+            // Title properties — required for all nodes
+            if (properties.TryGetValue("TitleDisplayMode", out var tdm) &&
+                Enum.TryParse<TitleDisplayMode>(tdm?.ToString(), out var tdmVal))
+                notificationNode.TitleDisplayMode = tdmVal;
+            if (properties.TryGetValue("TitleColorMode", out var tcm) &&
+                Enum.TryParse<TitleColorMode>(tcm?.ToString(), out var tcmVal))
+                notificationNode.TitleColorMode = tcmVal;
+            if (properties.TryGetValue("TitleColorKey", out var tck))
+                notificationNode.TitleColorKey = tck?.ToString();
+
             // TitleInput
             if (properties.TryGetValue("TitleInput", out var titleInputObj) && titleInputObj is string titleJson)
             {
@@ -5908,6 +5918,12 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         {
 
             dict["DefaultDurationSeconds"] = notificationNode.DefaultDurationSeconds;
+
+            // Title properties — required for all nodes
+            dict["TitleDisplayMode"] = notificationNode.TitleDisplayMode.ToString();
+            dict["TitleColorMode"] = notificationNode.TitleColorMode.ToString();
+            if (!string.IsNullOrEmpty(notificationNode.TitleColorKey))
+                dict["TitleColorKey"] = notificationNode.TitleColorKey;
 
             if (notificationNode.TitleInput != null)
             {

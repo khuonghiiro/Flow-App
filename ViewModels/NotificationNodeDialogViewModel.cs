@@ -84,26 +84,29 @@ namespace FlowMy.ViewModels
             _toastBackgroundColorKey = _notificationNode.ToastBackgroundColorKey;
             _toastBackgroundOpacity = _notificationNode.ToastBackgroundOpacity;
 
-            // Load existing mappings
+            RefreshAllSources();
+
+            // Load existing mappings AFTER RefreshAllSources() so collections are ready
             if (_notificationNode.TitleInput != null)
             {
                 _titleSelectedSourceNodeId = _notificationNode.TitleInput.SourceNodeId;
+                RefreshOutputKeysForTitle();
                 _titleSelectedSourceOutputKey = _notificationNode.TitleInput.SourceOutputKey;
             }
 
             if (_notificationNode.ContentInput != null)
             {
                 _contentSelectedSourceNodeId = _notificationNode.ContentInput.SourceNodeId;
+                RefreshOutputKeysForContent();
                 _contentSelectedSourceOutputKey = _notificationNode.ContentInput.SourceOutputKey;
             }
 
             if (_notificationNode.DurationInput != null)
             {
                 _durationSelectedSourceNodeId = _notificationNode.DurationInput.SourceNodeId;
+                RefreshOutputKeysForDuration();
                 _durationSelectedSourceOutputKey = _notificationNode.DurationInput.SourceOutputKey;
             }
-
-            RefreshAllSources();
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -246,16 +249,31 @@ namespace FlowMy.ViewModels
 
         partial void OnTitleSelectedSourceNodeIdChanged(string value)
         {
+            if (_notificationNode.TitleInput == null)
+            {
+                _notificationNode.TitleInput = new InputVariable();
+            }
+            _notificationNode.TitleInput.SourceNodeId = value;
             RefreshOutputKeysForTitle();
         }
 
         partial void OnContentSelectedSourceNodeIdChanged(string value)
         {
+            if (_notificationNode.ContentInput == null)
+            {
+                _notificationNode.ContentInput = new InputVariable();
+            }
+            _notificationNode.ContentInput.SourceNodeId = value;
             RefreshOutputKeysForContent();
         }
 
         partial void OnDurationSelectedSourceNodeIdChanged(string value)
         {
+            if (_notificationNode.DurationInput == null)
+            {
+                _notificationNode.DurationInput = new InputVariable();
+            }
+            _notificationNode.DurationInput.SourceNodeId = value;
             RefreshOutputKeysForDuration();
         }
 

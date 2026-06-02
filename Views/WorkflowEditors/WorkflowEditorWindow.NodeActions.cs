@@ -931,6 +931,9 @@ namespace FlowMy.Views
             dstNotification.ToastContentColorKey = srcNotification.ToastContentColorKey;
             dstNotification.ToastBackgroundColorKey = srcNotification.ToastBackgroundColorKey;
             dstNotification.ToastBackgroundOpacity = srcNotification.ToastBackgroundOpacity;
+
+            // Notify title changed to trigger renderer UI update
+            dstNotification.NotifyTitleChanged();
             }
 
             if (source is HttpRequestNode srcHttp && node is HttpRequestNode dstHttp)
