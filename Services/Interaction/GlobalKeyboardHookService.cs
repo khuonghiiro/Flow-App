@@ -264,7 +264,17 @@ namespace FlowMy.Services.Interaction
                         return CallNextHookEx(_hook, nCode, wParam, lParam);
                     }
 
-                    var key = KeyInterop.KeyFromVirtualKey(vkCode);
+                    // Handle Windows key separately since KeyInterop.KeyFromVirtualKey might not handle it correctly
+                    Key key;
+                    if (vkCode == VK_LWIN || vkCode == VK_RWIN)
+                    {
+                        key = vkCode == VK_LWIN ? Key.LWin : Key.RWin;
+                    }
+                    else
+                    {
+                        key = KeyInterop.KeyFromVirtualKey(vkCode);
+                    }
+
                     if (key != Key.None)
                     {
                         var pressedKeyText = key.ToString();
@@ -409,17 +419,30 @@ namespace FlowMy.Services.Interaction
 
         private static string BuildHotkeyText(Key mainKey)
         {
-            // Only consider combos where a non-modifier key is pressed.
-            if (IsModifierKey(mainKey))
-                return mainKey.ToString();
-
             var parts = new List<string>(5);
+            
+            // Always add currently pressed modifiers
             if (IsDown(VK_CONTROL)) parts.Add("Ctrl");
             if (IsDown(VK_MENU)) parts.Add("Alt");
             if (IsDown(VK_SHIFT)) parts.Add("Shift");
             if (IsDown(VK_LWIN) || IsDown(VK_RWIN)) parts.Add("Win");
-            parts.Add(mainKey.ToString());
+            
+            // Always add the main key (normalized)
+            parts.Add(NormalizeKeyName(mainKey.ToString()));
+            
             return string.Join("+", parts);
+        }
+
+        private static string NormalizeKeyName(string keyName)
+        {
+            return keyName switch
+            {
+                "LeftCtrl" or "RightCtrl" => "Ctrl",
+                "LeftAlt" or "RightAlt" => "Alt",
+                "LeftShift" or "RightShift" => "Shift",
+                "LWin" or "RWin" => "Win",
+                _ => keyName
+            };
         }
     }
 }
