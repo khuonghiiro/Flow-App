@@ -13,9 +13,14 @@ namespace FlowMy.ViewModels
     {
         private readonly ScreenCaptureNode _scNode;
 
-        // ── Chế độ (Checkbox chính) ──────────────────────────────────────────
-        /// <summary>true = chụp màn hình theo toạ độ; false = lấy ảnh theo Path/URL.</summary>
-        [ObservableProperty] private bool _isScreenCaptureMode;
+        // ── Chế độ nguồn ảnh ──────────────────────────────────────────────────
+        [ObservableProperty] private ScreenCaptureMode _captureMode = ScreenCaptureMode.ScreenCapture;
+        public ObservableCollection<CaptureModeOption> CaptureModeOptions { get; } = new();
+
+        // ── Visibility helpers ────────────────────────────────────────────────
+        public bool IsScreenCaptureMode => CaptureMode == ScreenCaptureMode.ScreenCapture;
+        public bool IsPathUrlMode => CaptureMode == ScreenCaptureMode.PathOrUrl;
+        public bool IsManualRegionMode => CaptureMode == ScreenCaptureMode.ManualRegion;
 
         // ── Input node — toạ độ & kích thước ────────────────────────────────
         [ObservableProperty] private string? _coordSourceNodeId;
@@ -48,7 +53,7 @@ namespace FlowMy.ViewModels
             _scNode = node ?? throw new ArgumentNullException(nameof(node));
 
             // Sync từ node → VM
-            IsScreenCaptureMode = node.CaptureMode == ScreenCaptureMode.ScreenCapture;
+            CaptureMode = node.CaptureMode;
 
             CoordSourceNodeId    = node.CoordSourceNodeId;
             CoordSourceOutputKey = node.CoordSourceOutputKey;
@@ -62,14 +67,17 @@ namespace FlowMy.ViewModels
             UseNativeWidth = node.UseNativeWidth;
             MaxNodeWidth   = node.MaxNodeWidth;
 
+            // Initialize mode options
+            InitializeCaptureModeOptions();
+
             // Load danh sách node
             RefreshAllNodesWithOutputs(AvailableNodeOptions);
 
             // Load windows command
             LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
 
-            // Load danh sách cửa sổ ngay nếu đang ở chế độ ScreenCapture
-            if (IsScreenCaptureMode)
+            // Load danh sách cửa sổ ngay nếu đang ở chế độ ScreenCapture hoặc ManualRegion
+            if (IsScreenCaptureMode || IsManualRegionMode)
                 ExecuteLoadWindows();
 
             // Refresh key options khi đổi node
@@ -79,8 +87,17 @@ namespace FlowMy.ViewModels
                     RefreshCoordKeyOptions();
                 else if (e.PropertyName == nameof(PathSourceNodeId))
                     RefreshPathKeyOptions();
-                else if (e.PropertyName == nameof(IsScreenCaptureMode) && IsScreenCaptureMode && ActiveWindows.Count == 0)
-                    ExecuteLoadWindows();
+                else if (e.PropertyName == nameof(CaptureMode))
+                {
+                    // Notify visibility changes
+                    OnPropertyChanged(nameof(IsScreenCaptureMode));
+                    OnPropertyChanged(nameof(IsPathUrlMode));
+                    OnPropertyChanged(nameof(IsManualRegionMode));
+                    
+                    // Load windows for modes that need app selection
+                    if ((IsScreenCaptureMode || IsManualRegionMode) && ActiveWindows.Count == 0)
+                        ExecuteLoadWindows();
+                }
             };
 
             // Khởi tạo key options
@@ -89,6 +106,26 @@ namespace FlowMy.ViewModels
         }
 
         protected override string GetDefaultTitle() => "Screen Capture";
+
+        private void InitializeCaptureModeOptions()
+        {
+            CaptureModeOptions.Clear();
+            CaptureModeOptions.Add(new CaptureModeOption
+            {
+                Value = ScreenCaptureMode.ScreenCapture,
+                DisplayName = "Chụp màn hình trực tiếp"
+            });
+            CaptureModeOptions.Add(new CaptureModeOption
+            {
+                Value = ScreenCaptureMode.ManualRegion,
+                DisplayName = "Tự chọn vị trí vùng ảnh"
+            });
+            CaptureModeOptions.Add(new CaptureModeOption
+            {
+                Value = ScreenCaptureMode.PathOrUrl,
+                DisplayName = "Path / URL"
+            });
+        }
 
         // ── Load danh sách cửa sổ đang mở ───────────────────────────────────
         private void ExecuteLoadWindows()
@@ -129,9 +166,7 @@ namespace FlowMy.ViewModels
         // ── Save ─────────────────────────────────────────────────────────────
         protected override void OnSaveTitle()
         {
-            _scNode.CaptureMode = IsScreenCaptureMode
-                ? ScreenCaptureMode.ScreenCapture
-                : ScreenCaptureMode.PathOrUrl;
+            _scNode.CaptureMode = CaptureMode;
 
             _scNode.CoordSourceNodeId    = string.IsNullOrWhiteSpace(CoordSourceNodeId)    ? null : CoordSourceNodeId;
             _scNode.CoordSourceOutputKey = string.IsNullOrWhiteSpace(CoordSourceOutputKey) ? null : CoordSourceOutputKey;
@@ -151,5 +186,12 @@ namespace FlowMy.ViewModels
             _scNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);
         }
+    }
+
+    // ── Option class ─────────────────────────────────────────────────────────
+    public class CaptureModeOption
+    {
+        public ScreenCaptureMode Value { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
     }
 }

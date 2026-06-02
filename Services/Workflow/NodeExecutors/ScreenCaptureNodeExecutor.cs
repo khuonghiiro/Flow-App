@@ -62,6 +62,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 if (cap.CaptureMode == ScreenCaptureMode.ScreenCapture)
                     await ExecuteScreenCaptureMode(cap, env);
+                else if (cap.CaptureMode == ScreenCaptureMode.ManualRegion)
+                    await ExecuteManualRegionMode(cap, env);
                 else
                     await ExecutePathOrUrlMode(cap, env);
             }
@@ -78,6 +80,45 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         }
 
         // ── Chế độ chụp màn hình ─────────────────────────────────────────────
+
+        private static async Task ExecuteManualRegionMode(ScreenCaptureNode cap, NodeExecutionEnvironment env)
+        {
+            // ManualRegion mode: chụp theo vùng đã lưu trong node, không đọc từ input node
+            int x = cap.CaptureX, y = cap.CaptureY, w = cap.CaptureWidth, h = cap.CaptureHeight;
+
+            if (w <= 0 || h <= 0)
+            {
+                System.Diagnostics.Debug.WriteLine("[ScreenCaptureNodeExecutor] ManualRegion: vùng chụp chưa được cấu hình (width hoặc height = 0)");
+                return;
+            }
+
+            // Đưa app lên trước nếu được cấu hình
+            if (!string.IsNullOrWhiteSpace(cap.TargetProcessName))
+            {
+                var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
+                var match = windows.FirstOrDefault(wnd =>
+                    wnd.ProcessName == cap.TargetProcessName && wnd.Title == cap.TargetWindowTitle)
+                    ?? windows.FirstOrDefault(wnd => wnd.ProcessName == cap.TargetProcessName);
+
+                if (match != null)
+                {
+                    FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
+                    await Task.Delay(150, env.CancellationToken);
+                }
+            }
+
+            // Chụp màn hình theo vùng đã lưu
+            var bitmap = await Task.Run(() => CaptureScreen(x, y, w, h));
+            if (bitmap == null) return;
+
+            // Cập nhật node trên UI thread
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                cap.CapturedImage = bitmap;
+            });
+
+            PublishOutputs(cap, bitmap, env);
+        }
 
         private static async Task ExecuteScreenCaptureMode(ScreenCaptureNode cap, NodeExecutionEnvironment env)
         {

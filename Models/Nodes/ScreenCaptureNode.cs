@@ -6,15 +6,15 @@ namespace FlowMy.Models.Nodes
 {
     /// <summary>
     /// Chế độ hoạt động của ScreenCaptureNode.
-    /// Checked  = chụp màn hình theo toạ độ (có thể lấy từ node khác).
-    /// Unchecked = lấy ảnh theo Path / URL.
     /// </summary>
     public enum ScreenCaptureMode
     {
         /// <summary>Chụp màn hình theo toạ độ vùng đã chọn (hoặc từ input node).</summary>
         ScreenCapture = 0,
         /// <summary>Lấy ảnh từ đường dẫn file hoặc URL online.</summary>
-        PathOrUrl = 1
+        PathOrUrl = 1,
+        /// <summary>Tự chọn vị trí vùng ảnh - chụp thủ công một lần, tự động chụp lại khi chạy workflow.</summary>
+        ManualRegion = 2
     }
 
     public sealed class ScreenCaptureNode : WorkflowNode
