@@ -20,12 +20,26 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     /// </summary>
     internal sealed class ScreenPositionPickerNodeExecutor : INodeExecutor
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         public bool CanExecute(WorkflowNode node) => node is ScreenPositionPickerNode;
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
         {
             var posNode = (ScreenPositionPickerNode)node;
             var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // ── Lưu foreground window hiện tại để quay về sau (nếu ReturnToOriginalScreen = true) ──
+            IntPtr originalForegroundWindow = IntPtr.Zero;
+            if (posNode.ReturnToOriginalScreen)
+            {
+                originalForegroundWindow = GetForegroundWindow();
+                System.Diagnostics.Debug.WriteLine($"[ScreenPosition] ReturnToOriginalScreen: Saved original window hwnd={originalForegroundWindow}");
+            }
 
             try
             {
@@ -95,6 +109,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 env.OnNodeFailed?.Invoke(posNode, ex.Message);
                 throw;
+            }
+            finally
+            {
+                // ── Quay trở lại foreground window ban đầu (nếu ReturnToOriginalScreen = true) ──
+                if (posNode.ReturnToOriginalScreen && originalForegroundWindow != IntPtr.Zero)
+                {
+                    try
+                    {
+                        await Task.Delay(100, env.CancellationToken);
+                        SetForegroundWindow(originalForegroundWindow);
+                        System.Diagnostics.Debug.WriteLine($"[ScreenPosition] ReturnToOriginalScreen: Restored original window hwnd={originalForegroundWindow}");
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ScreenPosition] Failed to restore original window: {restoreEx.Message}");
+                    }
+                }
             }
 
             sw.Stop();

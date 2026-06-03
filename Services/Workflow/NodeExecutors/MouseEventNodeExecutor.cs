@@ -9,6 +9,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 {
     internal sealed class MouseEventNodeExecutor : INodeExecutor
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         public bool CanExecute(WorkflowNode node) => node is MouseEventNode;
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
@@ -17,6 +23,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var connections = env.Connections;
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // ── Lưu foreground window hiện tại để quay về sau (nếu ReturnToOriginalScreen = true) ──
+            IntPtr originalForegroundWindow = IntPtr.Zero;
+            if (mouseNode.ReturnToOriginalScreen)
+            {
+                originalForegroundWindow = GetForegroundWindow();
+                System.Diagnostics.Debug.WriteLine($"[MouseEvent] ReturnToOriginalScreen: Saved original window hwnd={originalForegroundWindow}");
+            }
 
             try
             {
@@ -145,6 +159,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 System.Diagnostics.Debug.WriteLine($"MouseEvent error: {ex.Message}");
                 env.OnNodeFailed?.Invoke(mouseNode, ex.Message);
                 throw;
+            }
+            finally
+            {
+                // ── Quay trở lại foreground window ban đầu (nếu ReturnToOriginalScreen = true) ──
+                if (mouseNode.ReturnToOriginalScreen && originalForegroundWindow != IntPtr.Zero)
+                {
+                    try
+                    {
+                        await Task.Delay(100, env.CancellationToken); // Chờ một chút cho action hoàn tất
+                        SetForegroundWindow(originalForegroundWindow);
+                        System.Diagnostics.Debug.WriteLine($"[MouseEvent] ReturnToOriginalScreen: Restored original window hwnd={originalForegroundWindow}");
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MouseEvent] Failed to restore original window: {restoreEx.Message}");
+                    }
+                }
             }
 
             sw.Stop();

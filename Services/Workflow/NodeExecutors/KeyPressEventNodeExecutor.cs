@@ -10,6 +10,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 {
     internal sealed class KeyPressEventNodeExecutor : INodeExecutor
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         public bool CanExecute(WorkflowNode node) => node is KeyPressEventNode;
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
@@ -20,8 +26,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var keyText = keyNode.Key;
 
-            // ── 1. Focus app nếu được cấu hình ──
-            await FocusTargetAppAsync(keyNode.TargetProcessName, keyNode.TargetWindowTitle, env.CancellationToken, keyNode.UseBackgroundMode);
+            // ── Lưu foreground window hiện tại để quay về sau (nếu ReturnToOriginalScreen = true) ──
+            IntPtr originalForegroundWindow = IntPtr.Zero;
+            if (keyNode.ReturnToOriginalScreen)
+            {
+                originalForegroundWindow = GetForegroundWindow();
+                System.Diagnostics.Debug.WriteLine($"[KeyPress] ReturnToOriginalScreen: Saved original window hwnd={originalForegroundWindow}");
+            }
+
+            try
+            {
+                // ── 1. Focus app nếu được cấu hình ──
+                await FocusTargetAppAsync(keyNode.TargetProcessName, keyNode.TargetWindowTitle, env.CancellationToken, keyNode.UseBackgroundMode);
 
             // ── Get target window handle for background mode ──
             IntPtr targetHwnd = IntPtr.Zero;
@@ -70,6 +86,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             else
             {
                 System.Diagnostics.Debug.WriteLine($"KeyPressEventNode: Key text is empty or null");
+            }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"KeyPressEventNode error: {ex.Message}");
+                env.OnNodeFailed?.Invoke(keyNode, ex.Message);
+                throw;
+            }
+            finally
+            {
+                // ── Quay trở lại foreground window ban đầu (nếu ReturnToOriginalScreen = true) ──
+                if (keyNode.ReturnToOriginalScreen && originalForegroundWindow != IntPtr.Zero)
+                {
+                    try
+                    {
+                        await Task.Delay(100, env.CancellationToken);
+                        SetForegroundWindow(originalForegroundWindow);
+                        System.Diagnostics.Debug.WriteLine($"[KeyPress] ReturnToOriginalScreen: Restored original window hwnd={originalForegroundWindow}");
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[KeyPress] Failed to restore original window: {restoreEx.Message}");
+                    }
+                }
             }
 
             sw.Stop();

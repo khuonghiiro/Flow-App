@@ -12,6 +12,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 {
     internal sealed class HotkeyPressEventNodeExecutor : INodeExecutor
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         public bool CanExecute(WorkflowNode node) => node is HotkeyPressEventNode;
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
@@ -22,8 +28,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var hotkeyText = hotkeyNode.Key;
 
-            // ── 1. Focus app nếu được cấu hình ──
-            await FocusTargetAppAsync(hotkeyNode.TargetProcessName, hotkeyNode.TargetWindowTitle, env.CancellationToken, hotkeyNode.UseBackgroundMode);
+            // ── Lưu foreground window hiện tại để quay về sau (nếu ReturnToOriginalScreen = true) ──
+            IntPtr originalForegroundWindow = IntPtr.Zero;
+            if (hotkeyNode.ReturnToOriginalScreen)
+            {
+                originalForegroundWindow = GetForegroundWindow();
+                System.Diagnostics.Debug.WriteLine($"[HotkeyPress] ReturnToOriginalScreen: Saved original window hwnd={originalForegroundWindow}");
+            }
+
+            try
+            {
+                // ── 1. Focus app nếu được cấu hình ──
+                await FocusTargetAppAsync(hotkeyNode.TargetProcessName, hotkeyNode.TargetWindowTitle, env.CancellationToken, hotkeyNode.UseBackgroundMode);
 
             // ── 2. Xử lý theo chế độ TriggerMode ──
             if (hotkeyNode.TriggerMode == HotkeyTriggerModeEnum.Listen)
@@ -35,6 +51,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 // Chế độ Send: Workflow tự động nhấn phím (logic hiện tại)
                 await ExecuteSendModeAsync(hotkeyNode, env, hotkeyText, connections);
+            }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"HotkeyPressEventNode error: {ex.Message}");
+                env.OnNodeFailed?.Invoke(hotkeyNode, ex.Message);
+                throw;
+            }
+            finally
+            {
+                // ── Quay trở lại foreground window ban đầu (nếu ReturnToOriginalScreen = true) ──
+                if (hotkeyNode.ReturnToOriginalScreen && originalForegroundWindow != IntPtr.Zero)
+                {
+                    try
+                    {
+                        await Task.Delay(100, env.CancellationToken);
+                        SetForegroundWindow(originalForegroundWindow);
+                        System.Diagnostics.Debug.WriteLine($"[HotkeyPress] ReturnToOriginalScreen: Restored original window hwnd={originalForegroundWindow}");
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[HotkeyPress] Failed to restore original window: {restoreEx.Message}");
+                    }
+                }
             }
 
             sw.Stop();

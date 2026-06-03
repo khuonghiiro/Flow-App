@@ -18,5 +18,25 @@
     "AutoOpenOnExecute": true,
     "IsPartialClone": false,
     "SparsePaths": ""
+  },
+  {
+    "Id": "Node_GitSource_3b1e46cd-dab1-456a-9893-51e9c7eba016",
+    "Title": "open-icons",
+    "RepoUrl": "https://github.com/khuonghiiro/open-icons.git",
+    "LocalPath": "C:\\Users\\Admin\\OneDrive\\Documents\\FlowMy\\FlowMy_CloneGit\\open-icons",
+    "Branch": "main",
+    "DisplayName": "open-icons",
+    "IconKey": "git-alt brands",
+    "IconColorKey": "#FFFFFF",
+    "ColorKey": "DangerBrush",
+    "TooltipText": "Ch\u1EA1y hi\u1EC3n th\u1ECB danh s\u00E1ch icon",
+    "ContextMenuDescription": "",
+    "VscodiumPath": "vscodium",
+    "CommandText": "",
+    "LastCommitHash": "",
+    "LastPullTime": "",
+    "AutoOpenOnExecute": true,
+    "IsPartialClone": false,
+    "SparsePaths": ""
   }
 ]
