@@ -116,7 +116,7 @@
                             <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,6">
                                 <Run Text="Chọn app để focus trước khi chọn vị trí. Để trống = màn hình hiện tại."/>
                             </TextBlock>
-                            <Grid Margin="0,0,0,12">
+                            <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -130,6 +130,13 @@
                                         Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại cửa sổ" Cursor="Hand"
                                         Command="{Binding LoadWindowsCommand}"/>
                             </Grid>
+
+                            <!-- Trở về màn hình ban đầu -->
+                            <CheckBox IsChecked="{Binding ReturnToOriginalScreen, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,12">
+                                <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
+                                    <Run Text="↩️ Trở về màn hình ban đầu sau khi thực hiện xong"/>
+                                </TextBlock>
+                            </CheckBox>
 
                             <!-- Toạ độ thủ công -->
                             <Border Background="{DynamicResource WindowBackground}"

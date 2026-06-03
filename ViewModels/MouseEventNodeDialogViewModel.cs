@@ -58,6 +58,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _useBackgroundMode = false;
         [ObservableProperty] private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
         
+        // ── Return to Original Screen ───────────────────────────────────────────
+        [ObservableProperty] private bool _returnToOriginalScreen = false;
+        
         /// <summary>Validation warning khi background mode bật mà chưa chọn app</summary>
         public string BackgroundModeWarning
         {
@@ -115,6 +118,7 @@ namespace FlowMy.ViewModels
             // Sync background mode
             UseBackgroundMode = node.UseBackgroundMode;
             BackgroundInputMode = node.BackgroundInputMode;
+            ReturnToOriginalScreen = node.ReturnToOriginalScreen;
 
             // Sync toạ độ & click
             CoordSourceNodeId    = node.CoordSourceNodeId;
@@ -276,6 +280,12 @@ namespace FlowMy.ViewModels
             OnPropertyChanged(nameof(HasBackgroundModeWarning));
         }
 
+        partial void OnReturnToOriginalScreenChanged(bool value)
+        {
+            _mouseEventNode.ReturnToOriginalScreen = value;
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
         // ── Lấy danh sách upstream nodes (kết nối đến port IN) ───────────────
         private void RefreshUpstreamNodes()
         {
@@ -429,6 +439,7 @@ namespace FlowMy.ViewModels
 
             _mouseEventNode.UseBackgroundMode = UseBackgroundMode;
             _mouseEventNode.BackgroundInputMode = BackgroundInputMode;
+            _mouseEventNode.ReturnToOriginalScreen = ReturnToOriginalScreen;
         }
     }
 }

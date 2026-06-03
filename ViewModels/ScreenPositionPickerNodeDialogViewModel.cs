@@ -49,6 +49,9 @@ namespace FlowMy.ViewModels
         public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
         public IRelayCommand LoadWindowsCommand { get; }
 
+        // ── Return to Original Screen ───────────────────────────────────────────
+        [ObservableProperty] private bool _returnToOriginalScreen = false;
+
         // ── Collections ──
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
         public ObservableCollection<WorkflowOutputKeyOption> AvailableOutputKeyOptions { get; } = new();
@@ -75,6 +78,7 @@ namespace FlowMy.ViewModels
             HoldDurationMs       = node.HoldDurationMs;
             ScrollCount          = node.ScrollCount;
             ScrollIntervalMs     = node.ScrollIntervalMs;
+            ReturnToOriginalScreen = node.ReturnToOriginalScreen;
 
             // Load windows command
             LoadWindowsCommand = new RelayCommand(ExecuteLoadWindows);
@@ -97,6 +101,12 @@ namespace FlowMy.ViewModels
         partial void OnCoordSourceNodeIdChanged(string? value)
         {
             RefreshOutputKeyOptions();
+        }
+
+        partial void OnReturnToOriginalScreenChanged(bool value)
+        {
+            _node.ReturnToOriginalScreen = value;
+            _host.RequestSyncDataPanels(immediate: true);
         }
 
         // ── Helpers ──
@@ -185,6 +195,7 @@ namespace FlowMy.ViewModels
             // Lưu target app
             _node.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
             _node.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;
+            _node.ReturnToOriginalScreen = ReturnToOriginalScreen;
 
             if (needSync)
                 _host.RequestSyncDataPanels(immediate: true);

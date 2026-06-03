@@ -718,6 +718,9 @@ namespace FlowMy.Views
                 dstPos.HoldDurationMs    = srcPos.HoldDurationMs;
                 dstPos.ScrollCount       = srcPos.ScrollCount;
                 dstPos.ScrollIntervalMs  = srcPos.ScrollIntervalMs;
+                dstPos.TargetProcessName = srcPos.TargetProcessName;
+                dstPos.TargetWindowTitle = srcPos.TargetWindowTitle;
+                dstPos.ReturnToOriginalScreen = srcPos.ReturnToOriginalScreen;
                 dstPos.TitleDisplayMode  = srcPos.TitleDisplayMode;
                 dstPos.TitleColorMode    = srcPos.TitleColorMode;
                 dstPos.TitleColorKey     = srcPos.TitleColorKey;
@@ -726,11 +729,27 @@ namespace FlowMy.Views
 
             if (source is ScreenCaptureNode srcCap && node is ScreenCaptureNode dstCap)
             {
+                dstCap.CaptureMode = srcCap.CaptureMode;
                 dstCap.CaptureX = srcCap.CaptureX;
                 dstCap.CaptureY = srcCap.CaptureY;
                 dstCap.CaptureWidth = srcCap.CaptureWidth;
                 dstCap.CaptureHeight = srcCap.CaptureHeight;
                 dstCap.CapturedImage = srcCap.CapturedImage; // Copy image reference
+                dstCap.CoordSourceNodeId = srcCap.CoordSourceNodeId;
+                dstCap.CoordSourceOutputKey = srcCap.CoordSourceOutputKey;
+                dstCap.PathSourceNodeId = srcCap.PathSourceNodeId;
+                dstCap.PathSourceOutputKey = srcCap.PathSourceOutputKey;
+                dstCap.ImagePath = srcCap.ImagePath;
+                dstCap.UseNativeWidth = srcCap.UseNativeWidth;
+                dstCap.MaxNodeWidth = srcCap.MaxNodeWidth;
+                dstCap.TargetProcessName = srcCap.TargetProcessName;
+                dstCap.TargetWindowTitle = srcCap.TargetWindowTitle;
+                if (srcCap.SkipOutputs != null && srcCap.SkipOutputs.Count > 0)
+                    dstCap.SkipOutputs = new HashSet<string>(srcCap.SkipOutputs, StringComparer.OrdinalIgnoreCase);
+                dstCap.TitleDisplayMode = srcCap.TitleDisplayMode;
+                dstCap.TitleColorMode = srcCap.TitleColorMode;
+                dstCap.TitleColorKey = srcCap.TitleColorKey;
+                dstCap.NotifyTitleChanged();
             }
 
             if (source is TextScanNode srcTextScan && node is TextScanNode dstTextScan)
@@ -795,20 +814,39 @@ namespace FlowMy.Views
             {
                 dstKey.RepeatCount = srcKey.RepeatCount;
                 dstKey.Key = srcKey.Key;
+                dstKey.PressDelayMs = srcKey.PressDelayMs;
+                dstKey.ManualPosition = srcKey.ManualPosition;
+                dstKey.HasManualPosition = srcKey.HasManualPosition;
+                dstKey.CoordSourceNodeId = srcKey.CoordSourceNodeId;
+                dstKey.CoordSourceOutputKey = srcKey.CoordSourceOutputKey;
+                dstKey.ClickOnPosition = srcKey.ClickOnPosition;
+                dstKey.ClickDurationMs = srcKey.ClickDurationMs;
+                dstKey.TargetProcessName = srcKey.TargetProcessName;
+                dstKey.TargetWindowTitle = srcKey.TargetWindowTitle;
+                dstKey.ReturnToOriginalScreen = srcKey.ReturnToOriginalScreen;
                 dstKey.TitleDisplayMode = srcKey.TitleDisplayMode;
                 dstKey.TitleColorMode = srcKey.TitleColorMode;
                 dstKey.TitleColorKey = srcKey.TitleColorKey;
-                dstKey.PressDelayMs = srcKey.PressDelayMs;
             }
 
             if (source is HotkeyPressEventNode srcHotkey && node is HotkeyPressEventNode dstHotkey)
             {
                 dstHotkey.RepeatCount = srcHotkey.RepeatCount;
                 dstHotkey.Key = srcHotkey.Key;
+                dstHotkey.PressDelayMs = srcHotkey.PressDelayMs;
+                dstHotkey.TriggerMode = srcHotkey.TriggerMode;
+                dstHotkey.ManualPosition = srcHotkey.ManualPosition;
+                dstHotkey.HasManualPosition = srcHotkey.HasManualPosition;
+                dstHotkey.CoordSourceNodeId = srcHotkey.CoordSourceNodeId;
+                dstHotkey.CoordSourceOutputKey = srcHotkey.CoordSourceOutputKey;
+                dstHotkey.ClickOnPosition = srcHotkey.ClickOnPosition;
+                dstHotkey.ClickDurationMs = srcHotkey.ClickDurationMs;
+                dstHotkey.TargetProcessName = srcHotkey.TargetProcessName;
+                dstHotkey.TargetWindowTitle = srcHotkey.TargetWindowTitle;
+                dstHotkey.ReturnToOriginalScreen = srcHotkey.ReturnToOriginalScreen;
                 dstHotkey.TitleDisplayMode = srcHotkey.TitleDisplayMode;
                 dstHotkey.TitleColorMode = srcHotkey.TitleColorMode;
                 dstHotkey.TitleColorKey = srcHotkey.TitleColorKey;
-                dstHotkey.PressDelayMs = srcHotkey.PressDelayMs;
             }
 
             if (source is MouseEventNode srcMouse && node is MouseEventNode dstMouse)
@@ -817,6 +855,15 @@ namespace FlowMy.Views
                 dstMouse.RepeatCount = srcMouse.RepeatCount;
                 dstMouse.HoldDuration = srcMouse.HoldDuration;
                 dstMouse.ScrollSpeed = srcMouse.ScrollSpeed;
+                dstMouse.ManualPosition = srcMouse.ManualPosition;
+                dstMouse.HasManualPosition = srcMouse.HasManualPosition;
+                dstMouse.CoordSourceNodeId = srcMouse.CoordSourceNodeId;
+                dstMouse.CoordSourceOutputKey = srcMouse.CoordSourceOutputKey;
+                dstMouse.ClickOnPosition = srcMouse.ClickOnPosition;
+                dstMouse.ClickDurationMs = srcMouse.ClickDurationMs;
+                dstMouse.TargetProcessName = srcMouse.TargetProcessName;
+                dstMouse.TargetWindowTitle = srcMouse.TargetWindowTitle;
+                dstMouse.ReturnToOriginalScreen = srcMouse.ReturnToOriginalScreen;
                 dstMouse.TitleDisplayMode = srcMouse.TitleDisplayMode;
                 dstMouse.TitleColorMode = srcMouse.TitleColorMode;
                 dstMouse.TitleColorKey = srcMouse.TitleColorKey;

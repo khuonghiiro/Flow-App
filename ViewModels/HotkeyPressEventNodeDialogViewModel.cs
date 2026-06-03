@@ -48,6 +48,9 @@ namespace FlowMy.ViewModels
         // ── Background Mode ─────────────────────────────────────────────────────
         [ObservableProperty] private bool _useBackgroundMode = false;
         [ObservableProperty] private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+        
+        // ── Return to Original Screen ───────────────────────────────────────────
+        [ObservableProperty] private bool _returnToOriginalScreen = false;
         public ObservableCollection<BackgroundInputModeOption> BackgroundInputModeOptions { get; } = new()
         {
             new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto, "Auto (Tự chọn)"),
@@ -68,6 +71,7 @@ namespace FlowMy.ViewModels
             // Sync background mode
             UseBackgroundMode = node.UseBackgroundMode;
             BackgroundInputMode = node.BackgroundInputMode;
+            ReturnToOriginalScreen = node.ReturnToOriginalScreen;
 
             // Sync toạ độ & click
             CoordSourceNodeId    = node.CoordSourceNodeId;
@@ -150,6 +154,12 @@ namespace FlowMy.ViewModels
                     BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
                 }
             }
+        }
+
+        partial void OnReturnToOriginalScreenChanged(bool value)
+        {
+            _hotkeyPressNode.ReturnToOriginalScreen = value;
+            _host.RequestSyncDataPanels(immediate: true);
         }
 
         // ── Lấy danh sách upstream nodes (kết nối đến port IN) ───────────────
@@ -235,6 +245,7 @@ namespace FlowMy.ViewModels
 
             _hotkeyPressNode.UseBackgroundMode = UseBackgroundMode;
             _hotkeyPressNode.BackgroundInputMode = BackgroundInputMode;
+            _hotkeyPressNode.ReturnToOriginalScreen = ReturnToOriginalScreen;
         }
 
         [RelayCommand]

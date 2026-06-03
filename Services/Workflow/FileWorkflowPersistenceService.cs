@@ -941,6 +941,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("TargetWindowTitle", out var twt))
                 keyPressNode.TargetWindowTitle = twt?.ToString() ?? string.Empty;
 
+            // Return to original screen
+            if (properties.TryGetValue("ReturnToOriginalScreen", out var rtos))
+                keyPressNode.ReturnToOriginalScreen = bool.Parse(rtos.ToString()!);
+
         }
         // HotkeyPressEventNode deserialization
         else if (node is HotkeyPressEventNode hotkeyPressNode)
@@ -980,6 +984,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 hotkeyPressNode.TargetProcessName = tpn?.ToString() ?? string.Empty;
             if (properties.TryGetValue("TargetWindowTitle", out var twt))
                 hotkeyPressNode.TargetWindowTitle = twt?.ToString() ?? string.Empty;
+
+            // Return to original screen
+            if (properties.TryGetValue("ReturnToOriginalScreen", out var rtos))
+                hotkeyPressNode.ReturnToOriginalScreen = bool.Parse(rtos.ToString()!);
 
         }
         // StringSplitNode deserialization
@@ -1079,6 +1087,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("TargetWindowTitle", out var twt))
                 mouseNode.TargetWindowTitle = twt?.ToString() ?? string.Empty;
 
+            // Return to original screen
+            if (properties.TryGetValue("ReturnToOriginalScreen", out var rtos))
+                mouseNode.ReturnToOriginalScreen = bool.Parse(rtos.ToString()!);
+
         }
         else if (node is ScreenPositionPickerNode pos)
         {
@@ -1109,6 +1121,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 pos.TargetProcessName = tpn?.ToString() ?? string.Empty;
             if (properties.TryGetValue("TargetWindowTitle", out var twt))
                 pos.TargetWindowTitle = twt?.ToString() ?? string.Empty;
+
+            // Return to original screen
+            if (properties.TryGetValue("ReturnToOriginalScreen", out var rtos))
+                pos.ReturnToOriginalScreen = bool.Parse(rtos.ToString()!);
         }
         else if (node is ScreenCaptureNode cap)
         {
@@ -1185,6 +1201,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 cap.TargetProcessName = tpnObj?.ToString() ?? string.Empty;
             if (properties.TryGetValue("TargetWindowTitle", out var twtObj))
                 cap.TargetWindowTitle = twtObj?.ToString() ?? string.Empty;
+
+            // Background Mode
+            if (properties.TryGetValue("UseBackgroundMode", out var ubmObj) &&
+                bool.TryParse(ubmObj?.ToString(), out var ubm))
+                cap.UseBackgroundMode = ubm;
+            if (properties.TryGetValue("BackgroundInputMode", out var bimObj) &&
+                Enum.TryParse<FlowMy.Helpers.BackgroundInputHelper.InputMode>(bimObj?.ToString(), out var bim))
+                cap.BackgroundInputMode = bim;
         }
         else if (node is TextScanNode textScan)
         {
@@ -1278,6 +1302,14 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 textScan.TargetProcessName = tpnObj2?.ToString() ?? string.Empty;
             if (properties.TryGetValue("TargetWindowTitle", out var twtObj2))
                 textScan.TargetWindowTitle = twtObj2?.ToString() ?? string.Empty;
+
+            // Background Mode
+            if (properties.TryGetValue("UseBackgroundMode", out var ubmObj2) &&
+                bool.TryParse(ubmObj2?.ToString(), out var ubm2))
+                textScan.UseBackgroundMode = ubm2;
+            if (properties.TryGetValue("BackgroundInputMode", out var bimObj2) &&
+                Enum.TryParse<FlowMy.Helpers.BackgroundInputHelper.InputMode>(bimObj2?.ToString(), out var bim2))
+                textScan.BackgroundInputMode = bim2;
 
             // SkipOutputs
             if (properties.TryGetValue("SkipOutputs", out var soObj) && soObj != null)
@@ -4674,6 +4706,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (!string.IsNullOrEmpty(kp.TargetWindowTitle))
                 dict["TargetWindowTitle"] = kp.TargetWindowTitle;
 
+            // Return to original screen
+            dict["ReturnToOriginalScreen"] = kp.ReturnToOriginalScreen;
+
         }
         // HotkeyPressEventNode serialization
         else if (node is HotkeyPressEventNode hk)
@@ -4707,6 +4742,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["TargetProcessName"] = hk.TargetProcessName;
             if (!string.IsNullOrEmpty(hk.TargetWindowTitle))
                 dict["TargetWindowTitle"] = hk.TargetWindowTitle;
+
+            // Return to original screen
+            dict["ReturnToOriginalScreen"] = hk.ReturnToOriginalScreen;
 
         }
         // StringSplitNode serialization
@@ -4759,6 +4797,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (!string.IsNullOrEmpty(mouseNode.TargetWindowTitle))
                 dict["TargetWindowTitle"] = mouseNode.TargetWindowTitle;
 
+            // Return to original screen
+            dict["ReturnToOriginalScreen"] = mouseNode.ReturnToOriginalScreen;
+
         }
         else if (node is ScreenPositionPickerNode pos)
         {
@@ -4780,6 +4821,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["TargetProcessName"] = pos.TargetProcessName;
             if (!string.IsNullOrEmpty(pos.TargetWindowTitle))
                 dict["TargetWindowTitle"] = pos.TargetWindowTitle;
+
+            // Return to original screen
+            dict["ReturnToOriginalScreen"] = pos.ReturnToOriginalScreen;
         }
         else if (node is ScreenCaptureNode cap)
         {
@@ -4824,6 +4868,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["TargetProcessName"] = cap.TargetProcessName;
             if (!string.IsNullOrWhiteSpace(cap.TargetWindowTitle))
                 dict["TargetWindowTitle"] = cap.TargetWindowTitle;
+
+            // Background Mode
+            dict["UseBackgroundMode"] = cap.UseBackgroundMode;
+            dict["BackgroundInputMode"] = cap.BackgroundInputMode.ToString();
         }
         else if (node is TextScanNode textScan)
         {
@@ -4884,6 +4932,10 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 dict["TargetProcessName"] = textScan.TargetProcessName;
             if (!string.IsNullOrWhiteSpace(textScan.TargetWindowTitle))
                 dict["TargetWindowTitle"] = textScan.TargetWindowTitle;
+
+            // Background Mode
+            dict["UseBackgroundMode"] = textScan.UseBackgroundMode;
+            dict["BackgroundInputMode"] = textScan.BackgroundInputMode.ToString();
 
             // SkipOutputs
             if (textScan.SkipOutputs != null && textScan.SkipOutputs.Count > 0)

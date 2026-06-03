@@ -119,6 +119,13 @@ namespace FlowMy.ViewModels
 
         protected override string GetDefaultTitle() => "Screen Capture";
 
+        // ── Partial callbacks ────────────────────────────────────────────────
+        partial void OnUseBackgroundModeChanged(bool value)
+        {
+            _scNode.UseBackgroundMode = value;
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
         private void InitializeCaptureModeOptions()
         {
             CaptureModeOptions.Clear();

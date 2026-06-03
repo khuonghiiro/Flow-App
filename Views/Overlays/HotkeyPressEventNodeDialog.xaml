@@ -128,6 +128,13 @@
                                             ToolTip="Tải lại danh sách cửa sổ" Cursor="Hand"/>
                                 </Grid>
 
+                                <!-- Trở về màn hình ban đầu -->
+                                <CheckBox IsChecked="{Binding ReturnToOriginalScreen, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,16">
+                                    <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="12" VerticalAlignment="Center">
+                                        <Run Text="↩️ Trở về màn hình ban đầu sau khi thực hiện xong"/>
+                                    </TextBlock>
+                                </CheckBox>
+
                                 <!-- 4. Background Mode -->
                                 <Border Background="{DynamicResource WindowBackground}" Visibility="Collapsed"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"

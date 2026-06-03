@@ -27,6 +27,9 @@ namespace FlowMy.Models
         private bool _useBackgroundMode = false;
         private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
 
+        // ── Trở về màn hình ban đầu ─────────────────────────────────────────────
+        private bool _returnToOriginalScreen = false;
+
         public MouseEventNode()
         {
             Type = NodeType.MouseEvent;
@@ -195,6 +198,17 @@ namespace FlowMy.Models
         {
             get => _backgroundInputMode;
             set { if (_backgroundInputMode != value) { _backgroundInputMode = value; OnPropertyChanged(); } }
+        }
+
+        // ── Trở về màn hình ban đầu ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Trở về màn hình mà user đang dùng sau khi thực hiện thao tác xong.
+        /// </summary>
+        public bool ReturnToOriginalScreen
+        {
+            get => _returnToOriginalScreen;
+            set { if (_returnToOriginalScreen != value) { _returnToOriginalScreen = value; OnPropertyChanged(); } }
         }
     }
 }

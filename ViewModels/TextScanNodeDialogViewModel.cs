@@ -195,6 +195,13 @@ namespace FlowMy.ViewModels
 
         protected override string GetDefaultTitle() => "Text Scan (OCR)";
 
+        // ── Partial callbacks ────────────────────────────────────────────────
+        partial void OnUseBackgroundModeChanged(bool value)
+        {
+            _textScanNode.UseBackgroundMode = value;
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
         /// <summary>
         /// Tìm đường dẫn đến thư mục tessdata từ git repo đã clone.
         /// Tìm repo có URL chứa "tesseract-ocr/tessdata" và đã được clone.
