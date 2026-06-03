@@ -5,15 +5,10 @@
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         xmlns:converters="clr-namespace:FlowMy.Converters"
         Title="Text Scan (OCR)"
-        WindowStyle="None"
-        ResizeMode="CanResize"
-        AllowsTransparency="True"
-        Background="Transparent"
-        ShowInTaskbar="False"
-        Topmost="True"
-        Width="520"
-        MinWidth="420"
-        MinHeight="450">
+        WindowStyle="None" ResizeMode="CanResize"
+        AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True"
+        Width="540" MinWidth="440" MinHeight="480">
 
     <local:BaseNodeDialog.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
@@ -28,497 +23,333 @@
             </Grid.RowDefinitions>
 
             <!-- HEADER -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-
                     <TextBox x:Name="TitleTextBox" Grid.Column="0"
                              Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
                              Style="{DynamicResource BaseTextBoxV2}"
-                             FontSize="16" Padding="0,4,0,4"
-                             VerticalContentAlignment="Center" Cursor="IBeam"/>
-
+                             FontSize="16" Padding="0,4" VerticalContentAlignment="Center" Cursor="IBeam"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Width="24" Height="24" Content="▶" FontSize="12"
-                                Style="{DynamicResource PrimaryButton}" Cursor="Hand"
-                                Padding = "0"
-                                Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                        <Button Width="24" Height="24" Content="▶" FontSize="12" Padding="0" Margin="8,0,0,0"
+                                Style="{DynamicResource PrimaryButton}" Cursor="Hand" ToolTip="Chạy logic node này"
                                 Command="{Binding RunSingleNodeCommand}"/>
-                        <Button x:Name="CloseButton" Width="24" Height="24"
-                                Style="{DynamicResource DangerButton}"
-                                Padding = "0"
-                                Content="✕" FontSize="12" FontWeight="Bold" Cursor="Hand"
-                                Margin="8,0,0,0" Click="CloseButton_Click"/>
+                        <Button x:Name="CloseButton" Width="24" Height="24" Padding="0" Content="✕" FontSize="12" 
+                                FontWeight="Bold" Margin="8,0,0,0" Cursor="Hand"
+                                Style="{DynamicResource DangerButton}" Click="CloseButton_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- CONTENT -->
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
-
-                <!-- ══ TAB: LOGIC ══ -->
+                <!-- TAB: LOGIC -->
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
+                            <!-- Cấu hình hiển thị -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Cấu hình hiển thị" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Hiển thị tiêu đề" Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
+                                              ItemsSource="{Binding TitleDisplayModeOptions}"
+                                              SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                                    <TextBlock Text="Màu tiêu đề" Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding TitleColorOptions}"
+                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                        <Border x:Name="TitleColorPreview" Grid.Column="1"
+                                                Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Hiển thị tiêu đề -->
-                            <TextBlock Text="Hiển thị tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,12"
-                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-
-                            <!-- Màu tiêu đề -->
-                            <TextBlock Text="Màu tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,20">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding TitleColorOptions}"
-                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                                <Border x:Name="TitleColorPreview" Grid.Column="1"
-                                        Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                            </Grid>
-
-                            <!-- ══ OCR ENGINE MODE ══ -->
-                            <TextBlock Text="OCR Engine:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,16"
+                            <!-- OCR Engine -->
+                            <TextBlock Text="OCR Engine" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,12"
                                       ItemsSource="{Binding OcrEngineModeOptions}"
                                       SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                       SelectedValue="{Binding OcrEngineMode, Mode=TwoWay}"/>
 
-                            <!-- ══ PANEL: TESSERACT SETTINGS ══ -->
-                            <StackPanel x:Name="TesseractPanel"
-                                        Visibility="{Binding IsTesseractMode,
-                                                     Converter={StaticResource BoolToVisibilityConverter}}">
+                            <!-- Tesseract Settings -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12"
+                                    Visibility="{Binding IsTesseractMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ Cấu hình Tesseract" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Thư mục tessdata" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TessdataPathTextBox" Grid.Column="0" Height="32"
+                                                 Text="{Binding TessdataPath, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{DynamicResource BaseTextBoxV2}" VerticalContentAlignment="Center"/>
+                                        <Button Grid.Column="1" Content="📁" Height="32" Width="32" Padding="0" Margin="6,0,0,0"
+                                                Style="{DynamicResource SecondaryButton}" ToolTip="Chọn thư mục" Cursor="Hand"
+                                                Click="BrowseTessdataButton_Click"/>
+                                    </Grid>
+                                    <TextBlock Text="Page Seg Mode" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
+                                              ItemsSource="{Binding TesseractPageSegModeOptions}"
+                                              SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TesseractPageSegMode, Mode=TwoWay}"/>
+                                    <TextBlock Text="Engine Mode" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding TesseractEngineModeOptions}"
+                                              SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TesseractEngineMode, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,12">
-                                    <Run Text="Cấu hình Tesseract OCR. Cần file .traineddata cho ngôn ngữ tương ứng."/>
-                                </TextBlock>
+                            <!-- Image Source Mode -->
+                            <TextBlock Text="Nguồn ảnh" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,12"
+                                      ItemsSource="{Binding ImageSourceModeOptions}"
+                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding ImageSourceMode, Mode=TwoWay}"/>
 
-                                <!-- Tessdata Path -->
-                                <TextBlock Text="Thư mục tessdata:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,8">
-                                    <Run Text="Đường dẫn đến thư mục chứa file .traineddata (ví dụ: C:\tessdata)."/>
-                                    <LineBreak/>
-                                    <Run Text="💡 Nếu để trống: Vào màn hình quản lý Git để clone/pull repo tessdata, hoặc tự chọn folder chứa các file .traineddata."/>
-                                </TextBlock>
+                            <!-- MODE: Screen Capture -->
+                            <StackPanel x:Name="ScreenCapturePanel"
+                                        Visibility="{Binding IsScreenCaptureMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="📍 Input — Toạ độ vùng cắt" Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl x:Name="CoordSourceNodeId" Height="32"
+                                                          ItemsSource="{Binding AvailableNodeOptions}"
+                                                          SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                          SelectedValue="{Binding CoordSourceNodeId, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="CoordSourceOutputKey" Height="32" Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding CoordKeyOptions}"
+                                                          SelectedValuePath="Key" DisplayMemberPath="Key"
+                                                          SelectedValue="{Binding CoordSourceOutputKey, Mode=TwoWay}"
+                                                          IsSynchronizedWithCurrentItem="False"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="Ứng dụng cần chụp" Foreground="{DynamicResource TextBrush}"
+                                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="TessdataPathTextBox" Grid.Column="0" Height="36"
-                                             Text="{Binding TessdataPath, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             VerticalContentAlignment="Center"/>
-                                    <Button Grid.Column="1"
-                                            Content="📁" Height="36" Width="36" Padding="0"
-                                            Margin="8,0,0,0"
-                                            Style="{DynamicResource SecondaryButton}"
-                                            Click="BrowseTessdataButton_Click"
-                                            ToolTip="Chọn thư mục tessdata"
-                                            Cursor="Hand"/>
-                                </Grid>
-
-                                <!-- Tesseract Page Seg Mode -->
-                                <TextBlock Text="Chế độ phân trang (Page Seg Mode):"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,8">
-                                    <Run Text="Cách Tesseract phân tích bố cục trang. Auto = tự động phát hiện."/>
-                                </TextBlock>
-                                <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,12"
-                                          ItemsSource="{Binding TesseractPageSegModeOptions}"
-                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TesseractPageSegMode, Mode=TwoWay}"/>
-
-                                <!-- Tesseract Engine Mode -->
-                                <TextBlock Text="Chế độ engine (Engine Mode):"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,8">
-                                    <Run Text="LSTM = chính xác hơn, Legacy = nhanh hơn. Default = tự động chọn."/>
-                                </TextBlock>
-                                <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,16"
-                                          ItemsSource="{Binding TesseractEngineModeOptions}"
-                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TesseractEngineMode, Mode=TwoWay}"/>
-
-                            </StackPanel>
-
-                            <!-- ══ IMAGE SOURCE MODE ══ -->
-                            <TextBlock Text="Nguồn ảnh:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <ComboBox Height="36" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,16"
-                                      ItemsSource="{Binding ImageSourceModeOptions}"
-                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding ImageSourceMode, Mode=TwoWay}"/>
-
-                            <!-- ══ PANEL: SCREEN CAPTURE ══ -->
-                            <StackPanel x:Name="ScreenCapturePanel"
-                                        Visibility="{Binding IsScreenCaptureMode,
-                                                     Converter={StaticResource BoolToVisibilityConverter}}">
-
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,12">
-                                    <Run Text="Chụp vùng màn hình trực tiếp để OCR. Có thể chọn app để chụp cụ thể."/>
-                                </TextBlock>
-
-                                <!-- Node + Key — toạ độ vùng cắt -->
-                                <TextBlock Text="Input — Toạ độ &amp; Kích thước vùng cắt (tùy chọn):"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <controls:NodeSearchComboBoxUserControl x:Name="CoordSourceNodeId" Height="36"
-                                                  ItemsSource="{Binding AvailableNodeOptions}"
-                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                                  SelectedValue="{Binding CoordSourceNodeId, Mode=TwoWay}"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <ComboBox x:Name="CoordSourceOutputKey" Height="36" Style="{DynamicResource BaseComboBox}"
-                                                  ItemsSource="{Binding CoordKeyOptions}"
-                                                  SelectedValuePath="Key" DisplayMemberPath="Key"
-                                                  SelectedValue="{Binding CoordSourceOutputKey, Mode=TwoWay}"
-                                                  IsSynchronizedWithCurrentItem="False"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,16">
-                                    <Run Text="💡 Format: "/>
-                                    <Run Text="x,y,w,h" FontFamily="Consolas" Foreground="{DynamicResource PrimaryBrush}"/>
-                                    <Run Text=" hoặc "/>
-                                    <Run Text="(x, y, w, h)" FontFamily="Consolas"/>
-                                    <Run Text=". Để trống = dùng vùng đã chụp thủ công."/>
-                                </TextBlock>
-
-                                <!-- Chọn app để chụp -->
-                                <TextBlock Text="Ứng dụng cần chụp:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,8">
-                                    <Run Text="Chọn app để tự động đưa lên trước màn hình trước khi chụp. Để trống = chụp màn hình hiện tại."/>
-                                </TextBlock>
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="SelectedTargetWindow" Grid.Column="0" Height="36"
+                                    <ComboBox x:Name="SelectedTargetWindow" Grid.Column="0" Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding ActiveWindows}"
                                               DisplayMemberPath="DisplayName"
                                               SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1"
-                                            Content="↻" Height="36" Width="36" Padding="0"
-                                            Margin="8,0,0,0"
-                                            Style="{DynamicResource SecondaryButton}"
-                                            Command="{Binding LoadWindowsCommand}"
-                                            ToolTip="Tải lại danh sách cửa sổ"
-                                            Cursor="Hand"/>
+                                    <Button Grid.Column="1" Content="↻" Height="32" Width="32" Padding="0" Margin="6,0,0,0"
+                                            Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại" Cursor="Hand"
+                                            Command="{Binding LoadWindowsCommand}"/>
                                 </Grid>
-
                             </StackPanel>
 
-                            <!-- ══ PANEL: FROM NODE ══ -->
+                            <!-- MODE: From Node -->
                             <StackPanel x:Name="FromNodePanel"
-                                        Visibility="{Binding IsFromNodeMode,
-                                                     Converter={StaticResource BoolToVisibilityConverter}}">
-
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,12">
-                                    <Run Text="Lấy ảnh từ output của node khác (ScreenCaptureNode, MediaGalleryNode, v.v.)"/>
-                                </TextBlock>
-
-                                <!-- Node + Key — ảnh -->
-                                <TextBlock Text="Input — Ảnh từ node khác:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <controls:NodeSearchComboBoxUserControl x:Name="ImageSourceNodeId" Height="36"
-                                                  ItemsSource="{Binding AvailableNodeOptions}"
-                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                                  SelectedValue="{Binding ImageSourceNodeId, Mode=TwoWay}"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <ComboBox x:Name="ImageSourceOutputKey" Height="36" Style="{DynamicResource BaseComboBox}"
-                                                  ItemsSource="{Binding ImageKeyOptions}"
-                                                  SelectedValuePath="Key" DisplayMemberPath="Key"
-                                                  SelectedValue="{Binding ImageSourceOutputKey, Mode=TwoWay}"
-                                                  IsSynchronizedWithCurrentItem="False"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,16">
-                                    <Run Text="💡 Key gợi ý: "/>
-                                    <Run Text="imageBase64" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}"/>
-                                    <Run Text=", "/>
-                                    <Run Text="capturedImage" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}"/>
-                                </TextBlock>
-
-                            </StackPanel>
-
-                            <!-- ══ PANEL: PATH / URL ══ -->
-                            <StackPanel x:Name="PathUrlPanel"
-                                        Visibility="{Binding IsPathUrlMode,
-                                                     Converter={StaticResource BoolToVisibilityConverter}}">
-
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,12">
-                                    <Run Text="Lấy ảnh từ đường dẫn file local hoặc URL online."/>
-                                </TextBlock>
-
-                                <!-- Path / URL nhập tay -->
-                                <TextBlock Text="Path / URL:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0"
-                                             Text="{Binding ImagePath, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             Height="36"
-                                             VerticalContentAlignment="Center"/>
-                                    <Button x:Name="BrowseImageButton" Grid.Column="1"
-                                            Content="📂" Height="36" Width="40"
-                                            Style="{DynamicResource PrimaryButton}"
-                                            Margin="6,0,0,0" Cursor="Hand"
-                                            ToolTip="Chọn file ảnh"
-                                            Click="BrowseImageButton_Click"/>
-                                </Grid>
-
-                            </StackPanel>
-
-                            <!-- ══ PANEL: BASE64 ══ -->
-                            <StackPanel x:Name="Base64Panel"
-                                        Visibility="{Binding IsBase64Mode,
-                                                     Converter={StaticResource BoolToVisibilityConverter}}">
-
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,12">
-                                    <Run Text="Nhập base64 string của ảnh trực tiếp."/>
-                                </TextBlock>
-
-                                <TextBlock Text="Base64 string:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <TextBox Text="{Binding Base64Image, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         Height="80"
-                                         TextWrapping="Wrap"
-                                         AcceptsReturn="True"
-                                         VerticalScrollBarVisibility="Auto"
-                                         Margin="0,0,0,16"/>
-
-                            </StackPanel>
-
-                            <!-- ══ PANEL: MANUAL REGION ══ -->
-                            <StackPanel x:Name="ManualRegionPanel"
-                                        Visibility="{Binding IsManualRegionMode,
-                                                     Converter={StaticResource BoolToVisibilityConverter}}">
-
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,12">
-                                    <Run Text="Chụp vùng thủ công một lần, lưu toạ độ. Khi chạy workflow, tự động chụp lại vùng đó."/>
-                                </TextBlock>
-
-                                <!-- Chọn app để chụp -->
-                                <TextBlock Text="Ứng dụng cần chụp:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                                           TextWrapping="Wrap" Margin="0,0,0,8">
-                                    <Run Text="Chọn app để tự động đưa lên trước màn hình trước khi chụp. Để trống = chụp màn hình hiện tại."/>
-                                </TextBlock>
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="ManualRegionTargetWindow" Grid.Column="0" Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding ActiveWindows}"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1"
-                                            Content="↻" Height="36" Width="36" Padding="0"
-                                            Margin="8,0,0,0"
-                                            Style="{DynamicResource SecondaryButton}"
-                                            Command="{Binding LoadWindowsCommand}"
-                                            ToolTip="Tải lại danh sách cửa sổ"
-                                            Cursor="Hand"/>
-                                </Grid>
-
-                                <!-- Capture region button + display coordinates -->
-                                <TextBlock Text="Vùng chụp:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <Button x:Name="ManualCaptureButton"
-                                        Content="📸 Chụp vùng thủ công"
-                                        Height="40"
-                                        Style="{DynamicResource PrimaryButton}"
-                                        Margin="0,0,0,12"
-                                        Cursor="Hand"
-                                        Click="ManualCaptureButton_Click"
-                                        ToolTip="Chụp vùng màn hình và lưu toạ độ"/>
-
-                                <!-- Display region coordinates -->
+                                        Visibility="{Binding IsFromNodeMode, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <Border Background="{DynamicResource WindowBackground}"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,16">
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                                     <StackPanel>
-                                        <TextBlock Text="Vùng đã chọn:"
-                                                   Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                        <TextBlock x:Name="ManualRegionCoordinates"
-                                                   Foreground="{DynamicResource TextMuted}"
-                                                   FontSize="11"
-                                                   FontFamily="Consolas"
-                                                   Text="Chưa chụp vùng nào"/>
+                                        <TextBlock Text="📍 Input — Ảnh từ node" Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="11" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl x:Name="ImageSourceNodeId" Height="32"
+                                                          ItemsSource="{Binding AvailableNodeOptions}"
+                                                          SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                          SelectedValue="{Binding ImageSourceNodeId, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="ImageSourceOutputKey" Height="32" Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding ImageKeyOptions}"
+                                                          SelectedValuePath="Key" DisplayMemberPath="Key"
+                                                          SelectedValue="{Binding ImageSourceOutputKey, Mode=TwoWay}"
+                                                          IsSynchronizedWithCurrentItem="False"/>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
-
                             </StackPanel>
 
-                            <!-- ══ LANGUAGE SETTINGS ══ -->
+                            <!-- MODE: Path/URL -->
+                            <StackPanel x:Name="PathUrlPanel"
+                                        Visibility="{Binding IsPathUrlMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="Path / URL" Foreground="{DynamicResource TextBrush}"
+                                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Height="32"
+                                             Text="{Binding ImagePath, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" VerticalContentAlignment="Center"/>
+                                    <Button x:Name="BrowseImageButton" Grid.Column="1" Content="📂" Height="32" Width="32" Padding="0"
+                                            Style="{DynamicResource PrimaryButton}" Margin="6,0,0,0" Cursor="Hand"
+                                            Click="BrowseImageButton_Click"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- MODE: Base64 -->
+                            <StackPanel x:Name="Base64Panel"
+                                        Visibility="{Binding IsBase64Mode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="Base64 string" Foreground="{DynamicResource TextBrush}"
+                                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBox Text="{Binding Base64Image, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="80" TextWrapping="Wrap"
+                                         AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12"/>
+                            </StackPanel>
+
+                            <!-- MODE: Manual Region -->
+                            <StackPanel x:Name="ManualRegionPanel"
+                                        Visibility="{Binding IsManualRegionMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="Ứng dụng cần chụp" Foreground="{DynamicResource TextBrush}"
+                                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="ManualRegionTargetWindow" Grid.Column="0" Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding ActiveWindows}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                    <Button Grid.Column="1" Content="↻" Height="32" Width="32" Padding="0" Margin="6,0,0,0"
+                                            Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại" Cursor="Hand"
+                                            Command="{Binding LoadWindowsCommand}"/>
+                                </Grid>
+                                <Button x:Name="ManualCaptureButton" Content="📸 Chụp vùng thủ công" Height="36" Margin="0,0,0,10"
+                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand" Click="ManualCaptureButton_Click"/>
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Vùng đã chọn:" Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="ManualRegionCoordinates" Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10" FontFamily="Consolas" Text="Chưa chụp"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Language Settings -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,16">
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <CheckBox IsChecked="{Binding AutoDetectLanguage, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,8">
-                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
-                                                   VerticalAlignment="Center">
+                                    <CheckBox IsChecked="{Binding AutoDetectLanguage, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,10">
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
                                             <Run Text="Tự động phát hiện ngôn ngữ"/>
                                         </TextBlock>
                                     </CheckBox>
-
-                                    <!-- Single language selection (when auto-detect is OFF) -->
-                                    <StackPanel Visibility="{Binding AutoDetectLanguage,
-                                                             Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                                        <TextBlock Text="Ngôn ngữ OCR:"
-                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <StackPanel Visibility="{Binding AutoDetectLanguage, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        <TextBlock Text="Ngôn ngữ OCR" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                         <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                   ItemsSource="{Binding OcrLanguageOptions}"
-                                                  SelectedValuePath="Code"
-                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValuePath="Code" DisplayMemberPath="DisplayName"
                                                   SelectedValue="{Binding OcrLanguage, Mode=TwoWay}"/>
                                     </StackPanel>
-
-                                    <!-- Multi language selection (when auto-detect is ON) -->
-                                    <StackPanel Visibility="{Binding AutoDetectLanguage,
-                                                             Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="Chọn ngôn ngữ để phát hiện:"
-                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <controls:MultiSelectComboBoxUserControl
-                                            Height="40"
-                                            Margin="0,5"
+                                    <StackPanel Visibility="{Binding AutoDetectLanguage, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="Chọn ngôn ngữ để phát hiện" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <controls:MultiSelectComboBoxUserControl Height="36" Margin="0,4,0,0"
                                             ItemsSource="{Binding AvailableTesseractLanguages}"
                                             SelectedValues="{Binding SelectedLanguages, Mode=TwoWay}"
-                                            DisplayMemberPath="DisplayName"
-                                            SelectedValuePath="Code"
+                                            DisplayMemberPath="DisplayName" SelectedValuePath="Code"
                                             PlaceholderText="Chọn ngôn ngữ..."/>
-                                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10"
-                                                   TextWrapping="Wrap" Margin="0,4,0,0">
-                                            <Run Text="💡 Chọn nhiều ngôn ngữ để Tesseract tự động phát hiện. Danh sách ngôn ngữ được tải từ thư mục tessdata."/>
-                                        </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
 
-                            <!-- ══ OUTPUTS ══ -->
-                            <TextBlock Text="Outputs (Tích là key được output):"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <Border Style="{DynamicResource DialogOuterBorder}"
-                                    CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                            <!-- Outputs -->
+                            <TextBlock Text="Outputs" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Border Style="{DynamicResource DialogOuterBorder}" CornerRadius="8" Padding="10">
                                 <StackPanel x:Name="OutputsPanel"/>
                             </Border>
-
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- ══ TAB: CẤU HÌNH ══ -->
+                <!-- TAB: CẤU HÌNH -->
                 <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-
-                            <!-- Vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Vị trí cổng IN/OUT" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <Grid Margin="0,0,0,16">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                     <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
                                               SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                     <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
                                               SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Grid>
 
-                            <!-- ReuseRoutes -->
-                            <TextBlock Text="Tái sử dụng flow:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Tái sử dụng flow" Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ItemsControl x:Name="ReuseRoutesItemsControl" ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,0,12"
-                                                Background="{DynamicResource WindowBackground}"
+                                        <Border Margin="0,0,0,10" Background="{DynamicResource WindowBackground}"
                                                 BorderBrush="{DynamicResource ControlBorderBrush}"
                                                 BorderThickness="1" CornerRadius="8" Padding="10">
                                             <Grid>
@@ -533,31 +364,27 @@
                                                         <ColumnDefinition Width="2*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="Node IN" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
-                                                        <TextBlock Text="{Binding IncomingNodeTitle}" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="Node IN" Foreground="{DynamicResource TextBrush}" FontSize="10" Opacity="0.7" Margin="0,0,0,4"/>
+                                                        <TextBlock Text="{Binding IncomingNodeTitle}" Foreground="{DynamicResource TextBrush}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="1">
-                                                        <TextBlock Text="Node OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
-                                                        <controls:NodeSearchComboBoxUserControl Height="32"
+                                                        <TextBlock Text="Node OUT" Foreground="{DynamicResource TextBrush}" FontSize="10" Opacity="0.7" Margin="0,0,0,4"/>
+                                                        <controls:NodeSearchComboBoxUserControl Height="28"
                                                                   ItemsSource="{Binding OutgoingOptions}"
                                                                   SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                                   SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
-                                                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,4,0,0"
-                                                                   TextWrapping="Wrap">
-                                                            <Run Text="Chọn node OUT để cấu hình chức năng tự động kích hoạt khi workflow chạy đến node này."/>
-                                                        </TextBlock>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Kiểu line OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
-                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                        <TextBlock Text="Kiểu line OUT" Foreground="{DynamicResource TextBrush}" FontSize="10" Opacity="0.7" Margin="0,0,0,4"/>
+                                                        <ComboBox Height="28" Style="{DynamicResource BaseComboBox}"
                                                                   ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                   SelectedValuePath="Key" DisplayMemberPath="DisplayName"
                                                                   SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
                                                     </StackPanel>
                                                 </Grid>
                                                 <StackPanel Grid.Row="1" Margin="0,8,0,0">
-                                                    <TextBlock Text="Chức năng" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
-                                                    <ComboBox x:Name="FunctionTypeComboBox" Height="32" Style="{DynamicResource BaseComboBox}"
+                                                    <TextBlock Text="Chức năng" Foreground="{DynamicResource TextBrush}" FontSize="10" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <ComboBox x:Name="FunctionTypeComboBox" Height="28" Style="{DynamicResource BaseComboBox}"
                                                               ItemsSource="{Binding DataContext.FunctionTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                                               SelectedValue="{Binding SelectedFunctionType, Mode=TwoWay}"/>
@@ -567,11 +394,9 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-
             </TabControl>
         </Grid>
     </Border>
