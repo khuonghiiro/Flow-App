@@ -1,5 +1,6 @@
 <local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.KeyPressEventNodeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         Title="Key Press Event Node"
@@ -16,8 +17,8 @@
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> <!-- Header với title và nút X -->
-                <RowDefinition Height="*"/> <!-- Content -->
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <!-- Header -->
@@ -27,416 +28,320 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-
-                    <!-- Title Editor -->
                     <TextBox x:Name="TitleTextBox"
                              Grid.Column="0"
                              Text="{Binding NodeTitle, UpdateSourceTrigger=PropertyChanged}"
                              Style="{DynamicResource BaseTextBoxV2}"
-                             FontSize="16"
-                             Padding="0,4,0,4"
-                             VerticalContentAlignment="Center"
-                             Cursor="IBeam"/>
-
-                    <!-- Play + Close -->
+                             FontSize="16" Padding="0,4,0,4"
+                             VerticalContentAlignment="Center" Cursor="IBeam"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="PlayButton" Padding="0,0,0,0"  Width="24" Height="24" Content="▶" FontSize="12"
-                            Style="{DynamicResource PrimaryButton}"
-                            Cursor="Hand"
-                            Margin="8,0,0,0" ToolTip="Chạy logic node này"
-                            Command="{Binding RunSingleNodeCommand}"/>
-
-                        <Button x:Name="CloseButton" Padding="0,0,0,0"  Width="24" Height="24"
-                            Style="{DynamicResource DangerButton}"
-                            Content="×" 
-                            FontSize="12" 
-                            FontWeight="Bold" 
-                            Cursor="Hand"
-                            Margin="8,0,0,0" Click="CloseButton_Click"/>
+                        <Button x:Name="PlayButton" Width="24" Height="24" Content="▶" FontSize="12"
+                                Padding="0" Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                Margin="8,0,0,0" ToolTip="Chạy logic node này"
+                                Command="{Binding RunSingleNodeCommand}"/>
+                        <Button x:Name="CloseButton" Width="24" Height="24" Content="×"
+                                Padding="0" Style="{DynamicResource DangerButton}"
+                                FontSize="12" FontWeight="Bold" Cursor="Hand"
+                                Margin="8,0,0,0" Click="CloseButton_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Content: 2 tab Logic + Tái sử dụng flow -->
-            <TabControl Grid.Row="1"
-                        Background="Transparent"
-                        BorderThickness="0">
-                <!-- Tab 1: Logic (giữ nguyên nội dung cũ) -->
+            <!-- Tabs -->
+            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+
+                <!-- ═══ Tab 1: Logic ═══ -->
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Padding="16">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                    <!-- Title Display Mode -->
-                    <TextBlock Text="Hiển thị tiêu đề:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
 
-                    <ComboBox x:Name="TitleDisplayModeComboBox"
-                              Height="36"
-                              Style="{DynamicResource BaseComboBox}"
-                              Margin="0,0,0,16"
-                              ItemsSource="{Binding TitleDisplayModeOptions}"
-                              SelectedValuePath="Value"
-                              DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-
-                    <!-- TitleColorMode Section -->
-                    <TextBlock Text="Màu tiêu đề:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        
-                        <ComboBox x:Name="TitleColorComboBox"
-                                  Grid.Column="0"
-                                  Height="36"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding TitleColorOptions}"
-                                  SelectedValuePath="Key"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                        
-                        <!-- Color Preview -->
-                        <Border Grid.Column="1" 
-                                x:Name="TitleColorPreview"
-                                Width="36" Height="36" 
-                                CornerRadius="6"
-                                Margin="8,0,0,0"
-                                BorderBrush="{DynamicResource ControlBorderBrush}"
-                                BorderThickness="1"/>
-                    </Grid>
-
-                    <!-- Key Selection -->
-                    <TextBlock Text="Phím kích hoạt:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-
-                    <Button x:Name="KeyButton"
-                            Content="{Binding KeyDisplayText}"
-                            Height="36"
-                            Style="{DynamicResource SecondaryButton}"
-                            Background="{DynamicResource CardBackgroundBrush}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1"
-                            Foreground="{DynamicResource TextBrush}"
-                            FontSize="13"
-                            Cursor="Hand"
-                            Margin="0,0,0,16"
-                            Click="KeyButton_Click"/>
-
-                    <!-- Press Delay -->
-                    <TextBlock Text="Thời gian delay giữa các lần nhấn (ms):"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-
-                    <TextBox x:Name="PressDelayTextBox"
-                             Height="36"
-                             Text="{Binding PressDelayMs, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{DynamicResource BaseTextBoxV2}"
-                             FontSize="13"
-                             Padding="8,0,8,0"
-                             VerticalContentAlignment="Center"
-                             Margin="0,0,0,16"/>
-
-                    <!-- ═══ Toạ độ từ node khác ═══ -->
-                    <TextBlock Text="Toạ độ click trước khi nhấn (từ node khác):"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="Node nguồn"
+                            <!-- 1. Phím kích hoạt -->
+                            <TextBlock Text="Phím kích hoạt:"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
-                            <controls:NodeSearchComboBoxUserControl x:Name="CoordSourceNodeId" Height="36" Margin="0,0,0,10"
-                                      ItemsSource="{Binding AvailableNodeOptions}"
-                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                      SelectedValue="{Binding CoordSourceNodeId, Mode=TwoWay}"/>
-                            <TextBlock Text="Output key (x / y / position)"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Button x:Name="KeyButton"
+                                    Content="{Binding KeyDisplayText}"
+                                    Height="36" Style="{DynamicResource SecondaryButton}"
+                                    Background="{DynamicResource CardBackgroundBrush}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                    Foreground="{DynamicResource TextBrush}" FontSize="13"
+                                    Cursor="Hand" Margin="0,0,0,16"
+                                    Click="KeyButton_Click"/>
+
+                            <!-- 2. Chọn ứng dụng đích -->
+                            <TextBlock Text="Ứng dụng cần nhấn phím:"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
-                            <ComboBox x:Name="CoordSourceOutputKey" Height="36" Style="{DynamicResource BaseComboBox}"
-                                      ItemsSource="{Binding AvailableOutputKeyOptions}"
-                                      SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding CoordSourceOutputKey, Mode=TwoWay}"/>
-                        </StackPanel>
-                    </Border>
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                       TextWrapping="Wrap" Margin="0,0,0,8">
+                                <Run Text="Chọn app để tự động focus trước khi nhấn phím. Để trống = dùng cửa sổ hiện tại."/>
+                            </TextBlock>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="SelectedTargetWindow" Grid.Column="0" Height="36"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding ActiveWindows}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                <Button Grid.Column="1" Content="↻" Height="36" Width="36" Padding="0"
+                                        Margin="8,0,0,0" Style="{DynamicResource SecondaryButton}"
+                                        Command="{Binding LoadWindowsCommand}"
+                                        ToolTip="Tải lại danh sách cửa sổ" Cursor="Hand"/>
+                            </Grid>
 
-                    <!-- ═══ Toạ độ thủ công ═══ -->
-                    <TextBlock Text="Toạ độ thủ công (dùng khi không có node nguồn):"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock x:Name="PositionDisplayText"
+                            <!-- 3. Background Mode (liên quan trực tiếp đến app đích) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}"
+                                              Cursor="Hand" Margin="0,0,0,4">
+                                        <TextBlock Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center">
+                                            <Run Text="Chạy ngầm (không cần app active)"/>
+                                        </TextBlock>
+                                    </CheckBox>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                               TextWrapping="Wrap" Margin="20,0,0,8">
+                                        <Run Text="App đích không bị đưa lên foreground. Giống AnyDesk/TeamViewer."/>
+                                    </TextBlock>
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UseBackgroundMode}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="Chế độ gửi input:"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="BackgroundInputModeComboBox" Height="36"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding BackgroundInputModeOptions}"
+                                                  SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding BackgroundInputMode, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 4. Toạ độ từ node khác -->
+                            <TextBlock Text="Toạ độ click trước khi nhấn:"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="13" Margin="0,0,0,10"
-                                       Text="{Binding PositionText}"/>
-                            <Button x:Name="PickPositionButton"
-                                    Content="🎯 Chọn vị trí trên màn hình"
-                                    Height="36" Style="{DynamicResource PrimaryButton}"
-                                    Cursor="Hand" Click="PickPositionButton_Click"/>
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="Từ node khác:"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Node nguồn"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <controls:NodeSearchComboBoxUserControl x:Name="CoordSourceNodeId" Height="36"
+                                              Margin="0,0,0,8"
+                                              ItemsSource="{Binding AvailableNodeOptions}"
+                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                              SelectedValue="{Binding CoordSourceNodeId, Mode=TwoWay}"/>
+                                    <TextBlock Text="Output key (x / y / position)"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="CoordSourceOutputKey" Height="36"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding CoordSourceOutputKey, Mode=TwoWay}"/>
+
+                                    <TextBlock Text="Hoặc chọn thủ công:"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,12,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="PositionDisplayText"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="13" VerticalAlignment="Center"
+                                                   Text="{Binding PositionText}"/>
+                                        <Button x:Name="PickPositionButton" Grid.Column="1"
+                                                Content="🎯 Chọn" Height="32"
+                                                Style="{DynamicResource PrimaryButton}"
+                                                Cursor="Hand" Click="PickPositionButton_Click"
+                                                Padding="10,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 5. Click tại toạ độ -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <CheckBox IsChecked="{Binding ClickOnPosition, Mode=TwoWay}"
+                                              Cursor="Hand" Margin="0,0,0,4">
+                                        <TextBlock Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center">
+                                            <Run Text="Click vào toạ độ trước khi nhấn phím"/>
+                                        </TextBlock>
+                                    </CheckBox>
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ClickOnPosition}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="Thời gian giữ chuột khi click (ms):"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" Opacity="0.8" Margin="0,4,0,4"/>
+                                        <TextBox x:Name="ClickDurationTextBox" Height="36"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 Text="{Binding ClickDurationMs, UpdateSourceTrigger=PropertyChanged}"
+                                                 VerticalContentAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 6. Thời gian delay -->
+                            <TextBlock Text="Delay giữa các lần nhấn (ms):"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBox x:Name="PressDelayTextBox" Height="36"
+                                     Text="{Binding PressDelayMs, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     FontSize="13" Padding="8,0" VerticalContentAlignment="Center"
+                                     Margin="0,0,0,16"/>
+
+                            <!-- 7. Inputs (số lần nhấn) -->
+                            <TextBlock Text="Số lần nhấn phím:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Style="{DynamicResource DialogOuterBorder}"
+                                    CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                                <StackPanel x:Name="InputsPanel"/>
+                            </Border>
+
+                            <!-- 8. Outputs -->
+                            <TextBlock Text="Giá trị trả về:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <Border Style="{DynamicResource DialogOuterBorder}"
+                                    CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                                <StackPanel x:Name="OutputsPanel"/>
+                            </Border>
+
+                            <!-- 9. Hiển thị tiêu đề (ít dùng, để cuối) -->
+                            <TextBlock Text="Tiêu đề node:"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox x:Name="TitleDisplayModeComboBox" Height="36"
+                                      Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
+                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                        Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                            </Grid>
+
                         </StackPanel>
-                    </Border>
-
-                    <!-- ═══ Click tại toạ độ ═══ -->
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
-                        <StackPanel>
-                            <CheckBox IsChecked="{Binding ClickOnPosition, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,8">
-                                <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
-                                           VerticalAlignment="Center">
-                                    <Run Text="Click vào vị trí toạ độ trước khi nhấn phím"/>
-                                </TextBlock>
-                            </CheckBox>
-                            <StackPanel>
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding ClickOnPosition}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>
-                                <TextBlock Text="Thời gian giữ chuột khi click (ms):"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
-                                <TextBox x:Name="ClickDurationTextBox"
-                                         Height="36" Style="{DynamicResource BaseTextBoxV2}"
-                                         Text="{Binding ClickDurationMs, UpdateSourceTrigger=PropertyChanged}"
-                                         VerticalContentAlignment="Center"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- ═══ Chọn ứng dụng ═══ -->
-                    <TextBlock Text="Ứng dụng cần nhấn phím:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                               TextWrapping="Wrap" Margin="0,0,0,8">
-                        <Run Text="Chọn app để tự động focus trước khi nhấn phím. Để trống = dùng cửa sổ hiện tại."/>
-                    </TextBlock>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox Grid.Column="0" Height="36" x:Name="SelectedTargetWindow"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding ActiveWindows}"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
-                        <Button Grid.Column="1"
-                                Content="↻" Height="36" Width="36" Padding="0"
-                                Margin="8,0,0,0"
-                                Style="{DynamicResource SecondaryButton}"
-                                Command="{Binding LoadWindowsCommand}"
-                                ToolTip="Tải lại danh sách cửa sổ"
-                                Cursor="Hand"/>
-                    </Grid>
-
-                    <!-- ═══ Background Mode ═══ -->
-                    <TextBlock Text="Chế độ nền (Background Mode):"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
-                               TextWrapping="Wrap" Margin="0,0,0,8">
-                        <Run Text="Khi bật, app đích sẽ không được đưa lên foreground. Giống AnyDesk/TeamViewer."/>
-                    </TextBlock>
-                    <Border Background="{DynamicResource WindowBackground}"
-                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
-                        <StackPanel>
-                            <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,8">
-                                <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
-                                           VerticalAlignment="Center">
-                                    <Run Text="Sử dụng Background Mode (không cần app active)"/>
-                                </TextBlock>
-                            </CheckBox>
-                            <StackPanel>
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding UseBackgroundMode}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>
-                                <TextBlock Text="Chế độ gửi input:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
-                                <ComboBox x:Name="BackgroundInputModeComboBox" Height="36" Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding BackgroundInputModeOptions}"
-                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding BackgroundInputMode, Mode=TwoWay}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    <!-- Inputs Section -->
-                    <TextBlock Text="Số lần nhấn phím:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-
-                    <Border Style="{DynamicResource DialogOuterBorder}"
-                            CornerRadius="8"
-                            Padding="12"
-                            Margin="0,0,0,16">
-                        <StackPanel x:Name="InputsPanel">
-                            <!-- Inputs sẽ được thêm động ở đây -->
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Outputs Section -->
-                    <TextBlock Text="Giá trị trả về:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-
-                    <Border Style="{DynamicResource DialogOuterBorder}"
-                            CornerRadius="8"
-                            Padding="12"
-                            Margin="0,0,0,16">
-                        <StackPanel x:Name="OutputsPanel">
-                            <!-- Outputs sẽ được thêm động ở đây -->
-                        </StackPanel>
-                    </Border>
-                        </StackPanel> <!-- End of panel -->
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Tab 2: Tái sử dụng flow -->
+                <!-- ═══ Tab 2: Tái sử dụng flow ═══ -->
                 <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Cấu hình vị trí port IN/OUT -->
                             <TextBlock Text="Vị trí cổng IN/OUT:"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-
+                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-
-                                <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                     <TextBlock Text="Port IN (cổng vào)"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
+                                               FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
                                               SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
-
-                                <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                     <TextBlock Text="Port OUT (cổng ra)"
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
+                                               FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
                                               SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Grid>
-
-                            <!-- Cấu hình tái sử dụng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,0,0,12"
-                                            Background="{DynamicResource WindowBackground}"
-                                            BorderBrush="{DynamicResource ControlBorderBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="8"
-                                            Padding="10">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="2*" />
-                                                <ColumnDefinition Width="2*" />
-                                                <ColumnDefinition Width="2*" />
-                                            </Grid.ColumnDefinitions>
-
-                                            <!-- Cột 1: Node IN (readonly) -->
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Node IN"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           FontSize="12"
-                                                           Opacity="0.7"
-                                                           Margin="0,0,0,4"/>
-                                                <TextBlock Text="{Binding IncomingNodeTitle}"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           FontSize="13"
-                                                           FontWeight="SemiBold"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                            </StackPanel>
-
-                                            <!-- Cột 2: Node OUT -->
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="Node OUT"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           FontSize="12"
-                                                           Opacity="0.7"
-                                                           Margin="0,0,0,4"/>
-                                                <controls:NodeSearchComboBoxUserControl Height="32"
-                                                          ItemsSource="{Binding OutgoingOptions}"
-                                                          SelectedValuePath="NodeId"
-                                                          DisplayMemberPath="Title"
-                                                          SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
-                                            </StackPanel>
-
-                                            <!-- Cột 3: Kiểu line -->
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Kiểu line OUT"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           FontSize="12"
-                                                           Opacity="0.7"
-                                                           Margin="0,0,0,4"/>
-                                                <ComboBox Height="32"
-                                                          Style="{DynamicResource BaseComboBox}"
-                                                          ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          SelectedValuePath="Key"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,12"
+                                                Background="{DynamicResource WindowBackground}"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1" CornerRadius="8" Padding="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Node IN" Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="{Binding IncomingNodeTitle}"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="13" FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Node OUT" Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <controls:NodeSearchComboBoxUserControl Height="32"
+                                                              ItemsSource="{Binding OutgoingOptions}"
+                                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                              SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Kiểu line OUT" Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -444,4 +349,3 @@
         </Grid>
     </Border>
 </local:BaseNodeDialog>
-
