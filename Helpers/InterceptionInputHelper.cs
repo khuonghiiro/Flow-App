@@ -17,6 +17,7 @@ namespace FlowMy.Helpers
         private static bool _initialized = false;
         private static bool _available = false;
         private static readonly object _lock = new();
+        private static bool _promptInProgress = false; // tránh hiện dialog nhiều lần cùng lúc
 
         // Shared hooks — khởi tạo một lần, tái sử dụng
         private static KeyboardHook? _keyboardHook;
@@ -82,19 +83,57 @@ namespace FlowMy.Helpers
         /// </summary>
         public static bool PromptAndInstallDriver(System.Windows.Window? ownerWindow = null)
         {
+            // Tránh hiện dialog nhiều lần khi user di chuột liên tục qua ComboBox
+            if (_promptInProgress) return false;
+
             if (IsDriverInstalled())
             {
-                // Driver đã có, chỉ cần init nếu chưa init
-                if (!_initialized)
-                {
-                    lock (_lock) { _initialized = false; } // reset để EnsureDriverInstalled chạy lại
-                    Reset();
-                }
+                if (!_initialized) { Reset(); }
                 return EnsureDriverInstalled();
             }
 
+            // Đảm bảo chạy trên UI thread
+            if (System.Windows.Application.Current?.Dispatcher != null
+                && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                return System.Windows.Application.Current.Dispatcher.Invoke(
+                    () => PromptAndInstallDriver(ownerWindow));
+            }
+
+            _promptInProgress = true;
+            try
+            {
+                return PromptInstallCore();
+            }
+            finally
+            {
+                _promptInProgress = false;
+            }
+        }
+
+        private static bool PromptInstallCore()
+        {
+            // Dùng Topmost invisible window làm owner để MessageBox luôn nổi trên cùng
+            System.Windows.Window MakeTopmostOwner()
+            {
+                var w = new System.Windows.Window
+                {
+                    Width = 0, Height = 0,
+                    WindowStyle = System.Windows.WindowStyle.None,
+                    ShowInTaskbar = false,
+                    Topmost = true,
+                    Opacity = 0,
+                    AllowsTransparency = true,
+                    WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen
+                };
+                w.Show();
+                return w;
+            }
+
+            var confirm = MakeTopmostOwner();
+
             var result = System.Windows.MessageBox.Show(
-                owner: ownerWindow,
+                owner: confirm,
                 messageBoxText:
                     "Background Mode cần cài Interception Driver để gửi input đến app không active.\n\n" +
                     "Driver này hoạt động ở kernel-level, tương tự các tool macro chuyên nghiệp.\n" +
@@ -104,6 +143,8 @@ namespace FlowMy.Helpers
                 button: System.Windows.MessageBoxButton.YesNo,
                 icon: System.Windows.MessageBoxImage.Question);
 
+            confirm.Close();
+
             if (result != System.Windows.MessageBoxResult.Yes)
                 return false;
 
@@ -112,8 +153,9 @@ namespace FlowMy.Helpers
 
             if (!installed)
             {
+                var failOwner = MakeTopmostOwner();
                 System.Windows.MessageBox.Show(
-                    owner: ownerWindow,
+                    owner: failOwner,
                     messageBoxText:
                         "Không cài được driver.\n\n" +
                         "Bạn có thể thử chạy FlowMy với quyền Administrator một lần để cài.\n\n" +
@@ -121,17 +163,19 @@ namespace FlowMy.Helpers
                     caption: "Cài driver thất bại",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Warning);
+                failOwner.Close();
                 return false;
             }
 
-            // Cài xong → init hooks
             Reset();
             bool ok = EnsureDriverInstalled();
+
+            var resultOwner = MakeTopmostOwner();
 
             if (ok)
             {
                 System.Windows.MessageBox.Show(
-                    owner: ownerWindow,
+                    owner: resultOwner,
                     messageBoxText: "Interception Driver đã được cài thành công.\nBackground Mode sẵn sàng sử dụng.",
                     caption: "Thành công",
                     button: System.Windows.MessageBoxButton.OK,
@@ -140,17 +184,18 @@ namespace FlowMy.Helpers
             else
             {
                 System.Windows.MessageBox.Show(
-                    owner: ownerWindow,
+                    owner: resultOwner,
                     messageBoxText:
                         "Driver đã cài nhưng chưa kích hoạt được.\n" +
                         "Vui lòng khởi động lại máy tính để driver có hiệu lực.",
                     caption: "Cần khởi động lại",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Information);
-                // Trả về true vì driver đã cài, chỉ cần reboot
+                resultOwner.Close();
                 return true;
             }
 
+            resultOwner.Close();
             return ok;
         }
         /// App tự gọi lại chính mình với argument --install-interception.

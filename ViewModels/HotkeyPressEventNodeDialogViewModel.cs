@@ -136,8 +136,13 @@ namespace FlowMy.ViewModels
             if (value == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
                 && !FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled())
             {
-                // Hỏi user cài driver
-                var ownerWindow = System.Windows.Application.Current?.MainWindow;
+                // Lấy dialog đang active (chính là node dialog này) làm owner
+                // để MessageBox hiển thị đúng trên cùng, không bị che khuất
+                var ownerWindow = System.Windows.Application.Current?.Dispatcher.Invoke(
+                    () => System.Windows.Application.Current.Windows
+                            .OfType<System.Windows.Window>()
+                            .FirstOrDefault(w => w.IsActive)
+                          ?? System.Windows.Application.Current.MainWindow);
                 bool ok = FlowMy.Helpers.InterceptionInputHelper.PromptAndInstallDriver(ownerWindow);
                 if (!ok)
                 {

@@ -127,7 +127,11 @@ namespace FlowMy.ViewModels
             if (value == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
                 && !FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled())
             {
-                var ownerWindow = System.Windows.Application.Current?.MainWindow;
+                var ownerWindow = System.Windows.Application.Current?.Dispatcher.Invoke(
+                    () => System.Windows.Application.Current.Windows
+                            .OfType<System.Windows.Window>()
+                            .FirstOrDefault(w => w.IsActive)
+                          ?? System.Windows.Application.Current.MainWindow);
                 bool ok = FlowMy.Helpers.InterceptionInputHelper.PromptAndInstallDriver(ownerWindow);
                 if (!ok)
                     BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
