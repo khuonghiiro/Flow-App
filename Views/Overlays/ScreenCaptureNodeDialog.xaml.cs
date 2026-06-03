@@ -210,6 +210,17 @@ namespace FlowMy.Views.Overlays
             var node = _viewModel.Node as ScreenCaptureNode;
             if (node == null) return;
 
+            // Flush target window combobox binding before capture
+            FlushComboBoxBinding(ManualRegionTargetWindow);
+
+            // Sync target window info from ViewModel to node before capture
+            var viewModel = _viewModel as ScreenCaptureNodeDialogViewModel;
+            if (viewModel != null)
+            {
+                node.TargetProcessName = viewModel.SelectedTargetWindow?.ProcessName ?? string.Empty;
+                node.TargetWindowTitle = viewModel.SelectedTargetWindow?.Title ?? string.Empty;
+            }
+
             // Use ScreenCaptureHelper to capture region
             bool success = Helpers.ScreenCaptureHelper.CaptureForScreenCaptureNode(node, this);
 
