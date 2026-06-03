@@ -125,6 +125,10 @@ namespace FlowMy.Models.Nodes
         private string _targetProcessName = string.Empty;
         private string _targetWindowTitle = string.Empty;
 
+        // ── Background Mode ─────────────────────────────────────────────────────
+        private bool _useBackgroundMode = false;
+        private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+
         // ── Kết quả OCR ─────────────────────────────────────────────────────────
         private string _extractedText = string.Empty;
         private string _extractedTextLines = string.Empty; // Text phân theo dòng
@@ -284,6 +288,31 @@ namespace FlowMy.Models.Nodes
         {
             get => _targetWindowTitle;
             set { if (_targetWindowTitle != value) { _targetWindowTitle = value ?? string.Empty; OnPropertyChanged(); } }
+        }
+
+        // ── Background Mode ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Sử dụng Background Mode - chụp màn hình app mà không cần active.
+        /// Khi true, app đích sẽ không được đưa lên foreground trước khi chụp.
+        /// </summary>
+        public bool UseBackgroundMode
+        {
+            get => _useBackgroundMode;
+            set { if (_useBackgroundMode != value) { _useBackgroundMode = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Chế độ gửi input khi UseBackgroundMode = true.
+        /// DirectMessage: Nhanh nhất, ít tương thích với game/DirectX.
+        /// SilentActivation: Cân bằng, tương thích cao.
+        /// ForegroundActivation: Giống user thật nhưng gián đoạn.
+        /// Auto: Tự chọn chế độ phù hợp.
+        /// </summary>
+        public FlowMy.Helpers.BackgroundInputHelper.InputMode BackgroundInputMode
+        {
+            get => _backgroundInputMode;
+            set { if (_backgroundInputMode != value) { _backgroundInputMode = value; OnPropertyChanged(); } }
         }
 
         // ── Kết quả OCR ─────────────────────────────────────────────────────────

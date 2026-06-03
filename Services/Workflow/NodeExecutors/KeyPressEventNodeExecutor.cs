@@ -21,7 +21,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var keyText = keyNode.Key;
 
             // ── 1. Focus app nếu được cấu hình ──
-            await FocusTargetAppAsync(keyNode.TargetProcessName, keyNode.TargetWindowTitle, env.CancellationToken);
+            await FocusTargetAppAsync(keyNode.TargetProcessName, keyNode.TargetWindowTitle, env.CancellationToken, keyNode.UseBackgroundMode);
+
+            // ── Get target window handle for background mode ──
+            IntPtr targetHwnd = IntPtr.Zero;
+            if (keyNode.UseBackgroundMode && !string.IsNullOrWhiteSpace(keyNode.TargetProcessName))
+            {
+                var windows = WindowHelper.GetActiveWindows();
+                var match = windows.FirstOrDefault(w => w.ProcessName == keyNode.TargetProcessName && w.Title == keyNode.TargetWindowTitle)
+                         ?? windows.FirstOrDefault(w => w.ProcessName == keyNode.TargetProcessName);
+                if (match != null)
+                    targetHwnd = match.Handle;
+            }
 
             // ── 2. Click toạ độ trước khi nhấn phím (nếu có) ──
             bool hasCoord = !string.IsNullOrWhiteSpace(keyNode.CoordSourceNodeId) || keyNode.HasManualPosition;
@@ -31,10 +42,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (keyNode.ClickOnPosition && (x != 0 || y != 0))
                 {
                     var mouse = env.Service.MouseInput;
-                    mouse.SendMouseDownAt(x, y, Services.Interaction.MouseButton.Left);
+                    mouse.SendMouseDownAt(x, y, Services.Interaction.MouseButton.Left, false, false, false, targetHwnd: targetHwnd, mode: keyNode.BackgroundInputMode);
                     if (keyNode.ClickDurationMs > 0)
                         await Task.Delay(keyNode.ClickDurationMs, env.CancellationToken);
-                    mouse.SendMouseUpAt(x, y, Services.Interaction.MouseButton.Left);
+                    mouse.SendMouseUpAt(x, y, Services.Interaction.MouseButton.Left, false, false, false, targetHwnd: targetHwnd, mode: keyNode.BackgroundInputMode);
                     await Task.Delay(50, env.CancellationToken);
                 }
             }
@@ -47,7 +58,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 try
                 {
-                    env.Service.KeyboardInput.SendKeyPress(keyText, repeatCount, delayMs);
+                    env.Service.KeyboardInput.SendKeyPress(keyText, repeatCount, delayMs, targetHwnd, keyNode.BackgroundInputMode);
                 }
                 catch (Exception ex)
                 {
@@ -124,7 +135,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return null;
         }
 
-        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct)
+        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct, bool useBackgroundMode = false)
         {
             if (string.IsNullOrWhiteSpace(processName)) return;
             var windows = WindowHelper.GetActiveWindows();
@@ -132,8 +143,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                      ?? windows.FirstOrDefault(w => w.ProcessName == processName);
             if (match != null)
             {
-                WindowHelper.BringToFront(match.Handle);
-                await Task.Delay(150, ct);
+                // Only activate if not in background mode
+                if (!useBackgroundMode)
+                {
+                    WindowHelper.BringToFront(match.Handle);
+                    await Task.Delay(150, ct);
+                }
             }
         }
     }

@@ -290,6 +290,46 @@
                                 Cursor="Hand"/>
                     </Grid>
 
+                    <!-- ═══ Background Mode ═══ -->
+                    <TextBlock Text="Chế độ nền (Background Mode):"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                               TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="Khi bật, app đích sẽ không được đưa lên foreground. Giống AnyDesk/TeamViewer."/>
+                    </TextBlock>
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                        <StackPanel>
+                            <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,8">
+                                <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                           VerticalAlignment="Center">
+                                    <Run Text="Sử dụng Background Mode (không cần app active)"/>
+                                </TextBlock>
+                            </CheckBox>
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding UseBackgroundMode}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Chế độ gửi input:"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="BackgroundInputModeComboBox" Height="36" Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding BackgroundInputModeOptions}"
+                                          SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding BackgroundInputMode, Mode=TwoWay}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Outputs Section -->
                     <TextBlock Text="Outputs:" x:Name="TextBlockOutputPanel"
                                Foreground="{DynamicResource TextBrush}"

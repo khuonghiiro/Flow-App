@@ -133,6 +133,7 @@ namespace FlowMy.Views.Overlays
         private void PickPositionButton_Click(object sender, RoutedEventArgs e)
         {
             // Focus app được chọn trước khi mở overlay (để chọn đúng vị trí trong app đó)
+            // Always activate the target app when picking position, regardless of background mode
             var targetWindow = _viewModel.SelectedTargetWindow;
             if (targetWindow != null)
             {

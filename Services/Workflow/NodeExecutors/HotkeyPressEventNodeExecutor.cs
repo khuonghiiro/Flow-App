@@ -23,7 +23,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var hotkeyText = hotkeyNode.Key;
 
             // ── 1. Focus app nếu được cấu hình ──
-            await FocusTargetAppAsync(hotkeyNode.TargetProcessName, hotkeyNode.TargetWindowTitle, env.CancellationToken);
+            await FocusTargetAppAsync(hotkeyNode.TargetProcessName, hotkeyNode.TargetWindowTitle, env.CancellationToken, hotkeyNode.UseBackgroundMode);
 
             // ── 2. Xử lý theo chế độ TriggerMode ──
             if (hotkeyNode.TriggerMode == HotkeyTriggerModeEnum.Listen)
@@ -88,6 +88,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private async Task ExecuteSendModeAsync(HotkeyPressEventNode hotkeyNode, NodeExecutionEnvironment env, string? hotkeyText, IReadOnlyList<WorkflowConnection> connections)
         {
+            // ── Get target window handle for background mode ──
+            IntPtr targetHwnd = IntPtr.Zero;
+            if (hotkeyNode.UseBackgroundMode && !string.IsNullOrWhiteSpace(hotkeyNode.TargetProcessName))
+            {
+                var windows = WindowHelper.GetActiveWindows();
+                var match = windows.FirstOrDefault(w => w.ProcessName == hotkeyNode.TargetProcessName && w.Title == hotkeyNode.TargetWindowTitle)
+                         ?? windows.FirstOrDefault(w => w.ProcessName == hotkeyNode.TargetProcessName);
+                if (match != null)
+                    targetHwnd = match.Handle;
+            }
+
             // ── Click toạ độ trước khi nhấn hotkey (nếu có) ──
             bool hasCoord = !string.IsNullOrWhiteSpace(hotkeyNode.CoordSourceNodeId) || hotkeyNode.HasManualPosition;
             if (hasCoord)
@@ -96,10 +107,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (hotkeyNode.ClickOnPosition && (x != 0 || y != 0))
                 {
                     var mouse = env.Service.MouseInput;
-                    mouse.SendMouseDownAt(x, y, Services.Interaction.MouseButton.Left);
+                    mouse.SendMouseDownAt(x, y, Services.Interaction.MouseButton.Left, false, false, false, targetHwnd: targetHwnd, mode: hotkeyNode.BackgroundInputMode);
                     if (hotkeyNode.ClickDurationMs > 0)
                         await Task.Delay(hotkeyNode.ClickDurationMs, env.CancellationToken);
-                    mouse.SendMouseUpAt(x, y, Services.Interaction.MouseButton.Left);
+                    mouse.SendMouseUpAt(x, y, Services.Interaction.MouseButton.Left, false, false, false, targetHwnd: targetHwnd, mode: hotkeyNode.BackgroundInputMode);
                     await Task.Delay(50, env.CancellationToken);
                 }
             }
@@ -112,7 +123,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 try
                 {
-                    env.Service.KeyboardInput.SendHotkeyPress(hotkeyText, repeatCount, delayMs);
+                    env.Service.KeyboardInput.SendHotkeyPress(hotkeyText, repeatCount, delayMs, targetHwnd, hotkeyNode.BackgroundInputMode);
                 }
                 catch (Exception ex)
                 {
@@ -179,7 +190,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return null;
         }
 
-        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct)
+        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct, bool useBackgroundMode = false)
         {
             if (string.IsNullOrWhiteSpace(processName)) return;
             var windows = WindowHelper.GetActiveWindows();
@@ -187,8 +198,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                      ?? windows.FirstOrDefault(w => w.ProcessName == processName);
             if (match != null)
             {
-                WindowHelper.BringToFront(match.Handle);
-                await Task.Delay(150, ct);
+                // Only activate if not in background mode
+                if (!useBackgroundMode)
+                {
+                    WindowHelper.BringToFront(match.Handle);
+                    await Task.Delay(150, ct);
+                }
             }
         }
     }

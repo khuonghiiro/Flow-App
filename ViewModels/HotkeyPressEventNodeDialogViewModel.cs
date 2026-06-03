@@ -45,6 +45,18 @@ namespace FlowMy.ViewModels
         public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
         public IRelayCommand LoadWindowsCommand { get; }
 
+        // ── Background Mode ─────────────────────────────────────────────────────
+        [ObservableProperty] private bool _useBackgroundMode = false;
+        [ObservableProperty] private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+        public ObservableCollection<BackgroundInputModeOption> BackgroundInputModeOptions { get; } = new()
+        {
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto, "Auto (Tự chọn)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver, "Interception Driver (Tốt nhất - cần cài driver)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.DirectMessage, "DirectMessage (Nhanh, không cần driver)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.SilentActivation, "SilentActivation (Cân bằng)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation, "ForegroundActivation (Giống thật)")
+        };
+        
         public HotkeyPressEventNodeDialogViewModel(HotkeyPressEventNode node, IWorkflowEditorHost host)
             : base(node, host)
         {
@@ -52,6 +64,10 @@ namespace FlowMy.ViewModels
             _hotkeyDisplayText = FormatHotkeyText(node.Key);
             _pressDelayMs = node.PressDelayMs;
             _triggerMode = node.TriggerMode;
+
+            // Sync background mode
+            UseBackgroundMode = node.UseBackgroundMode;
+            BackgroundInputMode = node.BackgroundInputMode;
 
             // Sync toạ độ & click
             CoordSourceNodeId    = node.CoordSourceNodeId;
@@ -113,6 +129,22 @@ namespace FlowMy.ViewModels
         partial void OnCoordSourceNodeIdChanged(string? value)
         {
             RefreshOutputKeyOptions();
+        }
+
+        partial void OnBackgroundInputModeChanged(FlowMy.Helpers.BackgroundInputHelper.InputMode value)
+        {
+            if (value == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
+                && !FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled())
+            {
+                // Hỏi user cài driver
+                var ownerWindow = System.Windows.Application.Current?.MainWindow;
+                bool ok = FlowMy.Helpers.InterceptionInputHelper.PromptAndInstallDriver(ownerWindow);
+                if (!ok)
+                {
+                    // Revert về Auto nếu user từ chối hoặc cài thất bại
+                    BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+                }
+            }
         }
 
         // ── Lấy danh sách upstream nodes (kết nối đến port IN) ───────────────
@@ -195,6 +227,9 @@ namespace FlowMy.ViewModels
 
             _hotkeyPressNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
             _hotkeyPressNode.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;
+
+            _hotkeyPressNode.UseBackgroundMode = UseBackgroundMode;
+            _hotkeyPressNode.BackgroundInputMode = BackgroundInputMode;
         }
 
         [RelayCommand]
@@ -226,5 +261,22 @@ namespace FlowMy.ViewModels
                 // swallow errors
             }
         }
+    }
+
+    /// <summary>
+    /// Wrapper class để hiển thị BackgroundInputMode trong ComboBox với text tùy chỉnh.
+    /// </summary>
+    public class BackgroundInputModeOption
+    {
+        public FlowMy.Helpers.BackgroundInputHelper.InputMode Value { get; set; }
+        public string DisplayName { get; set; }
+
+        public BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode value, string displayName)
+        {
+            Value = value;
+            DisplayName = displayName;
+        }
+
+        public override string ToString() => DisplayName;
     }
 }

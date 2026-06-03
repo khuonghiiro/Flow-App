@@ -49,6 +49,20 @@ namespace FlowMy
         #region Application Lifecycle
         protected override void OnStartup(StartupEventArgs e)
         {
+            // ── Handle elevated sub-process for driver installation ──
+            if (e.Args.Length > 0 && e.Args[0] == "--install-interception-driver")
+            {
+                int exitCode = 1;
+                try
+                {
+                    bool ok = InputInterceptorNS.InputInterceptor.InstallDriver();
+                    exitCode = ok ? 0 : 1;
+                }
+                catch { exitCode = 1; }
+                Shutdown(exitCode);
+                return;
+            }
+
             try
             {
                 SetupGlobalExceptionHandlers();
@@ -85,6 +99,23 @@ namespace FlowMy
                 }
                 catch { }
 
+                // Nếu driver đã cài từ trước → init hooks ngầm (không cần admin, không block UI)
+                _ = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        if (FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled())
+                        {
+                            FlowMy.Helpers.InterceptionInputHelper.EnsureDriverInstalled();
+                            _logger?.LogInformation("Interception driver available: True");
+                        }
+                        // Nếu chưa cài → không làm gì, user sẽ cài khi chủ động chọn InterceptionDriver
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Interception driver init skipped");
+                    }
+                });
                 base.OnStartup(e);
 
             }

@@ -29,24 +29,39 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
-                // ── 1. Focus app nếu được cấu hình ──
-                await FocusTargetAppAsync(posNode.TargetProcessName, posNode.TargetWindowTitle, env.CancellationToken);
+                // ── 1. Focus app nếu được cấu hình (bỏ qua nếu background mode) ──
+                await FocusTargetAppAsync(posNode.TargetProcessName, posNode.TargetWindowTitle,
+                    env.CancellationToken, posNode.UseBackgroundMode);
 
-                // ── 2. Giải toạ độ ──
+                // ── 2. Lấy handle window đích khi background mode ──
+                IntPtr targetHwnd = IntPtr.Zero;
+                if (posNode.UseBackgroundMode && !string.IsNullOrWhiteSpace(posNode.TargetProcessName))
+                {
+                    var windows = WindowHelper.GetActiveWindows();
+                    var match = windows.FirstOrDefault(w =>
+                        w.ProcessName == posNode.TargetProcessName && w.Title == posNode.TargetWindowTitle)
+                        ?? windows.FirstOrDefault(w => w.ProcessName == posNode.TargetProcessName);
+                    if (match != null)
+                        targetHwnd = match.Handle;
+                }
+
+                // ── 3. Giải toạ độ ──
                 var (x, y) = ResolveCoordinates(posNode, env);
 
-                // ── 2. Thực hiện hành động ──
+                // ── 4. Thực hiện hành động ──
                 switch (posNode.MouseAction)
                 {
                     case ScreenPositionMouseAction.LeftClick:
                         await PerformClickAsync(env, x, y, MouseButton.Left,
                             posNode.ClickCount, posNode.HoldDurationMs,
+                            targetHwnd, posNode.BackgroundInputMode,
                             env.CancellationToken);
                         break;
 
                     case ScreenPositionMouseAction.RightClick:
                         await PerformClickAsync(env, x, y, MouseButton.Right,
                             posNode.ClickCount, posNode.HoldDurationMs,
+                            targetHwnd, posNode.BackgroundInputMode,
                             env.CancellationToken);
                         break;
 
@@ -54,6 +69,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         await PerformScrollAsync(env, x, y,
                             notchDirection: 1,
                             posNode.ScrollCount, posNode.ScrollIntervalMs,
+                            targetHwnd, posNode.BackgroundInputMode,
                             env.CancellationToken);
                         break;
 
@@ -61,6 +77,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         await PerformScrollAsync(env, x, y,
                             notchDirection: -1,
                             posNode.ScrollCount, posNode.ScrollIntervalMs,
+                            targetHwnd, posNode.BackgroundInputMode,
                             env.CancellationToken);
                         break;
 
@@ -103,7 +120,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (!string.IsNullOrWhiteSpace(raw) && raw != "—")
                 {
-                    // Thử parse "X: 123, Y: 456" hoặc "123,456" hoặc "123"
                     var parsed = TryParseCoordString(raw, posNode.CoordSourceOutputKey);
                     if (parsed.HasValue)
                         return parsed.Value;
@@ -154,6 +170,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             MouseButton button,
             int clickCount,
             int holdDurationMs,
+            IntPtr targetHwnd,
+            BackgroundInputHelper.InputMode mode,
             CancellationToken ct)
         {
             if (clickCount < 1) clickCount = 1;
@@ -166,13 +184,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 ct.ThrowIfCancellationRequested();
 
                 // Di chuyển chuột đến toạ độ, nhấn xuống
-                mouse.SendMouseDownAt(x, y, button);
+                mouse.SendMouseDownAt(x, y, button, false, false, false, targetHwnd, mode);
 
                 // Giữ trong HoldDurationMs ms rồi nhả
                 if (holdDurationMs > 0)
                     await Task.Delay(holdDurationMs, ct);
 
-                mouse.SendMouseUpAt(x, y, button);
+                mouse.SendMouseUpAt(x, y, button, false, false, false, targetHwnd, mode);
 
                 // Khoảng nghỉ ngắn giữa các lần click (trừ lần cuối)
                 if (i < clickCount - 1)
@@ -190,6 +208,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             int notchDirection,   // +1 = up, -1 = down
             int scrollCount,
             int scrollIntervalMs,
+            IntPtr targetHwnd,
+            BackgroundInputHelper.InputMode mode,
             CancellationToken ct)
         {
             if (scrollCount < 1) scrollCount = 1;
@@ -201,20 +221,29 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 ct.ThrowIfCancellationRequested();
 
-                // Lăn 1 notch tại toạ độ đã chọn
-                mouse.SendMouseScrollAt(x, y, notchDirection);
+                if (targetHwnd != IntPtr.Zero && mode != BackgroundInputHelper.InputMode.ForegroundActivation)
+                {
+                    // Background scroll: dùng PostMessage trực tiếp
+                    BackgroundInputHelper.SendMouseScroll(targetHwnd, x, y, notchDirection, mode);
+                }
+                else
+                {
+                    // Foreground scroll: dùng SendInput
+                    mouse.SendMouseScrollAt(x, y, notchDirection);
+                }
 
-                // Chờ ScrollIntervalMs trước lần tiếp theo (kể cả lần cuối để đúng timing)
+                // Chờ ScrollIntervalMs trước lần tiếp theo
                 if (scrollIntervalMs > 0)
                     await Task.Delay(scrollIntervalMs, ct);
             }
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // Focus target app
+        // Focus target app (bỏ qua nếu background mode)
         // ─────────────────────────────────────────────────────────────────────
 
-        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct)
+        private static async Task FocusTargetAppAsync(string processName, string windowTitle,
+            CancellationToken ct, bool useBackgroundMode = false)
         {
             if (string.IsNullOrWhiteSpace(processName)) return;
             var windows = WindowHelper.GetActiveWindows();
@@ -222,8 +251,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                      ?? windows.FirstOrDefault(w => w.ProcessName == processName);
             if (match != null)
             {
-                WindowHelper.BringToFront(match.Handle);
-                await Task.Delay(150, ct);
+                // Chỉ đưa app lên foreground khi không dùng background mode
+                if (!useBackgroundMode)
+                {
+                    WindowHelper.BringToFront(match.Handle);
+                    await Task.Delay(150, ct);
+                }
             }
         }
     }

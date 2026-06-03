@@ -496,10 +496,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         // Resolve actual screen coords (handles TargetApp resize scaling)
                         var (ax, ay) = ResolveScreenCoords(action, targetHwnd, isTargetApp);
 
-                        // Đảm bảo target app luôn là foreground trước mỗi action.
-                        // SendInput chỉ hoạt động khi target là foreground window.
+                        // Đảm bảo target app luôn là foreground trước mỗi action (bỏ qua nếu background mode).
+                        // SendInput chỉ hoạt động khi target là foreground window, nhưng PostMessage không cần.
                         // Chỉ gọi khi cần (tránh gọi liên tục làm chậm).
-                        if (targetHwnd != IntPtr.Zero && IsWindow(targetHwnd)
+                        if (!macroNode.UseBackgroundMode && targetHwnd != IntPtr.Zero && IsWindow(targetHwnd)
                             && GetForegroundWindow() != targetHwnd)
                         {
                             ForceForeground(targetHwnd);

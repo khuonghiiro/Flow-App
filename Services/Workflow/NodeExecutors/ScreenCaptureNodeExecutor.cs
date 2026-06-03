@@ -92,8 +92,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return;
             }
 
-            // Đưa app lên trước nếu được cấu hình
-            if (!string.IsNullOrWhiteSpace(cap.TargetProcessName))
+            // Đưa app lên trước nếu được cấu hình và không dùng background mode
+            if (!string.IsNullOrWhiteSpace(cap.TargetProcessName) && !cap.UseBackgroundMode)
             {
                 var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
                 var match = windows.FirstOrDefault(wnd =>
@@ -161,8 +161,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             if (w <= 0 || h <= 0) return;
 
-            // Đưa app lên trước nếu được cấu hình
-            if (!string.IsNullOrWhiteSpace(cap.TargetProcessName))
+            // Đưa app lên trước nếu được cấu hình và không dùng background mode
+            if (!string.IsNullOrWhiteSpace(cap.TargetProcessName) && !cap.UseBackgroundMode)
             {
                 var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
                 var match = windows.FirstOrDefault(wnd =>

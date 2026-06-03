@@ -49,6 +49,10 @@ namespace FlowMy.Models
         private int _countdownSeconds = 3;
         private bool _stayOnTargetAfterExecution = true;
 
+        // ── Background Mode ─────────────────────────────────────────────────────
+        private bool _useBackgroundMode = false;
+        private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+
         public MacroRecorderNode()
         {
             Type = NodeType.MacroRecorder;
@@ -256,6 +260,31 @@ namespace FlowMy.Models
                 _stayOnTargetAfterExecution = value;
                 OnPropertyChanged();
             }
+        }
+
+        // ── Background Mode ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Sử dụng Background Mode - gửi input đến app mà không cần active (giống AnyDesk/TeamViewer).
+        /// Khi true, app đích sẽ không được đưa lên foreground.
+        /// </summary>
+        public bool UseBackgroundMode
+        {
+            get => _useBackgroundMode;
+            set { if (_useBackgroundMode != value) { _useBackgroundMode = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Chế độ gửi input khi UseBackgroundMode = true.
+        /// DirectMessage: Nhanh nhất, ít tương thích với game/DirectX.
+        /// SilentActivation: Cân bằng, tương thích cao.
+        /// ForegroundActivation: Giống user thật nhưng gián đoạn.
+        /// Auto: Tự chọn chế độ phù hợp.
+        /// </summary>
+        public FlowMy.Helpers.BackgroundInputHelper.InputMode BackgroundInputMode
+        {
+            get => _backgroundInputMode;
+            set { if (_backgroundInputMode != value) { _backgroundInputMode = value; OnPropertyChanged(); } }
         }
     }
 }

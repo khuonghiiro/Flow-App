@@ -20,10 +20,21 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
-                // ── 1. Focus app nếu được cấu hình ──
-                await FocusTargetAppAsync(mouseNode.TargetProcessName, mouseNode.TargetWindowTitle, env.CancellationToken);
+                // ── 1. Focus app nếu được cấu hình (bỏ qua nếu background mode) ──
+                await FocusTargetAppAsync(mouseNode.TargetProcessName, mouseNode.TargetWindowTitle, env.CancellationToken, mouseNode.UseBackgroundMode);
 
-                // ── 2. Resolve toạ độ từ node nguồn hoặc thủ công ──
+                // ── 2. Lấy handle window đích khi dùng background mode ──
+                IntPtr targetHwnd = IntPtr.Zero;
+                if (mouseNode.UseBackgroundMode && !string.IsNullOrWhiteSpace(mouseNode.TargetProcessName))
+                {
+                    var windows = WindowHelper.GetActiveWindows();
+                    var match = windows.FirstOrDefault(w => w.ProcessName == mouseNode.TargetProcessName && w.Title == mouseNode.TargetWindowTitle)
+                             ?? windows.FirstOrDefault(w => w.ProcessName == mouseNode.TargetProcessName);
+                    if (match != null)
+                        targetHwnd = match.Handle;
+                }
+
+                // ── 3. Resolve toạ độ từ node nguồn hoặc thủ công ──
                 bool hasCoord = !string.IsNullOrWhiteSpace(mouseNode.CoordSourceNodeId) || mouseNode.HasManualPosition;
                 int cx = 0, cy = 0;
                 if (hasCoord)
@@ -33,24 +44,37 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (!Enum.TryParse<MouseButton>(mouseNode.MouseButton, out var button))
                     button = MouseButton.Left;
 
-                // ── 3. Click tại toạ độ trước khi thực hiện (nếu được bật và có toạ độ) ──
+                // ── 4. Click tại toạ độ trước khi thực hiện (nếu được bật và có toạ độ) ──
                 if (hasCoord && mouseNode.ClickOnPosition)
                 {
-                    env.Service.MouseInput.SendMouseDownAt(cx, cy, MouseButton.Left);
+                    env.Service.MouseInput.SendMouseDownAt(cx, cy, MouseButton.Left, false, false, false, targetHwnd, mouseNode.BackgroundInputMode);
                     if (mouseNode.ClickDurationMs > 0)
                         await Task.Delay(mouseNode.ClickDurationMs, env.CancellationToken);
-                    env.Service.MouseInput.SendMouseUpAt(cx, cy, MouseButton.Left);
+                    env.Service.MouseInput.SendMouseUpAt(cx, cy, MouseButton.Left, false, false, false, targetHwnd, mouseNode.BackgroundInputMode);
                     await Task.Delay(50, env.CancellationToken);
                 }
 
-                // ── 4. Thực thi mouse event ──
+                // ── 5. Thực thi mouse event ──
                 if (button == MouseButton.ScrollUp || button == MouseButton.ScrollDown)
                 {
                     var scrollSpeed = mouseNode.ScrollSpeed;
                     if (hasCoord)
-                        env.Service.MouseInput.SendMouseScrollAt(cx, cy, button == MouseButton.ScrollUp ? 1 : -1);
+                    {
+                        if (mouseNode.UseBackgroundMode && targetHwnd != IntPtr.Zero)
+                        {
+                            // Background scroll dùng BackgroundInputHelper
+                            int delta = button == MouseButton.ScrollUp ? scrollSpeed : -scrollSpeed;
+                            BackgroundInputHelper.SendMouseScroll(targetHwnd, cx, cy, delta, mouseNode.BackgroundInputMode);
+                        }
+                        else
+                        {
+                            env.Service.MouseInput.SendMouseScrollAt(cx, cy, button == MouseButton.ScrollUp ? 1 : -1);
+                        }
+                    }
                     else
+                    {
                         env.Service.MouseInput.SendMouseScroll(button, scrollSpeed);
+                    }
                 }
                 else
                 {
@@ -59,14 +83,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                     if (hasCoord)
                     {
-                        // Click tại toạ độ cụ thể
                         for (int i = 0; i < repeatCount; i++)
                         {
                             env.CancellationToken.ThrowIfCancellationRequested();
-                            env.Service.MouseInput.SendMouseDownAt(cx, cy, button);
+                            env.Service.MouseInput.SendMouseDownAt(cx, cy, button, false, false, false, targetHwnd, mouseNode.BackgroundInputMode);
                             if (holdDuration > 0)
                                 await Task.Delay((int)(holdDuration * 1000), env.CancellationToken);
-                            env.Service.MouseInput.SendMouseUpAt(cx, cy, button);
+                            env.Service.MouseInput.SendMouseUpAt(cx, cy, button, false, false, false, targetHwnd, mouseNode.BackgroundInputMode);
                             if (i < repeatCount - 1)
                                 await Task.Delay(50, env.CancellationToken);
                         }
@@ -142,7 +165,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return null;
         }
 
-        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct)
+        private static async Task FocusTargetAppAsync(string processName, string windowTitle, CancellationToken ct, bool useBackgroundMode = false)
         {
             if (string.IsNullOrWhiteSpace(processName)) return;
             var windows = WindowHelper.GetActiveWindows();
@@ -150,11 +173,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                      ?? windows.FirstOrDefault(w => w.ProcessName == processName);
             if (match != null)
             {
-                WindowHelper.BringToFront(match.Handle);
-                await Task.Delay(150, ct);
+                // Chỉ đưa app lên foreground khi không dùng background mode
+                if (!useBackgroundMode)
+                {
+                    WindowHelper.BringToFront(match.Handle);
+                    await Task.Delay(150, ct);
+                }
             }
         }
     }
 }
-
-

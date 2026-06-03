@@ -60,9 +60,38 @@ namespace FlowMy.Services.Interaction
         /// </summary>
         public void SendKeyPress(string keyText, int repeatCount = 1, int delayMs = 50)
         {
+            SendKeyPress(keyText, repeatCount, delayMs, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+        }
+
+        public void SendKeyPress(string keyText, int repeatCount, int delayMs,
+                               IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+        {
             if (string.IsNullOrWhiteSpace(keyText)) return;
             if (repeatCount < 1) repeatCount = 1;
             if (delayMs < 0) delayMs = 0;
+
+            // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
+            if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                var vk = KeyInterop.VirtualKeyFromKey(ParseKey(keyText) ?? Key.None);
+                if (vk != 0)
+                {
+                    // InterceptionDriver: kernel-level
+                    if (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
+                        || (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto
+                            && FlowMy.Helpers.InterceptionInputHelper.IsAvailable()))
+                    {
+                        for (int i = 0; i < repeatCount; i++)
+                        {
+                            FlowMy.Helpers.InterceptionInputHelper.SendKey((ushort)vk);
+                            if (i < repeatCount - 1) Thread.Sleep(delayMs);
+                        }
+                        return;
+                    }
+                    FlowMy.Helpers.BackgroundInputHelper.SendKey(targetHwnd, (ushort)vk, mode);
+                    return;
+                }
+            }
 
             var key = ParseKey(keyText);
             if (key == null)
@@ -288,6 +317,12 @@ namespace FlowMy.Services.Interaction
         /// </summary>
         public void SendHotkeyPress(string hotkeyText, int repeatCount = 1, int delayMs = 50)
         {
+            SendHotkeyPress(hotkeyText, repeatCount, delayMs, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+        }
+
+        public void SendHotkeyPress(string hotkeyText, int repeatCount, int delayMs,
+                                  IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+        {
             if (string.IsNullOrWhiteSpace(hotkeyText)) return;
             if (repeatCount < 1) repeatCount = 1;
             if (delayMs < 0) delayMs = 0;
@@ -297,6 +332,49 @@ namespace FlowMy.Services.Interaction
             {
                 // Log or handle parsing failure
                 System.Diagnostics.Debug.WriteLine($"Failed to parse hotkey: {hotkeyText}");
+                return;
+            }
+
+            // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
+            if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                // InterceptionDriver: kernel-level, hoạt động với mọi app
+                if (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
+                    || (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto
+                        && FlowMy.Helpers.InterceptionInputHelper.IsAvailable()))
+                {
+                    for (int i = 0; i < repeatCount; i++)
+                    {
+                        FlowMy.Helpers.InterceptionInputHelper.SendHotkey(hotkeyText, 1, delayMs);
+                        if (i < repeatCount - 1) Thread.Sleep(delayMs);
+                    }
+                    return;
+                }
+
+                // Gửi từng phím trong hotkey: hold modifiers → press main keys → release modifiers
+                for (int i = 0; i < repeatCount; i++)
+                {
+                    // Nhấn modifier keys (WM_KEYDOWN)
+                    foreach (var key in keys.Modifiers)
+                    {
+                        var vk = (ushort)System.Windows.Input.KeyInterop.VirtualKeyFromKey(key);
+                        if (vk != 0) SendModifierKeyDirectMessage(targetHwnd, vk, down: true);
+                    }
+                    // Nhấn + thả main keys
+                    foreach (var key in keys.MainKeys)
+                    {
+                        var vk = (ushort)System.Windows.Input.KeyInterop.VirtualKeyFromKey(key);
+                        if (vk != 0) FlowMy.Helpers.BackgroundInputHelper.SendKey(targetHwnd, vk, mode);
+                    }
+                    // Thả modifier keys (WM_KEYUP, thứ tự ngược)
+                    for (int j = keys.Modifiers.Count - 1; j >= 0; j--)
+                    {
+                        var vk = (ushort)System.Windows.Input.KeyInterop.VirtualKeyFromKey(keys.Modifiers[j]);
+                        if (vk != 0) SendModifierKeyDirectMessage(targetHwnd, vk, down: false);
+                    }
+                    if (i < repeatCount - 1)
+                        Thread.Sleep(delayMs);
+                }
                 return;
             }
 
@@ -677,6 +755,24 @@ namespace FlowMy.Services.Interaction
                 "win" or "windows" => Key.LWin,
                 _ => null
             };
+        }
+
+        /// <summary>
+        /// Gửi WM_KEYDOWN / WM_KEYUP cho modifier key đến window nền mà không cần focus.
+        /// </summary>
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        private static void SendModifierKeyDirectMessage(IntPtr hWnd, ushort vk, bool down)
+        {
+            const uint WM_KEYDOWN = 0x0100;
+            const uint WM_KEYUP   = 0x0101;
+            uint scan = MapVirtualKey(vk, 0);
+            // lParam cho KEYDOWN: repeat=1, scan, extended=0, context=0, prev=0, transition=0
+            // lParam cho KEYUP:   repeat=1, scan, extended=0, context=0, prev=1, transition=1
+            IntPtr lParamDown = (IntPtr)((scan << 16) | 1);
+            IntPtr lParamUp   = (IntPtr)((1 << 31) | (1 << 30) | (scan << 16) | 1);
+            PostMessage(hWnd, down ? WM_KEYDOWN : WM_KEYUP, (IntPtr)vk, down ? lParamDown : lParamUp);
         }
 
         private class ParsedHotkey

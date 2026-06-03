@@ -43,12 +43,28 @@ namespace FlowMy.ViewModels
         public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
         public IRelayCommand LoadWindowsCommand { get; }
 
+        // ── Background Mode ─────────────────────────────────────────────────────
+        [ObservableProperty] private bool _useBackgroundMode = false;
+        [ObservableProperty] private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+        public ObservableCollection<BackgroundInputModeOption> BackgroundInputModeOptions { get; } = new()
+        {
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto, "Auto (Tự chọn)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver, "Interception Driver (Tốt nhất - cần cài driver)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.DirectMessage, "DirectMessage (Nhanh, không cần driver)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.SilentActivation, "SilentActivation (Cân bằng)"),
+            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation, "ForegroundActivation (Giống thật)")
+        };
+        
         public KeyPressEventNodeDialogViewModel(KeyPressEventNode node, IWorkflowEditorHost host)
             : base(node, host)
         {
             _keyPressNode = node;
             _keyDisplayText = FormatKeyText(node.Key);
             _pressDelayMs = node.PressDelayMs;
+
+            // Sync background mode
+            UseBackgroundMode = node.UseBackgroundMode;
+            BackgroundInputMode = node.BackgroundInputMode;
 
             // Sync toạ độ & click
             CoordSourceNodeId    = node.CoordSourceNodeId;
@@ -104,6 +120,18 @@ namespace FlowMy.ViewModels
         partial void OnCoordSourceNodeIdChanged(string? value)
         {
             RefreshOutputKeyOptions();
+        }
+
+        partial void OnBackgroundInputModeChanged(FlowMy.Helpers.BackgroundInputHelper.InputMode value)
+        {
+            if (value == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
+                && !FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled())
+            {
+                var ownerWindow = System.Windows.Application.Current?.MainWindow;
+                bool ok = FlowMy.Helpers.InterceptionInputHelper.PromptAndInstallDriver(ownerWindow);
+                if (!ok)
+                    BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+            }
         }
 
         // ── Lấy danh sách upstream nodes (kết nối đến port IN) ───────────────
@@ -188,6 +216,9 @@ namespace FlowMy.ViewModels
             _keyPressNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
             _keyPressNode.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;
 
+            _keyPressNode.UseBackgroundMode = UseBackgroundMode;
+            _keyPressNode.BackgroundInputMode = BackgroundInputMode;
+
             if (needSyncDataPanels)
             {
                 _host.RequestSyncDataPanels(immediate: true);
@@ -220,8 +251,6 @@ namespace FlowMy.ViewModels
         }
     }
 
-   
-   
     /// <summary>
     /// Wrapper class để hiển thị TitleDisplayMode trong ComboBox với text tùy chỉnh.
     /// </summary>

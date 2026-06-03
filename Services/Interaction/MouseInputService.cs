@@ -111,8 +111,27 @@ namespace FlowMy.Services.Interaction
                                      int repeatCount = 1, double holdDurationSeconds = 0,
                                      bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
         {
+            SendMouseClickAt(screenX, screenY, button, repeatCount, holdDurationSeconds, shiftHeld, ctrlHeld, altHeld, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+        }
+
+        public void SendMouseClickAt(int screenX, int screenY, MouseButton button,
+                                     int repeatCount, double holdDurationSeconds,
+                                     bool shiftHeld, bool ctrlHeld, bool altHeld,
+                                     IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+        {
             if (repeatCount < 1) repeatCount = 1;
             if (holdDurationSeconds < 0) holdDurationSeconds = 0;
+
+            // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
+            if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                for (int i = 0; i < repeatCount; i++)
+                {
+                    FlowMy.Helpers.BackgroundInputHelper.SendMouseClick(targetHwnd, screenX, screenY, button.ToString(), mode);
+                    if (i < repeatCount - 1) Thread.Sleep(50);
+                }
+                return;
+            }
 
             GetCursorPos(out POINT saved);
             SetCursorPos(screenX, screenY);
@@ -143,6 +162,20 @@ namespace FlowMy.Services.Interaction
         public void SendMouseDownAt(int screenX, int screenY, MouseButton button,
                                     bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
         {
+            SendMouseDownAt(screenX, screenY, button, shiftHeld, ctrlHeld, altHeld, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+        }
+
+        public void SendMouseDownAt(int screenX, int screenY, MouseButton button,
+                                    bool shiftHeld, bool ctrlHeld, bool altHeld,
+                                    IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+        {
+            // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
+            if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                FlowMy.Helpers.BackgroundInputHelper.SendMouseDown(targetHwnd, screenX, screenY, button.ToString(), mode);
+                return;
+            }
+
             // Di chuyển chuột thật đến vị trí action
             GetCursorPos(out POINT saved);
             SetCursorPos(screenX, screenY);
@@ -164,6 +197,20 @@ namespace FlowMy.Services.Interaction
         public void SendMouseUpAt(int screenX, int screenY, MouseButton button,
                                   bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
         {
+            SendMouseUpAt(screenX, screenY, button, shiftHeld, ctrlHeld, altHeld, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+        }
+
+        public void SendMouseUpAt(int screenX, int screenY, MouseButton button,
+                                  bool shiftHeld, bool ctrlHeld, bool altHeld,
+                                  IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+        {
+            // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
+            if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                FlowMy.Helpers.BackgroundInputHelper.SendMouseUp(targetHwnd, screenX, screenY, button.ToString(), mode);
+                return;
+            }
+
             // Di chuyển chuột thật đến vị trí thả
             SetCursorPos(screenX, screenY);
             Thread.Sleep(10);
@@ -186,7 +233,21 @@ namespace FlowMy.Services.Interaction
         /// </summary>
         public void SendMouseScrollAt(int screenX, int screenY, int notches)
         {
+            SendMouseScrollAt(screenX, screenY, notches, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+        }
+
+        public void SendMouseScrollAt(int screenX, int screenY, int notches,
+                                      IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+        {
             if (notches == 0) return;
+
+            // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
+            if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
+            {
+                FlowMy.Helpers.BackgroundInputHelper.SendMouseScroll(targetHwnd, screenX, screenY, notches, mode);
+                return;
+            }
+
             GetCursorPos(out POINT saved);
             SetCursorPos(screenX, screenY);
             int delta = notches * (int)WHEEL_DELTA;
