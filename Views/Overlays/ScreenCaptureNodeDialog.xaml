@@ -181,6 +181,14 @@
                                             Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại cửa sổ" Cursor="Hand"
                                             Command="{Binding LoadWindowsCommand}"/>
                                 </Grid>
+
+                                <!-- Background Mode Checkbox -->
+                                <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,12"
+                                          Visibility="{Binding ShowBackgroundModeCheckbox, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
+                                        <Run Text="📸 Chụp không cần active app (chạy ngầm)"/>
+                                    </TextBlock>
+                                </CheckBox>
                             </StackPanel>
 
                             <!-- CHẾ ĐỘ: Tự chọn vùng -->
@@ -207,6 +215,14 @@
                                             Style="{DynamicResource SecondaryButton}" ToolTip="Tải lại cửa sổ" Cursor="Hand"
                                             Command="{Binding LoadWindowsCommand}"/>
                                 </Grid>
+
+                                <!-- Background Mode Checkbox -->
+                                <CheckBox IsChecked="{Binding UseBackgroundMode, Mode=TwoWay}" Cursor="Hand" Margin="0,0,0,10"
+                                          Visibility="{Binding ShowBackgroundModeCheckbox, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center">
+                                        <Run Text="📸 Chụp không cần active app (chạy ngầm)"/>
+                                    </TextBlock>
+                                </CheckBox>
 
                                 <Button x:Name="ManualCaptureButton" Content="📸 Chụp vùng thủ công" Height="36" Margin="0,0,0,10"
                                         Style="{DynamicResource PrimaryButton}" Cursor="Hand" Click="ManualCaptureButton_Click"/>

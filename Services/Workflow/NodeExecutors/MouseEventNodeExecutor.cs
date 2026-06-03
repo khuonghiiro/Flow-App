@@ -20,25 +20,64 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
+                // ── Validation ────────────────────────────────────────────────
+                if (mouseNode.UseBackgroundMode && string.IsNullOrWhiteSpace(mouseNode.TargetProcessName))
+                {
+                    var errorMsg = "Background Mode được bật nhưng chưa chọn ứng dụng đích. Vui lòng chọn app hoặc tắt Background Mode.";
+                    System.Diagnostics.Debug.WriteLine($"[MouseEvent] Validation failed: {errorMsg}");
+                    env.OnNodeFailed?.Invoke(mouseNode, errorMsg);
+                    throw new InvalidOperationException(errorMsg);
+                }
+
                 // ── 1. Focus app nếu được cấu hình (bỏ qua nếu background mode) ──
                 await FocusTargetAppAsync(mouseNode.TargetProcessName, mouseNode.TargetWindowTitle, env.CancellationToken, mouseNode.UseBackgroundMode);
 
                 // ── 2. Lấy handle window đích khi dùng background mode ──
                 IntPtr targetHwnd = IntPtr.Zero;
+                string bgModeStatus = "disabled";
+                
                 if (mouseNode.UseBackgroundMode && !string.IsNullOrWhiteSpace(mouseNode.TargetProcessName))
                 {
                     var windows = WindowHelper.GetActiveWindows();
                     var match = windows.FirstOrDefault(w => w.ProcessName == mouseNode.TargetProcessName && w.Title == mouseNode.TargetWindowTitle)
                              ?? windows.FirstOrDefault(w => w.ProcessName == mouseNode.TargetProcessName);
                     if (match != null)
+                    {
                         targetHwnd = match.Handle;
+                        bgModeStatus = $"enabled - hwnd={targetHwnd} mode={mouseNode.BackgroundInputMode}";
+                        
+                        // Validate Interception Driver nếu được chọn
+                        if (mouseNode.BackgroundInputMode == BackgroundInputHelper.InputMode.InterceptionDriver 
+                            && !InterceptionInputHelper.IsDriverInstalled())
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MouseEvent] WARNING: Interception Driver selected but not installed - will fallback");
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"[MouseEvent] Background mode: Found target window hwnd={targetHwnd} process={mouseNode.TargetProcessName} title={mouseNode.TargetWindowTitle}");
+                    }
+                    else
+                    {
+                        bgModeStatus = "enabled but target window NOT FOUND";
+                        System.Diagnostics.Debug.WriteLine($"[MouseEvent] Background mode: Target window NOT FOUND process={mouseNode.TargetProcessName} title={mouseNode.TargetWindowTitle}");
+                        System.Diagnostics.Debug.WriteLine($"[MouseEvent] Available windows: {string.Join(", ", windows.Select(w => $"{w.ProcessName}:{w.Title}"))}");
+                    }
                 }
+                else if (mouseNode.UseBackgroundMode)
+                {
+                    bgModeStatus = "enabled but NO TARGET PROCESS";
+                    System.Diagnostics.Debug.WriteLine($"[MouseEvent] Background mode enabled but no target process specified");
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[MouseEvent] Background Mode Status: {bgModeStatus}");
 
                 // ── 3. Resolve toạ độ từ node nguồn hoặc thủ công ──
                 bool hasCoord = !string.IsNullOrWhiteSpace(mouseNode.CoordSourceNodeId) || mouseNode.HasManualPosition;
                 int cx = 0, cy = 0;
                 if (hasCoord)
+                {
                     (cx, cy) = ResolveCoordinates(mouseNode, env);
+                    System.Diagnostics.Debug.WriteLine($"[MouseEvent] Resolved coordinates: X={cx}, Y={cy} (hasManualPos={mouseNode.HasManualPosition}, sourceNode={mouseNode.CoordSourceNodeId})");
+                }
 
                 // Parse mouse button
                 if (!Enum.TryParse<MouseButton>(mouseNode.MouseButton, out var button))
@@ -47,6 +86,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // ── 4. Click tại toạ độ trước khi thực hiện (nếu được bật và có toạ độ) ──
                 if (hasCoord && mouseNode.ClickOnPosition)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[MouseEvent] ClickOnPosition: Clicking at X={cx}, Y={cy} button=Left duration={mouseNode.ClickDurationMs}ms hwnd={targetHwnd} mode={mouseNode.BackgroundInputMode}");
                     env.Service.MouseInput.SendMouseDownAt(cx, cy, MouseButton.Left, false, false, false, targetHwnd, mouseNode.BackgroundInputMode);
                     if (mouseNode.ClickDurationMs > 0)
                         await Task.Delay(mouseNode.ClickDurationMs, env.CancellationToken);

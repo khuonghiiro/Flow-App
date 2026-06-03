@@ -20,7 +20,7 @@ namespace FlowMy.Models.Nodes
     public sealed class ScreenCaptureNode : WorkflowNode
     {
         // ── Chế độ ──────────────────────────────────────────────────────────
-        private ScreenCaptureMode _captureMode = ScreenCaptureMode.ScreenCapture;
+        private ScreenCaptureMode _captureMode = ScreenCaptureMode.ManualRegion;
 
         // ── Vùng chụp thủ công (chọn bằng overlay) ──────────────────────────
         private int _captureX;

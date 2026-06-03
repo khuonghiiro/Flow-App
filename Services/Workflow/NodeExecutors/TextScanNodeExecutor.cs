@@ -45,6 +45,37 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         [DllImport("shcore.dll")]
         private static extern int GetDpiForMonitor(IntPtr hmonitor, uint dpiType, out uint dpiX, out uint dpiY);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetWindowDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool BitBlt(IntPtr hdcDest, int xDest, int yDest, int wDest, int hDest,
+            IntPtr hdcSource, int xSrc, int ySrc, int rop);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int nWidth, int nHeight);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteDC(IntPtr hdc);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("user32.dll")]
+        private static extern bool PrintWindow(IntPtr hWnd, IntPtr hdcBlt, uint nFlags);
+
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -53,6 +84,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private const int MDT_DEFAULT = 0;
         private const int MDT_EFFECTIVE_DPI = 0;
+        private const int SRCCOPY = 0x00CC0020;
+        private const uint PW_RENDERFULLCONTENT = 0x00000002;
 
         public bool CanExecute(WorkflowNode node) => node is TextScanNode;
 
@@ -131,8 +164,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return null;
             }
 
-            // Đưa app lên trước nếu được cấu hình và không dùng background mode
-            if (!string.IsNullOrWhiteSpace(textScan.TargetProcessName) && !textScan.UseBackgroundMode)
+            BitmapImage? bitmap = null;
+
+            // Nếu dùng background mode và có target window → chụp trực tiếp từ window
+            if (textScan.UseBackgroundMode && !string.IsNullOrWhiteSpace(textScan.TargetProcessName))
             {
                 var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
                 var match = windows.FirstOrDefault(wnd =>
@@ -141,13 +176,33 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (match != null)
                 {
-                    FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
-                    await Task.Delay(150, env.CancellationToken);
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNode ManualRegion] Background capture from window: {match.Title}");
+                    
+                    // Chụp vùng từ window (x,y là offset trong window)
+                    bitmap = await Task.Run(() => CaptureWindow(match.Handle, x, y, w, h));
                 }
             }
+            else
+            {
+                // Mode bình thường: activate window rồi chụp màn hình
+                if (!string.IsNullOrWhiteSpace(textScan.TargetProcessName))
+                {
+                    var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
+                    var match = windows.FirstOrDefault(wnd =>
+                        wnd.ProcessName == textScan.TargetProcessName && wnd.Title == textScan.TargetWindowTitle)
+                        ?? windows.FirstOrDefault(wnd => wnd.ProcessName == textScan.TargetProcessName);
 
-            // Chụp màn hình theo vùng đã lưu
-            var bitmap = await Task.Run(() => CaptureScreen(x, y, w, h));
+                    if (match != null)
+                    {
+                        FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
+                        await Task.Delay(150, env.CancellationToken);
+                    }
+                }
+
+                // Chụp màn hình theo vùng đã lưu
+                bitmap = await Task.Run(() => CaptureScreen(x, y, w, h));
+            }
+
             return bitmap;
         }
 
@@ -182,8 +237,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             if (w <= 0 || h <= 0) return null;
 
-            // Đưa app lên trước nếu được cấu hình và không dùng background mode
-            if (!string.IsNullOrWhiteSpace(textScan.TargetProcessName) && !textScan.UseBackgroundMode)
+            BitmapImage? bitmap = null;
+
+            // Nếu dùng background mode và có target window → chụp trực tiếp từ window
+            if (textScan.UseBackgroundMode && !string.IsNullOrWhiteSpace(textScan.TargetProcessName))
             {
                 var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
                 var match = windows.FirstOrDefault(wnd =>
@@ -192,13 +249,33 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 if (match != null)
                 {
-                    FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
-                    await Task.Delay(150, env.CancellationToken);
+                    System.Diagnostics.Debug.WriteLine($"[TextScanNode ScreenCapture] Background capture from window: {match.Title}");
+                    
+                    // Chụp vùng từ window (x,y là offset trong window)
+                    bitmap = await Task.Run(() => CaptureWindow(match.Handle, x, y, w, h));
                 }
             }
+            else
+            {
+                // Mode bình thường: activate window rồi chụp màn hình
+                if (!string.IsNullOrWhiteSpace(textScan.TargetProcessName))
+                {
+                    var windows = FlowMy.Helpers.WindowHelper.GetActiveWindows();
+                    var match = windows.FirstOrDefault(wnd =>
+                        wnd.ProcessName == textScan.TargetProcessName && wnd.Title == textScan.TargetWindowTitle)
+                        ?? windows.FirstOrDefault(wnd => wnd.ProcessName == textScan.TargetProcessName);
 
-            // Chụp màn hình
-            var bitmap = await Task.Run(() => CaptureScreen(x, y, w, h));
+                    if (match != null)
+                    {
+                        FlowMy.Helpers.WindowHelper.BringToFront(match.Handle);
+                        await Task.Delay(150, env.CancellationToken);
+                    }
+                }
+
+                // Chụp màn hình
+                bitmap = await Task.Run(() => CaptureScreen(x, y, w, h));
+            }
+
             if (bitmap == null) return null;
 
             await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -527,6 +604,118 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Chụp window cụ thể không cần active (dùng PrintWindow API)
+        /// PrintWindow tốt hơn BitBlt vì nó yêu cầu window tự render vào DC, tránh vấn đề ảnh đen.
+        /// </summary>
+        private static BitmapImage? CaptureWindow(IntPtr hWnd, int x, int y, int width, int height)
+        {
+            if (hWnd == IntPtr.Zero || width <= 0 || height <= 0) return null;
+
+            // Lấy kích thước toàn bộ window
+            if (!GetWindowRect(hWnd, out RECT rect))
+            {
+                System.Diagnostics.Debug.WriteLine("[CaptureWindow] Failed to get window rect");
+                return null;
+            }
+
+            int fullWidth = rect.Right - rect.Left;
+            int fullHeight = rect.Bottom - rect.Top;
+
+            if (fullWidth <= 0 || fullHeight <= 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CaptureWindow] Invalid window size: {fullWidth}x{fullHeight}");
+                return null;
+            }
+
+            IntPtr hdcScreen = IntPtr.Zero;
+            IntPtr hdcMemory = IntPtr.Zero;
+            IntPtr hBitmap = IntPtr.Zero;
+            IntPtr hOld = IntPtr.Zero;
+
+            try
+            {
+                // Tạo DC và bitmap cho toàn bộ window
+                hdcScreen = GetDC(IntPtr.Zero);
+                hdcMemory = CreateCompatibleDC(hdcScreen);
+                hBitmap = CreateCompatibleBitmap(hdcScreen, fullWidth, fullHeight);
+                hOld = SelectObject(hdcMemory, hBitmap);
+
+                // PrintWindow: yêu cầu window tự render vào DC
+                // PW_RENDERFULLCONTENT (0x2) = render cả client area lẫn non-client area
+                bool success = PrintWindow(hWnd, hdcMemory, PW_RENDERFULLCONTENT);
+
+                if (!success)
+                {
+                    System.Diagnostics.Debug.WriteLine("[CaptureWindow] PrintWindow failed, trying without PW_RENDERFULLCONTENT");
+                    // Thử lại không có flag
+                    success = PrintWindow(hWnd, hdcMemory, 0);
+                }
+
+                if (!success)
+                {
+                    System.Diagnostics.Debug.WriteLine("[CaptureWindow] PrintWindow failed completely");
+                    return null;
+                }
+
+                // Convert GDI bitmap → System.Drawing.Bitmap
+                var fullBitmap = Image.FromHbitmap(hBitmap);
+
+                // Nếu cần crop vùng nhỏ hơn
+                Bitmap finalBitmap;
+                if (x != 0 || y != 0 || width != fullWidth || height != fullHeight)
+                {
+                    // Đảm bảo không crop quá boundary
+                    int cropX = Math.Max(0, Math.Min(x, fullWidth - 1));
+                    int cropY = Math.Max(0, Math.Min(y, fullHeight - 1));
+                    int cropW = Math.Min(width, fullWidth - cropX);
+                    int cropH = Math.Min(height, fullHeight - cropY);
+
+                    if (cropW > 0 && cropH > 0)
+                    {
+                        var cropRect = new Rectangle(cropX, cropY, cropW, cropH);
+                        finalBitmap = fullBitmap.Clone(cropRect, fullBitmap.PixelFormat);
+                        fullBitmap.Dispose();
+                    }
+                    else
+                    {
+                        finalBitmap = fullBitmap;
+                    }
+                }
+                else
+                {
+                    finalBitmap = fullBitmap;
+                }
+
+                // Convert → BitmapImage
+                using var ms = new MemoryStream();
+                finalBitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                ms.Position = 0;
+
+                var img = new BitmapImage();
+                img.BeginInit();
+                img.StreamSource = ms;
+                img.CacheOption = BitmapCacheOption.OnLoad;
+                img.EndInit();
+                img.Freeze();
+
+                finalBitmap.Dispose();
+                return img;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CaptureWindow] Error: {ex.Message}");
+                return null;
+            }
+            finally
+            {
+                if (hOld != IntPtr.Zero) SelectObject(hdcMemory, hOld);
+                if (hBitmap != IntPtr.Zero) DeleteObject(hBitmap);
+                if (hdcMemory != IntPtr.Zero) DeleteDC(hdcMemory);
+                if (hdcScreen != IntPtr.Zero) ReleaseDC(IntPtr.Zero, hdcScreen);
+            }
+        }
 
         private static BitmapImage? CaptureScreen(int x, int y, int width, int height)
         {

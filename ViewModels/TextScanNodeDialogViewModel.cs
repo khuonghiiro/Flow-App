@@ -68,6 +68,10 @@ namespace FlowMy.ViewModels
         public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
         public IRelayCommand LoadWindowsCommand { get; }
 
+        // ── Background Mode (chụp không cần active app) ────────────────────
+        [ObservableProperty] private bool _useBackgroundMode = false;
+        public bool ShowBackgroundModeCheckbox => SelectedTargetWindow != null;
+
         // ── Danh sách node có thể chọn ────────────────────────────────────────────
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -105,6 +109,9 @@ namespace FlowMy.ViewModels
 
             OcrLanguage = node.OcrLanguage;
             AutoDetectLanguage = node.AutoDetectLanguage;
+
+            // Background mode
+            UseBackgroundMode = node.UseBackgroundMode;
 
             // Sync selected languages
             SelectedLanguages.Clear();
@@ -155,6 +162,11 @@ namespace FlowMy.ViewModels
                 else if (e.PropertyName == nameof(OcrEngineMode))
                 {
                     OnPropertyChanged(nameof(IsTesseractMode));
+                }
+                else if (e.PropertyName == nameof(SelectedTargetWindow))
+                {
+                    // Show/hide background mode checkbox based on target window selection
+                    OnPropertyChanged(nameof(ShowBackgroundModeCheckbox));
                 }
                 else if (e.PropertyName == nameof(TessdataPath))
                 {
@@ -524,6 +536,9 @@ namespace FlowMy.ViewModels
             // Lưu target app
             _textScanNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
             _textScanNode.TargetWindowTitle = SelectedTargetWindow?.Title ?? string.Empty;
+
+            // Lưu background mode
+            _textScanNode.UseBackgroundMode = UseBackgroundMode;
 
             _textScanNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);

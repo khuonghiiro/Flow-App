@@ -129,7 +129,7 @@
                                 </Grid>
 
                                 <!-- 4. Background Mode -->
-                                <Border Background="{DynamicResource WindowBackground}"
+                                <Border Background="{DynamicResource WindowBackground}" Visibility="Collapsed"
                                         BorderBrush="{DynamicResource ControlBorderBrush}"
                                         BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
                                     <StackPanel>

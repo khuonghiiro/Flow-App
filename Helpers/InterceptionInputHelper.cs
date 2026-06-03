@@ -33,13 +33,20 @@ namespace FlowMy.Helpers
         {
             lock (_lock)
             {
-                if (_initialized) return _available;
+                if (_initialized)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[InterceptionInput] EnsureDriverInstalled: Already initialized, available={_available}");
+                    return _available;
+                }
                 _initialized = true;
 
                 try
                 {
                     // Kiểm tra driver đã cài chưa
+                    System.Diagnostics.Debug.WriteLine("[InterceptionInput] EnsureDriverInstalled: Checking if driver is installed...");
                     bool installed = InputInterceptor.CheckDriverInstalled();
+                    System.Diagnostics.Debug.WriteLine($"[InterceptionInput] EnsureDriverInstalled: CheckDriverInstalled() = {installed}");
+                    
                     if (!installed)
                     {
                         // Driver chưa có — KHÔNG tự cài, không UAC.
@@ -50,6 +57,7 @@ namespace FlowMy.Helpers
                     }
 
                     // Driver đã có → khởi tạo context và hooks
+                    System.Diagnostics.Debug.WriteLine("[InterceptionInput] EnsureDriverInstalled: Driver installed, calling Initialize()...");
                     bool initOk = InputInterceptor.Initialize();
                     System.Diagnostics.Debug.WriteLine($"[InterceptionInput] Initialize: {initOk}");
                     if (!initOk)
@@ -58,8 +66,12 @@ namespace FlowMy.Helpers
                         return false;
                     }
 
+                    System.Diagnostics.Debug.WriteLine("[InterceptionInput] EnsureDriverInstalled: Creating KeyboardHook and MouseHook...");
                     _keyboardHook = new KeyboardHook();
                     _mouseHook = new MouseHook();
+
+                    System.Diagnostics.Debug.WriteLine($"[InterceptionInput] KeyboardHook.IsInitialized: {_keyboardHook.IsInitialized}, CanSimulateInput: {_keyboardHook.CanSimulateInput}");
+                    System.Diagnostics.Debug.WriteLine($"[InterceptionInput] MouseHook.IsInitialized: {_mouseHook.IsInitialized}, CanSimulateInput: {_mouseHook.CanSimulateInput}");
 
                     _available = (_keyboardHook.IsInitialized || _keyboardHook.CanSimulateInput)
                               && (_mouseHook.IsInitialized || _mouseHook.CanSimulateInput);
@@ -69,6 +81,7 @@ namespace FlowMy.Helpers
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"[InterceptionInput] Init error: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[InterceptionInput] Init stack trace: {ex.StackTrace}");
                     _available = false;
                 }
 
@@ -239,7 +252,13 @@ namespace FlowMy.Helpers
         /// <summary>Trả về true nếu Interception driver đã sẵn sàng.</summary>
         public static bool IsAvailable()
         {
-            if (!_initialized) EnsureDriverInstalled();
+            if (!_initialized)
+            {
+                System.Diagnostics.Debug.WriteLine("[InterceptionInput] IsAvailable: Not initialized, calling EnsureDriverInstalled()");
+                bool result = EnsureDriverInstalled();
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] IsAvailable: EnsureDriverInstalled() returned {result}");
+            }
+            System.Diagnostics.Debug.WriteLine($"[InterceptionInput] IsAvailable: returning {_available}");
             return _available;
         }
 
@@ -392,19 +411,26 @@ namespace FlowMy.Helpers
             if (!IsAvailable() || _mouseHook == null) return false;
             try
             {
-                _mouseHook.SetCursorPosition(screenX, screenY, true);
-                Thread.Sleep(10);
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SendMouseDown: Moving cursor to ({screenX},{screenY})...");
+                bool posSet = _mouseHook.SetCursorPosition(screenX, screenY, true);
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SetCursorPosition result: {posSet}");
+                Thread.Sleep(50); // Increase delay to ensure cursor moved
 
-                return button switch
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SendMouseDown: Simulating {button} button down...");
+                bool downResult = button switch
                 {
                     "Right"  => _mouseHook.SimulateRightButtonDown(),
                     "Middle" => _mouseHook.SimulateMiddleButtonDown(),
                     _        => _mouseHook.SimulateLeftButtonDown()
                 };
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] Simulate button down result: {downResult}");
+                
+                return downResult;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SendMouseDown error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] Stack trace: {ex.StackTrace}");
                 return false;
             }
         }
@@ -415,19 +441,26 @@ namespace FlowMy.Helpers
             if (!IsAvailable() || _mouseHook == null) return false;
             try
             {
-                _mouseHook.SetCursorPosition(screenX, screenY, true);
-                Thread.Sleep(10);
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SendMouseUp: Moving cursor to ({screenX},{screenY})...");
+                bool posSet = _mouseHook.SetCursorPosition(screenX, screenY, true);
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SetCursorPosition result: {posSet}");
+                Thread.Sleep(50); // Increase delay
 
-                return button switch
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SendMouseUp: Simulating {button} button up...");
+                bool upResult = button switch
                 {
                     "Right"  => _mouseHook.SimulateRightButtonUp(),
                     "Middle" => _mouseHook.SimulateMiddleButtonUp(),
                     _        => _mouseHook.SimulateLeftButtonUp()
                 };
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] Simulate button up result: {upResult}");
+                
+                return upResult;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[InterceptionInput] SendMouseUp error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[InterceptionInput] Stack trace: {ex.StackTrace}");
                 return false;
             }
         }

@@ -94,7 +94,7 @@ namespace FlowMy.Models.Nodes
         private List<string> _selectedLanguages = new List<string> { "eng", "vie" }; // Danh sách ngôn ngữ đã chọn cho auto-detect
 
         // ── Nguồn ảnh ─────────────────────────────────────────────────────────
-        private ImageSourceMode _imageSourceMode = ImageSourceMode.ScreenCapture;
+        private ImageSourceMode _imageSourceMode = ImageSourceMode.ManualRegion;
 
         // ── Vùng chụp màn hình thủ công ─────────────────────────────────────────
         private int _captureX;

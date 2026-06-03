@@ -44,6 +44,11 @@ namespace FlowMy.Views.Overlays
                 {
                     UpdateRepeatCountTextBoxState();
                 }
+                else if (e.PropertyName == nameof(MouseEventNodeDialogViewModel.SelectedTargetWindow))
+                {
+                    // Update embed button state when target window changes
+                    OnTargetWindowSelectionChanged();
+                }
             };
 
             // Validation cho RepeatCount và Extra textboxes
@@ -303,6 +308,158 @@ namespace FlowMy.Views.Overlays
         private void RefreshPositionDisplay()
         {
             _viewModel.PositionText = _node.PositionText;
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // EMBEDDED WINDOW PREVIEW
+        // ══════════════════════════════════════════════════════════════════
+
+        private bool _isEmbedded = false;
+
+        private void EmbedButton_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedWindow = _viewModel.SelectedTargetWindow;
+            if (selectedWindow == null)
+            {
+                MessageBox.Show(
+                    "Vui lòng chọn app ở tab Logic trước.",
+                    "Chưa chọn app",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            if (!Helpers.WindowHostHelper.CanEmbedWindow(selectedWindow.Handle))
+            {
+                MessageBox.Show(
+                    "Không thể embed window này.\n\n" +
+                    "System windows (Explorer, Task Manager) không thể embed.\n" +
+                    "Thử với Paint, Notepad, Calculator hoặc apps khác.",
+                    "Không thể embed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                bool success = EmbeddedWindowHost.EmbedWindow(selectedWindow.Handle);
+                
+                if (success)
+                {
+                    _isEmbedded = true;
+                    EmbedPlaceholder.Visibility = Visibility.Collapsed;
+                    EmbeddedWindowHost.Visibility = Visibility.Visible;
+                    EmbedStatusText.Text = $"Embedded: {selectedWindow.DisplayName}";
+                    EmbedStatusText.Tag = "Embedded"; // Trigger UI hide
+                    EmbedButton.IsEnabled = false;
+                    UnembedButton.IsEnabled = true;
+
+                    System.Diagnostics.Debug.WriteLine($"[MouseEventNodeDialog] ✅ Embedded {selectedWindow.DisplayName}");
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "Failed to embed window. Try another app.",
+                        "Embed Failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error embedding window: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"[MouseEventNodeDialog] ❌ Embed error: {ex}");
+            }
+        }
+
+        private void UnembedButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                EmbeddedWindowHost.UnembedWindow();
+                
+                _isEmbedded = false;
+                EmbedPlaceholder.Visibility = Visibility.Visible;
+                EmbeddedWindowHost.Visibility = Visibility.Collapsed;
+                EmbedStatusText.Text = "Chọn app ở tab Logic để embed";
+                EmbedStatusText.Tag = "NotEmbedded"; // Restore UI
+                EmbedButton.IsEnabled = _viewModel.SelectedTargetWindow != null;
+                UnembedButton.IsEnabled = false;
+
+                System.Diagnostics.Debug.WriteLine($"[MouseEventNodeDialog] ✅ Unembedded window");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MouseEventNodeDialog] ❌ Unembed error: {ex}");
+            }
+        }
+
+        // Enable embed button when target window is selected
+        private void OnTargetWindowSelectionChanged()
+        {
+            EmbedButton.IsEnabled = _viewModel.SelectedTargetWindow != null && !_isEmbedded;
+            
+            if (_viewModel.SelectedTargetWindow != null)
+            {
+                EmbedStatusText.Text = $"Ready to embed: {_viewModel.SelectedTargetWindow.DisplayName}";
+                EmbedStatusText.Tag = "NotEmbedded";
+            }
+            else
+            {
+                EmbedStatusText.Text = "Chọn app ở tab Logic để embed";
+                EmbedStatusText.Tag = "NotEmbedded";
+            }
+        }
+
+        /// <summary>
+        /// Activate embedded window trước khi send input.
+        /// Call từ PlayButton/RunSingleNode.
+        /// </summary>
+        public void ActivateEmbeddedWindowForInput()
+        {
+            if (_isEmbedded && EmbeddedWindowHost != null)
+            {
+                try
+                {
+                    // Activate this dialog first
+                    this.Activate();
+                    this.Focus();
+                    
+                    // Embedded window as child will receive input
+                    System.Threading.Thread.Sleep(50);
+                    
+                    System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] ✅ Activated for embedded input");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MouseEventNodeDialog] Activate error: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Check if window is currently embedded in Preview tab.
+        /// </summary>
+        public bool IsWindowEmbedded => _isEmbedded;
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            // Unembed before closing
+            if (_isEmbedded)
+            {
+                try
+                {
+                    EmbeddedWindowHost.UnembedWindow();
+                }
+                catch { }
+            }
+
+            base.OnClosing(e);
         }
     }
 }

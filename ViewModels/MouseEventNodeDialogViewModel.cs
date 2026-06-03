@@ -57,6 +57,33 @@ namespace FlowMy.ViewModels
         // ── Background Mode ─────────────────────────────────────────────────────
         [ObservableProperty] private bool _useBackgroundMode = false;
         [ObservableProperty] private FlowMy.Helpers.BackgroundInputHelper.InputMode _backgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+        
+        /// <summary>Validation warning khi background mode bật mà chưa chọn app</summary>
+        public string BackgroundModeWarning
+        {
+            get
+            {
+                if (UseBackgroundMode && SelectedTargetWindow == null)
+                    return "⚠ Chưa chọn app đích - Background mode sẽ không hoạt động!";
+                
+                if (BackgroundInputMode == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver)
+                {
+                    bool driverInstalled = FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled();
+                    bool driverAvailable = FlowMy.Helpers.InterceptionInputHelper.IsAvailable();
+                    
+                    if (!driverInstalled)
+                        return "⚠ Interception Driver chưa cài đặt - Chọn lại mode này để cài driver!";
+                    
+                    if (driverInstalled && !driverAvailable)
+                        return "⚠ Driver đã cài nhưng cần KHỞI ĐỘNG LẠI MÁY để có hiệu lực!";
+                }
+                
+                return string.Empty;
+            }
+        }
+        
+        public bool HasBackgroundModeWarning => !string.IsNullOrEmpty(BackgroundModeWarning);
+        
         public ObservableCollection<BackgroundInputModeOption> BackgroundInputModeOptions { get; } = new()
         {
             new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto, "Auto (Tự chọn)"),
@@ -150,20 +177,103 @@ namespace FlowMy.ViewModels
             RefreshOutputKeyOptions();
         }
 
+        partial void OnUseBackgroundModeChanged(bool value)
+        {
+            _mouseEventNode.UseBackgroundMode = value;
+            _host.RequestSyncDataPanels(immediate: true);
+            
+            // Notify validation properties
+            OnPropertyChanged(nameof(BackgroundModeWarning));
+            OnPropertyChanged(nameof(HasBackgroundModeWarning));
+        }
+
         partial void OnBackgroundInputModeChanged(FlowMy.Helpers.BackgroundInputHelper.InputMode value)
         {
-            if (value == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
-                && !FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled())
+            if (value == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver)
             {
-                var ownerWindow = System.Windows.Application.Current?.Dispatcher.Invoke(
-                    () => System.Windows.Application.Current.Windows
-                            .OfType<System.Windows.Window>()
-                            .FirstOrDefault(w => w.IsActive)
-                          ?? System.Windows.Application.Current.MainWindow);
-                bool ok = FlowMy.Helpers.InterceptionInputHelper.PromptAndInstallDriver(ownerWindow);
-                if (!ok)
-                    BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
+                System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] User selected InterceptionDriver mode");
+                
+                // IMPORTANT: Reset và kiểm tra lại driver mỗi lần user chọn Interception mode
+                // Vì có thể user vừa mới cài driver hoặc vừa khởi động lại máy
+                System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] Resetting driver state to force re-check...");
+                FlowMy.Helpers.InterceptionInputHelper.Reset();
+                
+                // Kiểm tra driver đã được cài chưa (chưa cần khởi tạo)
+                bool driverInstalled = FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled();
+                System.Diagnostics.Debug.WriteLine($"[MouseEventNodeDialog] IsDriverInstalled() = {driverInstalled}");
+                
+                if (!driverInstalled)
+                {
+                    System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] Driver not installed, showing install prompt...");
+                    
+                    var ownerWindow = System.Windows.Application.Current?.Dispatcher.Invoke(
+                        () => System.Windows.Application.Current.Windows
+                                .OfType<System.Windows.Window>()
+                                .FirstOrDefault(w => w.IsActive)
+                              ?? System.Windows.Application.Current.MainWindow);
+                    
+                    bool driverReady = FlowMy.Helpers.InterceptionInputHelper.PromptAndInstallDriver(ownerWindow);
+                    System.Diagnostics.Debug.WriteLine($"[MouseEventNodeDialog] PromptAndInstallDriver() returned {driverReady}");
+                    
+                    if (!driverReady)
+                    {
+                        // Nếu user từ chối cài hoặc cài thất bại, chuyển về SilentActivation
+                        System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] Driver installation cancelled or failed, switching to SilentActivation");
+                        BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.SilentActivation;
+                        return;
+                    }
+                    // PromptAndInstallDriver trả về true nghĩa là driver đã cài hoặc cần restart
+                    // Tiếp tục kiểm tra IsAvailable() ở dưới để xem có cần restart không
+                }
+                
+                // Kiểm tra driver có thể khởi tạo và sử dụng được không
+                System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] Checking if driver is available for use...");
+                if (!FlowMy.Helpers.InterceptionInputHelper.IsAvailable())
+                {
+                    System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] ⚠️ Driver installed but not available - may need reboot");
+                    
+                    // Driver đã cài nhưng chưa khởi tạo được → có thể cần restart
+                    var restartMsg = System.Windows.MessageBox.Show(
+                        messageBoxText: 
+                            "Interception Driver đã được cài đặt nhưng chưa khởi tạo được.\n\n" +
+                            "Có thể bạn cần KHỞI ĐỘNG LẠI MÁY TÍNH để driver có hiệu lực.\n\n" +
+                            "Bạn có muốn tiếp tục sử dụng Interception Driver không?\n" +
+                            "(Chọn No để tự động chuyển sang SilentActivation mode)",
+                        caption: "Driver cần khởi động lại",
+                        button: System.Windows.MessageBoxButton.YesNo,
+                        icon: System.Windows.MessageBoxImage.Warning);
+                    
+                    if (restartMsg != System.Windows.MessageBoxResult.Yes)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] User chose to switch mode, changing to SilentActivation");
+                        BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.SilentActivation;
+                        return;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] User chose to keep InterceptionDriver mode despite unavailability");
+                        // User muốn giữ mode này → có thể họ sẽ restart sau
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[MouseEventNodeDialog] ✅ Interception Driver is ready and available!");
+                }
             }
+
+            _mouseEventNode.BackgroundInputMode = value;
+            _host.RequestSyncDataPanels(immediate: true);
+            
+            // Notify validation properties
+            OnPropertyChanged(nameof(BackgroundModeWarning));
+            OnPropertyChanged(nameof(HasBackgroundModeWarning));
+        }
+        
+        partial void OnSelectedTargetWindowChanged(WindowInfo? value)
+        {
+            // Notify validation properties when target window changes
+            OnPropertyChanged(nameof(BackgroundModeWarning));
+            OnPropertyChanged(nameof(HasBackgroundModeWarning));
         }
 
         // ── Lấy danh sách upstream nodes (kết nối đến port IN) ───────────────

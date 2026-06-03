@@ -1,0 +1,236 @@
+<Window x:Class="FlowMy.Views.EmbeddedWindowTestDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
+        Title="Embedded Window Test - Host External App" 
+        Height="600" Width="900"
+        Background="#F5F5F5"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2196F3" Padding="15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="🎯 Embedded Window Host Test" 
+                               FontSize="18" FontWeight="Bold" 
+                               Foreground="White"/>
+                    <TextBlock Text="Embed external windows (Paint, Notepad...) into Flow-App container" 
+                               FontSize="11" 
+                               Foreground="#E3F2FD" 
+                               Margin="0,3,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="📋 Pick Window" 
+                            Click="PickWindow_Click"
+                            Background="#4CAF50"
+                            Foreground="White"
+                            Padding="12,8"
+                            BorderThickness="0"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Margin="0,0,5,0"/>
+                    
+                    <Button Content="🚀 Embed" 
+                            Click="EmbedWindow_Click"
+                            Background="#FF9800"
+                            Foreground="White"
+                            Padding="12,8"
+                            BorderThickness="0"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            IsEnabled="{Binding HasSelectedWindow}"
+                            Margin="0,0,5,0"/>
+                    
+                    <Button Content="↩️ Unembed" 
+                            Click="UnembedWindow_Click"
+                            Background="#F44336"
+                            Foreground="White"
+                            Padding="12,8"
+                            BorderThickness="0"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            IsEnabled="{Binding IsEmbedded}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Embedded Window Host Container -->
+            <Border Grid.Column="0" 
+                    Background="White" 
+                    BorderBrush="#BDBDBD" 
+                    BorderThickness="2"
+                    CornerRadius="8">
+                <Grid>
+                    <!-- Placeholder when no window embedded -->
+                    <StackPanel x:Name="PlaceholderPanel"
+                                HorizontalAlignment="Center" 
+                                VerticalAlignment="Center"
+                                Visibility="Visible">
+                        <TextBlock Text="🖼️" 
+                                   FontSize="64" 
+                                   HorizontalAlignment="Center"
+                                   Opacity="0.3"/>
+                        <TextBlock Text="No window embedded" 
+                                   FontSize="16" 
+                                   Foreground="#9E9E9E"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,10,0,0"/>
+                        <TextBlock Text="Click 'Pick Window' to select an app" 
+                                   FontSize="12" 
+                                   Foreground="#BDBDBD"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,5,0,0"/>
+                    </StackPanel>
+
+                    <!-- Actual host control -->
+                    <controls:EmbeddedWindowHost x:Name="WindowHost"
+                                                 RemoveDecoration="True"
+                                                 Visibility="Collapsed"
+                                                 WindowEmbedded="WindowHost_Embedded"
+                                                 WindowUnembedded="WindowHost_Unembedded"/>
+                </Grid>
+            </Border>
+
+            <!-- Info Panel -->
+            <Border Grid.Column="2" 
+                    Background="White" 
+                    BorderBrush="#BDBDBD" 
+                    BorderThickness="2"
+                    CornerRadius="8"
+                    Padding="15">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="ℹ️ Window Info" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,10"/>
+
+                        <TextBlock Text="Selected Window:" 
+                                   FontSize="11" 
+                                   Foreground="#757575"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="SelectedWindowText"
+                                   Text="(none)"
+                                   FontFamily="Consolas"
+                                   FontSize="10"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Status:" 
+                                   FontSize="11" 
+                                   Foreground="#757575"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="StatusText"
+                                   Text="Ready"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="#4CAF50"
+                                   Margin="0,0,0,15"/>
+
+                        <Separator Margin="0,10"/>
+
+                        <TextBlock Text="📖 Instructions" 
+                                   FontSize="12" 
+                                   FontWeight="Bold"
+                                   Margin="0,10,0,10"/>
+
+                        <TextBlock TextWrapping="Wrap" 
+                                   FontSize="10" 
+                                   Foreground="#424242"
+                                   LineHeight="16">
+                            <Run Text="1️⃣ Launch Paint or any app"/>
+                            <LineBreak/>
+                            <Run Text="2️⃣ Click 'Pick Window'"/>
+                            <LineBreak/>
+                            <Run Text="3️⃣ Click on the target window"/>
+                            <LineBreak/>
+                            <Run Text="4️⃣ Click 'Embed' to host it"/>
+                            <LineBreak/>
+                            <LineBreak/>
+                            <Run Text="✅ Benefits:" FontWeight="Bold"/>
+                            <LineBreak/>
+                            <Run Text="• App becomes child of Flow-App"/>
+                            <LineBreak/>
+                            <Run Text="• You control activation state"/>
+                            <LineBreak/>
+                            <Run Text="• Direct input routing"/>
+                            <LineBreak/>
+                            <Run Text="• No window flash needed"/>
+                            <LineBreak/>
+                            <LineBreak/>
+                            <Run Text="⚠️ Note:" FontWeight="Bold"/>
+                            <LineBreak/>
+                            <Run Text="Cannot embed system windows (Explorer, Task Manager)"/>
+                        </TextBlock>
+
+                        <Separator Margin="0,15"/>
+
+                        <TextBlock Text="🔍 Event Log" 
+                                   FontSize="12" 
+                                   FontWeight="Bold"
+                                   Margin="0,10,0,10"/>
+
+                        <ScrollViewer Height="150" 
+                                      Background="#FAFAFA"
+                                      BorderBrush="#E0E0E0"
+                                      BorderThickness="1"
+                                      Padding="5">
+                            <TextBlock x:Name="EventLog"
+                                       FontFamily="Consolas"
+                                       FontSize="9"
+                                       TextWrapping="Wrap"
+                                       Foreground="#424242"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" 
+                Background="#EEEEEE" 
+                Padding="15"
+                BorderBrush="#BDBDBD"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <TextBlock FontSize="10" 
+                           Foreground="#757575"
+                           VerticalAlignment="Center">
+                    <Run Text="💡 Tip:"/>
+                    <Run Text="When embedded, you can send input directly without activation!"/>
+                </TextBlock>
+
+                <Button Content="Close" 
+                        Click="Close_Click"
+                        HorizontalAlignment="Right"
+                        Width="80"
+                        Height="28"
+                        Background="#757575"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Cursor="Hand"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

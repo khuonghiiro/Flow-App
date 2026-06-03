@@ -74,7 +74,20 @@
                                        FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
                                        TextWrapping="Wrap" Margin="0,0,0,8">
-                                <Run Text="Chọn app để gửi thao tác chuột đến. Để trống = dùng cửa sổ hiện tại."/>
+                                <Run Text="Chọn app để gửi thao tác chuột đến. "/>
+                                <Run FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}">
+                                    <Run.Style>
+                                        <Style TargetType="Run">
+                                            <Setter Property="Text" Value=""/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding UseBackgroundMode}" Value="True">
+                                                    <Setter Property="Text" Value="(BẮT BUỘC khi dùng chạy ngầm) "/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Run.Style>
+                                </Run>
+                                <Run Text="Để trống = dùng cửa sổ hiện tại."/>
                             </TextBlock>
                             <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
@@ -93,7 +106,7 @@
                             </Grid>
 
                             <!-- 3. Background Mode -->
-                            <Border Background="{DynamicResource WindowBackground}"
+                            <Border Background="{DynamicResource WindowBackground}" Visibility="Collapsed"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
                                 <StackPanel>
@@ -104,6 +117,25 @@
                                             <Run Text="Chạy ngầm (không cần app active)"/>
                                         </TextBlock>
                                     </CheckBox>
+                                    
+                                    <!-- Warning khi chưa chọn app -->
+                                    <Border Background="#33FF6B00" BorderBrush="#FFFF6B00" BorderThickness="1"
+                                            CornerRadius="4" Padding="8" Margin="20,4,0,8">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasBackgroundModeWarning}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding BackgroundModeWarning}"
+                                                   Foreground="#FFFF6B00" FontSize="11" FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"/>
+                                    </Border>
+                                    
                                     <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
                                                TextWrapping="Wrap" Margin="20,0,0,8">
                                         <Run Text="App đích không bị đưa lên foreground. Giống AnyDesk/TeamViewer."/>
@@ -113,9 +145,13 @@
                                             <Style TargetType="StackPanel">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding UseBackgroundMode}" Value="True">
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding UseBackgroundMode}" Value="True"/>
+                                                            <Condition Binding="{Binding ElementName=EmbedStatusText, Path=Tag}" Value="NotEmbedded"/>
+                                                        </MultiDataTrigger.Conditions>
                                                         <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
+                                                    </MultiDataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </StackPanel.Style>
@@ -128,6 +164,38 @@
                                                   SelectedValuePath="Value" DisplayMemberPath="DisplayName"
                                                   SelectedValue="{Binding BackgroundInputMode, Mode=TwoWay}"/>
                                     </StackPanel>
+                                    
+                                    <!-- Message khi đã embed -->
+                                    <Border Background="#E8F5E9"
+                                            BorderBrush="#4CAF50"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="12,8"
+                                            Margin="20,8,0,0">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ElementName=EmbedStatusText, Path=Tag}" Value="Embedded">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock Foreground="#2E7D32" 
+                                                       FontSize="11" 
+                                                       FontWeight="SemiBold">
+                                                <Run Text="✅ App đã embedded"/>
+                                            </TextBlock>
+                                            <TextBlock Foreground="#2E7D32" 
+                                                       FontSize="10" 
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,4,0,0">
+                                                <Run Text="Input sẽ được gửi trực tiếp đến embedded window. Không cần cấu hình chế độ."/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
 
@@ -285,7 +353,97 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- ═══ Tab 2: Tái sử dụng flow ═══ -->
+                <!-- ═══ Tab 2: Preview (Embedded Window) ═══ -->
+                <TabItem Header="Preview" Style="{StaticResource HttpTabItemStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header with Embed/Unembed controls -->
+                        <Border Grid.Row="0" 
+                                Background="{DynamicResource WindowBackground}"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="0,0,0,1" 
+                                Padding="12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="App Preview" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="14" FontWeight="Bold"/>
+                                    <TextBlock x:Name="EmbedStatusText"
+                                               Text="Chọn app ở tab Logic để embed"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="11"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button x:Name="EmbedButton"
+                                            Content="📌 Embed App"
+                                            Height="32"
+                                            Padding="12,0"
+                                            Style="{DynamicResource PrimaryButton}"
+                                            Cursor="Hand"
+                                            Click="EmbedButton_Click"
+                                            IsEnabled="False"
+                                            Margin="0,0,8,0"/>
+                                    
+                                    <Button x:Name="UnembedButton"
+                                            Content="↩️ Unembed"
+                                            Height="32"
+                                            Padding="12,0"
+                                            Style="{DynamicResource DangerButton}"
+                                            Cursor="Hand"
+                                            Click="UnembedButton_Click"
+                                            IsEnabled="False"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Embedded Window Host Container -->
+                        <Border Grid.Row="1" 
+                                Background="#F5F5F5"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="0">
+                            <Grid>
+                                <!-- Placeholder when no window embedded -->
+                                <StackPanel x:Name="EmbedPlaceholder"
+                                            HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"
+                                            Visibility="Visible">
+                                    <TextBlock Text="🖼️" 
+                                               FontSize="48" 
+                                               HorizontalAlignment="Center"
+                                               Opacity="0.3"/>
+                                    <TextBlock Text="No app embedded" 
+                                               FontSize="14" 
+                                               Foreground="#9E9E9E"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,10,0,0"/>
+                                    <TextBlock Text="Select app in Logic tab, then click Embed" 
+                                               FontSize="11" 
+                                               Foreground="#BDBDBD"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,5,0,0"/>
+                                </StackPanel>
+
+                                <!-- Actual embedded window host -->
+                                <controls:EmbeddedWindowHost x:Name="EmbeddedWindowHost"
+                                                             RemoveDecoration="True"
+                                                             Visibility="Collapsed"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <!-- ═══ Tab 3: Tái sử dụng flow ═══ -->
                 <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>

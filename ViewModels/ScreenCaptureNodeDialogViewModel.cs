@@ -44,6 +44,10 @@ namespace FlowMy.ViewModels
         public ObservableCollection<WindowInfo> ActiveWindows { get; } = new();
         public IRelayCommand LoadWindowsCommand { get; }
 
+        // ── Background Mode (chụp không cần active app) ────────────────────
+        [ObservableProperty] private bool _useBackgroundMode = false;
+        public bool ShowBackgroundModeCheckbox => SelectedTargetWindow != null;
+
         // ── Danh sách node có thể chọn ──────────────────────────────────────
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
 
@@ -66,6 +70,9 @@ namespace FlowMy.ViewModels
             // Kích thước node
             UseNativeWidth = node.UseNativeWidth;
             MaxNodeWidth   = node.MaxNodeWidth;
+
+            // Background mode
+            UseBackgroundMode = node.UseBackgroundMode;
 
             // Initialize mode options
             InitializeCaptureModeOptions();
@@ -97,6 +104,11 @@ namespace FlowMy.ViewModels
                     // Load windows for modes that need app selection
                     if ((IsScreenCaptureMode || IsManualRegionMode) && ActiveWindows.Count == 0)
                         ExecuteLoadWindows();
+                }
+                else if (e.PropertyName == nameof(SelectedTargetWindow))
+                {
+                    // Show/hide background mode checkbox based on target window selection
+                    OnPropertyChanged(nameof(ShowBackgroundModeCheckbox));
                 }
             };
 
@@ -182,6 +194,9 @@ namespace FlowMy.ViewModels
             // Lưu target app
             _scNode.TargetProcessName = SelectedTargetWindow?.ProcessName ?? string.Empty;
             _scNode.TargetWindowTitle = SelectedTargetWindow?.Title       ?? string.Empty;
+
+            // Lưu background mode
+            _scNode.UseBackgroundMode = UseBackgroundMode;
 
             _scNode.NotifyTitleChanged();
             _host.RequestSyncDataPanels(immediate: true);

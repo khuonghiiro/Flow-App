@@ -394,6 +394,40 @@ namespace FlowMy
                 {
                     ShowAndBringToFront(mainWindow);
                 }
+
+// 🧪 DEBUG: Uncomment sau khi build thành công lần đầu
+//#if DEBUG
+//                // 🧪 DEBUG ONLY: Mở test windows
+//                _ = Dispatcher.InvokeAsync(() =>
+//                {
+//                    try
+//                    {
+//                        // Background Input Test Window
+//                        var testWindow = new Views.BackgroundInputTestWindow();
+//                        testWindow.Show();
+//                        testWindow.Left = mainWindow.Left + mainWindow.Width + 20;
+//                        testWindow.Top = mainWindow.Top;
+//                        _logger?.LogInformation("🧪 Background Input Test Window opened");
+//
+//                        // Embedded Window Test Dialog
+//                        System.Threading.Tasks.Task.Delay(500).ContinueWith(_ =>
+//                        {
+//                            Dispatcher.Invoke(() =>
+//                            {
+//                                var embedDialog = new Views.EmbeddedWindowTestDialog();
+//                                embedDialog.Show();
+//                                embedDialog.Left = mainWindow.Left;
+//                                embedDialog.Top = mainWindow.Top + mainWindow.Height + 50;
+//                                _logger?.LogInformation("🧪 Embedded Window Test Dialog opened");
+//                            });
+//                        });
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        _logger?.LogWarning(ex, "Failed to open test windows");
+//                    }
+//                }, System.Windows.Threading.DispatcherPriority.Background);
+//#endif
             }
             catch (Exception ex)
             {
