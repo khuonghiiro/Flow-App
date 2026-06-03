@@ -26,7 +26,7 @@ namespace FlowMy.Views.NodeControls
         private const double ImagePadding = 5;
         private const double ButtonHeight = 32;
         private const double ButtonBarH = ButtonHeight + 10;
-        private const double CompactWidth = 200;
+        private const double CompactWidth = 250;
 
         public static Border CreateBorder(TextScanNode node, Window ownerWindow, IWorkflowEditorHost? host = null)
         {

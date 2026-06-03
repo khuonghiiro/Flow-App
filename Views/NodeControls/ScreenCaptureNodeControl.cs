@@ -25,7 +25,7 @@ namespace FlowMy.Views.NodeControls
         private const double ButtonHeight  = 32;
         private const double ButtonBarH    = ButtonHeight + 10; // margin top/bottom button bar
         // Ngưỡng width để thu gọn button thành icon
-        private const double CompactWidth  = 200;
+        private const double CompactWidth  = 250;
 
         public static Border CreateBorder(ScreenCaptureNode node, Window ownerWindow, IWorkflowEditorHost? host = null)
         {
