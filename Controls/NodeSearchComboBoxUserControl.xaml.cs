@@ -335,6 +335,7 @@ namespace FlowMy.Controls
                 "ListOut" => "list-radio regular",
                 "MacroRecorder" => "chart-network light",
                 "TextScan" => "camera-circle-ellipsis duotone-light",
+                "EmbedApplicationNode" => "desktop-arrow-down light",
                 _ => "cog"
             };
         }

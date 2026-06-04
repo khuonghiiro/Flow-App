@@ -49,6 +49,7 @@ namespace FlowMy.Services.Rendering
         private readonly GitSourceNodeRenderer _gitSourceNodeRenderer;
         private readonly MacroRecorderNodeRenderer _macroRecorderNodeRenderer;
         private readonly BorderHighlightNodeRenderer _borderHighlightNodeRenderer;
+        private readonly EmbedApplicationNodeRenderer _embedApplicationNodeRenderer;
 
         // Dispatch map: node concrete type → renderer
         // Dùng cho các node chỉ cần delegate thuần túy (không có inline logic đặc biệt).
@@ -93,7 +94,8 @@ namespace FlowMy.Services.Rendering
             BodyContainerNodeRenderer bodyContainerNodeRenderer,
             GitSourceNodeRenderer gitSourceNodeRenderer,
             MacroRecorderNodeRenderer macroRecorderNodeRenderer,
-            BorderHighlightNodeRenderer borderHighlightNodeRenderer
+            BorderHighlightNodeRenderer borderHighlightNodeRenderer,
+            EmbedApplicationNodeRenderer embedApplicationNodeRenderer
             )
         {
             _hostAccessor = hostAccessor ?? throw new ArgumentNullException(nameof(hostAccessor));
@@ -133,6 +135,7 @@ namespace FlowMy.Services.Rendering
             _gitSourceNodeRenderer = gitSourceNodeRenderer ?? throw new ArgumentNullException(nameof(gitSourceNodeRenderer));
             _macroRecorderNodeRenderer = macroRecorderNodeRenderer ?? throw new ArgumentNullException(nameof(macroRecorderNodeRenderer));
             _borderHighlightNodeRenderer = borderHighlightNodeRenderer ?? throw new ArgumentNullException(nameof(borderHighlightNodeRenderer));
+            _embedApplicationNodeRenderer = embedApplicationNodeRenderer ?? throw new ArgumentNullException(nameof(embedApplicationNodeRenderer));
 
             BuildRendererMap();
         }
@@ -180,6 +183,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(GitSourceNode)]         = _gitSourceNodeRenderer,
                 [typeof(MacroRecorderNode)]     = _macroRecorderNodeRenderer,
                 [typeof(BorderHighlightNode)]   = _borderHighlightNodeRenderer,
+                [typeof(EmbedApplicationNode)]  = _embedApplicationNodeRenderer,
             };
         }
 

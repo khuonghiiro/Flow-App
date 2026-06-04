@@ -41,9 +41,8 @@ namespace FlowMy.Models.Nodes
             // Nếu muốn default TitleDisplayMode khác Always:
             TitleDisplayMode = TitleDisplayMode.Hidden;
 
-            // Thêm ports
-            Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = true,  Position = PortPosition.Left,  IsVisible = true, ColorKey = "Info" });
-            Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
+            // ⚠️ KHÔNG thêm ports ở đây — TemplateFactory sẽ tạo ports
+            // Nếu thêm ports ở đây + trong TemplateFactory → bị duplicate ports
         }
 
         // ✅ Properties đặc thù — dùng OnPropertyChanged() từ base
@@ -97,7 +96,7 @@ node.NotifyTitleChanged();
 - [ ] KHÔNG khai báo lại: PropertyChanged, OnPropertyChanged,
       TitleDisplayMode, TitleColorMode, TitleColorKey, NotifyTitleChanged
 - [ ] Thêm NodeType enum value vào Models/Nodes/NodeType.cs
-- [ ] Thêm ports trong constructor
+- [ ] KHÔNG thêm ports trong constructor (TemplateFactory sẽ tạo — tránh duplicate ports)
 - [ ] Dùng OnPropertyChanged() trong mọi setter
 - [ ] Nếu muốn default TitleDisplayMode khác Always: set trong constructor
 ```

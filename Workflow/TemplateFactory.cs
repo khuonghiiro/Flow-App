@@ -63,6 +63,7 @@ namespace FlowMy.Workflow
                 "MacroRecorder" => CreateMacroRecorderNode(x, y),
                 "BorderHighlight" => CreateBorderHighlightNode(x, y),
                 "TextScan" => CreateTextScanNode(x, y),
+                "EmbedApplicationNode" => CreateEmbedApplicationNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1406,6 +1407,46 @@ namespace FlowMy.Workflow
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "captureWidth", DisplayName = "Capture - Width", IsMultiple = false });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "captureHeight", DisplayName = "Capture - Height", IsMultiple = false });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "ocrLanguage", DisplayName = "OCR Language", IsMultiple = false });
+
+            return node;
+        }
+
+        private WorkflowNode CreateEmbedApplicationNode(double x, double y)
+        {
+            var node = new EmbedApplicationNode
+            {
+                Id = $"Node_EmbedApplication_{Guid.NewGuid()}",
+                Title = "Embed Application",
+                X = x - 30,
+                Y = y - 30,
+                ColorKey = "WineRed",
+                NodeBrush = Application.Current.TryFindResource("WineRedBrush") as Brush ?? Brushes.DarkRed,
+                Type = NodeType.EmbedApplication
+            };
+
+            // Ports
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = true,
+                Position = PortPosition.Left,
+                IsVisible = true,
+                ColorKey = "Info"
+            });
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = false,
+                Position = PortPosition.Right,
+                IsVisible = true,
+                ColorKey = "SunsetOrange"
+            });
+
+            // Dynamic outputs
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "windowHandle", DisplayName = "Window Handle", IsMultiple = false, OutputType = WorkflowDataType.String });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "processId", DisplayName = "Process ID", IsMultiple = false, OutputType = WorkflowDataType.Number });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "windowTitle", DisplayName = "Window Title", IsMultiple = false, OutputType = WorkflowDataType.String });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "processName", DisplayName = "Process Name", IsMultiple = false, OutputType = WorkflowDataType.String });
 
             return node;
         }

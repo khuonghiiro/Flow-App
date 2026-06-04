@@ -1451,6 +1451,46 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
                 System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var hVal))
                 asyncTaskBodyPersist.Height = Math.Max(200, hVal);
         }
+        else if (node is EmbedApplicationNode embedApp)
+        {
+            if (properties.TryGetValue("ProcessName", out var pnObj))
+                embedApp.ProcessName = pnObj?.ToString() ?? string.Empty;
+            
+            if (properties.TryGetValue("ProcessId", out var pidObj) && int.TryParse(pidObj?.ToString(), out var pid))
+                embedApp.ProcessId = pid;
+            
+            if (properties.TryGetValue("WindowHandle", out var whObj) && IntPtr.TryParse(whObj?.ToString(), out var wh))
+                embedApp.WindowHandle = wh;
+            
+            if (properties.TryGetValue("WindowTitle", out var wtObj))
+                embedApp.WindowTitle = wtObj?.ToString() ?? string.Empty;
+            
+            if (properties.TryGetValue("EmbeddedWidth", out var ewObj) && double.TryParse(ewObj?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ew))
+                embedApp.EmbeddedWidth = ew;
+            
+            if (properties.TryGetValue("EmbeddedHeight", out var ehObj) && double.TryParse(ehObj?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var eh))
+                embedApp.EmbeddedHeight = eh;
+            
+            if (properties.TryGetValue("IsActive", out var iaObj) && bool.TryParse(iaObj?.ToString(), out var ia))
+                embedApp.IsActive = ia;
+            
+            if (properties.TryGetValue("ShowBorder", out var sbObj) && bool.TryParse(sbObj?.ToString(), out var sb))
+                embedApp.ShowBorder = sb;
+            
+            if (properties.TryGetValue("AllowInteraction", out var aiObj) && bool.TryParse(aiObj?.ToString(), out var ai))
+                embedApp.AllowInteraction = ai;
+            
+            if (properties.TryGetValue("AutoRefresh", out var arObj) && bool.TryParse(arObj?.ToString(), out var ar))
+                embedApp.AutoRefresh = ar;
+            
+            if (properties.TryGetValue("RefreshRate", out var rrObj2) && int.TryParse(rrObj2?.ToString(), out var rr))
+                embedApp.RefreshRate = rr;
+            
+            if (properties.TryGetValue("CaptureMode", out var cmObj) && Enum.TryParse<EmbedCaptureMode>(cmObj?.ToString(), out var cm))
+                embedApp.CaptureMode = cm;
+            
+            embedApp.RebuildDynamicOutputs();
+        }
         else if (node is StorageNode storageNode)
         {
             // StoredOutputs
@@ -6137,6 +6177,21 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             }
         }
 
+        else if (node is EmbedApplicationNode embedApp)
+        {
+            dict["ProcessName"] = embedApp.ProcessName ?? string.Empty;
+            dict["ProcessId"] = embedApp.ProcessId;
+            dict["WindowHandle"] = embedApp.WindowHandle.ToString();
+            dict["WindowTitle"] = embedApp.WindowTitle ?? string.Empty;
+            dict["EmbeddedWidth"] = embedApp.EmbeddedWidth;
+            dict["EmbeddedHeight"] = embedApp.EmbeddedHeight;
+            dict["IsActive"] = embedApp.IsActive;
+            dict["ShowBorder"] = embedApp.ShowBorder;
+            dict["AllowInteraction"] = embedApp.AllowInteraction;
+            dict["AutoRefresh"] = embedApp.AutoRefresh;
+            dict["RefreshRate"] = embedApp.RefreshRate;
+            dict["CaptureMode"] = embedApp.CaptureMode.ToString();
+        }
         else if (node is StorageNode storageNode)
         {
 

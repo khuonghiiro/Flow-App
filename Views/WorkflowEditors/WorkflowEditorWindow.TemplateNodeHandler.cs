@@ -356,6 +356,7 @@ namespace FlowMy.Views
                 "ScreenPosition" => "crosshairs light",
                 "ScreenCapture" => "camera-viewfinder duotone-light",
                 "TextScan" => "camera-circle-ellipsis duotone-light",
+                "EmbedApplicationNode" => "desktop-arrow-down light",
                 "StringSplit" => "scissors light",
                 "ListOut" => "list-radio regular",
                 "AssignData" => "arrows-left-right duotone",

@@ -2049,6 +2049,72 @@ Cursor="Hand"
                                                           Fill="{DynamicResource TextOnVioletDeepBrush}"/>
                                 </Grid>
                             </Border>
+
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource WineRedBrush}"
+                                    Tag="EmbedApplicationNode">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
+                                                <Run Text="Embed Application"/>
+                                            </TextBlock>
+                                            <TextBlock Text="Nhúng ứng dụng desktop vào canvas với kích thước và tương tác tùy chỉnh."
+                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
+                                            <TextBlock Margin="0,6,0,0">
+                                                <Run Text="• "/>
+                                                <Run Text="Chọn ứng dụng đang chạy" FontWeight="SemiBold"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="• "/>
+                                                <Run Text="Điều chỉnh kích thước hiển thị"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="• "/>
+                                                <Run Text="Tương tác trực tiếp hoặc chỉ xem"/>
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Run Text="• "/>
+                                                <Run Text="Output: Handle, PID, Title"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource WineRedBrush}"
+                                                        CornerRadius="10" Padding="10"
+                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Embed Application"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Nhúng ứng dụng desktop vào canvas. Hỗ trợ nhiều ứng dụng đồng thời với kích thước tùy chỉnh."
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Chọn từ danh sách processes đang chạy"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.85" Margin="0,4,0,0"/>
+                                                        <TextBlock Text="• Active window tự động nếu cần"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.85"/>
+                                                        <TextBlock Text="• Chế độ: Interactive / Display Only / Snapshot"
+                                                                   Foreground="{DynamicResource TextOnWineRedBrush}"
+                                                                   Opacity="0.85"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='desktop-arrow-down light'}"
+                                                          Fill="{DynamicResource TextOnWineRedBrush}"/>
+                                </Grid>
+                            </Border>
                         </WrapPanel>
 
                         <!-- Git Repos palette — TẠM COMMENT: logic chuyển sang GitManagerDialog tab Tổng hợp -->

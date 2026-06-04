@@ -241,15 +241,11 @@ namespace FlowMy.Views.NodeControls.Helpers
         /// <returns>The resolved Brush, or a default SolidColorBrush with RGB(148, 163, 184) if not found.</returns>
         public static Brush ResolveTextOnColorBrush(string? colorKey)
         {
-            if (colorKey != null)
+            if (!string.IsNullOrEmpty(colorKey))
             {
-                var resource = Application.Current?.TryFindResource($"TextOnColor_{colorKey}");
-                if (resource is Brush brush)
-                {
-                    return brush;
-                }
+                var brush = Application.Current?.TryFindResource($"TextOn{colorKey}Brush") as Brush;
+                if (brush != null) return brush;
             }
-
             return new SolidColorBrush(Color.FromRgb(148, 163, 184));
         }
 

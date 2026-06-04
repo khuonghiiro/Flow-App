@@ -1112,6 +1112,7 @@ namespace FlowMy.ViewModels
                 NodeType.ScreenPosition => "crosshairs light",
                 NodeType.ScreenCapture => "camera-viewfinder duotone-light",
                 NodeType.TextScan => "camera-circle-ellipsis duotone-light",
+                NodeType.EmbedApplication => "desktop-arrow-down light",
                 NodeType.StringSplit => "scissors light",
                 NodeType.ListOut => "list-radio regular",
                 NodeType.AssignData => "arrows-left-right duotone",

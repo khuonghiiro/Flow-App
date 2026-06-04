@@ -62,7 +62,9 @@ namespace FlowMy.Models
         /// <summary>Hiển thị viền sáng màn hình với cấu hình màu, độ dày, hiệu ứng.</summary>
         BorderHighlight,
         /// <summary>Quét text từ ảnh (OCR) với Windows.Media.Ocr hoặc OpenCV/ML.NET.</summary>
-        TextScan
+        TextScan,
+        /// <summary>Nhúng ứng dụng desktop vào canvas với kích thước và tương tác tùy chỉnh.</summary>
+        EmbedApplication
     }
 }
 

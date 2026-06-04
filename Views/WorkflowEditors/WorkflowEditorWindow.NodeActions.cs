@@ -810,6 +810,29 @@ namespace FlowMy.Views
                 dstTextScan.NotifyTitleChanged();
             }
 
+            if (source is EmbedApplicationNode srcEmbed && node is EmbedApplicationNode dstEmbed)
+            {
+                dstEmbed.ProcessName = srcEmbed.ProcessName;
+                dstEmbed.ProcessId = srcEmbed.ProcessId;
+                dstEmbed.WindowHandle = srcEmbed.WindowHandle;
+                dstEmbed.WindowTitle = srcEmbed.WindowTitle;
+                dstEmbed.EmbeddedWidth = srcEmbed.EmbeddedWidth;
+                dstEmbed.EmbeddedHeight = srcEmbed.EmbeddedHeight;
+                dstEmbed.IsActive = srcEmbed.IsActive;
+                dstEmbed.ShowBorder = srcEmbed.ShowBorder;
+                dstEmbed.AllowInteraction = srcEmbed.AllowInteraction;
+                dstEmbed.AutoRefresh = srcEmbed.AutoRefresh;
+                dstEmbed.RefreshRate = srcEmbed.RefreshRate;
+                dstEmbed.CaptureMode = srcEmbed.CaptureMode;
+                
+                // Title properties
+                dstEmbed.TitleDisplayMode = srcEmbed.TitleDisplayMode;
+                dstEmbed.TitleColorMode = srcEmbed.TitleColorMode;
+                dstEmbed.TitleColorKey = srcEmbed.TitleColorKey;
+                
+                dstEmbed.NotifyTitleChanged();
+            }
+
             if (source is KeyPressEventNode srcKey && node is KeyPressEventNode dstKey)
             {
                 dstKey.RepeatCount = srcKey.RepeatCount;

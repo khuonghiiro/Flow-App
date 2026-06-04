@@ -161,7 +161,7 @@ node.NotifyTitleChanged();
 - [ ] KHÔNG khai báo lại: PropertyChanged, OnPropertyChanged,
       TitleDisplayMode, TitleColorMode, TitleColorKey, NotifyTitleChanged
 - [ ] Thêm NodeType enum value vào Models/Nodes/NodeType.cs
-- [ ] Thêm ports trong constructor
+- [ ] KHÔNG thêm ports trong constructor (TemplateFactory sẽ tạo — tránh duplicate ports)
 - [ ] Dùng OnPropertyChanged() trong mọi setter
 - [ ] Nếu muốn default TitleDisplayMode khác Always: set trong constructor
 ```

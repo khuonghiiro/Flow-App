@@ -586,6 +586,7 @@ namespace FlowMy.Services.Workflow
                 new NodeExecutors.ScreenPositionPickerNodeExecutor(),
                 new NodeExecutors.ScreenCaptureNodeExecutor(),
                 new NodeExecutors.TextScanNodeExecutor(),
+                new NodeExecutors.EmbedApplicationNodeExecutor(),
                 new NodeExecutors.DefaultNodeExecutor()
             };
         }

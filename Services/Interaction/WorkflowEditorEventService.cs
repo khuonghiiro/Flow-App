@@ -137,6 +137,7 @@ namespace FlowMy.Services.Interaction
                     vm.SelectedNode is HttpRequestNode ||
                     vm.SelectedNode is LoopNode ||
                     vm.SelectedNode is BodyContainerNode ||
+                    vm.SelectedNode is EmbedApplicationNode ||
                     vm.SelectedNode.IsConditionalNode)
                     {
                         _copiedNode = vm.SelectedNode;
@@ -175,6 +176,7 @@ namespace FlowMy.Services.Interaction
                        _copiedNode is LoopNode ||
                        _copiedNode is AsyncTaskNode ||
                        _copiedNode is BodyContainerNode ||
+                       _copiedNode is EmbedApplicationNode ||
                        _copiedNode.IsConditionalNode)
                     {
                         // Lấy vị trí con trỏ chuột trên Canvas

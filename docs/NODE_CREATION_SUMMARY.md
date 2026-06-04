@@ -220,7 +220,7 @@ Chi tiết: `NODE_REGISTRATION.md` → §11.C
 - [ ] Kế thừa WorkflowNode (KHÔNG thêm INotifyPropertyChanged)
 - [ ] KHÔNG khai báo lại: PropertyChanged, OnPropertyChanged, TitleDisplayMode, TitleColorMode, TitleColorKey
 - [ ] Thêm NodeType enum value
-- [ ] Thêm ports trong constructor
+- [ ] KHÔNG thêm ports trong constructor (TemplateFactory sẽ tạo — tránh duplicate ports)
 - [ ] Dùng OnPropertyChanged() trong mọi setter
 
 ### NodeControl

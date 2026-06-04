@@ -925,6 +925,7 @@ namespace FlowMy.ViewModels
                 NodeType.GitSource => "git-alt brands",
                 NodeType.MacroRecorder => "chart-network light",
                 NodeType.TextScan => "camera-circle-ellipsis duotone-light",
+                NodeType.EmbedApplication => "desktop-arrow-down light",
                 _ => "circle-question chisel-regular"
             };
         }
