@@ -10,11 +10,11 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="400"
+        Width="520"
         Height="500"
-        MinWidth="300"
+        MinWidth="420"
         MaxWidth="700"
-        MinHeight="350">
+        MinHeight="420">
     <local:BaseNodeDialog.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </local:BaseNodeDialog.Resources>
@@ -26,7 +26,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header: Title + Play + Close -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -68,95 +68,135 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <!-- Chế độ chạy: Song song / Tuần tự -->
-                    <TextBlock Text="Chế độ chạy:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    
-                    <CheckBox x:Name="RunInParallelCheckBox"
-                              Content="Chạy song song (parallel)"
-                              IsChecked="{Binding RunInParallel, Mode=TwoWay}"
-                              Foreground="{DynamicResource TextBrush}" FontSize="12"
-                              Margin="0,0,0,8"/>
-                    
-                    <Border Background="{DynamicResource BorderColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
-                            CornerRadius="6" Padding="10" Margin="0,0,0,16">
+                    <!-- ⚙️ Chế độ chạy -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="So sánh thời gian:" Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <TextBlock x:Name="ExecutionModeExplanation"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="11" TextWrapping="Wrap" Opacity="0.85"
-                                       LineHeight="18"/>
+                            <TextBlock Text="⚙️ Chế độ chạy" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <CheckBox x:Name="RunInParallelCheckBox"
+                                      Content="Chạy song song (parallel)"
+                                      IsChecked="{Binding RunInParallel, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}" FontSize="11"
+                                      Margin="0,0,0,8"/>
+                            <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10">
+                                <StackPanel>
+                                    <TextBlock Text="So sánh thời gian" Foreground="{DynamicResource TextBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBlock x:Name="ExecutionModeExplanation"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
+                                               LineHeight="16"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="Kiểu giao diện trên canvas:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ComboBox Height="36" Margin="0,0,0,12"
-                              Style="{DynamicResource BaseComboBox}"
-                              ItemsSource="{Binding UiModeOptions}"
-                              DisplayMemberPath="Label"
-                              SelectedValuePath="Mode"
-                              SelectedValue="{Binding UiPresentationMode, Mode=TwoWay}"/>
+                    <!-- 🎨 Kiểu giao diện -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Kiểu giao diện trên canvas" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Chế độ hiển thị trên canvas" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox Height="32"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      ItemsSource="{Binding UiModeOptions}"
+                                      DisplayMemberPath="Label"
+                                      SelectedValuePath="Mode"
+                                      SelectedValue="{Binding UiPresentationMode, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </Border>
 
+                    <!-- 🔄 Dispatch Loop -->
                     <StackPanel Visibility="{Binding ShowDispatchLoopUi, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Kiểu dispatch (giống Loop):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <ComboBox Height="36" Margin="0,0,0,12"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding DispatchLoopTypeOptions}"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedValuePath="Value"
-                                  SelectedValue="{Binding DispatchLoopType, Mode=TwoWay}"/>
+                        <Border Background="{DynamicResource WindowBackground}"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="🔄 Kiểu dispatch (giống Loop)" 
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock Text="Chọn kiểu dispatch" 
+                                           Foreground="{DynamicResource TextMuted}" 
+                                           FontSize="10" Margin="0,0,0,4"/>
+                                <ComboBox Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding DispatchLoopTypeOptions}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="Value"
+                                          SelectedValue="{Binding DispatchLoopType, Mode=TwoWay}"/>
 
-                        <StackPanel Visibility="{Binding ShowDispatchRepeatPanel, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="Số lần lặp (N):" Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,4"/>
-                            <TextBox Style="{DynamicResource BaseTextBoxV2}" Height="32"
-                                     Text="{Binding DispatchRepeatCount, Mode=TwoWay}" Margin="0,0,0,12"/>
-                        </StackPanel>
+                                <StackPanel Visibility="{Binding ShowDispatchRepeatPanel, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,8,0,0">
+                                    <TextBlock Text="Số lần lặp (N)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                             Text="{Binding DispatchRepeatCount, Mode=TwoWay}"/>
+                                </StackPanel>
 
-                        <StackPanel Visibility="{Binding ShowDispatchForPanel, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="Start index:" Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,4"/>
-                            <TextBox Style="{DynamicResource BaseTextBoxV2}" Height="32"
-                                     Text="{Binding DispatchStartIndex, Mode=TwoWay}" Margin="0,0,0,8"/>
-                            <TextBlock Text="End index:" Foreground="{DynamicResource TextBrush}" FontSize="12" Margin="0,0,0,4"/>
-                            <TextBox Style="{DynamicResource BaseTextBoxV2}" Height="32"
-                                     Text="{Binding DispatchEndIndex, Mode=TwoWay}" Margin="0,0,0,12"/>
-                        </StackPanel>
+                                <StackPanel Visibility="{Binding ShowDispatchForPanel, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,8,0,0">
+                                    <TextBlock Text="Start index" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                             Text="{Binding DispatchStartIndex, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="End index" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                             Text="{Binding DispatchEndIndex, Mode=TwoWay}"/>
+                                </StackPanel>
 
-                        <CheckBox x:Name="ReadResultsInBodyCheckBox"
-                                  Content="Đọc kết quả trong body (mặc định)"
-                                  IsChecked="{Binding ReadResultsInBody, Mode=TwoWay}"
-                                  Foreground="{DynamicResource TextBrush}"
-                                  FontSize="12"
-                                  Margin="0,0,0,8"/>
+                                <CheckBox x:Name="ReadResultsInBodyCheckBox"
+                                          Content="Đọc kết quả trong body (mặc định)"
+                                          IsChecked="{Binding ReadResultsInBody, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          FontSize="11"
+                                          Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
+                    <!-- 📋 Các Task -->
                     <StackPanel Visibility="{Binding ShowManualTasksUi, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Các task (số bên cạnh port out tương ứng với Task N):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <Border Background="{DynamicResource WindowBackground}"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="📋 Các Task (số bên cạnh port out tương ứng với Task N)" 
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock Text="Mỗi task tương ứng với một port OUT" 
+                                           Foreground="{DynamicResource TextMuted}" 
+                                           FontSize="10" Margin="0,0,0,8"/>
 
-                    <ItemsControl x:Name="TasksItemsControl" ItemsSource="{Binding Tasks}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{DynamicResource BorderColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
-                                        CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
-                                                   VerticalAlignment="Center"/>
-                                        <Button Grid.Column="1" Content="-" Width="24" Height="24" FontSize="14" FontWeight="Bold"
-                                                Command="{Binding DataContext.RemoveTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding}"
-                                                Visibility="{Binding CanRemove, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                Style="{DynamicResource WarningButton}" Cursor="Hand"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                <ItemsControl x:Name="TasksItemsControl" ItemsSource="{Binding Tasks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                                    CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}" FontSize="11" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="1" Content="-" Width="28" Height="28" FontSize="14" FontWeight="Bold"
+                                                            Command="{Binding DataContext.RemoveTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Visibility="{Binding CanRemove, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                            Style="{DynamicResource WarningButton}" Cursor="Hand"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
-                    <Button Content="+ Thêm task" Height="36" Margin="0,8,0,0"
-                            Command="{Binding AddTaskCommand}"
-                            Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
+                                <Button Content="+ Thêm task" Height="32" Margin="0,8,0,0"
+                                        Command="{Binding AddTaskCommand}"
+                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Inputs/Outputs (empty for async task node) -->
@@ -170,18 +210,17 @@
                 <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Chỉ cấu hình vị trí cổng IN cho AsyncTaskNode (cổng OUT do renderer chuyên biệt quản lý) -->
-                            <TextBlock Text="Vị trí cổng IN:"
+                            <!-- Cấu hình vị trí cổng IN -->
+                            <TextBlock Text="Vị trí cổng IN"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
                             <StackPanel Margin="0,0,0,12">
                                 <TextBlock Text="Port IN (cổng vào)"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="12"
-                                           Opacity="0.8"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="10"
                                            Margin="0,0,0,4"/>
                                 <ComboBox Height="32"
                                           Style="{DynamicResource BaseComboBox}"

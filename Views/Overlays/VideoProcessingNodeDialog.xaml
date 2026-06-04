@@ -20,7 +20,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -61,155 +61,190 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Hiển thị tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <ComboBox Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,12"
-                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                      SelectedValuePath="Value"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                            <!-- 🎨 Cấu hình hiển thị -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Cấu hình hiển thị" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Hiển thị tiêu đề" 
+                                               Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              Margin="0,0,0,8"
+                                              ItemsSource="{Binding TitleDisplayModeOptions}"
+                                              SelectedValuePath="Value"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
-                            <TextBlock Text="Màu tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <ComboBox Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,16"
-                                      ItemsSource="{Binding TitleColorOptions}"
-                                      SelectedValuePath="Key"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"/>
+                                    <TextBlock Text="Màu tiêu đề" 
+                                               Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding TitleColorOptions}"
+                                              SelectedValuePath="Key"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
-                            <TextBlock Text="Video Source"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <controls:NodeSearchComboBoxUserControl Grid.Column="0"
-                                                                         Height="36"
-                                                                         ItemsSource="{Binding AvailableNodeOptions}"
-                                                                         SelectedValuePath="NodeId"
-                                                                         DisplayMemberPath="Title"
-                                                                         SelectedValue="{Binding VideoSourceNodeId, Mode=TwoWay}"
-                                                                         SelectionChanged="VideoSourceNodeComboBox_SelectionChanged"/>
-                                <ComboBox x:Name="VideoSourceKeyComboBox"
-                                          Grid.Column="2"
-                                          Height="36"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          SelectedValuePath="Key"
-                                          DisplayMemberPath="Key"
-                                          SelectedValue="{Binding VideoSourceOutputKey, Mode=TwoWay}"/>
-                            </Grid>
+                            <!-- 🎬 Video Source -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎬 Video Source" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                             ItemsSource="{Binding AvailableNodeOptions}"
+                                                                             SelectedValuePath="NodeId"
+                                                                             DisplayMemberPath="Title"
+                                                                             SelectedValue="{Binding VideoSourceNodeId, Mode=TwoWay}"
+                                                                             SelectionChanged="VideoSourceNodeComboBox_SelectionChanged"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="VideoSourceKeyComboBox"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="Key"
+                                                      SelectedValue="{Binding VideoSourceOutputKey, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </Grid>
 
-                            <CheckBox Content="Output Base64"
-                                      Foreground="{DynamicResource TextBrush}"
-                                      IsChecked="{Binding OutputBase64, Mode=TwoWay}"
-                                      Margin="0,0,0,10"/>
+                                    <CheckBox Content="Output Base64"
+                                              Foreground="{DynamicResource TextBrush}"
+                                              FontSize="11"
+                                              IsChecked="{Binding OutputBase64, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
-                            <StackPanel x:Name="OutputFolderPanel">
-                                <TextBlock Text="Output Folder"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
-                                                                             Height="36"
+                            <!-- 📁 Output Folder -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel x:Name="OutputFolderPanel">
+                                    <TextBlock Text="📁 Output Folder" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl Height="32"
                                                                              ItemsSource="{Binding AvailableNodeOptions}"
                                                                              SelectedValuePath="NodeId"
                                                                              DisplayMemberPath="Title"
                                                                              SelectedValue="{Binding OutputFolderSourceNodeId, Mode=TwoWay}"
                                                                              SelectionChanged="OutputFolderNodeComboBox_SelectionChanged"/>
-                                    <ComboBox x:Name="OutputFolderKeyComboBox"
-                                              Grid.Column="2"
-                                              Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="Key"
-                                              SelectedValue="{Binding OutputFolderSourceOutputKey, Mode=TwoWay}"/>
-                                </Grid>
-                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="OutputFolderKeyComboBox"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="Key"
+                                                      SelectedValue="{Binding OutputFolderSourceOutputKey, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <StackPanel x:Name="VideoOutputFolderPanel">
-                                <TextBlock Text="Video Folder (node link)"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,16,0,8"/>
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
-                                                                             Height="36"
+                            <!-- 🎥 Video Folder (node link) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel x:Name="VideoOutputFolderPanel">
+                                    <TextBlock Text="🎥 Video Folder (node link)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl Height="32"
                                                                              ItemsSource="{Binding AvailableNodeOptions}"
                                                                              SelectedValuePath="NodeId"
                                                                              DisplayMemberPath="Title"
                                                                              SelectedValue="{Binding VideoOutputFolderSourceNodeId, Mode=TwoWay}"
                                                                              SelectionChanged="VideoOutputFolderNodeComboBox_SelectionChanged"/>
-                                    <ComboBox x:Name="VideoOutputFolderKeyComboBox"
-                                              Grid.Column="2"
-                                              Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="Key"
-                                              SelectedValue="{Binding VideoOutputFolderSourceOutputKey, Mode=TwoWay}"/>
-                                </Grid>
-                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="VideoOutputFolderKeyComboBox"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="Key"
+                                                      SelectedValue="{Binding VideoOutputFolderSourceOutputKey, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <TextBlock Text="Frame Output Folder (local)"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <TextBox Height="36"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Margin="0,0,0,12"
-                                     VerticalContentAlignment="Center"
-                                     Text="{Binding FrameOutputFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
-                            <TextBlock Text="Default Output Video Path"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <TextBox Height="36"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Margin="0,0,0,16"
-                                     VerticalContentAlignment="Center"
-                                     Text="{Binding DefaultOutputVideoPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
-                            <TextBlock Text="Outputs:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
+                            <!-- 📂 Frame Output Folder (local) -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="12">
-                                <StackPanel x:Name="OutputsPanel"/>
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📂 Frame Output Folder (local)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBox Height="32"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             VerticalContentAlignment="Center"
+                                             Text="{Binding FrameOutputFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 🎬 Default Output Video Path -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎬 Default Output Video Path" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBox Height="32"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             VerticalContentAlignment="Center"
+                                             Text="{Binding DefaultOutputVideoPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 📊 Outputs -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📊 Outputs" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <StackPanel x:Name="OutputsPanel"/>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
@@ -218,9 +253,10 @@
                 <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
                             <Grid Margin="0,0,0,12">
@@ -229,14 +265,14 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
                                               SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
@@ -244,52 +280,56 @@
                                 </StackPanel>
                             </Grid>
 
-                            <TextBlock Text="Đường dẫn FFmpeg"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0"
-                                         Height="36"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         VerticalContentAlignment="Center"
-                                         Text="{Binding FfmpegPath, UpdateSourceTrigger=PropertyChanged}"/>
-                                <Button Grid.Column="2"
-                                        MinWidth="92"
-                                        Height="36"
-                                        Content="Chọn thư mục"
-                                        Style="{DynamicResource PrimaryButton}"
-                                        Click="BrowseFfmpegFolderButton_Click"/>
-                                <Button Grid.Column="4"
-                                        MinWidth="92"
-                                        Height="36"
-                                        Content="Chọn file..."
-                                        Style="{DynamicResource PrimaryButton}"
-                                        Click="BrowseFfmpegPathButton_Click"/>
-                            </Grid>
-                            <TextBlock Foreground="{DynamicResource TextMuted}"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,4">
-                                Có thể nhập đường dẫn thư mục chứa <Run FontWeight="SemiBold">ffmpeg.exe</Run> hoặc nhập trực tiếp file <Run FontWeight="SemiBold">ffmpeg.exe</Run>.
-                            </TextBlock>
-                            <TextBlock Foreground="{DynamicResource TextMuted}"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,16">
-                                Nếu chưa có FFmpeg, tải bản full build tại
-                                <Hyperlink NavigateUri="https://www.gyan.dev/ffmpeg/builds/"
-                                           RequestNavigate="OpenFfmpegGuideLink_Click">gyan.dev/ffmpeg/builds</Hyperlink>,
-                                giải nén và chọn file <Run FontWeight="SemiBold">bin\ffmpeg.exe</Run>.
-                            </TextBlock>
+                            <!-- ⚙️ Đường dẫn FFmpeg -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ Đường dẫn FFmpeg" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Height="32"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 VerticalContentAlignment="Center"
+                                                 Text="{Binding FfmpegPath, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <Button Grid.Column="2"
+                                                MinWidth="92"
+                                                Height="32"
+                                                Content="Chọn thư mục"
+                                                Style="{DynamicResource PrimaryButton}"
+                                                Click="BrowseFfmpegFolderButton_Click"/>
+                                        <Button Grid.Column="4"
+                                                MinWidth="92"
+                                                Height="32"
+                                                Content="Chọn file..."
+                                                Style="{DynamicResource PrimaryButton}"
+                                                Click="BrowseFfmpegPathButton_Click"/>
+                                    </Grid>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
+                                               TextWrapping="Wrap">
+                                        Có thể nhập đường dẫn thư mục chứa <Run FontWeight="SemiBold">ffmpeg.exe</Run> hoặc nhập trực tiếp file <Run FontWeight="SemiBold">ffmpeg.exe</Run>.
+                                    </TextBlock>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0">
+                                        Nếu chưa có FFmpeg, tải bản full build tại
+                                        <Hyperlink NavigateUri="https://www.gyan.dev/ffmpeg/builds/"
+                                                   RequestNavigate="OpenFfmpegGuideLink_Click">gyan.dev/ffmpeg/builds</Hyperlink>,
+                                        giải nén và chọn file <Run FontWeight="SemiBold">bin\ffmpeg.exe</Run>.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

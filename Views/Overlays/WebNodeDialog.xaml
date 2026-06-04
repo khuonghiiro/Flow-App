@@ -10,10 +10,10 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="460"
-        MinWidth="350"
+        Width="520"
+        MinWidth="420"
         MaxWidth="900"
-        MinHeight="400">
+        MinHeight="420">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -21,7 +21,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -55,200 +55,246 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
 
-                    <!-- Hiển thị tiêu đề / Màu tiêu đề -->
-                    <TextBlock Text="Hiển thị tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ComboBox x:Name="TitleDisplayModeComboBox" Height="36" Margin="0,0,0,8"
-                              Style="{DynamicResource BaseComboBox}"
-                              ItemsSource="{Binding TitleDisplayModeOptions}"
-                              SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding TitleColorOptions}"
-                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                        <Border Grid.Column="1" x:Name="TitleColorPreview"
-                                Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
-                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                    </Grid>
+                    <!-- 🎨 Cấu hình hiển thị -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Hiển thị tiêu đề" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="TitleDisplayModeComboBox" Height="32" Margin="0,0,0,8"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                            <TextBlock Text="Màu tiêu đề" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
-                    <CheckBox Margin="0,0,0,16"
-                              IsChecked="{Binding EnableSleepMode, Mode=TwoWay}"
-                              Foreground="{DynamicResource TextBrush}"
-                              FontSize="12"
-                              ToolTip="Mặc định bật. Khi node đang nghỉ, WebView sẽ không giữ trạng thái hoạt động liên tục; chỉ đánh thức lại khi có flow hoặc nguồn JS chạy vào node.">
-                        <TextBlock Text="Chế độ nghỉ: chỉ đánh thức node khi có flow hoặc JS source chạy vào"
-                                   TextWrapping="Wrap"/>
-                    </CheckBox>
+                    <!-- 💤 Chế độ nghỉ -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="💤 Chế độ nghỉ" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <CheckBox Margin="0,0,0,8"
+                                      IsChecked="{Binding EnableSleepMode, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="11"
+                                      ToolTip="Mặc định bật. Khi node đang nghỉ, WebView sẽ không giữ trạng thái hoạt động liên tục; chỉ đánh thức lại khi có flow hoặc nguồn JS chạy vào node.">
+                                <TextBlock Text="Chế độ nghỉ: chỉ đánh thức node khi có flow hoặc JS source chạy vào"
+                                           TextWrapping="Wrap"/>
+                            </CheckBox>
+                            <StackPanel Orientation="Horizontal"
+                                        IsEnabled="{Binding EnableSleepMode}">
+                                <TextBlock Text="Ngủ sau"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBox Text="{Binding SleepIdleTimeoutValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}"
+                                         Width="90"
+                                         Height="32"
+                                         VerticalContentAlignment="Center"
+                                         ToolTip="Khoảng thời gian rảnh trước khi node chuyển sang trạng thái nghỉ."/>
+                                <ComboBox ItemsSource="{Binding SleepIdleTimeoutUnitOptions}"
+                                          SelectedItem="{Binding SleepIdleTimeoutUnit, Mode=TwoWay}"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          Width="80"
+                                          Height="32"
+                                          Margin="8,0,0,0"
+                                          ToolTip="Đơn vị: ms, s, phút."/>
+                                <TextBlock Text="khi rảnh"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
-                    <StackPanel Orientation="Horizontal"
-                                Margin="0,0,0,16"
-                                IsEnabled="{Binding EnableSleepMode}">
-                        <TextBlock Text="Ngủ sau"
-                                   Foreground="{DynamicResource TextMuted}"
-                                   FontSize="12"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding SleepIdleTimeoutValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{DynamicResource BaseTextBoxV2}"
-                                 Width="90"
-                                 Height="30"
-                                 VerticalContentAlignment="Center"
-                                 ToolTip="Khoảng thời gian rảnh trước khi node chuyển sang trạng thái nghỉ."/>
-                        <ComboBox ItemsSource="{Binding SleepIdleTimeoutUnitOptions}"
-                                  SelectedItem="{Binding SleepIdleTimeoutUnit, Mode=TwoWay}"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  Width="80"
-                                  Height="30"
-                                  Margin="8,0,0,0"
-                                  ToolTip="Đơn vị: ms, s, phút."/>
-                        <TextBlock Text="khi rảnh"
-                                   Foreground="{DynamicResource TextMuted}"
-                                   FontSize="12"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,0,0"/>
-                    </StackPanel>
-
-                    <!-- Input: nhiều dòng Node + Key + Key tùy chỉnh -->
-                    <TextBlock Text="Input (node nguồn + key) — mỗi dòng = một biến trong URL template:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}" Margin="0,0,0,6">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <controls:NodeSearchComboBoxUserControl Height="36"
-                                                  ItemsSource="{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                                  SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <ComboBox Height="36" Style="{DynamicResource BaseComboBox}"
-                                                  ItemsSource="{Binding AvailableOutputKeyOptions}"
-                                                  SelectedValuePath="Key"
-                                                  DisplayMemberPath="DisplayName"
-                                                  SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="4">
-                                        <TextBlock Text="Biến trong URL (trống = dùng key đã chọn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{DynamicResource BaseTextBoxV2}" Height="36"
-                                                 ToolTip="Tên biến trong URL template. Để trống thì dùng key từ combobox Key. Ví dụ: {name} trong URL sẽ được thay bằng giá trị này."/>
-                                    </StackPanel>
-                                    <Button Grid.Column="5" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
-                                            Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}"
-                                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <Button Content="+ Thêm input" Height="32" Margin="0,0,0,8"
-                            Command="{Binding AddInputMappingCommand}"
-                            Width="120" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
-                    <TextBlock Margin="0,0,0,16" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap">
-                        <Run Text="💡 Sử dụng: "/>
-                        <Run Text="Trong ExtractUrl, dùng {tên_biến} để thay thế động. Ví dụ: https://api.example.com/v1/projects/{name}/flowMedia:batchGenerateImages"/>
-                    </TextBlock>
-
-                    <!-- JS inject: nhiều node+key — khi node đã chạy đến Web thì chạy JS tương ứng trong WebView2 -->
-                    <TextBlock Text="Chạy JS từ node khác (Node + Key) — mỗi dòng = 1 node: khi node đã chạy đến Web thì chạy JS:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ItemsControl x:Name="JsSourcesItemsControl" ItemsSource="{Binding JsSourcesList}" Margin="0,0,0,6">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate >
-                                <Border Margin="0,0,0,10"
-                                        Background="{DynamicResource CardHoverBackground}"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,8,8,8">
-                                    <StackPanel>
-                                        <!-- Dòng 1: Chọn Node + Key + nút xóa -->
-                                        <Grid Margin="0,0,0,6">
+                    <!-- 📍 Input từ node khác -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📍 Input (node nguồn + key) — mỗi dòng = một biến trong URL template" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Mỗi dòng = một biến trong URL template" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,6"/>
+                            <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,8">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="8"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                                <controls:NodeSearchComboBoxUserControl Height="36"
-                                                          ItemsSource="{Binding AvailableNodeOptions}"
+                                                <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <controls:NodeSearchComboBoxUserControl Height="32"
+                                                          ItemsSource="{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                           SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                           SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Key (chứa JS string)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                                <ComboBox Height="36" Style="{DynamicResource BaseComboBox}"
+                                                <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                           ItemsSource="{Binding AvailableOutputKeyOptions}"
-                                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="DisplayName"
                                                           SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
                                             </StackPanel>
-                                            <Button Grid.Column="3" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
-                                                    Command="{Binding DataContext.RemoveJsSourceCommand, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
+                                            <StackPanel Grid.Column="4">
+                                                <TextBlock Text="Biến trong URL (trống = dùng key đã chọn)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                                         ToolTip="Tên biến trong URL template. Để trống thì dùng key từ combobox Key. Ví dụ: {name} trong URL sẽ được thay bằng giá trị này."/>
+                                            </StackPanel>
+                                            <Button Grid.Column="5" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                                    Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}"
                                                     Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
                                         </Grid>
-                                        <!-- Dòng 2: Tự động chạy JS theo timer -->
-                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                            <CheckBox IsChecked="{Binding AutoTimerEnabled, Mode=TwoWay}"
-                                                      Foreground="{DynamicResource TextMuted}"
-                                                      FontSize="12"
-                                                      VerticalAlignment="Center"
-                                                      Margin="0,0,8,0"
-                                                      ToolTip="Khi bật, WebNode sẽ tự động lấy JS từ node+key đã chọn và chạy vào WebView2 theo chu kỳ nhất định (không cần flow đến node).">
-                                                <TextBlock Text="Tự động chạy JS theo timer" Foreground="{DynamicResource TextMuted}" FontSize="12"/>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal"
-                                                    Margin="0,4,0,0"
-                                                    IsEnabled="{Binding AutoTimerEnabled}">
-                                            <TextBlock Text="Mỗi" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                            <TextBox Text="{Binding AutoTimerIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{DynamicResource BaseTextBoxV2}"
-                                                     Width="80" Height="30"
-                                                     VerticalContentAlignment="Center"
-                                                     ToolTip="Khoảng thời gian giữa 2 lần chạy JS tự động."/>
-                                            <ComboBox ItemsSource="{Binding AutoTimerUnitOptions}"
-                                                      SelectedItem="{Binding AutoTimerIntervalUnit, Mode=TwoWay}"
-                                                      Style="{DynamicResource BaseComboBox}"
-                                                      Width="70" Height="30"
-                                                      Margin="6,0,0,0"
-                                                      ToolTip="Đơn vị thời gian: mili giây, giây, phút."/>
-                                            <TextBlock Text="chạy JS 1 lần" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <Button Content="+ Thêm JS source" Height="32" Margin="0,0,0,16"
-                            Command="{Binding AddJsSourceCommand}"
-                            Width="140" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="+ Thêm input" Height="32" Margin="0,8,0,0"
+                                    Command="{Binding AddInputMappingCommand}"
+                                    Width="120" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+                            <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap">
+                                    <Run Text="💡 Sử dụng: Trong ExtractUrl, dùng {tên_biến} để thay thế động. Ví dụ: https://api.example.com/v1/projects/{name}/flowMedia:batchGenerateImages"/>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+                    </Border>
 
-<!-- Auto-reload timer -->
+                    <!-- 💻 JS Sources -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="💻 Chạy JS từ node khác (Node + Key) — mỗi dòng = 1 node: khi node đã chạy đến Web thì chạy JS" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <ItemsControl x:Name="JsSourcesItemsControl" ItemsSource="{Binding JsSourcesList}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate >
+                                        <Border Margin="0,0,0,8"
+                                                Background="{DynamicResource CardColor}"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="10">
+                                            <StackPanel>
+                                                <!-- Dòng 1: Chọn Node + Key + nút xóa -->
+                                                <Grid Margin="0,0,0,6">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                        <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                  ItemsSource="{Binding AvailableNodeOptions}"
+                                                                  SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                                  SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Key (chứa JS string)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                                  ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                                  SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="3" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                                            Command="{Binding DataContext.RemoveJsSourceCommand, RelativeSource={RelativeSource AncestorType=local:BaseNodeDialog}}"
+                                                            CommandParameter="{Binding}"
+                                                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
+                                                </Grid>
+                                                <!-- Dòng 2: Tự động chạy JS theo timer -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                    <CheckBox IsChecked="{Binding AutoTimerEnabled, Mode=TwoWay}"
+                                                              Foreground="{DynamicResource TextMuted}"
+                                                              FontSize="11"
+                                                              VerticalAlignment="Center"
+                                                              Margin="0,0,8,0"
+                                                              ToolTip="Khi bật, WebNode sẽ tự động lấy JS từ node+key đã chọn và chạy vào WebView2 theo chu kỳ nhất định (không cần flow đến node).">
+                                                        <TextBlock Text="Tự động chạy JS theo timer" Foreground="{DynamicResource TextMuted}" FontSize="11"/>
+                                                    </CheckBox>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal"
+                                                            Margin="0,4,0,0"
+                                                            IsEnabled="{Binding AutoTimerEnabled}">
+                                                    <TextBlock Text="Mỗi" Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBox Text="{Binding AutoTimerIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{DynamicResource BaseTextBoxV2}"
+                                                             Width="80" Height="32"
+                                                             VerticalContentAlignment="Center"
+                                                             ToolTip="Khoảng thời gian giữa 2 lần chạy JS tự động."/>
+                                                    <ComboBox ItemsSource="{Binding AutoTimerUnitOptions}"
+                                                              SelectedItem="{Binding AutoTimerIntervalUnit, Mode=TwoWay}"
+                                                              Style="{DynamicResource BaseComboBox}"
+                                                              Width="70" Height="32"
+                                                              Margin="6,0,0,0"
+                                                              ToolTip="Đơn vị thời gian: mili giây, giây, phút."/>
+                                                    <TextBlock Text="chạy JS 1 lần" Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="+ Thêm JS source" Height="32" Margin="0,8,0,0"
+                                    Command="{Binding AddJsSourceCommand}"
+                                    Width="140" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 🔄 Auto-reload timer -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🔄 Auto-reload timer" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
                             <CheckBox x:Name="AutoReloadCheckBox"
                                       Foreground="{DynamicResource TextBrush}"
-                                      FontSize="12"
+                                      FontSize="11"
                                       Margin="0,0,0,8"
                                       IsChecked="{Binding AutoReloadEnabled, Mode=TwoWay}"
                                       ToolTip="Tự động tải lại trang (F5) sau mỗi khoảng thời gian được cấu hình.">
@@ -257,7 +303,6 @@
                             </CheckBox>
 
                             <StackPanel Orientation="Horizontal"
-                                        Margin="0,0,0,8"
                                         IsEnabled="{Binding AutoReloadEnabled}">
                                 <TextBox Text="{Binding AutoReloadIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          Style="{DynamicResource BaseTextBoxV2}"
@@ -273,33 +318,42 @@
                                           Margin="8,0,0,0"
                                           ToolTip="Đơn vị thời gian: mili giây, giây, phút."/>
                             </StackPanel>
+                        </StackPanel>
+                    </Border>
                             
-                    <!-- Cookie configuration -->
-                    <TextBlock Text="Cookie (paste text cookie để set vào WebView2):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <TextBlock Text="Hỗ trợ Netscape format hoặc JSON format {url, cookies:[...]}. Click 'Chạy' để set cookie và mở website."
-                               Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding CookieText, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{DynamicResource BaseTextBoxV2}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 MinHeight="100"
-                                 MaxHeight="200"
-                                 VerticalScrollBarVisibility="Auto"
-                                 Margin="0,0,8,0"
-                                 ToolTip="Paste cookie text từ browser (Netscape format hoặc JSON). Click 'Chạy' để set cookie và mở website."/>
-                        <Button Grid.Column="1" Content="▶ Chạy" Width="80" Height="36"
-                                VerticalAlignment="Top"
-                                Style="{DynamicResource SuccessButton}"
-                                Command="{Binding ApplyCookieCommand}"
-                                Cursor="Hand"
-                                ToolTip="Parse cookie và set vào WebView2. Nếu có URL thì mở luôn website đó."/>
-                    </Grid>
+                    <!-- 🍪 Cookie configuration -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🍪 Cookie (paste text cookie để set vào WebView2)" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Hỗ trợ Netscape format hoặc JSON format {url, cookies:[...]}. Click 'Chạy' để set cookie và mở website."
+                                       Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding CookieText, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         MinHeight="100"
+                                         MaxHeight="200"
+                                         VerticalScrollBarVisibility="Auto"
+                                         Margin="0,0,8,0"
+                                         ToolTip="Paste cookie text từ browser (Netscape format hoặc JSON). Click 'Chạy' để set cookie và mở website."/>
+                                <Button Grid.Column="1" Content="▶ Chạy" Width="80" Height="32"
+                                        VerticalAlignment="Top"
+                                        Style="{DynamicResource SuccessButton}"
+                                        Command="{Binding ApplyCookieCommand}"
+                                        Cursor="Hand"
+                                        ToolTip="Parse cookie và set vào WebView2. Nếu có URL thì mở luôn website đó."/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -309,7 +363,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <CheckBox Foreground="{DynamicResource TextBrush}"
-                                      FontSize="12"
+                                      FontSize="11"
                                       Margin="0,0,0,12"
                                       HorizontalContentAlignment="Stretch"
                                       IsChecked="{Binding BlockAllRequestsAfterFirstMatch, Mode=TwoWay}">
@@ -318,11 +372,16 @@
                                            TextTrimming="CharacterEllipsis"/>
                             </CheckBox>
 
-                            <!-- Chặn request -->
-                            <TextBlock Text="Chặn request (URL Pattern):"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <TextBlock Text="Danh sách URL pattern (string contains). Nếu URL chứa pattern -> Chặn."
-                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <!-- 🚫 Chặn request -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🚫 Chặn request (URL Pattern)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Danh sách URL pattern (string contains). Nếu URL chứa pattern -> Chặn."
+                                               Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
 
                             <ItemsControl ItemsSource="{Binding BlockingRules}">
                                 <ItemsControl.ItemTemplate>
@@ -337,7 +396,7 @@
                                                 </Grid.ColumnDefinitions>
 
                                                 <!-- Method ComboBox -->
-                                                <ComboBox Grid.Column="0" Height="36"
+                                                <ComboBox Grid.Column="0" Height="32"
                                                           Style="{DynamicResource BaseComboBox}"
                                                           SelectedItem="{Binding Method, Mode=TwoWay}"
                                                           ToolTip="HTTP method để chặn. Chọn 'All' để chặn tất cả methods.">
@@ -353,20 +412,20 @@
 
                                                 <!-- URL Pattern TextBox (cha) -->
                                                 <TextBox Grid.Column="2" Text="{Binding UrlPattern, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{DynamicResource BaseTextBoxV2}" Height="36"
+                                                         Style="{DynamicResource BaseTextBoxV2}" Height="32"
                                                          ToolTip="URL pattern (string contains). Ví dụ: https://example.com/api"/>
 
                                                 <!-- Remove Button -->
-                                                <Button Grid.Column="3" Content="-" Width="36" Height="36" Margin="8,0,0,0"
+                                                <Button Grid.Column="3" Content="-" Width="32" Height="32" Margin="8,0,0,0"
                                                         Style="{DynamicResource DangerButton}"
                                                         Command="{Binding DataContext.RemoveBlockingRuleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"/>
                                             </Grid>
 
                                             <!-- URL con -->
-                                            <TextBlock Text="URL con (mỗi dòng 1 pattern riêng, chỉ chặn sau khi URL cha ở trên đã bị chặn ít nhất 1 lần):"
+                                            <TextBlock Text="URL con (mỗi dòng 1 pattern riêng, chỉ chặn sau khi URL cha ở trên đã bị chặn ít nhất 1 lần)"
                                                        Foreground="{DynamicResource TextMuted}"
-                                                       FontSize="11"
+                                                       FontSize="10"
                                                        Margin="0,4,0,4"
                                                        TextWrapping="Wrap"/>
 
@@ -413,7 +472,7 @@
                                             </ItemsControl>
 
                                             <Button Content="+ Thêm URL con"
-                                                    Height="24"
+                                                    Height="32"
                                                     Width="140"
                                                     Margin="0,4,0,0"
                                                     HorizontalAlignment="Left"
@@ -427,14 +486,24 @@
 
                             <Button Content="+ Thêm pattern" Height="32" HorizontalAlignment="Left" Width="120"
                                     Style="{DynamicResource PrimaryButton}"
-                                    Command="{Binding AddBlockingRuleCommand}" Margin="0,0,0,16"/>
+                                    Command="{Binding AddBlockingRuleCommand}" Margin="0,0,0,12"/>
 
-                            <!-- Thay request (intercept rules) -->
-                            <TextBlock Text="Thay request (match URL → thay URL/params/body bằng Node+Key):"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <StackPanel x:Name="InterceptRulesPanel" Margin="0,0,0,8"/>
-                            <Button x:Name="AddInterceptRuleButton" Content="+ Thêm rule" Height="32"
-                                    Style="{DynamicResource PrimaryButton}" Margin="0,0,0,16" Click="AddInterceptRuleButton_Click"/>
+                            </StackPanel>
+                            </Border>
+
+                            <!-- 🔄 Thay request (intercept rules) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🔄 Thay request (match URL → thay URL/params/body bằng Node+Key)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <StackPanel x:Name="InterceptRulesPanel" Margin="0,0,0,8"/>
+                                    <Button x:Name="AddInterceptRuleButton" Content="+ Thêm rule" Height="32"
+                                            Style="{DynamicResource PrimaryButton}" Click="AddInterceptRuleButton_Click"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -443,41 +512,50 @@
                 <TabItem Header="Outputs" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Live sync execution results -->
-                            <CheckBox Content="Cập nhật luôn → Result của node khi WebView2 bắt được response (live)"
-                                      Foreground="{DynamicResource TextBrush}" FontSize="12"
-                                      IsChecked="{Binding SyncLiveOutputsToResults, Mode=TwoWay}"
-                                      Margin="0,0,0,16"/>
+                            <!-- 📊 Outputs -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📊 Outputs (Lấy response từ URL - so sánh khớp URL pattern, lấy request cuối cùng khớp)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <!-- Live sync execution results -->
+                                    <CheckBox Content="Cập nhật luôn → Result của node khi WebView2 bắt được response (live)"
+                                              Foreground="{DynamicResource TextBrush}" FontSize="11"
+                                              IsChecked="{Binding SyncLiveOutputsToResults, Mode=TwoWay}"
+                                              Margin="0,0,0,8"/>
 
-                            <!-- Outputs (Response outputs) -->
-                            <TextBlock Text="Outputs (Lấy response từ URL - so sánh khớp URL pattern, lấy request cuối cùng khớp):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <StackPanel x:Name="ResponseOutputsPanel" Margin="0,0,0,8"/>
-                            <Button x:Name="AddResponseOutputButton" Content="+ Thêm output" Height="32"
-                                    Style="{DynamicResource PrimaryButton}" Margin="0,0,0,16" Click="AddResponseOutputButton_Click"/>
+                                    <!-- Outputs (Response outputs) -->
+                                    <StackPanel x:Name="ResponseOutputsPanel" Margin="0,0,0,8"/>
+                                    <Button x:Name="AddResponseOutputButton" Content="+ Thêm output" Height="32"
+                                            Style="{DynamicResource PrimaryButton}" Click="AddResponseOutputButton_Click"/>
 
-                            <!-- Timeout chờ outputs -->
-                            <TextBlock Text="Timeout đợi outputs (ms, 0 = không chờ):"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding ResponseOutputsWaitTimeoutMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Height="32"
-                                     Width="160"
-                                     HorizontalAlignment="Left"
-                                     Margin="0,0,0,16"
-                                     ToolTip="Thời gian tối đa WebNodeExecutor chờ cho các outputs được đánh dấu 'Đợi key này' trước khi chạy node tiếp theo. 0 = không chờ."/>
+                                    <!-- Timeout chờ outputs -->
+                                    <TextBlock Text="Timeout đợi outputs (ms, 0 = không chờ)" 
+                                               Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,8,0,4"/>
+                                    <TextBox Text="{Binding ResponseOutputsWaitTimeoutMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             Height="32"
+                                             Width="160"
+                                             HorizontalAlignment="Left"
+                                             ToolTip="Thời gian tối đa WebNodeExecutor chờ cho các outputs được đánh dấu 'Đợi key này' trước khi chạy node tiếp theo. 0 = không chờ."/>
 
-                            <!-- Wait mode: ALL vs ANY -->
-                            <TextBlock Text="Chế độ đợi key:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <ComboBox Height="36"
-                                      Width="320"
-                                      HorizontalAlignment="Left"
-                                      Margin="0,0,0,16"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      ItemsSource="{Binding ResponseOutputsWaitModeOptions}"
-                                      SelectedValuePath="Value"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding ResponseOutputsWaitMode, Mode=TwoWay}"/>
+                                    <!-- Wait mode: ALL vs ANY -->
+                                    <TextBlock Text="Chế độ đợi key" 
+                                               Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,8,0,4"/>
+                                    <ComboBox Height="32"
+                                              Width="320"
+                                              HorizontalAlignment="Left"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding ResponseOutputsWaitModeOptions}"
+                                              SelectedValuePath="Value"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding ResponseOutputsWaitMode, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
                         </StackPanel>
                     </ScrollViewer>
@@ -488,9 +566,9 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -503,9 +581,8 @@
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                     <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
@@ -516,9 +593,8 @@
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                     <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"

@@ -10,10 +10,10 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="480"
+        Width="520"
         Height="620"
-        MinWidth="380"
-        MinHeight="400">
+        MinWidth="420"
+        MinHeight="420">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -22,7 +22,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -74,309 +74,336 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
 
-                            <!-- TitleDisplayMode -->
-                            <TextBlock Text="Hiển thị tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <ComboBox Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,16"
-                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                      SelectedValuePath="Value"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                            <!-- 🎨 Cấu hình hiển thị -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Cấu hình hiển thị" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Hiển thị tiêu đề" 
+                                               Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              Margin="0,0,0,8"
+                                              ItemsSource="{Binding TitleDisplayModeOptions}"
+                                              SelectedValuePath="Value"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Title mapping -->
-                            <TextBlock Text="Tiêu đề thông báo:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                            <!-- 📝 Tiêu đề thông báo -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📝 Tiêu đề thông báo" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Source Node"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               FontSize="11"
-                                               Margin="0,0,0,4"/>
-                                    <controls:NodeSearchComboBoxUserControl Height="32"
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Source Node"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl Height="32"
                                                                             x:Name="TitleSourceNodeComboBox"
                                                                             ItemsSource="{Binding TitleSourceNodes}"
                                                                             SelectedValue="{Binding TitleSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                             SelectedValuePath="NodeId"
                                                                             DisplayMemberPath="Title"
                                                                             PlaceholderText="Tìm node nguồn..."/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Source Key"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <ComboBox Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding TitleOutputKeys}"
+                                                      SelectedValue="{Binding TitleSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="DisplayName"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
+                            </Border>
 
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Source Key"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               FontSize="11"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding TitleOutputKeys}"
-                                              SelectedValue="{Binding TitleSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="DisplayName"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Content mapping -->
-                            <TextBlock Text="Nội dung thông báo:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,8,0,8"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Source Node"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               FontSize="11"
-                                               Margin="0,0,0,4"/>
-                                    <controls:NodeSearchComboBoxUserControl Height="32"
-                                              x:Name="ContentSourceNodeComboBox"
-                                              ItemsSource="{Binding ContentSourceNodes}"
-                                              SelectedValue="{Binding ContentSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              SelectedValuePath="NodeId"
-                                              DisplayMemberPath="Title"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Source Key"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               FontSize="11"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding ContentOutputKeys}"
-                                              SelectedValue="{Binding ContentSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="DisplayName"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Static title/content fallback -->
-                            <TextBlock Text="Tiêu đề mặc định (khi không map từ node):"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,12,0,8"/>
-                            <TextBox Text="{Binding StaticTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     Height="32"
-                                     Margin="0,0,0,8"/>
-
-                            <TextBlock Text="Nội dung mặc định (khi không map từ node):"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,8,0,8"/>
-                            <TextBox Text="{Binding StaticContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     MinHeight="80"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"
-                                     VerticalScrollBarVisibility="Auto"
-                                     Margin="0,0,0,8"/>
-
-                            <!-- Duration mapping -->
-                            <TextBlock Text="Thời gian hiển thị (giây):"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,8,0,8"/>
-                            <Grid Margin="0,0,0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Source Node / Key (optional)"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               FontSize="11"
-                                               Margin="0,0,0,4"/>
+                            <!-- 📄 Nội dung thông báo -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📄 Nội dung thông báo" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <controls:NodeSearchComboBoxUserControl Grid.Column="0"
-                                                  x:Name="DurationSourceNodeComboBox"
-                                                  Height="32"
-                                                  ItemsSource="{Binding DurationSourceNodes}"
-                                                  SelectedValue="{Binding DurationSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                  SelectedValuePath="NodeId"
-                                                  DisplayMemberPath="Title"
-                                                  Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="1"
-                                                  Height="32"
-                                                  Style="{DynamicResource BaseComboBox}"
-                                                  ItemsSource="{Binding DurationOutputKeys}"
-                                                  SelectedValue="{Binding DurationSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                  SelectedValuePath="Key"
-                                                  DisplayMemberPath="DisplayName"/>
+
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Source Node"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl Height="32"
+                                                      x:Name="ContentSourceNodeComboBox"
+                                                      ItemsSource="{Binding ContentSourceNodes}"
+                                                      SelectedValue="{Binding ContentSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="NodeId"
+                                                      DisplayMemberPath="Title"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Source Key"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <ComboBox Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding ContentOutputKeys}"
+                                                      SelectedValue="{Binding ContentSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="DisplayName"/>
+                                        </StackPanel>
                                     </Grid>
                                 </StackPanel>
+                            </Border>
 
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Default (giây)"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               FontSize="11"
-                                               Margin="0,0,0,4"/>
-                                    <TextBox Height="32"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             Text="{Binding DefaultDurationSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Toast colors -->
-                            <TextBlock Text="Màu sắc popup thông báo:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,12,0,8"/>
-
-                            <StackPanel Margin="0,0,0,8">
-                                <TextBlock Text="Màu tiêu đề:"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           Margin="0,0,0,4"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0"
-                                              Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding TitleColorOptions}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValue="{Binding ToastTitleColorKey, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1"
-                                            Content="🎨"
-                                            Width="32"
-                                            Height="32"
-                                             Padding ="0"
-                                            Margin="8,0,0,0"
-                                            ToolTip="Chọn màu tuỳ ý"
-                                            Click="PickToastTitleColor_Click"/>
-                                </Grid>
-                                <Border x:Name="ToastTitleColorPreview"
-                                        Height="18"
-                                        Margin="0,4,0,0"
-                                        CornerRadius="4"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"/>
-                            </StackPanel>
-
-                            <StackPanel Margin="0,0,0,8">
-                                <TextBlock Text="Màu nội dung:"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           Margin="0,0,0,4"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0"
-                                              Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding TitleColorOptions}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValue="{Binding ToastContentColorKey, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1"
-                                            Content="🎨"
-                                            Width="32"
-                                            Height="32"
-                                             Padding ="0"
-                                            Margin="8,0,0,0"
-                                            ToolTip="Chọn màu tuỳ ý"
-                                            Click="PickToastContentColor_Click"/>
-                                </Grid>
-                                <Border x:Name="ToastContentColorPreview"
-                                        Height="18"
-                                        Margin="0,4,0,0"
-                                        CornerRadius="4"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"/>
-                            </StackPanel>
-
-                            <StackPanel Margin="0,0,0,8">
-                                <TextBlock Text="Màu nền:"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           Margin="0,0,0,4"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0"
-                                              Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding TitleColorOptions}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValue="{Binding ToastBackgroundColorKey, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1"
-                                            Content="🎨"
-                                            Width="32"
-                                            Height="32"
-                                             Padding ="0"
-                                            Margin="8,0,0,0"
-                                            ToolTip="Chọn màu tuỳ ý"
-                                            Click="PickToastBackgroundColor_Click"/>
-                                </Grid>
-                                <Border x:Name="ToastBackgroundColorPreview"
-                                        Height="18"
-                                        Margin="0,4,0,0"
-                                        CornerRadius="4"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"/>
-                            </StackPanel>
-
-                            <StackPanel Margin="0,4,0,0">
-                                <TextBlock Text="Độ trong suốt nền:"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           Margin="0,0,0,4"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Slider Grid.Column="0"
-                                            Minimum="0"
-                                            Maximum="1"
-                                            SmallChange="0.05"
-                                            LargeChange="0.1"
-                                            TickFrequency="0.05"
-                                            IsSnapToTickEnabled="True"
-                                            Value="{Binding ToastBackgroundOpacity, Mode=TwoWay}"/>
-                                    <TextBlock Grid.Column="1"
-                                               Margin="8,0,0,0"
-                                               VerticalAlignment="Center"
+                            <!-- 📝 Giá trị mặc định -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📝 Giá trị mặc định (khi không map từ node)" 
                                                Foreground="{DynamicResource TextBrush}"
-                                               FontSize="11"
-                                               Text="{Binding ToastBackgroundOpacity, StringFormat='{}{0:P0}'}"/>
-                                </Grid>
-                            </StackPanel>
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Tiêu đề mặc định" 
+                                               Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding StaticTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             Height="32"
+                                             Margin="0,0,0,8"/>
+
+                                    <TextBlock Text="Nội dung mặc định" 
+                                               Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding StaticContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             MinHeight="80"
+                                             TextWrapping="Wrap"
+                                             AcceptsReturn="True"
+                                             VerticalScrollBarVisibility="Auto"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ⏱️ Thời gian hiển thị -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⏱️ Thời gian hiển thị (giây)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Source Node / Key (optional)"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <controls:NodeSearchComboBoxUserControl Grid.Column="0"
+                                                          x:Name="DurationSourceNodeComboBox"
+                                                          Height="32"
+                                                          ItemsSource="{Binding DurationSourceNodes}"
+                                                          SelectedValue="{Binding DurationSelectedSourceNodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          SelectedValuePath="NodeId"
+                                                          DisplayMemberPath="Title"
+                                                          Margin="0,0,4,0"/>
+                                                <ComboBox Grid.Column="1"
+                                                          Height="32"
+                                                          Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding DurationOutputKeys}"
+                                                          SelectedValue="{Binding DurationSelectedSourceOutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          SelectedValuePath="Key"
+                                                          DisplayMemberPath="DisplayName"/>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Default (giây)"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <TextBox Height="32"
+                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                     Text="{Binding DefaultDurationSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 🎨 Màu sắc popup thông báo -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Màu sắc popup thông báo" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="Màu tiêu đề"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox Grid.Column="0"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding TitleColorOptions}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="DisplayName"
+                                                      SelectedValue="{Binding ToastTitleColorKey, Mode=TwoWay}"/>
+                                            <Button Grid.Column="1"
+                                                    Content="🎨"
+                                                    Width="32"
+                                                    Height="32"
+                                                     Padding ="0"
+                                                    Margin="8,0,0,0"
+                                                    ToolTip="Chọn màu tuỳ ý"
+                                                    Click="PickToastTitleColor_Click"/>
+                                        </Grid>
+                                        <Border x:Name="ToastTitleColorPreview"
+                                                Height="18"
+                                                Margin="0,4,0,0"
+                                                CornerRadius="4"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"/>
+                                    </StackPanel>
+
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="Màu nội dung"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox Grid.Column="0"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding TitleColorOptions}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="DisplayName"
+                                                      SelectedValue="{Binding ToastContentColorKey, Mode=TwoWay}"/>
+                                            <Button Grid.Column="1"
+                                                    Content="🎨"
+                                                    Width="32"
+                                                    Height="32"
+                                                     Padding ="0"
+                                                    Margin="8,0,0,0"
+                                                    ToolTip="Chọn màu tuỳ ý"
+                                                    Click="PickToastContentColor_Click"/>
+                                        </Grid>
+                                        <Border x:Name="ToastContentColorPreview"
+                                                Height="18"
+                                                Margin="0,4,0,0"
+                                                CornerRadius="4"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"/>
+                                    </StackPanel>
+
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="Màu nền"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox Grid.Column="0"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding TitleColorOptions}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="DisplayName"
+                                                      SelectedValue="{Binding ToastBackgroundColorKey, Mode=TwoWay}"/>
+                                            <Button Grid.Column="1"
+                                                    Content="🎨"
+                                                    Width="32"
+                                                    Height="32"
+                                                     Padding ="0"
+                                                    Margin="8,0,0,0"
+                                                    ToolTip="Chọn màu tuỳ ý"
+                                                    Click="PickToastBackgroundColor_Click"/>
+                                        </Grid>
+                                        <Border x:Name="ToastBackgroundColorPreview"
+                                                Height="18"
+                                                Margin="0,4,0,0"
+                                                CornerRadius="4"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"/>
+                                    </StackPanel>
+
+                                    <StackPanel Margin="0,0,0,0">
+                                        <TextBlock Text="Độ trong suốt nền"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider Grid.Column="0"
+                                                    Minimum="0"
+                                                    Maximum="1"
+                                                    SmallChange="0.05"
+                                                    LargeChange="0.1"
+                                                    TickFrequency="0.05"
+                                                    IsSnapToTickEnabled="True"
+                                                    Value="{Binding ToastBackgroundOpacity, Mode=TwoWay}"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextBrush}"
+                                                       FontSize="10"
+                                                       Text="{Binding ToastBackgroundOpacity, StringFormat='{}{0:P0}'}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
 
                         </StackPanel>
                     </ScrollViewer>
@@ -385,8 +412,9 @@
                 <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold"
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT"
+                                       Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
@@ -394,13 +422,13 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                     <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
                                               SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.8" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
                                     <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                               ItemsSource="{Binding PortPositionOptions}"
                                               SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>

@@ -10,7 +10,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         Width="520"
-        MinWidth="400"
+        MinWidth="420"
         MaxWidth="900"
         MinHeight="420">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
@@ -20,7 +20,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -60,125 +60,169 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <!-- Màu tiêu đề -->
-                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="TitleColorComboBox"
-                                  Grid.Column="0"
-                                  Height="36"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding TitleColorOptions}"
-                                  SelectedValuePath="Key"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                        <Border Grid.Column="1" x:Name="TitleColorPreview"
-                                Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
-                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                    </Grid>
-
-                    <!-- Dòng 1: Thư mục gốc (TextBox 8/10 + Button 2/10) -->
-                    <TextBlock Text="Thư mục gốc:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ComboBox Height="36"
-                              Style="{DynamicResource BaseComboBox}"
-                              Margin="0,0,0,8"
-                              ItemsSource="{Binding RootFolderPresetOptions}"
-                              SelectedValuePath="Key"
-                              DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding SelectedRootFolderPresetKey, Mode=TwoWay}"/>
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="8*"/>
-                            <ColumnDefinition Width="2*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.Style>
-                            <Style TargetType="Grid">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsCustomRootFolderPath}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Grid.Style>
-                        <TextBox x:Name="RootFolderPathTextBox"
-                                 Grid.Column="0"
-                                 Height="36"
-                                 Style="{DynamicResource BaseTextBoxV2}"
-                                 IsReadOnly="False"
-                                 VerticalContentAlignment="Center"
-                                 Padding="8,0"
-                                 Margin="0,0,8,0"
-                                 Text="{Binding RootFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button x:Name="BrowseFolderButton"
-                                Grid.Column="1"
-                                Content="Chọn folder"
-                                Height="36"
-                                Style="{DynamicResource PrimaryButton}"
-                                Cursor="Hand"
-                                Click="BrowseFolderButton_Click"/>
-                    </Grid>
-
-                    <!-- Dòng 2: Path con -->
-                    <TextBlock Text="Path con (tạo folder con trong thư mục gốc):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <TextBox x:Name="SubPathTemplateTextBox"
-                             Height="64"
-                             Style="{DynamicResource BaseTextBoxV2}"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"
-                             Margin="0,0,0,8"
-                             Text="{Binding SubPathTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                    <Border Style="{DynamicResource DialogSectionBorder}" Padding="12,10" Margin="0,0,0,16">
+                    <!-- 🎨 Cấu hình hiển thị -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6">
-                                <Run Text="Placeholder trong path:"/>
-                            </TextBlock>
-                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap" LineHeight="18">
-                                <Run Text="• Key từ input (cột Value bên dưới): "/>
-                                <Run Text="{}{tên_key}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text=" — ví dụ "/>
-                                <Run Text="{}{input1}, {input2}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                            </TextBlock>
-                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap" LineHeight="18" Margin="0,4,0,0">
-                                <Run Text="• Thời gian: "/>
-                                <Run Text="{}{YYYY}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text=" năm, "/>
-                                <Run Text="{}{MM}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text=" tháng, "/>
-                                <Run Text="{}{DD}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text=" ngày, "/>
-                                <Run Text="{}{HH}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text=" giờ, "/>
-                                <Run Text="{}{mm}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text=" phút, "/>
-                                <Run Text="{}{ss}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text=" giây"/>
-                            </TextBlock>
+                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Màu tiêu đề" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox"
+                                          Grid.Column="0"
+                                          Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
-                    <!-- Inputs: Node + Key + Value (mỗi dòng), nút + và - -->
-                    <TextBlock Text="Inputs (key dùng trong path con):" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <TextBlock Text="Mỗi dòng: chọn Node, Key, Value (xác nhận key để tránh trùng; trống = dùng key mặc định)." Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                    <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,12">
+                    <!-- 📁 Thư mục gốc -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
+                            <TextBlock Text="📁 Thư mục gốc" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Chọn thư mục gốc hoặc preset" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox Height="32"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      Margin="0,0,0,8"
+                                      ItemsSource="{Binding RootFolderPresetOptions}"
+                                      SelectedValuePath="Key"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding SelectedRootFolderPresetKey, Mode=TwoWay}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="8*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCustomRootFolderPath}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <TextBox x:Name="RootFolderPathTextBox"
+                                         Grid.Column="0"
+                                         Height="32"
+                                         Style="{DynamicResource BaseTextBoxV2}"
+                                         IsReadOnly="False"
+                                         VerticalContentAlignment="Center"
+                                         Padding="8,0"
+                                         Margin="0,0,8,0"
+                                         Text="{Binding RootFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Button x:Name="BrowseFolderButton"
+                                        Grid.Column="1"
+                                        Content="Chọn folder"
+                                        Height="32"
+                                        Style="{DynamicResource PrimaryButton}"
+                                        Cursor="Hand"
+                                        Click="BrowseFolderButton_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 📂 Path con -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📂 Path con (tạo folder con trong thư mục gốc)" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Sử dụng placeholder để tạo path động" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <TextBox x:Name="SubPathTemplateTextBox"
+                                     Height="64"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Margin="0,0,0,8"
+                                     Text="{Binding SubPathTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10">
+                                <StackPanel>
+                                    <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4">
+                                        <Run Text="Placeholder trong path:"/>
+                                    </TextBlock>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" LineHeight="16">
+                                        <Run Text="• Key từ input (cột Value bên dưới): "/>
+                                        <Run Text="{}{tên_key}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <Run Text=" — ví dụ "/>
+                                        <Run Text="{}{input1}, {input2}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                    </TextBlock>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" LineHeight="16" Margin="0,4,0,0">
+                                        <Run Text="• Thời gian: "/>
+                                        <Run Text="{}{YYYY}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <Run Text=" năm, "/>
+                                        <Run Text="{}{MM}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <Run Text=" tháng, "/>
+                                        <Run Text="{}{DD}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <Run Text=" ngày, "/>
+                                        <Run Text="{}{HH}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <Run Text=" giờ, "/>
+                                        <Run Text="{}{mm}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <Run Text=" phút, "/>
+                                        <Run Text="{}{ss}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <Run Text=" giây"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 📍 Inputs -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📍 Inputs (key dùng trong path con)" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Mỗi dòng: chọn Node, Key, Value (xác nhận key để tránh trùng; trống = dùng key mặc định)" 
+                                       Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
                             <StackPanel x:Name="KeyValueInputsPanel"/>
-                            <Button x:Name="AddInputRowButton" Content="+ Thêm dòng" Height="36" Width="120" FontSize="13" FontWeight="SemiBold"
-                                    Margin="0,12,0,0" Padding="12,0" HorizontalAlignment="Left"
+                            <Button x:Name="AddInputRowButton" Content="+ Thêm dòng" Height="32" Width="120" FontSize="12"
+                                    Margin="0,8,0,0" Padding="12,0" HorizontalAlignment="Left"
                                     Click="AddInputRowButton_Click"
                                     Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Outputs: folder, fullPath -->
-                    <TextBlock Text="Outputs:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" x:Name="TextBlockOutputPanel"/>
-                    <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,16" x:Name="BorderOutputPanel">
-                        <StackPanel x:Name="OutputsPanel"/>
+                    <!-- 📊 Outputs -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📊 Outputs" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <StackPanel x:Name="OutputsPanel"/>
+                        </StackPanel>
                     </Border>
                     <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
                 </StackPanel>
@@ -190,9 +234,9 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -205,9 +249,8 @@
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                     <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
@@ -218,9 +261,8 @@
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                     <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"

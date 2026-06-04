@@ -10,11 +10,11 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="450"
+        Width="520"
         Height="650"
-        MinWidth="350"
+        MinWidth="420"
         MaxWidth="800"
-        MinHeight="400">
+        MinHeight="420">
     <Window.Resources>
         <!-- Dùng lại converter giống LoopNodeDialog để show/hide error text -->
         <converters:InverseStringNullOrEmptyToVisibilityConverter x:Key="StringToVisibilityConverter"/>
@@ -27,7 +27,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -71,146 +71,144 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <!-- TitleDisplayMode Section -->
-                    <TextBlock Text="Hiển thị tiêu đề:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
+                    <!-- 🎨 Cấu hình hiển thị -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Hiển thị tiêu đề" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="TitleDisplayModeComboBox"
+                                      Height="32"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      Margin="0,0,0,8"
+                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                      SelectedValuePath="Value"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
-                    <ComboBox x:Name="TitleDisplayModeComboBox"
-                              Height="36"
-                              Style="{DynamicResource BaseComboBox}"
-                              Margin="0,0,0,16"
-                              ItemsSource="{Binding TitleDisplayModeOptions}"
-                              SelectedValuePath="Value"
-                              DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-
-                    <!-- TitleColorMode Section -->
-                    <TextBlock Text="Màu tiêu đề:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        
-                        <ComboBox x:Name="TitleColorComboBox"
-                                  Grid.Column="0"
-                                  Height="36"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding TitleColorOptions}"
-                                  SelectedValuePath="Key"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                        
-                        <!-- Color Preview -->
-                        <Border Grid.Column="1" 
-                                x:Name="TitleColorPreview"
-                                Width="36" Height="36" 
-                                CornerRadius="6"
-                                Margin="8,0,0,0"
-                                BorderBrush="{DynamicResource ControlBorderBrush}"
-                                BorderThickness="1"/>
-                    </Grid>
-
-                    <!-- Regex Pattern Section -->
-                    <TextBlock Text="Regex Pattern:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-                    
-                    <TextBox Text="{Binding RegexPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{DynamicResource BaseTextBoxV2}"
-                             Height="36"
-                             Margin="0,0,0,4"
-                             ToolTip="Regex pattern để cắt chuỗi (mặc định: \r?\n để cắt theo dòng)"/>
-                    
-                    <TextBlock Text="Mặc định: \r?\n (cắt theo dòng mới)"
-                               Foreground="{DynamicResource TextMuted}"
-                               FontSize="11"
-                               Margin="0,0,0,16"/>
-
-                    <!-- Output Key Section -->
-                    <TextBlock Text="Output Key:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-                    
-                    <TextBox Text="{Binding OutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{DynamicResource BaseTextBoxV2}"
-                             Height="36"
-                             Margin="0,0,0,4"
-                             ToolTip="Key của output (để trống sẽ dùng 'ListItems')"/>
-                    
-                    <TextBlock Text="Để trống sẽ dùng key mặc định: 'ListItems'"
-                               Foreground="{DynamicResource TextMuted}"
-                               FontSize="11"
-                               Margin="0,0,0,16"/>
-
-                    <!-- Input Section -->
-                    <TextBlock Text="Input:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"/>
-                    
-                    <Border Style="{DynamicResource DialogOuterBorder}"
-                            CornerRadius="8"
-                            Padding="12"
-                            Margin="0,0,0,8">
-                        <StackPanel x:Name="InputsPanel"/>
+                            <TextBlock Text="Màu tiêu đề" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox"
+                                          Grid.Column="0"
+                                          Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border Grid.Column="1" 
+                                        x:Name="TitleColorPreview"
+                                        Width="32" Height="32" 
+                                        CornerRadius="6"
+                                        Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1"/>
+                            </Grid>
+                        </StackPanel>
                     </Border>
 
-                    <!-- Error message khi input type không phải String -->
-                    <TextBlock Text="{Binding InputErrorMessage}"
-                               Foreground="{DynamicResource DangerColor}"
-                               FontSize="11"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,16"
-                               Visibility="{Binding InputErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
-
-                    <!-- Output Section -->
-                    <TextBlock Text="Output:"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,8"
-                               x:Name="TextBlockOutputPanel"/>
-                    
-                    <Border Style="{DynamicResource DialogOuterBorder}"
-                            CornerRadius="8"
-                            Padding="12"
-                            Margin="0,0,0,16"
-                            x:Name="BorderOutputPanel">
-                        <StackPanel x:Name="OutputsPanel"/>
+                    <!-- 🔍 Regex Pattern -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🔍 Regex Pattern" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Regex pattern để cắt chuỗi" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding RegexPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     Height="32"
+                                     ToolTip="Regex pattern để cắt chuỗi (mặc định: \r?\n để cắt theo dòng)"/>
+                            <TextBlock Text="Mặc định: \r?\n (cắt theo dòng mới)"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
                     </Border>
 
-                    <!-- Note Section -->
-                    <Border Background="{DynamicResource HeaderBackgroundBrush}" 
-                            BorderBrush="{DynamicResource PrimaryGlowBrush}" 
-                            BorderThickness="1" 
+                    <!-- 📝 Output Key -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📝 Output Key" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Key của output (để trống sẽ dùng 'ListItems')" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding OutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     Height="32"
+                                     ToolTip="Key của output (để trống sẽ dùng 'ListItems')"/>
+                            <TextBlock Text="Để trống sẽ dùng key mặc định: 'ListItems'"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 📍 Input -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📍 Input" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <StackPanel x:Name="InputsPanel"/>
+                            <!-- Error message khi input type không phải String -->
+                            <TextBlock Text="{Binding InputErrorMessage}"
+                                       Foreground="{DynamicResource DangerColor}"
+                                       FontSize="10"
+                                       TextWrapping="Wrap"
+                                       Margin="0,8,0,0"
+                                       Visibility="{Binding InputErrorMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 📊 Output -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📊 Output" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <StackPanel x:Name="OutputsPanel"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 💡 Lưu ý -->
+                    <Border Background="{DynamicResource CardColor}" 
                             CornerRadius="8" 
                             Padding="12" 
                             Margin="0,0,0,0">
                         <StackPanel>
-                            <TextBlock Text="💡 Lưu ý:"
-                                       Foreground="{DynamicResource PrimaryBrush}"
-                                       FontSize="13"
+                            <TextBlock Text="💡 Lưu ý"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
                             <TextBlock TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextMuted}"
-                                       FontSize="12"
-                                       LineHeight="18">
+                                       FontSize="10"
+                                       LineHeight="16">
                                 • Node sẽ tự động bỏ qua các item rỗng, null, hoặc chỉ có khoảng trắng<LineBreak/>
                                 • Output là mảng string<LineBreak/>
                                 • Có thể đổi key của output để dễ nhận diện
@@ -226,9 +224,9 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -241,9 +239,8 @@
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                     <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
@@ -254,9 +251,8 @@
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                     <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"

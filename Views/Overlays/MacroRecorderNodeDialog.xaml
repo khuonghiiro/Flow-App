@@ -10,8 +10,8 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="460"
-        MinWidth="380"
+        Width="520"
+        MinWidth="420"
         MaxWidth="700"
         MinHeight="420">
     <local:BaseNodeDialog.Resources>
@@ -25,7 +25,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -80,131 +80,149 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
 
-                            <!-- Title Display Mode -->
-                            <TextBlock Text="Hiển thị tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <ComboBox x:Name="TitleDisplayModeComboBox"
-                                      Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,16"
-                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                      SelectedValuePath="Value"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-
-                            <!-- Title Color Mode + Preview -->
-                            <TextBlock Text="Màu tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" MinWidth="150"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <ComboBox x:Name="TitleColorComboBox"
-                                          Grid.Column="0"
-                                          Height="36"
-                                          MinWidth="150"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding TitleColorOptions}"
-                                          SelectedValuePath="Key"
-                                          DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-
-                                <Border Grid.Column="1"
-                                        x:Name="TitleColorPreview"
-                                        Width="36"
-                                        Height="36"
-                                        CornerRadius="6"
-                                        Margin="8,0,0,0"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"/>
-                            </Grid>
-
-                            <!-- Output Key -->
-                            <TextBlock Text="Output key:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <TextBox x:Name="OutputKeyTextBox"
-                                     Height="36"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     FontSize="13"
-                                     Padding="8,0,8,0"
-                                     VerticalContentAlignment="Center"
-                                     Margin="0,0,0,16"
-                                     Text="{Binding OutputKey, UpdateSourceTrigger=PropertyChanged}"/>
-
-                            <!-- MacroDataJson readonly preview -->
-                            <TextBlock Text="Dữ liệu đã ghi (JSON):"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <TextBox x:Name="MacroDataJsonTextBox"
-                                     Height="80"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     FontSize="11"
-                                     Padding="8,6,8,6"
-                                     VerticalContentAlignment="Top"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     IsReadOnly="True"
-                                     Margin="0,0,0,12"
-                                     Text="{Binding MacroDataJson, Mode=OneWay}"/>
-
-                            <!-- Execution Mode Combo Box -->
-                            <TextBlock Text="Phạm vi hoạt động:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <ComboBox x:Name="ExecutionModeComboBox"
-                                      Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,16"
-                                      ItemsSource="{Binding ExecutionModeOptions}"
-                                      SelectedItem="{Binding SelectedExecutionMode, Mode=TwoWay}"/>
-
-                            <!-- Target App Combo Box (ẩn/hiện theo IsTargetAppVisible) -->
-                            <StackPanel Visibility="{Binding IsTargetAppVisible, Converter={StaticResource BoolToVisibility}}"
-                                        Margin="0,0,0,16">
-                                <TextBlock Text="Chọn ứng dụng đích:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="TargetAppComboBox"
-                                              Grid.Column="0"
-                                              Height="36"
+                            <!-- 🎨 Hiển thị tiêu đề -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Hiển thị tiêu đề" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <ComboBox x:Name="TitleDisplayModeComboBox"
+                                              Height="32"
                                               Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding ActiveWindows}"
+                                              ItemsSource="{Binding TitleDisplayModeOptions}"
+                                              SelectedValuePath="Value"
                                               DisplayMemberPath="DisplayName"
-                                              SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
-                                    <Button Grid.Column="1"
-                                            Content="↻"
-                                            Height="36"
-                                            Width="36"
-                                            Padding = "0"
-                                            Margin="8,0,0,0"
-                                            Style="{DynamicResource SecondaryButton}"
-                                            Command="{Binding LoadWindowsCommand}"
-                                            ToolTip="Tải lại danh sách cửa sổ"
-                                            Cursor="Hand"/>
-                                </Grid>
+                                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 🎨 Màu tiêu đề -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Màu tiêu đề" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MinWidth="150"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <ComboBox x:Name="TitleColorComboBox"
+                                                  Grid.Column="0"
+                                                  Height="32"
+                                                  MinWidth="150"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding TitleColorOptions}"
+                                                  SelectedValuePath="Key"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+
+                                        <Border Grid.Column="1"
+                                                x:Name="TitleColorPreview"
+                                                Width="32"
+                                                Height="32"
+                                                CornerRadius="6"
+                                                Margin="8,0,0,0"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 🔑 Output Key -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🔑 Output Key" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBox x:Name="OutputKeyTextBox"
+                                             Height="32"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             VerticalContentAlignment="Center"
+                                             Text="{Binding OutputKey, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 📄 Dữ liệu đã ghi (JSON) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📄 Dữ liệu đã ghi (JSON)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBox x:Name="MacroDataJsonTextBox"
+                                             Height="80"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             FontSize="10"
+                                             Padding="8,6,8,6"
+                                             VerticalContentAlignment="Top"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             IsReadOnly="True"
+                                             Text="{Binding MacroDataJson, Mode=OneWay}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 🎯 Phạm vi hoạt động -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎯 Phạm vi hoạt động" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <ComboBox x:Name="ExecutionModeComboBox"
+                                              Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding ExecutionModeOptions}"
+                                              SelectedItem="{Binding SelectedExecutionMode, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 🎯 Chọn ứng dụng đích -->
+                            <StackPanel Visibility="{Binding IsTargetAppVisible, Converter={StaticResource BoolToVisibility}}"
+                                        Margin="0,0,0,12">
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="🎯 Chọn ứng dụng đích" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox x:Name="TargetAppComboBox"
+                                                      Grid.Column="0"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding ActiveWindows}"
+                                                      DisplayMemberPath="DisplayName"
+                                                      SelectedItem="{Binding SelectedTargetWindow, Mode=TwoWay}"/>
+                                            <Button Grid.Column="1"
+                                                    Content="↻"
+                                                    Height="32"
+                                                    Width="32"
+                                                    Padding = "0"
+                                                    Margin="8,0,0,0"
+                                                    Style="{DynamicResource SecondaryButton}"
+                                                    Command="{Binding LoadWindowsCommand}"
+                                                    ToolTip="Tải lại danh sách cửa sổ"
+                                                    Cursor="Hand"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
 
                             <!-- Button: Ghi lại thao tác -->
@@ -238,87 +256,95 @@
                                       Margin="0,0,0,16"
                                       Cursor="Hand"/>
 
-                            <!-- PlaybackMode ComboBox -->
-                            <TextBlock Text="Chế độ phát lại:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <ComboBox x:Name="PlaybackModeComboBox"
-                                      Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,16"
-                                      ItemsSource="{Binding PlaybackModeOptions}"
-                                      SelectedItem="{Binding SelectedPlaybackMode, Mode=TwoWay}"/>
+                            <!-- ⚙️ Chế độ phát lại -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ Chế độ phát lại" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <ComboBox x:Name="PlaybackModeComboBox"
+                                              Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PlaybackModeOptions}"
+                                              SelectedItem="{Binding SelectedPlaybackMode, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Visual Playback Mode -->
-                            <TextBlock Text="Hiển thị khi chạy:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <ComboBox x:Name="VisualPlaybackModeComboBox"
-                                      Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,4"
-                                      ItemsSource="{Binding VisualPlaybackModeOptions}"
-                                      SelectedItem="{Binding SelectedVisualPlaybackMode, Mode=TwoWay}"/>
-                            <!-- Description hint -->
-                            <TextBlock x:Name="VisualModeHint"
-                                       FontSize="11"
-                                       Opacity="0.65"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       Margin="0,0,0,8"/>
+                            <!-- 👁️ Hiển thị khi chạy -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="👁️ Hiển thị khi chạy" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <ComboBox x:Name="VisualPlaybackModeComboBox"
+                                              Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              Margin="0,0,0,8"
+                                              ItemsSource="{Binding VisualPlaybackModeOptions}"
+                                              SelectedItem="{Binding SelectedVisualPlaybackMode, Mode=TwoWay}"/>
+                                    <TextBlock x:Name="VisualModeHint"
+                                               FontSize="10"
+                                               Opacity="0.65"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextMuted}"/>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Countdown trước khi phát lại -->
-                            <TextBlock Text="Đếm ngược trước khi phát lại (giây, 0 = không đếm):"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12"
-                                       Opacity="0.85"
-                                       Margin="0,0,0,4"/>
-                            <TextBox Height="32"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     FontSize="13"
-                                     Padding="8,0,8,0"
-                                     VerticalContentAlignment="Center"
-                                     Margin="0,0,0,16"
-                                     Text="{Binding CountdownSeconds, UpdateSourceTrigger=PropertyChanged}"/>
+                            <!-- ⏱️ Đếm ngược trước khi phát lại -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⏱️ Đếm ngược trước khi phát lại (giây, 0 = không đếm)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBox Height="32"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             VerticalContentAlignment="Center"
+                                             Text="{Binding CountdownSeconds, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- RepeatIntervalMs (ẩn/hiện theo IsRepeatVisible) -->
+                            <!-- 🔄 Thời gian giữa chu kỳ -->
                             <StackPanel Visibility="{Binding IsRepeatVisible, Converter={StaticResource BoolToVisibility}}"
-                                        Margin="0,0,0,0">
-                                <TextBlock Text="Thời gian giữa chu kỳ (ms):"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <TextBox x:Name="RepeatIntervalMsTextBox"
-                                         Height="36"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         FontSize="13"
-                                         Padding="8,0,8,0"
-                                         VerticalContentAlignment="Center"
-                                         Margin="0,0,0,16"
-                                         Text="{Binding RepeatIntervalMs, UpdateSourceTrigger=PropertyChanged}"/>
+                                        Margin="0,0,0,12">
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="🔄 Thời gian giữa chu kỳ (ms)" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <TextBox x:Name="RepeatIntervalMsTextBox"
+                                                 Height="32"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 VerticalContentAlignment="Center"
+                                                 Text="{Binding RepeatIntervalMs, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
 
-                            <!-- RepeatCount (ẩn/hiện theo IsRepeatVisible) -->
+                            <!-- 🔢 Số lần lặp -->
                             <StackPanel Visibility="{Binding IsRepeatVisible, Converter={StaticResource BoolToVisibility}}"
-                                        Margin="0,0,0,0">
-                                <TextBlock Text="Số lần lặp:"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <TextBox x:Name="RepeatCountTextBox"
-                                         Height="36"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         FontSize="13"
-                                         Padding="8,0,8,0"
-                                         VerticalContentAlignment="Center"
-                                         Margin="0,0,0,16"
-                                         Text="{Binding RepeatCount, UpdateSourceTrigger=PropertyChanged}"/>
+                                        Margin="0,0,0,12">
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="🔢 Số lần lặp" 
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <TextBox x:Name="RepeatCountTextBox"
+                                                 Height="32"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 VerticalContentAlignment="Center"
+                                                 Text="{Binding RepeatCount, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
 
                             <!-- Export / Import JSON buttons -->
@@ -356,9 +382,10 @@
                 <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -370,9 +397,8 @@
 
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                     <TextBlock Text="Port IN"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
@@ -382,9 +408,8 @@
 
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                     <TextBlock Text="Port OUT"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
