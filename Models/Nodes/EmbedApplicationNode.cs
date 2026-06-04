@@ -18,6 +18,7 @@ namespace FlowMy.Models.Nodes
         private bool _autoRefresh = true;
         private int _refreshRate = 30; // FPS
         private EmbedCaptureMode _captureMode = EmbedCaptureMode.Interactive;
+        private bool _hasEmbeddedWindow = false;
 
         public EmbedApplicationNode()
         {
@@ -138,6 +139,15 @@ namespace FlowMy.Models.Nodes
         {
             get => _captureMode;
             set { if (_captureMode != value) { _captureMode = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Đã có window được embed chưa
+        /// </summary>
+        public bool HasEmbeddedWindow
+        {
+            get => _hasEmbeddedWindow;
+            set { if (_hasEmbeddedWindow != value) { _hasEmbeddedWindow = value; OnPropertyChanged(); } }
         }
 
         public void RebuildDynamicOutputs()

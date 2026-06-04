@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Views.NodeControls;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,6 +11,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace FlowMy.ViewModels
 {
@@ -89,21 +92,104 @@ namespace FlowMy.ViewModels
 
         protected override void OnSaveTitle()
         {
+            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] === OnSaveTitle called ===");
+            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] SelectedProcessId = {SelectedProcessId}");
+            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Current HasEmbeddedWindow = {_embedNode.HasEmbeddedWindow}");
+            
             bool changed = false;
 
+            // Check nếu đã chọn app (SelectedProcessId > 0) và chưa embed
+            if (SelectedProcessId > 0 && !_embedNode.HasEmbeddedWindow)
+            {
+                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] App selected but not embedded yet, setting up...");
+                
+                var app = AvailableApplications.FirstOrDefault(a => a.ProcessId == SelectedProcessId);
+                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Found app: {(app != null ? app.ProcessName : "NULL")}");
+                
+                if (app != null && app.WindowHandle != IntPtr.Zero)
+                {
+                    _embedNode.ProcessId = SelectedProcessId;
+                    _embedNode.ProcessName = app.ProcessName;
+                    _embedNode.WindowHandle = app.WindowHandle;
+                    _embedNode.WindowTitle = app.WindowTitle;
+                    
+                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] WindowHandle = {app.WindowHandle}");
+                    
+                    // Check if window can be embedded
+                    bool canEmbed = Helpers.WindowHostHelper.CanEmbedWindow(app.WindowHandle);
+                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] CanEmbed = {canEmbed}");
+                    
+                    if (canEmbed)
+                    {
+                        _embedNode.HasEmbeddedWindow = true;
+                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ✅ SET HasEmbeddedWindow = true");
+                        changed = true;
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ❌ Cannot embed this window");
+                        System.Windows.MessageBox.Show(
+                            $"Không thể embed ứng dụng '{app.ProcessName}'.\n\nỨng dụng này là system window hoặc bị hạn chế.",
+                            "Không thể embed",
+                            System.Windows.MessageBoxButton.OK,
+                            System.Windows.MessageBoxImage.Warning);
+                    }
+                }
+            }
+            
             if (_embedNode.ProcessId != SelectedProcessId)
             {
+                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ProcessId changed from {_embedNode.ProcessId} to {SelectedProcessId}");
                 _embedNode.ProcessId = SelectedProcessId;
                 
                 // Update process info
                 var app = AvailableApplications.FirstOrDefault(a => a.ProcessId == SelectedProcessId);
+                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Found app: {(app != null ? app.ProcessName : "NULL")}");
+                
                 if (app != null)
                 {
                     _embedNode.ProcessName = app.ProcessName;
                     _embedNode.WindowHandle = app.WindowHandle;
                     _embedNode.WindowTitle = app.WindowTitle;
+                    
+                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] WindowHandle = {app.WindowHandle}");
+                    
+                    // Validate window handle trước khi set HasEmbeddedWindow
+                    if (app.WindowHandle != IntPtr.Zero)
+                    {
+                        // Check if window can be embedded
+                        bool canEmbed = Helpers.WindowHostHelper.CanEmbedWindow(app.WindowHandle);
+                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] CanEmbed = {canEmbed}");
+                        
+                        if (canEmbed)
+                        {
+                            _embedNode.HasEmbeddedWindow = true;
+                            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ✅ SET HasEmbeddedWindow = true");
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ❌ Cannot embed this window (system/restricted window)");
+                            System.Windows.MessageBox.Show(
+                                $"Không thể embed ứng dụng '{app.ProcessName}'.\n\nỨng dụng này là system window hoặc bị hạn chế.",
+                                "Không thể embed",
+                                System.Windows.MessageBoxButton.OK,
+                                System.Windows.MessageBoxImage.Warning);
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ❌ WindowHandle is Zero!");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ⚠️ App not found in AvailableApplications");
                 }
                 changed = true;
+            }
+            else
+            {
+                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ProcessId unchanged: {SelectedProcessId}");
             }
 
             if (Math.Abs(_embedNode.EmbeddedWidth - EmbeddedWidth) > 0.01)
@@ -158,6 +244,7 @@ namespace FlowMy.ViewModels
 
             if (changed)
             {
+                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Changes saved");
                 _host.RequestSyncDataPanels(immediate: true);
             }
         }

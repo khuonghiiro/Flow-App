@@ -95,7 +95,7 @@ namespace FlowMy.Controls
             if (_embeddedWindowHandle == IntPtr.Zero)
                 return;
 
-            Debug.WriteLine("[EmbeddedWindowHost] Unembedding window...");
+            Debug.WriteLine($"[EmbeddedWindowHost] Unembedding window... Stack trace:\n{new System.Diagnostics.StackTrace(1, true)}");
             Helpers.WindowHostHelper.UnembedWindow(_embeddedWindowHandle);
             
             _embeddedWindowHandle = IntPtr.Zero;

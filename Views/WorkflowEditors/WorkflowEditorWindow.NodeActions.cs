@@ -824,6 +824,7 @@ namespace FlowMy.Views
                 dstEmbed.AutoRefresh = srcEmbed.AutoRefresh;
                 dstEmbed.RefreshRate = srcEmbed.RefreshRate;
                 dstEmbed.CaptureMode = srcEmbed.CaptureMode;
+                dstEmbed.HasEmbeddedWindow = srcEmbed.HasEmbeddedWindow;
                 
                 // Title properties
                 dstEmbed.TitleDisplayMode = srcEmbed.TitleDisplayMode;

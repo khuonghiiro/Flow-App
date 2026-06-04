@@ -1459,8 +1459,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             if (properties.TryGetValue("ProcessId", out var pidObj) && int.TryParse(pidObj?.ToString(), out var pid))
                 embedApp.ProcessId = pid;
             
-            if (properties.TryGetValue("WindowHandle", out var whObj) && IntPtr.TryParse(whObj?.ToString(), out var wh))
-                embedApp.WindowHandle = wh;
+            // Parse IntPtr từ string (Int64)
+            if (properties.TryGetValue("WindowHandle", out var whObj) && long.TryParse(whObj?.ToString(), out var whLong))
+                embedApp.WindowHandle = new IntPtr(whLong);
             
             if (properties.TryGetValue("WindowTitle", out var wtObj))
                 embedApp.WindowTitle = wtObj?.ToString() ?? string.Empty;
@@ -1488,6 +1489,9 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             
             if (properties.TryGetValue("CaptureMode", out var cmObj) && Enum.TryParse<EmbedCaptureMode>(cmObj?.ToString(), out var cm))
                 embedApp.CaptureMode = cm;
+            
+            if (properties.TryGetValue("HasEmbeddedWindow", out var hewObj) && bool.TryParse(hewObj?.ToString(), out var hew))
+                embedApp.HasEmbeddedWindow = hew;
             
             embedApp.RebuildDynamicOutputs();
         }
@@ -6181,7 +6185,8 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
         {
             dict["ProcessName"] = embedApp.ProcessName ?? string.Empty;
             dict["ProcessId"] = embedApp.ProcessId;
-            dict["WindowHandle"] = embedApp.WindowHandle.ToString();
+            // IntPtr cần convert sang string để serialize JSON
+            dict["WindowHandle"] = embedApp.WindowHandle.ToInt64().ToString();
             dict["WindowTitle"] = embedApp.WindowTitle ?? string.Empty;
             dict["EmbeddedWidth"] = embedApp.EmbeddedWidth;
             dict["EmbeddedHeight"] = embedApp.EmbeddedHeight;
@@ -6191,6 +6196,7 @@ public sealed class FileWorkflowPersistenceService : IWorkflowPersistenceService
             dict["AutoRefresh"] = embedApp.AutoRefresh;
             dict["RefreshRate"] = embedApp.RefreshRate;
             dict["CaptureMode"] = embedApp.CaptureMode.ToString();
+            dict["HasEmbeddedWindow"] = embedApp.HasEmbeddedWindow;
         }
         else if (node is StorageNode storageNode)
         {
