@@ -71,8 +71,7 @@ namespace FlowMy.Views.Overlays
             var count = ViewModel.Outputs.Count;
             var hasCustom = _loopNode.CustomOutputMappings.Count > 0;
             var visible = count > 0 || hasCustom;
-            BorderOutputPanel.Visibility = Visibility.Visible; // Luôn hiện để có nút +
-            TextBlockOutputPanel.Visibility = Visibility.Visible;
+            // Panel luôn hiện để có nút thêm custom output
         }
 
         protected override FrameworkElement CreateInputItemUI(InputItemViewModel inputVm)

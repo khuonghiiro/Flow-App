@@ -9,11 +9,11 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="500"
+        Width="520"
         Height="700"
-        MinWidth="400"
+        MinWidth="420"
         MaxWidth="900"
-        MinHeight="400">
+        MinHeight="420">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -22,7 +22,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -66,29 +66,29 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
                     <!-- TitleDisplayMode -->
-                    <TextBlock Text="Hiển thị tiêu đề:"
+                    <TextBlock Text="Hiển thị tiêu đề"
                                Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
+                               FontSize="12"
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
 
                     <ComboBox x:Name="TitleDisplayModeComboBox"
-                              Height="36"
+                              Height="32"
                               Style="{DynamicResource BaseComboBox}"
-                              Margin="0,0,0,16"
+                              Margin="0,0,0,12"
                               ItemsSource="{Binding TitleDisplayModeOptions}"
                               SelectedValuePath="Value"
                               DisplayMemberPath="DisplayName"
                               SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
                     <!-- TitleColorMode Section -->
-                    <TextBlock Text="Màu tiêu đề:"
+                    <TextBlock Text="Màu tiêu đề"
                                Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
+                               FontSize="12"
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
 
-                    <Grid Margin="0,0,0,16">
+                    <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" MinWidth="150"/>
                             <ColumnDefinition Width="Auto"/>
@@ -96,7 +96,7 @@
                         
                         <ComboBox x:Name="TitleColorComboBox"
                                   Grid.Column="0"
-                                  Height="36"
+                                  Height="32"
                                   MinWidth="150"
                                   Style="{DynamicResource BaseComboBox}"
                                   ItemsSource="{Binding TitleColorOptions}"
@@ -108,7 +108,7 @@
                         <!-- Color Preview -->
                         <Border Grid.Column="1" 
                                 x:Name="TitleColorPreview"
-                                Width="36" Height="36" 
+                                Width="32" Height="32" 
                                 CornerRadius="6"
                                 Margin="8,0,0,0"
                                 BorderBrush="{DynamicResource ControlBorderBrush}"
@@ -116,16 +116,16 @@
                     </Grid>
 
                     <!-- Output Key Section -->
-                    <TextBlock Text="Output Key:"
+                    <TextBlock Text="Output Key"
                                Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
+                               FontSize="12"
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
 
                     <TextBox Text="{Binding OutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Style="{DynamicResource BaseTextBoxV2}"
-                             Height="36"
-                             Margin="0,0,0,16"
+                             Height="32"
+                             Margin="0,0,0,12"
                              FontSize="13"/>
 
                     <!-- Input Variables Section -->
@@ -135,10 +135,10 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         
-                        <TextBlock Text="Input Variables:"
+                        <TextBlock Text="Input Variables"
                                    Grid.Column="0"
                                    Foreground="{DynamicResource TextBrush}"
-                                   FontSize="14"
+                                   FontSize="12"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
                         
@@ -253,9 +253,9 @@
                     </Border>
 
                     <!-- Format String Section -->
-                    <TextBlock Text="Format String:"
+                    <TextBlock Text="Format String"
                                Foreground="{DynamicResource TextBrush}"
-                               FontSize="14"
+                               FontSize="12"
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
 
@@ -265,20 +265,20 @@
                              TextWrapping="Wrap"
                              AcceptsReturn="True"
                              VerticalScrollBarVisibility="Auto"
-                             Margin="0,0,0,16"
+                             Margin="0,0,0,12"
                              FontSize="13"/>
 
                     <!-- Save to Clipboard Section -->
                     <CheckBox Content="Lưu vào clipboard (Ctrl+V để paste)"
                               IsChecked="{Binding SaveToClipboard, Mode=TwoWay}"
-                              Margin="0,0,0,16"
+                              Margin="0,0,0,12"
                               Foreground="{DynamicResource TextBrush}"
-                              FontSize="13"/>
+                              FontSize="11"/>
 
                     <!-- Info -->
-                    <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                    <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="💡 Hướng dẫn Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="💡 Hướng dẫn Format String:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             
                             <!-- Basic Usage -->
                             <TextBlock Text="1. Giá trị thường:" Foreground="{DynamicResource TextSecondary}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
@@ -362,12 +362,12 @@
                     </Border>
 
                     <!-- Outputs Section (auto-generated from OutputKey) -->
-                    <TextBlock Text="Outputs (tự động tạo từ OutputKey):" 
+                    <TextBlock Text="Outputs (tự động tạo từ OutputKey)" 
                                Foreground="{DynamicResource TextBrush}" 
-                               FontSize="14" 
+                               FontSize="12" 
                                FontWeight="SemiBold" 
                                Margin="0,0,0,8"/>
-                    <Border Style="{DynamicResource DialogOuterBorder}" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                    <Border Style="{DynamicResource DialogOuterBorder}" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel x:Name="OutputsPanel"/>
                     </Border>
                 </StackPanel>
@@ -379,9 +379,9 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -394,9 +394,8 @@
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                     <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
@@ -407,9 +406,8 @@
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                     <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"

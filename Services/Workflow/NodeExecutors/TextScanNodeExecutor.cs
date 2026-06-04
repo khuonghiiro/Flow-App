@@ -362,7 +362,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] OCR Error: {ex.Message}");
+                // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] OCR Error: {ex.Message}");
                 return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
             }
         }
@@ -386,22 +386,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata")
                     : textScan.TessdataPath;
 
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tessdata path: {tessdataPath}");
+                // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tessdata path: {tessdataPath}");
 
                 // Ensure tessdata directory exists
                 if (!Directory.Exists(tessdataPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tessdata directory not found: {tessdataPath}");
+                    // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tessdata directory not found: {tessdataPath}");
                     return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
                 }
 
                 // List available .traineddata files
-                var trainedDataFiles = Directory.GetFiles(tessdataPath, "*.traineddata");
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Found {trainedDataFiles.Length} .traineddata files in tessdata directory");
-                foreach (var file in trainedDataFiles)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] - {Path.GetFileNameWithoutExtension(file)}");
-                }
+                // var trainedDataFiles = Directory.GetFiles(tessdataPath, "*.traineddata");
+                // // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Found {trainedDataFiles.Length} .traineddata files in tessdata directory");
+                // foreach (var file in trainedDataFiles)
+                // {
+                //     // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] - {Path.GetFileNameWithoutExtension(file)}");
+                // }
 
                 // Map language code to Tesseract format
                 string langCode;
@@ -417,7 +417,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         // Fallback to default languages
                         langCode = "eng+vie";
                     }
-                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Auto-detect language enabled, using: {langCode}");
+                    // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Auto-detect language enabled, using: {langCode}");
                 }
                 else
                 {
@@ -433,7 +433,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         "zh-hant" => "chi_tra",
                         _ => langCode
                     };
-                    System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language code: {langCode}");
+                    // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language code: {langCode}");
                 }
 
                 // Check if the language file(s) exist
@@ -452,7 +452,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                     if (missingFiles.Count > 0)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Missing language files: {string.Join(", ", missingFiles)}");
+                        // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Missing language files: {string.Join(", ", missingFiles)}");
                         return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
                     }
                 }
@@ -462,7 +462,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     string langFile = Path.Combine(tessdataPath, $"{langCode}.traineddata");
                     if (!File.Exists(langFile))
                     {
-                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language file not found: {langFile}");
+                        // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Language file not found: {langFile}");
                         return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
                     }
                 }
@@ -552,16 +552,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tesseract Error: {ex.Message}");
-                        System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] StackTrace: {ex.StackTrace}");
+                        // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tesseract Error: {ex.Message}");
+                        // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] StackTrace: {ex.StackTrace}");
                         return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
                     }
                 });
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tesseract OCR Error: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] StackTrace: {ex.StackTrace}");
+                // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] Tesseract OCR Error: {ex.Message}");
+                // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] StackTrace: {ex.StackTrace}");
                 return new OcrResult { Text = string.Empty, Lines = string.Empty, Words = new Dictionary<string, string>() };
             }
         }
@@ -740,7 +740,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] CaptureScreen: {ex.Message}");
+                // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] CaptureScreen: {ex.Message}");
                 return null;
             }
         }
@@ -778,7 +778,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] DownloadImage: {ex.Message}");
+                // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] DownloadImage: {ex.Message}");
                 return null;
             }
         }
@@ -803,7 +803,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] DecodeBase64: {ex.Message}");
+                // System.Diagnostics.Debug.WriteLine($"[TextScanNodeExecutor] DecodeBase64: {ex.Message}");
                 return null;
             }
         }

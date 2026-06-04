@@ -10,8 +10,8 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="560"
-        MinWidth="400"
+        Width="580"
+        MinWidth="420"
         MaxWidth="1000"
         MinHeight="520">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
@@ -21,7 +21,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -57,135 +57,169 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <TextBlock Text="Hiển thị tiêu đề:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ComboBox x:Name="TitleDisplayModeComboBox" Height="36"
-                              Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
-                              ItemsSource="{Binding TitleDisplayModeOptions}"
-                              SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                    <!-- Cấu hình hiển thị -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Cấu hình hiển thị" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            
+                            <TextBlock Text="Hiển thị tiêu đề" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="TitleDisplayModeComboBox" Height="32"
+                                      Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
+                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
 
-                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding TitleColorOptions}"
-                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                        <Border Grid.Column="1" x:Name="TitleColorPreview"
-                                Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
-                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                    </Grid>
-
-                    <!-- Input: nhiều dòng Node + Key + Key tùy chỉnh -->
-                    <TextBlock Text="Input (node nguồn + key) — mỗi dòng = một biến trong code:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}" Margin="0,0,0,6">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,0,0,8">
-                                    <!-- Checkbox cho phép chạy lại logic -->
-                                    <CheckBox IsChecked="{Binding ShouldReExecute, Mode=TwoWay}"
-                                              Margin="0,0,0,6"
-                                              Foreground="{DynamicResource TextBrush}"
-                                              FontSize="12">
-                                        <TextBlock TextWrapping="Wrap">
-                                            <Run Text="Cho phép chạy lại logic node nguồn để lấy dữ liệu mới nhất"/>
-                                            <Run Text=" (bỏ tích = chỉ lấy data có sẵn, không re-execute)" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
-                                        </TextBlock>
-                                    </CheckBox>
-                                    
-                                    <!-- Dòng input mapping -->
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                            <controls:NodeSearchComboBoxUserControl Height="36"
-                                                      ItemsSource="{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                                      SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                            <ComboBox Height="36" Style="{DynamicResource BaseComboBox}"
-                                                      ItemsSource="{Binding AvailableOutputKeyOptions}"
-                                                      SelectedValuePath="Key"
-                                                      DisplayMemberPath="DisplayName"
-                                                      SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="4">
-                                            <TextBlock Text="Biến trong code (trống = dùng key đã chọn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                            <TextBox Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{DynamicResource BaseTextBoxV2}" Height="36"
-                                                     ToolTip="Tên biến trong code. Để trống thì dùng key từ combobox Key."/>
-                                        </StackPanel>
-                                        <Button Grid.Column="5" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
-                                                Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"
-                                                Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
-                                    </Grid>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <Button Content="+ Thêm input" Height="32" Margin="0,0,0,8"
-                            Command="{Binding AddInputMappingCommand}"
-                            Width="120" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
-                    <TextBlock Margin="0,0,0,12" Foreground="{DynamicResource TextSecondary}" FontSize="12">
-                        <Run Text="Biến trong code: "/>
-                        <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
-                    </TextBlock>
-
-                    <!-- Code editor: font size + phóng to popup -->
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Code (JavaScript). return { key: value }; hoặc dùng function main()."
-                                   Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
-                                   ToolTip="Xem thêm: mở 'Ví dụ chạy code &amp; Gợi ý' để biết cách trả về khi có nhiều hàm."/>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button x:Name="ExpandCodeButton" Content="⛶ Phóng to" Width="90" Height="28" Margin="0,0,6,0"
-                                    ToolTip="Mở cửa sổ soạn code lớn hơn"
-                                    Foreground="{DynamicResource TextBrush}" Background="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
-                                    Cursor="Hand" Padding="8,0" FontSize="12" Click="ExpandCodeButton_Click"/>
-                            <Button Content="A-" Width="28" Height="28" Margin="0,0,4,0"
-                                    Command="{Binding DecreaseCodeFontSizeCommand}"
-                                    Foreground="{DynamicResource TextBrush}" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
-                                    Cursor="Hand" Padding="0" FontSize="14"/>
-                            <Button Content="A+" Width="28" Height="28"
-                                    Command="{Binding IncreaseCodeFontSizeCommand}"
-                                    Foreground="{DynamicResource TextBrush}" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
-                                    Cursor="Hand" Padding="0" FontSize="14"/>
+                            <TextBlock Text="Màu tiêu đề" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                            </Grid>
                         </StackPanel>
-                    </Grid>
-                    <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap">
-                        <Run Text="Tip: Output 'js' gửi sang WebNode có thể chỉnh timeout chờ outputs bằng comment:"/>
-                        <LineBreak/>
-                        <Run Text="// AC_RESPONSE_TIMEOUT_MS=0" FontFamily="Consolas" Foreground="{DynamicResource WarningColor}"/>
-                        <Run Text="  (không chờ outputs, bỏ qua timeout)"/>
-                        <LineBreak/>
-                        <Run Text="// AC_RESPONSE_TIMEOUT_MS=3000" FontFamily="Consolas" Foreground="{DynamicResource WarningColor}"/>
-                        <Run Text="  (chờ tối đa 3000ms, nếu không ghi dòng này thì dùng timeout mặc định của WebNode)."/>
-                    </TextBlock>
-                    <controls:SyntaxHighlightCodeEditor x:Name="CodeEditor"
-                             Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                             CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
-                             IsAutoHighlightEnabled="False"
-                             MinHeight="140" MaxHeight="320" Margin="0,0,0,12"/>
+                    </Border>
+
+                    <!-- 📍 Input từ node khác -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📍 Input từ node khác" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Mỗi dòng = một biến trong code" 
+                                       Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" Margin="0,0,0,6"/>
+                            <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <!-- Checkbox cho phép chạy lại logic -->
+                                            <CheckBox IsChecked="{Binding ShouldReExecute, Mode=TwoWay}"
+                                                      Margin="0,0,0,6"
+                                                      Foreground="{DynamicResource TextBrush}"
+                                                      FontSize="12">
+                                                <TextBlock TextWrapping="Wrap">
+                                                    <Run Text="Cho phép chạy lại logic node nguồn để lấy dữ liệu mới nhất"/>
+                                                    <Run Text=" (bỏ tích = chỉ lấy data có sẵn, không re-execute)" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+                                                </TextBlock>
+                                            </CheckBox>
+                                            
+                                            <!-- Dòng input mapping -->
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                    <controls:NodeSearchComboBoxUserControl Height="32"
+                                                              ItemsSource="{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                              SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                              SelectedValuePath="Key"
+                                                              DisplayMemberPath="DisplayName"
+                                                              SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4">
+                                                    <TextBlock Text="Biến trong code (trống = dùng key đã chọn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding InputKeyOverride, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                                             ToolTip="Tên biến trong code. Để trống thì dùng key từ combobox Key."/>
+                                                </StackPanel>
+                                                <Button Grid.Column="5" Content="-" Width="28" Height="28" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                                        Command="{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="+ Thêm input" Height="32" Margin="0,8,0,0"
+                                    Command="{Binding AddInputMappingCommand}"
+                                    Width="120" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+                            <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextMuted}" FontSize="10">
+                                <Run Text="Biến trong code: "/>
+                                <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 💻 Code Editor -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="💻 Code Editor" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Code (JavaScript). return { key: value }; hoặc dùng function main()."
+                                           Foreground="{DynamicResource TextMuted}" FontSize="10" VerticalAlignment="Center"
+                                           ToolTip="Xem thêm: mở 'Ví dụ chạy code &amp; Gợi ý' để biết cách trả về khi có nhiều hàm."/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button x:Name="ExpandCodeButton" Content="⛶ Phóng to" Width="90" Height="28" Margin="0,0,6,0"
+                                            ToolTip="Mở cửa sổ soạn code lớn hơn"
+                                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                                            Cursor="Hand" Padding="8,0" FontSize="12" Click="ExpandCodeButton_Click"/>
+                                    <Button Content="A-" Width="28" Height="28" Margin="0,0,4,0"
+                                            Command="{Binding DecreaseCodeFontSizeCommand}"
+                                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                            Cursor="Hand" Padding="0" FontSize="14"/>
+                                    <Button Content="A+" Width="28" Height="28"
+                                            Command="{Binding IncreaseCodeFontSizeCommand}"
+                                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                            Cursor="Hand" Padding="0" FontSize="14"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap">
+                                <Run Text="Tip: Output 'js' gửi sang WebNode có thể chỉnh timeout chờ outputs bằng comment:"/>
+                                <LineBreak/>
+                                <Run Text="// AC_RESPONSE_TIMEOUT_MS=0" FontFamily="Consolas" Foreground="{DynamicResource WarningColor}"/>
+                                <Run Text="  (không chờ outputs, bỏ qua timeout)"/>
+                                <LineBreak/>
+                                <Run Text="// AC_RESPONSE_TIMEOUT_MS=3000" FontFamily="Consolas" Foreground="{DynamicResource WarningColor}"/>
+                                <Run Text="  (chờ tối đa 3000ms, nếu không ghi dòng này thì dùng timeout mặc định của WebNode)."/>
+                            </TextBlock>
+                            <controls:SyntaxHighlightCodeEditor x:Name="CodeEditor"
+                                     Text="{Binding ScriptCode, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                     CodeFontSize="{Binding CodeFontSize, Mode=TwoWay}"
+                                     IsAutoHighlightEnabled="False"
+                                     MinHeight="140" MaxHeight="320" Margin="0,0,0,0"/>
+                        </StackPanel>
+                    </Border>
 
                     <!-- Ví dụ & Gợi ý -->
                     <Expander x:Name="ExampleHintsExpander" IsExpanded="False" Margin="0,0,0,12">
@@ -273,11 +307,14 @@
                         </Border>
                     </Expander>
 
-                    <!-- Output keys -->
-                    <TextBlock Text="Output keys (trùng với key trong object return):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                    <!-- 📊 Output keys -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
+                            <TextBlock Text="📊 Output keys (trùng với key trong object return)" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
                             <ItemsControl x:Name="OutputKeysItemsControl" ItemsSource="{Binding OutputKeysList}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -315,9 +352,9 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -330,9 +367,8 @@
                                 <!-- Port IN -->
                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                     <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
@@ -343,9 +379,8 @@
                                 <!-- Port OUT -->
                                 <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                     <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
