@@ -9,11 +9,11 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="420"
-        Height="480"
-        MinWidth="320"
+        Width="520"
+        Height="500"
+        MinWidth="420"
         MaxWidth="700"
-        MinHeight="360">
+        MinHeight="420">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -22,7 +22,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -64,41 +64,70 @@
             <!-- Content -->
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16" Grid.Row="1">
                 <StackPanel>
-                    <TextBlock Text="Nguồn node (trong body AsyncTask):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-
-                    <controls:NodeSearchComboBoxUserControl Height="36"
-                              ItemsSource="{Binding AvailableBodyNodeOptions}"
-                              DisplayMemberPath="Title"
-                              SelectedValuePath="NodeId"
-                              SelectedValue="{Binding SelectedSourceBodyNodeId, Mode=TwoWay}"
-                              Margin="0,0,0,16"/>
-
-                    <TextBlock Text="Output key cần collect:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-
-                    <ComboBox Height="36"
-                              Style="{DynamicResource BaseComboBox}"
-                              ItemsSource="{Binding AvailableOutputKeys}"
-                              DisplayMemberPath="DisplayName"
-                              SelectedValuePath="Key"
-                              SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"
-                              Margin="0,0,0,16"/>
-
-                    <Border Background="{DynamicResource BorderColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
-                            CornerRadius="6" Padding="12" Margin="0,0,0,16">
+                    <!-- 📍 Nguồn node -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Kết quả sau khi collect sẽ được xuất ra output key:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <TextBlock Text="results (JSON object string)"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.9"/>
+                            <TextBlock Text="📍 Nguồn node (trong body AsyncTask)"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Chọn node AsyncTask chứa dữ liệu cần collect"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <controls:NodeSearchComboBoxUserControl Height="32"
+                                      ItemsSource="{Binding AvailableBodyNodeOptions}"
+                                      DisplayMemberPath="Title"
+                                      SelectedValuePath="NodeId"
+                                      SelectedValue="{Binding SelectedSourceBodyNodeId, Mode=TwoWay}"/>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="Gợi ý:"
-                               Foreground="{DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <TextBlock Text="Sau khi node chạy xong, các node phía sau node này có thể dùng OutputNode để đọc {results[0]}, {results[1]}..."
-                               Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Opacity="0.95"/>
+                    <!-- 🔑 Output key cần collect -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🔑 Output key cần collect"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Chọn output key từ node nguồn"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox Height="32"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      ItemsSource="{Binding AvailableOutputKeys}"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Key"
+                                      SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 📊 Kết quả -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📊 Kết quả sau khi collect"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Kết quả sẽ được xuất ra output key: results (JSON object string)"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 💡 Gợi ý -->
+                    <Border Background="{DynamicResource CardColor}" CornerRadius="8" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="💡 Gợi ý"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Sau khi node chạy xong, các node phía sau node này có thể dùng OutputNode để đọc {results[0]}, {results[1]}..."
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Grid>

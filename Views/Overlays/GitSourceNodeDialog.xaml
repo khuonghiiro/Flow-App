@@ -9,7 +9,7 @@
     WindowStyle="None" ResizeMode="CanResize"
     AllowsTransparency="True" Background="Transparent"
     ShowInTaskbar="False" Topmost="True"
-    Width="500" MinWidth="400" MaxWidth="1200" MinHeight="400">
+    Width="520" MinWidth="420" MaxWidth="1200" MinHeight="420">
 
     <local:BaseNodeDialog.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
@@ -25,7 +25,7 @@
             </Grid.RowDefinitions>
 
             <!-- HEADER -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -65,43 +65,55 @@
                 <TabItem Header="Cài đặt" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Command Line:" Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <TextBlock Text="Nhập lệnh để chạy (ví dụ: npm install, npm run build, dotnet run...)"
-                                       Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8"/>
-
-                            <TextBox x:Name="CommandTextBox"
-                                     Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}"
-                                     MinHeight="80" MaxHeight="200"
-                                     AcceptsReturn="True" TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     FontFamily="Consolas" FontSize="12"
-                                     Margin="0,0,0,12"/>
-
-                            <Button Height="34" MinWidth="120" HorizontalAlignment="Left"
-                                    Style="{DynamicResource PrimaryButton}" Cursor="Hand"
-                                    Command="{Binding RunCommandCommand}"
-                                    IsEnabled="{Binding IsRunningCommand, Converter={StaticResource InverseBoolConverter}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="▶" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Áp dụng" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
-                            <!-- Command output -->
-                            <TextBlock Text="Output:" Foreground="{DynamicResource TextBrush}"
-                                       FontSize="12" FontWeight="SemiBold" Margin="0,16,0,6"/>
+                            <!-- 💻 Command Line -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="6" Padding="8"
-                                    MaxHeight="200">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <TextBlock Text="{Binding CommandOutput}"
-                                               FontFamily="Consolas" FontSize="10"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               TextWrapping="Wrap"/>
-                                </ScrollViewer>
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="💻 Command Line"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Nhập lệnh để chạy (ví dụ: npm install, npm run build, dotnet run...)"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="CommandTextBox"
+                                             Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}"
+                                             MinHeight="80" MaxHeight="200"
+                                             AcceptsReturn="True" TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             FontFamily="Consolas" FontSize="10"
+                                             Margin="0,0,0,8"/>
+                                    <Button Height="32" MinWidth="120" HorizontalAlignment="Left"
+                                            Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                            Command="{Binding RunCommandCommand}"
+                                            IsEnabled="{Binding IsRunningCommand, Converter={StaticResource InverseBoolConverter}}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="▶" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Áp dụng" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 📄 Command output -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel>
+                                    <TextBlock Text="📄 Output"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="8"
+                                            MaxHeight="200">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <TextBlock Text="{Binding CommandOutput}"
+                                                       FontFamily="Consolas" FontSize="10"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       TextWrapping="Wrap"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </StackPanel>
                             </Border>
 
                             <!-- Inputs/Outputs hidden -->
@@ -115,65 +127,95 @@
                 <TabItem Header="Hiển thị" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- Icon -->
-                            <TextBlock Text="Icon:" Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <controls:IconSelectorUserControl x:Name="IconSelector"
-                                                              ButtonHeight="34" Margin="0,0,0,12"
+                            <!-- 🎨 Icon -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Icon"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <controls:IconSelectorUserControl x:Name="IconSelector"
+                                                              ButtonHeight="32"
                                                               SelectedIcon="{Binding IconKey, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Màu icon -->
-                            <TextBlock Text="Màu icon:" Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="IconColorComboBox" Grid.Column="0" Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding TitleColorOptions}"
-                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding IconColorKey, Mode=TwoWay}"
-                                          SelectionChanged="IconColorComboBox_SelectionChanged"/>
-                                <Button Grid.Column="1" Content="🎨" Width="32" Height="32"
-                                        Padding="0" Margin="8,0,0,0" Cursor="Hand"
-                                        ToolTip="Chọn màu icon tuỳ ý" Click="PickIconColor_Click"/>
-                                <Border x:Name="IconColorPreview" Grid.Column="2"
-                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                            </Grid>
+                            <!-- 🎨 Màu icon -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Màu icon"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="IconColorComboBox" Grid.Column="0" Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding TitleColorOptions}"
+                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding IconColorKey, Mode=TwoWay}"
+                                                  SelectionChanged="IconColorComboBox_SelectionChanged"/>
+                                        <Button Grid.Column="1" Content="🎨" Width="32" Height="32"
+                                                Padding="0" Margin="8,0,0,0" Cursor="Hand"
+                                                ToolTip="Chọn màu icon tuỳ ý" Click="PickIconColor_Click"/>
+                                        <Border x:Name="IconColorPreview" Grid.Column="2"
+                                                Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Màu node -->
-                            <TextBlock Text="Màu node:" Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding TitleColorOptions}"
-                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                                <Button Grid.Column="1" Content="🎨" Width="32" Height="32"
-                                        Padding="0" Margin="8,0,0,0" Cursor="Hand"
-                                        ToolTip="Chọn màu tuỳ ý" Click="PickNodeColor_Click"/>
-                                <Border x:Name="TitleColorPreview" Grid.Column="2"
-                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                            </Grid>
+                            <!-- 🎨 Màu node -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Màu node"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding TitleColorOptions}"
+                                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                        <Button Grid.Column="1" Content="🎨" Width="32" Height="32"
+                                                Padding="0" Margin="8,0,0,0" Cursor="Hand"
+                                                ToolTip="Chọn màu tuỳ ý" Click="PickNodeColor_Click"/>
+                                        <Border x:Name="TitleColorPreview" Grid.Column="2"
+                                                Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Tooltip -->
-                            <TextBlock Text="Tooltip:" Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding TooltipText, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}" Height="50" Margin="0,0,0,12"
-                                     AcceptsReturn="True" TextWrapping="Wrap"/>
+                            <!-- 💬 Tooltip -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel>
+                                    <TextBlock Text="💬 Tooltip"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBox Text="{Binding TooltipText, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" Height="64"
+                                             AcceptsReturn="True" TextWrapping="Wrap"
+                                             VerticalContentAlignment="Top"
+                                             Padding="8,4"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

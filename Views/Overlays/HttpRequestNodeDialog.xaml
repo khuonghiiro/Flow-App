@@ -507,10 +507,16 @@
 
 
                             <StackPanel Visibility="Collapsed" >
-                                <!-- Inputs Section -->
-                                <TextBlock Text="Inputs:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <Border Style="{DynamicResource DialogOuterBorder}" CornerRadius="8" Padding="12" Margin="0,0,0,16">
-                                    <StackPanel x:Name="InputsPanel"/>
+                                <!-- 📥 Inputs -->
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="📥 Inputs"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <StackPanel x:Name="InputsPanel"/>
+                                    </StackPanel>
                                 </Border>
                             </StackPanel>
                     
@@ -647,60 +653,58 @@
                 <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16" >
-                            <TextBlock Text="Route lại flow để tái sử dụng logic node này"
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
-                            <TextBlock TextWrapping="Wrap"
-                                       Foreground="{DynamicResource TextSecondary}"
-                                       FontSize="12"
-                                       Margin="0,0,0,12">
-                                Nếu không chọn gì, node sẽ chạy flow mặc định như hiện tại.
-                                Nếu cấu hình, khi flow đi vào từ một node IN cụ thể thì sau khi chạy xong node hiện tại
-                                sẽ nhảy sang node OUT được chọn tương ứng.
-                            </TextBlock>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
+                                               Margin="0,0,0,10">
+                                        Nếu không chọn gì, node sẽ chạy flow mặc định như hiện tại.
+                                        Nếu cấu hình, khi flow đi vào từ một node IN cụ thể thì sau khi chạy xong node hiện tại
+                                        sẽ nhảy sang node OUT được chọn tương ứng.
+                                    </TextBlock>
 
-                            <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,8,0,8"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                                        <!-- Port IN -->
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Port IN"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <ComboBox Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding PortPositionOptions}"
+                                                      SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                        </StackPanel>
 
-                                <!-- Port IN -->
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding PortPositionOptions}"
-                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                        <!-- Port OUT -->
+                                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                            <TextBlock Text="Port OUT"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <ComboBox Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding PortPositionOptions}"
+                                                      SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
-
-                                <!-- Port OUT -->
-                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding PortPositionOptions}"
-                                              SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Grid>
+                            </Border>
 
                             <!-- Cấu hình tái sử dụng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">

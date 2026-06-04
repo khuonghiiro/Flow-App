@@ -28,7 +28,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -64,40 +64,53 @@
                 <TabItem Header="Logic" Style="{DynamicResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <!-- Title display mode -->
-                    <TextBlock Text="Hiển thị tiêu đề:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ComboBox x:Name="TitleDisplayModeComboBox" Height="36"
-                              Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
-                              ItemsSource="{Binding TitleDisplayModeOptions}"
-                              SelectedValuePath="Value" DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                    <!-- 🎨 Cấu hình hiển thị -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Cấu hình hiển thị"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Hiển thị tiêu đề"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="TitleDisplayModeComboBox" Height="32"
+                                      Style="{DynamicResource BaseComboBox}" Margin="0,0,0,8"
+                                      ItemsSource="{Binding TitleDisplayModeOptions}"
+                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                            <TextBlock Text="Màu tiêu đề"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
-                    <!-- Title color -->
-                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding TitleColorOptions}"
-                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                        <Border Grid.Column="1" x:Name="TitleColorPreview"
-                                Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
-                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                    </Grid>
-
-                    <!-- ===== UseWebTab: 2-Tab Mode ===== -->
+                    <!-- 🌐 UseWebTab: 2-Tab Mode -->
                     <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
+                            <TextBlock Text="🌐 Sử dụng 2 tab (Tab1: Trình duyệt Web, Tab2: HTML UI)"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
                             <CheckBox x:Name="UseWebTabCheckBox"
                                       IsChecked="{Binding UseWebTab, Mode=TwoWay}"
-                                      Content="Sử dụng 2 tab (Tab1: Trình duyệt Web, Tab2: HTML UI)"
-                                      Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                      Content="Bật chế độ 2-tab"
+                                      Foreground="{DynamicResource TextBrush}" FontSize="11"
                                       Margin="0,0,0,6"
                                       ToolTip="Khi bật: Tab1 = Web Browser đầy đủ (address bar, cookie), Tab2 = HTML UI hiện tại."/>
                             <!-- Cookie panel: chỉ hiển thị khi UseWebTab = true -->
@@ -182,10 +195,12 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Inputs -->
-                    <TextBlock Text="Inputs (node nguồn + key → biến dùng trong Html/Js):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8">
+                    <!-- 📍 Inputs -->
+                    <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📍 Inputs (node nguồn + key → biến dùng trong Html/Js)"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Height="160">
                             <ItemsControl x:Name="InputMappingsItemsControl" ItemsSource="{Binding InputMappingsList}">
                                 <ItemsControl.ItemTemplate>
@@ -255,6 +270,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+                        </StackPanel>
                     </Border>
                     <Button Content="+ Thêm input" Height="32" Margin="0,0,0,12"
                             Command="{Binding AddInputMappingCommand}"
@@ -1942,44 +1958,45 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                                    <!-- Port IN -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Port IN"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
 
-                                <!-- Port IN -->
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding PortPositionOptions}"
-                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
-                                </StackPanel>
-
-                                <!-- Port OUT -->
-                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
-                                               Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding PortPositionOptions}"
-                                              SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Grid>
+                                    <!-- Port OUT -->
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="Port OUT"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
                             <!-- Cấu hình tái sử dụng flow -->
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">

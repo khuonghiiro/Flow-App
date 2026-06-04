@@ -10,9 +10,9 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="420"
-        MinWidth="320"
-        MinHeight="320">
+        Width="520"
+        MinWidth="420"
+        MinHeight="420">
     <local:BaseNodeDialog.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <!-- LegendDotStyle is now in Themes/Controls/DialogStyles.xaml -->
@@ -24,7 +24,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -56,40 +56,63 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                    <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,12">
-                        <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
-                                   Text="Hướng dẫn: Start dùng để định danh luồng (scope) trước khi chạy. End dùng để quyết định cách khép nhánh khi hoàn tất. Chọn item nào node trên canvas sẽ đổi hình để bạn nhận biết nhanh."/>
+                    <!-- 💡 Hướng dẫn -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <TextBlock Text="💡 Hướng dẫn"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
+                                   Text="Start dùng để định danh luồng (scope) trước khi chạy. End dùng để quyết định cách khép nhánh khi hoàn tất."/>
                     </Border>
 
-                    <TextBlock Text="Flow Scope Key" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <TextBox Height="34"
-                             Text="{Binding FlowScopeKey, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{DynamicResource BaseTextBoxV2}"
-                             Margin="0,0,0,14"/>
-                    <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                        <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
-                                   Text="FlowScopeKey là khóa định danh scope của luồng. Các nhánh cùng key sẽ được gom cùng flow-scope để theo dõi/chuyển tiếp đúng ngữ cảnh; khác key thì tách scope để chạy độc lập hơn."/>
+                    <!-- 🔑 Flow Scope Key -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🔑 Flow Scope Key"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Khóa định danh scope của luồng"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="10" Margin="0,0,0,4"/>
+                            <TextBox Height="32"
+                                     Text="{Binding FlowScopeKey, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0">
+                                <Run Text="Các nhánh cùng key sẽ được gom cùng flow-scope để theo dõi/chuyển tiếp đúng ngữ cảnh; khác key thì tách scope để chạy độc lập hơn."/>
+                            </TextBlock>
+                        </StackPanel>
                     </Border>
-                    <Border Background="#44FF4D4F" CornerRadius="6" Padding="8" Margin="0,0,0,10"
+
+                    <Border Background="#44FF4D4F" CornerRadius="6" Padding="8" Margin="0,0,0,12"
                             Visibility="{Binding IsDuplicateFlowScopeKey, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="12" TextWrapping="Wrap"
+                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="10" TextWrapping="Wrap"
                                    Text="{Binding FlowScopeWarningText}"/>
                     </Border>
 
-                    <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,12">
+                    <!-- 🎨 Legend màu viền -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Legend màu viền:" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="🎨 Legend màu viền"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                 <Border Style="{DynamicResource LegendDotStyle}" Background="White"/>
-                                <TextBlock Foreground="{DynamicResource TextBrush}" Text="Mặc định"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" Text="Mặc định" Margin="8,0,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                 <Border Style="{DynamicResource LegendDotStyle}" Background="#FFFFD700"/>
-                                <TextBlock Foreground="{DynamicResource TextBrush}" Text="Bám luồng cha / Return to Parent"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" Text="Bám luồng cha / Return to Parent" Margin="8,0,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                 <Border Style="{DynamicResource LegendDotStyle}" Background="#FF00FFAA"/>
-                                <TextBlock Foreground="{DynamicResource TextBrush}" Text="Luồng độc lập / Emit Result"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" Text="Luồng độc lập / Emit Result" Margin="8,0,0,0"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -115,90 +138,127 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl> -->
 
+                    <!-- 🚀 Run Mode (Start) -->
                     <StackPanel Visibility="{Binding IsStartNode, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Run Mode (Start)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <ComboBox Height="34"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding RunModeOptions}"
-                                  SelectedValuePath="Value"
-                                  DisplayMemberPath="Title"
-                                  SelectedValue="{Binding RunMode, Mode=TwoWay}"
-                                  Margin="0,0,0,10"/>
-                        <ItemsControl ItemsSource="{Binding RunModeOptions}" Margin="0,0,0,10">
+                        <Border Background="{DynamicResource WindowBackground}"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="🚀 Run Mode (Start)"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock Text="Chế độ chạy"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="10" Margin="0,0,0,4"/>
+                                <ComboBox Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding RunModeOptions}"
+                                          SelectedValuePath="Value"
+                                          DisplayMemberPath="Title"
+                                          SelectedValue="{Binding RunMode, Mode=TwoWay}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding RunModeOptions}" Margin="0,0,0,12">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                    <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                         <StackPanel>
-                                            <TextBlock Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" Text="{Binding Title}"/>
-                                            <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap" Text="{Binding Summary}"/>
-                                            <TextBlock Foreground="{DynamicResource PrimaryBrush}" Text="{Binding ShapeHint, StringFormat=Hình trên canvas: {0}}"/>
+                                            <TextBlock Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" Text="{Binding Title}"/>
+                                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Text="{Binding Summary}" Margin="0,0,0,4"/>
+                                            <TextBlock Foreground="{DynamicResource PrimaryBrush}" FontSize="10" Text="{Binding ShapeHint, StringFormat=Hình trên canvas: {0}}"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                            <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
+
+                        <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                        Text="MainFlow: luồng chính. SubFlowAttached: bám theo luồng cha. SubFlowIndependent: tách scope độc lập."/>
                         </Border>
-                        <StackPanel Visibility="{Binding IsAutoScheduledMode, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,10">
-                            <TextBlock Text="Chu kỳ tự chạy" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="140"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0"
-                                         Height="34"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         Text="{Binding AutoRunIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                <ComboBox Grid.Column="1"
-                                          Margin="8,0,0,0"
-                                          Height="34"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding AutoRunIntervalUnitOptions}"
-                                          SelectedItem="{Binding AutoRunIntervalUnit, Mode=TwoWay}"/>
-                            </Grid>
-                            <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10">
-                                <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
-                                           Text="Khi đóng dialog, flow sẽ chạy lần đầu và tiếp tục chạy theo chu kỳ đã cài. Nút Bắt đầu trên toolbar sẽ bỏ qua Start ở chế độ này."/>
+
+                        <StackPanel Visibility="{Binding IsAutoScheduledMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⏱️ Chu kỳ tự chạy"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="140"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Height="32"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 VerticalContentAlignment="Center"
+                                                 Text="{Binding AutoRunIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <ComboBox Grid.Column="1"
+                                                  Margin="8,0,0,0"
+                                                  Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding AutoRunIntervalUnitOptions}"
+                                                  SelectedItem="{Binding AutoRunIntervalUnit, Mode=TwoWay}"/>
+                                    </Grid>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap">
+                                        <Run Text="Khi đóng dialog, flow sẽ chạy lần đầu và tiếp tục chạy theo chu kỳ đã cài."/>
+                                    </TextBlock>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
-                        <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                            <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
-                                       Text="Lưu ý: RunMode là logic runtime. Hình node chỉ là gợi ý trực quan. Bạn có thể để Start hình tròn nhưng chọn RunMode tạo flow con, hệ thống vẫn chạy theo RunMode đã chọn."/>
+
+                        <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10">
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
+                                       Text="Lưu ý: RunMode là logic runtime. Hình node chỉ là gợi ý trực quan."/>
                         </Border>
                     </StackPanel>
 
+                    <!-- 🏁 End Behavior (End) -->
                     <StackPanel Visibility="{Binding IsEndNode, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="End Behavior (End)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <ComboBox Height="34"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding EndBehaviorOptions}"
-                                  SelectedValuePath="Value"
-                                  DisplayMemberPath="Title"
-                                  SelectedValue="{Binding EndBehavior, Mode=TwoWay}"
-                                  Margin="0,0,0,10"/>
-                        <ItemsControl ItemsSource="{Binding EndBehaviorOptions}" Margin="0,0,0,10">
+                        <Border Background="{DynamicResource WindowBackground}"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="🏁 End Behavior (End)"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock Text="Hành vi kết thúc"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="10" Margin="0,0,0,4"/>
+                                <ComboBox Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding EndBehaviorOptions}"
+                                          SelectedValuePath="Value"
+                                          DisplayMemberPath="Title"
+                                          SelectedValue="{Binding EndBehavior, Mode=TwoWay}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding EndBehaviorOptions}" Margin="0,0,0,12">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                    <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                         <StackPanel>
-                                            <TextBlock Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" Text="{Binding Title}"/>
-                                            <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap" Text="{Binding Summary}"/>
-                                            <TextBlock Foreground="{DynamicResource WarningColor}" Text="{Binding ShapeHint, StringFormat=Hình trên canvas: {0}}"/>
+                                            <TextBlock Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" FontSize="11" Text="{Binding Title}"/>
+                                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Text="{Binding Summary}" Margin="0,0,0,4"/>
+                                            <TextBlock Foreground="{DynamicResource WarningColor}" FontSize="10" Text="{Binding ShapeHint, StringFormat=Hình trên canvas: {0}}"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                            <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
+
+                        <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                        Text="StopCurrentFlow: dừng nhánh hiện tại. ReturnToParent: trả về luồng cha. EmitResultOnly: chỉ phát kết quả."/>
                         </Border>
-                        <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,10">
-                            <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
-                                       Text="Lưu ý: EndBehavior quyết định hành vi kết thúc nhánh. Hình node chỉ để dễ nhìn. Ví dụ Start hình tròn và End hình thoi vẫn hợp lệ, không gây lỗi runtime nếu cấu hình logic đúng."/>
+
+                        <Border Background="{DynamicResource CardColor}" CornerRadius="6" Padding="10">
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
+                                       Text="Lưu ý: EndBehavior quyết định hành vi kết thúc nhánh. Hình node chỉ để dễ nhìn."/>
                         </Border>
                     </StackPanel>
 
@@ -211,27 +271,44 @@
                 <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Cấu hình vị trí cổng" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <Border Background="{DynamicResource CardHoverBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,12">
-                                <TextBlock Foreground="{DynamicResource TextBrush}" Opacity="0.9" TextWrapping="Wrap"
-                                           Text="Đổi vị trí cổng để dễ đi dây: Left / Top / Right / Bottom. Start/End đều có thể cấu hình cả cổng IN và OUT."/>
+                            <!-- Cấu hình vị trí cổng -->
+                            <TextBlock Text="Vị trí cổng"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8">
+                                        <Run Text="Đổi vị trí cổng để dễ đi dây: Left / Top / Right / Bottom."/>
+                                    </TextBlock>
+
+                                    <StackPanel Visibility="{Binding ShowInputPortConfig, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="Port IN"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Visibility="{Binding ShowOutputPortConfig, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="Port OUT"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,8,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </StackPanel>
                             </Border>
-
-                            <StackPanel Visibility="{Binding ShowInputPortConfig, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,12">
-                                <TextBlock Text="Port IN (cổng vào)" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.85" Margin="0,0,0,4"/>
-                                <ComboBox Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding PortPositionOptions}"
-                                          SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
-                            </StackPanel>
-
-                            <StackPanel Visibility="{Binding ShowOutputPortConfig, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="Port OUT (cổng ra)" Foreground="{DynamicResource TextBrush}" FontSize="12" Opacity="0.85" Margin="0,0,0,4"/>
-                                <ComboBox Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding PortPositionOptions}"
-                                          SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
-                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

@@ -273,14 +273,20 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Realtime -->
-                            <TextBlock Text="⚡ Realtime:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
-                                       Margin="0,0,0,6"/>
-                            <CheckBox Content="Bật Realtime (nhận ngay khi node nguồn xử lý xong)"
-                                      Foreground="{DynamicResource TextBrush}" FontSize="12"
-                                      IsChecked="{Binding EnableRealtime, Mode=TwoWay}"
-                                      Margin="0,0,0,8"/>
+                            <!-- ⚡ Realtime -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⚡ Realtime"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
+                                               Margin="0,0,0,10"/>
+                                    <CheckBox Content="Bật Realtime (nhận ngay khi node nguồn xử lý xong)"
+                                              Foreground="{DynamicResource TextBrush}" FontSize="11"
+                                              IsChecked="{Binding EnableRealtime, Mode=TwoWay}"
+                                              Margin="0,0,0,0"/>
+                                </StackPanel>
+                            </Border>
                             
                             <Separator Background="{DynamicResource BorderColor}" Margin="0,0,0,14"/>
 
@@ -305,51 +311,61 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
 
-                            <!-- Màu tiêu đề -->
-                            <TextBlock Text="Màu tiêu đề" 
-                                       Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="TitleColorComboBox"
-                                          Grid.Column="0" Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding TitleColorOptions}"
-                                          SelectedValuePath="Key"
-                                          DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                                <Border Grid.Column="1" x:Name="TitleColorPreview"
-                                        Width="32" Height="32" CornerRadius="6"
-                                        Margin="8,0,0,0"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                            </Grid>
+                            <!-- 🎨 Màu tiêu đề -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Màu tiêu đề"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
+                                               Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="TitleColorComboBox"
+                                                  Grid.Column="0" Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding TitleColorOptions}"
+                                                  SelectedValuePath="Key"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                        <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                                Width="32" Height="32" CornerRadius="6"
+                                                Margin="8,0,0,0"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Vị trí Port IN/OUT -->
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
                             <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                    <TextBlock Text="Port IN" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding PortPositionOptions}"
-                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                    <TextBlock Text="Port OUT" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding PortPositionOptions}"
-                                              SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Grid>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                        <TextBlock Text="Port IN" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                        <TextBlock Text="Port OUT" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>

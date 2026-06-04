@@ -61,21 +61,25 @@
 
             <!-- Visual Mode Selector -->
             <Border Grid.Row="1" Padding="16,8,16,8">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Kiểu giao diện"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="11"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"/>
-                    <ComboBox x:Name="VisualModeComboBox"
-                              Height="32"
-                              MinWidth="160"
-                              Style="{DynamicResource BaseComboBox}"
-                              ItemsSource="{Binding VisualModeOptions}"
-                              SelectedItem="{Binding SelectedVisualMode, Mode=TwoWay}"
-                              VerticalContentAlignment="Center"/>
-                </StackPanel>
+                <Border Background="{DynamicResource WindowBackground}"
+                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="12">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🎨 Kiểu giao diện"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+                        <ComboBox x:Name="VisualModeComboBox"
+                                  Height="32"
+                                  MinWidth="160"
+                                  Style="{DynamicResource BaseComboBox}"
+                                  ItemsSource="{Binding VisualModeOptions}"
+                                  SelectedItem="{Binding SelectedVisualMode, Mode=TwoWay}"
+                                  VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </Border>
             </Border>
 
             <!-- Content: 2 tab Logic + Tái sử dụng flow -->
@@ -262,35 +266,51 @@
                 <TabItem Header="Tái sử dụng flow" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
                             <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="Port IN (cổng vào)"
-                                           Foreground="{DynamicResource TextMuted}"
-                                           FontSize="10"
-                                           Margin="0,0,0,4"/>
-                                <ComboBox Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding PortPositionOptions}"
-                                          SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
-                            </StackPanel>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="Port OUT (cổng ra các nhánh)"
-                                           Foreground="{DynamicResource TextMuted}"
-                                           FontSize="10"
-                                           Margin="0,0,0,4"/>
-                                <ComboBox Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding PortPositionOptions}"
-                                          SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
-                            </StackPanel>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Port IN"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <ComboBox Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding PortPositionOptions}"
+                                                      SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                        </StackPanel>
 
-                            <!-- ConditionalNode có nhiều port OUT (mỗi nhánh if/else if/else), không dùng ReuseRoutes -->
+                                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                            <TextBlock Text="Port OUT (các nhánh)"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,4"/>
+                                            <ComboBox Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding PortPositionOptions}"
+                                                      SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap">
+                                        <Run Text="ConditionalNode có nhiều port OUT (mỗi nhánh if/else if/else), không dùng ReuseRoutes"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

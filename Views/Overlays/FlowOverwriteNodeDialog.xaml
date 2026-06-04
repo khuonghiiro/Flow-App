@@ -9,10 +9,10 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="460"
-        MinWidth="350"
+        Width="520"
+        MinWidth="420"
         MaxWidth="900"
-        MinHeight="350">
+        MinHeight="420">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -20,7 +20,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -49,20 +49,34 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Output key" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding OutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,6,0,12"/>
+                            <!-- 🔑 Output key -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🔑 Output key"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBox Text="{Binding OutputKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                             VerticalContentAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
 
+                            <!-- 📝 Append mode -->
                             <CheckBox Content="Append mode (gom thành mảng, mặc định tắt = ghi đè)"
                                       IsChecked="{Binding AppendMode, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12"/>
+                                      Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,12"/>
 
+                            <!-- 🔗 Include indirect sources -->
                             <CheckBox Content="Hiển thị cả node upstream gián tiếp (A, B, C, D thay vì chỉ node nối trực tiếp)"
                                       IsChecked="{Binding IncludeIndirectSources, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8"/>
+                                      Foreground="{DynamicResource TextBrush}" FontSize="11" Margin="0,0,0,12"/>
 
-                            <TextBlock Text="Nguồn override:"
-                                       Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <!-- 📍 Nguồn override -->
+                            <TextBlock Text="📍 Nguồn override"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <ItemsControl ItemsSource="{Binding Sources}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -98,17 +112,28 @@
                             <Button Content="+ Thêm nguồn node/key" Height="32"
                                     Style="{DynamicResource PrimaryButton}" Click="AddSource_Click"/>
 
-                            <TextBlock Text="Inputs/Outputs:" Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14" FontWeight="SemiBold" Margin="0,16,0,8"/>
+                            <!-- 📍 Inputs -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
-                                <StackPanel x:Name="InputsPanel"/>
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📍 Inputs"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <StackPanel x:Name="InputsPanel"/>
+                                </StackPanel>
                             </Border>
+
+                            <!-- 📤 Outputs -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12">
-                                <StackPanel x:Name="OutputsPanel"/>
+                                <StackPanel>
+                                    <TextBlock Text="📤 Outputs"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <StackPanel x:Name="OutputsPanel"/>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
@@ -116,22 +141,42 @@
                 <TabItem Header="Cấu hình" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox Grid.Column="0" Height="32" Margin="0,0,8,0"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding PortPositionOptions}"
-                                          SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
-                                <ComboBox Grid.Column="1" Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding PortPositionOptions}"
-                                          SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
-                            </Grid>
+                            <!-- Cấu hình vị trí cổng IN/OUT -->
+                            <TextBlock Text="Vị trí cổng IN/OUT"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Port IN"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="Port OUT"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10"
+                                                   Margin="0,0,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding PortPositionOptions}"
+                                                  SelectedItem="{Binding OutputPortPosition, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
                             <ItemsControl ItemsSource="{Binding ReuseRoutes}">
                                 <ItemsControl.ItemTemplate>

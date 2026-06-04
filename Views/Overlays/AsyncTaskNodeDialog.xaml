@@ -217,16 +217,20 @@
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="Port IN (cổng vào)"
-                                           Foreground="{DynamicResource TextMuted}"
-                                           FontSize="10"
-                                           Margin="0,0,0,4"/>
-                                <ComboBox Height="32"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding PortPositionOptions}"
-                                          SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
-                            </StackPanel>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Port IN"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
+                                               Margin="0,0,0,4"/>
+                                    <ComboBox Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              ItemsSource="{Binding PortPositionOptions}"
+                                              SelectedItem="{Binding InputPortPosition, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Border>
 
                             <!-- AsyncTaskNode có nhiều port OUT (mỗi task), không dùng ReuseRoutes -->
                         </StackPanel>
