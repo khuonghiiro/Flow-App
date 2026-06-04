@@ -254,8 +254,7 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Tên hiển thị *" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
                             <TextBox x:Name="FormTitleBox" Height="28" FontSize="12"
-                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
-                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                      Style="{DynamicResource BaseTextBoxV2}"
                                      Padding="6,0" VerticalContentAlignment="Center"/>
                         </StackPanel>
 
@@ -263,8 +262,7 @@
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="URL (hoặc để trống)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
                             <TextBox x:Name="FormUrlBox" Height="28" FontSize="11"
-                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
-                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                      Style="{DynamicResource BaseTextBoxV2}"
                                      Padding="6,0" VerticalContentAlignment="Center"/>
                         </StackPanel>
 
@@ -294,20 +292,18 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Mô tả" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
                             <TextBox x:Name="FormDescBox" Height="28" FontSize="11"
-                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
-                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                      Style="{DynamicResource BaseTextBoxV2}"
                                      Padding="6,0" VerticalContentAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Tên file lưu local" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,3"/>
                             <TextBox x:Name="FormFileNameBox" Height="28" FontSize="11"
-                                     Background="{DynamicResource WindowBackground}" Foreground="{DynamicResource TextBrush}"
-                                     BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                      Style="{DynamicResource BaseTextBoxV2}"
                                      Padding="6,0" VerticalContentAlignment="Center"/>
                         </StackPanel>
 
-                        <Button Grid.Column="4" x:Name="SavePresetButton"
+                        <Button Grid.Column="4" x:Name="SavePresetButton" FontSize="12"
                                 Content="💾 Lưu" Height="28" Margin="0,14, 0 ,0"
                                 Style="{DynamicResource PrimaryButton}"
                                 Click="SavePreset_Click">
@@ -327,20 +323,9 @@
                     <TextBlock x:Name="CountText" Foreground="{DynamicResource TextSecondary}" FontSize="11"
                                VerticalAlignment="Center" Margin="0,0,16,0"/>
                     <Button Content="✔ Đóng" Height="32" Padding="18,0"
-                            Background="{DynamicResource CardColor}" Foreground="{DynamicResource TextBrush}" BorderThickness="0"
+                            Style="{DynamicResource SecondaryButton}"
                             FontSize="12" Cursor="Hand" Click="Close_Click">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="bd" CornerRadius="6" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="bd" Property="Background" Value="{DynamicResource CardHoverBackground}"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
+                       
                     </Button>
                 </StackPanel>
             </Border>

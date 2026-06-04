@@ -520,12 +520,17 @@
                                         Height="24"
                                         Margin="0,0,4,0"
                                         Padding="0"
-                                        Content="▶"
-                                        FontSize="12"
                                         Cursor="Hand"
                                         ToolTip="Chạy logic node này"
                                         Style="{StaticResource WidgetTitleActionButton}"
-                                        Click="RunSingleNodeBtn_Click"/>
+                                        Click="RunSingleNodeBtn_Click">
+                                    <controls:SvgViewboxEx Width="13"
+                                                           Height="13"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='play regular'}"
+                                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                </Button>
 
                                 <Button x:Name="StartWorkflowBtn"
                                         Width="24"
@@ -611,16 +616,26 @@
                                         Margin="0,0,4,0"
                                         Padding="0"
                                         Cursor="Hand"
-                                        FontSize="12"
-                                        FontWeight="SemiBold"
                                         Style="{StaticResource WidgetTitleWindowButton}"
                                         Click="OutsideCollapseToggleButton_Click"
                                         ToolTip="Bật/tắt: click ra ngoài thì tự thu nhỏ">
-                                    <TextBlock x:Name="TitleOutsideCollapseToggleIcon"
-                                               Text="◌"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                    <Grid>
+                                        <controls:SvgViewboxEx x:Name="TitleOutsideCollapseToggleIconInactive"
+                                                               Width="13"
+                                                               Height="13"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='arrows-to-circle duotone'}"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                        <controls:SvgViewboxEx x:Name="TitleOutsideCollapseToggleIconActive"
+                                                               Width="13"
+                                                               Height="13"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='circle regular'}"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Visibility="Collapsed"/>
+                                    </Grid>
                                 </Button>
 
                                 <Button x:Name="TitlePinToggleBtn"
@@ -629,15 +644,26 @@
                                         Margin="0,0,4,0"
                                         Padding="0"
                                         Cursor="Hand"
-                                        FontSize="11"
                                         Style="{StaticResource WidgetTitleWindowButton}"
                                         Click="PinToggleButton_Click"
                                         ToolTip="Bật/tắt ghim widget">
-                                    <TextBlock x:Name="TitlePinToggleIcon"
-                                               Text="📌"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                    <Grid>
+                                        <controls:SvgViewboxEx x:Name="TitlePinToggleIconInactive"
+                                                               Width="13"
+                                                               Height="13"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='map-pin sharp-light'}"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                        <controls:SvgViewboxEx x:Name="TitlePinToggleIconActive"
+                                                               Width="13"
+                                                               Height="13"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='map-pin solid'}"
+                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               Visibility="Collapsed"/>
+                                    </Grid>
                                 </Button>
                                 <Button x:Name="TitleMaxRestoreBtn"
                                         Width="26"

@@ -248,7 +248,7 @@
                             <TextBlock Text="Output tùy chỉnh (từ node trong body)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,12,0,6"/>
                             <StackPanel x:Name="CustomOutputsPanel"/>
                             <Button x:Name="AddCustomOutputButton" Content="+" Width="28" Height="28" FontSize="16" FontWeight="Bold"
-                                    Margin="0,6,0,0" Click="AddCustomOutputButton_Click"
+                                    Margin="0,6,0,0" Click="AddCustomOutputButton_Click" Padding="0"
                                     Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
                         </StackPanel>
                     </Border>
@@ -264,8 +264,8 @@
                             <TextBlock Text="Gán giá trị từ output của node nguồn sang key của node đích (mỗi iteration)" 
                                        Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,6"/>
                             <StackPanel x:Name="DataAssignmentsPanel"/>
-                            <Button x:Name="AddAssignmentButton" Content="+" Width="28" Height="28" FontSize="16" FontWeight="Bold"
-                                    Margin="0,8,0,0" Click="AddAssignmentButton_Click"
+                            <Button x:Name="AddAssignmentButton" Content="+" Width="28" Height="28" FontSize="16" FontWeight="Bold" Padding="0"
+                                    Margin="0,8,0,0" Click="AddAssignmentButton_Click" 
                                     Style="{DynamicResource PrimaryButton}" Cursor="Hand"/>
                         </StackPanel>
                     </Border>

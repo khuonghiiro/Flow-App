@@ -30,7 +30,7 @@
                               Foreground="{DynamicResource TextBrush}" FontSize="14" VerticalAlignment="Center"/>
                     <Button x:Name="ClosePopupButton" Grid.Column="1" Content="Đóng"
                             Width="80" Height="32" Padding="8,0"
-                            Foreground="{DynamicResource TextBrush}" Background="{DynamicResource ControlBorderBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                            Style="{DynamicResource SecondaryButton}" 
                             Cursor="Hand" Click="ClosePopupButton_Click"/>
                 </Grid>
             </Border>

@@ -315,6 +315,7 @@ namespace FlowMy.Views.Overlays
                 Height = 28,
                 FontSize = 14,
                 FontWeight = FontWeights.Bold,
+                Padding = new Thickness(0, 0, 8, 0),
                 Style = Application.Current.TryFindResource("WarningButton") as Style,
                 Cursor = Cursors.Hand,
                 Tag = assignment,

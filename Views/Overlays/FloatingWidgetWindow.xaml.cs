@@ -1474,8 +1474,10 @@ public partial class FloatingWidgetWindow : Window
 
         if (TitleOutsideCollapseToggleBtn != null)
         {
-            if (TitleOutsideCollapseToggleIcon != null)
-                TitleOutsideCollapseToggleIcon.Text = enabled ? "◉" : "◌";
+            if (TitleOutsideCollapseToggleIconInactive != null)
+                TitleOutsideCollapseToggleIconInactive.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+            if (TitleOutsideCollapseToggleIconActive != null)
+                TitleOutsideCollapseToggleIconActive.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
             TitleOutsideCollapseToggleBtn.ToolTip = tooltip;
             TitleOutsideCollapseToggleBtn.IsEnabled = !Config.PinnedNoAutoHide;
             var titleStyleKey = enabled ? "WidgetTitleActionButtonActive" : "WidgetTitleWindowButton";
@@ -1502,8 +1504,10 @@ public partial class FloatingWidgetWindow : Window
 
         if (TitlePinToggleBtn != null)
         {
-            if (TitlePinToggleIcon != null)
-                TitlePinToggleIcon.Text = pinned ? "📍" : "📌";
+            if (TitlePinToggleIconInactive != null)
+                TitlePinToggleIconInactive.Visibility = pinned ? Visibility.Collapsed : Visibility.Visible;
+            if (TitlePinToggleIconActive != null)
+                TitlePinToggleIconActive.Visibility = pinned ? Visibility.Visible : Visibility.Collapsed;
             TitlePinToggleBtn.ToolTip = tooltip;
             var titleStyleKey = pinned ? "WidgetTitleActionButtonActive" : "WidgetTitleWindowButton";
             if (TryFindResource(titleStyleKey) is Style titleStyle)

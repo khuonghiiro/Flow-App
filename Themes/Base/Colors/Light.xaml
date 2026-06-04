@@ -137,7 +137,7 @@
 
     <!-- ===== SHADOW ===== -->
     <Color x:Key="ShadowColor">#28000000</Color>
-    <Color x:Key="PrimaryShadowColor">#180000000</Color>
+    <Color x:Key="PrimaryShadowColor">#18000000</Color>
 
     <!-- ===== RADIO OPTIONS ===== -->
     <SolidColorBrush x:Key="OptionHoverBrush"    Color="#FFE4E9F2"/>

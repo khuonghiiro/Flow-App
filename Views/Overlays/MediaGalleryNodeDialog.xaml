@@ -10,8 +10,8 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="440"
-        MinWidth="380"
+        Width="520"
+        MinWidth="420"
         MaxWidth="1200"
         MinHeight="420">
     <Border CornerRadius="12" Padding="0" Style="{DynamicResource DialogOuterBorder}">
@@ -21,7 +21,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -57,69 +57,105 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                 <StackPanel>
-                    <TextBlock Text="Kích thước khung hiển thị (mỗi ô ảnh/video trong node):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Rộng (px)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding FrameDisplayWidthText, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}" Height="36"/>
+                    <!-- 🎨 Kích thước khung hiển thị -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Kích thước khung hiển thị" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Rộng (px)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding FrameDisplayWidthText, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Cao (px)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding FrameDisplayHeightText, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Cao (px)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding FrameDisplayHeightText, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}" Height="36"/>
-                        </StackPanel>
-                    </Grid>
+                    </Border>
 
-                    <TextBlock Text="Nguồn JSON (node + key chứa chuỗi JSON để hiển thị gallery):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <controls:NodeSearchComboBoxUserControl x:Name="JsonNodeComboBox" Height="36"
-                                      ItemsSource="{Binding AvailableNodeOptions}"
-                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                      SelectedValue="{Binding JsonSourceNodeId, Mode=TwoWay}"/>
+                    <!-- 📍 Nguồn JSON -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📍 Nguồn JSON" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Foreground="{DynamicResource TextMuted}" 
+                                       FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10">
+                                <Run Text="Node + key chứa chuỗi JSON để hiển thị gallery"/>
+                            </TextBlock>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <controls:NodeSearchComboBoxUserControl x:Name="JsonNodeComboBox" Height="32"
+                                              ItemsSource="{Binding AvailableNodeOptions}"
+                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                              SelectedValue="{Binding JsonSourceNodeId, Mode=TwoWay}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="JsonKeyComboBox" Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              SelectedValuePath="Key" DisplayMemberPath="Key"
+                                              SelectedValue="{Binding JsonSourceOutputKey, Mode=TwoWay}"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                            <ComboBox x:Name="JsonKeyComboBox" Height="36"
+                    </Border>
+
+                    <!-- 🎯 Chạy lại node nguồn -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎯 Khi ấn nút ▶ trong dialog" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <CheckBox x:Name="ReexecuteSourceCheckBox"
+                                      Content="Cho phép chạy lại logic node nguồn (single play)"
+                                      IsChecked="{Binding CanReexecuteSourceNode, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="12"
+                                      Cursor="Hand"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 🎨 Chế độ hiển thị -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Chế độ hiển thị" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <ComboBox x:Name="DisplayModeComboBox" Height="32"
                                       Style="{DynamicResource BaseComboBox}"
-                                      SelectedValuePath="Key" DisplayMemberPath="Key"
-                                      SelectedValue="{Binding JsonSourceOutputKey, Mode=TwoWay}"/>
+                                      ItemsSource="{Binding GalleryDisplayModeOptions}"
+                                      SelectedValuePath="Mode" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding DisplayMode, Mode=TwoWay}"/>
                         </StackPanel>
-                    </Grid>
+                    </Border>
 
-                    <TextBlock Text="Khi ấn nút ▶ trong dialog:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <CheckBox x:Name="ReexecuteSourceCheckBox"
-                              Content="Cho phép chạy lại logic node nguồn (single play)"
-                              IsChecked="{Binding CanReexecuteSourceNode, Mode=TwoWay}"
-                              Foreground="{DynamicResource TextMuted}"
-                              FontSize="12"
-                              Margin="0,0,0,16"/>
-
-                    <TextBlock Text="Hiển thị:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ComboBox x:Name="DisplayModeComboBox" Height="36" Margin="0,0,0,8"
-                              Style="{DynamicResource BaseComboBox}"
-                              ItemsSource="{Binding GalleryDisplayModeOptions}"
-                              SelectedValuePath="Mode" DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding DisplayMode, Mode=TwoWay}"/>
-
-                    <!-- Trường nhóm (chỉ hiện khi chọn "theo nhóm") -->
-                    <StackPanel x:Name="GroupFieldsPanel" Margin="0,0,0,16">
+                    <!-- 📂 Cấu hình nhóm -->
+                    <StackPanel x:Name="GroupFieldsPanel" Margin="0,0,0,12">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -130,61 +166,97 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <TextBlock Text="Key JSON cho chế độ theo nhóm (vd: workflows → workflowId → videos):"
-                                   Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock Text="Trường mảng nhóm (vd: workflows)"
-                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding GroupArrayKey, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,10"/>
-                        <TextBlock Text="Trường tiêu đề nhóm (vd: workflowId, toolName)"
-                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding GroupTitleKey, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,10"/>
-                        <TextBlock Text="Trường mảng item trong nhóm (vd: videos)"
-                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding GroupItemsKey, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,16"/>
+                        <Border Background="{DynamicResource WindowBackground}"
+                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="12">
+                            <StackPanel>
+                                <TextBlock Text="📂 Cấu hình nhóm" 
+                                           Foreground="{DynamicResource TextBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" 
+                                           FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    <Run Text="Key JSON cho chế độ theo nhóm (vd: workflows → workflowId → videos)"/>
+                                </TextBlock>
+                                <TextBlock Text="Trường mảng nhóm (vd: workflows)"
+                                           Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding GroupArrayKey, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,8"/>
+                                <TextBlock Text="Trường tiêu đề nhóm (vd: workflowId, toolName)"
+                                           Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding GroupTitleKey, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,8"/>
+                                <TextBlock Text="Trường mảng item trong nhóm (vd: videos)"
+                                           Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding GroupItemsKey, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <TextBlock Text="Khi nhấn vào item trong gallery:"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ComboBox x:Name="ItemClickPreviewComboBox" Height="36" Margin="0,0,0,16"
-                              Style="{DynamicResource BaseComboBox}"
-                              ItemsSource="{Binding ItemClickPreviewOptions}"
-                              SelectedValuePath="Mode" DisplayMemberPath="DisplayName"
-                              SelectedValue="{Binding ItemClickPreviewMode, Mode=TwoWay}"/>
+                    <!-- 👆 Hành động khi nhấn item -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="👆 Hành động khi nhấn item" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <ComboBox x:Name="ItemClickPreviewComboBox" Height="32"
+                                      Style="{DynamicResource BaseComboBox}"
+                                      ItemsSource="{Binding ItemClickPreviewOptions}"
+                                      SelectedValuePath="Mode" DisplayMemberPath="DisplayName"
+                                      SelectedValue="{Binding ItemClickPreviewMode, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Text="Key JSON (tên trường trong mỗi item):"
-                               Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <TextBlock Text="Tiêu đề (vd: title)"
-                               Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding TitleKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,10"/>
-                    <TextBlock Text="URL ảnh (vd: imageUrl)"
-                               Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding ImageUrlKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,10"/>
-                    <TextBlock Text="URL video – nếu có (vd: videoUrl)"
-                               Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding VideoUrlKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,16"/>
+                    <!-- 📊 Key JSON của item -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📊 Key JSON của item" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="Tiêu đề (vd: title)"
+                                       Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding TitleKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,8"/>
+                            <TextBlock Text="URL ảnh (vd: imageUrl)"
+                                       Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ImageUrlKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,8"/>
+                            <TextBlock Text="URL video – nếu có (vd: videoUrl)"
+                                       Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding VideoUrlKeyTemplate, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Text="Màu tiêu đề:" Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="36"
-                                  Style="{DynamicResource BaseComboBox}"
-                                  ItemsSource="{Binding TitleColorOptions}"
-                                  SelectedValuePath="Key" DisplayMemberPath="DisplayName"
-                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-                        <Border Grid.Column="1" x:Name="TitleColorPreview"
-                                Width="36" Height="36" CornerRadius="6" Margin="8,0,0,0"
-                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
-                    </Grid>
+                    <!-- 🎨 Màu tiêu đề -->
+                    <Border Background="{DynamicResource WindowBackground}"
+                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Màu tiêu đề" 
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="TitleColorComboBox" Grid.Column="0" Height="32"
+                                          Style="{DynamicResource BaseComboBox}"
+                                          ItemsSource="{Binding TitleColorOptions}"
+                                          SelectedValuePath="Key" DisplayMemberPath="DisplayName"
+                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                <Border Grid.Column="1" x:Name="TitleColorPreview"
+                                        Width="32" Height="32" CornerRadius="6" Margin="8,0,0,0"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
                     <StackPanel x:Name="InputsPanel" Visibility="Collapsed"/>
                     <StackPanel x:Name="OutputsPanel" Visibility="Collapsed"/>
@@ -196,11 +268,23 @@
                 <TabItem Header="Ví dụ JSON" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Khuyến nghị: dùng Code Node để chuẩn hóa JSON thành 2 format dưới đây rồi nối vào MediaGallery."
-                                       Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,12" TextWrapping="Wrap"/>
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Foreground="{DynamicResource TextBrush}" 
+                                               FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4">
+                                        <Run Text="💡 Gợi ý:"/>
+                                    </TextBlock>
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" 
+                                               FontSize="10" TextWrapping="Wrap">
+                                        <Run Text="Dùng Code Node để chuẩn hóa JSON thành 2 format dưới đây rồi nối vào MediaGallery."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
 
                             <TextBlock Text="Ảnh/Video theo lưới (Grid):"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                       Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                 <Button Content="Copy ví dụ lưới"
                                         Style="{DynamicResource PrimaryButton}"
@@ -220,7 +304,7 @@
                                      Margin="0,0,0,16"/>
 
                             <TextBlock Text="Ảnh/Video theo nhóm (Grouped):"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                       Foreground="{DynamicResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                 <Button Content="Copy ví dụ theo nhóm"
                                         Style="{DynamicResource PrimaryButton}"
@@ -246,65 +330,81 @@
                 <TabItem Header="Folder lưu file" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Folder lưu ảnh:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <TextBlock Text="Điền đường dẫn hoặc để trống để lấy từ Node + Key bên dưới."
-                                       Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding FolderSaveImages, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,10"/>
-                            <TextBlock Text="Node + Key (folder ảnh, khi textbox để trống):"
-                                       Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6"/>
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <controls:NodeSearchComboBoxUserControl x:Name="FolderNodeComboBox" Height="36"
-                                              ItemsSource="{Binding AvailableNodeOptions}"
-                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                              SelectedValue="{Binding FolderSourceNodeId, Mode=TwoWay}"/>
+                            <!-- 💾 Folder lưu ảnh -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="💾 Folder lưu ảnh" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Điền đường dẫn hoặc để trống để lấy từ Node + Key bên below."
+                                               Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                                    <TextBox Text="{Binding FolderSaveImages, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Node + Key (khi textbox để trống)"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl x:Name="FolderNodeComboBox" Height="32"
+                                                      ItemsSource="{Binding AvailableNodeOptions}"
+                                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                      SelectedValue="{Binding FolderSourceNodeId, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="FolderKeyComboBox" Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      SelectedValuePath="Key" DisplayMemberPath="Key"
+                                                      SelectedValue="{Binding FolderSourceOutputKey, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <ComboBox x:Name="FolderKeyComboBox" Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding FolderSourceOutputKey, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Grid>
+                            </Border>
 
-                            <TextBlock Text="Folder lưu video:"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,8"/>
-                            <TextBlock Text="Điền đường dẫn hoặc để trống để lấy từ Node + Key bên dưới."
-                                       Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding FolderSaveVideos, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{DynamicResource BaseTextBoxV2}" Height="36" Margin="0,0,0,10"/>
-                            <TextBlock Text="Node + Key (folder video, khi textbox để trống):"
-                                       Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6"/>
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <controls:NodeSearchComboBoxUserControl x:Name="FolderVideoNodeComboBox" Height="36"
-                                              ItemsSource="{Binding AvailableNodeOptions}"
-                                              SelectedValuePath="NodeId" DisplayMemberPath="Title"
-                                              SelectedValue="{Binding FolderSourceNodeIdVideo, Mode=TwoWay}"/>
+                            <!-- 💾 Folder lưu video -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="💾 Folder lưu video" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Điền đường dẫn hoặc để trống để lấy từ Node + Key bên below."
+                                               Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                                    <TextBox Text="{Binding FolderSaveVideos, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource BaseTextBoxV2}" Height="32" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Node + Key (khi textbox để trống)"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Node" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <controls:NodeSearchComboBoxUserControl x:Name="FolderVideoNodeComboBox" Height="32"
+                                                      ItemsSource="{Binding AvailableNodeOptions}"
+                                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                      SelectedValue="{Binding FolderSourceNodeIdVideo, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="FolderVideoKeyComboBox" Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      SelectedValuePath="Key" DisplayMemberPath="Key"
+                                                      SelectedValue="{Binding FolderSourceOutputKeyVideo, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Key" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
-                                    <ComboBox x:Name="FolderVideoKeyComboBox" Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              SelectedValuePath="Key" DisplayMemberPath="Key"
-                                              SelectedValue="{Binding FolderSourceOutputKeyVideo, Mode=TwoWay}"/>
-                                </StackPanel>
-                            </Grid>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -314,9 +414,9 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
                             <!-- Cấu hình vị trí cổng IN/OUT -->
-                            <TextBlock Text="Vị trí cổng IN/OUT:"
+                            <TextBlock Text="Vị trí cổng IN/OUT"
                                        Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
 
@@ -327,11 +427,10 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- Port IN -->
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port IN (cổng vào)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                    <TextBlock Text="Port IN"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"
@@ -340,11 +439,10 @@
                                 </StackPanel>
 
                                 <!-- Port OUT -->
-                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="Port OUT (cổng ra)"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               FontSize="12"
-                                               Opacity="0.8"
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                    <TextBlock Text="Port OUT"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
                                                Margin="0,0,0,4"/>
                                     <ComboBox Height="32"
                                               Style="{DynamicResource BaseComboBox}"

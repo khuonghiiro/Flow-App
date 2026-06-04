@@ -106,7 +106,7 @@
                                                  Style="{DynamicResource BaseTextBoxV2}"
                                                  VerticalContentAlignment="Center"/>
                                         <Button x:Name="BorderColorPickerButton" Grid.Column="1" Width="32" Height="32"
-                                                Content="🎨" FontSize="16"
+                                                Content="🎨" FontSize="14"
                                                 Style="{DynamicResource PrimaryButton}"
                                                 Margin="8,0,0,0" Padding="0"
                                                 Click="BorderColorPickerButton_Click"/>
