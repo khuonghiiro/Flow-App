@@ -174,88 +174,90 @@
 
                             <!-- Variables List -->
                             <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="6" Padding="10">
-                        <StackPanel>
-                            <ItemsControl x:Name="VariablesItemsControl" ItemsSource="{Binding Variables}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8">
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <ItemsControl x:Name="VariablesItemsControl" ItemsSource="{Binding Variables}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource HeaderBackgroundBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                                    <Grid>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
 
-                                                <!-- Row 1: Variable Key -->
-                                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
-                                                    <TextBlock Text="Variable Key:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
-                                                    <TextBox Text="{Binding VariableKey, UpdateSourceTrigger=PropertyChanged}"
-                                                             Style="{DynamicResource BaseTextBoxV2}"
-                                                             Height="32"
-                                                             FontSize="13"/>
-                                                </StackPanel>
+                                                        <!-- Row 1: Variable Key -->
+                                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                                                            <TextBlock Text="Variable Key:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding VariableKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                                     Height="32"
+                                                                     FontSize="13"/>
+                                                        </StackPanel>
 
-                                                <!-- Remove Button -->
-                                                <Button Grid.Row="0" Grid.Column="1"
-                                                        Content="-"
-                                                        Width="28" Height="28"
-                                                        FontSize="18" FontWeight="Bold"
-                                                        Foreground="{DynamicResource TextBrush}"
-                                                        Background="{DynamicResource DangerBrush}"
-                                                        BorderThickness="0"
-                                                        Cursor="Hand"
-                                                        VerticalAlignment="Bottom"
-                                                        Margin="0,0,0,8"
-                                                        Command="{Binding RemoveCommand}">
-                                                    <Button.Template>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border Background="{TemplateBinding Background}" 
-                                                                    CornerRadius="6">
-                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Border>
-                                                        </ControlTemplate>
-                                                    </Button.Template>
-                                                </Button>
+                                                        <!-- Remove Button -->
+                                                        <Button Grid.Row="0" Grid.Column="1"
+                                                                Content="-"
+                                                                Width="28" Height="28"
+                                                                FontSize="18" FontWeight="Bold"
+                                                                Foreground="{DynamicResource TextBrush}"
+                                                                Background="{DynamicResource DangerBrush}"
+                                                                BorderThickness="0"
+                                                                Cursor="Hand"
+                                                                VerticalAlignment="Bottom"
+                                                                Margin="0,0,0,8"
+                                                                Command="{Binding RemoveCommand}">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}" 
+                                                                            CornerRadius="6">
+                                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
 
-                                                <!-- Row 2: Source Node -->
-                                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
-                                                    <TextBlock Text="Source Node:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
-                                                    <controls:NodeSearchComboBoxUserControl ItemsSource="{Binding AvailableSourceNodes}"
-                                                              SelectedValue="{Binding SelectedSourceNodeId, Mode=TwoWay}"
-                                                              SelectedValuePath="NodeId"
-                                                              DisplayMemberPath="Title"
-                                                              Height="32"/>
-                                                </StackPanel>
+                                                        <!-- Row 2: Source Node -->
+                                                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
+                                                            <TextBlock Text="Source Node:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <controls:NodeSearchComboBoxUserControl ItemsSource="{Binding AvailableSourceNodes}"
+                                                                      SelectedValue="{Binding SelectedSourceNodeId, Mode=TwoWay}"
+                                                                      SelectedValuePath="NodeId"
+                                                                      DisplayMemberPath="Title"
+                                                                      Height="32"/>
+                                                        </StackPanel>
 
-                                                <!-- Row 3: Source Output Key -->
-                                                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
-                                                    <TextBlock Text="Source Key:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
-                                                    <ComboBox ItemsSource="{Binding AvailableOutputKeys}"
-                                                              SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"
-                                                              SelectedValuePath="Key"
-                                                              DisplayMemberPath="Key"
-                                                              Style="{DynamicResource BaseComboBox}"
-                                                              Height="32"/>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            
-                            <!-- Empty state -->
-                            <TextBlock x:Name="EmptyStateText"
-                                       Text="Chưa có variable nào. Nhấn '+ Thêm' để tạo input variable."
-                                       Foreground="{DynamicResource TextMuted}"
-                                       FontSize="12"
-                                       FontStyle="Italic"
-                                       HorizontalAlignment="Center"
-                                       Margin="0,8"
-                                       Visibility="Collapsed"/>
+                                                        <!-- Row 3: Source Output Key -->
+                                                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
+                                                            <TextBlock Text="Source Key:" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <ComboBox ItemsSource="{Binding AvailableOutputKeys}"
+                                                                      SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"
+                                                                      SelectedValuePath="Key"
+                                                                      DisplayMemberPath="Key"
+                                                                      Style="{DynamicResource BaseComboBox}"
+                                                                      Height="32"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    
+                                    <!-- Empty state -->
+                                    <TextBlock x:Name="EmptyStateText"
+                                               Text="Chưa có variable nào. Nhấn '+ Thêm' để tạo input variable."
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="12"
+                                               FontStyle="Italic"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,8"
+                                               Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 

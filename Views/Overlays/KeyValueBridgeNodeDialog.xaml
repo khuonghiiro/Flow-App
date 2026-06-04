@@ -10,11 +10,11 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Width="450"
+        Width="520"
         Height="720"
-        MinWidth="350"
+        MinWidth="420"
         MaxWidth="800"
-        MinHeight="400">
+        MinHeight="420">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
@@ -26,7 +26,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12,12,12">
+            <Border Grid.Row="0" Style="{DynamicResource DialogHeaderBorder}" Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -66,324 +66,370 @@
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Hiển thị tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
+                            <!-- 🎨 Cấu hình hiển thị -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🎨 Cấu hình hiển thị"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Hiển thị tiêu đề"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="TitleDisplayModeComboBox"
+                                              Height="32"
+                                              Style="{DynamicResource BaseComboBox}"
+                                              Margin="0,0,0,8"
+                                              ItemsSource="{Binding TitleDisplayModeOptions}"
+                                              SelectedValuePath="Value"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
+                                    <TextBlock Text="Màu tiêu đề"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10" Margin="0,0,0,4"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="TitleColorComboBox"
+                                                  Grid.Column="0"
+                                                  Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding TitleColorOptions}"
+                                                  SelectedValuePath="Key"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
+                                                  SelectionChanged="TitleColorComboBox_SelectionChanged"/>
+                                        <Border Grid.Column="1"
+                                                x:Name="TitleColorPreview"
+                                                Width="32" Height="32"
+                                                CornerRadius="6"
+                                                Margin="8,0,0,0"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <ComboBox x:Name="TitleDisplayModeComboBox"
-                                      Height="36"
-                                      Style="{DynamicResource BaseComboBox}"
-                                      Margin="0,0,0,16"
-                                      ItemsSource="{Binding TitleDisplayModeOptions}"
-                                      SelectedValuePath="Value"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValue="{Binding TitleDisplayMode, Mode=TwoWay}"/>
-
-                            <TextBlock Text="Màu tiêu đề:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <ComboBox x:Name="TitleColorComboBox"
-                                          Grid.Column="0"
-                                          Height="36"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          ItemsSource="{Binding TitleColorOptions}"
-                                          SelectedValuePath="Key"
-                                          DisplayMemberPath="DisplayName"
-                                          SelectedValue="{Binding TitleColorKey, Mode=TwoWay}"
-                                          SelectionChanged="TitleColorComboBox_SelectionChanged"/>
-
-                                <Border Grid.Column="1"
-                                        x:Name="TitleColorPreview"
-                                        Width="36" Height="36"
-                                        CornerRadius="6"
-                                        Margin="8,0,0,0"
-                                        BorderBrush="{DynamicResource ControlBorderBrush}"
-                                        BorderThickness="1"/>
-                            </Grid>
-
-                            <StackPanel Margin="0,0,0,12">
-                                <CheckBox Content="Chế độ Pass (ghi KV từ luồng)"
-                                          IsChecked="{Binding IsPassKeyMode, Mode=TwoWay}"
-                                          Foreground="{DynamicResource TextBrush}"
-                                          FontSize="14"/>
-                                <TextBlock TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           LineHeight="16"
-                                           Margin="22,4,0,10"
-                                           Text="Bật: hiện cổng IN/OUT trên canvas — mỗi lần luồng chạy qua, giá trị được append vào kho key/value runtime (dùng chung trong một lần chạy workflow). Tắt: chuyển sang Get — đọc KV đã có theo interval, thường không cần nối cổng IN (trừ khi bật 'Xoá dữ liệu' bên dưới)."/>
-                                <CheckBox Content="Xoá dữ liệu (cleanup KV runtime)"
-                                          IsChecked="{Binding EnableDataCleanup, Mode=TwoWay}"
-                                          Foreground="{DynamicResource TextBrush}"
-                                          FontSize="13"/>
-                                <TextBlock TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           LineHeight="16"
-                                           Margin="22,4,0,0"
-                                           Text="Bật: node dùng để xóa KV theo cấu hình mục 'KV Data Cleanup'. Cổng IN trên canvas luôn hiện để bạn nối luồng kích hoạt cleanup — kể cả khi Pass đang tắt (Get)."/>
-                            </StackPanel>
+                            <!-- ⚙️ Chế độ hoạt động -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ Chế độ hoạt động"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <CheckBox Content="Chế độ Pass (ghi KV từ luồng)"
+                                              IsChecked="{Binding IsPassKeyMode, Mode=TwoWay}"
+                                              Foreground="{DynamicResource TextBrush}"
+                                              FontSize="11"/>
+                                    <TextBlock TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               FontSize="10"
+                                               LineHeight="16"
+                                               Margin="22,4,0,10"
+                                               Text="Bật: hiện cổng IN/OUT trên canvas — mỗi lần luồng chạy qua, giá trị được append vào kho key/value runtime (dùng chung trong một lần chạy workflow). Tắt: chuyển sang Get — đọc KV đã có theo interval, thường không cần nối cổng IN (trừ khi bật 'Xoá dữ liệu' bên dưới)."/>
+                                    <CheckBox Content="Xoá dữ liệu (cleanup KV runtime)"
+                                              IsChecked="{Binding EnableDataCleanup, Mode=TwoWay}"
+                                              Foreground="{DynamicResource TextBrush}"
+                                              FontSize="11"/>
+                                    <TextBlock TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               FontSize="10"
+                                               LineHeight="16"
+                                               Margin="22,4,0,0"
+                                               Text="Bật: node dùng để xóa KV theo cấu hình mục 'KV Data Cleanup'. Cổng IN trên canvas luôn hiện để bạn nối luồng kích hoạt cleanup — kể cả khi Pass đang tắt (Get)."/>
+                                </StackPanel>
+                            </Border>
 
                             <StackPanel Visibility="{Binding EnableDataCleanup, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                             <StackPanel Visibility="{Binding IsPassKeyMode, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="Key Identifier"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <TextBox Text="{Binding KvChannelKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{DynamicResource BaseTextBoxV2}"
-                                         Height="36"
-                                         Margin="0,0,0,16"/>
+                                <!-- 🔑 Key Identifier -->
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="🔑 Key Identifier"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Khóa định danh KV"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding KvChannelKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 Height="32"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
 
                             <StackPanel Visibility="{Binding IsPassKeyMode, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                                <TextBlock Text="Source node (Pass Key bridge)"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <controls:NodeSearchComboBoxUserControl x:Name="SourceBridgeCombo"
-                                          Height="36"
-                                          Margin="0,0,0,12"
-                                          ItemsSource="{Binding PassBridgeSourceOptions}"
-                                          SelectedValuePath="NodeId"
-                                          DisplayMemberPath="Title"
-                                          SelectedValue="{Binding SelectedSourceBridgeNodeId, Mode=TwoWay}"/>
+                                <!-- 🔗 Source node (Get mode) -->
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="🔗 Source node (Get mode)"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Node nguồn (Pass Key bridge)"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10" Margin="0,0,0,4"/>
+                                        <controls:NodeSearchComboBoxUserControl x:Name="SourceBridgeCombo"
+                                                  Height="32"
+                                                  Margin="0,0,0,8"
+                                                  ItemsSource="{Binding PassBridgeSourceOptions}"
+                                                  SelectedValuePath="NodeId"
+                                                  DisplayMemberPath="Title"
+                                                  SelectedValue="{Binding SelectedSourceBridgeNodeId, Mode=TwoWay}"/>
 
-                                <TextBlock Text="Key"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <ComboBox x:Name="KeyCombo"
-                                          Height="36"
-                                          Style="{DynamicResource BaseComboBox}"
-                                          Margin="0,0,0,12"
-                                          IsEditable="False"
-                                          ItemsSource="{Binding KnownKeyOptions}"
-                                          SelectedItem="{Binding KvChannelKey, Mode=TwoWay}"/>
+                                        <TextBlock Text="Key"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="KeyCombo"
+                                                  Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  Margin="0,0,0,8"
+                                                  IsEditable="False"
+                                                  ItemsSource="{Binding KnownKeyOptions}"
+                                                  SelectedItem="{Binding KvChannelKey, Mode=TwoWay}"/>
 
-                                <TextBlock Text="Fetch interval"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0"
-                                             Margin="0,0,8,0"
-                                             Style="{DynamicResource BaseTextBoxV2}"
-                                             Height="36"
-                                             Text="{Binding PollIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <ComboBox Grid.Column="1"
-                                              Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding PollUnitOptions}"
-                                              SelectedValuePath="Unit"
-                                              DisplayMemberPath="Label"
-                                              SelectedValue="{Binding PollIntervalUnit, Mode=TwoWay}"/>
-                                </Grid>
+                                        <TextBlock Text="Fetch interval"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="10" Margin="0,0,0,4"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0"
+                                                     Margin="0,0,8,0"
+                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                     Height="32"
+                                                     Text="{Binding PollIntervalValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <ComboBox Grid.Column="1"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding PollUnitOptions}"
+                                                      SelectedValuePath="Unit"
+                                                      DisplayMemberPath="Label"
+                                                      SelectedValue="{Binding PollIntervalUnit, Mode=TwoWay}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
 
                             <StackPanel Visibility="{Binding IsPassKeyMode, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="Input mapping (Pass mode):"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <Border Style="{DynamicResource DialogOuterBorder}"
-                                        CornerRadius="8"
-                                        Padding="12"
-                                        Margin="0,0,0,16">
-                                    <StackPanel x:Name="InputsPanel"/>
+                                <!-- 📥 Input mapping (Pass mode) -->
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="📥 Input mapping (Pass mode)"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <Border Background="{DynamicResource WindowBackground}"
+                                                BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                BorderThickness="1" CornerRadius="6" Padding="12">
+                                            <StackPanel x:Name="InputsPanel"/>
+                                        </Border>
+                                    </StackPanel>
                                 </Border>
 
-                                <TextBlock Text="Value append sources (multiple)"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,8"/>
-                                <ItemsControl ItemsSource="{Binding AdditionalAppendSources}" Margin="0,0,0,8">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
-                                                              Height="32"
-                                                              Margin="0,0,8,0"
-                                                              ItemsSource="{Binding AvailableSources}"
-                                                              SelectedValuePath="NodeId"
-                                                              DisplayMemberPath="Title"
-                                                              SelectedValue="{Binding SelectedSourceNodeId, Mode=TwoWay}"/>
-                                                    <ComboBox Grid.Column="1"
-                                                              Height="32"
-                                                              Margin="0,0,8,0"
-                                                              Style="{DynamicResource BaseComboBox}"
-                                                              ItemsSource="{Binding AvailableOutputKeyOptions}"
-                                                              SelectedValuePath="Key"
-                                                              DisplayMemberPath="Key"
-                                                              SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"/>
-                                                    <Button Grid.Column="2"
-                                                            Content="X"
-                                                            Width="28"
-                                                            Height="28"
-                                                            Style="{DynamicResource DangerButton}"
-                                                            Click="RemoveAdditionalAppendSource_Click"/>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <Button Content="+ Thêm nguồn append"
-                                        Style="{DynamicResource PrimaryButton}"
-                                        Height="32"
-                                        Click="AddAdditionalAppendSource_Click"
-                                        Margin="0,0,0,16"/>
+                                <!-- ➕ Value append sources -->
+                                <Border Background="{DynamicResource WindowBackground}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="➕ Value append sources (multiple)"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <ItemsControl ItemsSource="{Binding AdditionalAppendSources}" Margin="0,0,0,8">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <controls:NodeSearchComboBoxUserControl Grid.Column="0"
+                                                                      Height="32"
+                                                                      Margin="0,0,8,0"
+                                                                      ItemsSource="{Binding AvailableSources}"
+                                                                      SelectedValuePath="NodeId"
+                                                                      DisplayMemberPath="Title"
+                                                                      SelectedValue="{Binding SelectedSourceNodeId, Mode=TwoWay}"/>
+                                                            <ComboBox Grid.Column="1"
+                                                                      Height="32"
+                                                                      Margin="0,0,8,0"
+                                                                      Style="{DynamicResource BaseComboBox}"
+                                                                      ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                      SelectedValuePath="Key"
+                                                                      DisplayMemberPath="Key"
+                                                                      SelectedValue="{Binding SelectedSourceOutputKey, Mode=TwoWay}"/>
+                                                            <Button Grid.Column="2"
+                                                                    Content="X"
+                                                                    Width="28"
+                                                                    Height="28"
+                                                                    Style="{DynamicResource DangerButton}"
+                                                                    Click="RemoveAdditionalAppendSource_Click"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button Content="+ Thêm nguồn append"
+                                                Style="{DynamicResource PrimaryButton}"
+                                                Height="32"
+                                                Click="AddAdditionalAppendSource_Click"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                             </StackPanel>
 
-                            <TextBlock Text="Output:"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,8"/>
-                            <Border Style="{DynamicResource DialogOuterBorder}"
-                                    CornerRadius="8"
-                                    Padding="12"
-                                    Margin="0,0,0,16">
-                                <StackPanel x:Name="OutputsPanel"/>
+                            <!-- 📤 Outputs -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📤 Outputs"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <StackPanel x:Name="OutputsPanel"/>
+                                </StackPanel>
                             </Border>
 
-                            <Border Background="{DynamicResource HeaderBackgroundBrush}"
-                                    BorderBrush="{DynamicResource PrimaryGlowBrush}"
+                            <!-- 💡 Runtime -->
+                            <Border Background="{DynamicResource CardColor}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
-                                    Padding="12">
+                                    Padding="12"
+                                    Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="💡 Runtime"
                                                Foreground="{DynamicResource PrimaryBrush}"
-                                               FontSize="13"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
                                                Margin="0,0,0,8"/>
                                     <TextBlock TextWrapping="Wrap"
                                                Foreground="{DynamicResource TextMuted}"
-                                               FontSize="12"
-                                               LineHeight="18"
+                                               FontSize="10"
+                                               LineHeight="16"
                                                Text="• Kho kv dùng chung trong một lần chạy (ExecutionId). Trong Code node: kv['myKey'] đọc; gán kv['myKey']=x để ghi (append nếu trùng key).&#x0a;• Pass: cổng IN/OUT trên flow để ghi KV. Get: không cần IN; đọc store theo interval.&#x0a;• Cleanup: bật 'Xoá dữ liệu' thì luôn có cổng IN để nối luồng kích hoạt xóa."/>
                                 </StackPanel>
                             </Border>
 
-                            <Separator Background="{DynamicResource BorderColor}" Margin="0,12,0,12"/>
+                            <!-- 🧹 KV Data Cleanup -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="🧹 KV Data Cleanup"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,10"/>
+                                    <TextBlock TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="10"
+                                               LineHeight="16"
+                                               Margin="0,0,0,8"
+                                               Text="Cấu hình xóa dữ liệu runtime của một node KeyValueBridge (Pass) khác. Luồng phải chạy qua cổng IN của node này (khi đã bật 'Xoá dữ liệu') thì cleanup mới chạy theo workflow."/>
 
-                            <TextBlock Text="🧹 KV Data Cleanup"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,4"/>
-                            <TextBlock TextWrapping="Wrap"
-                                       Foreground="{DynamicResource TextSecondary}"
-                                       FontSize="11"
-                                       LineHeight="16"
-                                       Margin="0,0,0,10"
-                                       Text="Cấu hình xóa dữ liệu runtime của một node KeyValueBridge (Pass) khác. Luồng phải chạy qua cổng IN của node này (khi đã bật 'Xoá dữ liệu') thì cleanup mới chạy theo workflow. Nút 'Thực hiện xóa' chỉ để thử tay trên máy bạn."/>
+                                    <StackPanel Visibility="{Binding EnableDataCleanup, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <!-- 🎯 Điều kiện trigger -->
+                                <Border Background="{DynamicResource CardColor}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="🎯 1) Điều kiện trigger (bắt buộc)"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,6"/>
+                                        <TextBlock TextWrapping="Wrap"
+                                                   Text="Chọn node có output động, rồi chọn output key. Cột phải: chọn giá trị kỳ vọng."
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   FontSize="10"
+                                                   LineHeight="14"
+                                                   Margin="0,0,0,6"/>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2*"/>
+                                                <ColumnDefinition Width="2*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <controls:NodeSearchComboBoxUserControl Grid.Column="0"
+                                                      Height="32"
+                                                      Margin="0,0,6,0"
+                                                      ToolTip="Node nguồn: phải có ít nhất một output động (dynamic output)."
+                                                      ItemsSource="{Binding CleanupTriggerSourceOptions}"
+                                                      SelectedValuePath="NodeId"
+                                                      DisplayMemberPath="Title"
+                                                      SelectedValue="{Binding CleanupTriggerSourceNodeId, Mode=TwoWay}"/>
+                                            <ComboBox Grid.Column="1"
+                                                      Height="32"
+                                                      Margin="0,0,6,0"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ToolTip="Output key trên node trigger — giá trị sẽ được so với ô bên phải."
+                                                      ItemsSource="{Binding CleanupTriggerOutputKeyOptions}"
+                                                      SelectedValuePath="Key"
+                                                      DisplayMemberPath="DisplayName"
+                                                      SelectedValue="{Binding CleanupTriggerSourceOutputKey, Mode=TwoWay}"/>
+                                            <ComboBox Grid.Column="2"
+                                                      Height="32"
+                                                      Style="{DynamicResource BaseComboBox}"
+                                                      ToolTip="Giá trị kỳ vọng (so khớp kiểu boolean/số)."
+                                                      ItemsSource="{Binding CleanupTriggerExpectedValueOptions}"
+                                                      SelectedItem="{Binding CleanupTriggerExpectedValue, Mode=TwoWay}"/>
+                                        </Grid>
+                                        <TextBlock Text="Cột trái → giữa → phải: node trigger — output đọc giá trị — giá trị kỳ vọng."
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="9"
+                                                   Margin="0,0,0,0"/>
 
-                            <StackPanel Visibility="{Binding EnableDataCleanup, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="1) Điều kiện trigger (bắt buộc)"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,4"/>
-                                <TextBlock TextWrapping="Wrap"
-                                           Text="Chọn node có output động, rồi chọn output key. Cột phải: chọn giá trị kỳ vọng. Với kỳ vọng 'true' hoặc '1', giá trị trigger thực tế được coi là khớp nếu là truthy (true, 1, yes, số khác 0…). Với 'false'/'0' thì cần falsy (false, 0, no…). Không khớp thì bỏ qua xóa."
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           LineHeight="16"
-                                           Margin="0,0,0,6"/>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <controls:NodeSearchComboBoxUserControl Grid.Column="0"
-                                              Height="36"
-                                              Margin="0,0,6,0"
-                                              ToolTip="Node nguồn: phải có ít nhất một output động (dynamic output)."
-                                              ItemsSource="{Binding CleanupTriggerSourceOptions}"
-                                              SelectedValuePath="NodeId"
-                                              DisplayMemberPath="Title"
-                                              SelectedValue="{Binding CleanupTriggerSourceNodeId, Mode=TwoWay}"/>
-                                    <ComboBox Grid.Column="1"
-                                              Height="36"
-                                              Margin="0,0,6,0"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Output key trên node trigger — giá trị sẽ được so với ô bên phải."
-                                              ItemsSource="{Binding CleanupTriggerOutputKeyOptions}"
-                                              SelectedValuePath="Key"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValue="{Binding CleanupTriggerSourceOutputKey, Mode=TwoWay}"/>
-                                    <ComboBox Grid.Column="2"
-                                              Height="36"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ToolTip="Giá trị kỳ vọng (so khớp kiểu boolean/số)."
-                                              ItemsSource="{Binding CleanupTriggerExpectedValueOptions}"
-                                              SelectedItem="{Binding CleanupTriggerExpectedValue, Mode=TwoWay}"/>
-                                </Grid>
-                                <TextBlock Text="Cột trái → giữa → phải: node trigger — output đọc giá trị — giá trị kỳ vọng."
-                                           Foreground="{DynamicResource TextMuted}"
-                                           FontSize="10"
-                                           Margin="0,0,0,6"/>
+                                        <CheckBox Content="Xóa toàn bộ KV runtime của node đích"
+                                                  Foreground="{DynamicResource DangerColor}"
+                                                  FontSize="10"
+                                                  IsChecked="{Binding ClearAllDataForSelectedNode, Mode=TwoWay}"
+                                                  Margin="0,8,0,0"/>
+                                        <TextBlock TextWrapping="Wrap"
+                                                   Text="Tick: xóa hết key của node KeyValueBridge đích. Bỏ tick: xóa theo key / lọc mảng ở các bước dưới."
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   FontSize="9"
+                                                   LineHeight="14"
+                                                   Margin="22,0,0,0"/>
+                                    </StackPanel>
+                                </Border>
 
-                                <CheckBox Content="Khi trigger khớp: xóa toàn bộ KV runtime của node đích (bỏ qua key / filter bên dưới)"
-                                          Foreground="{DynamicResource DangerColor}"
-                                          FontSize="12"
-                                          IsChecked="{Binding ClearAllDataForSelectedNode, Mode=TwoWay}"
-                                          Margin="0,0,0,4"/>
-                                <TextBlock TextWrapping="Wrap"
-                                           Text="Tick: sau khi điều kiện trigger thỏa, xóa hết key của node KeyValueBridge đích đã chọn ở bước 2. Bỏ tick: xóa theo key / lọc mảng ở các bước dưới."
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           LineHeight="16"
-                                           Margin="22,0,0,10"/>
-
-                                <TextBlock Text="2) Node KV đích (Pass) bị xóa data"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Margin="0,0,0,4"/>
-                                <TextBlock TextWrapping="Wrap"
-                                           Text="Liệt kê các KeyValueBridge Pass hoặc Get (không bật 'Xoá dữ liệu' trên chính node đó). Chọn Pass để xóa trực tiếp kho kv gốc; chọn Get thì xóa cả scope Get và Pass nguồn (nếu có). Node cleanup hiện tại không nằm trong danh sách."
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           FontSize="11"
-                                           LineHeight="16"
-                                           Margin="0,0,0,6"/>
-                                <controls:NodeSearchComboBoxUserControl Height="36"
-                                          Margin="0,0,0,8"
-                                          ToolTip="Node KVB Pass hoặc Get (không phải node cleanup). Pass = xóa kho kv gốc; Get = xóa kv Get + kv Pass nguồn nếu có."
-                                          ItemsSource="{Binding DeleteBridgeNodeOptions}"
-                                          SelectedValuePath="NodeId"
-                                          DisplayMemberPath="Title"
-                                          SelectedValue="{Binding SelectedDeleteBridgeNodeId, Mode=TwoWay}"/>
+                                <!-- 🎯 Node KV đích -->
+                                <Border Background="{DynamicResource CardColor}"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="🎯 2) Node KV đích (Pass) bị xóa data"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,6"/>
+                                        <TextBlock TextWrapping="Wrap"
+                                                   Text="Liệt kê các KeyValueBridge Pass hoặc Get (không bật 'Xoá dữ liệu' trên chính node đó)."
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   FontSize="10"
+                                                   LineHeight="14"
+                                                   Margin="0,0,0,6"/>
+                                        <controls:NodeSearchComboBoxUserControl Height="32"
+                                                  ToolTip="Node KVB Pass hoặc Get (không phải node cleanup). Pass = xóa kho kv gốc; Get = xóa kv Get + kv Pass nguồn nếu có."
+                                                  ItemsSource="{Binding DeleteBridgeNodeOptions}"
+                                                  SelectedValuePath="NodeId"
+                                                  DisplayMemberPath="Title"
+                                                  SelectedValue="{Binding SelectedDeleteBridgeNodeId, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </Border>
 
                                 <StackPanel Visibility="{Binding ClearAllDataForSelectedNode, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                 <TextBlock Text="3) Key cần xóa (hoặc xóa cả node)"
@@ -596,6 +642,8 @@
                                     </ScrollViewer>
                                 </Border>
                             </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

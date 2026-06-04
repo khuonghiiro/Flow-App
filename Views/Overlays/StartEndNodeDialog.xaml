@@ -60,11 +60,13 @@
                     <Border Background="{DynamicResource WindowBackground}"
                             BorderBrush="{DynamicResource ControlBorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <TextBlock Text="💡 Hướng dẫn"
+                        <StackPanel>
+                            <TextBlock Text="💡 Hướng dẫn"
                                            Foreground="{DynamicResource TextBrush}"
                                            FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
+                            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="10" TextWrapping="Wrap"
                                    Text="Start dùng để định danh luồng (scope) trước khi chạy. End dùng để quyết định cách khép nhánh khi hoàn tất."/>
+                        </StackPanel>
                     </Border>
 
                     <!-- 🔑 Flow Scope Key -->
