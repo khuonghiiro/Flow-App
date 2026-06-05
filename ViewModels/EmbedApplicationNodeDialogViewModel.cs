@@ -92,161 +92,44 @@ namespace FlowMy.ViewModels
 
         protected override void OnSaveTitle()
         {
-            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] === OnSaveTitle called ===");
-            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] SelectedProcessId = {SelectedProcessId}");
-            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Current HasEmbeddedWindow = {_embedNode.HasEmbeddedWindow}");
-            
-            bool changed = false;
+            // Tìm app đang được chọn trong VM
+            var app = AvailableApplications.FirstOrDefault(a => a.ProcessId == SelectedProcessId);
 
-            // Check nếu đã chọn app (SelectedProcessId > 0) và chưa embed
-            if (SelectedProcessId > 0 && !_embedNode.HasEmbeddedWindow)
+            if (app != null && app.WindowHandle != IntPtr.Zero)
             {
-                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] App selected but not embedded yet, setting up...");
-                
-                var app = AvailableApplications.FirstOrDefault(a => a.ProcessId == SelectedProcessId);
-                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Found app: {(app != null ? app.ProcessName : "NULL")}");
-                
-                if (app != null && app.WindowHandle != IntPtr.Zero)
-                {
-                    _embedNode.ProcessId = SelectedProcessId;
-                    _embedNode.ProcessName = app.ProcessName;
-                    _embedNode.WindowHandle = app.WindowHandle;
-                    _embedNode.WindowTitle = app.WindowTitle;
-                    
-                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] WindowHandle = {app.WindowHandle}");
-                    
-                    // Check if window can be embedded
-                    bool canEmbed = Helpers.WindowHostHelper.CanEmbedWindow(app.WindowHandle);
-                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] CanEmbed = {canEmbed}");
-                    
-                    if (canEmbed)
-                    {
-                        _embedNode.HasEmbeddedWindow = true;
-                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ✅ SET HasEmbeddedWindow = true");
-                        changed = true;
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ❌ Cannot embed this window");
-                        System.Windows.MessageBox.Show(
-                            $"Không thể embed ứng dụng '{app.ProcessName}'.\n\nỨng dụng này là system window hoặc bị hạn chế.",
-                            "Không thể embed",
-                            System.Windows.MessageBoxButton.OK,
-                            System.Windows.MessageBoxImage.Warning);
-                    }
-                }
+                // Đồng bộ thông tin app vào node
+                _embedNode.ProcessId   = app.ProcessId;
+                _embedNode.ProcessName = app.ProcessName;
+                _embedNode.WindowHandle = app.WindowHandle;
+                _embedNode.WindowTitle = app.WindowTitle;
+
+                // Chỉ dùng screenshot — KHÔNG SetParent/EmbedWindow
+                // HasEmbeddedWindow = true sẽ trigger screenshot capture timer trong Control
+                if (!_embedNode.HasEmbeddedWindow)
+                    _embedNode.HasEmbeddedWindow = true;
             }
-            
-            if (_embedNode.ProcessId != SelectedProcessId)
+            else if (SelectedProcessId <= 0)
             {
-                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ProcessId changed from {_embedNode.ProcessId} to {SelectedProcessId}");
-                _embedNode.ProcessId = SelectedProcessId;
-                
-                // Update process info
-                var app = AvailableApplications.FirstOrDefault(a => a.ProcessId == SelectedProcessId);
-                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Found app: {(app != null ? app.ProcessName : "NULL")}");
-                
-                if (app != null)
-                {
-                    _embedNode.ProcessName = app.ProcessName;
-                    _embedNode.WindowHandle = app.WindowHandle;
-                    _embedNode.WindowTitle = app.WindowTitle;
-                    
-                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] WindowHandle = {app.WindowHandle}");
-                    
-                    // Validate window handle trước khi set HasEmbeddedWindow
-                    if (app.WindowHandle != IntPtr.Zero)
-                    {
-                        // Check if window can be embedded
-                        bool canEmbed = Helpers.WindowHostHelper.CanEmbedWindow(app.WindowHandle);
-                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] CanEmbed = {canEmbed}");
-                        
-                        if (canEmbed)
-                        {
-                            _embedNode.HasEmbeddedWindow = true;
-                            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ✅ SET HasEmbeddedWindow = true");
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ❌ Cannot embed this window (system/restricted window)");
-                            System.Windows.MessageBox.Show(
-                                $"Không thể embed ứng dụng '{app.ProcessName}'.\n\nỨng dụng này là system window hoặc bị hạn chế.",
-                                "Không thể embed",
-                                System.Windows.MessageBoxButton.OK,
-                                System.Windows.MessageBoxImage.Warning);
-                        }
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ❌ WindowHandle is Zero!");
-                    }
-                }
-                else
-                {
-                    Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ⚠️ App not found in AvailableApplications");
-                }
-                changed = true;
-            }
-            else
-            {
-                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] ProcessId unchanged: {SelectedProcessId}");
+                // User bỏ chọn app
+                _embedNode.ProcessId     = 0;
+                _embedNode.ProcessName   = string.Empty;
+                _embedNode.WindowHandle  = IntPtr.Zero;
+                _embedNode.WindowTitle   = string.Empty;
+                _embedNode.HasEmbeddedWindow = false;
             }
 
-            if (Math.Abs(_embedNode.EmbeddedWidth - EmbeddedWidth) > 0.01)
-            {
-                _embedNode.EmbeddedWidth = EmbeddedWidth;
-                changed = true;
-            }
-
-            if (Math.Abs(_embedNode.EmbeddedHeight - EmbeddedHeight) > 0.01)
-            {
-                _embedNode.EmbeddedHeight = EmbeddedHeight;
-                changed = true;
-            }
-
-            if (_embedNode.IsActive != IsActive)
-            {
-                _embedNode.IsActive = IsActive;
-                changed = true;
-            }
-
-            if (_embedNode.ShowBorder != ShowBorder)
-            {
-                _embedNode.ShowBorder = ShowBorder;
-                changed = true;
-            }
-
-            if (_embedNode.AllowInteraction != AllowInteraction)
-            {
-                _embedNode.AllowInteraction = AllowInteraction;
-                changed = true;
-            }
-
-            if (_embedNode.AutoRefresh != AutoRefresh)
-            {
-                _embedNode.AutoRefresh = AutoRefresh;
-                changed = true;
-            }
-
-            if (_embedNode.RefreshRate != RefreshRate)
-            {
-                _embedNode.RefreshRate = RefreshRate;
-                changed = true;
-            }
-
-            if (_embedNode.CaptureMode != CaptureMode)
-            {
-                _embedNode.CaptureMode = CaptureMode;
-                changed = true;
-            }
+            // Đồng bộ các tuỳ chọn còn lại
+            _embedNode.EmbeddedWidth    = EmbeddedWidth;
+            _embedNode.EmbeddedHeight   = EmbeddedHeight;
+            _embedNode.IsActive         = IsActive;
+            _embedNode.ShowBorder       = ShowBorder;
+            _embedNode.AllowInteraction = AllowInteraction;
+            _embedNode.AutoRefresh      = AutoRefresh;
+            _embedNode.RefreshRate      = RefreshRate;
+            _embedNode.CaptureMode      = CaptureMode;
 
             _embedNode.NotifyTitleChanged();
-
-            if (changed)
-            {
-                Debug.WriteLine($"[EmbedApplicationNodeDialogViewModel] Changes saved");
-                _host.RequestSyncDataPanels(immediate: true);
-            }
+            _host.RequestSyncDataPanels(immediate: true);
         }
 
         [RelayCommand]

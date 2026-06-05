@@ -41,6 +41,14 @@ namespace FlowMy.Helpers
         [DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsIconic(IntPtr hWnd);
+
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT
         {
@@ -276,6 +284,45 @@ namespace FlowMy.Helpers
             }
             catch
             {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Focus and bring a window to foreground.
+        /// </summary>
+        public static bool FocusWindow(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero)
+                return false;
+
+            try
+            {
+                Debug.WriteLine($"[WindowHost] Focusing window hwnd={hwnd}");
+
+                // If minimized, restore it
+                if (IsIconic(hwnd))
+                {
+                    ShowWindow(hwnd, SW_RESTORE);
+                }
+
+                // Bring to foreground
+                bool success = SetForegroundWindow(hwnd);
+                
+                if (success)
+                {
+                    Debug.WriteLine($"[WindowHost] ✅ Window focused successfully");
+                }
+                else
+                {
+                    Debug.WriteLine($"[WindowHost] ⚠️ SetForegroundWindow failed");
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowHost] Focus error: {ex.Message}");
                 return false;
             }
         }
