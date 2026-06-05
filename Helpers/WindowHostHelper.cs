@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace FlowMy.Helpers
 {
@@ -18,6 +19,18 @@ namespace FlowMy.Helpers
 
         [DllImport("user32.dll")]
         private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+
+        [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll")] private static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
+        [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr hwnd, EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+        private const uint WM_THEMECHANGED = 0x031A;
+        private const uint RDW_INVALIDATE  = 0x0001;
+        private const uint RDW_ERASE       = 0x0004;
+        private const uint RDW_ALLCHILDREN = 0x0080;
+        private const uint RDW_UPDATENOW   = 0x0100;
+        private const uint RDW_FRAME       = 0x0400;
 
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
@@ -72,8 +85,8 @@ namespace FlowMy.Helpers
         private const int WS_MAXIMIZEBOX = 0x00010000;
 
         private const int WS_EX_DLGMODALFRAME = 0x00000001;
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        private const int WS_EX_WINDOWEDGE = 0x00000100;
+        private const int WS_EX_WINDOWEDGE    = 0x00000100;
+        // WS_EX_TOOLWINDOW (0x80) KHÔNG strip – một số app dùng nó cho toolbar rendering
 
         private const uint SWP_NOSIZE = 0x0001;
         private const uint SWP_NOMOVE = 0x0002;
@@ -118,9 +131,10 @@ namespace FlowMy.Helpers
 
                 SetWindowLong(childHwnd, GWL_STYLE, style);
 
-                // 2. Remove extended styles that cause issues with child windows
+                // 2. Remove extended styles gây vấn đề với child windows
+                //    KHÔNG strip WS_EX_TOOLWINDOW – nhiều app cần nó để render toolbar/ribbon
                 int exStyle = GetWindowLong(childHwnd, GWL_EXSTYLE);
-                exStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW);
+                exStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE);
                 SetWindowLong(childHwnd, GWL_EXSTYLE, exStyle);
 
                 // 3. Apply style changes
@@ -140,12 +154,45 @@ namespace FlowMy.Helpers
                 // 5. Show the embedded window
                 ShowWindow(childHwnd, SW_SHOW);
 
+                // 6. Force theme reload trên app và toàn bộ child controls
+                //    (fix: toolbar trong suốt, text trắng khi embed app như Paint)
+                Task.Delay(80).ContinueWith(_ => ForceThemeRefresh(childHwnd));
+
                 return true;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[WindowHost] ❌ Embed error: {ex.Message}");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Gửi WM_THEMECHANGED đến app và tất cả child windows để buộc re-render theme brushes.
+        /// Fix: controls trong suốt / text trắng sau khi embed.
+        /// </summary>
+        private static void ForceThemeRefresh(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            try
+            {
+                // Gửi WM_THEMECHANGED cho root + toàn bộ children
+                SendMessage(hwnd, WM_THEMECHANGED, IntPtr.Zero, IntPtr.Zero);
+                EnumChildWindows(hwnd, (child, _) =>
+                {
+                    SendMessage(child, WM_THEMECHANGED, IntPtr.Zero, IntPtr.Zero);
+                    return true;
+                }, IntPtr.Zero);
+
+                // Redraw toàn bộ cây window
+                RedrawWindow(hwnd, IntPtr.Zero, IntPtr.Zero,
+                    RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW | RDW_FRAME);
+
+                Debug.WriteLine("[WindowHost] ✅ ForceThemeRefresh done");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowHost] ForceThemeRefresh error: {ex.Message}");
             }
         }
 

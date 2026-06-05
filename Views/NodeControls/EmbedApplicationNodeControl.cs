@@ -113,31 +113,57 @@ namespace FlowMy.Views.NodeControls
             placeholderPanel.Children.Add(placeholderIcon);
             placeholderPanel.Children.Add(placeholderText);
 
-            // ── App label (hiện khi đang embed) ───────────────────────────────
-            var appLabel = new Border
+            // ── Drag bar (luôn hiện, người dùng kéo ở đây) ──────────────────────
+            var dragBar = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0)),
-                CornerRadius = new CornerRadius(4),
-                Padding      = new Thickness(6, 2, 6, 2),
-                Margin       = new Thickness(6, 6, 0, 0),
+                Height     = 32,
+                Background = new SolidColorBrush(Color.FromArgb(200, 20, 20, 20)),
+                Padding    = new Thickness(10, 0, 8, 0)
+            };
+            var dragBarInner = new Grid();
+            var dragBarLabel = new TextBlock
+            {
+                Text = node.HasEmbeddedWindow && !string.IsNullOrEmpty(node.ProcessName)
+                    ? $"📦 {node.ProcessName}"
+                    : "🖥️ Drag to move",
+                FontSize = 11, Foreground = Brushes.White,
+                VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment   = VerticalAlignment.Top,
-                Visibility   = Visibility.Collapsed,
                 IsHitTestVisible = false
             };
-            var appLabelText = new TextBlock { FontSize = 10, Foreground = Brushes.White };
-            appLabel.Child = appLabelText;
+            var dragHint = new TextBlock
+            {
+                Text = "☰ ≡",
+                FontSize = 13, Foreground = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                IsHitTestVisible = false
+            };
+            dragBarInner.Children.Add(dragBarLabel);
+            dragBarInner.Children.Add(dragHint);
+            dragBar.Child = dragBarInner;
 
-            // ── Content grid ───────────────────────────────────────────────────
+            // ── Embed area (overlay phủ đúng đây, KHÔNG phủ drag bar) ────────────────
+            var embedArea = new Grid { Background = Brushes.Black };
+            embedArea.Children.Add(placeholderPanel);
+
+            // ── Content grid (drag bar trên + embed area dưới) ─────────────────────────
+            var embedH = node.HasEmbeddedWindow ? Math.Max(node.EmbeddedHeight, MinNodeH) : MinNodeH;
+            var embedW = node.HasEmbeddedWindow ? Math.Max(node.EmbeddedWidth,  MinNodeW) : MinNodeW;
+
             var contentGrid = new Grid
             {
                 ClipToBounds = true,
-                Width  = node.HasEmbeddedWindow ? Math.Max(node.EmbeddedWidth,  MinNodeW) : MinNodeW,
-                Height = node.HasEmbeddedWindow ? Math.Max(node.EmbeddedHeight, MinNodeH) : MinNodeH,
-                MinWidth = MinNodeW, MinHeight = MinNodeH
+                Width  = embedW,
+                Height = embedH + 32,  // + drag bar
+                MinWidth = MinNodeW, MinHeight = MinNodeH + 32
             };
-            contentGrid.Children.Add(placeholderPanel);
-            contentGrid.Children.Add(appLabel);
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            Grid.SetRow(dragBar,   0);
+            Grid.SetRow(embedArea, 1);
+            contentGrid.Children.Add(dragBar);
+            contentGrid.Children.Add(embedArea);
 
             // ── Title ──────────────────────────────────────────────────────────
             var titleTextBlock = new TextBlock
@@ -178,6 +204,7 @@ namespace FlowMy.Views.NodeControls
             DispatcherTimer?  trackTimer = null;
 
             // ── Timers ─────────────────────────────────────────────────────────
+            // Timer cập nhật vị trí overlay theo embed area (dưới drag bar)
             void StartTracking()
             {
                 if (trackTimer != null) return;
@@ -187,7 +214,7 @@ namespace FlowMy.Views.NodeControls
                     if (overlay == null) return;
                     try
                     {
-                        var rect = GetScreenRect(contentGrid);
+                        var rect = GetScreenRect(embedArea);  // track embed area, không phải contentGrid
                         if (!rect.IsEmpty) overlay.UpdateBounds(rect);
                     }
                     catch { /* layout not ready */ }
@@ -212,15 +239,19 @@ namespace FlowMy.Views.NodeControls
 
                 Debug.WriteLine($"[EmbedNode] Creating overlay for hwnd=0x{node.WindowHandle:X}");
 
-                // Kích thước node
-                contentGrid.Width  = Math.Max(node.EmbeddedWidth,  MinNodeW);
-                contentGrid.Height = Math.Max(node.EmbeddedHeight, MinNodeH);
-                border.Width  = contentGrid.Width;
-                border.Height = contentGrid.Height;
+                // Kích thước embed area
+                double ew = Math.Max(node.EmbeddedWidth,  MinNodeW);
+                double eh = Math.Max(node.EmbeddedHeight, MinNodeH);
+                embedArea.Width  = ew;
+                embedArea.Height = eh;
+                contentGrid.Width  = ew;
+                contentGrid.Height = eh + 32;
+                border.Width  = ew;
+                border.Height = eh + 32;
 
                 // Tạo và hiện overlay – vị trí ban đầu
                 overlay = new NodeEmbedOverlay(mainWin);
-                var initialRect = GetScreenRect(contentGrid);
+                var initialRect = GetScreenRect(embedArea);
                 if (!initialRect.IsEmpty) overlay.UpdateBounds(initialRect);
 
                 overlay.Show();
@@ -237,8 +268,7 @@ namespace FlowMy.Views.NodeControls
 
                 // UI state
                 placeholderPanel.Visibility = Visibility.Collapsed;
-                appLabelText.Text           = $"📦 {node.ProcessName}";
-                appLabel.Visibility         = Visibility.Visible;
+                dragBarLabel.Text = $"📦 {node.ProcessName}";
 
                 if (border.Effect is DropShadowEffect sh)
                 { sh.Color = Colors.DeepSkyBlue; sh.Opacity = 0.9; }
@@ -269,12 +299,14 @@ namespace FlowMy.Views.NodeControls
                 }
 
                 placeholderPanel.Visibility = Visibility.Visible;
-                appLabel.Visibility         = Visibility.Collapsed;
+                dragBarLabel.Text = "🖥️ Drag to move";
 
+                embedArea.Width  = MinNodeW;
+                embedArea.Height = MinNodeH;
                 contentGrid.Width  = MinNodeW;
-                contentGrid.Height = MinNodeH;
+                contentGrid.Height = MinNodeH + 32;
                 border.Width  = MinNodeW;
-                border.Height = MinNodeH;
+                border.Height = MinNodeH + 32;
 
                 if (border.Effect is DropShadowEffect sh)
                 { sh.Color = Colors.Black; sh.Opacity = 0.5; }
@@ -311,8 +343,10 @@ namespace FlowMy.Views.NodeControls
                 [nameof(EmbedApplicationNode.EmbeddedWidth)] = _ =>
                 {
                     if (overlay == null) return;
-                    contentGrid.Width = Math.Max(node.EmbeddedWidth, MinNodeW);
-                    border.Width = contentGrid.Width;
+                    double ew = Math.Max(node.EmbeddedWidth, MinNodeW);
+                    embedArea.Width = ew;
+                    contentGrid.Width = ew;
+                    border.Width = ew;
                     if (host.WorkflowCanvas != null)
                         foreach (var port in node.Ports)
                             host.UpdatePortsPositionOnSide(node, port.Position);
@@ -320,8 +354,10 @@ namespace FlowMy.Views.NodeControls
                 [nameof(EmbedApplicationNode.EmbeddedHeight)] = _ =>
                 {
                     if (overlay == null) return;
-                    contentGrid.Height = Math.Max(node.EmbeddedHeight, MinNodeH);
-                    border.Height = contentGrid.Height;
+                    double eh = Math.Max(node.EmbeddedHeight, MinNodeH);
+                    embedArea.Height = eh;
+                    contentGrid.Height = eh + 32;
+                    border.Height = eh + 32;
                     if (host.WorkflowCanvas != null)
                         foreach (var port in node.Ports)
                             host.UpdatePortsPositionOnSide(node, port.Position);
@@ -339,7 +375,7 @@ namespace FlowMy.Views.NodeControls
                     if (!string.IsNullOrWhiteSpace(node.ProcessName))
                     {
                         node.Title = $"Embed: {node.ProcessName}";
-                        appLabelText.Text = $"📦 {node.ProcessName}";
+                        dragBarLabel.Text = overlay != null ? $"📦 {node.ProcessName}" : "🖥️ Drag to move";
                     }
                 }
             };
