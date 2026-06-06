@@ -87,6 +87,7 @@ namespace FlowMy.ViewModels
             HasWidgetShortcuts = WidgetShortcuts.Count > 0;
             SyncWidgetOpenStates();
             SyncPinnedStatesFromCache();
+            RefreshGroupPinnedStatesAndSort();
             SyncTrayPinnedMenu();
 
             // Validate shortcut gần nhất còn tồn tại sau khi refresh.
@@ -121,8 +122,34 @@ namespace FlowMy.ViewModels
                 _trayPinnedKeys.Add(key);
             }
 
+            // Cập nhật trạng thái ghim trên group và sắp xếp lại danh sách
+            // sao cho group có widget ghim luôn nổi lên đầu.
+            RefreshGroupPinnedStatesAndSort();
+
             SaveLauncherPreferences();
             SyncTrayPinnedMenu();
+        }
+
+        /// <summary>
+        /// Cập nhật IsPinned cho mỗi group, sau đó sắp xếp lại WidgetGroups:
+        /// group có ít nhất 1 widget ghim → lên đầu, còn lại theo thứ tự tên.
+        /// </summary>
+        private void RefreshGroupPinnedStatesAndSort()
+        {
+            foreach (var g in WidgetGroups)
+                g.RefreshPinnedState();
+
+            var sorted = WidgetGroups
+                .OrderByDescending(g => g.IsPinned)
+                .ThenBy(g => g.WorkflowName, System.StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                var current = WidgetGroups.IndexOf(sorted[i]);
+                if (current != i)
+                    WidgetGroups.Move(current, i);
+            }
         }
 
         private void SyncPinnedStatesFromCache()

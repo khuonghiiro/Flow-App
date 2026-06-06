@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace FlowMy.ViewModels
 {
@@ -11,8 +12,15 @@ namespace FlowMy.ViewModels
     {
         [ObservableProperty] private string workflowName = string.Empty;
         [ObservableProperty] private ObservableCollection<WidgetShortcutItem> widgets = new();
+        [ObservableProperty] private bool isPinned;
 
         /// <summary>Tổng số widget trong workflow này.</summary>
         public int WidgetCount => Widgets?.Count ?? 0;
+
+        /// <summary>Cập nhật IsPinned dựa trên trạng thái ghim của các widget con.</summary>
+        public void RefreshPinnedState()
+        {
+            IsPinned = Widgets?.Any(w => w.IsPinnedToTray) == true;
+        }
     }
 }

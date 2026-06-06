@@ -435,310 +435,347 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:WorkflowWidgetGroupItem}">
-                            <!-- Card = 1 workflow -->
+                            <!-- Card = 1 workflow, fixed width grid -->
                             <Border Margin="0,0,16,16"
                                     Padding="18,16"
                                     CornerRadius="14"
-                                    MinWidth="340"
-                                    MaxWidth="400"
+                                    Width="360"
+                                    VerticalAlignment="Top"
                                     Background="{DynamicResource CardColor}"
-                                    BorderBrush="{DynamicResource BorderColor}"
-                                    BorderThickness="1">
-                                <StackPanel>
-                                    <!-- Workflow header -->
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0"
-                                                Width="40" Height="40"
-                                                CornerRadius="10"
-                                                VerticalAlignment="Center"
-                                                Margin="0,0,12,0">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                    <GradientStop Color="#8B5CF6" Offset="0"/>
-                                                    <GradientStop Color="#6366F1" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                            <TextBlock Text="📂"
-                                                       Foreground="White"
-                                                       FontSize="20"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"/>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding WorkflowName}"
-                                                       Foreground="{DynamicResource TextBrush}"
-                                                       FontSize="15"
-                                                       FontWeight="Bold"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Foreground="{DynamicResource TextBrush}"
-                                                       Opacity="0.55"
-                                                       FontSize="11"
-                                                       Margin="0,1,0,0">
-                                                <Run Text="Workflow · "/>
-                                                <Run Text="{Binding WidgetCount, Mode=OneWay}"/>
-                                                <Run Text=" widget"/>
-                                            </TextBlock>
+                                    BorderThickness="1.5">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                <Setter Property="BorderBrush" Value="#7C3AED"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <!-- Grid bọc ngoài để overlay badge ★ -->
+                                <Grid>
+                                    <StackPanel>
+                                        <!-- Workflow header -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0"
+                                                    Width="40" Height="40"
+                                                    CornerRadius="10"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,12,0">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                        <GradientStop Color="#8B5CF6" Offset="0"/>
+                                                        <GradientStop Color="#6366F1" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                                <TextBlock Text="&#x1F4C2;"
+                                                           Foreground="White"
+                                                           FontSize="20"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding WorkflowName}"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           FontSize="15"
+                                                           FontWeight="Bold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Foreground="{DynamicResource TextBrush}"
+                                                           Opacity="0.55"
+                                                           FontSize="11"
+                                                           Margin="0,1,0,0">
+                                                    <Run Text="Workflow &#xB7; "/>
+                                                    <Run Text="{Binding WidgetCount, Mode=OneWay}"/>
+                                                    <Run Text=" widget"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Divider -->
+                                        <Border Height="1"
+                                                Margin="0,14,0,14"
+                                                Background="{DynamicResource BorderColor}"
+                                                Opacity="0.4"/>
+
+                                        <!-- Actions trên workflow -->
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Command="{Binding DataContext.OpenWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    helper:ButtonHelper.ColorTheme="Primary"
+                                                    Style="{DynamicResource DynamicOutlineCircleButton}"
+                                                    Margin="0,0,8,0"
+                                                    ToolTip="Mở workflow này trong editor (không tự bật widget)">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#x1F6E0;" Margin="0,0,6,0" FontSize="13"/>
+                                                    <TextBlock Text="Mở Workflow"/>
+                                                </StackPanel>
+                                            </Button>
+
+                                            <Button Command="{Binding DataContext.ClearWorkflowWidgetConfigsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    helper:ButtonHelper.ColorTheme="Danger"
+                                                    Style="{DynamicResource DynamicOutlineCircleButton}"
+                                                    ToolTip="Xóa toàn bộ cấu hình widget của workflow này">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#x1F5D1;" Margin="0,0,6,0" FontSize="13"/>
+                                                    <TextBlock Text="Xóa cấu hình widget"/>
+                                                </StackPanel>
+                                            </Button>
                                         </StackPanel>
-                                    </Grid>
 
-                                    <!-- Divider -->
-                                    <Border Height="1"
-                                            Margin="0,14,0,14"
-                                            Background="{DynamicResource BorderColor}"
-                                            Opacity="0.4"/>
+                                        <!-- Widget list trong workflow -->
+                                        <ItemsControl ItemsSource="{Binding Widgets}" Margin="0,14,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:WidgetShortcutItem}">
+                                                    <Border Margin="0,0,0,8"
+                                                            Padding="12,10"
+                                                            CornerRadius="10"
+                                                            Background="{DynamicResource WindowBackgroundBrush}"
+                                                            BorderBrush="{DynamicResource BorderColor}"
+                                                            BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                    <!-- Actions trên workflow -->
-                                    <StackPanel Orientation="Horizontal">
-                                        <Button Command="{Binding DataContext.OpenWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding}"
-                                                 helper:ButtonHelper.ColorTheme="Primary"
-                                                 
-                                                 Style="{DynamicResource DynamicOutlineCircleButton}"
-                                                Margin="0,0,8,0"
-                                                ToolTip="Mở workflow này trong editor (không tự bật widget)">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="🛠" Margin="0,0,6,0" FontSize="13"/>
-                                                <TextBlock Text="Mở Workflow"/>
-                                            </StackPanel>
-                                        </Button>
-
-                                        <Button Command="{Binding DataContext.ClearWorkflowWidgetConfigsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding}"
-                                                helper:ButtonHelper.ColorTheme="Danger"
-
-                                                Style="{DynamicResource DynamicOutlineCircleButton}"
-                                                ToolTip="Xóa toàn bộ cấu hình widget của workflow này">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="🗑" Margin="0,0,6,0" FontSize="13"/>
-                                                <TextBlock Text="Xóa cấu hình widget"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-
-                                    <!-- Widget list trong workflow -->
-                                    <ItemsControl ItemsSource="{Binding Widgets}" Margin="0,14,0,0">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:WidgetShortcutItem}">
-                                                <Border Margin="0,0,0,8"
-                                                        Padding="12,10"
-                                                        CornerRadius="10"
-                                                        Background="{DynamicResource WindowBackgroundBrush}"
-                                                        BorderBrush="{DynamicResource BorderColor}"
-                                                        BorderThickness="1">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
-
-                                                        <!-- Icon -->
-                                                        <Border Grid.Column="0"
-                                                                Width="38" Height="38"
-                                                                CornerRadius="12"
-                                                                VerticalAlignment="Center"
-                                                                Margin="0,0,12,0">
-                                                            <Border.Background>
-                                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                    <GradientStop Color="#7C3AED" Offset="0"/>
-                                                                    <GradientStop Color="#EC4899" Offset="1"/>
-                                                                </LinearGradientBrush>
-                                                            </Border.Background>
-                                                            <Grid>
-                                                                <controls:SvgViewboxEx Width="18" Height="18"
-                                                                                        Fill="White"
-                                                                                       Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}">
-                                                                    <controls:SvgViewboxEx.Style>
-                                                                        <Style TargetType="controls:SvgViewboxEx">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IconKey, Converter={StaticResource StringStartsWithConverter}}" Value="True">
-                                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </controls:SvgViewboxEx.Style>
-                                                                </controls:SvgViewboxEx>
-                                                                <TextBlock Text="{Binding IconKey}"
-                                                                           FontSize="18"
-                                                                           Foreground="White"
-                                                                           HorizontalAlignment="Center"
-                                                                           VerticalAlignment="Center">
-                                                                    <TextBlock.Style>
-                                                                        <Style TargetType="TextBlock">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Style.Triggers>
-                                                                                <!-- Show emoji/text when IconKey is NOT a valid SVG icon -->
-                                                                                <DataTrigger Binding="{Binding IconKey, Converter={StaticResource StringStartsWithConverter}}" Value="False">
-                                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </TextBlock.Style>
-                                                                </TextBlock>
-                                                            </Grid>
-                                                        </Border>
-
-                                                        <!-- Texts -->
-                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding WidgetName, FallbackValue=Widget}"
-                                                                       Foreground="{DynamicResource TextBrush}"
-                                                                       FontWeight="SemiBold"
-                                                                       FontSize="13"
-                                                                       TextTrimming="CharacterEllipsis"/>
-                                                            <TextBlock Text="{Binding NodeTitle}"
-                                                                       Foreground="{DynamicResource TextBrush}"
-                                                                       Opacity="0.55"
-                                                                       FontSize="11"
-                                                                       Margin="0,2,0,0"
-                                                                       TextTrimming="CharacterEllipsis"
-                                                                       Visibility="{Binding NodeTitle, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"/>
-                                                        </StackPanel>
-
-                                                        <!-- Per-widget actions -->
-                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                            <Button Command="{Binding DataContext.ConfigureWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"
-                                                                    Margin="0,0,6,0"
-                                                                    Height="35"
-                                                                    helper:ButtonHelper.ColorTheme="ChocolateBrown"
-                                                                    ToolTip="Mở nhanh màn cấu hình widget này"
-                                                                    IsEnabled="True">
-                                                                <Button.Style>
-                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
-                                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsConfiguring}" Value="True">
-                                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Button.Style>
+                                                            <!-- Icon -->
+                                                            <Border Grid.Column="0"
+                                                                    Width="38" Height="38"
+                                                                    CornerRadius="12"
+                                                                    VerticalAlignment="Center"
+                                                                    Margin="0,0,12,0">
+                                                                <Border.Background>
+                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                                        <GradientStop Color="#7C3AED" Offset="0"/>
+                                                                        <GradientStop Color="#EC4899" Offset="1"/>
+                                                                    </LinearGradientBrush>
+                                                                </Border.Background>
                                                                 <Grid>
-                                                                   
                                                                     <controls:SvgViewboxEx Width="18" Height="18"
+                                                                                           Fill="White"
+                                                                                           Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}">
+                                                                        <controls:SvgViewboxEx.Style>
+                                                                            <Style TargetType="controls:SvgViewboxEx">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IconKey, Converter={StaticResource StringStartsWithConverter}}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </controls:SvgViewboxEx.Style>
+                                                                    </controls:SvgViewboxEx>
+                                                                    <TextBlock Text="{Binding IconKey}"
+                                                                               FontSize="18"
+                                                                               Foreground="White"
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IconKey, Converter={StaticResource StringStartsWithConverter}}" Value="False">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </Grid>
+                                                            </Border>
+
+                                                            <!-- Texts -->
+                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
+                                                                <TextBlock Text="{Binding WidgetName, FallbackValue=Widget}"
+                                                                           Foreground="{DynamicResource TextBrush}"
+                                                                           FontWeight="SemiBold"
+                                                                           FontSize="13"
+                                                                           TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Text="{Binding NodeTitle}"
+                                                                           Foreground="{DynamicResource TextBrush}"
+                                                                           Opacity="0.55"
+                                                                           FontSize="11"
+                                                                           Margin="0,2,0,0"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Visibility="{Binding NodeTitle, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"/>
+                                                            </StackPanel>
+
+                                                            <!-- Per-widget actions -->
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <Button Command="{Binding DataContext.ConfigureWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Margin="0,0,6,0"
+                                                                        Height="35"
+                                                                        helper:ButtonHelper.ColorTheme="ChocolateBrown"
+                                                                        ToolTip="Mở nhanh màn cấu hình widget này"
+                                                                        IsEnabled="True">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
+                                                                            <Setter Property="IsEnabled" Value="True"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsConfiguring}" Value="True">
+                                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                    <Grid>
+                                                                        <controls:SvgViewboxEx Width="18" Height="18"
+                                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                               Source="{Binding Source={x:Static sys:String.Empty},
+                                                                                        Converter={StaticResource IconKeyToPathConverter},
+                                                                                        ConverterParameter='gear-complex light'}"
+                                                                               Visibility="{Binding IsConfiguring, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                        <TextBlock Text="&#x23F3;"
+                                                                                   FontSize="12"
+                                                                                   Visibility="{Binding IsConfiguring, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                    </Grid>
+                                                                </Button>
+                                                                <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Margin="0,0,6,0"
+                                                                        Height="35"
+                                                                        helper:ButtonHelper.ColorTheme="Primary"
+                                                                        ToolTip="Chỉ mở widget này (ngầm)">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
+                                                                            <Setter Property="IsEnabled" Value="True"/>
+                                                                            <Style.Triggers>
+                                                                                <Trigger Property="IsEnabled" Value="False">
+                                                                                    <Setter Property="Opacity" Value="0.45"/>
+                                                                                </Trigger>
+                                                                                <DataTrigger Binding="{Binding IsLaunchingHeadless}" Value="True">
+                                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
+                                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                    <Grid>
+                                                                        <TextBlock Text="&#x26A1;"
+                                                                                   FontSize="14"
+                                                                                   Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                        <TextBlock Text="&#x23F3;"
+                                                                                   FontSize="12"
+                                                                                   Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                    </Grid>
+                                                                </Button>
+                                                                <Button Command="{Binding DataContext.ReopenHeadlessWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Margin="0,0,6,0"
+                                                                        Height="35"
+                                                                        helper:ButtonHelper.ColorTheme="NavyDeep"
+                                                                        ToolTip="Mở lại workflow đang chạy ngầm để debug">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
+                                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
+                                                                                    <Setter Property="IsEnabled" Value="True"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsReopeningHeadless}" Value="True">
+                                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                    <Grid>
+                                                                        <controls:SvgViewboxEx Width="18" Height="18"
                                                                            Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                            Source="{Binding Source={x:Static sys:String.Empty},
                                                                                     Converter={StaticResource IconKeyToPathConverter},
-                                                                                    ConverterParameter='gear-complex light'}"
-                                                                           Visibility="{Binding IsConfiguring, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
-                                                                    <TextBlock Text="⏳"
-                                                                               FontSize="12"
-                                                                               Visibility="{Binding IsConfiguring, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                                </Grid>
-                                                            </Button>
-                                                            <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"
-                                                                    Margin="0,0,6,0"
-                                                                     Height="35"
-                                                                    helper:ButtonHelper.ColorTheme="Primary"
-                                                                    ToolTip="Chỉ mở widget này (ngầm)">
-                                                                <Button.Style>
-                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
-                                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                                        <Style.Triggers>
-                                                                            <Trigger Property="IsEnabled" Value="False">
-                                                                                <Setter Property="Opacity" Value="0.45"/>
-                                                                            </Trigger>
-                                                                            <DataTrigger Binding="{Binding IsLaunchingHeadless}" Value="True">
-                                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
-                                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Button.Style>
-                                                                <Grid>
-                                                                    <TextBlock Text="⚡"
-                                                                               FontSize="14"
-                                                                               Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
-                                                                    <TextBlock Text="⏳"
-                                                                               FontSize="12"
-                                                                               Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                                </Grid>
-                                                            </Button>
-                                                            <Button Command="{Binding DataContext.ReopenHeadlessWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"
-                                                                    Margin="0,0,6,0"
-                                                                     Height="35"
+                                                                                    ConverterParameter='folder-open duotone-light'}"
+                                                                           Visibility="{Binding IsReopeningHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                        <TextBlock Text="&#x23F3;"
+                                                                                   FontSize="12"
+                                                                                   Foreground="{DynamicResource TextOnSuccessBrush}"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"
+                                                                                   Visibility="{Binding IsReopeningHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                        <Ellipse Width="8"
+                                                                                 Height="8"
+                                                                                 Fill="{DynamicResource SuccessBrush}"
+                                                                                 Stroke="{DynamicResource TextOnSuccessBrush}"
+                                                                                 StrokeThickness="1"
+                                                                                 HorizontalAlignment="Right"
+                                                                                 VerticalAlignment="Top"
+                                                                                 Margin="0,-2,-2,0"
+                                                                                 Visibility="{Binding IsHeadlessDebugVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                    </Grid>
+                                                                </Button>
+                                                                <Button Command="{Binding DataContext.TogglePinToTrayCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Height="35"
                                                                         helper:ButtonHelper.ColorTheme="NavyDeep"
-                                                                    ToolTip="Mở lại workflow đang chạy ngầm để debug">
-                                                                <Button.Style>
-                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
-                                                                        <Setter Property="IsEnabled" Value="False"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
-                                                                                <Setter Property="IsEnabled" Value="True"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding IsReopeningHeadless}" Value="True">
-                                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Button.Style>
-                                                                <Grid>
-                                                                    <controls:SvgViewboxEx Width="18" Height="18"
-                                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                                       Source="{Binding Source={x:Static sys:String.Empty},
-                                                                                Converter={StaticResource IconKeyToPathConverter},
-                                                                                ConverterParameter='folder-open duotone-light'}"
-                                                                       Visibility="{Binding IsReopeningHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
-                                                                    <TextBlock Text="⏳"
-                                                                               FontSize="12"
-                                                                               Foreground="{DynamicResource TextOnSuccessBrush}"
-                                                                               HorizontalAlignment="Center"
-                                                                               VerticalAlignment="Center"
-                                                                               Visibility="{Binding IsReopeningHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                                    <Ellipse Width="8"
-                                                                             Height="8"
-                                                                             Fill="{DynamicResource SuccessBrush}"
-                                                                             Stroke="{DynamicResource TextOnSuccessBrush}"
-                                                                             StrokeThickness="1"
-                                                                             HorizontalAlignment="Right"
-                                                                             VerticalAlignment="Top"
-                                                                             Margin="0,-2,-2,0"
-                                                                             Visibility="{Binding IsHeadlessDebugVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                                </Grid>
-                                                            </Button>
-                                                            <Button Command="{Binding DataContext.TogglePinToTrayCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"
-                                                                    Height="35"
-                                                                        helper:ButtonHelper.ColorTheme="NavyDeep"
-                                                                    ToolTip="Ghim/bỏ ghim widget vào menu tray">
-                                                                <Button.Style>
-                                                                    <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
-                                                                        <Setter Property="Background" Value="Transparent"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsPinnedToTray}" Value="True">
-                                                                                <Setter Property="Background" Value="{DynamicResource NavyDeepBrush}"/>
-                                                                                <Setter Property="BorderBrush" Value="{DynamicResource NavyDeepBrush}"/>
-                                                                                <Setter Property="Foreground" Value="{DynamicResource TextOnNavyDeepBrush}"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Button.Style>
-                                                                <Grid>
-                                                                    <TextBlock Text="📌"
-                                                                               FontSize="13"
-                                                                               Visibility="{Binding IsPinnedToTray, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
-                                                                    <TextBlock Text="📍"
-                                                                               FontSize="13"
-                                                                               Visibility="{Binding IsPinnedToTray, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                                </Grid>
-                                                            </Button>
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
+                                                                        ToolTip="Ghim/bỏ ghim widget vào menu tray">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
+                                                                            <Setter Property="Background" Value="Transparent"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsPinnedToTray}" Value="True">
+                                                                                    <Setter Property="Background" Value="{DynamicResource NavyDeepBrush}"/>
+                                                                                    <Setter Property="BorderBrush" Value="{DynamicResource NavyDeepBrush}"/>
+                                                                                    <Setter Property="Foreground" Value="{DynamicResource TextOnNavyDeepBrush}"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                    <Grid>
+                                                                        <TextBlock Text="&#x1F4CC;"
+                                                                                   FontSize="13"
+                                                                                   Visibility="{Binding IsPinnedToTray, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                        <TextBlock Text="&#x1F4CD;"
+                                                                                   FontSize="13"
+                                                                                   Visibility="{Binding IsPinnedToTray, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                    </Grid>
+                                                                </Button>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+
+                                    <!-- ★ Pin badge: góc trên phải card, hiện khi group có widget ghim -->
+                                    <Border HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,-8,-8,0"
+                                            Width="26" Height="26"
+                                            CornerRadius="13"
+                                            Background="#7C3AED"
+                                            ToolTip="Workflow này có widget đang ghim vào tray">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Opacity" Value="0"/>
+                                                <Setter Property="IsHitTestVisible" Value="False"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                        <Setter Property="Opacity" Value="1"/>
+                                                        <Setter Property="IsHitTestVisible" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="&#x2605;"
+                                                   FontSize="13"
+                                                   Foreground="White"
+                                                   FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,-1,0,0"/>
+                                    </Border>
+                                </Grid>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
