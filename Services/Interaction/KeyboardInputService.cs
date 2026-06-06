@@ -76,18 +76,6 @@ namespace FlowMy.Services.Interaction
                 var vk = KeyInterop.VirtualKeyFromKey(ParseKey(keyText) ?? Key.None);
                 if (vk != 0)
                 {
-                    // InterceptionDriver: kernel-level
-                    if (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
-                        || (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto
-                            && FlowMy.Helpers.InterceptionInputHelper.IsAvailable()))
-                    {
-                        for (int i = 0; i < repeatCount; i++)
-                        {
-                            FlowMy.Helpers.InterceptionInputHelper.SendKey((ushort)vk);
-                            if (i < repeatCount - 1) Thread.Sleep(delayMs);
-                        }
-                        return;
-                    }
                     FlowMy.Helpers.BackgroundInputHelper.SendKey(targetHwnd, (ushort)vk, mode);
                     return;
                 }
@@ -338,19 +326,6 @@ namespace FlowMy.Services.Interaction
             // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
             if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
             {
-                // InterceptionDriver: kernel-level, hoạt động với mọi app
-                if (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
-                    || (mode == FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto
-                        && FlowMy.Helpers.InterceptionInputHelper.IsAvailable()))
-                {
-                    for (int i = 0; i < repeatCount; i++)
-                    {
-                        FlowMy.Helpers.InterceptionInputHelper.SendHotkey(hotkeyText, 1, delayMs);
-                        if (i < repeatCount - 1) Thread.Sleep(delayMs);
-                    }
-                    return;
-                }
-
                 // Gửi từng phím trong hotkey: hold modifiers → press main keys → release modifiers
                 for (int i = 0; i < repeatCount; i++)
                 {

@@ -190,14 +190,7 @@ namespace FlowMy.Helpers
             /// <summary>SendInput + foreground activation - giống user thật nhưng làm gián đoạn</summary>
             ForegroundActivation,
 
-            /// <summary>
-            /// Kernel-level injection qua Interception driver - hoạt động với MỌI app kể cả game, browser, UWP.
-            /// Không cần app active, không gián đoạn user.
-            /// YÊU CẦU: Interception driver phải được cài (cần admin lần đầu).
-            /// </summary>
-            InterceptionDriver,
-
-            /// <summary>Tự động chọn chế độ phù hợp (ưu tiên InterceptionDriver nếu có)</summary>
+            /// <summary>Tự động chọn chế độ phù hợp (DirectMessage làm mặc định)</summary>
             Auto
         }
 
@@ -215,26 +208,14 @@ namespace FlowMy.Helpers
             if (targetHwnd == IntPtr.Zero || string.IsNullOrEmpty(text))
                 return false;
 
-            // Auto: ưu tiên InterceptionDriver nếu có, fallback DirectMessage
+            // Auto: dùng DirectMessage làm mặc định
             if (mode == InputMode.Auto)
-                mode = InterceptionInputHelper.IsAvailable() ? InputMode.InterceptionDriver : InputMode.DirectMessage;
+                mode = InputMode.DirectMessage;
 
             try
             {
                 switch (mode)
                 {
-                    case InputMode.InterceptionDriver:
-                        foreach (char c in text)
-                        {
-                            short vkScan = VkKeyScanChar(c);
-                            if (vkScan != -1)
-                            {
-                                ushort vk = (ushort)(vkScan & 0xFF);
-                                InterceptionInputHelper.SendKey(vk, delayMs);
-                            }
-                        }
-                        return true;
-
                     case InputMode.DirectMessage:
                         return SendTextDirectMessage(targetHwnd, text, delayMs);
 
@@ -267,15 +248,12 @@ namespace FlowMy.Helpers
                 return false;
 
             if (mode == InputMode.Auto)
-                mode = InterceptionInputHelper.IsAvailable() ? InputMode.InterceptionDriver : InputMode.DirectMessage;
+                mode = InputMode.DirectMessage;
 
             try
             {
                 switch (mode)
                 {
-                    case InputMode.InterceptionDriver:
-                        return InterceptionInputHelper.SendKey(vkCode);
-
                     case InputMode.DirectMessage:
                         return SendKeyDirectMessage(targetHwnd, vkCode);
 
@@ -303,7 +281,7 @@ namespace FlowMy.Helpers
         {
             if (targetHwnd == IntPtr.Zero) return false;
             if (mode == InputMode.Auto)
-                mode = InterceptionInputHelper.IsAvailable() ? InputMode.InterceptionDriver : InputMode.DirectMessage;
+                mode = InputMode.DirectMessage;
 
             try
             {
@@ -318,9 +296,7 @@ namespace FlowMy.Helpers
                     _        => WM_LBUTTONDOWN
                 };
 
-                if (mode == InputMode.InterceptionDriver)
-                    return InterceptionInputHelper.SendMouseDown(screenX, screenY, button);
-                else if (mode == InputMode.SilentActivation)
+                if (mode == InputMode.SilentActivation)
                 {
                     SetWindowPos(targetHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
                     PostMessage(targetHwnd, downMsg, IntPtr.Zero, lParam);
@@ -346,7 +322,7 @@ namespace FlowMy.Helpers
         {
             if (targetHwnd == IntPtr.Zero) return false;
             if (mode == InputMode.Auto)
-                mode = InterceptionInputHelper.IsAvailable() ? InputMode.InterceptionDriver : InputMode.DirectMessage;
+                mode = InputMode.DirectMessage;
 
             try
             {
@@ -361,9 +337,7 @@ namespace FlowMy.Helpers
                     _        => WM_LBUTTONUP
                 };
 
-                if (mode == InputMode.InterceptionDriver)
-                    return InterceptionInputHelper.SendMouseUp(screenX, screenY, button);
-                else if (mode == InputMode.SilentActivation)
+                if (mode == InputMode.SilentActivation)
                 {
                     SetWindowPos(targetHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
                     PostMessage(targetHwnd, upMsg, IntPtr.Zero, lParam);
@@ -396,15 +370,12 @@ namespace FlowMy.Helpers
                 return false;
 
             if (mode == InputMode.Auto)
-                mode = InterceptionInputHelper.IsAvailable() ? InputMode.InterceptionDriver : InputMode.DirectMessage;
+                mode = InputMode.DirectMessage;
 
             try
             {
                 switch (mode)
                 {
-                    case InputMode.InterceptionDriver:
-                        return InterceptionInputHelper.SendMouseClick(screenX, screenY, button);
-
                     case InputMode.DirectMessage:
                         return SendMouseClickDirectMessage(targetHwnd, screenX, screenY, button);
 
@@ -434,15 +405,12 @@ namespace FlowMy.Helpers
                 return false;
 
             if (mode == InputMode.Auto)
-                mode = InterceptionInputHelper.IsAvailable() ? InputMode.InterceptionDriver : InputMode.DirectMessage;
+                mode = InputMode.DirectMessage;
 
             try
             {
                 switch (mode)
                 {
-                    case InputMode.InterceptionDriver:
-                        return InterceptionInputHelper.SendMouseScroll(screenX, screenY, delta);
-
                     case InputMode.DirectMessage:
                     case InputMode.SilentActivation:
                     case InputMode.ForegroundActivation:

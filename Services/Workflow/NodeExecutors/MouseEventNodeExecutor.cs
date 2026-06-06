@@ -60,13 +60,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         targetHwnd = match.Handle;
                         bgModeStatus = $"enabled - hwnd={targetHwnd} mode={mouseNode.BackgroundInputMode}";
                         
-                        // Validate Interception Driver nếu được chọn
-                        if (mouseNode.BackgroundInputMode == BackgroundInputHelper.InputMode.InterceptionDriver 
-                            && !InterceptionInputHelper.IsDriverInstalled())
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[MouseEvent] WARNING: Interception Driver selected but not installed - will fallback");
-                        }
-                        
                         System.Diagnostics.Debug.WriteLine($"[MouseEvent] Background mode: Found target window hwnd={targetHwnd} process={mouseNode.TargetProcessName} title={mouseNode.TargetWindowTitle}");
                     }
                     else

@@ -52,7 +52,6 @@ namespace FlowMy.ViewModels
         public ObservableCollection<BackgroundInputModeOption> BackgroundInputModeOptions { get; } = new()
         {
             new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto, "Auto (Tự chọn)"),
-            new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver, "Interception Driver (Tốt nhất - cần cài driver)"),
             new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.DirectMessage, "DirectMessage (Nhanh, không cần driver)"),
             new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.SilentActivation, "SilentActivation (Cân bằng)"),
             new BackgroundInputModeOption(FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation, "ForegroundActivation (Giống thật)")
@@ -128,18 +127,7 @@ namespace FlowMy.ViewModels
 
         partial void OnBackgroundInputModeChanged(FlowMy.Helpers.BackgroundInputHelper.InputMode value)
         {
-            if (value == FlowMy.Helpers.BackgroundInputHelper.InputMode.InterceptionDriver
-                && !FlowMy.Helpers.InterceptionInputHelper.IsDriverInstalled())
-            {
-                var ownerWindow = System.Windows.Application.Current?.Dispatcher.Invoke(
-                    () => System.Windows.Application.Current.Windows
-                            .OfType<System.Windows.Window>()
-                            .FirstOrDefault(w => w.IsActive)
-                          ?? System.Windows.Application.Current.MainWindow);
-                bool ok = FlowMy.Helpers.InterceptionInputHelper.PromptAndInstallDriver(ownerWindow);
-                if (!ok)
-                    BackgroundInputMode = FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto;
-            }
+            // Interception Driver đã được gỡ bỏ — không cần xử lý
         }
 
         partial void OnReturnToOriginalScreenChanged(bool value)
