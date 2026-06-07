@@ -151,11 +151,25 @@ public static class BodyContainerControl
         titleText.Margin = new Thickness(0, -26 * titleScale, 0, 0);
 
         // Đổi icon hiển thị giữa tâm border khi check lock/unlock
-        var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";
-        lockIcon.Source = null;
-        lockIcon.Source = new IconKeyToPathConverter().Convert(
-            null, typeof(Uri), lockIconKey, CultureInfo.CurrentCulture) as Uri;
-        lockIcon.InvalidateVisual();
+        var lockIconKey = node.LockInnerNodes ? "table-cells-lock duotone" : "table-cells-header-unlock duotone";
+        
+        var newUri = new IconKeyToPathConverter().Convert(
+            null, typeof(Uri), lockIconKey, System.Globalization.CultureInfo.CurrentCulture) as Uri;
+
+        // Chỉ cập nhật Source nếu thực sự có sự thay đổi Uri (tránh nhấp nháy hoặc nghẽn thread khi resize)
+        var currentUri = lockIcon.Source as Uri;
+        if (currentUri == null || currentUri.OriginalString != newUri?.OriginalString)
+        {
+            // Set null đồng bộ để ép WPF xóa visual cũ
+            lockIcon.Source = null;
+            // Đẩy việc gán Source mới sang frame kế tiếp để chắc chắn WPF vẽ lại (bởi vì ta đã xóa DropShadow)
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                lockIcon.Source = newUri;
+                lockIcon.InvalidateVisual();
+            }, System.Windows.Threading.DispatcherPriority.Render);
+        }
+
         lockIcon.Fill = new SolidColorBrush(Color.FromArgb(235, 17, 24, 39));
         lockIcon.Opacity = node.IconOpacityPercent / 100.0;
         lockIcon.Width = Math.Max(32, Math.Min(node.BodyWidth, node.BodyHeight) * 0.18);

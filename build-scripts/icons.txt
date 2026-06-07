@@ -368,3 +368,5 @@ youtube developer-icons.color
 youtube-wordmark developer-icons.color
 zen developer-icons.color
 zod developer-icons.color
+table-cells-lock duotone
+table-cells-header-unlock duotone
