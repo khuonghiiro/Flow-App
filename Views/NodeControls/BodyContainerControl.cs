@@ -143,10 +143,20 @@ public static class BodyContainerControl
 
         // Đổi icon hiển thị giữa tâm border khi check lock/unlock
         var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";
-        lockIcon.Source = null;
-        lockIcon.Source = new IconKeyToPathConverter().Convert(
-            null, typeof(Uri), lockIconKey, CultureInfo.CurrentCulture) as Uri;
-        lockIcon.InvalidateVisual();
+        
+        var newUri = new IconKeyToPathConverter().Convert(
+            null, typeof(Uri), lockIconKey, System.Globalization.CultureInfo.CurrentCulture) as Uri;
+
+        var currentUri = lockIcon.Source as Uri;
+        if (currentUri == null || currentUri.OriginalString != newUri?.OriginalString)
+        {
+            lockIcon.Source = null;
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                lockIcon.Source = newUri;
+                lockIcon.InvalidateVisual();
+            }, System.Windows.Threading.DispatcherPriority.Render);
+        }
         lockIcon.Fill = new SolidColorBrush(Color.FromArgb(235, 17, 24, 39));
         lockIcon.Opacity = node.IconOpacityPercent / 100.0;
         lockIcon.Width = Math.Max(32, Math.Min(node.BodyWidth, node.BodyHeight) * 0.18);
