@@ -276,14 +276,33 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
                 targetY = bodyBounds.Bottom + gap;
             }
 
+            double dx = targetX - node.X;
+            double dy = targetY - node.Y;
+
+            List<WorkflowNode> innerNodes = new List<WorkflowNode>();
+            if (node is BodyContainerNode pushedBody && pushedBody.LockInnerNodes)
+            {
+                innerNodes = CaptureNodesInsideBody(pushedBody);
+            }
+
             Host.UpdateNodePosition(node, targetX, targetY);
             foreach (var conn in vm.Connections.Where(c => c.FromNode == node || c.ToNode == node))
+            {
                 Host.UpdateConnectionPath(conn);
+            }
             movedNodes.Add(node);
+
+            foreach (var inner in innerNodes)
+            {
+                Host.UpdateNodePosition(inner, inner.X + dx, inner.Y + dy);
+                foreach (var conn in vm.Connections.Where(c => c.FromNode == inner || c.ToNode == inner))
+                {
+                    Host.UpdateConnectionPath(conn);
+                }
+            }
         }
 
-        // Collision pass: nodes vừa bị đẩy sẽ tiếp tục đẩy nhau nếu còn chồng lấn.
-        foreach (var moved in movedNodes)
+        foreach (var moved in movedNodes.ToList())
         {
             _collisionResolver.ResolveCollision(vm, moved, Host);
         }

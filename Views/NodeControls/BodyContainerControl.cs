@@ -142,7 +142,7 @@ public static class BodyContainerControl
         titleText.Margin = new Thickness(0, -26 * titleScale, 0, 0);
 
         // Đổi icon hiển thị giữa tâm border khi check lock/unlock
-        var lockIconKey = node.LockInnerNodes ? "arrow-down-up-lock duotone-light" : "unlock light";
+        var lockIconKey = node.LockInnerNodes ? "table-cells-lock duotone" : "table-cells-header-unlock duotone";
         
         var newUri = new IconKeyToPathConverter().Convert(
             null, typeof(Uri), lockIconKey, System.Globalization.CultureInfo.CurrentCulture) as Uri;

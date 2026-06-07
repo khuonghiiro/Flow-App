@@ -177,25 +177,7 @@ namespace FlowMy.Services.Interaction
                     newX = node.X + pushDir.X;
                     newY = node.Y + pushDir.Y;
 
-                    // Cập nhật vị trí target node (không phải otherNode)
-                    viewModel.UpdateNodePosition(node, newX, newY);
-                    host.UpdateNodePosition(node, newX, newY);
-
-                    if (node.Border != null)
-                    {
-                        Canvas.SetLeft(node.Border, newX);
-                        Canvas.SetTop(node.Border, newY);
-                    }
-
-                    UpdatePortsPosition(node, host);
-
-                    foreach (var conn in viewModel.Connections)
-                    {
-                        if (conn.FromNode == node || conn.ToNode == node)
-                        {
-                            host.UpdateConnectionPath(conn);
-                        }
-                    }
+                    MoveNodeWithLockedInnerNodes(viewModel, host, node, newX, newY);
 
                     // Đệ quy kiểm tra target node có overlap với node khác không
                     ResolveCollisionRecursive(viewModel, node, host, processedNodes, depth + 1);
@@ -213,31 +195,79 @@ namespace FlowMy.Services.Interaction
                     continue; // Locked body đứng yên, không đẩy
                 }
 
-                // Cập nhật vị trí node bị đẩy
-                viewModel.UpdateNodePosition(otherNode, newX, newY);
-                host.UpdateNodePosition(otherNode, newX, newY);
-
-                if (otherNode.Border != null)
-                {
-                    Canvas.SetLeft(otherNode.Border, newX);
-                    Canvas.SetTop(otherNode.Border, newY);
-                }
-
-                // Cập nhật ports positions
-                UpdatePortsPosition(otherNode, host);
-
-                // Cập nhật connection paths cho node bị đẩy
-                foreach (var conn in viewModel.Connections)
-                {
-                    if (conn.FromNode == otherNode || conn.ToNode == otherNode)
-                    {
-                        host.UpdateConnectionPath(conn);
-                    }
-                }
+                MoveNodeWithLockedInnerNodes(viewModel, host, otherNode, newX, newY);
 
                 // Đệ quy kiểm tra node bị đẩy có overlap với node khác không
                 processedNodes.Add(otherNode);
                 ResolveCollisionRecursive(viewModel, otherNode, host, processedNodes, depth + 1);
+            }
+        }
+
+        private void MoveNodeWithLockedInnerNodes(
+            WorkflowEditorViewModel viewModel,
+            IWorkflowEditorHost host,
+            WorkflowNode nodeToMove,
+            double newX,
+            double newY)
+        {
+            double dx = newX - nodeToMove.X;
+            double dy = newY - nodeToMove.Y;
+            if (Math.Abs(dx) < 0.1 && Math.Abs(dy) < 0.1) return;
+
+            // Tìm các node bên trong NẾU nodeToMove là một locked body
+            var innerNodes = new List<WorkflowNode>();
+            if (nodeToMove is BodyContainerNode body && body.LockInnerNodes)
+            {
+                var bodyRect = new Rect(body.X, body.Y, body.BodyWidth, body.BodyHeight);
+                foreach (var child in viewModel.Nodes)
+                {
+                    if (child == body) continue;
+                    if (child is LoopBodyNode or AsyncTaskBodyNode) continue;
+                    
+                    // Đoán vị trí center của child
+                    var childW = child.Border?.ActualWidth > 1 ? child.Border.ActualWidth : 150;
+                    var childH = child.Border?.ActualHeight > 1 ? child.Border.ActualHeight : 80;
+                    var center = new Point(child.X + childW / 2.0, child.Y + childH / 2.0);
+                    
+                    if (bodyRect.Contains(center))
+                    {
+                        innerNodes.Add(child);
+                    }
+                }
+            }
+
+            // Di chuyển nodeToMove
+            viewModel.UpdateNodePosition(nodeToMove, newX, newY);
+            host.UpdateNodePosition(nodeToMove, newX, newY);
+            if (nodeToMove.Border != null)
+            {
+                Canvas.SetLeft(nodeToMove.Border, newX);
+                Canvas.SetTop(nodeToMove.Border, newY);
+            }
+            UpdatePortsPosition(nodeToMove, host);
+            foreach (var conn in viewModel.Connections.Where(c => c.FromNode == nodeToMove || c.ToNode == nodeToMove))
+            {
+                host.UpdateConnectionPath(conn);
+            }
+
+            // Di chuyển các node bên trong đi theo đúng khoảng cách dx, dy
+            foreach (var child in innerNodes)
+            {
+                var childNewX = child.X + dx;
+                var childNewY = child.Y + dy;
+                
+                viewModel.UpdateNodePosition(child, childNewX, childNewY);
+                host.UpdateNodePosition(child, childNewX, childNewY);
+                if (child.Border != null)
+                {
+                    Canvas.SetLeft(child.Border, childNewX);
+                    Canvas.SetTop(child.Border, childNewY);
+                }
+                UpdatePortsPosition(child, host);
+                foreach (var conn in viewModel.Connections.Where(c => c.FromNode == child || c.ToNode == child))
+                {
+                    host.UpdateConnectionPath(conn);
+                }
             }
         }
 
