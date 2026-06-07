@@ -2050,7 +2050,7 @@ namespace FlowMy.Views.NodeControls
                 return;
             }
 
-            if (node is VideoProcessingNode)
+            if (node is VideoProcessingNode || node is FlowMy.Models.Nodes.BodyContainerNode)
             {
                 border.Effect = null;
                 GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: false);

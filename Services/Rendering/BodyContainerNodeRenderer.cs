@@ -202,7 +202,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
     private void AttachHoverTitleBehavior(BodyContainerNode bodyNode, Border border)
     {
-        if (!BodyContainerControl.TryGetVisualElements(bodyNode, out _, out _, out _, out var titleText, out _))
+        if (!BodyContainerControl.TryGetVisualElements(bodyNode, out _, out _, out var titleText, out _))
             return;
 
         var hovering = false;

@@ -36,23 +36,33 @@ public static class BodyContainerControl
             Width = node.BodyWidth,
             Height = node.BodyHeight,
             CornerRadius = new CornerRadius(10),
-            BorderThickness = new Thickness(2),
-            Tag = node
+            BorderThickness = new Thickness(0),
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderBrush = System.Windows.Media.Brushes.Transparent,
+            Tag = node,
+            Effect = null,
+            CacheMode = null // Explicitly disable GPU Cache
         };
+        
+        // Đảm bảo vô hiệu hóa GPU Optimization (BitmapCache có thể gây đổ bóng mờ trên nền trong suốt)
+        System.Windows.Media.RenderOptions.SetCachingHint(border, System.Windows.Media.CachingHint.Unspecified);
+        System.Windows.Media.RenderOptions.SetBitmapScalingMode(border, System.Windows.Media.BitmapScalingMode.Unspecified);
 
         var root = new Grid();
         root.ClipToBounds = false;
-
-        var fillRect = new Rectangle { RadiusX = 10, RadiusY = 10 };
-        root.Children.Add(fillRect);
+        root.Effect = null;
+        root.CacheMode = null;
 
         var borderRect = new Rectangle
         {
             RadiusX = 10,
             RadiusY = 10,
             StrokeThickness = 2,
-            StrokeDashArray = new DoubleCollection { 5, 3 }
+            StrokeDashArray = new System.Windows.Media.DoubleCollection { 4, 3 },
+            Effect = null,
+            CacheMode = null
         };
+        System.Windows.Media.RenderOptions.SetCachingHint(borderRect, System.Windows.Media.CachingHint.Unspecified);
         root.Children.Add(borderRect);
 
         var titleText = new TextBlock
@@ -90,27 +100,26 @@ public static class BodyContainerControl
         AddResizeHandle(root, ResizeDirection.Left, HorizontalAlignment.Left, VerticalAlignment.Center);
 
         border.Child = root;
-        ApplyNodeVisual(node, border, fillRect, borderRect, titleText, lockIcon);
+        ApplyNodeVisual(node, border, borderRect, titleText, lockIcon);
         AttachResizeLogic(border, node);
         return border;
     }
 
     public static void RefreshVisualFromNode(BodyContainerNode node)
     {
-        if (!TryGetVisualElements(node, out var border, out var fillRect, out var borderRect, out var titleText, out var lockIcon))
+        if (!TryGetVisualElements(node, out var border, out var borderRect, out var titleText, out var lockIcon))
             return;
 
         // Hoàn tác logic LockCanvasSize vì gây lỗi
         // Tính năng này sẽ được implement lại sau
 
-        ApplyNodeVisual(node, border, fillRect, borderRect, titleText, lockIcon);
+        ApplyNodeVisual(node, border, borderRect, titleText, lockIcon);
         UpdateTitleVisibility(node, titleText, isHovering: false);
     }
 
     public static void ApplyNodeVisual(
         BodyContainerNode node,
         Border border,
-        Rectangle fillRect,
         Rectangle borderRect,
         TextBlock titleText,
         SvgViewboxEx lockIcon)
@@ -131,7 +140,7 @@ public static class BodyContainerControl
         var borderAlpha = (byte)Math.Round(Math.Clamp(node.BorderOpacityPercent / 100.0, 0, 1) * 255);
         borderColor.A = borderAlpha;
 
-        fillRect.Fill = new SolidColorBrush(backgroundColor);
+        border.Background = new SolidColorBrush(backgroundColor);
         borderRect.Stroke = new SolidColorBrush(borderColor);
         borderRect.StrokeThickness = node.BorderThickness;
         borderRect.StrokeDashArray = GetDashArray(node.BorderDashStyle, node.BorderDashSpacing);
@@ -213,13 +222,11 @@ public static class BodyContainerControl
     public static bool TryGetVisualElements(
         BodyContainerNode node,
         out Border border,
-        out Rectangle fillRect,
         out Rectangle borderRect,
         out TextBlock titleText,
         out SvgViewboxEx lockIcon)
     {
-        border = node.Border!;
-        fillRect = null!;
+        border = null!;
         borderRect = null!;
         titleText = null!;
         lockIcon = null!;
@@ -228,17 +235,13 @@ public static class BodyContainerControl
         var bodyGrid = GetBodyVisualGrid(node.Border);
         if (bodyGrid == null) return false;
         if (bodyGrid.Children.Count < 4) return false;
-        if (bodyGrid.Children[0] is not Rectangle fill) return false;
-        if (bodyGrid.Children[1] is not Rectangle stroke) return false;
-        if (bodyGrid.Children[2] is not TextBlock title) return false;
-        if (bodyGrid.Children[3] is not SvgViewboxEx icon) return false;
-
+        
         border = node.Border;
-        fillRect = fill;
-        borderRect = stroke;
-        titleText = title;
-        lockIcon = icon;
-        return true;
+        borderRect = bodyGrid.Children.OfType<Rectangle>().FirstOrDefault()!;
+        titleText = bodyGrid.Children.OfType<TextBlock>().FirstOrDefault()!;
+        lockIcon = bodyGrid.Children.OfType<SvgViewboxEx>().FirstOrDefault()!;
+        
+        return borderRect != null && titleText != null && lockIcon != null;
     }
 
     private static Grid? GetBodyVisualGrid(Border border)
