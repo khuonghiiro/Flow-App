@@ -48,156 +48,122 @@ namespace FlowMy.Services.Interaction
         {
             if (depth > MaxRecursionDepth) return; // Tránh vòng lặp vô hạn
 
-            var nodeBounds = GetNodeBounds(node);
-            if (nodeBounds.Width <= 0 || nodeBounds.Height <= 0) return;
+            var targetNodes = new List<WorkflowNode> { node };
+            if (node is LoopNode loopNode && loopNode.LoopBodyNode != null) targetNodes.Add(loopNode.LoopBodyNode);
+            else if (node is LoopBodyNode loopBody) { var parent = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody); if (parent != null) targetNodes.Add(parent); }
+            else if (node is AsyncTaskNode asyncNode && asyncNode.AsyncTaskBodyNode != null) targetNodes.Add(asyncNode.AsyncTaskBodyNode);
+            else if (node is AsyncTaskBodyNode asyncBody) { var parent = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody); if (parent != null) targetNodes.Add(parent); }
 
-            // Tìm tất cả các node khác có thể bị overlap
-            var overlappingNodes = new List<(WorkflowNode otherNode, Rect otherBounds, double overlapX, double overlapY)>();
-            BodyContainerNode? lockedBodyNode = node as BodyContainerNode;
-            var targetIsLockedBody = lockedBodyNode?.LockInnerNodes == true;
-            var targetBodyRect = targetIsLockedBody
-                ? new Rect(lockedBodyNode!.X, lockedBodyNode.Y, lockedBodyNode.BodyWidth, lockedBodyNode.BodyHeight)
-                : Rect.Empty;
+            var overlappingNodes = new List<(WorkflowNode otherNode, Rect otherBounds, double overlapX, double overlapY, WorkflowNode hitTarget)>();
 
-            foreach (var otherNode in viewModel.Nodes)
+            foreach (var targetNode in targetNodes)
             {
-                if (otherNode == node || processedNodes.Contains(otherNode)) continue;
-                if (otherNode.Border == null) continue; // Skip node chưa được render
+                var nodeBounds = GetNodeBounds(targetNode);
+                if (nodeBounds.Width <= 0 || nodeBounds.Height <= 0) continue;
 
-                // Nếu otherNode là unlocked BodyContainerNode, skip collision (cho phép đè lên body)
-                if (otherNode is BodyContainerNode otherBody && !otherBody.LockInnerNodes)
+                BodyContainerNode? lockedBodyNode = targetNode as BodyContainerNode;
+                var targetIsLockedBody = lockedBodyNode?.LockInnerNodes == true;
+                var targetBodyRect = targetIsLockedBody
+                    ? new Rect(lockedBodyNode!.X, lockedBodyNode.Y, lockedBodyNode.BodyWidth, lockedBodyNode.BodyHeight)
+                    : Rect.Empty;
+
+                foreach (var otherNode in viewModel.Nodes)
                 {
-                    continue;
-                }
+                    if (targetNodes.Contains(otherNode) || processedNodes.Contains(otherNode)) continue;
+                    if (otherNode.Border == null) continue; // Skip node chưa được render
+                    if (overlappingNodes.Any(o => o.otherNode == otherNode)) continue; // Đã xử lý va chạm với otherNode này
 
-                // Nếu otherNode nằm trong locked body, skip - không được di chuyển
-                var otherOwningLockedBody = FindOwningLockedBody(viewModel, otherNode);
-                if (otherOwningLockedBody != null)
-                {
-                    continue; // Node trong locked body không bị di chuyển
-                }
+                    // Nếu otherNode là unlocked BodyContainerNode, skip collision (cho phép đè lên body)
+                    if (otherNode is BodyContainerNode otherBody && !otherBody.LockInnerNodes) continue;
 
-                // Nếu otherNode nằm trong unlocked body (không phải body), nó đứng im
-                // node đang di chuyển bị đẩy ra nếu đè lên nó
-                var otherOwningBody = FindOwningBody(viewModel, otherNode);
-                var otherInUnlockedBody = otherOwningBody != null && !otherOwningBody.LockInnerNodes;
+                    // Nếu otherNode nằm trong locked body, skip - không được di chuyển
+                    if (FindOwningLockedBody(viewModel, otherNode) != null) continue;
 
-                // Nếu otherNode là locked body, không cho phép node lọt vào trong nó
-                if (otherNode is BodyContainerNode otherBodyLocked && otherBodyLocked.LockInnerNodes)
-                {
-                    var otherBodyRect = new Rect(otherBodyLocked.X, otherBodyLocked.Y, otherBodyLocked.BodyWidth, otherBodyLocked.BodyHeight);
-                    if (IsNodeInsideBodyRect(node, otherBodyRect))
+                    var otherOwningBody = FindOwningBody(viewModel, otherNode);
+                    var otherInUnlockedBody = otherOwningBody != null && !otherOwningBody.LockInnerNodes;
+
+                    // Nếu otherNode là locked body, không cho phép node lọt vào trong nó
+                    if (otherNode is BodyContainerNode otherBodyLocked && otherBodyLocked.LockInnerNodes)
                     {
-                        // Node đang lọt vào locked body - cần đẩy node ra ngoài
-                        overlappingNodes.Add((otherNode, otherBodyRect, 0, 0));
+                        var otherBodyRect = new Rect(otherBodyLocked.X, otherBodyLocked.Y, otherBodyLocked.BodyWidth, otherBodyLocked.BodyHeight);
+                        if (IsNodeInsideBodyRect(targetNode, otherBodyRect))
+                        {
+                            // Node đang lọt vào locked body - cần đẩy node ra ngoài
+                            overlappingNodes.Add((otherNode, otherBodyRect, 0, 0, targetNode));
+                            continue;
+                        }
+                    }
+
+                    // Nếu target là locked body, skip các node nằm bên trong nó
+                    if (targetIsLockedBody && IsNodeInsideBodyRect(otherNode, targetBodyRect)) continue;
+
+                    // Nếu otherNode nằm trong unlocked body, targetNode bị đẩy ra
+                    if (otherInUnlockedBody)
+                    {
+                        var otherBounds2 = GetNodeBounds(otherNode);
+                        if (otherBounds2.Width <= 0 || otherBounds2.Height <= 0) continue;
+
+                        if (nodeBounds.IntersectsWith(otherBounds2))
+                        {
+                            var pushDirection = CalculatePushDirection(nodeBounds, otherBounds2,
+                                Math.Min(Math.Abs(nodeBounds.Right - otherBounds2.Left), Math.Abs(otherBounds2.Right - nodeBounds.Left)),
+                                Math.Min(Math.Abs(nodeBounds.Bottom - otherBounds2.Top), Math.Abs(otherBounds2.Bottom - nodeBounds.Top)));
+                            pushDirection = new Vector(-pushDirection.X, -pushDirection.Y);
+
+                            var newX = targetNode.X + pushDirection.X;
+                            var newY = targetNode.Y + pushDirection.Y;
+
+                            MoveNodeWithLockedInnerNodes(viewModel, host, targetNode, newX, newY);
+                            ResolveCollisionRecursive(viewModel, targetNode, host, processedNodes, depth + 1);
+                        }
                         continue;
                     }
-                }
 
-                // Nếu target là locked body, skip các node nằm bên trong nó
-                if (targetIsLockedBody && IsNodeInsideBodyRect(otherNode, targetBodyRect)) continue;
+                    var otherBounds = GetNodeBounds(otherNode);
+                    if (otherBounds.Width <= 0 || otherBounds.Height <= 0) continue;
 
-                // Nếu otherNode nằm trong unlocked body, node đang di chuyển bị đẩy ra
-                if (otherInUnlockedBody)
-                {
-                    var otherBounds2 = GetNodeBounds(otherNode);
-                    if (otherBounds2.Width <= 0 || otherBounds2.Height <= 0) continue;
-
-                    // Kiểm tra overlap - nếu có, đẩy node đang di chuyển (node) ra
-                    if (nodeBounds.IntersectsWith(otherBounds2))
+                    if (nodeBounds.IntersectsWith(otherBounds))
                     {
-                        var pushDirection = CalculatePushDirection(nodeBounds, otherBounds2,
-                            Math.Min(Math.Abs(nodeBounds.Right - otherBounds2.Left), Math.Abs(otherBounds2.Right - nodeBounds.Left)),
-                            Math.Min(Math.Abs(nodeBounds.Bottom - otherBounds2.Top), Math.Abs(otherBounds2.Bottom - nodeBounds.Top)));
-                        // Push in opposite direction (push node away from otherNode)
-                        pushDirection = new Vector(-pushDirection.X, -pushDirection.Y);
+                        double overlapX = Math.Min(Math.Abs(nodeBounds.Right - otherBounds.Left), Math.Abs(otherBounds.Right - nodeBounds.Left));
+                        double overlapY = Math.Min(Math.Abs(nodeBounds.Bottom - otherBounds.Top), Math.Abs(otherBounds.Bottom - nodeBounds.Top));
 
-                        var newX = node.X + pushDirection.X;
-                        var newY = node.Y + pushDirection.Y;
-
-                        viewModel.UpdateNodePosition(node, newX, newY);
-                        host.UpdateNodePosition(node, newX, newY);
-
-                        if (node.Border != null)
+                        if (overlapX > 0 && overlapY > 0)
                         {
-                            Canvas.SetLeft(node.Border, newX);
-                            Canvas.SetTop(node.Border, newY);
+                            overlappingNodes.Add((otherNode, otherBounds, overlapX, overlapY, targetNode));
                         }
-
-                        UpdatePortsPosition(node, host);
-
-                        foreach (var conn in viewModel.Connections)
-                        {
-                            if (conn.FromNode == node || conn.ToNode == node)
-                            {
-                                host.UpdateConnectionPath(conn);
-                            }
-                        }
-
-                        // Đệ quy kiểm tra lại sau khi đẩy
-                        ResolveCollisionRecursive(viewModel, node, host, processedNodes, depth + 1);
-                    }
-                    continue;
-                }
-
-                var otherBounds = GetNodeBounds(otherNode);
-                if (otherBounds.Width <= 0 || otherBounds.Height <= 0) continue;
-
-                // Kiểm tra overlap
-                if (nodeBounds.IntersectsWith(otherBounds))
-                {
-                    // Tính toán overlap amount - đảm bảo giá trị dương
-                    double overlapX = Math.Min(
-                        Math.Abs(nodeBounds.Right - otherBounds.Left),
-                        Math.Abs(otherBounds.Right - nodeBounds.Left)
-                    );
-                    double overlapY = Math.Min(
-                        Math.Abs(nodeBounds.Bottom - otherBounds.Top),
-                        Math.Abs(otherBounds.Bottom - nodeBounds.Top)
-                    );
-
-                    // Chỉ thêm nếu overlap thực sự xảy ra
-                    if (overlapX > 0 && overlapY > 0)
-                    {
-                        overlappingNodes.Add((otherNode, otherBounds, overlapX, overlapY));
                     }
                 }
             }
 
             // Đẩy các node bị overlap
-            foreach (var (otherNode, otherBounds, overlapX, overlapY) in overlappingNodes)
+            foreach (var (otherNode, otherBounds, overlapX, overlapY, hitTarget) in overlappingNodes)
             {
                 double newX, newY;
+                var hitNodeBounds = GetNodeBounds(hitTarget);
 
-                // Nếu otherNode là locked body và node đang lọt vào trong nó, đẩy node (target) ra ngoài
+                // Nếu otherNode là locked body và node đang lọt vào trong nó
                 if (otherNode is BodyContainerNode otherBody && otherBody.LockInnerNodes && overlapX == 0 && overlapY == 0)
                 {
-                    // Đẩy target node ra ngoài locked body
-                    var pushDir = CalculatePushDirectionOutOfBody(nodeBounds, otherBounds);
-                    newX = node.X + pushDir.X;
-                    newY = node.Y + pushDir.Y;
+                    var pushDir = CalculatePushDirectionOutOfBody(hitNodeBounds, otherBounds);
+                    newX = hitTarget.X + pushDir.X;
+                    newY = hitTarget.Y + pushDir.Y;
 
-                    MoveNodeWithLockedInnerNodes(viewModel, host, node, newX, newY);
-
-                    // Đệ quy kiểm tra target node có overlap với node khác không
-                    ResolveCollisionRecursive(viewModel, node, host, processedNodes, depth + 1);
+                    MoveNodeWithLockedInnerNodes(viewModel, host, hitTarget, newX, newY);
+                    ResolveCollisionRecursive(viewModel, hitTarget, host, processedNodes, depth + 1);
                     continue;
                 }
 
-                // Logic bình thường: đẩy otherNode
-                var pushDirection = CalculatePushDirection(nodeBounds, otherBounds, overlapX, overlapY);
+                // Logic bình thường: tính pushDirection
+                var pushDirection = CalculatePushDirection(hitNodeBounds, otherBounds, overlapX, overlapY);
 
-                // Nếu otherNode là locked body, nó đứng yên -> phải đẩy ngược lại target node!
+                // Nếu otherNode là locked body, nó đứng yên -> đẩy ngược hitTarget
                 if (otherNode is BodyContainerNode pushedBody && pushedBody.LockInnerNodes)
                 {
-                    // Lật ngược hướng đẩy để áp dụng cho node (target node)
-                    newX = node.X - pushDirection.X;
-                    newY = node.Y - pushDirection.Y;
+                    newX = hitTarget.X - pushDirection.X;
+                    newY = hitTarget.Y - pushDirection.Y;
 
-                    MoveNodeWithLockedInnerNodes(viewModel, host, node, newX, newY);
-
-                    // Đệ quy kiểm tra node vừa bị dội ngược có đè lên ai khác không
-                    ResolveCollisionRecursive(viewModel, node, host, processedNodes, depth + 1);
+                    MoveNodeWithLockedInnerNodes(viewModel, host, hitTarget, newX, newY);
+                    ResolveCollisionRecursive(viewModel, hitTarget, host, processedNodes, depth + 1);
                     continue; 
                 }
 
@@ -205,8 +171,6 @@ namespace FlowMy.Services.Interaction
                 newY = otherNode.Y + pushDirection.Y;
 
                 MoveNodeWithLockedInnerNodes(viewModel, host, otherNode, newX, newY);
-
-                // Đệ quy kiểm tra node bị đẩy có overlap với node khác không
                 processedNodes.Add(otherNode);
                 ResolveCollisionRecursive(viewModel, otherNode, host, processedNodes, depth + 1);
             }
@@ -354,6 +318,13 @@ namespace FlowMy.Services.Interaction
         private static BodyContainerNode? FindOwningLockedBody(WorkflowEditorViewModel viewModel, WorkflowNode node)
         {
             if (node is BodyContainerNode) return null;
+
+            WorkflowNode? partnerNode = null;
+            if (node is LoopNode loopNode) partnerNode = loopNode.LoopBodyNode;
+            else if (node is AsyncTaskNode asyncNode) partnerNode = asyncNode.AsyncTaskBodyNode;
+            else if (node is LoopBodyNode loopBody) partnerNode = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+            else if (node is AsyncTaskBodyNode asyncBody) partnerNode = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+
             foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
             {
                 if (!body.LockInnerNodes) continue;
@@ -361,7 +332,10 @@ namespace FlowMy.Services.Interaction
                 var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
                 if (width <= 0 || height <= 0) continue;
 
-                if (new Rect(body.X, body.Y, width, height).Contains(GetNodeCenter(node)))
+                var rect = new Rect(body.X, body.Y, width, height);
+                if (rect.Contains(GetNodeCenter(node)))
+                    return body;
+                if (partnerNode != null && rect.Contains(GetNodeCenter(partnerNode)))
                     return body;
             }
             return null;

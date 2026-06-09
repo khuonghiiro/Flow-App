@@ -226,18 +226,7 @@ namespace FlowMy.Services.Interaction
         private static bool IsNodeLockedByBodyContainer(FlowMy.ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node)
         {
             if (node is BodyContainerNode) return false;
-            foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
-            {
-                if (!body.LockInnerNodes || body.Border == null) continue;
-                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border.ActualWidth > 0 ? body.Border.ActualWidth : body.Border.Width);
-                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border.ActualHeight > 0 ? body.Border.ActualHeight : body.Border.Height);
-                if (width <= 0 || height <= 0) continue;
-
-                var bounds = new Rect(body.X, body.Y, width, height);
-                if (bounds.Contains(GetNodeCenter(node)))
-                    return true;
-            }
-            return false;
+            return FindOwningLockedBody(viewModel, node) != null;
         }
 
         private static bool IsInteractiveElement(DependencyObject? source)
@@ -987,6 +976,15 @@ namespace FlowMy.Services.Interaction
         private static BodyContainerNode? FindOwningLockedBody(FlowMy.ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node)
         {
             if (node is BodyContainerNode) return null;
+
+            // Nếu node là LoopNode hoặc AsyncTaskNode, kiểm tra xem Body của nó có nằm trong locked container không
+            // Ngược lại, nếu node là Body, kiểm tra xem Diamond cha của nó có nằm trong locked container không
+            WorkflowNode? partnerNode = null;
+            if (node is LoopNode loopNode) partnerNode = loopNode.LoopBodyNode;
+            else if (node is AsyncTaskNode asyncNode) partnerNode = asyncNode.AsyncTaskBodyNode;
+            else if (node is LoopBodyNode loopBody) partnerNode = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+            else if (node is AsyncTaskBodyNode asyncBody) partnerNode = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+
             foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
             {
                 if (!body.LockInnerNodes) continue;
@@ -994,7 +992,14 @@ namespace FlowMy.Services.Interaction
                 var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
                 if (width <= 0 || height <= 0) continue;
 
-                if (new Rect(body.X, body.Y, width, height).Contains(GetNodeCenter(node)))
+                var rect = new Rect(body.X, body.Y, width, height);
+
+                // Nếu bản thân node nằm trong locked body
+                if (rect.Contains(GetNodeCenter(node)))
+                    return body;
+
+                // Nếu partner của node (phần còn lại của khối Loop/Async) nằm trong locked body
+                if (partnerNode != null && rect.Contains(GetNodeCenter(partnerNode)))
                     return body;
             }
             return null;
