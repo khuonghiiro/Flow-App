@@ -186,14 +186,23 @@ namespace FlowMy.Services.Interaction
 
                 // Logic bình thường: đẩy otherNode
                 var pushDirection = CalculatePushDirection(nodeBounds, otherBounds, overlapX, overlapY);
-                newX = otherNode.X + pushDirection.X;
-                newY = otherNode.Y + pushDirection.Y;
 
-                // Nếu otherNode là locked body, không di chuyển nó (đứng yên)
+                // Nếu otherNode là locked body, nó đứng yên -> phải đẩy ngược lại target node!
                 if (otherNode is BodyContainerNode pushedBody && pushedBody.LockInnerNodes)
                 {
-                    continue; // Locked body đứng yên, không đẩy
+                    // Lật ngược hướng đẩy để áp dụng cho node (target node)
+                    newX = node.X - pushDirection.X;
+                    newY = node.Y - pushDirection.Y;
+
+                    MoveNodeWithLockedInnerNodes(viewModel, host, node, newX, newY);
+
+                    // Đệ quy kiểm tra node vừa bị dội ngược có đè lên ai khác không
+                    ResolveCollisionRecursive(viewModel, node, host, processedNodes, depth + 1);
+                    continue; 
                 }
+
+                newX = otherNode.X + pushDirection.X;
+                newY = otherNode.Y + pushDirection.Y;
 
                 MoveNodeWithLockedInnerNodes(viewModel, host, otherNode, newX, newY);
 
@@ -214,70 +223,132 @@ namespace FlowMy.Services.Interaction
             double dy = newY - nodeToMove.Y;
             if (Math.Abs(dx) < 0.1 && Math.Abs(dy) < 0.1) return;
 
-            // Tìm các node bên trong NẾU nodeToMove là một locked body
-            var innerNodes = new List<WorkflowNode>();
+            // Tìm các node liên quan cần di chuyển cùng
+            var linkedNodes = new HashSet<WorkflowNode>();
+
+            // 1. Nếu là BodyContainerNode bị khóa -> di chuyển các node con
             if (nodeToMove is BodyContainerNode body && body.LockInnerNodes)
             {
                 var bodyRect = new Rect(body.X, body.Y, body.BodyWidth, body.BodyHeight);
                 foreach (var child in viewModel.Nodes)
                 {
                     if (child == body) continue;
-                    if (child is LoopBodyNode or AsyncTaskBodyNode) continue;
                     
-                    // Đoán vị trí center của child
                     var childW = child.Border?.ActualWidth > 1 ? child.Border.ActualWidth : 150;
                     var childH = child.Border?.ActualHeight > 1 ? child.Border.ActualHeight : 80;
                     var center = new Point(child.X + childW / 2.0, child.Y + childH / 2.0);
                     
                     if (bodyRect.Contains(center))
                     {
-                        innerNodes.Add(child);
+                        linkedNodes.Add(child);
                     }
                 }
             }
 
-            // Di chuyển nodeToMove
-            viewModel.UpdateNodePosition(nodeToMove, newX, newY);
-            host.UpdateNodePosition(nodeToMove, newX, newY);
-            if (nodeToMove.Border != null)
+            // 2. Coi LoopNode và LoopBodyNode là 1 khối duy nhất khi bị đẩy
+            if (nodeToMove is LoopNode loopNode && loopNode.LoopBodyNode != null)
             {
-                Canvas.SetLeft(nodeToMove.Border, newX);
-                Canvas.SetTop(nodeToMove.Border, newY);
+                linkedNodes.Add(loopNode.LoopBodyNode);
+                // Bắt luôn các node con trong LoopBodyNode
+                var loopInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, loopNode.LoopBodyNode);
+                foreach (var inner in loopInnerNodes) linkedNodes.Add(inner);
             }
-            UpdatePortsPosition(nodeToMove, host);
-            foreach (var conn in viewModel.Connections.Where(c => c.FromNode == nodeToMove || c.ToNode == nodeToMove))
+            else if (nodeToMove is LoopBodyNode loopBody)
+            {
+                // Tìm LoopNode cha tương ứng
+                var parentLoop = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+                if (parentLoop != null) linkedNodes.Add(parentLoop);
+                
+                // Bắt các node con trong LoopBodyNode
+                var loopInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, loopBody);
+                foreach (var inner in loopInnerNodes) linkedNodes.Add(inner);
+            }
+
+            // 3. Coi AsyncTaskNode và AsyncTaskBodyNode là 1 khối duy nhất khi bị đẩy
+            if (nodeToMove is AsyncTaskNode asyncNode && asyncNode.AsyncTaskBodyNode != null && asyncNode.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch)
+            {
+                linkedNodes.Add(asyncNode.AsyncTaskBodyNode);
+                var asyncInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, asyncNode.AsyncTaskBodyNode);
+                foreach (var inner in asyncInnerNodes) linkedNodes.Add(inner);
+            }
+            else if (nodeToMove is AsyncTaskBodyNode asyncBody)
+            {
+                var parentAsync = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+                if (parentAsync != null) linkedNodes.Add(parentAsync);
+                
+                var asyncInnerNodes = CaptureLoopOrAsyncBodyChildren(viewModel, asyncBody);
+                foreach (var inner in asyncInnerNodes) linkedNodes.Add(inner);
+            }
+
+            // Di chuyển bản thân node
+            UpdateNodeSilent(viewModel, host, nodeToMove, newX, newY);
+
+            // Di chuyển các node liên kết
+            foreach (var child in linkedNodes)
+            {
+                UpdateNodeSilent(viewModel, host, child, child.X + dx, child.Y + dy);
+            }
+        }
+
+        private void UpdateNodeSilent(WorkflowEditorViewModel viewModel, IWorkflowEditorHost host, WorkflowNode node, double x, double y)
+        {
+            viewModel.UpdateNodePosition(node, x, y);
+            host.UpdateNodePosition(node, x, y);
+            if (node.Border != null)
+            {
+                Canvas.SetLeft(node.Border, x);
+                Canvas.SetTop(node.Border, y);
+            }
+            UpdatePortsPosition(node, host);
+            foreach (var conn in viewModel.Connections.Where(c => c.FromNode == node || c.ToNode == node))
             {
                 host.UpdateConnectionPath(conn);
             }
+        }
 
-            // Di chuyển các node bên trong đi theo đúng khoảng cách dx, dy
-            foreach (var child in innerNodes)
+        private List<WorkflowNode> CaptureLoopOrAsyncBodyChildren(WorkflowEditorViewModel viewModel, WorkflowNode bodyNode)
+        {
+            // Simple spatial check for loop/async body
+            var result = new List<WorkflowNode>();
+            double bodyX = bodyNode.X;
+            double bodyY = bodyNode.Y;
+            double bodyW = 0;
+            double bodyH = 0;
+
+            if (bodyNode is LoopBodyNode lb) { bodyW = lb.Width > 0 ? lb.Width : 400; bodyH = lb.Height > 0 ? lb.Height : 300; }
+            else if (bodyNode is AsyncTaskBodyNode ab) { bodyW = ab.Width > 0 ? ab.Width : 400; bodyH = ab.Height > 0 ? ab.Height : 300; }
+
+            var rect = new Rect(bodyX, bodyY, bodyW, bodyH);
+
+            foreach (var child in viewModel.Nodes)
             {
-                var childNewX = child.X + dx;
-                var childNewY = child.Y + dy;
+                if (child == bodyNode || child is LoopNode || child is AsyncTaskNode || child is BodyContainerNode) continue;
                 
-                viewModel.UpdateNodePosition(child, childNewX, childNewY);
-                host.UpdateNodePosition(child, childNewX, childNewY);
-                if (child.Border != null)
+                var childW = child.Border?.ActualWidth > 1 ? child.Border.ActualWidth : 150;
+                var childH = child.Border?.ActualHeight > 1 ? child.Border.ActualHeight : 80;
+                var center = new Point(child.X + childW / 2.0, child.Y + childH / 2.0);
+                
+                if (rect.Contains(center))
                 {
-                    Canvas.SetLeft(child.Border, childNewX);
-                    Canvas.SetTop(child.Border, childNewY);
-                }
-                UpdatePortsPosition(child, host);
-                foreach (var conn in viewModel.Connections.Where(c => c.FromNode == child || c.ToNode == child))
-                {
-                    host.UpdateConnectionPath(conn);
+                    result.Add(child);
                 }
             }
+            return result;
+        }
+
+        private static Point GetNodeCenter(WorkflowNode node)
+        {
+            double nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+            double nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+            if (node is LoopBodyNode lb) { nodeW = lb.Width > 0 ? lb.Width : nodeW; nodeH = lb.Height > 0 ? lb.Height : nodeH; }
+            else if (node is AsyncTaskBodyNode ab) { nodeW = ab.Width > 0 ? ab.Width : nodeW; nodeH = ab.Height > 0 ? ab.Height : nodeH; }
+            return new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
         }
 
         private static bool IsNodeInsideBodyRect(WorkflowNode node, Rect bodyRect)
         {
             if (node is BodyContainerNode) return false;
-            var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-            var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-            var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
-            return bodyRect.Contains(center);
+            return bodyRect.Contains(GetNodeCenter(node));
         }
 
         private static BodyContainerNode? FindOwningLockedBody(WorkflowEditorViewModel viewModel, WorkflowNode node)
@@ -290,10 +361,7 @@ namespace FlowMy.Services.Interaction
                 var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
                 if (width <= 0 || height <= 0) continue;
 
-                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
-                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                if (new Rect(body.X, body.Y, width, height).Contains(GetNodeCenter(node)))
                     return body;
             }
             return null;
@@ -308,10 +376,7 @@ namespace FlowMy.Services.Interaction
                 var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
                 if (width <= 0 || height <= 0) continue;
 
-                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
-                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                if (new Rect(body.X, body.Y, width, height).Contains(GetNodeCenter(node)))
                     return body;
             }
             return null;
@@ -395,6 +460,16 @@ namespace FlowMy.Services.Interaction
                            (node.Border?.ActualWidth > 0 ? node.Border.ActualWidth :
                            (node.Border?.Width > 0 ? node.Border.Width : 400));
                 nodeHeight = loopBodyNode.Height > 0 ? loopBodyNode.Height :
+                            (node.Border?.ActualHeight > 0 ? node.Border.ActualHeight :
+                            (node.Border?.Height > 0 ? node.Border.Height : 300));
+            }
+            else if (node is AsyncTaskBodyNode asyncBodyNode)
+            {
+                // AsyncTaskBodyNode có Width/Height properties riêng
+                nodeWidth = asyncBodyNode.Width > 0 ? asyncBodyNode.Width :
+                           (node.Border?.ActualWidth > 0 ? node.Border.ActualWidth :
+                           (node.Border?.Width > 0 ? node.Border.Width : 400));
+                nodeHeight = asyncBodyNode.Height > 0 ? asyncBodyNode.Height :
                             (node.Border?.ActualHeight > 0 ? node.Border.ActualHeight :
                             (node.Border?.Height > 0 ? node.Border.Height : 300));
             }

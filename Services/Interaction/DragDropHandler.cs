@@ -214,6 +214,15 @@ namespace FlowMy.Services.Interaction
                 : null;
         }
 
+        private static Point GetNodeCenter(WorkflowNode node)
+        {
+            double nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+            double nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+            if (node is LoopBodyNode lb) { nodeW = lb.Width > 0 ? lb.Width : nodeW; nodeH = lb.Height > 0 ? lb.Height : nodeH; }
+            else if (node is AsyncTaskBodyNode ab) { nodeW = ab.Width > 0 ? ab.Width : nodeW; nodeH = ab.Height > 0 ? ab.Height : nodeH; }
+            return new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+        }
+
         private static bool IsNodeLockedByBodyContainer(FlowMy.ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node)
         {
             if (node is BodyContainerNode) return false;
@@ -224,10 +233,8 @@ namespace FlowMy.Services.Interaction
                 var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border.ActualHeight > 0 ? body.Border.ActualHeight : body.Border.Height);
                 if (width <= 0 || height <= 0) continue;
 
-                var centerX = node.X + ((node.Border?.ActualWidth ?? node.Border?.Width ?? 150) / 2.0);
-                var centerY = node.Y + ((node.Border?.ActualHeight ?? node.Border?.Height ?? 80) / 2.0);
                 var bounds = new Rect(body.X, body.Y, width, height);
-                if (bounds.Contains(new Point(centerX, centerY)))
+                if (bounds.Contains(GetNodeCenter(node)))
                     return true;
             }
             return false;
@@ -987,10 +994,7 @@ namespace FlowMy.Services.Interaction
                 var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
                 if (width <= 0 || height <= 0) continue;
 
-                var nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-                var nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-                var center = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
-                if (new Rect(body.X, body.Y, width, height).Contains(center))
+                if (new Rect(body.X, body.Y, width, height).Contains(GetNodeCenter(node)))
                     return body;
             }
             return null;
@@ -1000,14 +1004,58 @@ namespace FlowMy.Services.Interaction
         {
             var result = new List<WorkflowNode>();
             var bounds = new Rect(bodyNode.X, bodyNode.Y, bodyNode.BodyWidth, bodyNode.BodyHeight);
+            var initialCaptured = new HashSet<WorkflowNode>();
+
             foreach (var node in viewModel.Nodes)
             {
                 if (ReferenceEquals(node, bodyNode)) continue;
-                if (node is LoopBodyNode or AsyncTaskBodyNode) continue;
-                var cx = node.X + (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth / 2 : 75);
-                var cy = node.Y + (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight / 2 : 40);
+                
+                double nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+                double nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+                if (node is LoopBodyNode lb) { nodeW = lb.Width > 0 ? lb.Width : nodeW; nodeH = lb.Height > 0 ? lb.Height : nodeH; }
+                else if (node is AsyncTaskBodyNode ab) { nodeW = ab.Width > 0 ? ab.Width : nodeW; nodeH = ab.Height > 0 ? ab.Height : nodeH; }
+
+                var cx = node.X + nodeW / 2.0;
+                var cy = node.Y + nodeH / 2.0;
+
                 if (bounds.Contains(new Point(cx, cy)))
-                    result.Add(node);
+                {
+                    initialCaptured.Add(node);
+                }
+            }
+
+            foreach (var node in initialCaptured.ToList())
+            {
+                result.Add(node);
+
+                if (node is LoopNode loopNode && loopNode.LoopBodyNode != null && !initialCaptured.Contains(loopNode.LoopBodyNode))
+                {
+                    result.Add(loopNode.LoopBodyNode);
+                    initialCaptured.Add(loopNode.LoopBodyNode);
+                }
+                else if (node is LoopBodyNode loopBody)
+                {
+                    var parentLoop = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+                    if (parentLoop != null && !initialCaptured.Contains(parentLoop))
+                    {
+                        result.Add(parentLoop);
+                        initialCaptured.Add(parentLoop);
+                    }
+                }
+                else if (node is AsyncTaskNode asyncNode && asyncNode.AsyncTaskBodyNode != null && !initialCaptured.Contains(asyncNode.AsyncTaskBodyNode))
+                {
+                    result.Add(asyncNode.AsyncTaskBodyNode);
+                    initialCaptured.Add(asyncNode.AsyncTaskBodyNode);
+                }
+                else if (node is AsyncTaskBodyNode asyncBody)
+                {
+                    var parentAsync = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+                    if (parentAsync != null && !initialCaptured.Contains(parentAsync))
+                    {
+                        result.Add(parentAsync);
+                        initialCaptured.Add(parentAsync);
+                    }
+                }
             }
 
             return result;

@@ -168,14 +168,60 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         if (vm == null) return result;
 
         var bounds = new Rect(bodyNode.X, bodyNode.Y, bodyNode.BodyWidth, bodyNode.BodyHeight);
+        var initialCaptured = new HashSet<WorkflowNode>();
+
         foreach (var node in vm.Nodes)
         {
             if (ReferenceEquals(node, bodyNode)) continue;
-            if (node is LoopBodyNode or AsyncTaskBodyNode) continue;
-            var cx = node.X + (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth / 2 : 75);
-            var cy = node.Y + (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight / 2 : 40);
+            
+            // Lấy width/height chính xác kể cả cho LoopBody/AsyncBody
+            double nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+            double nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+            if (node is LoopBodyNode lb) { nodeW = lb.Width > 0 ? lb.Width : nodeW; nodeH = lb.Height > 0 ? lb.Height : nodeH; }
+            else if (node is AsyncTaskBodyNode ab) { nodeW = ab.Width > 0 ? ab.Width : nodeW; nodeH = ab.Height > 0 ? ab.Height : nodeH; }
+
+            var cx = node.X + nodeW / 2.0;
+            var cy = node.Y + nodeH / 2.0;
+
             if (bounds.Contains(new Point(cx, cy)))
-                result.Add(node);
+            {
+                initialCaptured.Add(node);
+            }
+        }
+
+        // Bổ sung các mảnh ghép liên kết (nếu diamond bị bắt thì body cũng bị bắt và ngược lại)
+        foreach (var node in initialCaptured.ToList())
+        {
+            result.Add(node);
+
+            if (node is LoopNode loopNode && loopNode.LoopBodyNode != null && !initialCaptured.Contains(loopNode.LoopBodyNode))
+            {
+                result.Add(loopNode.LoopBodyNode);
+                initialCaptured.Add(loopNode.LoopBodyNode); // Để tránh duplicate
+            }
+            else if (node is LoopBodyNode loopBody)
+            {
+                var parentLoop = vm.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+                if (parentLoop != null && !initialCaptured.Contains(parentLoop))
+                {
+                    result.Add(parentLoop);
+                    initialCaptured.Add(parentLoop);
+                }
+            }
+            else if (node is AsyncTaskNode asyncNode && asyncNode.AsyncTaskBodyNode != null && !initialCaptured.Contains(asyncNode.AsyncTaskBodyNode))
+            {
+                result.Add(asyncNode.AsyncTaskBodyNode);
+                initialCaptured.Add(asyncNode.AsyncTaskBodyNode);
+            }
+            else if (node is AsyncTaskBodyNode asyncBody)
+            {
+                var parentAsync = vm.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+                if (parentAsync != null && !initialCaptured.Contains(parentAsync))
+                {
+                    result.Add(parentAsync);
+                    initialCaptured.Add(parentAsync);
+                }
+            }
         }
 
         return result;
@@ -242,8 +288,6 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         foreach (var node in vm.Nodes)
         {
             if (lockedSet.Contains(node)) continue;
-            if (node is LoopBodyNode or AsyncTaskBodyNode) continue;
-
             var width = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
             var height = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
             var nodeRect = new Rect(node.X, node.Y, width, height);
@@ -279,12 +323,44 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             double dx = targetX - node.X;
             double dy = targetY - node.Y;
 
-            List<WorkflowNode> innerNodes = new List<WorkflowNode>();
+            // Gather all linked nodes (node itself + associated body/parent + inner nodes if any)
+            var linkedNodes = new HashSet<WorkflowNode>();
+
             if (node is BodyContainerNode pushedBody && pushedBody.LockInnerNodes)
             {
-                innerNodes = CaptureNodesInsideBody(pushedBody);
+                var innerNodes = CaptureNodesInsideBody(pushedBody);
+                foreach (var inner in innerNodes) linkedNodes.Add(inner);
+            }
+            else if (node is LoopNode loopNode && loopNode.LoopBodyNode != null)
+            {
+                linkedNodes.Add(loopNode.LoopBodyNode);
+                var loopInnerNodes = CaptureLoopOrAsyncBodyChildren(vm, loopNode.LoopBodyNode);
+                foreach (var inner in loopInnerNodes) linkedNodes.Add(inner);
+            }
+            else if (node is LoopBodyNode loopBody)
+            {
+                var parentLoop = vm.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+                if (parentLoop != null) linkedNodes.Add(parentLoop);
+                
+                var loopInnerNodes = CaptureLoopOrAsyncBodyChildren(vm, loopBody);
+                foreach (var inner in loopInnerNodes) linkedNodes.Add(inner);
+            }
+            else if (node is AsyncTaskNode asyncNode && asyncNode.AsyncTaskBodyNode != null && asyncNode.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch)
+            {
+                linkedNodes.Add(asyncNode.AsyncTaskBodyNode);
+                var asyncInnerNodes = CaptureLoopOrAsyncBodyChildren(vm, asyncNode.AsyncTaskBodyNode);
+                foreach (var inner in asyncInnerNodes) linkedNodes.Add(inner);
+            }
+            else if (node is AsyncTaskBodyNode asyncBody)
+            {
+                var parentAsync = vm.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+                if (parentAsync != null) linkedNodes.Add(parentAsync);
+                
+                var asyncInnerNodes = CaptureLoopOrAsyncBodyChildren(vm, asyncBody);
+                foreach (var inner in asyncInnerNodes) linkedNodes.Add(inner);
             }
 
+            // Move the pushed node itself
             Host.UpdateNodePosition(node, targetX, targetY);
             foreach (var conn in vm.Connections.Where(c => c.FromNode == node || c.ToNode == node))
             {
@@ -292,7 +368,8 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             }
             movedNodes.Add(node);
 
-            foreach (var inner in innerNodes)
+            // Move linked nodes directly
+            foreach (var inner in linkedNodes)
             {
                 Host.UpdateNodePosition(inner, inner.X + dx, inner.Y + dy);
                 foreach (var conn in vm.Connections.Where(c => c.FromNode == inner || c.ToNode == inner))
@@ -306,6 +383,35 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         {
             _collisionResolver.ResolveCollision(vm, moved, Host);
         }
+    }
+
+    private List<WorkflowNode> CaptureLoopOrAsyncBodyChildren(FlowMy.ViewModels.WorkflowEditorViewModel vm, WorkflowNode bodyNode)
+    {
+        var result = new List<WorkflowNode>();
+        double bodyX = bodyNode.X;
+        double bodyY = bodyNode.Y;
+        double bodyW = 0;
+        double bodyH = 0;
+
+        if (bodyNode is LoopBodyNode lb) { bodyW = lb.Width > 0 ? lb.Width : 400; bodyH = lb.Height > 0 ? lb.Height : 300; }
+        else if (bodyNode is AsyncTaskBodyNode ab) { bodyW = ab.Width > 0 ? ab.Width : 400; bodyH = ab.Height > 0 ? ab.Height : 300; }
+
+        var rect = new Rect(bodyX, bodyY, bodyW, bodyH);
+
+        foreach (var child in vm.Nodes)
+        {
+            if (child == bodyNode || child is LoopNode || child is AsyncTaskNode || child is BodyContainerNode) continue;
+            
+            var childW = child.Border?.ActualWidth > 1 ? child.Border.ActualWidth : 150;
+            var childH = child.Border?.ActualHeight > 1 ? child.Border.ActualHeight : 80;
+            var center = new Point(child.X + childW / 2.0, child.Y + childH / 2.0);
+            
+            if (rect.Contains(center))
+            {
+                result.Add(child);
+            }
+        }
+        return result;
     }
 
     private static void ClearEffectsRecursive(DependencyObject parent)
