@@ -115,7 +115,7 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                     <Button Grid.Column="2" x:Name="CloseBtn" Width="32" Height="32" Content="✕"
-                            FontSize="14" FontWeight="Bold" Cursor="Hand"
+                            FontSize="14" FontWeight="Bold" Cursor="Hand" Margin="0" Padding="0"
                             Style="{DynamicResource DangerButton}" Click="CloseBtn_Click"/>
                 </Grid>
             </Border>
@@ -343,7 +343,7 @@
                                 <!-- HasOutputsPanel -->
                                 <Border Background="{DynamicResource WindowBackground}" CornerRadius="6"
                                         BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
-                                        Padding="10,8">
+                                        Padding="10,8" Margin="0,0,0,6">
                                     <StackPanel>
                                         <CheckBox IsChecked="{Binding HasOutputsPanel, Mode=TwoWay}"
                                                   Foreground="{DynamicResource TextBrush}" Margin="0,0,0,3">
@@ -385,7 +385,7 @@
                             <StackPanel>
                                 <Grid Margin="0,0,0,8">
                                     <TextBlock Text="📝 Custom TextBox fields" Style="{StaticResource SectionHeader}" VerticalAlignment="Center"/>
-                                    <Button Style="{StaticResource AddBtn}" Content="+ Thêm" HorizontalAlignment="Right"
+                                    <Button Style="{StaticResource AddBtn}" Content="+" Margin = "0" HorizontalAlignment="Right"
                                             Padding="8,0" Command="{Binding AddTextBoxCommand}"/>
                                 </Grid>
                                 <ItemsControl ItemsSource="{Binding CustomTextBoxes}">
@@ -430,7 +430,7 @@
                             <StackPanel>
                                 <Grid Margin="0,0,0,8">
                                     <TextBlock Text="🔽 Custom ComboBox fields" Style="{StaticResource SectionHeader}" VerticalAlignment="Center"/>
-                                    <Button Style="{StaticResource AddBtn}" Content="+ Thêm" HorizontalAlignment="Right"
+                                    <Button Style="{StaticResource AddBtn}" Content="+" Margin = "0" HorizontalAlignment="Right"
                                             Padding="8,0" Command="{Binding AddComboBoxCommand}"/>
                                 </Grid>
                                 <ItemsControl ItemsSource="{Binding CustomComboBoxes}">
@@ -474,7 +474,7 @@
                             <StackPanel>
                                 <Grid Margin="0,0,0,8">
                                     <TextBlock Text="✅ Custom CheckBox options" Style="{StaticResource SectionHeader}" VerticalAlignment="Center"/>
-                                    <Button Style="{StaticResource AddBtn}" Content="+ Thêm" HorizontalAlignment="Right"
+                                    <Button Style="{StaticResource AddBtn}" Content="+" Margin = "0" HorizontalAlignment="Right"
                                             Padding="8,0" Command="{Binding AddCheckBoxCommand}"/>
                                 </Grid>
                                 <ItemsControl ItemsSource="{Binding CustomCheckBoxes}">
@@ -509,7 +509,7 @@
                             <StackPanel>
                                 <Grid Margin="0,0,0,8">
                                     <TextBlock Text="🔘 Radio Groups" Style="{StaticResource SectionHeader}" VerticalAlignment="Center"/>
-                                    <Button Style="{StaticResource AddBtn}" Content="+ Thêm group" HorizontalAlignment="Right"
+                                    <Button Style="{StaticResource AddBtn}" Content="+" Margin="0" HorizontalAlignment="Right"
                                             Padding="8,0" Command="{Binding AddRadioGroupCommand}"/>
                                 </Grid>
                                 <ItemsControl ItemsSource="{Binding RadioGroups}">
