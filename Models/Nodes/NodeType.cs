@@ -1,4 +1,4 @@
-namespace FlowMy.Models
+﻿namespace FlowMy.Models
 {
     /// <summary>
     /// Enum cho loại node
