@@ -544,7 +544,7 @@ Chỉ khai báo trong `customPropertyHandlers` những gì **đặc thù của n
                                                               SelectedValuePath="NodeId" DisplayMemberPath="Title"
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="2">
+                                                <StackPanel Grid.Column="2" Margin="10,0,0,0">
                                                     <TextBlock Text="Kiểu line OUT" Foreground="{DynamicResource TextBrush}"
                                                                FontSize="10" Opacity="0.7" Margin="0,0,0,4"/>
                                                     <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"

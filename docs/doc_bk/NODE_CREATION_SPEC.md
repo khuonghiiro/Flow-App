@@ -552,7 +552,7 @@ private static WorkflowNode CreateYourNode(double x, double y)
                                                               SelectedValue="{Binding SelectedOutgoingNodeId, Mode=TwoWay}"
                                                               PlaceholderText="Chọn node OUT..."/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="2">
+                                                <StackPanel Grid.Column="2" Margin="10,0,0,0">
                                                     <TextBlock Text="Kiểu line OUT"
                                                                Foreground="{DynamicResource TextBrush}"
                                                                FontSize="12" Opacity="0.7" Margin="0,0,0,4"/>

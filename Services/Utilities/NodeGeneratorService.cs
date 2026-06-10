@@ -622,7 +622,7 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine("                                                              SelectedValuePath=\"NodeId\" DisplayMemberPath=\"Title\"");
             sb.AppendLine("                                                              SelectedValue=\"{Binding SelectedOutgoingNodeId, Mode=TwoWay}\"/>");
             sb.AppendLine("                                                </StackPanel>");
-            sb.AppendLine("                                                <StackPanel Grid.Column=\"2\">");
+            sb.AppendLine("                                                <StackPanel Grid.Column=\"2\" Margin=\"10,0,0,0\">");
             sb.AppendLine("                                                    <TextBlock Text=\"Kiểu line OUT\" Foreground=\"{DynamicResource TextBrush}\"");
             sb.AppendLine("                                                               FontSize=\"10\" Opacity=\"0.7\" Margin=\"0,0,0,4\"/>");
             sb.AppendLine("                                                    <ComboBox Height=\"32\" Style=\"{DynamicResource BaseComboBox}\"");
