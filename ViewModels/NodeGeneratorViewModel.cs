@@ -55,8 +55,11 @@ namespace FlowMy.ViewModels
 
         // ─── Dialog options ───────────────────────────────────────────────────
         [ObservableProperty] private bool _hasInputSection = true;
+        [ObservableProperty] private int _defaultInputCount = 1;
+        [ObservableProperty] private bool _hasCheckboxToToggleInputs = false;
         [ObservableProperty] private bool _hasOutputsPanel = true;
         [ObservableProperty] private bool _hasDynamicInputs = false;
+        [ObservableProperty] private bool _hasCustomKeyOverride = false;
 
         // ─── Output Keys (csv) ────────────────────────────────────────────────
         [ObservableProperty] private string _outputKeysRaw = string.Empty;
@@ -227,28 +230,21 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void GenerateNode()
         {
-            ResultText = string.Empty;
-            HasError = false;
-            IsSuccess = false;
-            HasResult = false;
-
-            var config = BuildConfig();
-            var validation = ValidateConfig(config);
-            if (!string.IsNullOrEmpty(validation))
+            RegisterToSystem();
+            if (HasRegistrationError)
             {
-                ResultText = validation;
+                ResultText = RegistrationLog;
                 HasError = true;
+                IsSuccess = false;
                 HasResult = true;
-                return;
             }
-
-            var service = new NodeGeneratorService();
-            var result = service.GenerateAll(config);
-
-            ResultText = result.ToSummary();
-            HasError = !result.IsSuccess;
-            IsSuccess = result.IsSuccess && result.CreatedFiles.Count > 0;
-            HasResult = true;
+            else
+            {
+                ResultText = RegistrationLog;
+                HasError = false;
+                IsSuccess = true;
+                HasResult = true;
+            }
         }
 
         // ─── CLI JSON command ─────────────────────────────────────────────────
@@ -358,8 +354,11 @@ namespace FlowMy.ViewModels
                 AddNewNodeType = AddNewNodeType,
                 NodeTypeName = NodeTypeName?.Trim() ?? string.Empty,
                 HasInputSection = HasInputSection,
+                DefaultInputCount = DefaultInputCount,
+                HasCheckboxToToggleInputs = HasCheckboxToToggleInputs,
                 HasOutputsPanel = HasOutputsPanel,
                 HasDynamicInputs = HasDynamicInputs,
+                HasCustomKeyOverride = HasCustomKeyOverride,
                 ProjectRoot = ProjectRoot?.Trim() ?? string.Empty,
             };
 

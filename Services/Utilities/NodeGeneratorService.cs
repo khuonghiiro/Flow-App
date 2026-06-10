@@ -33,6 +33,15 @@ namespace FlowMy.Services.Utilities
         /// <summary>Có section "Input từ node khác" trong dialog không (NodeSearchComboBox)</summary>
         public bool HasInputSection { get; set; } = true;
 
+        /// <summary>Số lượng combo box Node Key cho input mặc định</summary>
+        public int DefaultInputCount { get; set; } = 1;
+
+        /// <summary>Có CheckBox để bật/tắt toàn bộ khu vực Input Node (giống Background Mode Checkbox)</summary>
+        public bool HasCheckboxToToggleInputs { get; set; } = false;
+
+        /// <summary>Có checkbox để cho phép Override Key (đổi CustomKey)</summary>
+        public bool HasCustomKeyOverride { get; set; } = false;
+
         /// <summary>Có OutputsPanel trong dialog không</summary>
         public bool HasOutputsPanel { get; set; } = true;
 
@@ -415,40 +424,58 @@ namespace FlowMy.Services.Utilities
             {
                 sb.AppendLine();
                 sb.AppendLine("                            <!-- 📍 Input từ node khác -->");
-                sb.AppendLine("                            <Border Background=\"{DynamicResource WindowBackground}\"");
-                sb.AppendLine("                                    BorderBrush=\"{DynamicResource ControlBorderBrush}\"");
-                sb.AppendLine("                                    BorderThickness=\"1\" CornerRadius=\"8\" Padding=\"12\" Margin=\"0,0,0,12\">");
-                sb.AppendLine("                                <StackPanel>");
-                sb.AppendLine("                                    <TextBlock Text=\"📍 Input — Dữ liệu đầu vào\" Foreground=\"{DynamicResource TextBrush}\"");
-                sb.AppendLine("                                               FontSize=\"11\" FontWeight=\"SemiBold\" Margin=\"0,0,0,6\"/>");
-                sb.AppendLine("                                    <TextBlock Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\"");
-                sb.AppendLine("                                               TextWrapping=\"Wrap\" Margin=\"0,0,0,10\">");
-                sb.AppendLine("                                        <Run Text=\"Chọn node nguồn và key output để lấy dữ liệu.\"/>");
-                sb.AppendLine("                                    </TextBlock>");
-                sb.AppendLine("                                    <Grid>");
-                sb.AppendLine("                                        <Grid.ColumnDefinitions>");
-                sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");
-                sb.AppendLine("                                            <ColumnDefinition Width=\"8\"/>");
-                sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");
-                sb.AppendLine("                                        </Grid.ColumnDefinitions>");
-                sb.AppendLine("                                        <StackPanel Grid.Column=\"0\">");
-                sb.AppendLine("                                            <TextBlock Text=\"Node\" Foreground=\"{DynamicResource TextMuted}\"");
-                sb.AppendLine("                                                       FontSize=\"10\" Margin=\"0,0,0,4\"/>");
-                sb.AppendLine("                                            <controls:NodeSearchComboBoxUserControl x:Name=\"SourceNodeCombo\" Height=\"32\"");
-                sb.AppendLine("                                                      ItemsSource=\"{Binding AvailableNodeOptions}\"");
-                sb.AppendLine("                                                      SelectedValuePath=\"NodeId\" DisplayMemberPath=\"Title\"");
-                sb.AppendLine("                                                      SelectedValue=\"{Binding SourceNodeId, Mode=TwoWay}\"/>");
-                sb.AppendLine("                                        </StackPanel>");
-                sb.AppendLine("                                        <StackPanel Grid.Column=\"2\">");
-                sb.AppendLine("                                            <TextBlock Text=\"Key\" Foreground=\"{DynamicResource TextMuted}\"");
-                sb.AppendLine("                                                       FontSize=\"10\" Margin=\"0,0,0,4\"/>");
-                sb.AppendLine("                                            <ComboBox x:Name=\"SourceKeyCombo\" Height=\"32\" Style=\"{DynamicResource BaseComboBox}\"");
-                sb.AppendLine("                                                      ItemsSource=\"{Binding SourceKeyOptions}\"");
-                sb.AppendLine("                                                      SelectedValue=\"{Binding SourceOutputKey, Mode=TwoWay}\"/>");
-                sb.AppendLine("                                        </StackPanel>");
-                sb.AppendLine("                                    </Grid>");
-                sb.AppendLine("                                </StackPanel>");
-                sb.AppendLine("                            </Border>");
+                if (c.HasCheckboxToToggleInputs)
+                {
+                    sb.AppendLine("                            <CheckBox IsChecked=\"{Binding UseDynamicInput, Mode=TwoWay}\" Cursor=\"Hand\" Margin=\"0,0,0,8\">");
+                    sb.AppendLine("                                <TextBlock Foreground=\"{DynamicResource TextBrush}\" FontSize=\"11\" VerticalAlignment=\"Center\">");
+                    sb.AppendLine("                                    <Run Text=\"Sử dụng input động từ node khác\"/>");
+                    sb.AppendLine("                                </TextBlock>");
+                    sb.AppendLine("                            </CheckBox>");
+                    sb.AppendLine("                            <StackPanel Visibility=\"{Binding UseDynamicInput, Converter={StaticResource BoolToVisibilityConverter}}\">");
+                }
+                int count = Math.Max(1, c.DefaultInputCount);
+                for (int i = 1; i <= count; i++)
+                {
+                    string suffix = count > 1 ? i.ToString() : "";
+                    sb.AppendLine("                            <Border Background=\"{DynamicResource WindowBackground}\"");
+                    sb.AppendLine("                                    BorderBrush=\"{DynamicResource ControlBorderBrush}\"");
+                    sb.AppendLine("                                    BorderThickness=\"1\" CornerRadius=\"8\" Padding=\"12\" Margin=\"0,0,0,12\">");
+                    sb.AppendLine("                                <StackPanel>");
+                    sb.AppendLine($"                                    <TextBlock Text=\"📍 Input — Dữ liệu đầu vào {suffix}\" Foreground=\"{{DynamicResource TextBrush}}\"");
+                    sb.AppendLine("                                               FontSize=\"11\" FontWeight=\"SemiBold\" Margin=\"0,0,0,6\"/>");
+                    sb.AppendLine("                                    <TextBlock Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\"");
+                    sb.AppendLine("                                               TextWrapping=\"Wrap\" Margin=\"0,0,0,10\">");
+                    sb.AppendLine("                                        <Run Text=\"Chọn node nguồn và key output để lấy dữ liệu.\"/>");
+                    sb.AppendLine("                                    </TextBlock>");
+                    sb.AppendLine("                                    <Grid>");
+                    sb.AppendLine("                                        <Grid.ColumnDefinitions>");
+                    sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");
+                    sb.AppendLine("                                            <ColumnDefinition Width=\"8\"/>");
+                    sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");
+                    sb.AppendLine("                                        </Grid.ColumnDefinitions>");
+                    sb.AppendLine("                                        <StackPanel Grid.Column=\"0\">");
+                    sb.AppendLine("                                            <TextBlock Text=\"Node\" Foreground=\"{DynamicResource TextMuted}\"");
+                    sb.AppendLine("                                                       FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                    sb.AppendLine($"                                            <controls:NodeSearchComboBoxUserControl x:Name=\"SourceNodeCombo{suffix}\" Height=\"32\"");
+                    sb.AppendLine("                                                      ItemsSource=\"{Binding AvailableNodeOptions}\"");
+                    sb.AppendLine("                                                      SelectedValuePath=\"NodeId\" DisplayMemberPath=\"Title\"");
+                    sb.AppendLine($"                                                      SelectedValue=\"{{Binding SourceNodeId{suffix}, Mode=TwoWay}}\"/>");
+                    sb.AppendLine("                                        </StackPanel>");
+                    sb.AppendLine("                                        <StackPanel Grid.Column=\"2\">");
+                    sb.AppendLine("                                            <TextBlock Text=\"Key\" Foreground=\"{DynamicResource TextMuted}\"");
+                    sb.AppendLine("                                                       FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                    sb.AppendLine($"                                            <ComboBox x:Name=\"SourceKeyCombo{suffix}\" Height=\"32\" Style=\"{{DynamicResource BaseComboBox}}\"");
+                    sb.AppendLine($"                                                      ItemsSource=\"{{Binding SourceKeyOptions{suffix}}}\"");
+                    sb.AppendLine($"                                                      SelectedValue=\"{{Binding SourceOutputKey{suffix}, Mode=TwoWay}}\"/>");
+                    sb.AppendLine("                                        </StackPanel>");
+                    sb.AppendLine("                                    </Grid>");
+                    sb.AppendLine("                                </StackPanel>");
+                    sb.AppendLine("                            </Border>");
+                }
+                if (c.HasCheckboxToToggleInputs)
+                {
+                    sb.AppendLine("                            </StackPanel>");
+                }
             }
 
             // Dynamic Inputs panel (nếu có)
@@ -520,6 +547,28 @@ namespace FlowMy.Services.Utilities
                     sb.AppendLine($"                                              Foreground=\"{{DynamicResource TextBrush}}\"");
                     sb.AppendLine($"                                              IsChecked=\"{{Binding {chk.BindingPath}, Mode=TwoWay}}\"/>");
                 }
+                sb.AppendLine("                                </StackPanel>");
+                sb.AppendLine("                            </Border>");
+            }
+
+            // Custom Key Override
+            if (c.HasCustomKeyOverride)
+            {
+                sb.AppendLine();
+                sb.AppendLine("                            <!-- 🔑 Custom Key Override -->");
+                sb.AppendLine("                            <Border Background=\"{DynamicResource WindowBackground}\"");
+                sb.AppendLine("                                    BorderBrush=\"{DynamicResource ControlBorderBrush}\"");
+                sb.AppendLine("                                    BorderThickness=\"1\" CornerRadius=\"8\" Padding=\"12\" Margin=\"0,0,0,12\">");
+                sb.AppendLine("                                <StackPanel>");
+                sb.AppendLine("                                    <CheckBox IsChecked=\"{Binding UseCustomKey, Mode=TwoWay}\" Cursor=\"Hand\" Margin=\"0,0,0,8\">");
+                sb.AppendLine("                                        <TextBlock Foreground=\"{DynamicResource TextBrush}\" FontSize=\"11\" VerticalAlignment=\"Center\">");
+                sb.AppendLine("                                            <Run Text=\"Ghi đè Output Key mặc định\"/>");
+                sb.AppendLine("                                        </TextBlock>");
+                sb.AppendLine("                                    </CheckBox>");
+                sb.AppendLine("                                    <StackPanel Visibility=\"{Binding UseCustomKey, Converter={StaticResource BoolToVisibilityConverter}}\">");
+                sb.AppendLine("                                        <TextBlock Text=\"Custom Key\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                sb.AppendLine("                                        <TextBox Height=\"32\" Style=\"{DynamicResource BaseTextBoxV2}\" Text=\"{Binding CustomKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\" />");
+                sb.AppendLine("                                    </StackPanel>");
                 sb.AppendLine("                                </StackPanel>");
                 sb.AppendLine("                            </Border>");
             }
@@ -734,24 +783,40 @@ namespace FlowMy.Services.Utilities
             if (c.HasInputSection)
             {
                 sb.AppendLine("        // Properties cho input section — chọn node nguồn và key output của nó");
-                sb.AppendLine("        [ObservableProperty] private string _sourceNodeId = string.Empty;");
-                sb.AppendLine("        [ObservableProperty] private string _sourceOutputKey = string.Empty;");
                 sb.AppendLine("        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();");
-                sb.AppendLine("        // WorkflowOutputKeyOption chứa Key + DisplayName + Type — dùng SelectedValuePath=\"Key\"");
-                sb.AppendLine("        public ObservableCollection<WorkflowOutputKeyOption> SourceKeyOptions { get; } = new();");
-                sb.AppendLine();
-                sb.AppendLine("        partial void OnSourceNodeIdChanged(string value)");
-                sb.AppendLine("        {");
-                sb.AppendLine("            // TODO: Lưu SourceNodeId vào node nếu node có property này:");
-                sb.AppendLine($"            // _{LowerFirst(c.NodeName)}Node.SourceNodeId = value;");
-                sb.AppendLine("            FillOutputKeys(value, SourceKeyOptions);");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-                sb.AppendLine("        partial void OnSourceOutputKeyChanged(string value)");
-                sb.AppendLine("        {");
-                sb.AppendLine("            // TODO: Lưu SourceOutputKey vào node nếu node có property này:");
-                sb.AppendLine($"            // _{LowerFirst(c.NodeName)}Node.SourceOutputKey = value;");
-                sb.AppendLine("        }");
+                if (c.HasCheckboxToToggleInputs)
+                {
+                    sb.AppendLine("        [ObservableProperty] private bool _useDynamicInput = false;");
+                }
+                
+                int count = Math.Max(1, c.DefaultInputCount);
+                for (int i = 1; i <= count; i++)
+                {
+                    string suffix = count > 1 ? i.ToString() : "";
+                    sb.AppendLine($"        [ObservableProperty] private string _{LowerFirst("SourceNodeId")}{suffix} = string.Empty;");
+                    sb.AppendLine($"        [ObservableProperty] private string _{LowerFirst("SourceOutputKey")}{suffix} = string.Empty;");
+                    sb.AppendLine($"        public ObservableCollection<WorkflowOutputKeyOption> SourceKeyOptions{suffix} {{ get; }} = new();");
+                    sb.AppendLine();
+                    sb.AppendLine($"        partial void OnSourceNodeId{suffix}Changed(string value)");
+                    sb.AppendLine("        {");
+                    sb.AppendLine("            // TODO: Lưu SourceNodeId vào node nếu node có property này:");
+                    sb.AppendLine($"            // _{LowerFirst(c.NodeName)}Node.SourceNodeId{suffix} = value;");
+                    sb.AppendLine($"            FillOutputKeys(value, SourceKeyOptions{suffix});");
+                    sb.AppendLine("        }");
+                    sb.AppendLine();
+                    sb.AppendLine($"        partial void OnSourceOutputKey{suffix}Changed(string value)");
+                    sb.AppendLine("        {");
+                    sb.AppendLine("            // TODO: Lưu SourceOutputKey vào node nếu node có property này:");
+                    sb.AppendLine($"            // _{LowerFirst(c.NodeName)}Node.SourceOutputKey{suffix} = value;");
+                    sb.AppendLine("        }");
+                    sb.AppendLine();
+                }
+            }
+
+            if (c.HasCustomKeyOverride)
+            {
+                sb.AppendLine("        [ObservableProperty] private bool _useCustomKey = false;");
+                sb.AppendLine("        [ObservableProperty] private string _customKey = string.Empty;");
                 sb.AppendLine();
             }
 
@@ -787,10 +852,16 @@ namespace FlowMy.Services.Utilities
             {
                 sb.AppendLine("            // Load node options và sync properties từ node");
                 sb.AppendLine("            RefreshAllNodesWithOutputs(AvailableNodeOptions);");
-                sb.AppendLine($"            // TODO: nếu {c.NodeClassName} có SourceNodeId/SourceOutputKey thì bỏ comment 2 dòng dưới:");
-                sb.AppendLine($"            // SourceNodeId = _{LowerFirst(c.NodeName)}Node.SourceNodeId;");
-                sb.AppendLine($"            // SourceOutputKey = _{LowerFirst(c.NodeName)}Node.SourceOutputKey;");
-                sb.AppendLine($"            FillOutputKeys(SourceNodeId, SourceKeyOptions);");
+                
+                int count = Math.Max(1, c.DefaultInputCount);
+                for (int i = 1; i <= count; i++)
+                {
+                    string suffix = count > 1 ? i.ToString() : "";
+                    sb.AppendLine($"            // TODO: nếu {c.NodeClassName} có SourceNodeId/SourceOutputKey thì bỏ comment 2 dòng dưới:");
+                    sb.AppendLine($"            // SourceNodeId{suffix} = _{LowerFirst(c.NodeName)}Node.SourceNodeId{suffix};");
+                    sb.AppendLine($"            // SourceOutputKey{suffix} = _{LowerFirst(c.NodeName)}Node.SourceOutputKey{suffix};");
+                    sb.AppendLine($"            FillOutputKeys(SourceNodeId{suffix}, SourceKeyOptions{suffix});");
+                }
                 sb.AppendLine();
             }
 
@@ -1490,6 +1561,11 @@ namespace FlowMy.Services.Utilities
                     case "projectroot": config.ProjectRoot = val; i++; break;
                     case "addnodetype": config.AddNewNodeType = val.ToLower() is "true" or "1" or "yes"; i++; break;
                     case "nodetypename": config.NodeTypeName = val; i++; break;
+                    case "defaultinputcount":
+                        if (int.TryParse(val, out var dic)) config.DefaultInputCount = dic;
+                        i++; break;
+                    case "hascheckboxtotoggleinputs": config.HasCheckboxToToggleInputs = val.ToLower() is "true" or "1" or "yes"; i++; break;
+                    case "hascustomkeyoverride": config.HasCustomKeyOverride = val.ToLower() is "true" or "1" or "yes"; i++; break;
                     case "outputkeys":
                         config.OutputKeys = val.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
                         i++;

@@ -305,6 +305,19 @@
                                                 </StackPanel>
                                             </CheckBox.Content>
                                         </CheckBox>
+                                        <StackPanel Visibility="{Binding HasInputSection, Converter={StaticResource BoolToVis}}" Margin="24,6,0,0">
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Số lượng node input mặc định:" Foreground="{DynamicResource TextBrush}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Column="1" Text="{Binding DefaultInputCount, Mode=TwoWay}" Width="40" HorizontalAlignment="Left" Style="{DynamicResource BaseTextBoxV2}" Height="24" Padding="4,2"/>
+                                            </Grid>
+                                            <CheckBox IsChecked="{Binding HasCheckboxToToggleInputs, Mode=TwoWay}" Foreground="{DynamicResource TextBrush}">
+                                                <TextBlock Text="Có checkbox bật/tắt (hiện key và value)" FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                                            </CheckBox>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
 
@@ -339,6 +352,25 @@
                                                     <TextBlock Text="📤 Outputs panel" FontWeight="SemiBold" FontSize="11"
                                                                Foreground="{DynamicResource TextBrush}"/>
                                                     <TextBlock Text="Sinh panel hiển thị danh sách output keys node tạo ra — dùng để map kết quả với các node tiếp theo."
+                                                               FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </CheckBox.Content>
+                                        </CheckBox>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- HasCustomKeyOverride -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                        Padding="10,8">
+                                    <StackPanel>
+                                        <CheckBox IsChecked="{Binding HasCustomKeyOverride, Mode=TwoWay}"
+                                                  Foreground="{DynamicResource TextBrush}" Margin="0,0,0,3">
+                                            <CheckBox.Content>
+                                                <StackPanel>
+                                                    <TextBlock Text="🔑 Variable Key (Override Key)" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock Text="Sinh checkbox để hiện TextBox thay đổi Custom Key mặc định."
                                                                FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
                                                 </StackPanel>
                                             </CheckBox.Content>
