@@ -787,8 +787,9 @@ namespace FlowMy.Services.Utilities
             {
                 sb.AppendLine("            // Load node options và sync properties từ node");
                 sb.AppendLine("            RefreshAllNodesWithOutputs(AvailableNodeOptions);");
-                sb.AppendLine($"            SourceNodeId = _{LowerFirst(c.NodeName)}Node.SourceNodeId;");
-                sb.AppendLine($"            SourceOutputKey = _{LowerFirst(c.NodeName)}Node.SourceOutputKey;");
+                sb.AppendLine($"            // TODO: nếu {c.NodeClassName} có SourceNodeId/SourceOutputKey thì bỏ comment 2 dòng dưới:");
+                sb.AppendLine($"            // SourceNodeId = _{LowerFirst(c.NodeName)}Node.SourceNodeId;");
+                sb.AppendLine($"            // SourceOutputKey = _{LowerFirst(c.NodeName)}Node.SourceOutputKey;");
                 sb.AppendLine($"            FillOutputKeys(SourceNodeId, SourceKeyOptions);");
                 sb.AppendLine();
             }
@@ -1440,9 +1441,9 @@ namespace FlowMy.Services.Utilities
                     nl + "                                    </ContextMenu>" +
                     nl + "                                </Border.ContextMenu>" +
                     nl + "                                <Grid>" +
-                    nl + "                                    <TextBlock Text=\"◆\" FontSize=\"24\"" +
-                    nl + "                                               HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"" +
-                    nl + $"                                               Foreground=\"{{DynamicResource {textOnBrushKey}}}\"/>" +
+                    nl + $"                                    <controls:SvgViewboxEx Style=\"{{StaticResource PaletteSvgIconStyle}}\"" +
+                    nl + $"                                                          Source=\"{{Binding Source={{x:Static sys:String.Empty}}, Converter={{StaticResource IconKeyToPathConverter}}, ConverterParameter='{config.IconKey}'}}\"" +
+                    nl + $"                                                          Fill=\"{{DynamicResource {textOnBrushKey}}}\"/>" +
                     nl + "                                </Grid>" +
                     nl + "                            </Border>";
 
