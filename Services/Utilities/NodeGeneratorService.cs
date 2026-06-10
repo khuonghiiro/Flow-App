@@ -673,6 +673,15 @@ namespace FlowMy.Services.Utilities
                 sb.AppendLine("                            </Border>");
             }
 
+            // InputsPanel ẩn — bắt buộc khi HasDynamicInputs để BaseNodeDialog.GetInputsPanel() hoạt động
+            // Panel này do BaseNodeDialog tự inject các DynamicInputs port rows vào, không hiển thị trực tiếp
+            if (c.HasDynamicInputs)
+            {
+                sb.AppendLine();
+                sb.AppendLine("                            <!-- InputsPanel ẩn — BaseNodeDialog dùng để inject port rows -->");
+                sb.AppendLine("                            <StackPanel x:Name=\"InputsPanel\" Visibility=\"Collapsed\"/>");
+            }
+
             sb.AppendLine();
             sb.AppendLine("                        </StackPanel>");
             sb.AppendLine("                    </ScrollViewer>");
@@ -969,7 +978,9 @@ namespace FlowMy.Services.Utilities
             if (c.HasInputSection)
             {
                 sb.AppendLine("        // Properties cho input section — chọn node nguồn và key output của nó");
-                sb.AppendLine("        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();");
+                // AvailableNodeOptions đã được sinh bởi HasDynamicInputs block — không sinh lại để tránh CS0102
+                if (!c.HasDynamicInputs)
+                    sb.AppendLine("        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();");
                 if (c.HasCheckboxToToggleInputs)
                 {
                     sb.AppendLine("        [ObservableProperty] private bool _useDynamicInput = false;");

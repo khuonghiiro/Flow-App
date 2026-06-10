@@ -53,6 +53,13 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _addNewNodeType = true;
         [ObservableProperty] private string _nodeTypeName = string.Empty;
 
+        // Flag: người dùng đã tự sửa Title/NodeTypeName → không auto-sync khi NodeName thay đổi nữa
+        private bool _titleEditedManually = false;
+        private bool _nodeTypeNameEditedManually = false;
+        // Guard tránh OnTitleChanged/OnNodeTypeNameChanged fire khi ta tự set từ NodeName
+        private bool _isSyncingFromNodeName = false;
+
+
         // ─── Dialog options ───────────────────────────────────────────────────
         [ObservableProperty] private bool _hasInputSection = true;
         [ObservableProperty] private int _defaultInputCount = 1;
@@ -165,12 +172,62 @@ namespace FlowMy.ViewModels
 
         partial void OnNodeNameChanged(string value)
         {
-            // Auto-fill Title nếu chưa nhập
-            if (string.IsNullOrWhiteSpace(Title))
-                Title = value;
-            // Auto-fill NodeTypeName nếu chưa nhập
-            if (string.IsNullOrWhiteSpace(NodeTypeName))
-                NodeTypeName = value;
+            _isSyncingFromNodeName = true;
+            try
+            {
+                // Title: luôn sync (trừ khi user đã sửa tay), hiển thị có dấu cách theo PascalCase
+                if (!_titleEditedManually)
+                    Title = PascalCaseToWords(value);
+
+                // NodeTypeName: luôn sync (trừ khi user đã sửa tay), y nguyên không thêm dấu cách
+                if (!_nodeTypeNameEditedManually)
+                    NodeTypeName = value;
+            }
+            finally
+            {
+                _isSyncingFromNodeName = false;
+            }
+        }
+
+        partial void OnTitleChanged(string value)
+        {
+            // Nếu không phải do sync từ NodeName → đánh dấu user đã sửa tay
+            if (!_isSyncingFromNodeName)
+                _titleEditedManually = !string.IsNullOrWhiteSpace(value);
+        }
+
+        partial void OnNodeTypeNameChanged(string value)
+        {
+            // Nếu không phải do sync từ NodeName → đánh dấu user đã sửa tay
+            if (!_isSyncingFromNodeName)
+                _nodeTypeNameEditedManually = !string.IsNullOrWhiteSpace(value);
+        }
+
+        /// <summary>
+        /// Chuyển PascalCase thành chuỗi có dấu cách giữa các từ.
+        /// VD: "HelloWorld" → "Hello World", "MyHTTPRequest" → "My HTTP Request"
+        /// </summary>
+        private static string PascalCaseToWords(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input;
+
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+                if (i > 0 && char.IsUpper(c))
+                {
+                    // Thêm dấu cách nếu:
+                    // - ký tự trước là chữ thường (HelloWorld → Hello World)
+                    // - hoặc ký tự tiếp theo là chữ thường và ký tự trước là hoa (HTTPRequest → HTTP Request)
+                    char prev = input[i - 1];
+                    bool nextIsLower = i + 1 < input.Length && char.IsLower(input[i + 1]);
+                    if (char.IsLower(prev) || char.IsDigit(prev) || (nextIsLower && char.IsUpper(prev)))
+                        sb.Append(' ');
+                }
+                sb.Append(c);
+            }
+            return sb.ToString();
         }
 
         // ─── Port commands ────────────────────────────────────────────────────
