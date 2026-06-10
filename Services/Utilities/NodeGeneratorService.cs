@@ -1364,73 +1364,89 @@ namespace FlowMy.Services.Utilities
                     return;
                 }
 
-                // Tìm anchor: </WrapPanel> sau dòng EmbedApplicationNode
-                // Anchor an toàn: thẻ đóng </WrapPanel> ngay sau EmbedApplicationNode block
-                var embedEndAnchor = "</Border>\r\n                        </WrapPanel>";
-                if (!content.Contains(embedEndAnchor))
-                    embedEndAnchor = "</Border>\n                        </WrapPanel>";
-
-                if (!content.Contains(embedEndAnchor))
+                // Tìm vị trí block EmbedApplicationNode (node cuối cùng trong palette trước khi thêm mới)
+                // Chiến lược: tìm Tag="EmbedApplicationNode" -> đi tới </Border> kết thúc block -> chèn trước </WrapPanel>
+                var embedTagMarker = "Tag=\"EmbedApplicationNode\"";
+                var embedIdx = content.IndexOf(embedTagMarker, StringComparison.Ordinal);
+                if (embedIdx < 0)
                 {
-                    // fallback: thêm sau dòng cuối EmbedApplicationNode
-                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm được anchor để chèn palette node. Cần thêm thủ công.");
+                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm thấy block EmbedApplicationNode trong palette. Cần thêm thủ công.");
                     return;
                 }
+
+                // Từ vị trí EmbedApplicationNode, tìm </WrapPanel> tiếp theo
+                var wrapPanelClose = content.IndexOf("</WrapPanel>", embedIdx, StringComparison.Ordinal);
+                if (wrapPanelClose < 0)
+                {
+                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm thấy </WrapPanel> sau EmbedApplicationNode.");
+                    return;
+                }
+
+                // Tìm </Border> ngay trước </WrapPanel> (border đóng của EmbedApplicationNode)
+                var borderCloseBeforeWrap = content.LastIndexOf("</Border>", wrapPanelClose - 1, StringComparison.Ordinal);
+                if (borderCloseBeforeWrap < 0)
+                {
+                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm được vị trí chèn palette node.");
+                    return;
+                }
+
+                // Chèn palette XML sau </Border> của EmbedApplicationNode
+                var insertPos = borderCloseBeforeWrap + "</Border>".Length;
 
                 var colorKey = config.ColorKey;
                 var brushKey = $"{colorKey}Brush";
                 var textOnBrushKey = $"TextOn{colorKey}Brush";
                 var title = string.IsNullOrWhiteSpace(config.Title) ? config.NodeName : config.Title;
-                var iconKey = config.IconKey;
 
-                var paletteXml = $@"
-                            <Border Style=""{{StaticResource PaletteIconNodeStyle}}""
-                                    Background=""{{DynamicResource {brushKey}}}""
-                                    Tag=""{config.NodeClassName}""
-                                    MouseDown=""NodeTemplate_MouseDown""
-                                    MouseMove=""NodeTemplate_MouseMove""
-                                    MouseUp=""NodeTemplate_MouseUp""
-                                    MouseEnter=""NodeTemplate_MouseEnter""
-                                    MouseLeave=""NodeTemplate_MouseLeave"">
-                                <Border.ToolTip>
-                                    <ToolTip>
-                                        <StackPanel MaxWidth=""240"">
-                                            <TextBlock FontWeight=""Bold"" FontStyle=""Italic"">
-                                                <Run Text=""{title}""/>
-                                            </TextBlock>
-                                            <TextBlock Text=""Node được tạo bởi Node Generator.""
-                                                       TextWrapping=""Wrap"" Margin=""0,4,0,0"" Opacity=""0.9""/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.ContextMenu>
-                                    <ContextMenu Placement=""MousePoint"" StaysOpen=""False"">
-                                        <MenuItem IsHitTestVisible=""False"">
-                                            <MenuItem.Header>
-                                                <Border Background=""{{DynamicResource {brushKey}}}""
-                                                        CornerRadius=""10"" Padding=""10""
-                                                        BorderBrush=""{{DynamicResource BorderColor}}"" BorderThickness=""1"">
-                                                    <StackPanel>
-                                                        <TextBlock Text=""{title}""
-                                                                   Foreground=""{{DynamicResource {textOnBrushKey}}}""
-                                                                   FontWeight=""Bold"" FontSize=""13""/>
-                                                        <TextBlock Text=""Node tự động sinh bởi Node Generator.""
-                                                                   Foreground=""{{DynamicResource {textOnBrushKey}}}""
-                                                                   Opacity=""0.9"" TextWrapping=""Wrap"" Margin=""0,4,0,0""/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Grid>
-                                    <TextBlock Text=""◆"" FontSize=""24""
-                                               HorizontalAlignment=""Center"" VerticalAlignment=""Center""
-                                               Foreground=""{{DynamicResource {textOnBrushKey}}}""/>
-                                </Grid>
-                            </Border>";
+                var nl = "\r\n";
+                var paletteXml =
+                    nl + "                            <Border Style=\"{StaticResource PaletteIconNodeStyle}\"" +
+                    nl + $"                                    Background=\"{{DynamicResource {brushKey}}}\"" +
+                    nl + $"                                    Tag=\"{config.NodeClassName}\"" +
+                    nl + "                                    MouseDown=\"NodeTemplate_MouseDown\"" +
+                    nl + "                                    MouseMove=\"NodeTemplate_MouseMove\"" +
+                    nl + "                                    MouseUp=\"NodeTemplate_MouseUp\"" +
+                    nl + "                                    MouseEnter=\"NodeTemplate_MouseEnter\"" +
+                    nl + "                                    MouseLeave=\"NodeTemplate_MouseLeave\">" +
+                    nl + "                                <Border.ToolTip>" +
+                    nl + "                                    <ToolTip>" +
+                    nl + "                                        <StackPanel MaxWidth=\"240\">" +
+                    nl + "                                            <TextBlock FontWeight=\"Bold\" FontStyle=\"Italic\">" +
+                    nl + $"                                                <Run Text=\"{title}\"/>" +
+                    nl + "                                            </TextBlock>" +
+                    nl + "                                            <TextBlock Text=\"Node được tạo bởi Node Generator.\"" +
+                    nl + "                                                       TextWrapping=\"Wrap\" Margin=\"0,4,0,0\" Opacity=\"0.9\"/>" +
+                    nl + "                                        </StackPanel>" +
+                    nl + "                                    </ToolTip>" +
+                    nl + "                                </Border.ToolTip>" +
+                    nl + "                                <Border.ContextMenu>" +
+                    nl + "                                    <ContextMenu Placement=\"MousePoint\" StaysOpen=\"False\">" +
+                    nl + "                                        <MenuItem IsHitTestVisible=\"False\">" +
+                    nl + "                                            <MenuItem.Header>" +
+                    nl + $"                                                <Border Background=\"{{DynamicResource {brushKey}}}\"" +
+                    nl + "                                                        CornerRadius=\"10\" Padding=\"10\"" +
+                    nl + "                                                        BorderBrush=\"{DynamicResource BorderColor}\" BorderThickness=\"1\">" +
+                    nl + "                                                    <StackPanel>" +
+                    nl + $"                                                        <TextBlock Text=\"{title}\"" +
+                    nl + $"                                                                   Foreground=\"{{DynamicResource {textOnBrushKey}}}\"" +
+                    nl + "                                                                   FontWeight=\"Bold\" FontSize=\"13\"/>" +
+                    nl + "                                                        <TextBlock Text=\"Node tự động sinh bởi Node Generator.\"" +
+                    nl + $"                                                                   Foreground=\"{{DynamicResource {textOnBrushKey}}}\"" +
+                    nl + "                                                                   Opacity=\"0.9\" TextWrapping=\"Wrap\" Margin=\"0,4,0,0\"/>" +
+                    nl + "                                                    </StackPanel>" +
+                    nl + "                                                </Border>" +
+                    nl + "                                            </MenuItem.Header>" +
+                    nl + "                                        </MenuItem>" +
+                    nl + "                                    </ContextMenu>" +
+                    nl + "                                </Border.ContextMenu>" +
+                    nl + "                                <Grid>" +
+                    nl + "                                    <TextBlock Text=\"◆\" FontSize=\"24\"" +
+                    nl + "                                               HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"" +
+                    nl + $"                                               Foreground=\"{{DynamicResource {textOnBrushKey}}}\"/>" +
+                    nl + "                                </Grid>" +
+                    nl + "                            </Border>";
 
-                content = content.Replace(embedEndAnchor, paletteXml + "\r\n" + embedEndAnchor);
+                content = content.Substring(0, insertPos) + paletteXml + content.Substring(insertPos);
                 File.WriteAllText(path, content, Encoding.UTF8);
                 result.ModifiedFiles.Add(path);
             }

@@ -612,53 +612,89 @@
                     </Border>
 
                     <!-- Registration log panel (sau khi đăng ký) -->
-                    <Border Grid.Row="2" Margin="0,0,20,4" CornerRadius="8" Padding="12"
-                            Visibility="{Binding HasRegistrationResult, Converter={StaticResource BoolToVis}}">
+                    <Border Grid.Row="2" Margin="0,4,20,8" CornerRadius="8"
+                            Visibility="{Binding HasRegistrationResult, Converter={StaticResource BoolToVis}}"
+                            BorderThickness="1">
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
-                                <Setter Property="Opacity" Value="0.15"/>
+                                <Setter Property="Background" Value="#1A2A1A"/>
+                                <Setter Property="BorderBrush" Value="#22C55E"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding HasRegistrationError}" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                        <Setter Property="Background" Value="#2A1A1A"/>
+                                        <Setter Property="BorderBrush" Value="#EF4444"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <StackPanel>
-                            <TextBlock FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4"
-                                       Foreground="{DynamicResource TextBrush}">
-                                <Run Text="🚀 Kết quả Đăng ký:"/>
-                            </TextBlock>
-                            <TextBox Text="{Binding RegistrationLog, Mode=OneWay}"
-                                     IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontSize="10" FontFamily="Consolas"
-                                     MaxHeight="120"
-                                     Foreground="{DynamicResource TextBrush}"/>
+                        <StackPanel Margin="10,8">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock FontSize="10" FontWeight="Bold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="✅ Kết quả Đăng ký:"/>
+                                            <Setter Property="Foreground" Value="#4ADE80"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasRegistrationError}" Value="True">
+                                                    <Setter Property="Text" Value="❌ Lỗi Đăng ký:"/>
+                                                    <Setter Property="Foreground" Value="#FCA5A5"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <ScrollViewer MaxHeight="110" VerticalScrollBarVisibility="Auto">
+                                <TextBox Text="{Binding RegistrationLog, Mode=OneWay}"
+                                         IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontSize="10" FontFamily="Consolas"
+                                         Foreground="#D1FAE5"/>
+                            </ScrollViewer>
                         </StackPanel>
                     </Border>
 
                     <!-- Result panel (sau khi generate) -->
-                    <Border Grid.Row="1" Margin="0,0,20,16" CornerRadius="8" Padding="12"
-                            Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
+                    <Border Grid.Row="1" Margin="0,0,20,4" CornerRadius="8"
+                            Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}"
+                            BorderThickness="1">
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
-                                <Setter Property="Opacity" Value="0.15"/>
+                                <Setter Property="Background" Value="#1A2A1A"/>
+                                <Setter Property="BorderBrush" Value="#22C55E"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding HasError}" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                        <Setter Property="Background" Value="#2A1A1A"/>
+                                        <Setter Property="BorderBrush" Value="#EF4444"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBox Text="{Binding ResultText, Mode=OneWay}"
-                                 IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
-                                 Background="Transparent" BorderThickness="0"
-                                 FontSize="10" FontFamily="Consolas"
-                                 MaxHeight="180"
-                                 Foreground="{DynamicResource TextBrush}"/>
+                        <StackPanel Margin="10,8">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock FontSize="10" FontWeight="Bold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="✨ Kết quả Tạo Node:"/>
+                                            <Setter Property="Foreground" Value="#4ADE80"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                    <Setter Property="Text" Value="❌ Lỗi Tạo Node:"/>
+                                                    <Setter Property="Foreground" Value="#FCA5A5"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                                <TextBox Text="{Binding ResultText, Mode=OneWay}"
+                                         IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontSize="10" FontFamily="Consolas"
+                                         Foreground="#D1FAE5"/>
+                            </ScrollViewer>
+                        </StackPanel>
                     </Border>
                 </Grid>
             </Grid>
