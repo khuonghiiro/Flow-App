@@ -549,6 +549,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <!-- Preview panel -->
@@ -610,6 +611,34 @@
                         </Grid>
                     </Border>
 
+                    <!-- Registration log panel (sau khi đăng ký) -->
+                    <Border Grid.Row="2" Margin="0,0,20,4" CornerRadius="8" Padding="12"
+                            Visibility="{Binding HasRegistrationResult, Converter={StaticResource BoolToVis}}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                                <Setter Property="Opacity" Value="0.15"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasRegistrationError}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4"
+                                       Foreground="{DynamicResource TextBrush}">
+                                <Run Text="🚀 Kết quả Đăng ký:"/>
+                            </TextBlock>
+                            <TextBox Text="{Binding RegistrationLog, Mode=OneWay}"
+                                     IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                                     Background="Transparent" BorderThickness="0"
+                                     FontSize="10" FontFamily="Consolas"
+                                     MaxHeight="120"
+                                     Foreground="{DynamicResource TextBrush}"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Result panel (sau khi generate) -->
                     <Border Grid.Row="1" Margin="0,0,20,16" CornerRadius="8" Padding="12"
                             Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
@@ -644,9 +673,9 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="⚠️ Sau khi generate, cần đăng ký thủ công vào: TemplateFactory, _NodeRenderer, App.xaml.cs DI, WorkflowEditorWindow palette"
+                        <TextBlock Text="✅ Nhấn '✨ Tạo Node' để sinh files → sau đó nhấn '🚀 Đăng ký' để thêm vào palette &amp; hệ thống"
                                    Foreground="{DynamicResource TextMuted}" FontSize="10"
-                                   VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="480"/>
+                                   VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="460"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -654,6 +683,35 @@
                                 Style="{DynamicResource PrimaryButton}" Cursor="Hand"
                                 Command="{Binding CopyJsonConfigCommand}"
                                 ToolTip="Copy JSON config để dùng với NodeGeneratorService.ParseFromJson()"/>
+                        <!-- 🚀 Đăng ký vào Hệ thống -->
+                        <Button Height="36" Padding="16,0" Margin="0,0,8,0"
+                                Cursor="Hand"
+                                Command="{Binding RegisterToSystemCommand}"
+                                x:Name="RegisterBtn">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bd" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="#10B981" Offset="0"/>
+                                                <GradientStop Color="#059669" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <TextBlock Text="🚀 Đăng ký vào Hệ thống" Foreground="White"
+                                                   FontWeight="Bold" FontSize="12"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bd" Property="Opacity" Value="0.9"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="bd" Property="Opacity" Value="0.75"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                         <Button Height="36" Padding="20,0"
                                 Cursor="Hand"
                                 Command="{Binding GenerateNodeCommand}"

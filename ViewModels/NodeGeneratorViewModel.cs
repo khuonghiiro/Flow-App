@@ -70,6 +70,12 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool _isSuccess = false;
         [ObservableProperty] private bool _hasResult = false; // true khi có ResultText để hiện panel
 
+        // ─── Registration Status ───────────────────────────────────────────────
+        [ObservableProperty] private string _registrationLog = string.Empty;
+        [ObservableProperty] private bool _isRegistered = false;
+        [ObservableProperty] private bool _hasRegistrationResult = false;
+        [ObservableProperty] private bool _hasRegistrationError = false;
+
         // ─── Collections ──────────────────────────────────────────────────────
         public ObservableCollection<PortConfigItem> InputPorts { get; } = new();
         public ObservableCollection<PortConfigItem> OutputPorts { get; } = new();
@@ -310,6 +316,35 @@ namespace FlowMy.ViewModels
             }
         }
 
+        // ─── Register to System command ───────────────────────────────────────
+
+        [RelayCommand]
+        private void RegisterToSystem()
+        {
+            RegistrationLog = string.Empty;
+            HasRegistrationResult = false;
+            HasRegistrationError = false;
+            IsRegistered = false;
+
+            var config = BuildConfig();
+            var validation = ValidateConfig(config);
+            if (!string.IsNullOrEmpty(validation))
+            {
+                RegistrationLog = validation;
+                HasRegistrationError = true;
+                HasRegistrationResult = true;
+                return;
+            }
+
+            var service = new NodeGeneratorService();
+            var result = service.AutoRegisterToSystem(config);
+
+            RegistrationLog = result.ToSummary();
+            HasRegistrationError = !result.IsSuccess;
+            IsRegistered = result.IsSuccess;
+            HasRegistrationResult = true;
+        }
+
         // ─── Build config from form ───────────────────────────────────────────
 
         public NodeGeneratorConfig BuildConfig()
@@ -425,11 +460,12 @@ namespace FlowMy.ViewModels
                 $"  Ports IN  : {config.InputPortColorKeys.Count} ({string.Join(", ", config.InputPortColorKeys)})\n" +
                 $"  Ports OUT : {config.OutputPortColorKeys.Count} ({string.Join(", ", config.OutputPortColorKeys)})\n" +
                 (config.OutputKeys.Count > 0 ? $"  Output Keys: {string.Join(", ", config.OutputKeys)}\n" : "") +
-                $"\n⚠️ Sau khi tạo xong, bạn cần đăng ký thủ công:\n" +
-                $"  • TemplateFactory.cs — thêm CreateYourNode()\n" +
-                $"  • _NodeRenderer.cs — thêm renderer branch\n" +
-                $"  • WorkflowEditorWindow.xaml — thêm palette icon\n" +
-                $"  • App.xaml.cs — đăng ký DI: services.AddSingleton<{config.RendererClassName}>()";
+                $"\n✅ Sau khi tạo xong, nhấn 🚀 Đăng ký vào Hệ thống để tự động:\n" +
+                $"  • Thêm vào TemplateFactory.cs\n" +
+                $"  • Thêm vào _NodeRenderer.cs (field + ctor + map)\n" +
+                $"  • Thêm vào ServiceCollectionExtensions.cs\n" +
+                $"  • Thêm icon mapping vào TemplateNodeHandler.cs\n" +
+                $"  • Thêm palette Border vào WorkflowEditorWindow.xaml";
         }
     }
 }

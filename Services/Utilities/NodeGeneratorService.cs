@@ -1097,6 +1097,346 @@ namespace FlowMy.Services.Utilities
         private static string LowerFirst(string s) =>
             string.IsNullOrEmpty(s) ? s : char.ToLower(s[0]) + s.Substring(1);
 
+        // ─────────────────────────────────────────────────────────────────────────
+        // AUTO-REGISTER TO SYSTEM
+        // ─────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Tự động đăng ký node đã generate vào toàn bộ hệ thống:
+        /// TemplateFactory, _NodeRenderer, ServiceCollectionExtensions,
+        /// WorkflowEditorWindow.TemplateNodeHandler, WorkflowEditorWindow.xaml palette.
+        /// Mỗi bước đều idempotent — an toàn khi gọi nhiều lần.
+        /// </summary>
+        public NodeGenerationResult AutoRegisterToSystem(NodeGeneratorConfig config)
+        {
+            var result = new NodeGenerationResult();
+
+            if (string.IsNullOrWhiteSpace(config.NodeName))
+            {
+                result.Errors.Add("NodeName không được để trống.");
+                return result;
+            }
+            if (string.IsNullOrWhiteSpace(config.ProjectRoot) || !Directory.Exists(config.ProjectRoot))
+            {
+                result.Errors.Add($"ProjectRoot không hợp lệ: '{config.ProjectRoot}'");
+                return result;
+            }
+
+            PatchTemplateFactory(result, config);
+            PatchNodeRenderer(result, config);
+            PatchServiceCollection(result, config);
+            PatchTemplateNodeHandler(result, config);
+            PatchWorkflowEditorXaml(result, config);
+
+            return result;
+        }
+
+        // ── Patch: TemplateFactory.cs ─────────────────────────────────────────
+
+        private static void PatchTemplateFactory(NodeGenerationResult result, NodeGeneratorConfig config)
+        {
+            var path = Path.Combine(config.ProjectRoot, "Workflow", "TemplateFactory.cs");
+            if (!File.Exists(path)) path = Path.Combine(config.ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
+            if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy TemplateFactory.cs."); return; }
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                var nodeKey = $"\"{config.NodeClassName}\"";
+                bool changed = false;
+
+                // 1. Thêm switch arm nếu chưa có
+                if (!content.Contains(nodeKey))
+                {
+                    // Tìm dòng fallback "_ => throw new NotSupportedException"
+                    var fallback = "_ => throw new NotSupportedException";
+                    var idx = content.IndexOf(fallback);
+                    if (idx < 0) { result.Errors.Add("TemplateFactory.cs: Không tìm thấy fallback switch arm."); return; }
+
+                    var arm = $"                {nodeKey} => Create{config.NodeName}Node(x, y),\r\n                ";
+                    content = content.Substring(0, idx) + arm + content.Substring(idx);
+                    changed = true;
+                }
+
+                // 2. Thêm CreateYourNode method nếu chưa có
+                var createMethodSig = $"private WorkflowNode Create{config.NodeName}Node(";
+                if (!content.Contains(createMethodSig))
+                {
+                    // Tìm vị trí trước "}" cuối class
+                    var lastBrace = content.LastIndexOf("\n    }");
+                    if (lastBrace < 0) lastBrace = content.LastIndexOf("\r\n    }");
+                    if (lastBrace < 0) { result.Errors.Add("TemplateFactory.cs: Không tìm thấy cuối class."); return; }
+
+                    var colorKey = config.ColorKey;
+                    var brushResource = $"{colorKey}Brush";
+                    var inputPorts = new StringBuilder();
+                    foreach (var ck in config.InputPortColorKeys)
+                        inputPorts.AppendLine($"            node.Ports.Add(new NodePort {{ Id = Guid.NewGuid().ToString(), IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = \"{ck}\" }});");
+                    var outputPorts = new StringBuilder();
+                    foreach (var ck in config.OutputPortColorKeys)
+                        outputPorts.AppendLine($"            node.Ports.Add(new NodePort {{ Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = \"{ck}\" }});");
+                    var outputKeys = new StringBuilder();
+                    foreach (var k in config.OutputKeys)
+                        outputKeys.AppendLine($"            node.DynamicOutputs.Add(new WorkflowDynamicDataPort {{ Key = \"{k}\", DisplayName = \"{k}\", IsMultiple = false, OutputType = WorkflowDataType.String }});");
+
+                    var nodeTypeLine = config.AddNewNodeType
+                        ? $"                Type = NodeType.{config.EffectiveNodeTypeName}"
+                        : "                Type = NodeType.Generic";
+
+                    var method = $@"
+        private WorkflowNode Create{config.NodeName}Node(double x, double y)
+        {{
+            var node = new FlowMy.Models.Nodes.{config.NodeClassName}
+            {{
+                Id = $""Node_{config.NodeName}_{{Guid.NewGuid()}}"",
+                Title = ""{config.Title}"",
+                X = x - 30,
+                Y = y - 30,
+                ColorKey = ""{colorKey}"",
+                NodeBrush = Application.Current.TryFindResource(""{brushResource}"") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.CornflowerBlue,
+{nodeTypeLine}
+            }};
+{inputPorts}{outputPorts}{outputKeys}
+            return node;
+        }}
+";
+                    content = content.Substring(0, lastBrace) + method + content.Substring(lastBrace);
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    File.WriteAllText(path, content, Encoding.UTF8);
+                    result.ModifiedFiles.Add(path);
+                }
+                else
+                {
+                    result.Warnings.Add($"TemplateFactory.cs: {config.NodeClassName} đã được đăng ký — bỏ qua.");
+                }
+            }
+            catch (Exception ex) { result.Errors.Add($"Lỗi PatchTemplateFactory: {ex.Message}"); }
+        }
+
+        // ── Patch: _NodeRenderer.cs ───────────────────────────────────────────
+
+        private static void PatchNodeRenderer(NodeGenerationResult result, NodeGeneratorConfig config)
+        {
+            var path = Path.Combine(config.ProjectRoot, "Services", "Rendering", "_NodeRenderer.cs");
+            if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy _NodeRenderer.cs."); return; }
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                var rendererType = config.RendererClassName;
+                var fieldName = $"_{LowerFirst(rendererType)}";
+                bool changed = false;
+
+                // 1. Thêm field
+                if (!content.Contains($"private readonly {rendererType}"))
+                {
+                    var embedField = "private readonly EmbedApplicationNodeRenderer _embedApplicationNodeRenderer;";
+                    var newField = $"private readonly {rendererType} {fieldName};\r\n        {embedField}";
+                    content = content.Replace(embedField, newField);
+                    changed = true;
+                }
+
+                // 2. Thêm constructor param
+                if (!content.Contains($"{rendererType} {LowerFirst(rendererType)}"))
+                {
+                    var embedParam = "EmbedApplicationNodeRenderer embedApplicationNodeRenderer";
+                    var paramVar = LowerFirst(rendererType);
+                    var newParam = $"{rendererType} {paramVar},\r\n            {embedParam}";
+                    content = content.Replace(embedParam, newParam);
+                    changed = true;
+                }
+
+                // 3. Thêm assignment trong constructor body
+                if (!content.Contains($"{fieldName} = "))
+                {
+                    var embedAssign = "_embedApplicationNodeRenderer = embedApplicationNodeRenderer ?? throw new ArgumentNullException(nameof(embedApplicationNodeRenderer));";
+                    var paramVar = LowerFirst(rendererType);
+                    var newAssign = $"{fieldName} = {paramVar} ?? throw new ArgumentNullException(nameof({paramVar}));\r\n            {embedAssign}";
+                    content = content.Replace(embedAssign, newAssign);
+                    changed = true;
+                }
+
+                // 4. Thêm vào _rendererMap
+                var nodeClass = $"typeof({config.NodeClassName})";
+                if (!content.Contains(nodeClass))
+                {
+                    var embedMapEntry = "[typeof(EmbedApplicationNode)]  = _embedApplicationNodeRenderer,";
+                    var newEntry = $"[typeof(FlowMy.Models.Nodes.{config.NodeClassName})] = {fieldName},\r\n                {embedMapEntry}";
+                    content = content.Replace(embedMapEntry, newEntry);
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    File.WriteAllText(path, content, Encoding.UTF8);
+                    result.ModifiedFiles.Add(path);
+                }
+                else
+                {
+                    result.Warnings.Add($"_NodeRenderer.cs: {rendererType} đã được đăng ký — bỏ qua.");
+                }
+            }
+            catch (Exception ex) { result.Errors.Add($"Lỗi PatchNodeRenderer: {ex.Message}"); }
+        }
+
+        // ── Patch: ServiceCollectionExtensions.cs ────────────────────────────
+
+        private static void PatchServiceCollection(NodeGenerationResult result, NodeGeneratorConfig config)
+        {
+            var path = Path.Combine(config.ProjectRoot, "Services", "ServiceCollectionExtensions.cs");
+            if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy ServiceCollectionExtensions.cs."); return; }
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                var rendererType = config.RendererClassName;
+                var addLine = $"services.AddScoped<{rendererType}>();";
+
+                if (content.Contains(addLine))
+                {
+                    result.Warnings.Add($"ServiceCollectionExtensions.cs: {rendererType} đã được đăng ký — bỏ qua.");
+                    return;
+                }
+
+                // Thêm sau dòng EmbedApplicationNodeRenderer
+                var anchor = "services.AddScoped<EmbedApplicationNodeRenderer>();";
+                if (!content.Contains(anchor)) { result.Errors.Add("ServiceCollectionExtensions.cs: Không tìm thấy anchor EmbedApplicationNodeRenderer."); return; }
+
+                content = content.Replace(anchor, $"{anchor}\r\n            {addLine}");
+                File.WriteAllText(path, content, Encoding.UTF8);
+                result.ModifiedFiles.Add(path);
+            }
+            catch (Exception ex) { result.Errors.Add($"Lỗi PatchServiceCollection: {ex.Message}"); }
+        }
+
+        // ── Patch: WorkflowEditorWindow.TemplateNodeHandler.cs ───────────────
+
+        private static void PatchTemplateNodeHandler(NodeGenerationResult result, NodeGeneratorConfig config)
+        {
+            // Tìm file TemplateNodeHandler
+            var path = Path.Combine(config.ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+            if (!File.Exists(path)) path = Path.Combine(config.ProjectRoot, "Views", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+            if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy WorkflowEditorWindow.TemplateNodeHandler.cs."); return; }
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                var nodeKey = $"\"{config.NodeClassName}\"";
+
+                if (content.Contains(nodeKey))
+                {
+                    result.Warnings.Add($"TemplateNodeHandler.cs: {config.NodeClassName} đã có icon mapping — bỏ qua.");
+                    return;
+                }
+
+                // Thêm trước fallback "_  => "circle duotone""
+                var fallback = "_ => \"circle duotone\"";
+                if (!content.Contains(fallback)) { result.Errors.Add("TemplateNodeHandler.cs: Không tìm thấy fallback icon arm."); return; }
+
+                var arm = $"                {nodeKey} => \"{config.IconKey}\",\r\n                {fallback}";
+                content = content.Replace(fallback, arm);
+                File.WriteAllText(path, content, Encoding.UTF8);
+                result.ModifiedFiles.Add(path);
+            }
+            catch (Exception ex) { result.Errors.Add($"Lỗi PatchTemplateNodeHandler: {ex.Message}"); }
+        }
+
+        // ── Patch: WorkflowEditorWindow.xaml ─────────────────────────────────
+
+        private static void PatchWorkflowEditorXaml(NodeGenerationResult result, NodeGeneratorConfig config)
+        {
+            // Tìm WorkflowEditorWindow.xaml
+            var path = Path.Combine(config.ProjectRoot, "Views", "WorkflowEditorWindow.xaml");
+            if (!File.Exists(path)) path = Path.Combine(config.ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
+            if (!File.Exists(path)) { result.Errors.Add("Không tìm thấy WorkflowEditorWindow.xaml."); return; }
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                // Check xem node đã có trong palette chưa
+                if (content.Contains($"Tag=\"{config.NodeClassName}\""))
+                {
+                    result.Warnings.Add($"WorkflowEditorWindow.xaml: {config.NodeClassName} đã có trong palette — bỏ qua.");
+                    return;
+                }
+
+                // Tìm anchor: </WrapPanel> sau dòng EmbedApplicationNode
+                // Anchor an toàn: thẻ đóng </WrapPanel> ngay sau EmbedApplicationNode block
+                var embedEndAnchor = "</Border>\r\n                        </WrapPanel>";
+                if (!content.Contains(embedEndAnchor))
+                    embedEndAnchor = "</Border>\n                        </WrapPanel>";
+
+                if (!content.Contains(embedEndAnchor))
+                {
+                    // fallback: thêm sau dòng cuối EmbedApplicationNode
+                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm được anchor để chèn palette node. Cần thêm thủ công.");
+                    return;
+                }
+
+                var colorKey = config.ColorKey;
+                var brushKey = $"{colorKey}Brush";
+                var textOnBrushKey = $"TextOn{colorKey}Brush";
+                var title = string.IsNullOrWhiteSpace(config.Title) ? config.NodeName : config.Title;
+                var iconKey = config.IconKey;
+
+                var paletteXml = $@"
+                            <Border Style=""{{StaticResource PaletteIconNodeStyle}}""
+                                    Background=""{{DynamicResource {brushKey}}}""
+                                    Tag=""{config.NodeClassName}""
+                                    MouseDown=""NodeTemplate_MouseDown""
+                                    MouseMove=""NodeTemplate_MouseMove""
+                                    MouseUp=""NodeTemplate_MouseUp""
+                                    MouseEnter=""NodeTemplate_MouseEnter""
+                                    MouseLeave=""NodeTemplate_MouseLeave"">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth=""240"">
+                                            <TextBlock FontWeight=""Bold"" FontStyle=""Italic"">
+                                                <Run Text=""{title}""/>
+                                            </TextBlock>
+                                            <TextBlock Text=""Node được tạo bởi Node Generator.""
+                                                       TextWrapping=""Wrap"" Margin=""0,4,0,0"" Opacity=""0.9""/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement=""MousePoint"" StaysOpen=""False"">
+                                        <MenuItem IsHitTestVisible=""False"">
+                                            <MenuItem.Header>
+                                                <Border Background=""{{DynamicResource {brushKey}}}""
+                                                        CornerRadius=""10"" Padding=""10""
+                                                        BorderBrush=""{{DynamicResource BorderColor}}"" BorderThickness=""1"">
+                                                    <StackPanel>
+                                                        <TextBlock Text=""{title}""
+                                                                   Foreground=""{{DynamicResource {textOnBrushKey}}}""
+                                                                   FontWeight=""Bold"" FontSize=""13""/>
+                                                        <TextBlock Text=""Node tự động sinh bởi Node Generator.""
+                                                                   Foreground=""{{DynamicResource {textOnBrushKey}}}""
+                                                                   Opacity=""0.9"" TextWrapping=""Wrap"" Margin=""0,4,0,0""/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <TextBlock Text=""◆"" FontSize=""24""
+                                               HorizontalAlignment=""Center"" VerticalAlignment=""Center""
+                                               Foreground=""{{DynamicResource {textOnBrushKey}}}""/>
+                                </Grid>
+                            </Border>";
+
+                content = content.Replace(embedEndAnchor, paletteXml + "\r\n" + embedEndAnchor);
+                File.WriteAllText(path, content, Encoding.UTF8);
+                result.ModifiedFiles.Add(path);
+            }
+            catch (Exception ex) { result.Errors.Add($"Lỗi PatchWorkflowEditorXaml: {ex.Message}"); }
+        }
+
         /// <summary>
         /// Sinh cấu hình từ JSON string (dùng cho CLI).
         /// Format: { "NodeName": "HelloWorld", "Title": "Hello World", ... }
