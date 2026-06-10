@@ -573,16 +573,21 @@ namespace FlowMy.Views.NodeControls.Helpers
                 {
                     if (ctx.Border != null)
                     {
-                        // Liquid Glass mode: dùng glass background thay vì solid NodeBrush
-                        if (LiquidGlassHelper.IsLiquidGlassMode(ctx.Host))
+                        // ⚠️ Không ghi đè hover color nếu node đang được hover
+                        if (!ctx.IsHovered)
                         {
-                            var baseColor = LiquidGlassHelper.GetColorFromBrush(ctx.Node.NodeBrush);
-                            ctx.Border.Background = LiquidGlassHelper.CreateGlassBackground(baseColor);
+                            // Liquid Glass mode: dùng glass background thay vì solid NodeBrush
+                            if (LiquidGlassHelper.IsLiquidGlassMode(ctx.Host))
+                            {
+                                var baseColor = LiquidGlassHelper.GetColorFromBrush(ctx.Node.NodeBrush);
+                                ctx.Border.Background = LiquidGlassHelper.CreateGlassBackground(baseColor);
+                            }
+                            else
+                            {
+                                ctx.Border.Background = ctx.Node.NodeBrush;
+                            }
                         }
-                        else
-                        {
-                            ctx.Border.Background = ctx.Node.NodeBrush;
-                        }
+                        // Nếu đang hover, background đã được set bởi NodeBorder_MouseEnter — giữ nguyên.
                     }
                     if (ctx.TitleTextBlock != null)
                     {

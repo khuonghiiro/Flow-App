@@ -230,21 +230,39 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         private void GenerateNode()
         {
-            RegisterToSystem();
-            if (HasRegistrationError)
+            ResultText = string.Empty;
+            HasError = false;
+            IsSuccess = false;
+            HasResult = false;
+
+            var config = BuildConfig();
+            var validation = ValidateConfig(config);
+            if (!string.IsNullOrEmpty(validation))
             {
-                ResultText = RegistrationLog;
+                ResultText = validation;
                 HasError = true;
-                IsSuccess = false;
                 HasResult = true;
+                return;
             }
-            else
+
+            var service = new NodeGeneratorService();
+            var genResult = service.GenerateAll(config);
+
+            if (!genResult.IsSuccess || genResult.CreatedFiles.Count == 0)
             {
-                ResultText = RegistrationLog;
-                HasError = false;
-                IsSuccess = true;
+                ResultText = genResult.ToSummary();
+                HasError = true;
                 HasResult = true;
+                return;
             }
+
+            // Gọi đăng ký hệ thống sau khi đã sinh file
+            RegisterToSystem();
+
+            ResultText = genResult.ToSummary() + "\n\n" + RegistrationLog;
+            HasError = HasRegistrationError;
+            IsSuccess = IsRegistered;
+            HasResult = true;
         }
 
         // ─── CLI JSON command ─────────────────────────────────────────────────

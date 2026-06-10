@@ -204,16 +204,7 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine($"            Title = \"{c.Title}\";");
             sb.AppendLine();
 
-            // DynamicOutputs
-            if (c.OutputKeys.Count > 0)
-            {
-                sb.AppendLine("            // Thêm output keys vào DynamicOutputs");
-                foreach (var key in c.OutputKeys)
-                {
-                    sb.AppendLine($"            DynamicOutputs.Add(new WorkflowDynamicDataPort {{ Key = \"{key}\", DisplayName = \"{key}\", OutputType = WorkflowDataType.String }});");
-                }
-                sb.AppendLine();
-            }
+
 
             sb.AppendLine("            // ⚠️ KHÔNG thêm Ports ở đây — TemplateFactory sẽ tạo port để tránh duplicate.");
             sb.AppendLine("            // Ports sẽ được tạo trong TemplateFactory.CreateYourNode()");
@@ -343,11 +334,17 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine("    xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"");
             sb.AppendLine("    xmlns:controls=\"clr-namespace:FlowMy.Controls\"");
             sb.AppendLine("    xmlns:local=\"clr-namespace:FlowMy.Views.Overlays\"");
+            sb.AppendLine("    xmlns:converters=\"clr-namespace:FlowMy.Converters\"");
             sb.AppendLine($"    Title=\"{c.Title}\"");
             sb.AppendLine("    WindowStyle=\"None\" ResizeMode=\"CanResize\"");
             sb.AppendLine("    AllowsTransparency=\"True\" Background=\"Transparent\"");
             sb.AppendLine("    ShowInTaskbar=\"False\" Topmost=\"True\"");
             sb.AppendLine("    Width=\"520\" MinWidth=\"420\" MinHeight=\"420\">");
+            sb.AppendLine();
+            sb.AppendLine("    <Window.Resources>");
+            sb.AppendLine("        <converters:BoolToVisibilityConverter x:Key=\"BoolToVisibilityConverter\"/>");
+            sb.AppendLine("        <converters:InverseBooleanToVisibilityConverter x:Key=\"InverseBoolToVisibilityConverter\"/>");
+            sb.AppendLine("    </Window.Resources>");
             sb.AppendLine();
             sb.AppendLine("    <Border CornerRadius=\"12\" Padding=\"0\" Style=\"{DynamicResource DialogOuterBorder}\">");
             sb.AppendLine("        <Grid>");
@@ -481,14 +478,83 @@ namespace FlowMy.Services.Utilities
             // Dynamic Inputs panel (nếu có)
             if (c.HasDynamicInputs)
             {
+                // Column layout tùy thuộc HasCustomKeyOverride:
+                // HasCustomKeyOverride=false: Col0=Node, Col2=OutputKey, Col4=Remove  → 5 cols
+                // HasCustomKeyOverride=true:  Col0=Node, Col2=OutputKey, Col4=Override, Col6=Remove → 7 cols
+                string lastColIdx = c.HasCustomKeyOverride ? "6" : "4";
+
                 sb.AppendLine();
                 sb.AppendLine("                            <!-- 🔄 Dynamic Inputs -->");
-                sb.AppendLine("                            <TextBlock Text=\"Inputs\" Foreground=\"{DynamicResource TextBrush}\"");
-                sb.AppendLine("                                       FontSize=\"12\" FontWeight=\"SemiBold\" Margin=\"0,0,0,6\"/>");
-                sb.AppendLine("                            <Border Style=\"{DynamicResource DialogOuterBorder}\" CornerRadius=\"8\" Padding=\"10\" Margin=\"0,0,0,12\">");
-                sb.AppendLine("                                <StackPanel x:Name=\"InputsPanel\"/>");
+                sb.AppendLine("                            <Border Background=\"{DynamicResource WindowBackground}\"");
+                sb.AppendLine("                                    BorderBrush=\"{DynamicResource ControlBorderBrush}\"");
+                sb.AppendLine("                                    BorderThickness=\"1\" CornerRadius=\"8\" Padding=\"12\" Margin=\"0,0,0,12\">");
+                sb.AppendLine("                                <StackPanel>");
+                sb.AppendLine("                                    <TextBlock Text=\"📥 Danh sách Inputs\" ");
+                sb.AppendLine("                                               Foreground=\"{DynamicResource TextBrush}\"");
+                sb.AppendLine("                                               FontSize=\"12\" FontWeight=\"SemiBold\" Margin=\"0,0,0,10\"/>");
+                sb.AppendLine($"                                    <ItemsControl ItemsSource=\"{{Binding InputMappingsList}}\">");
+                sb.AppendLine("                                        <ItemsControl.ItemTemplate>");
+                sb.AppendLine("                                            <DataTemplate>");
+                sb.AppendLine("                                                <Grid Margin=\"0,0,0,8\">");
+                sb.AppendLine("                                                    <Grid.ColumnDefinitions>");
+                sb.AppendLine("                                                        <ColumnDefinition Width=\"*\"/>");
+                sb.AppendLine("                                                        <ColumnDefinition Width=\"8\"/>");
+                sb.AppendLine("                                                        <ColumnDefinition Width=\"*\"/>");
+                if (c.HasCustomKeyOverride)
+                {
+                    sb.AppendLine("                                                        <ColumnDefinition Width=\"8\"/>");
+                    sb.AppendLine("                                                        <ColumnDefinition Width=\"*\"/>");
+                }
+                sb.AppendLine("                                                        <ColumnDefinition Width=\"8\"/>");
+                sb.AppendLine("                                                        <ColumnDefinition Width=\"Auto\"/>");
+                sb.AppendLine("                                                    </Grid.ColumnDefinitions>");
+                sb.AppendLine();
+                // Cột Node Nguồn
+                sb.AppendLine("                                                    <StackPanel Grid.Column=\"0\">");
+                sb.AppendLine("                                                        <TextBlock Text=\"Node Nguồn\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                sb.AppendLine("                                                        <controls:NodeSearchComboBoxUserControl Height=\"32\"");
+                sb.AppendLine("                                                            ItemsSource=\"{Binding DataContext.AvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}\"");
+                sb.AppendLine("                                                            SelectedValuePath=\"NodeId\" DisplayMemberPath=\"Title\"");
+                sb.AppendLine("                                                            SelectedValue=\"{Binding SourceNodeId, Mode=TwoWay}\"/>");
+                sb.AppendLine("                                                    </StackPanel>");
+                sb.AppendLine();
+                // Cột Output Key
+                sb.AppendLine("                                                    <StackPanel Grid.Column=\"2\">");
+                sb.AppendLine("                                                        <TextBlock Text=\"Key\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                sb.AppendLine("                                                        <ComboBox Height=\"32\" Style=\"{DynamicResource BaseComboBox}\"");
+                sb.AppendLine("                                                                  ItemsSource=\"{Binding AvailableOutputKeyOptions}\"");
+                sb.AppendLine("                                                                  SelectedValuePath=\"Key\"");
+                sb.AppendLine("                                                                  DisplayMemberPath=\"DisplayName\"");
+                sb.AppendLine("                                                                  IsSynchronizedWithCurrentItem=\"False\"");
+                sb.AppendLine("                                                                  SelectedValue=\"{Binding SourceOutputKey, Mode=TwoWay}\"/>");
+                sb.AppendLine("                                                    </StackPanel>");
+                sb.AppendLine();
+                // Cột Override Key (tuỳ chọn)
+                if (c.HasCustomKeyOverride)
+                {
+                    sb.AppendLine("                                                    <StackPanel Grid.Column=\"4\">");
+                    sb.AppendLine("                                                        <TextBlock Text=\"Tên biến (trống = dùng key)\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                    sb.AppendLine("                                                        <TextBox Text=\"{Binding InputKeyOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"");
+                    sb.AppendLine("                                                                 Style=\"{DynamicResource BaseTextBoxV2}\" Height=\"32\"/>");
+                    sb.AppendLine("                                                    </StackPanel>");
+                    sb.AppendLine();
+                }
+                // Nút Remove
+                sb.AppendLine($"                                                    <Button Grid.Column=\"{lastColIdx}\" Content=\"-\" Width=\"28\" Height=\"28\" Margin=\"0,0,0,0\" VerticalAlignment=\"Bottom\"");
+                sb.AppendLine("                                                            Command=\"{Binding DataContext.RemoveInputMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}\"");
+                sb.AppendLine("                                                            CommandParameter=\"{Binding}\"");
+                sb.AppendLine("                                                            Foreground=\"White\" Background=\"{DynamicResource DangerBrush}\" BorderThickness=\"0\" Cursor=\"Hand\"/>");
+                sb.AppendLine("                                                </Grid>");
+                sb.AppendLine("                                            </DataTemplate>");
+                sb.AppendLine("                                        </ItemsControl.ItemTemplate>");
+                sb.AppendLine("                                    </ItemsControl>");
+                sb.AppendLine("                                    <Button Content=\"+ Thêm input\" Height=\"32\" Margin=\"0,8,0,0\"");
+                sb.AppendLine("                                            Command=\"{Binding AddInputMappingCommand}\"");
+                sb.AppendLine("                                            Width=\"120\" Style=\"{DynamicResource PrimaryButton}\" HorizontalAlignment=\"Left\"/>");
+                sb.AppendLine("                                </StackPanel>");
                 sb.AppendLine("                            </Border>");
             }
+
 
             // Custom TextBoxes
             foreach (var tb in c.CustomTextBoxes)
@@ -552,7 +618,7 @@ namespace FlowMy.Services.Utilities
             }
 
             // Custom Key Override
-            if (c.HasCustomKeyOverride)
+            if (c.HasCustomKeyOverride && !c.HasDynamicInputs)
             {
                 sb.AppendLine();
                 sb.AppendLine("                            <!-- 🔑 Custom Key Override -->");
@@ -762,15 +828,35 @@ namespace FlowMy.Services.Utilities
         {
             var sb = new StringBuilder();
             sb.AppendLine("using CommunityToolkit.Mvvm.ComponentModel;");
+            sb.AppendLine("using CommunityToolkit.Mvvm.Input;");
             sb.AppendLine("using FlowMy.Models;");
             sb.AppendLine("using FlowMy.Models.Nodes;");
             sb.AppendLine("using FlowMy.Services.Interaction;");
             sb.AppendLine("using FlowMy.ViewModels;");
             sb.AppendLine("using System;");
+            sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using System.Collections.ObjectModel;");
+            sb.AppendLine("using System.ComponentModel;");
+            sb.AppendLine("using System.Linq;");
             sb.AppendLine();
             sb.AppendLine("namespace FlowMy.ViewModels");
             sb.AppendLine("{");
+
+            // Nếu có dynamic inputs, sinh ItemViewModel riêng
+            if (c.HasDynamicInputs)
+            {
+                sb.AppendLine($"    /// <summary>ViewModel cho một dòng input trong {c.Title} node.</summary>");
+                sb.AppendLine($"    public partial class {c.NodeName}InputMappingItemViewModel : ObservableObject");
+                sb.AppendLine("    {");
+                sb.AppendLine("        [ObservableProperty] private string? _sourceNodeId;");
+                sb.AppendLine("        [ObservableProperty] private string? _sourceOutputKey;");
+                if (c.HasCustomKeyOverride)
+                    sb.AppendLine("        [ObservableProperty] private string _inputKeyOverride = string.Empty;");
+                sb.AppendLine($"        public ObservableCollection<WorkflowOutputKeyOption> AvailableOutputKeyOptions {{ get; }} = new();");
+                sb.AppendLine("    }");
+                sb.AppendLine();
+            }
+
             sb.AppendLine($"    public partial class {c.ViewModelClassName} : BaseNodeDialogViewModel");
             sb.AppendLine("    {");
             sb.AppendLine($"        private readonly {c.NodeClassName} _{LowerFirst(c.NodeName)}Node;");
@@ -780,6 +866,106 @@ namespace FlowMy.Services.Utilities
             sb.AppendLine("        // [ObservableProperty] private string _someProperty = string.Empty;");
             sb.AppendLine();
 
+            if (c.HasDynamicInputs)
+            {
+                sb.AppendLine("        private bool _isSyncingFromNode;");
+                sb.AppendLine($"        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions {{ get; }} = new();");
+                sb.AppendLine($"        public ObservableCollection<{c.NodeName}InputMappingItemViewModel> InputMappingsList {{ get; }} = new();");
+                sb.AppendLine();
+                sb.AppendLine("        [RelayCommand]");
+                sb.AppendLine($"        private void AddInputMapping()");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            var item = new {c.NodeName}InputMappingItemViewModel();");
+                sb.AppendLine("            item.PropertyChanged += InputMappingItem_PropertyChanged;");
+                sb.AppendLine("            InputMappingsList.Add(item);");
+                sb.AppendLine("            SyncInputMappingsToNode();");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        [RelayCommand]");
+                sb.AppendLine($"        private void RemoveInputMapping({c.NodeName}InputMappingItemViewModel? item)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            if (item != null && InputMappingsList.Contains(item) && InputMappingsList.Count > 1)");
+                sb.AppendLine("            {");
+                sb.AppendLine("                item.PropertyChanged -= InputMappingItem_PropertyChanged;");
+                sb.AppendLine("                InputMappingsList.Remove(item);");
+                sb.AppendLine("                SyncInputMappingsToNode();");
+                sb.AppendLine("            }");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine($"        private void InputMappingItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            if (_isSyncingFromNode) return;");
+                sb.AppendLine($"            if (sender is not {c.NodeName}InputMappingItemViewModel item) return;");
+                sb.AppendLine($"            if (e.PropertyName == nameof({c.NodeName}InputMappingItemViewModel.SourceNodeId))");
+                sb.AppendLine("            {");
+                sb.AppendLine("                RefreshOutputKeyOptionsFor(item);");
+                sb.AppendLine("            }");
+                sb.AppendLine("            SyncInputMappingsToNode();");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine($"        public void RefreshOutputKeyOptionsFor({c.NodeName}InputMappingItemViewModel item)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            item.AvailableOutputKeyOptions.Clear();");
+                sb.AppendLine("            if (string.IsNullOrWhiteSpace(item.SourceNodeId) || _host.ViewModel?.Nodes == null) return;");
+                sb.AppendLine("            var node = _host.ViewModel.Nodes.FirstOrDefault(n =>");
+                sb.AppendLine("                string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));");
+                sb.AppendLine("            if (node?.DynamicOutputs == null) return;");
+                sb.AppendLine("            foreach (var o in node.DynamicOutputs)");
+                sb.AppendLine("            {");
+                sb.AppendLine("                item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption");
+                sb.AppendLine("                {");
+                sb.AppendLine("                    Key = o.Key ?? string.Empty,");
+                sb.AppendLine("                    Type = o.OutputType ?? o.ConvertType,");
+                sb.AppendLine("                    DisplayName = o.DisplayName ?? o.Key");
+                sb.AppendLine("                });");
+                sb.AppendLine("            }");
+                sb.AppendLine("            if (item.AvailableOutputKeyOptions.Count > 0 &&");
+                sb.AppendLine("                !item.AvailableOutputKeyOptions.Any(k =>");
+                sb.AppendLine("                    string.Equals(k.Key, item.SourceOutputKey, StringComparison.OrdinalIgnoreCase)))");
+                sb.AppendLine("            {");
+                sb.AppendLine("                item.SourceOutputKey = item.AvailableOutputKeyOptions[0].Key;");
+                sb.AppendLine("            }");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        public void RefreshAvailableNodes()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            var vm = _host.ViewModel;");
+                sb.AppendLine("            if (vm?.Nodes == null || vm.Connections == null) return;");
+                sb.AppendLine("            var connections = vm.Connections;");
+                sb.AppendLine("            var upstream = new HashSet<WorkflowNode>();");
+                sb.AppendLine("            var stack = new Stack<WorkflowNode>();");
+                sb.AppendLine($"            stack.Push(_{LowerFirst(c.NodeName)}Node);");
+                sb.AppendLine("            while (stack.Count > 0)");
+                sb.AppendLine("            {");
+                sb.AppendLine("                var current = stack.Pop();");
+                sb.AppendLine("                foreach (var conn in connections.Where(c => c.ToNode == current && c.FromNode != null))");
+                sb.AppendLine("                {");
+                sb.AppendLine("                    var src = conn.FromNode!;");
+                sb.AppendLine("                    if (upstream.Add(src)) stack.Push(src);");
+                sb.AppendLine("                }");
+                sb.AppendLine("            }");
+                sb.AppendLine("            var newOptions = upstream");
+                sb.AppendLine($"                .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0 && !ReferenceEquals(n, _{LowerFirst(c.NodeName)}Node))");
+                sb.AppendLine("                .Select(n => CreateDataSourceOption(n))");
+                sb.AppendLine("                .ToList();");
+                sb.AppendLine("            AvailableNodeOptions.Clear();");
+                sb.AppendLine("            foreach (var opt in newOptions) AvailableNodeOptions.Add(opt);");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        private void SyncInputMappingsToNode()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            // TODO: Sync về node.InputMappings nếu node có property này:");
+                sb.AppendLine($"            // _{LowerFirst(c.NodeName)}Node.InputMappings = InputMappingsList.Select(x =>");
+                sb.AppendLine("            // {{");
+                sb.AppendLine("            //     SourceNodeId = x.SourceNodeId,");
+                sb.AppendLine("            //     SourceOutputKey = x.SourceOutputKey,");
+                if (c.HasCustomKeyOverride)
+                    sb.AppendLine("            //     InputKeyOverride = string.IsNullOrWhiteSpace(x.InputKeyOverride) ? null : x.InputKeyOverride.Trim(),");
+                sb.AppendLine("            // }}).ToList();");
+                sb.AppendLine("        }");
+            }
+            
+            sb.AppendLine();
             if (c.HasInputSection)
             {
                 sb.AppendLine("        // Properties cho input section — chọn node nguồn và key output của nó");
@@ -813,12 +999,8 @@ namespace FlowMy.Services.Utilities
                 }
             }
 
-            if (c.HasCustomKeyOverride)
-            {
-                sb.AppendLine("        [ObservableProperty] private bool _useCustomKey = false;");
-                sb.AppendLine("        [ObservableProperty] private string _customKey = string.Empty;");
-                sb.AppendLine();
-            }
+            // HasCustomKeyOverride đã được xử lý trong ItemMappingItemViewModel — không tạo property riêng ở đây
+            // (chỉ dùng khi HasDynamicInputs)
 
             foreach (var tb in c.CustomTextBoxes)
             {
@@ -862,6 +1044,33 @@ namespace FlowMy.Services.Utilities
                     sb.AppendLine($"            // SourceOutputKey{suffix} = _{LowerFirst(c.NodeName)}Node.SourceOutputKey{suffix};");
                     sb.AppendLine($"            FillOutputKeys(SourceNodeId{suffix}, SourceKeyOptions{suffix});");
                 }
+                sb.AppendLine();
+            }
+
+            if (c.HasDynamicInputs)
+            {
+                sb.AppendLine("            // Load dynamic inputs từ node");
+                sb.AppendLine("            RefreshAvailableNodes();");
+                sb.AppendLine($"            // TODO: Restore InputMappings từ node (bỏ comment nếu node có InputMappings):");
+                sb.AppendLine($"            // var mappings = _{LowerFirst(c.NodeName)}Node.InputMappings ?? new List</* TODO: mapping type */>();");
+                sb.AppendLine("            // if (mappings.Count == 0) mappings.Add(new /* TODO: mapping type */());");
+                sb.AppendLine("            // foreach (var m in mappings)");
+                sb.AppendLine("            // {");
+                sb.AppendLine($"            //     var item = new {c.NodeName}InputMappingItemViewModel {{ SourceNodeId = m.SourceNodeId, SourceOutputKey = m.SourceOutputKey");
+                if (c.HasCustomKeyOverride)
+                    sb.AppendLine("            //         , InputKeyOverride = m.InputKeyOverride ?? string.Empty");
+                sb.AppendLine("            //     };");
+                sb.AppendLine("            //     item.PropertyChanged += InputMappingItem_PropertyChanged;");
+                sb.AppendLine("            //     InputMappingsList.Add(item);");
+                sb.AppendLine("            //     RefreshOutputKeyOptionsFor(item);");
+                sb.AppendLine("            // }");
+                sb.AppendLine($"            // Fallback: thêm 1 dòng rỗng nếu không có dữ liệu");
+                sb.AppendLine($"            if (InputMappingsList.Count == 0)");
+                sb.AppendLine("            {");
+                sb.AppendLine($"                var empty = new {c.NodeName}InputMappingItemViewModel();");
+                sb.AppendLine("                empty.PropertyChanged += InputMappingItem_PropertyChanged;");
+                sb.AppendLine("                InputMappingsList.Add(empty);");
+                sb.AppendLine("            }");
                 sb.AppendLine();
             }
 
