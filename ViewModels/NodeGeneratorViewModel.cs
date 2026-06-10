@@ -78,12 +78,49 @@ namespace FlowMy.ViewModels
         public ObservableCollection<DialogFieldItem> CustomCheckBoxes { get; } = new();
         public ObservableCollection<RadioGroupItem> RadioGroups { get; } = new();
 
-        // ─── Available color keys (suggestions) ───────────────────────────────
+        // ─── Available color keys (from Common.xaml — đủ 4 brush: Brush/Hover/Pressed/TextOn) ─────
         public ObservableCollection<string> ColorKeyOptions { get; } = new()
         {
-            "Info", "Primary", "Success", "Warning", "Danger", "SunsetOrange",
-            "LimeGreen", "ForestPine", "NavyDeep", "ChocolateBrown",
-            "Gold", "Violet", "Teal", "Coral", "Slate"
+            // ── Semantic (Bootstrap-style) ──────────────────────────────────────
+            "Info", "Success", "Warning", "Danger", "Dark", "Light",
+            // ── Indigo / Blue family ────────────────────────────────────────────
+            "Indigo", "IndigoNight", "SkyBlue", "SkyAzure", "OceanBlue",
+            "AquaMarine", "TealCyan", "MidnightBlue", "NavyDeep", "CobaltBlue",
+            "SteelBlue", "SapphireBlue", "PrussianBlue", "CeruleanSky",
+            "PeacockBlue", "BlueberryIce", "GlacierBlue", "SerenityBlue",
+            "AzureBlue", "Fluidity", "Atlassian", "Retro",
+            // ── Green family ────────────────────────────────────────────────────
+            "EmeraldGreen", "Emerald", "ForestPine", "OliveGreen", "LimeGreen",
+            "LimeBright", "JadeGreen", "BambooGreen", "BambooGreen",
+            "CucumberGreen", "KiwiGreen", "OliveGreen", "SageGreen",
+            "PistachioGreen", "MossGreen", "SeaFoam", "MintFresh",
+            "MintChocolate", "ArcticTeal", "Ocean",
+            // ── Red / Orange / Coral family ─────────────────────────────────────
+            "CoralVivid", "Coral", "CoralSunset", "RubyRed", "CrimsonRose",
+            "CrimsonVelvet", "RaspberrySorbet", "BrickRed", "Terracotta",
+            "BurgundyWine", "WineRed", "BrightPower", "SunsetOrange",
+            "Sunset", "MangoTango", "TangerineDream", "PumpkinSpice",
+            "CantaloupeOrange", "PapayaOrange", "DuskyRose", "DustyRose",
+            "BerryPurple", "SalmonPink", "FlamingoPink",
+            // ── Yellow / Gold family ─────────────────────────────────────────────
+            "GoldenYellow", "AmberWarm", "LemonZest", "LemonLime",
+            "MarigoldYellow", "HoneyGold", "PeachSoft", "ApricotSoft",
+            "ChampagneGold", "ButtercupYellow", "SunflowerYellow",
+            "EggYolk", "LavenderDream",
+            // ── Purple / Violet family ───────────────────────────────────────────
+            "RoyalPurple", "LavenderDream", "Lavender", "Amethyst",
+            "VioletDeep", "VioletHaze", "PlumPurple", "WisteriaPurple",
+            "SlatePurple", "IrisPurple", "MagentaBold", "MagentaBloom",
+            "FuchsiaBright", "LilacGrace", "OrchidPink", "CherryBlossom",
+            "Cherry", "BlushPink", "RoseQuartz", "Space", "Gentle",
+            // ── Brown / Gray family ──────────────────────────────────────────────
+            "ChocolateBrown", "EspressoBrown", "CaramelBrown", "BronzeMetal",
+            "SlateGray", "CharcoalDark", "CharcoalMist", "GraphiteGray",
+            "Aubergine",
+            // ── Teal / Cyan ──────────────────────────────────────────────────────
+            "Turquoise", "ArcticTeal", "TealCyan", "AquaMarine",
+            // ── Misc ─────────────────────────────────────────────────────────────
+            "PeriwinkleBlue", "Cerulean",
         };
 
         public NodeGeneratorViewModel()

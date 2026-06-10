@@ -175,7 +175,7 @@
                                                   ItemsSource="{Binding ColorKeyOptions}"
                                                   Text="{Binding ColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   IsEditable="True"
-                                                  ToolTip="VD: Info / Primary / SunsetOrange / ForestPine"/>
+                                                  ToolTip="Chọn ColorKey từ Common.xaml. VD: SunsetOrange, ForestPine, Info, CoralVivid, RoyalPurple..."/>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -288,15 +288,63 @@
                         <Border Style="{StaticResource CardBorder}">
                             <StackPanel>
                                 <TextBlock Text="🪟 Tùy chọn Dialog" Style="{StaticResource SectionHeader}"/>
-                                <CheckBox Content="Có section Input từ node khác (NodeSearchComboBox)"
-                                          IsChecked="{Binding HasInputSection, Mode=TwoWay}"
-                                          Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
-                                <CheckBox Content="Có Dynamic Inputs panel (thêm/xóa inputs)"
-                                          IsChecked="{Binding HasDynamicInputs, Mode=TwoWay}"
-                                          Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6"/>
-                                <CheckBox Content="Có Outputs panel (load dynamic outputs)"
-                                          IsChecked="{Binding HasOutputsPanel, Mode=TwoWay}"
-                                          Foreground="{DynamicResource TextBrush}"/>
+
+                                <!-- HasInputSection -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                        Padding="10,8" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <CheckBox IsChecked="{Binding HasInputSection, Mode=TwoWay}"
+                                                  Foreground="{DynamicResource TextBrush}" Margin="0,0,0,3">
+                                            <CheckBox.Content>
+                                                <StackPanel>
+                                                    <TextBlock Text="📥 Input từ node khác" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock Text="Sinh NodeSearchComboBox để chọn output của node trước làm đầu vào."
+                                                               FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </CheckBox.Content>
+                                        </CheckBox>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- HasDynamicInputs -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                        Padding="10,8" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <CheckBox IsChecked="{Binding HasDynamicInputs, Mode=TwoWay}"
+                                                  Foreground="{DynamicResource TextBrush}" Margin="0,0,0,3">
+                                            <CheckBox.Content>
+                                                <StackPanel>
+                                                    <TextBlock Text="➕ Dynamic Inputs panel" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock Text="Sinh panel thêm/xóa input keys động — dùng cho node có số lượng đầu vào biến đổi (VD: Merge, Condition)."
+                                                               FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </CheckBox.Content>
+                                        </CheckBox>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- HasOutputsPanel -->
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6"
+                                        BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                        Padding="10,8">
+                                    <StackPanel>
+                                        <CheckBox IsChecked="{Binding HasOutputsPanel, Mode=TwoWay}"
+                                                  Foreground="{DynamicResource TextBrush}" Margin="0,0,0,3">
+                                            <CheckBox.Content>
+                                                <StackPanel>
+                                                    <TextBlock Text="📤 Outputs panel" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock Text="Sinh panel hiển thị danh sách output keys node tạo ra — dùng để map kết quả với các node tiếp theo."
+                                                               FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </CheckBox.Content>
+                                        </CheckBox>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -528,15 +576,16 @@
                                     <!-- Node mock -->
                                     <TextBlock Text="Node trên Canvas:" Foreground="{DynamicResource TextMuted}"
                                                FontSize="10" Margin="0,0,0,8"/>
-                                    <Border HorizontalAlignment="Center" Margin="0,0,0,16"
+                                    <Border x:Name="NodeMockBorder"
+                                            HorizontalAlignment="Center" Margin="0,0,0,16"
                                             Width="72" Height="72" CornerRadius="12"
-                                            Background="{DynamicResource PrimaryBrush}"
+                                            Background="{DynamicResource InfoBrush}"
                                             BorderBrush="White" BorderThickness="2">
                                         <Border.Effect>
                                             <DropShadowEffect Color="Black" ShadowDepth="4" BlurRadius="10" Opacity="0.4" Direction="270"/>
                                         </Border.Effect>
                                         <Grid>
-                                            <TextBlock x:Name="PreviewIcon" Text="⬡"
+                                            <TextBlock x:Name="PreviewIcon" Text="◆"
                                                        FontSize="28" HorizontalAlignment="Center"
                                                        VerticalAlignment="Center" Foreground="White"/>
                                         </Grid>

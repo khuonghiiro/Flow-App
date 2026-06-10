@@ -150,6 +150,7 @@ namespace FlowMy.Services.Utilities
         public string GenerateNodeModel(NodeGeneratorConfig c)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("using FlowMy.Models;");
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Collections.ObjectModel;");
             sb.AppendLine();
@@ -200,7 +201,7 @@ namespace FlowMy.Services.Utilities
                 sb.AppendLine("            // Thêm output keys vào DynamicOutputs");
                 foreach (var key in c.OutputKeys)
                 {
-                    sb.AppendLine($"            DynamicOutputs.Add(new NodeDynamicOutput {{ Key = \"{key}\", Label = \"{key}\" }});");
+                    sb.AppendLine($"            DynamicOutputs.Add(new WorkflowDynamicDataPort {{ Key = \"{key}\", DisplayName = \"{key}\", OutputType = WorkflowDataType.String }});");
                 }
                 sb.AppendLine();
             }
@@ -732,22 +733,24 @@ namespace FlowMy.Services.Utilities
 
             if (c.HasInputSection)
             {
-                sb.AppendLine("        // Properties cho input section");
+                sb.AppendLine("        // Properties cho input section — chọn node nguồn và key output của nó");
                 sb.AppendLine("        [ObservableProperty] private string _sourceNodeId = string.Empty;");
                 sb.AppendLine("        [ObservableProperty] private string _sourceOutputKey = string.Empty;");
                 sb.AppendLine("        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();");
-                sb.AppendLine("        public ObservableCollection<string> SourceKeyOptions { get; } = new();");
+                sb.AppendLine("        // WorkflowOutputKeyOption chứa Key + DisplayName + Type — dùng SelectedValuePath=\"Key\"");
+                sb.AppendLine("        public ObservableCollection<WorkflowOutputKeyOption> SourceKeyOptions { get; } = new();");
                 sb.AppendLine();
                 sb.AppendLine("        partial void OnSourceNodeIdChanged(string value)");
                 sb.AppendLine("        {");
-                sb.AppendLine("            // TODO: Lưu vào node và reload key options");
-                sb.AppendLine($"            _{LowerFirst(c.NodeName)}Node.SourceNodeId = value;");
+                sb.AppendLine("            // TODO: Lưu SourceNodeId vào node nếu node có property này:");
+                sb.AppendLine($"            // _{LowerFirst(c.NodeName)}Node.SourceNodeId = value;");
                 sb.AppendLine("            FillOutputKeys(value, SourceKeyOptions);");
                 sb.AppendLine("        }");
                 sb.AppendLine();
                 sb.AppendLine("        partial void OnSourceOutputKeyChanged(string value)");
                 sb.AppendLine("        {");
-                sb.AppendLine($"            _{LowerFirst(c.NodeName)}Node.SourceOutputKey = value;");
+                sb.AppendLine("            // TODO: Lưu SourceOutputKey vào node nếu node có property này:");
+                sb.AppendLine($"            // _{LowerFirst(c.NodeName)}Node.SourceOutputKey = value;");
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
