@@ -446,10 +446,17 @@ namespace FlowMy.Services.Utilities
                     sb.AppendLine("                                    </TextBlock>");
                     sb.AppendLine("                                    <Grid>");
                     sb.AppendLine("                                        <Grid.ColumnDefinitions>");
-                    sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");
-                    sb.AppendLine("                                            <ColumnDefinition Width=\"8\"/>");
-                    sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");
+                    sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");   // Col 0: Node
+                    sb.AppendLine("                                            <ColumnDefinition Width=\"8\"/>");  // Col 1: gap
+                    sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");  // Col 2: Key
+                    if (c.HasCustomKeyOverride)
+                    {
+                        sb.AppendLine("                                            <ColumnDefinition Width=\"8\"/>");  // Col 3: gap
+                        sb.AppendLine("                                            <ColumnDefinition Width=\"*\"/>");  // Col 4: Custom Key
+                    }
                     sb.AppendLine("                                        </Grid.ColumnDefinitions>");
+
+                    // Col 0: Node
                     sb.AppendLine("                                        <StackPanel Grid.Column=\"0\">");
                     sb.AppendLine("                                            <TextBlock Text=\"Node\" Foreground=\"{DynamicResource TextMuted}\"");
                     sb.AppendLine("                                                       FontSize=\"10\" Margin=\"0,0,0,4\"/>");
@@ -458,6 +465,8 @@ namespace FlowMy.Services.Utilities
                     sb.AppendLine("                                                      SelectedValuePath=\"NodeId\" DisplayMemberPath=\"Title\"");
                     sb.AppendLine($"                                                      SelectedValue=\"{{Binding SourceNodeId{suffix}, Mode=TwoWay}}\"/>");
                     sb.AppendLine("                                        </StackPanel>");
+
+                    // Col 2: Key
                     sb.AppendLine("                                        <StackPanel Grid.Column=\"2\">");
                     sb.AppendLine("                                            <TextBlock Text=\"Key\" Foreground=\"{DynamicResource TextMuted}\"");
                     sb.AppendLine("                                                       FontSize=\"10\" Margin=\"0,0,0,4\"/>");
@@ -465,6 +474,23 @@ namespace FlowMy.Services.Utilities
                     sb.AppendLine($"                                                      ItemsSource=\"{{Binding SourceKeyOptions{suffix}}}\"");
                     sb.AppendLine($"                                                      SelectedValue=\"{{Binding SourceOutputKey{suffix}, Mode=TwoWay}}\"/>");
                     sb.AppendLine("                                        </StackPanel>");
+
+                    // Col 4: Custom Key (chỉ khi HasCustomKeyOverride)
+                    if (c.HasCustomKeyOverride)
+                    {
+                        sb.AppendLine("                                        <StackPanel Grid.Column=\"4\">");
+                        sb.AppendLine("                                            <!-- Header: CheckBox bật/tắt ghi đè key -->");
+                        sb.AppendLine($"                                            <CheckBox IsChecked=\"{{Binding UseCustomKey{suffix}, Mode=TwoWay}}\" Cursor=\"Hand\" Margin=\"0,0,0,4\">");
+                        sb.AppendLine("                                                <TextBlock Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\">");
+                        sb.AppendLine("                                                    <Run Text=\"🔑 Tên biến (trống = dùng key)\"/>");
+                        sb.AppendLine("                                                </TextBlock>");
+                        sb.AppendLine("                                            </CheckBox>");
+                        sb.AppendLine($"                                            <TextBox Height=\"32\" Style=\"{{DynamicResource BaseTextBoxV2}}\"");
+                        sb.AppendLine($"                                                     Visibility=\"{{Binding UseCustomKey{suffix}, Converter={{StaticResource BoolToVisibilityConverter}}}}\"");
+                        sb.AppendLine($"                                                     Text=\"{{Binding CustomKey{suffix}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}}\" />");
+                        sb.AppendLine("                                        </StackPanel>");
+                    }
+
                     sb.AppendLine("                                    </Grid>");
                     sb.AppendLine("                                </StackPanel>");
                     sb.AppendLine("                            </Border>");
@@ -612,37 +638,6 @@ namespace FlowMy.Services.Utilities
                     sb.AppendLine($"                                    <CheckBox Content=\"{chk.Label}\" Margin=\"0,0,0,8\"");
                     sb.AppendLine($"                                              Foreground=\"{{DynamicResource TextBrush}}\"");
                     sb.AppendLine($"                                              IsChecked=\"{{Binding {chk.BindingPath}, Mode=TwoWay}}\"/>");
-                }
-                sb.AppendLine("                                </StackPanel>");
-                sb.AppendLine("                            </Border>");
-            }
-
-            // Custom Key Override (không dùng DynamicInputs) — sinh N bộ checkbox+TextBox tương ứng DefaultInputCount
-            if (c.HasCustomKeyOverride && !c.HasDynamicInputs)
-            {
-                int keyCount = Math.Max(1, c.DefaultInputCount);
-                sb.AppendLine();
-                sb.AppendLine("                            <!-- 🔑 Custom Key Override -->");
-                sb.AppendLine("                            <Border Background=\"{DynamicResource WindowBackground}\"");
-                sb.AppendLine("                                    BorderBrush=\"{DynamicResource ControlBorderBrush}\"");
-                sb.AppendLine("                                    BorderThickness=\"1\" CornerRadius=\"8\" Padding=\"12\" Margin=\"0,0,0,12\">");
-                sb.AppendLine("                                <StackPanel>");
-                sb.AppendLine("                                    <TextBlock Text=\"🔑 Ghi đè Output Key mặc định\" Foreground=\"{DynamicResource TextBrush}\"");
-                sb.AppendLine("                                               FontSize=\"11\" FontWeight=\"SemiBold\" Margin=\"0,0,0,8\"/>");
-                for (int i = 1; i <= keyCount; i++)
-                {
-                    string suffix = keyCount > 1 ? i.ToString() : "";
-                    string label = keyCount > 1 ? $"Input {i}" : "input";
-                    sb.AppendLine($"                                    <!-- Override Key {suffix} -->");
-                    sb.AppendLine($"                                    <CheckBox IsChecked=\"{{Binding UseCustomKey{suffix}, Mode=TwoWay}}\" Cursor=\"Hand\" Margin=\"0,0,0,6\">");
-                    sb.AppendLine($"                                        <TextBlock Foreground=\"{{DynamicResource TextBrush}}\" FontSize=\"11\" VerticalAlignment=\"Center\">");
-                    sb.AppendLine($"                                            <Run Text=\"Ghi đè key của {label}\"/>");
-                    sb.AppendLine("                                        </TextBlock>");
-                    sb.AppendLine("                                    </CheckBox>");
-                    sb.AppendLine($"                                    <StackPanel Visibility=\"{{Binding UseCustomKey{suffix}, Converter={{StaticResource BoolToVisibilityConverter}}}}\" Margin=\"0,0,0,8\">");
-                    sb.AppendLine($"                                        <TextBlock Text=\"Key{suffix}\" Foreground=\"{{DynamicResource TextMuted}}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
-                    sb.AppendLine($"                                        <TextBox Height=\"32\" Style=\"{{DynamicResource BaseTextBoxV2}}\" Text=\"{{Binding CustomKey{suffix}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}}\" />");
-                    sb.AppendLine("                                    </StackPanel>");
                 }
                 sb.AppendLine("                                </StackPanel>");
                 sb.AppendLine("                            </Border>");
