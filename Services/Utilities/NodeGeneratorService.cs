@@ -475,18 +475,12 @@ namespace FlowMy.Services.Utilities
                     sb.AppendLine($"                                                      SelectedValue=\"{{Binding SourceOutputKey{suffix}, Mode=TwoWay}}\"/>");
                     sb.AppendLine("                                        </StackPanel>");
 
-                    // Col 4: Custom Key (chỉ khi HasCustomKeyOverride)
+                    // Col 4: Custom Key — luôn hiện khi HasCustomKeyOverride (không có checkbox ẩn/hiện)
                     if (c.HasCustomKeyOverride)
                     {
                         sb.AppendLine("                                        <StackPanel Grid.Column=\"4\">");
-                        sb.AppendLine("                                            <!-- Header: CheckBox bật/tắt ghi đè key -->");
-                        sb.AppendLine($"                                            <CheckBox IsChecked=\"{{Binding UseCustomKey{suffix}, Mode=TwoWay}}\" Cursor=\"Hand\" Margin=\"0,0,0,4\">");
-                        sb.AppendLine("                                                <TextBlock Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\">");
-                        sb.AppendLine("                                                    <Run Text=\"🔑 Tên biến (trống = dùng key)\"/>");
-                        sb.AppendLine("                                                </TextBlock>");
-                        sb.AppendLine("                                            </CheckBox>");
+                        sb.AppendLine("                                            <TextBlock Text=\"🔑 Tên biến (trống = dùng key)\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
                         sb.AppendLine($"                                            <TextBox Height=\"32\" Style=\"{{DynamicResource BaseTextBoxV2}}\"");
-                        sb.AppendLine($"                                                     Visibility=\"{{Binding UseCustomKey{suffix}, Converter={{StaticResource BoolToVisibilityConverter}}}}\"");
                         sb.AppendLine($"                                                     Text=\"{{Binding CustomKey{suffix}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}}\" />");
                         sb.AppendLine("                                        </StackPanel>");
                     }
@@ -1014,15 +1008,13 @@ namespace FlowMy.Services.Utilities
                 }
             }
 
-            // HasCustomKeyOverride && !HasDynamicInputs — sinh properties UseCustomKey{N} + CustomKey{N}
-            // tương ứng với từng input (DefaultInputCount)
+            // HasCustomKeyOverride && !HasDynamicInputs — chỉ sinh _customKey{N}, không có _useCustomKey{N}
             if (c.HasCustomKeyOverride && !c.HasDynamicInputs)
             {
                 int keyCount = Math.Max(1, c.DefaultInputCount);
                 for (int i = 1; i <= keyCount; i++)
                 {
                     string suffix = keyCount > 1 ? i.ToString() : "";
-                    sb.AppendLine($"        [ObservableProperty] private bool _useCustomKey{suffix} = false;");
                     sb.AppendLine($"        [ObservableProperty] private string _customKey{suffix} = string.Empty;");
                     sb.AppendLine($"        partial void OnCustomKey{suffix}Changed(string value)");
                     sb.AppendLine("        {");
