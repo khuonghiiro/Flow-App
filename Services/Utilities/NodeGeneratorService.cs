@@ -617,24 +617,33 @@ namespace FlowMy.Services.Utilities
                 sb.AppendLine("                            </Border>");
             }
 
-            // Custom Key Override
+            // Custom Key Override (không dùng DynamicInputs) — sinh N bộ checkbox+TextBox tương ứng DefaultInputCount
             if (c.HasCustomKeyOverride && !c.HasDynamicInputs)
             {
+                int keyCount = Math.Max(1, c.DefaultInputCount);
                 sb.AppendLine();
                 sb.AppendLine("                            <!-- 🔑 Custom Key Override -->");
                 sb.AppendLine("                            <Border Background=\"{DynamicResource WindowBackground}\"");
                 sb.AppendLine("                                    BorderBrush=\"{DynamicResource ControlBorderBrush}\"");
                 sb.AppendLine("                                    BorderThickness=\"1\" CornerRadius=\"8\" Padding=\"12\" Margin=\"0,0,0,12\">");
                 sb.AppendLine("                                <StackPanel>");
-                sb.AppendLine("                                    <CheckBox IsChecked=\"{Binding UseCustomKey, Mode=TwoWay}\" Cursor=\"Hand\" Margin=\"0,0,0,8\">");
-                sb.AppendLine("                                        <TextBlock Foreground=\"{DynamicResource TextBrush}\" FontSize=\"11\" VerticalAlignment=\"Center\">");
-                sb.AppendLine("                                            <Run Text=\"Ghi đè Output Key mặc định\"/>");
-                sb.AppendLine("                                        </TextBlock>");
-                sb.AppendLine("                                    </CheckBox>");
-                sb.AppendLine("                                    <StackPanel Visibility=\"{Binding UseCustomKey, Converter={StaticResource BoolToVisibilityConverter}}\">");
-                sb.AppendLine("                                        <TextBlock Text=\"Custom Key\" Foreground=\"{DynamicResource TextMuted}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
-                sb.AppendLine("                                        <TextBox Height=\"32\" Style=\"{DynamicResource BaseTextBoxV2}\" Text=\"{Binding CustomKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\" />");
-                sb.AppendLine("                                    </StackPanel>");
+                sb.AppendLine("                                    <TextBlock Text=\"🔑 Ghi đè Output Key mặc định\" Foreground=\"{DynamicResource TextBrush}\"");
+                sb.AppendLine("                                               FontSize=\"11\" FontWeight=\"SemiBold\" Margin=\"0,0,0,8\"/>");
+                for (int i = 1; i <= keyCount; i++)
+                {
+                    string suffix = keyCount > 1 ? i.ToString() : "";
+                    string label = keyCount > 1 ? $"Input {i}" : "input";
+                    sb.AppendLine($"                                    <!-- Override Key {suffix} -->");
+                    sb.AppendLine($"                                    <CheckBox IsChecked=\"{{Binding UseCustomKey{suffix}, Mode=TwoWay}}\" Cursor=\"Hand\" Margin=\"0,0,0,6\">");
+                    sb.AppendLine($"                                        <TextBlock Foreground=\"{{DynamicResource TextBrush}}\" FontSize=\"11\" VerticalAlignment=\"Center\">");
+                    sb.AppendLine($"                                            <Run Text=\"Ghi đè key của {label}\"/>");
+                    sb.AppendLine("                                        </TextBlock>");
+                    sb.AppendLine("                                    </CheckBox>");
+                    sb.AppendLine($"                                    <StackPanel Visibility=\"{{Binding UseCustomKey{suffix}, Converter={{StaticResource BoolToVisibilityConverter}}}}\" Margin=\"0,0,0,8\">");
+                    sb.AppendLine($"                                        <TextBlock Text=\"Key{suffix}\" Foreground=\"{{DynamicResource TextMuted}}\" FontSize=\"10\" Margin=\"0,0,0,4\"/>");
+                    sb.AppendLine($"                                        <TextBox Height=\"32\" Style=\"{{DynamicResource BaseTextBoxV2}}\" Text=\"{{Binding CustomKey{suffix}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}}\" />");
+                    sb.AppendLine("                                    </StackPanel>");
+                }
                 sb.AppendLine("                                </StackPanel>");
                 sb.AppendLine("                            </Border>");
             }
@@ -1010,9 +1019,23 @@ namespace FlowMy.Services.Utilities
                 }
             }
 
-            // HasCustomKeyOverride đã được xử lý trong ItemMappingItemViewModel — không tạo property riêng ở đây
-            // (chỉ dùng khi HasDynamicInputs)
-
+            // HasCustomKeyOverride && !HasDynamicInputs — sinh properties UseCustomKey{N} + CustomKey{N}
+            // tương ứng với từng input (DefaultInputCount)
+            if (c.HasCustomKeyOverride && !c.HasDynamicInputs)
+            {
+                int keyCount = Math.Max(1, c.DefaultInputCount);
+                for (int i = 1; i <= keyCount; i++)
+                {
+                    string suffix = keyCount > 1 ? i.ToString() : "";
+                    sb.AppendLine($"        [ObservableProperty] private bool _useCustomKey{suffix} = false;");
+                    sb.AppendLine($"        [ObservableProperty] private string _customKey{suffix} = string.Empty;");
+                    sb.AppendLine($"        partial void OnCustomKey{suffix}Changed(string value)");
+                    sb.AppendLine("        {");
+                    sb.AppendLine($"            // TODO: _{LowerFirst(c.NodeName)}Node.CustomKey{suffix} = value;");
+                    sb.AppendLine("        }");
+                    sb.AppendLine();
+                }
+            }
             foreach (var tb in c.CustomTextBoxes)
             {
                 var propName = LowerFirst(SanitizeName(tb.BindingPath));
