@@ -114,6 +114,10 @@ namespace FlowMy.Services.Interaction
 
             var key = ParseKey(keyText);
             var vk = key.HasValue ? KeyInterop.VirtualKeyFromKey(key.Value) : 0;
+            bool isModifier = vk == 0x10 || vk == 0xA0 || vk == 0xA1 || // Shift
+                              vk == 0x11 || vk == 0xA2 || vk == 0xA3 || // Ctrl
+                              vk == 0x12 || vk == 0xA4 || vk == 0xA5 || // Alt
+                              vk == 0x5B || vk == 0x5C;                 // Win
 
             for (int i = 0; i < repeatCount; i++)
             {
@@ -126,19 +130,15 @@ namespace FlowMy.Services.Interaction
                     {
                         if (isHoldAsync)
                         {
-                            FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode);
                             _ = Task.Run(async () =>
                             {
-                                try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
-                                catch (TaskCanceledException) { }
+                                await SimulateHoldAsync(() => FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode), (int)holdDurationMs, isModifier, ct);
                                 FlowMy.Helpers.BackgroundInputHelper.SendKeyUp(targetHwnd, (ushort)vk, mode);
                             }, ct);
                         }
                         else
                         {
-                            FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode);
-                            try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
-                            catch (TaskCanceledException) { break; }
+                            await SimulateHoldAsync(() => FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode), (int)holdDurationMs, isModifier, ct);
                             FlowMy.Helpers.BackgroundInputHelper.SendKeyUp(targetHwnd, (ushort)vk, mode);
                         }
                     }
@@ -153,19 +153,15 @@ namespace FlowMy.Services.Interaction
                     {
                         if (isHoldAsync)
                         {
-                            SendKeyDown(key.Value);
                             _ = Task.Run(async () =>
                             {
-                                try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
-                                catch (TaskCanceledException) { }
+                                await SimulateHoldAsync(() => SendKeyDown(key.Value), (int)holdDurationMs, isModifier, ct);
                                 SendKeyUp(key.Value);
                             }, ct);
                         }
                         else
                         {
-                            SendKeyDown(key.Value);
-                            try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
-                            catch (TaskCanceledException) { break; }
+                            await SimulateHoldAsync(() => SendKeyDown(key.Value), (int)holdDurationMs, isModifier, ct);
                             SendKeyUp(key.Value);
                         }
                     }
@@ -187,6 +183,49 @@ namespace FlowMy.Services.Interaction
                         break;
                     }
                 }
+            }
+        }
+
+        private async Task SimulateHoldAsync(Action keyDownAction, int holdDurationMs, bool isModifier, CancellationToken ct)
+        {
+            if (holdDurationMs <= 0) return;
+
+            // Nhấn xuống lần đầu
+            keyDownAction();
+
+            // Nếu là phím Modifier (Ctrl, Alt, Shift, Win) -> Không cần giả lập auto-repeat của hệ điều hành
+            if (isModifier)
+            {
+                try { await Task.Delay(holdDurationMs, ct).ConfigureAwait(false); } catch (TaskCanceledException) { }
+                return;
+            }
+
+            // Nếu thời gian giữ quá ngắn, chỉ cần chờ rồi kết thúc
+            if (holdDurationMs <= 30)
+            {
+                try { await Task.Delay(holdDurationMs, ct).ConfigureAwait(false); } catch (TaskCanceledException) { }
+                return;
+            }
+
+            var startTime = DateTime.UtcNow;
+            
+            // Thời gian chờ trước khi bắt đầu lặp lại phím (auto-repeat delay, thường là 500ms)
+            int initialDelay = Math.Min(500, holdDurationMs);
+            try { await Task.Delay(initialDelay, ct).ConfigureAwait(false); } catch (TaskCanceledException) { return; }
+
+            int elapsed = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            // Bắt đầu lặp lại phím (auto-repeat rate, thường khoảng 30ms/lần)
+            while (elapsed < holdDurationMs && !ct.IsCancellationRequested)
+            {
+                keyDownAction();
+                
+                int remaining = holdDurationMs - elapsed;
+                int waitTime = Math.Min(30, remaining);
+                if (waitTime <= 0) break;
+
+                try { await Task.Delay(waitTime, ct).ConfigureAwait(false); } catch (TaskCanceledException) { break; }
+                elapsed = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
             }
         }
 

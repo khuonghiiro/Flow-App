@@ -1974,6 +1974,8 @@ namespace FlowMy.ViewModels
                     pendingNodesThisSession.Clear();
                 }
 
+                try { sessionCts.Cancel(); } catch { }
+
                 ReleaseRunningNodeVisualBatch(orphanNodes);
 
                 lock (_manualRunCtsLock)
@@ -2117,6 +2119,8 @@ namespace FlowMy.ViewModels
                     pendingNodesFromNode.Clear();
                 }
 
+                try { sessionCts.Cancel(); } catch { }
+
                 ReleaseRunningNodeVisualBatch(orphanFromNode);
 
                 lock (_manualRunCtsLock)
@@ -2235,6 +2239,8 @@ namespace FlowMy.ViewModels
                     orphanAuto = pendingAutoNodes.ToList();
                     pendingAutoNodes.Clear();
                 }
+
+                try { laneCts.Cancel(); } catch { }
 
                 ReleaseRunningNodeVisualBatch(orphanAuto);
 
