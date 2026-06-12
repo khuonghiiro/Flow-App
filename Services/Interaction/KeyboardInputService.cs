@@ -130,6 +130,8 @@ namespace FlowMy.Services.Interaction
                     {
                         if (isHoldAsync)
                         {
+                            // Đảm bảo phím được nhấn xuống NGAY LẬP TỨC đồng bộ trước khi sang node tiếp theo
+                            FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode);
                             _ = Task.Run(async () =>
                             {
                                 await SimulateHoldAsync(() => FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode), (int)holdDurationMs, isModifier, ct);
@@ -153,6 +155,8 @@ namespace FlowMy.Services.Interaction
                     {
                         if (isHoldAsync)
                         {
+                            // Đảm bảo phím được nhấn xuống NGAY LẬP TỨC đồng bộ trước khi sang node tiếp theo
+                            SendKeyDown(key.Value);
                             _ = Task.Run(async () =>
                             {
                                 await SimulateHoldAsync(() => SendKeyDown(key.Value), (int)holdDurationMs, isModifier, ct);
@@ -694,6 +698,16 @@ namespace FlowMy.Services.Interaction
                     return Key.Tab;
                 case "backspace":
                     return Key.Back;
+                case "alt":
+                    return Key.LeftAlt;
+                case "ctrl":
+                case "control":
+                    return Key.LeftCtrl;
+                case "shift":
+                    return Key.LeftShift;
+                case "win":
+                case "windows":
+                    return Key.LWin;
                 case "delete":
                 case "del":
                     return Key.Delete;
