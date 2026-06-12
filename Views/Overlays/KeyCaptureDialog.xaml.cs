@@ -28,9 +28,9 @@ namespace FlowMy.Views.Overlays
 
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
         private const int WM_SYSKEYDOWN = 0x0104;
-        private const int VK_LWIN = 0x5B;
-        private const int VK_RWIN = 0x5C;
+        private const int WM_SYSKEYUP = 0x0105;
 
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
         private LowLevelKeyboardProc? _hookProc;
@@ -44,8 +44,6 @@ namespace FlowMy.Views.Overlays
 
             Loaded += OnLoaded;
             Closed += OnClosed;
-
-            PreviewKeyDown += OnPreviewKeyDown;
 
             // Click outside / lose focus => close without selecting
             Deactivated += (_, __) =>
@@ -72,7 +70,7 @@ namespace FlowMy.Views.Overlays
             }
             catch { }
 
-            // Install low-level hook to block Win key
+            // Install low-level hook to capture all keys
             try
             {
                 _hookProc = HookCallback;
@@ -110,18 +108,68 @@ namespace FlowMy.Views.Overlays
 
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            if (nCode >= 0)
             {
-                try
+                int msg = wParam.ToInt32();
+                if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYUP)
                 {
-                    var vkCode = Marshal.ReadInt32(lParam);
-                    // Don't block Win keys here - let them through to OnPreviewKeyDown
-                    // WndProc will block the Start menu
+                    try
+                    {
+                        int vkCode = Marshal.ReadInt32(lParam);
+                        Key key = KeyInterop.KeyFromVirtualKey(vkCode);
+
+                        if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
+                        {
+                            Dispatcher.BeginInvoke(new Action(() => ProcessKeyDown(key, vkCode)));
+                        }
+
+                        // Block all keys from the OS while capturing
+                        return (IntPtr)1;
+                    }
+                    catch { }
                 }
-                catch { }
             }
 
             return CallNextHookEx(_hook, nCode, wParam, lParam);
+        }
+
+        private void ProcessKeyDown(Key key, int vkCode)
+        {
+            if (_isClosing) return;
+
+            string keyName = NormalizeKeyName(key, vkCode);
+            if (string.IsNullOrWhiteSpace(keyName) || keyName == "None")
+                return;
+
+            // Esc cancels without selecting.
+            if (keyName == "Esc")
+            {
+                _isClosing = true;
+                CapturedKeyText = null;
+                try { DialogResult = false; } catch { }
+                try { Close(); } catch { }
+                return;
+            }
+
+            CapturedKeyText = keyName;
+            _isClosing = true;
+            try { DialogResult = true; } catch { }
+            try { Close(); } catch { }
+        }
+
+        private string NormalizeKeyName(Key key, int vkCode)
+        {
+            if (vkCode == 255) return "Fn"; // Fn key often has vkCode 255
+            
+            return key switch
+            {
+                Key.LWin or Key.RWin => "Win",
+                Key.LeftCtrl or Key.RightCtrl => "Ctrl",
+                Key.LeftAlt or Key.RightAlt => "Alt",
+                Key.LeftShift or Key.RightShift => "Shift",
+                Key.Escape => "Esc",
+                _ => key != Key.None ? key.ToString() : $"Vk{vkCode}"
+            };
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -134,36 +182,5 @@ namespace FlowMy.Views.Overlays
             }
             return IntPtr.Zero;
         }
-
-        private void OnPreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            var key = e.Key == Key.System ? e.SystemKey : e.Key;
-            if (key == Key.None)
-                return;
-
-            // Always handle to prevent system actions
-            e.Handled = true;
-
-            // Esc cancels without selecting.
-            if (key == Key.Escape)
-            {
-                if (_isClosing) return;
-                _isClosing = true;
-                CapturedKeyText = null;
-                try { DialogResult = false; } catch { }
-                try { Close(); } catch { }
-                return;
-            }
-
-            // Allow Win keys to be captured (but still block Start menu via hook)
-            // Win key is captured as "LWin" or "RWin"
-
-            if (_isClosing) return;
-            CapturedKeyText = key.ToString();
-            _isClosing = true;
-            try { DialogResult = true; } catch { }
-            try { Close(); } catch { }
-        }
     }
 }
-

@@ -308,6 +308,9 @@ namespace FlowMy.Services.Interaction
             SendHotkeyPress(hotkeyText, repeatCount, delayMs, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
         }
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool LockWorkStation();
+
         public void SendHotkeyPress(string hotkeyText, int repeatCount, int delayMs,
                                   IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
         {
@@ -320,6 +323,14 @@ namespace FlowMy.Services.Interaction
             {
                 // Log or handle parsing failure
                 System.Diagnostics.Debug.WriteLine($"Failed to parse hotkey: {hotkeyText}");
+                return;
+            }
+
+            // Intercept Win+L to lock workstation (Windows blocks synthetic Win+L for security)
+            if (keys.Modifiers.Count == 1 && (keys.Modifiers[0] == Key.LWin || keys.Modifiers[0] == Key.RWin) &&
+                keys.MainKeys.Count == 1 && keys.MainKeys[0] == Key.L)
+            {
+                LockWorkStation();
                 return;
             }
 

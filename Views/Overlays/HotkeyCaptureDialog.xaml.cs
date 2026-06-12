@@ -1,4 +1,5 @@
 using FlowMy.Services.Interaction;
+using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
@@ -9,10 +10,8 @@ namespace FlowMy.Views.Overlays
     public partial class HotkeyCaptureDialog : Window
     {
         private bool _isClosing;
-        private bool _isCapturingWinKey;
         private IDisposable? _suppressScope;
         private readonly System.Collections.Generic.List<string> _capturedKeys = new();
-        private ModifierKeys _currentModifiers;
         private HwndSource? _hwndSource;
         private const int WM_SYSCOMMAND = 0x0112;
         private const int SC_KEYMENU = 0xF100;
@@ -32,9 +31,9 @@ namespace FlowMy.Views.Overlays
 
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
         private const int WM_SYSKEYDOWN = 0x0104;
-        private const int VK_LWIN = 0x5B;
-        private const int VK_RWIN = 0x5C;
+        private const int WM_SYSKEYUP = 0x0105;
 
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
         private LowLevelKeyboardProc? _hookProc;
@@ -50,9 +49,6 @@ namespace FlowMy.Views.Overlays
             Loaded += OnLoaded;
             Closed += OnClosed;
 
-            PreviewKeyDown += OnPreviewKeyDown;
-            PreviewKeyUp += OnPreviewKeyUp;
-
             OkButton.Click += (_, __) => AcceptAndClose();
             CancelButton.Click += (_, __) => CancelAndClose();
             ClearButton.Click += (_, __) => ClearHotkey();
@@ -63,7 +59,6 @@ namespace FlowMy.Views.Overlays
             {
                 if (_isClosing) return;
                 if (DialogResult == true) return;
-                if (_isCapturingWinKey) return;
             };
         }
 
@@ -121,7 +116,7 @@ namespace FlowMy.Views.Overlays
             }
             catch { }
 
-            // Install low-level hook to block Win key
+            // Install low-level hook to capture all keys
             try
             {
                 _hookProc = HookCallback;
@@ -162,78 +157,57 @@ namespace FlowMy.Views.Overlays
 
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            // Don't block Win keys in the hook - let them through to PreviewKeyDown
-            // WndProc will handle blocking the Start menu
+            if (nCode >= 0)
+            {
+                int msg = wParam.ToInt32();
+                if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYUP)
+                {
+                    try
+                    {
+                        int vkCode = Marshal.ReadInt32(lParam);
+                        Key key = KeyInterop.KeyFromVirtualKey(vkCode);
+
+                        if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
+                        {
+                            Dispatcher.BeginInvoke(new Action(() => ProcessKeyDown(key, vkCode)));
+                        }
+
+                        // Block all keys from the OS
+                        return (IntPtr)1;
+                    }
+                    catch { }
+                }
+            }
             return CallNextHookEx(_hook, nCode, wParam, lParam);
         }
 
-        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        private void ProcessKeyDown(Key key, int vkCode)
         {
-            // Block Win key menu (Start menu)
-            if (msg == WM_SYSCOMMAND && (wParam.ToInt32() & 0xFFF0) == SC_KEYMENU)
-            {
-                handled = true;
-                return IntPtr.Zero;
-            }
-            return IntPtr.Zero;
-        }
+            if (_isClosing) return;
 
-        private void OnPreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            var key = e.Key == Key.System ? e.SystemKey : e.Key;
-
-            // Always handle to avoid bubbling/commands while capturing
-            e.Handled = true;
-
-            if (key == Key.None) return;
-
-            // Backspace removes last key
             if (key == Key.Back)
             {
                 RemoveLastKey();
                 return;
             }
 
-            // Ignore Enter key (used for OK button)
             if (key == Key.Enter || key == Key.Return)
             {
+                AcceptAndClose();
+                return;
+            }
+            
+            if (key == Key.Escape)
+            {
+                CancelAndClose();
                 return;
             }
 
-            // Get key name - normalize modifier keys
-            string keyName = NormalizeKeyName(key);
+            string keyName = NormalizeKeyName(key, vkCode);
 
             if (string.IsNullOrWhiteSpace(keyName) || keyName == "None")
                 return;
 
-            // Special handling for Win key to prevent Start menu
-            if (key == Key.LWin || key == Key.RWin)
-            {
-                _isCapturingWinKey = true;
-                try
-                {
-                    // Keep dialog active
-                    Activate();
-                    Focus();
-
-                    if (!_capturedKeys.Contains(keyName))
-                    {
-                        _capturedKeys.Add(keyName);
-                        UpdateHotkeyTextFromCaptured();
-                    }
-                }
-                finally
-                {
-                    // Reset flag after a short delay
-                    System.Threading.Tasks.Task.Delay(200).ContinueWith(_ =>
-                    {
-                        Dispatcher.Invoke(() => _isCapturingWinKey = false);
-                    });
-                }
-                return;
-            }
-
-            // Add ANY key to captured list (including Esc, Ctrl, Alt, Shift, etc.)
             if (!_capturedKeys.Contains(keyName))
             {
                 _capturedKeys.Add(keyName);
@@ -241,9 +215,10 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private string NormalizeKeyName(Key key)
+        private string NormalizeKeyName(Key key, int vkCode)
         {
-            // Normalize left/right modifier keys to generic names
+            if (vkCode == 255) return "Fn"; // Fn key
+
             return key switch
             {
                 Key.LWin or Key.RWin => "Win",
@@ -251,14 +226,8 @@ namespace FlowMy.Views.Overlays
                 Key.LeftAlt or Key.RightAlt => "Alt",
                 Key.LeftShift or Key.RightShift => "Shift",
                 Key.Escape => "Esc",
-                _ => key.ToString()
+                _ => key != Key.None ? key.ToString() : $"Vk{vkCode}"
             };
-        }
-
-        private void OnPreviewKeyUp(object sender, KeyEventArgs e)
-        {
-            // Update modifiers when keys are released
-            _currentModifiers = Keyboard.Modifiers;
         }
 
         private void UpdateHotkeyTextFromCaptured()
@@ -317,39 +286,15 @@ namespace FlowMy.Views.Overlays
             catch { }
         }
 
-        private static bool IsModifierKey(Key key)
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            return key is Key.LeftCtrl or Key.RightCtrl
-                or Key.LeftAlt or Key.RightAlt
-                or Key.LeftShift or Key.RightShift
-                or Key.LWin or Key.RWin
-                or Key.System;
-        }
-
-        private static string PrefixOnly(ModifierKeys mods)
-        {
-            var p = BuildModifierPrefix(mods);
-            return string.IsNullOrWhiteSpace(p) ? "Chưa chọn" : p + "…";
-        }
-
-        private static string FormatHotkey(ModifierKeys mods, Key key)
-        {
-            var main = key.ToString();
-            if (string.IsNullOrWhiteSpace(main)) return string.Empty;
-
-            var prefix = BuildModifierPrefix(mods);
-            return string.IsNullOrWhiteSpace(prefix) ? main : $"{prefix}+{main}";
-        }
-
-        private static string BuildModifierPrefix(ModifierKeys mods)
-        {
-            // Keep a stable order for comparisons/UX
-            var parts = new System.Collections.Generic.List<string>(4);
-            if (mods.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
-            if (mods.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
-            if (mods.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
-            if (mods.HasFlag(ModifierKeys.Windows)) parts.Add("Win");
-            return string.Join("+", parts);
+            // Block Win key menu (Start menu)
+            if (msg == WM_SYSCOMMAND && (wParam.ToInt32() & 0xFFF0) == SC_KEYMENU)
+            {
+                handled = true;
+                return IntPtr.Zero;
+            }
+            return IntPtr.Zero;
         }
     }
 }
