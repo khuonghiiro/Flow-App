@@ -1224,7 +1224,7 @@ _nodeExecutors = new List<NodeExecutors.INodeExecutor>
 
 ## 10. Persistence — Kiến trúc Partial Class
 
-`FileWorkflowPersistenceService` sử dụng **partial class** pattern. File chính chỉ chứa **dispatcher** (if/else if gọi method). Logic serialize/deserialize nằm trong các file riêng tại `Services/Workflow/Persistence/`.
+`FileWorkflowPersistenceService` sử dụng **partial class** pattern. File chính chỉ chứa **dispatcher** (switch case gọi method). Logic serialize/deserialize nằm trong các file riêng tại `Services/Workflow/Persistence/`.
 
 ### 10.1 Cấu trúc file
 
@@ -1274,17 +1274,15 @@ private static void GetYourNodeProperties(YourNode node, Dictionary<string, obje
 **Bước 2**: Thêm dispatch vào `FileWorkflowPersistenceService.cs` — 2 chỗ:
 
 ```csharp
-// Trong RestoreNodeProperties() — thêm else if
-else if (node is YourNode yourNode)
-{
+// Trong RestoreNodeProperties() — thêm case vào switch
+case YourNode yourNode:
     RestoreYourNodeProperties(yourNode, properties);
-}
+    break;
 
-// Trong GetNodeProperties() — thêm else if
-else if (node is YourNode yourNode)
-{
+// Trong GetNodeProperties() — thêm case vào switch
+case YourNode yourNode:
     GetYourNodeProperties(yourNode, dict);
-}
+    break;
 ```
 
 ### 10.3 Quy tắc quan trọng

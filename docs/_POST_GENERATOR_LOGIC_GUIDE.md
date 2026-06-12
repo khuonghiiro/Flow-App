@@ -291,7 +291,7 @@ protected override void OnSaveTitle()
 > ⚠️ Generator **KHÔNG tạo** phần này. Phải viết thủ công.
 > 
 > ⚠️ **KIẾN TRÚC MỚI**: `FileWorkflowPersistenceService` sử dụng **partial class** pattern.
-> File chính chỉ chứa **dispatcher** (if/else if). Logic nằm trong `Services/Workflow/Persistence/*.cs`.
+> File chính chỉ chứa **dispatcher** (switch case). Logic nằm trong `Services/Workflow/Persistence/*.cs`.
 
 ### 3.1 Tạo methods trong file partial
 
@@ -396,17 +396,15 @@ private static void GetYourNodeProperties(YourNode node, Dictionary<string, obje
 File: `Services/Workflow/FileWorkflowPersistenceService.cs` — chỉ thêm **2 dòng dispatch**:
 
 ```csharp
-// Trong RestoreNodeProperties() — thêm else if vào chuỗi
-else if (node is YourNode yourNode)
-{
+// Trong RestoreNodeProperties() — thêm case vào chuỗi switch
+case YourNode yourNode:
     RestoreYourNodeProperties(yourNode, properties);
-}
+    break;
 
-// Trong GetNodeProperties() — thêm else if vào chuỗi
-else if (node is YourNode yourNode)
-{
+// Trong GetNodeProperties() — thêm case vào chuỗi switch
+case YourNode yourNode:
     GetYourNodeProperties(yourNode, dict);
-}
+    break;
 ```
 
 ### 3.3 Shared properties — KHÔNG cần viết

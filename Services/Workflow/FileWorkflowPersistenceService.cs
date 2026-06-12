@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Models.Persistence;
 using FlowMy.Services.Rendering;
@@ -810,165 +810,125 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
         // Shared properties (all nodes)
         RestoreSharedNodeProperties(node, properties);
 
-        // KeyPressEventNode deserialization
-        if (node is KeyPressEventNode keyPressNode)
+        switch (node)
         {
-            RestoreKeyPressEventNodeProperties(keyPressNode, properties);
-        }
-        // HotkeyPressEventNode deserialization
-        else if (node is HotkeyPressEventNode hotkeyPressNode)
-        {
-            RestoreHotkeyPressEventNodeProperties(hotkeyPressNode, properties);
-        }
-        // StringSplitNode deserialization
-        else if (node is StringSplitNode stringSplitNode)
-        {
-            RestoreStringSplitNodeProperties(stringSplitNode, properties);
-        }
-
-        if (node is LoopNode loop)
-        {
-            RestoreLoopNodeProperties(loop, properties);
-        }
-        else if (node is MouseEventNode mouseNode)
-        {
-            RestoreMouseEventNodeProperties(mouseNode, properties);
-        }
-        else if (node is ScreenPositionPickerNode pos)
-        {
-            RestoreScreenPositionPickerNodeProperties(pos, properties);
-        }
-        else if (node is ScreenCaptureNode cap)
-        {
-            RestoreScreenCaptureNodeProperties(cap, properties);
-        }
-        else if (node is TextScanNode textScan)
-        {
-            RestoreTextScanNodeProperties(textScan, properties);
-        }
-        else if (node is LoopBodyNode loopBody)
-        {
-            RestoreLoopBodyNodeProperties(loopBody, properties);
-        }
-        else if (node is AsyncTaskNode asyncTaskNode)
-        {
-            RestoreAsyncTaskNodeProperties(asyncTaskNode, properties);
-        }
-        else if (node is AsyncTaskBodyNode asyncTaskBodyPersist)
-        {
-            RestoreAsyncTaskBodyNodeProperties(asyncTaskBodyPersist, properties);
-        }
-        else if (node is EmbedApplicationNode embedApp)
-        {
-            RestoreEmbedApplicationNodeProperties(embedApp, properties);
-        }
-        else if (node is StorageNode storageNode)
-        {
-            RestoreStorageNodeProperties(storageNode, properties);
-        }
-        else if (node is AsyncTaskDispatchCollectNode collectNode)
-        {
-            RestoreAsyncTaskDispatchCollectNodeProperties(collectNode, properties);
-        }
-        else if (node.IsConditionalNode)
-        {
-            RestoreConditionalNodeProperties(node, properties);
-        }
-        else if (node is InputNode inputNode)
-        {
-            RestoreInputNodeProperties(inputNode, properties);
-        }
-        else if (node is DelayNode delayNode)
-        {
-            RestoreDelayNodeProperties(delayNode, properties);
-        }
-        else if (node is CallbackNode callbackNode)
-        {
-            RestoreCallbackNodeProperties(callbackNode, properties);
-        }
-        else if (node is ListOutNode listOutNode)
-        {
-            RestoreListOutNodeProperties(listOutNode, properties);
-        }
-        else if (node is AssignDataNode assignDataNode)
-        {
-            RestoreAssignDataNodeProperties(assignDataNode, properties);
-        }
-        else if (node is MediaGalleryNode mediaGalleryNode)
-        {
-            RestoreMediaGalleryNodeProperties(mediaGalleryNode, properties);
-        }
-        else if (node is ImageProcessingNode imageNode)
-        {
-            RestoreImageProcessingNodeProperties(imageNode, properties);
-        }
-        else if (node is VideoProcessingNode videoNode)
-        {
-            RestoreVideoProcessingNodeProperties(videoNode, properties);
-        }
-        else if (node is DataFetcherNode fetcherNode)
-        {
-            RestoreDataFetcherNodeProperties(fetcherNode, properties);
-        }
-        else if (node is WebNode webNode)
-        {
-            RestoreWebNodeProperties(webNode, properties);
-        }
-        else if (node is CodeNode codeNode)
-        {
-            RestoreCodeNodeProperties(codeNode, properties);
-        }
-        else if (node is FolderNode folderNode)
-        {
-            RestoreFolderNodeProperties(folderNode, properties);
-        }
-        else if (node is HtmlUiNode htmlUiNode)
-        {
-            RestoreHtmlUiNodeProperties(htmlUiNode, properties);
-        }
-        else if (node is FileDownloadNode fdNode)
-        {
-            RestoreFileDownloadNodeProperties(fdNode, properties);
-        }
-        else if (node is FolderFilePathsNode ffpNode)
-        {
-            RestoreFolderFilePathsNodeProperties(ffpNode, properties);
-        }
-        else if (node is KeyValueBridgeNode kvNode)
-        {
-            RestoreKeyValueBridgeNodeProperties(kvNode, properties);
-        }
-        else if (node is FlowOverwriteNode flowOverwriteNode)
-        {
-            RestoreFlowOverwriteNodeProperties(flowOverwriteNode, properties);
-        }
-        else if (node is GitSourceNode gitSourceNode)
-        {
-            RestoreGitSourceNodeProperties(gitSourceNode, properties);
-        }
-        else if (node is BodyContainerNode bodyContainerNode)
-        {
-            RestoreBodyContainerNodeProperties(bodyContainerNode, properties);
-        }
-        else if (node is OutputNode outputNode)
-        {
-            RestoreOutputNodeProperties(outputNode, properties);
-        }
-        else if (node is MacroRecorderNode macroRecorderNode)
-        {
-            RestoreMacroRecorderNodeProperties(macroRecorderNode, properties);
-        }
-        else if (node is BorderHighlightNode borderHighlightNode)
-        {
-            RestoreBorderHighlightNodeProperties(borderHighlightNode, properties);
-        }
-        else if (node is NotificationNode notificationNode)
-        {
-            RestoreNotificationNodeProperties(notificationNode, properties);
-        }
-        else if (node is HttpRequestNode httpRequestNode)
-        {
-            RestoreHttpRequestNodeProperties(httpRequestNode, properties);
+            case KeyPressEventNode keyPressNode:
+                RestoreKeyPressEventNodeProperties(keyPressNode, properties);
+                break;
+            case HotkeyPressEventNode hotkeyPressNode:
+                RestoreHotkeyPressEventNodeProperties(hotkeyPressNode, properties);
+                break;
+            case StringSplitNode stringSplitNode:
+                RestoreStringSplitNodeProperties(stringSplitNode, properties);
+                break;
+            case LoopNode loop:
+                RestoreLoopNodeProperties(loop, properties);
+                break;
+            case MouseEventNode mouseNode:
+                RestoreMouseEventNodeProperties(mouseNode, properties);
+                break;
+            case ScreenPositionPickerNode pos:
+                RestoreScreenPositionPickerNodeProperties(pos, properties);
+                break;
+            case ScreenCaptureNode cap:
+                RestoreScreenCaptureNodeProperties(cap, properties);
+                break;
+            case TextScanNode textScan:
+                RestoreTextScanNodeProperties(textScan, properties);
+                break;
+            case LoopBodyNode loopBody:
+                RestoreLoopBodyNodeProperties(loopBody, properties);
+                break;
+            case AsyncTaskNode asyncTaskNode:
+                RestoreAsyncTaskNodeProperties(asyncTaskNode, properties);
+                break;
+            case AsyncTaskBodyNode asyncTaskBodyPersist:
+                RestoreAsyncTaskBodyNodeProperties(asyncTaskBodyPersist, properties);
+                break;
+            case EmbedApplicationNode embedApp:
+                RestoreEmbedApplicationNodeProperties(embedApp, properties);
+                break;
+            case StorageNode storageNode:
+                RestoreStorageNodeProperties(storageNode, properties);
+                break;
+            case AsyncTaskDispatchCollectNode collectNode:
+                RestoreAsyncTaskDispatchCollectNodeProperties(collectNode, properties);
+                break;
+            case WorkflowNode n when n.IsConditionalNode:
+                RestoreConditionalNodeProperties(n, properties);
+                break;
+            case InputNode inputNode:
+                RestoreInputNodeProperties(inputNode, properties);
+                break;
+            case DelayNode delayNode:
+                RestoreDelayNodeProperties(delayNode, properties);
+                break;
+            case CallbackNode callbackNode:
+                RestoreCallbackNodeProperties(callbackNode, properties);
+                break;
+            case ListOutNode listOutNode:
+                RestoreListOutNodeProperties(listOutNode, properties);
+                break;
+            case AssignDataNode assignDataNode:
+                RestoreAssignDataNodeProperties(assignDataNode, properties);
+                break;
+            case MediaGalleryNode mediaGalleryNode:
+                RestoreMediaGalleryNodeProperties(mediaGalleryNode, properties);
+                break;
+            case ImageProcessingNode imageNode:
+                RestoreImageProcessingNodeProperties(imageNode, properties);
+                break;
+            case VideoProcessingNode videoNode:
+                RestoreVideoProcessingNodeProperties(videoNode, properties);
+                break;
+            case DataFetcherNode fetcherNode:
+                RestoreDataFetcherNodeProperties(fetcherNode, properties);
+                break;
+            case WebNode webNode:
+                RestoreWebNodeProperties(webNode, properties);
+                break;
+            case CodeNode codeNode:
+                RestoreCodeNodeProperties(codeNode, properties);
+                break;
+            case FolderNode folderNode:
+                RestoreFolderNodeProperties(folderNode, properties);
+                break;
+            case HtmlUiNode htmlUiNode:
+                RestoreHtmlUiNodeProperties(htmlUiNode, properties);
+                break;
+            case FileDownloadNode fdNode:
+                RestoreFileDownloadNodeProperties(fdNode, properties);
+                break;
+            case FolderFilePathsNode ffpNode:
+                RestoreFolderFilePathsNodeProperties(ffpNode, properties);
+                break;
+            case KeyValueBridgeNode kvNode:
+                RestoreKeyValueBridgeNodeProperties(kvNode, properties);
+                break;
+            case FlowOverwriteNode flowOverwriteNode:
+                RestoreFlowOverwriteNodeProperties(flowOverwriteNode, properties);
+                break;
+            case GitSourceNode gitSourceNode:
+                RestoreGitSourceNodeProperties(gitSourceNode, properties);
+                break;
+            case BodyContainerNode bodyContainerNode:
+                RestoreBodyContainerNodeProperties(bodyContainerNode, properties);
+                break;
+            case OutputNode outputNode:
+                RestoreOutputNodeProperties(outputNode, properties);
+                break;
+            case MacroRecorderNode macroRecorderNode:
+                RestoreMacroRecorderNodeProperties(macroRecorderNode, properties);
+                break;
+            case BorderHighlightNode borderHighlightNode:
+                RestoreBorderHighlightNodeProperties(borderHighlightNode, properties);
+                break;
+            case NotificationNode notificationNode:
+                RestoreNotificationNodeProperties(notificationNode, properties);
+                break;
+            case HttpRequestNode httpRequestNode:
+                RestoreHttpRequestNodeProperties(httpRequestNode, properties);
+                break;
         }
 
         // Shared: ReuseRoutes, DynamicInputs, Title (Ã¡p dá»¥ng cho má»i loáº¡i node)
@@ -984,168 +944,48 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
         // Shared header properties (all nodes)
         GetSharedHeaderProperties(node, dict);
 
-        // KeyPressEventNode serialization
-        if (node is KeyPressEventNode kp)
+        switch (node)
         {
-            GetKeyPressEventNodeProperties(kp, dict);
+            case KeyPressEventNode kp: GetKeyPressEventNodeProperties(kp, dict); break;
+            case HotkeyPressEventNode hk: GetHotkeyPressEventNodeProperties(hk, dict); break;
+            case StringSplitNode stringSplit: GetStringSplitNodeProperties(stringSplit, dict); break;
+            case LoopNode loop: GetLoopNodeProperties(loop, dict); break;
+            case MouseEventNode mouseNode: GetMouseEventNodeProperties(mouseNode, dict); break;
+            case ScreenPositionPickerNode pos: GetScreenPositionPickerNodeProperties(pos, dict); break;
+            case ScreenCaptureNode cap: GetScreenCaptureNodeProperties(cap, dict); break;
+            case TextScanNode textScan: GetTextScanNodeProperties(textScan, dict); break;
+            case LoopBodyNode loopBody: GetLoopBodyNodeProperties(loopBody, dict); break;
+            case AsyncTaskBodyNode asyncTaskBodyNode: GetAsyncTaskBodyNodeProperties(asyncTaskBodyNode, dict); break;
+            case AsyncTaskNode asyncTaskNode: GetAsyncTaskNodeProperties(asyncTaskNode, dict); break;
+            case AsyncTaskDispatchCollectNode collectNode: GetAsyncTaskDispatchCollectNodeProperties(collectNode, dict); break;
+            case WorkflowNode n when n.IsConditionalNode && n.ConditionalBranches != null && n.ConditionalBranches.Count > 0: GetConditionalNodeProperties(n, dict); break;
+            case InputNode inputNode: GetInputNodeProperties(inputNode, dict); break;
+            case DelayNode delayNode: GetDelayNodeProperties(delayNode, dict); break;
+            case CallbackNode callbackNode: GetCallbackNodeProperties(callbackNode, dict); break;
+            case ListOutNode listOutNode: GetListOutNodeProperties(listOutNode, dict); break;
+            case AssignDataNode assignDataNode: GetAssignDataNodeProperties(assignDataNode, dict); break;
+            case MediaGalleryNode mediaGalleryNode: GetMediaGalleryNodeProperties(mediaGalleryNode, dict); break;
+            case ImageProcessingNode imageNode: GetImageProcessingNodeProperties(imageNode, dict); break;
+            case VideoProcessingNode videoNode: GetVideoProcessingNodeProperties(videoNode, dict); break;
+            case DataFetcherNode fetcherNode: GetDataFetcherNodeProperties(fetcherNode, dict); break;
+            case FileDownloadNode fdNode: GetFileDownloadNodeProperties(fdNode, dict); break;
+            case FolderFilePathsNode ffpNode: GetFolderFilePathsNodeProperties(ffpNode, dict); break;
+            case KeyValueBridgeNode kvNode: GetKeyValueBridgeNodeProperties(kvNode, dict); break;
+            case FlowOverwriteNode flowOverwriteNode: GetFlowOverwriteNodeProperties(flowOverwriteNode, dict); break;
+            case GitSourceNode gitSourceNode: GetGitSourceNodeProperties(gitSourceNode, dict); break;
+            case BodyContainerNode bodyContainerNode: GetBodyContainerNodeProperties(bodyContainerNode, dict); break;
+            case WebNode webNode: GetWebNodeProperties(webNode, dict); break;
+            case CodeNode codeNode: GetCodeNodeProperties(codeNode, dict); break;
+            case FolderNode folderNode: GetFolderNodeProperties(folderNode, dict); break;
+            case HtmlUiNode htmlUiNode: GetHtmlUiNodeProperties(htmlUiNode, dict); break;
+            case HttpRequestNode httpRequestNode: GetHttpRequestNodeProperties(httpRequestNode, dict); break;
+            case OutputNode outputNode: GetOutputNodeProperties(outputNode, dict); break;
+            case MacroRecorderNode macroNode: GetMacroRecorderNodeProperties(macroNode, dict); break;
+            case BorderHighlightNode borderHighlightNode: GetBorderHighlightNodeProperties(borderHighlightNode, dict); break;
+            case NotificationNode notificationNode: GetNotificationNodeProperties(notificationNode, dict); break;
+            case EmbedApplicationNode embedApp: GetEmbedApplicationNodeProperties(embedApp, dict); break;
+            case StorageNode storageNode: GetStorageNodeProperties(storageNode, dict); break;
         }
-        // HotkeyPressEventNode serialization
-        else if (node is HotkeyPressEventNode hk)
-        {
-            GetHotkeyPressEventNodeProperties(hk, dict);
-        }
-        // StringSplitNode serialization
-        else if (node is StringSplitNode stringSplit)
-        {
-            GetStringSplitNodeProperties(stringSplit, dict);
-        }
-
-        if (node is LoopNode loop)
-        {
-            GetLoopNodeProperties(loop, dict);
-        }
-        else if (node is MouseEventNode mouseNode)
-        {
-            GetMouseEventNodeProperties(mouseNode, dict);
-        }
-        else if (node is ScreenPositionPickerNode pos)
-        {
-            GetScreenPositionPickerNodeProperties(pos, dict);
-        }
-        else if (node is ScreenCaptureNode cap)
-        {
-            GetScreenCaptureNodeProperties(cap, dict);
-        }
-        else if (node is TextScanNode textScan)
-        {
-            GetTextScanNodeProperties(textScan, dict);
-        }
-        else if (node is LoopBodyNode loopBody)
-        {
-            GetLoopBodyNodeProperties(loopBody, dict);
-        }
-        else if (node is AsyncTaskBodyNode asyncTaskBodyNode)
-        {
-            GetAsyncTaskBodyNodeProperties(asyncTaskBodyNode, dict);
-        }
-        else if (node is AsyncTaskNode asyncTaskNode)
-        {
-            GetAsyncTaskNodeProperties(asyncTaskNode, dict);
-        }
-        else if (node is AsyncTaskDispatchCollectNode collectNode)
-        {
-            GetAsyncTaskDispatchCollectNodeProperties(collectNode, dict);
-        }
-        else if (node.IsConditionalNode && node.ConditionalBranches != null && node.ConditionalBranches.Count > 0)
-        {
-            GetConditionalNodeProperties(node, dict);
-        }
-        else if (node is InputNode inputNode)
-        {
-            GetInputNodeProperties(inputNode, dict);
-        }
-        else if (node is DelayNode delayNode)
-        {
-            GetDelayNodeProperties(delayNode, dict);
-        }
-        else if (node is CallbackNode callbackNode)
-        {
-            GetCallbackNodeProperties(callbackNode, dict);
-        }
-        else if (node is ListOutNode listOutNode)
-        {
-            GetListOutNodeProperties(listOutNode, dict);
-        }
-        else if (node is AssignDataNode assignDataNode)
-        {
-            GetAssignDataNodeProperties(assignDataNode, dict);
-        }
-        else if (node is MediaGalleryNode mediaGalleryNode)
-        {
-            GetMediaGalleryNodeProperties(mediaGalleryNode, dict);
-        }
-        else if (node is ImageProcessingNode imageNode)
-        {
-            GetImageProcessingNodeProperties(imageNode, dict);
-        }
-        else if (node is VideoProcessingNode videoNode)
-        {
-            GetVideoProcessingNodeProperties(videoNode, dict);
-        }
-        else if (node is DataFetcherNode fetcherNode)
-        {
-            GetDataFetcherNodeProperties(fetcherNode, dict);
-        }
-        else if (node is FileDownloadNode fdNode)
-        {
-            GetFileDownloadNodeProperties(fdNode, dict);
-        }
-        else if (node is FolderFilePathsNode ffpNode)
-        {
-            GetFolderFilePathsNodeProperties(ffpNode, dict);
-        }
-        else if (node is KeyValueBridgeNode kvNode)
-        {
-            GetKeyValueBridgeNodeProperties(kvNode, dict);
-        }
-        else if (node is FlowOverwriteNode flowOverwriteNode)
-        {
-            GetFlowOverwriteNodeProperties(flowOverwriteNode, dict);
-        }
-        else if (node is GitSourceNode gitSourceNode)
-        {
-            GetGitSourceNodeProperties(gitSourceNode, dict);
-        }
-        else if (node is BodyContainerNode bodyContainerNode)
-        {
-            GetBodyContainerNodeProperties(bodyContainerNode, dict);
-        }
-        else if (node is WebNode webNode)
-        {
-            GetWebNodeProperties(webNode, dict);
-        }
-        else if (node is CodeNode codeNode)
-        {
-            GetCodeNodeProperties(codeNode, dict);
-        }
-        else if (node is FolderNode folderNode)
-        {
-            GetFolderNodeProperties(folderNode, dict);
-        }
-        else if (node is HtmlUiNode htmlUiNode)
-        {
-            GetHtmlUiNodeProperties(htmlUiNode, dict);
-        }
-        else if (node is HttpRequestNode httpRequestNode)
-        {
-            GetHttpRequestNodeProperties(httpRequestNode, dict);
-        }
-        else if (node is OutputNode outputNode)
-        {
-            GetOutputNodeProperties(outputNode, dict);
-        }
-        else if (node is MacroRecorderNode macroNode)
-        {
-            GetMacroRecorderNodeProperties(macroNode, dict);
-        }
-        else if (node is BorderHighlightNode borderHighlightNode)
-        {
-            GetBorderHighlightNodeProperties(borderHighlightNode, dict);
-        }
-        else if (node is NotificationNode notificationNode)
-        {
-            GetNotificationNodeProperties(notificationNode, dict);
-        }
-        else if (node is EmbedApplicationNode embedApp)
-        {
-            GetEmbedApplicationNodeProperties(embedApp, dict);
-        }
-        else if (node is StorageNode storageNode)
-        {
-            GetStorageNodeProperties(storageNode, dict);
-        }
-
-        // Shared: ReuseRoutes, Footer, DynamicInputs, Title (áp dụng cho mọi loại node)
         GetReuseRoutes(node, dict);
         GetSharedFooterProperties(node, dict);
         GetDynamicInputProperties(node, dict);

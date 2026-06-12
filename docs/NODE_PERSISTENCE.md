@@ -13,7 +13,7 @@
 
 ```
 Services/Workflow/
-├── FileWorkflowPersistenceService.cs          ← Dispatcher (chỉ chứa if/else if gọi method)
+├── FileWorkflowPersistenceService.cs          ← Dispatcher (chỉ chứa switch case gọi method)
 └── Persistence/
     ├── NodeProperties_Shared.cs               ← Shared props cho TẤT CẢ node (RunMode, ReuseRoutes, DynamicInputs, Title...)
     ├── NodeProperties_Helpers.cs              ← Utility methods (GetStringFromJsonValue, etc.)
@@ -58,17 +58,15 @@ private static void GetYourNodeProperties(YourNode node, Dictionary<string, obje
 **Bước 2**: Thêm dispatch vào `FileWorkflowPersistenceService.cs` — 2 chỗ:
 
 ```csharp
-// Trong RestoreNodeProperties() — thêm else if vào chuỗi if/else if
-else if (node is YourNode yourNode)
-{
+// Trong RestoreNodeProperties() — thêm case vào chuỗi switch
+case YourNode yourNode:
     RestoreYourNodeProperties(yourNode, properties);
-}
+    break;
 
-// Trong GetNodeProperties() — thêm else if vào chuỗi if/else if
-else if (node is YourNode yourNode)
-{
+// Trong GetNodeProperties() — thêm case vào chuỗi switch
+case YourNode yourNode:
     GetYourNodeProperties(yourNode, dict);
-}
+    break;
 ```
 
 ### 10.3 Quy tắc quan trọng
