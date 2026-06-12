@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -12,8 +12,16 @@ public sealed partial class FileWorkflowPersistenceService
 
     private static void RestoreKeyPressEventNodeProperties(KeyPressEventNode keyPressNode, Dictionary<string, object> properties)
     {
-            if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
-                keyPressNode.PressDelayMs = pd;
+            if (properties.TryGetValue("PressDelay", out var pdObj2) && int.TryParse(pdObj2?.ToString(), out var pd2))
+                keyPressNode.PressDelay = pd2;
+            else if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
+                keyPressNode.PressDelay = pd;
+
+            if (properties.TryGetValue("DelayUnit", out var duObj))
+                keyPressNode.DelayUnit = duObj?.ToString() ?? "ms";
+
+            if (properties.TryGetValue("IsAsync", out var isAsyncObj) && bool.TryParse(isAsyncObj?.ToString(), out var isA))
+                keyPressNode.IsAsync = isA;
 
             // Position properties
             if (properties.TryGetValue("ManualPosition_X", out var posX) && properties.TryGetValue("ManualPosition_Y", out var posY))
@@ -178,8 +186,12 @@ public sealed partial class FileWorkflowPersistenceService
     {
             if (kp.RepeatCount != 1)
                 dict["RepeatCount"] = kp.RepeatCount;
-            if (kp.PressDelayMs != 50)
-                dict["PressDelayMs"] = kp.PressDelayMs;
+            if (kp.PressDelay != 100)
+                dict["PressDelay"] = kp.PressDelay;
+            if (kp.DelayUnit != "ms")
+                dict["DelayUnit"] = kp.DelayUnit;
+            if (kp.IsAsync)
+                dict["IsAsync"] = kp.IsAsync;
 
             // Position properties
             dict["ManualPosition_X"] = kp.ManualPosition.X;

@@ -63,7 +63,9 @@ namespace FlowMy.Models
     public sealed class KeyPressEventNode : WorkflowNode
     {
         private int _repeatCount = 1;
-        private int _pressDelayMs = 100;
+        private int _pressDelay = 100;
+        private string _delayUnit = "ms"; // ms, s, m, h
+        private bool _isAsync = false;
 
         // ── Toạ độ từ node khác ──────────────────────────────────────────────
         private string? _coordSourceNodeId;
@@ -136,17 +138,54 @@ namespace FlowMy.Models
         }
 
         /// <summary>
-        /// Thời gian delay giữa các lần nhấn phím (mili giây, mặc định 100ms).
+        /// Thời gian delay giữa các lần nhấn phím.
         /// </summary>
-        public int PressDelayMs
+        public int PressDelay
         {
-            get => _pressDelayMs;
+            get => _pressDelay;
             set
             {
-                if (_pressDelayMs == value) return;
-                _pressDelayMs = value < 0 ? 0 : value;
+                if (_pressDelay == value) return;
+                _pressDelay = value < 0 ? 0 : value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PressDelayMs)); // Cho tương thích
+            }
+        }
+
+        /// <summary>
+        /// Đơn vị của delay (ms, s, m, h).
+        /// </summary>
+        public string DelayUnit
+        {
+            get => _delayUnit;
+            set
+            {
+                var val = value ?? "ms";
+                if (_delayUnit == val) return;
+                _delayUnit = val;
                 OnPropertyChanged();
             }
+        }
+
+        /// <summary>
+        /// Có chạy bất đồng bộ hay không (node tiếp theo chạy luôn mà không chờ nhấn xong).
+        /// </summary>
+        public bool IsAsync
+        {
+            get => _isAsync;
+            set
+            {
+                if (_isAsync == value) return;
+                _isAsync = value;
+                OnPropertyChanged();
+            }
+        }
+
+        [Obsolete("Dùng PressDelay và DelayUnit")]
+        public int PressDelayMs
+        {
+            get => _pressDelay;
+            set => PressDelay = value;
         }
 
         // ── Toạ độ từ node khác ──────────────────────────────────────────────

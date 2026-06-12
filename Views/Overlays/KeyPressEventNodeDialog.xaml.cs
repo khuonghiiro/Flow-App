@@ -100,7 +100,7 @@ namespace FlowMy.Views.Overlays
             if (string.IsNullOrWhiteSpace(text))
             {
                 PressDelayTextBox.Text = "100";
-                _viewModel.PressDelayMs = 100;
+                _viewModel.PressDelay = 100;
                 return;
             }
 
@@ -109,17 +109,17 @@ namespace FlowMy.Views.Overlays
                 if (value < 0)
                 {
                     PressDelayTextBox.Text = "0";
-                    _viewModel.PressDelayMs = 0;
+                    _viewModel.PressDelay = 0;
                 }
                 else
                 {
-                    _viewModel.PressDelayMs = value;
+                    _viewModel.PressDelay = value;
                 }
             }
             else
             {
                 // Không phải số hợp lệ, reset về giá trị hiện tại của ViewModel
-                PressDelayTextBox.Text = _viewModel.PressDelayMs.ToString();
+                PressDelayTextBox.Text = _viewModel.PressDelay.ToString();
             }
         }
 

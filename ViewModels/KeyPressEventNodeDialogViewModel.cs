@@ -23,7 +23,21 @@ namespace FlowMy.ViewModels
         private string _keyDisplayText;
 
         [ObservableProperty]
-        private int _pressDelayMs;
+        private int _pressDelay;
+
+        [ObservableProperty]
+        private string _delayUnit = "ms";
+
+        [ObservableProperty]
+        private bool _isAsync = false;
+
+        public ObservableCollection<StringDelayUnitOption> DelayUnitOptions { get; } = new()
+        {
+            new StringDelayUnitOption("ms", "Mili giây (ms)"),
+            new StringDelayUnitOption("s", "Giây (s)"),
+            new StringDelayUnitOption("m", "Phút (m)"),
+            new StringDelayUnitOption("h", "Giờ (h)")
+        };
 
         // ── Toạ độ từ node khác ──────────────────────────────────────────────
         [ObservableProperty] private string? _coordSourceNodeId;
@@ -62,7 +76,9 @@ namespace FlowMy.ViewModels
         {
             _keyPressNode = node;
             _keyDisplayText = FormatKeyText(node.Key);
-            _pressDelayMs = node.PressDelayMs;
+            _pressDelay = node.PressDelay;
+            _delayUnit = node.DelayUnit;
+            _isAsync = node.IsAsync;
 
             // Sync background mode
             UseBackgroundMode = node.UseBackgroundMode;
@@ -96,9 +112,17 @@ namespace FlowMy.ViewModels
             {
                 npc.PropertyChanged += (s, e) =>
                 {
-                    if (e.PropertyName == nameof(KeyPressEventNode.PressDelayMs))
+                    if (e.PropertyName == nameof(KeyPressEventNode.PressDelay))
                     {
-                        PressDelayMs = node.PressDelayMs;
+                        PressDelay = node.PressDelay;
+                    }
+                    else if (e.PropertyName == nameof(KeyPressEventNode.DelayUnit))
+                    {
+                        DelayUnit = node.DelayUnit;
+                    }
+                    else if (e.PropertyName == nameof(KeyPressEventNode.IsAsync))
+                    {
+                        IsAsync = node.IsAsync;
                     }
                     else if (e.PropertyName == nameof(WorkflowNode.Key) || e.PropertyName == nameof(KeyPressEventNode.TriggerKey))
                     {
@@ -201,10 +225,20 @@ namespace FlowMy.ViewModels
         {
             bool needSyncDataPanels = false;
 
-            // Lưu PressDelayMs
-            if (_keyPressNode.PressDelayMs != PressDelayMs)
+            // Lưu delay properties
+            if (_keyPressNode.PressDelay != PressDelay)
             {
-                _keyPressNode.PressDelayMs = PressDelayMs;
+                _keyPressNode.PressDelay = PressDelay;
+                needSyncDataPanels = true;
+            }
+            if (_keyPressNode.DelayUnit != DelayUnit)
+            {
+                _keyPressNode.DelayUnit = DelayUnit;
+                needSyncDataPanels = true;
+            }
+            if (_keyPressNode.IsAsync != IsAsync)
+            {
+                _keyPressNode.IsAsync = IsAsync;
                 needSyncDataPanels = true;
             }
 
@@ -263,6 +297,23 @@ namespace FlowMy.ViewModels
         public string DisplayName { get; set; }
 
         public TitleDisplayModeOption(TitleDisplayMode value, string displayName)
+        {
+            Value = value;
+            DisplayName = displayName;
+        }
+
+        public override string ToString() => DisplayName;
+    }
+
+    /// <summary>
+    /// Wrapper class để hiển thị DelayUnit.
+    /// </summary>
+    public class StringDelayUnitOption
+    {
+        public string Value { get; set; }
+        public string DisplayName { get; set; }
+
+        public StringDelayUnitOption(string value, string displayName)
         {
             Value = value;
             DisplayName = displayName;

@@ -68,19 +68,42 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             // ── 3. Nhấn phím ──
             var repeatCount = env.Service.GetRepeatCountFromDynamicInputs(keyNode, connections, env) ?? keyNode.RepeatCount;
-            var delayMs = keyNode.PressDelayMs;
+            var delayMs = GetDelayMs(keyNode.PressDelay, keyNode.DelayUnit);
 
             if (!string.IsNullOrWhiteSpace(keyText))
             {
-                try
+                if (keyNode.IsAsync)
                 {
-                    env.Service.KeyboardInput.SendKeyPress(keyText, repeatCount, delayMs, targetHwnd, keyNode.BackgroundInputMode);
+                    // Chạy bất đồng bộ: khởi tạo task nền và không chờ
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await env.Service.KeyboardInput.SendKeyPressAsync(keyText, repeatCount, delayMs, targetHwnd, keyNode.BackgroundInputMode, env.CancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Async key press error: {ex.Message}");
+                        }
+                        finally
+                        {
+                            await RestoreOriginalScreenAsync(keyNode, originalForegroundWindow, env.CancellationToken);
+                        }
+                    }, env.CancellationToken);
                 }
-                catch (Exception ex)
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error sending key press '{keyText}': {ex.Message}");
-                    env.OnNodeFailed?.Invoke(keyNode, ex.Message);
-                    throw;
+                    // Chạy đồng bộ: chờ xong mới đi tiếp
+                    try
+                    {
+                        await env.Service.KeyboardInput.SendKeyPressAsync(keyText, repeatCount, delayMs, targetHwnd, keyNode.BackgroundInputMode, env.CancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error sending key press '{keyText}': {ex.Message}");
+                        env.OnNodeFailed?.Invoke(keyNode, ex.Message);
+                        throw;
+                    }
                 }
             }
             else
@@ -96,19 +119,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
-                // ── Quay trở lại foreground window ban đầu (nếu ReturnToOriginalScreen = true) ──
-                if (keyNode.ReturnToOriginalScreen && originalForegroundWindow != IntPtr.Zero)
+                // Nếu chạy ĐỒNG BỘ thì mới restore ở đây. Nếu chạy BẤT ĐỒNG BỘ thì restore trong Task.Run.
+                if (!keyNode.IsAsync)
                 {
-                    try
-                    {
-                        await Task.Delay(100, env.CancellationToken);
-                        SetForegroundWindow(originalForegroundWindow);
-                        System.Diagnostics.Debug.WriteLine($"[KeyPress] ReturnToOriginalScreen: Restored original window hwnd={originalForegroundWindow}");
-                    }
-                    catch (Exception restoreEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[KeyPress] Failed to restore original window: {restoreEx.Message}");
-                    }
+                    await RestoreOriginalScreenAsync(keyNode, originalForegroundWindow, env.CancellationToken);
                 }
             }
 
@@ -124,6 +138,34 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
+
+        private static int GetDelayMs(int delay, string unit)
+        {
+            return (unit?.ToLower()) switch
+            {
+                "s" => delay * 1000,
+                "m" => delay * 60000,
+                "h" => delay * 3600000,
+                _ => delay // "ms" hoặc default
+            };
+        }
+
+        private static async Task RestoreOriginalScreenAsync(KeyPressEventNode keyNode, IntPtr originalForegroundWindow, CancellationToken ct)
+        {
+            if (keyNode.ReturnToOriginalScreen && originalForegroundWindow != IntPtr.Zero)
+            {
+                try
+                {
+                    await Task.Delay(100, ct);
+                    SetForegroundWindow(originalForegroundWindow);
+                    System.Diagnostics.Debug.WriteLine($"[KeyPress] ReturnToOriginalScreen: Restored original window hwnd={originalForegroundWindow}");
+                }
+                catch (Exception restoreEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[KeyPress] Failed to restore original window: {restoreEx.Message}");
+                }
+            }
+        }
 
         private static (int x, int y) ResolveCoordinates(KeyPressEventNode keyNode, NodeExecutionEnvironment env)
         {

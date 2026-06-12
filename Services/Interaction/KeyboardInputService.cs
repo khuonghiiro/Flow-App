@@ -102,6 +102,48 @@ namespace FlowMy.Services.Interaction
         }
 
         /// <summary>
+        /// Gửi phím đơn (bất đồng bộ) với CancellationToken.
+        /// </summary>
+        public async Task SendKeyPressAsync(string keyText, int repeatCount, int delayMs,
+                               IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(keyText)) return;
+            if (repeatCount < 1) repeatCount = 1;
+            if (delayMs < 0) delayMs = 0;
+
+            var key = ParseKey(keyText);
+            var vk = key.HasValue ? KeyInterop.VirtualKeyFromKey(key.Value) : 0;
+
+            for (int i = 0; i < repeatCount; i++)
+            {
+                if (ct.IsCancellationRequested) break;
+
+                // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
+                if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation && vk != 0)
+                {
+                    FlowMy.Helpers.BackgroundInputHelper.SendKey(targetHwnd, (ushort)vk, mode);
+                }
+                else if (key.HasValue)
+                {
+                    // Send keydown and keyup in a single batch for better reliability
+                    SendKeyPressBatch(key.Value);
+                }
+                
+                if (i < repeatCount - 1)
+                {
+                    try
+                    {
+                        await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Kiểm tra xem virtual key có phải là phím multimedia/đặc biệt không thể gửi bằng SendInput.
         /// </summary>
         private bool IsUnsupportedKey(int vk)
