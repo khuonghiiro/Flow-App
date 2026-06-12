@@ -1,6 +1,6 @@
 # Hướng dẫn hoàn thiện logic sau khi Node Generator tạo xong base
 
-> Cập nhật: 2026-06-11
+> Cập nhật: 2026-06-12
 > Áp dụng khi đã dùng **NodeGeneratorWindow** tạo xong scaffold.
 > Đọc cùng `_NODE_CREATION_GUIDE.md` để hiểu kiến trúc đầy đủ.
 
@@ -289,76 +289,32 @@ protected override void OnSaveTitle()
 ## BƯỚC 3 — Save/Load Workflow (Persistence)
 
 > ⚠️ Generator **KHÔNG tạo** phần này. Phải viết thủ công.
+> 
+> ⚠️ **KIẾN TRÚC MỚI**: `FileWorkflowPersistenceService` sử dụng **partial class** pattern.
+> File chính chỉ chứa **dispatcher** (if/else if). Logic nằm trong `Services/Workflow/Persistence/*.cs`.
 
-File: `Services/Persistence/FileWorkflowPersistenceService.cs`
+### 3.1 Tạo methods trong file partial
 
-### 3.1 Serialize (SAVE)
-
-```csharp
-// Trong SerializeNode(node, dict) — thêm case mới:
-case NodeType.YourType:
-    var yn = (YourNode)node;
-
-    // Properties đặc thù
-    dict["SourceNodeId"]    = yn.SourceNodeId;
-    dict["SourceOutputKey"] = yn.SourceOutputKey;
-    dict["SomeProperty"]    = yn.SomeProperty;
-
-    // Nếu HasCustomKeyOverride:
-    dict["CustomKey"] = yn.CustomKey;
-
-    // Title properties — dùng trực tiếp (không cần if-is chain)
-    dict["TitleDisplayMode"] = node.TitleDisplayMode.ToString();
-    dict["TitleColorMode"]   = node.TitleColorMode.ToString();
-    if (!string.IsNullOrEmpty(node.TitleColorKey))
-        dict["TitleColorKey"] = node.TitleColorKey;
-
-    // Nếu HasOutputsPanel + OutputKeys:
-    if (yn.OutputKeys?.Count > 0)
-        dict["OutputKeys"] = JsonSerializer.Serialize(yn.OutputKeys);
-
-    // Nếu HasDynamicInputs + InputMappings:
-    if (yn.InputMappings?.Count > 0)
-    {
-        var arr = yn.InputMappings.Select(m => new Dictionary<string, object?>
-        {
-            ["SourceNodeId"]     = m.SourceNodeId,
-            ["SourceOutputKey"]  = m.SourceOutputKey,
-            ["InputKeyOverride"] = m.InputKeyOverride   // nếu HasCustomKeyOverride
-        }).ToList();
-        dict["InputMappings"] = JsonSerializer.Serialize(arr);
-    }
-    break;
-```
-
-### 3.2 Deserialize (LOAD)
+Chọn file partial phù hợp trong `Services/Workflow/Persistence/` (hoặc tạo file mới).
+Mỗi file đều là `public sealed partial class FileWorkflowPersistenceService`.
 
 ```csharp
-// Trong DeserializeNode(type, properties) — thêm case mới:
-case NodeType.YourType:
-    var yourNode = new YourNode();
+// File: Services/Workflow/Persistence/NodeProperties_Misc.cs (hoặc file phù hợp)
 
+// -- RESTORE (Deserialize) --
+private static void RestoreYourNodeProperties(YourNode node, Dictionary<string, object> properties)
+{
     // Properties đặc thù — dùng TryGetValue để tương thích file cũ
     if (properties.TryGetValue("SourceNodeId", out var sid))
-        yourNode.SourceNodeId = sid?.ToString() ?? string.Empty;
+        node.SourceNodeId = sid?.ToString() ?? string.Empty;
     if (properties.TryGetValue("SourceOutputKey", out var sok))
-        yourNode.SourceOutputKey = sok?.ToString() ?? string.Empty;
+        node.SourceOutputKey = sok?.ToString() ?? string.Empty;
     if (properties.TryGetValue("SomeProperty", out var sp))
-        yourNode.SomeProperty = sp?.ToString() ?? string.Empty;
+        node.SomeProperty = sp?.ToString() ?? string.Empty;
 
     // Nếu HasCustomKeyOverride:
     if (properties.TryGetValue("CustomKey", out var ck))
-        yourNode.CustomKey = ck?.ToString() ?? string.Empty;
-
-    // Title properties
-    if (properties.TryGetValue("TitleDisplayMode", out var tdm) &&
-        Enum.TryParse<TitleDisplayMode>(tdm?.ToString(), out var tdmVal))
-        yourNode.TitleDisplayMode = tdmVal;
-    if (properties.TryGetValue("TitleColorMode", out var tcm) &&
-        Enum.TryParse<TitleColorMode>(tcm?.ToString(), out var tcmVal))
-        yourNode.TitleColorMode = tcmVal;
-    if (properties.TryGetValue("TitleColorKey", out var tck))
-        yourNode.TitleColorKey = tck?.ToString();
+        node.CustomKey = ck?.ToString() ?? string.Empty;
 
     // Nếu HasOutputsPanel + OutputKeys:
     if (properties.TryGetValue("OutputKeys", out var okObj) && okObj != null)
@@ -372,7 +328,7 @@ case NodeType.YourType:
             if (!string.IsNullOrWhiteSpace(json))
             {
                 var keys = JsonSerializer.Deserialize<List<string>>(json);
-                if (keys?.Count > 0) { yourNode.OutputKeys = keys; yourNode.RebuildDynamicOutputs(); }
+                if (keys?.Count > 0) { node.OutputKeys = keys; node.RebuildDynamicOutputs(); }
             }
         }
         catch { }
@@ -398,15 +354,71 @@ case NodeType.YourType:
                         SourceOutputKey = item.TryGetValue("SourceOutputKey", out var b) ? b.GetString() : null,
                         InputKeyOverride = item.TryGetValue("InputKeyOverride", out var c) ? c.GetString() : null
                     }).ToList();
-                    if (list.Count > 0) yourNode.InputMappings = list;
+                    if (list.Count > 0) node.InputMappings = list;
                 }
             }
         }
         catch { }
     }
+}
 
-    return yourNode;
+// -- GET (Serialize) --
+private static void GetYourNodeProperties(YourNode node, Dictionary<string, object> dict)
+{
+    // Properties đặc thù
+    dict["SourceNodeId"]    = node.SourceNodeId;
+    dict["SourceOutputKey"] = node.SourceOutputKey;
+    dict["SomeProperty"]    = node.SomeProperty;
+
+    // Nếu HasCustomKeyOverride:
+    dict["CustomKey"] = node.CustomKey;
+
+    // Nếu HasOutputsPanel + OutputKeys:
+    if (node.OutputKeys?.Count > 0)
+        dict["OutputKeys"] = JsonSerializer.Serialize(node.OutputKeys);
+
+    // Nếu HasDynamicInputs + InputMappings:
+    if (node.InputMappings?.Count > 0)
+    {
+        var arr = node.InputMappings.Select(m => new Dictionary<string, object?>
+        {
+            ["SourceNodeId"]     = m.SourceNodeId,
+            ["SourceOutputKey"]  = m.SourceOutputKey,
+            ["InputKeyOverride"] = m.InputKeyOverride   // nếu HasCustomKeyOverride
+        }).ToList();
+        dict["InputMappings"] = JsonSerializer.Serialize(arr);
+    }
+}
 ```
+
+### 3.2 Thêm dispatch vào file chính
+
+File: `Services/Workflow/FileWorkflowPersistenceService.cs` — chỉ thêm **2 dòng dispatch**:
+
+```csharp
+// Trong RestoreNodeProperties() — thêm else if vào chuỗi
+else if (node is YourNode yourNode)
+{
+    RestoreYourNodeProperties(yourNode, properties);
+}
+
+// Trong GetNodeProperties() — thêm else if vào chuỗi
+else if (node is YourNode yourNode)
+{
+    GetYourNodeProperties(yourNode, dict);
+}
+```
+
+### 3.3 Shared properties — KHÔNG cần viết
+
+Các properties sau đã được `NodeProperties_Shared.cs` xử lý **tự động** cho mọi node — **KHÔNG viết trong method Restore/Get riêng**:
+
+- `TitleDisplayMode`, `TitleColorMode`, `TitleColorKey`
+- `RunMode`, `AutoRunInterval*`, `AutoScope*`
+- `EndBehavior`, `DiamondSharpness`, `ConditionalVisualMode`
+- `ReuseRoutes`
+- `DynamicInputs` (DynIn_*)
+- `Condition`, `Key`, `MouseEvent`, `TargetElement`, `FloatingWidget`
 
 > ⚠️ Luôn dùng `TryGetValue` — không dùng `properties["Key"]` để tránh crash với file cũ chưa có key đó.
 > Deserialize handle cả `string` lẫn `JsonElement` vì format lưu có thể khác nhau tùy version.
@@ -602,9 +614,13 @@ public void RefreshOutputKeyOptionsFor(YourNodeInputMappingItemViewModel item)
 - [ ] Viết `OnSaveTitle()` — lưu toàn bộ về node, gọi `NotifyTitleChanged()`
 - [ ] `SyncInputMappingsToNode()` thực sự sync về node (bỏ comment)
 
-### Persistence (HOÀN TOÀN THỦ CÔNG)
-- [ ] `case NodeType.YourType:` trong serialize block
-- [ ] `case NodeType.YourType:` trong deserialize block
+### Persistence — Partial Class (HOÀN TOÀN THỦ CÔNG)
+- [ ] Tạo `RestoreYourNodeProperties()` trong `Persistence/NodeProperties_Xxx.cs` phù hợp
+- [ ] Tạo `GetYourNodeProperties()` trong cùng file
+- [ ] Thêm `else if` dispatch vào `RestoreNodeProperties()` trong file chính
+- [ ] Thêm `else if` dispatch vào `GetNodeProperties()` trong file chính
+- [ ] **KHÔNG viết inline** trong file chính — PHẢI tạo method trong `Persistence/`
+- [ ] **KHÔNG serialize** shared props (Title, RunMode, ReuseRoutes, DynamicInputs) — đã tự động
 - [ ] Dùng `TryGetValue` cho mọi key
 - [ ] Handle cả `string` và `JsonElement` khi deserialize list
 - [ ] Gọi `RebuildDynamicOutputs()` sau khi restore OutputKeys

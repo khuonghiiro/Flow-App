@@ -1,6 +1,6 @@
 # Hướng dẫn tạo Node — FlowMy
 
-> Cập nhật: 2026-05-16
+> Cập nhật: 2026-06-12
 > Áp dụng cho toàn bộ node mới và node cần sửa đổi.
 > Tài liệu này tự đứng độc lập — không cần đọc tài liệu nào khác.
 
@@ -1222,46 +1222,83 @@ _nodeExecutors = new List<NodeExecutors.INodeExecutor>
 
 ---
 
-## 10. Persistence
+## 10. Persistence — Kiến trúc Partial Class
 
-Thêm serialize/deserialize trong `FileWorkflowPersistenceService`:
+`FileWorkflowPersistenceService` sử dụng **partial class** pattern. File chính chỉ chứa **dispatcher** (if/else if gọi method). Logic serialize/deserialize nằm trong các file riêng tại `Services/Workflow/Persistence/`.
 
-```csharp
-// SERIALIZE — trong SerializeNode(node, dict)
-case NodeType.YourType:
-    var yourNode = (YourNode)node;
-    dict["SomeProperty"] = yourNode.SomeProperty;
-    dict["SomeCount"]    = yourNode.SomeCount.ToString();
-    // Title properties — dùng trực tiếp (không cần if-is chain)
-    dict["TitleDisplayMode"] = node.TitleDisplayMode.ToString();
-    dict["TitleColorMode"]   = node.TitleColorMode.ToString();
-    if (!string.IsNullOrEmpty(node.TitleColorKey))
-        dict["TitleColorKey"] = node.TitleColorKey;
-    break;
+### 10.1 Cấu trúc file
 
-// DESERIALIZE — trong DeserializeNode(type, properties)
-case NodeType.YourType:
-    var yourNode = new YourNode();
-    if (properties.TryGetValue("SomeProperty", out var sp))
-        yourNode.SomeProperty = sp?.ToString() ?? string.Empty;
-    if (properties.TryGetValue("SomeCount", out var sc) &&
-        int.TryParse(sc?.ToString(), out var count))
-        yourNode.SomeCount = count;
-    // Title properties — dùng trực tiếp
-    if (properties.TryGetValue("TitleDisplayMode", out var tdm) &&
-        Enum.TryParse<TitleDisplayMode>(tdm?.ToString(), out var tdmVal))
-        yourNode.TitleDisplayMode = tdmVal;
-    if (properties.TryGetValue("TitleColorMode", out var tcm) &&
-        Enum.TryParse<TitleColorMode>(tcm?.ToString(), out var tcmVal))
-        yourNode.TitleColorMode = tcmVal;
-    if (properties.TryGetValue("TitleColorKey", out var tck))
-        yourNode.TitleColorKey = tck?.ToString();
-    return yourNode;
+```
+Services/Workflow/
+├── FileWorkflowPersistenceService.cs          ← Dispatcher (chỉ gọi method)
+└── Persistence/
+    ├── NodeProperties_Shared.cs               ← Shared props cho TẤT CẢ node (RunMode, ReuseRoutes, DynamicInputs, Title...)
+    ├── NodeProperties_Helpers.cs              ← Utility methods
+    ├── NodeProperties_InputEvents.cs          ← KeyPress, Hotkey, StringSplit
+    ├── NodeProperties_LoopAsync.cs            ← Loop, LoopBody, AsyncTask*
+    ├── NodeProperties_Conditional.cs          ← ConditionalNode branches
+    ├── NodeProperties_ScreenCapture.cs        ← ScreenCapture, TextScan, ScreenPosition
+    ├── NodeProperties_Media.cs                ← Image, Video, MediaGallery, MouseEvent
+    ├── NodeProperties_DataFlow.cs             ← DataFetcher, AssignData, ListOut, Input, Delay, Callback
+    ├── NodeProperties_FileFolder.cs           ← FileDownload, FolderFilePaths, Folder, KeyValueBridge
+    ├── NodeProperties_CodeHtml.cs             ← Code, HtmlUi
+    ├── NodeProperties_WebNode.cs              ← WebNode (BlockingRules, JsSources, ResponseOutputs...)
+    └── NodeProperties_Misc.cs                 ← HttpRequest, EmbedApp, Storage, Output, MacroRecorder...
 ```
 
-**Lưu ý**: Serialize **tất cả** properties — kể cả những gì có default value. Deserialize phải dùng `TryGetValue` để tương thích với file cũ không có key đó.
+### 10.2 Cách thêm persistence cho node mới
 
----
+**Bước 1**: Tạo 2 methods trong file partial phù hợp (hoặc tạo file mới):
+
+```csharp
+// File: Services/Workflow/Persistence/NodeProperties_Misc.cs (hoặc file phù hợp)
+
+// RESTORE (Deserialize)
+private static void RestoreYourNodeProperties(YourNode node, Dictionary<string, object> properties)
+{
+    if (properties.TryGetValue("SomeProperty", out var sp))
+        node.SomeProperty = sp?.ToString() ?? string.Empty;
+    if (properties.TryGetValue("SomeCount", out var sc) &&
+        int.TryParse(sc?.ToString(), out var count))
+        node.SomeCount = count;
+}
+
+// GET (Serialize)
+private static void GetYourNodeProperties(YourNode node, Dictionary<string, object> dict)
+{
+    dict["SomeProperty"] = node.SomeProperty;
+    dict["SomeCount"]    = node.SomeCount.ToString();
+}
+```
+
+**Bước 2**: Thêm dispatch vào `FileWorkflowPersistenceService.cs` — 2 chỗ:
+
+```csharp
+// Trong RestoreNodeProperties() — thêm else if
+else if (node is YourNode yourNode)
+{
+    RestoreYourNodeProperties(yourNode, properties);
+}
+
+// Trong GetNodeProperties() — thêm else if
+else if (node is YourNode yourNode)
+{
+    GetYourNodeProperties(yourNode, dict);
+}
+```
+
+### 10.3 Quy tắc quan trọng
+
+| Quy tắc | Giải thích |
+|---------|-----------|
+| **KHÔNG viết inline** | KHÔNG viết `properties.TryGetValue(...)` trực tiếp trong file chính — PHẢI tạo method trong `Persistence/` |
+| **Shared props tự động** | `RunMode`, `EndBehavior`, `ReuseRoutes`, `DynamicInputs`, `TitleDisplayMode/ColorMode` đã tự động bởi `NodeProperties_Shared.cs` — **KHÔNG cần viết lại** |
+| **Partial class** | Mọi file trong `Persistence/` đều là `public sealed partial class FileWorkflowPersistenceService` |
+| **Static methods** | Dùng `private static void` cho tất cả Restore/Get methods |
+
+**Lưu ý**: Serialize **tất cả** properties đặc thù — kể cả những gì có default value. Deserialize phải dùng `TryGetValue` để tương thích với file cũ không có key đó.
+
+
 
 ## 10.5 Copy/Paste
 

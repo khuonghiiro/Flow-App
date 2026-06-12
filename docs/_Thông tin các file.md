@@ -111,10 +111,15 @@
   - Reference implementations
 
 ### 9. [NODE_PERSISTENCE.md](NODE_PERSISTENCE.md) — Persistence
-- **Chức năng**: Hướng dẫn thêm serialize/deserialize và copy/paste
+- **Chức năng**: Hướng dẫn thêm serialize/deserialize và copy/paste cho node mới
 - **Khi nào dùng**: Khi cần lưu/load workflow hoặc copy/paste node
 - **Nội dung chính**:
-  - Serialize/Deserialize trong FileWorkflowPersistenceService
+  - **Kiến trúc Partial Class**: `FileWorkflowPersistenceService` chỉ là dispatcher, logic nằm trong `Services/Workflow/Persistence/*.cs`
+  - Cấu trúc 12 file partial (NodeProperties_Shared, NodeProperties_Misc, NodeProperties_WebNode, etc.)
+  - Cách tạo `RestoreYourNodeProperties()` và `GetYourNodeProperties()` trong file partial phù hợp
+  - Cách thêm dispatch (else if) vào file chính
+  - Shared properties tự động (RunMode, ReuseRoutes, DynamicInputs, Title — KHÔNG cần viết lại)
+  - Template file partial mới
   - Copy/Paste logic trong CreateDuplicateNodeInstance
   - Deep copy lists (KHÔNG gán trực tiếp reference)
 

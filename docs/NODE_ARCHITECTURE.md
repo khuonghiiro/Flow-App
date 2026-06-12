@@ -1,6 +1,6 @@
 # Kiến trúc Tổng quan — FlowMy Node Creation
 
-> Cập nhật: 2026-05-16
+> Cập nhật: 2026-06-12
 > Phần này giải thích cấu trúc tổng quan của hệ thống node và các file cần tạo.
 
 ---
@@ -75,7 +75,13 @@ FlowMy/
 │   │   ├── NodeChrome.cs
 │   │   └── YourNodeRenderer.cs (node mới)
 │   └── Workflow/
+│       ├── FileWorkflowPersistenceService.cs (dispatcher)
 │       ├── WorkflowExecutionService.cs
+│       ├── Persistence/                          ← Partial class files
+│       │   ├── NodeProperties_Shared.cs          ← Shared props (all nodes)
+│       │   ├── NodeProperties_Misc.cs            ← HttpRequest, Storage, Output...
+│       │   ├── NodeProperties_WebNode.cs          ← WebNode
+│       │   └── ... (12 files total)
 │       └── NodeExecutors/
 │           └── YourNodeExecutor.cs (node mới, nếu cần)
 ```
@@ -90,7 +96,7 @@ FlowMy/
 4. **Dialog** → `YourNodeDialogViewModel` bind properties từ `YourNode`
 5. **User save** → `OnSaveTitle()` sync VM → node → request sync data panels
 6. **Workflow chạy** → `YourNodeExecutor.ExecuteAsync()` (nếu có) thực thi logic
-7. **Save/Load workflow** → `FileWorkflowPersistenceService` serialize/deserialize node
+7. **Save/Load workflow** → `FileWorkflowPersistenceService` (dispatcher) gọi methods từ `Persistence/NodeProperties_*.cs` (partial class)
 
 ---
 
