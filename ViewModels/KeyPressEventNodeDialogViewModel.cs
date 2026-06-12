@@ -23,13 +23,22 @@ namespace FlowMy.ViewModels
         private string _keyDisplayText;
 
         [ObservableProperty]
-        private int _pressDelay;
+        private double _pressDelay;
 
         [ObservableProperty]
         private string _delayUnit = "ms";
 
         [ObservableProperty]
         private bool _isAsync = false;
+
+        [ObservableProperty]
+        private double _holdDuration;
+
+        [ObservableProperty]
+        private string _holdDurationUnit = "ms";
+
+        [ObservableProperty]
+        private bool _isHoldAsync = false;
 
         public ObservableCollection<StringDelayUnitOption> DelayUnitOptions { get; } = new()
         {
@@ -80,6 +89,10 @@ namespace FlowMy.ViewModels
             _delayUnit = node.DelayUnit;
             _isAsync = node.IsAsync;
 
+            _holdDuration = node.HoldDuration;
+            _holdDurationUnit = node.HoldDurationUnit;
+            _isHoldAsync = node.IsHoldAsync;
+
             // Sync background mode
             UseBackgroundMode = node.UseBackgroundMode;
             BackgroundInputMode = node.BackgroundInputMode;
@@ -124,6 +137,18 @@ namespace FlowMy.ViewModels
                     {
                         IsAsync = node.IsAsync;
                     }
+                    else if (e.PropertyName == nameof(KeyPressEventNode.HoldDuration))
+                    {
+                        HoldDuration = node.HoldDuration;
+                    }
+                    else if (e.PropertyName == nameof(KeyPressEventNode.HoldDurationUnit))
+                    {
+                        HoldDurationUnit = node.HoldDurationUnit;
+                    }
+                    else if (e.PropertyName == nameof(KeyPressEventNode.IsHoldAsync))
+                    {
+                        IsHoldAsync = node.IsHoldAsync;
+                    }
                     else if (e.PropertyName == nameof(WorkflowNode.Key) || e.PropertyName == nameof(KeyPressEventNode.TriggerKey))
                     {
                         KeyDisplayText = FormatKeyText(node.Key);
@@ -158,6 +183,43 @@ namespace FlowMy.ViewModels
         {
             _keyPressNode.ReturnToOriginalScreen = value;
             _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        partial void OnDelayUnitChanged(string? oldValue, string? newValue)
+        {
+            if (oldValue != null && newValue != null && oldValue != newValue)
+            {
+                PressDelay = ConvertTimeUnit(PressDelay, oldValue, newValue);
+            }
+        }
+
+        partial void OnHoldDurationUnitChanged(string? oldValue, string? newValue)
+        {
+            if (oldValue != null && newValue != null && oldValue != newValue)
+            {
+                HoldDuration = ConvertTimeUnit(HoldDuration, oldValue, newValue);
+            }
+        }
+
+        private double ConvertTimeUnit(double value, string fromUnit, string toUnit)
+        {
+            // Convert to ms first
+            double ms = fromUnit switch
+            {
+                "s" => value * 1000,
+                "m" => value * 60000,
+                "h" => value * 3600000,
+                _ => value
+            };
+
+            // Convert to target
+            return toUnit switch
+            {
+                "s" => ms / 1000,
+                "m" => ms / 60000,
+                "h" => ms / 3600000,
+                _ => ms
+            };
         }
 
         // ── Lấy danh sách upstream nodes (kết nối đến port IN) ───────────────
@@ -226,7 +288,7 @@ namespace FlowMy.ViewModels
             bool needSyncDataPanels = false;
 
             // Lưu delay properties
-            if (_keyPressNode.PressDelay != PressDelay)
+            if (Math.Abs(_keyPressNode.PressDelay - PressDelay) > 0.000001)
             {
                 _keyPressNode.PressDelay = PressDelay;
                 needSyncDataPanels = true;
@@ -239,6 +301,23 @@ namespace FlowMy.ViewModels
             if (_keyPressNode.IsAsync != IsAsync)
             {
                 _keyPressNode.IsAsync = IsAsync;
+                needSyncDataPanels = true;
+            }
+
+            // Lưu hold properties
+            if (Math.Abs(_keyPressNode.HoldDuration - HoldDuration) > 0.000001)
+            {
+                _keyPressNode.HoldDuration = HoldDuration;
+                needSyncDataPanels = true;
+            }
+            if (_keyPressNode.HoldDurationUnit != HoldDurationUnit)
+            {
+                _keyPressNode.HoldDurationUnit = HoldDurationUnit;
+                needSyncDataPanels = true;
+            }
+            if (_keyPressNode.IsHoldAsync != IsHoldAsync)
+            {
+                _keyPressNode.IsHoldAsync = IsHoldAsync;
                 needSyncDataPanels = true;
             }
 

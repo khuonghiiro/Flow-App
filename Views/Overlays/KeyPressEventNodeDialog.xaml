@@ -263,6 +263,37 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- ⏱️ Thời gian giữ phím (Hold Duration) -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⏱️ Thời gian giữ phím (0 = mặc định)" 
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="140"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="HoldDurationTextBox" Grid.Column="0" Height="32"
+                                                 Text="{Binding HoldDuration, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{DynamicResource BaseTextBoxV2}"
+                                                 VerticalContentAlignment="Center" Margin="0,0,8,0"/>
+                                        <ComboBox Grid.Column="1" Height="32"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding DelayUnitOptions}"
+                                                  SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding HoldDurationUnit, Mode=TwoWay}"/>
+                                    </Grid>
+                                    <CheckBox IsChecked="{Binding IsHoldAsync, Mode=TwoWay}" Cursor="Hand">
+                                        <TextBlock Foreground="{DynamicResource TextBrush}" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap">
+                                            <Run Text="⚡ Giữ phím bất đồng bộ (chạy nền, không chặn tiến trình workflow)"/>
+                                        </TextBlock>
+                                    </CheckBox>
+                                </StackPanel>
+                            </Border>
+
                             <!-- 📥 Inputs -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"

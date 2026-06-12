@@ -12,9 +12,9 @@ public sealed partial class FileWorkflowPersistenceService
 
     private static void RestoreKeyPressEventNodeProperties(KeyPressEventNode keyPressNode, Dictionary<string, object> properties)
     {
-            if (properties.TryGetValue("PressDelay", out var pdObj2) && int.TryParse(pdObj2?.ToString(), out var pd2))
+            if (properties.TryGetValue("PressDelay", out var pdObj2) && double.TryParse(pdObj2?.ToString(), out var pd2))
                 keyPressNode.PressDelay = pd2;
-            else if (properties.TryGetValue("PressDelayMs", out var pdObj) && int.TryParse(pdObj?.ToString(), out var pd))
+            else if (properties.TryGetValue("PressDelayMs", out var pdObj) && double.TryParse(pdObj?.ToString(), out var pd))
                 keyPressNode.PressDelay = pd;
 
             if (properties.TryGetValue("DelayUnit", out var duObj))
@@ -22,6 +22,14 @@ public sealed partial class FileWorkflowPersistenceService
 
             if (properties.TryGetValue("IsAsync", out var isAsyncObj) && bool.TryParse(isAsyncObj?.ToString(), out var isA))
                 keyPressNode.IsAsync = isA;
+
+            // Hold properties
+            if (properties.TryGetValue("HoldDuration", out var hdObj) && double.TryParse(hdObj?.ToString(), out var hd))
+                keyPressNode.HoldDuration = hd;
+            if (properties.TryGetValue("HoldDurationUnit", out var hduObj))
+                keyPressNode.HoldDurationUnit = hduObj?.ToString() ?? "ms";
+            if (properties.TryGetValue("IsHoldAsync", out var isHAObj) && bool.TryParse(isHAObj?.ToString(), out var isHA))
+                keyPressNode.IsHoldAsync = isHA;
 
             // Position properties
             if (properties.TryGetValue("ManualPosition_X", out var posX) && properties.TryGetValue("ManualPosition_Y", out var posY))
@@ -186,12 +194,20 @@ public sealed partial class FileWorkflowPersistenceService
     {
             if (kp.RepeatCount != 1)
                 dict["RepeatCount"] = kp.RepeatCount;
-            if (kp.PressDelay != 100)
+            if (Math.Abs(kp.PressDelay - 100) > 0.000001)
                 dict["PressDelay"] = kp.PressDelay;
             if (kp.DelayUnit != "ms")
                 dict["DelayUnit"] = kp.DelayUnit;
             if (kp.IsAsync)
                 dict["IsAsync"] = kp.IsAsync;
+
+            // Hold properties
+            if (Math.Abs(kp.HoldDuration - 0) > 0.000001)
+                dict["HoldDuration"] = kp.HoldDuration;
+            if (kp.HoldDurationUnit != "ms")
+                dict["HoldDurationUnit"] = kp.HoldDurationUnit;
+            if (kp.IsHoldAsync)
+                dict["IsHoldAsync"] = kp.IsHoldAsync;
 
             // Position properties
             dict["ManualPosition_X"] = kp.ManualPosition.X;

@@ -103,8 +103,9 @@ namespace FlowMy.Services.Interaction
 
         /// <summary>
         /// Gửi phím đơn (bất đồng bộ) với CancellationToken.
+        /// Có hỗ trợ giữ phím và chạy nền cho giữ phím.
         /// </summary>
-        public async Task SendKeyPressAsync(string keyText, int repeatCount, int delayMs,
+        public async Task SendKeyPressAsync(string keyText, int repeatCount, double delayMs, double holdDurationMs, bool isHoldAsync,
                                IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(keyText)) return;
@@ -121,19 +122,65 @@ namespace FlowMy.Services.Interaction
                 // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
                 if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation && vk != 0)
                 {
-                    FlowMy.Helpers.BackgroundInputHelper.SendKey(targetHwnd, (ushort)vk, mode);
+                    if (holdDurationMs > 0)
+                    {
+                        if (isHoldAsync)
+                        {
+                            FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode);
+                            _ = Task.Run(async () =>
+                            {
+                                try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
+                                catch (TaskCanceledException) { }
+                                FlowMy.Helpers.BackgroundInputHelper.SendKeyUp(targetHwnd, (ushort)vk, mode);
+                            }, ct);
+                        }
+                        else
+                        {
+                            FlowMy.Helpers.BackgroundInputHelper.SendKeyDown(targetHwnd, (ushort)vk, mode);
+                            try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
+                            catch (TaskCanceledException) { break; }
+                            FlowMy.Helpers.BackgroundInputHelper.SendKeyUp(targetHwnd, (ushort)vk, mode);
+                        }
+                    }
+                    else
+                    {
+                        FlowMy.Helpers.BackgroundInputHelper.SendKey(targetHwnd, (ushort)vk, mode);
+                    }
                 }
                 else if (key.HasValue)
                 {
-                    // Send keydown and keyup in a single batch for better reliability
-                    SendKeyPressBatch(key.Value);
+                    if (holdDurationMs > 0)
+                    {
+                        if (isHoldAsync)
+                        {
+                            SendKeyDown(key.Value);
+                            _ = Task.Run(async () =>
+                            {
+                                try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
+                                catch (TaskCanceledException) { }
+                                SendKeyUp(key.Value);
+                            }, ct);
+                        }
+                        else
+                        {
+                            SendKeyDown(key.Value);
+                            try { await Task.Delay((int)holdDurationMs, ct).ConfigureAwait(false); }
+                            catch (TaskCanceledException) { break; }
+                            SendKeyUp(key.Value);
+                        }
+                    }
+                    else
+                    {
+                        // Send keydown and keyup in a single batch for better reliability
+                        SendKeyPressBatch(key.Value);
+                    }
                 }
                 
                 if (i < repeatCount - 1)
                 {
                     try
                     {
-                        await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                        await Task.Delay((int)delayMs, ct).ConfigureAwait(false);
                     }
                     catch (TaskCanceledException)
                     {

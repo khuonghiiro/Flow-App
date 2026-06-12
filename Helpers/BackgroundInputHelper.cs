@@ -274,6 +274,68 @@ namespace FlowMy.Helpers
             }
         }
 
+        public static bool SendKeyDown(IntPtr targetHwnd, ushort vkCode, InputMode mode = InputMode.Auto)
+        {
+            if (targetHwnd == IntPtr.Zero) return false;
+            if (mode == InputMode.Auto) mode = InputMode.DirectMessage;
+
+            try
+            {
+                switch (mode)
+                {
+                    case InputMode.DirectMessage:
+                        uint scanCode = MapVirtualKey(vkCode, 0);
+                        IntPtr lParam = MakeLParam(1, (int)scanCode, 0, 0);
+                        PostMessage(targetHwnd, WM_KEYDOWN, (IntPtr)vkCode, lParam);
+                        return true;
+
+                    case InputMode.SilentActivation:
+                    case InputMode.ForegroundActivation:
+                        // For these modes, just use the built-in WindowHelper.SendHwVKey? 
+                        // But WindowHelper.SendHwVKey sends both down and up. 
+                        // To keep it simple, fallback to direct message for hold if not supported.
+                        uint scanCode2 = MapVirtualKey(vkCode, 0);
+                        IntPtr lParam2 = MakeLParam(1, (int)scanCode2, 0, 0);
+                        PostMessage(targetHwnd, WM_KEYDOWN, (IntPtr)vkCode, lParam2);
+                        return true;
+
+                    default: return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[BackgroundInputHelper] SendKeyDown error: {ex.Message}");
+                return false;
+            }
+        }
+
+        public static bool SendKeyUp(IntPtr targetHwnd, ushort vkCode, InputMode mode = InputMode.Auto)
+        {
+            if (targetHwnd == IntPtr.Zero) return false;
+            if (mode == InputMode.Auto) mode = InputMode.DirectMessage;
+
+            try
+            {
+                switch (mode)
+                {
+                    case InputMode.DirectMessage:
+                    case InputMode.SilentActivation:
+                    case InputMode.ForegroundActivation:
+                        uint scanCode = MapVirtualKey(vkCode, 0);
+                        IntPtr lParam = MakeLParam(1, (int)scanCode, 0, 0);
+                        PostMessage(targetHwnd, WM_KEYUP, (IntPtr)vkCode, lParam);
+                        return true;
+
+                    default: return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[BackgroundInputHelper] SendKeyUp error: {ex.Message}");
+                return false;
+            }
+        }
+
         /// <summary>
         /// Chỉ nhấn xuống (mouse down) — không thả. Dùng cùng với SendMouseUp để tạo click có hold.
         /// </summary>

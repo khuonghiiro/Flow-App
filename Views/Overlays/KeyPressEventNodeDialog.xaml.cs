@@ -44,8 +44,20 @@ namespace FlowMy.Views.Overlays
 
             PressDelayTextBox.PreviewTextInput += (s, e) =>
             {
-                // Chỉ cho phép nhập số
-                e.Handled = !System.Text.RegularExpressions.Regex.IsMatch(e.Text, "^[0-9]+$");
+                // Cho phép nhập số và dấu chấm thập phân
+                e.Handled = !System.Text.RegularExpressions.Regex.IsMatch(e.Text, "^[0-9.]+$");
+            };
+
+            // Validation cho HoldDuration textbox
+            HoldDurationTextBox.LostFocus += (s, e) =>
+            {
+                ValidateHoldDuration();
+            };
+
+            HoldDurationTextBox.PreviewTextInput += (s, e) =>
+            {
+                // Cho phép nhập số và dấu chấm thập phân
+                e.Handled = !System.Text.RegularExpressions.Regex.IsMatch(e.Text, "^[0-9.]+$");
             };
         }
 
@@ -62,6 +74,7 @@ namespace FlowMy.Views.Overlays
         {
             // Flush all textbox bindings
             FlushTextBoxBinding(PressDelayTextBox);
+            FlushTextBoxBinding(HoldDurationTextBox);
             FlushTextBoxBinding(ClickDurationTextBox);
 
             // Flush NodeSearchComboBoxUserControl bindings (coord source)
@@ -104,7 +117,7 @@ namespace FlowMy.Views.Overlays
                 return;
             }
 
-            if (int.TryParse(text, out var value))
+            if (double.TryParse(text, out var value))
             {
                 if (value < 0)
                 {
@@ -120,6 +133,34 @@ namespace FlowMy.Views.Overlays
             {
                 // Không phải số hợp lệ, reset về giá trị hiện tại của ViewModel
                 PressDelayTextBox.Text = _viewModel.PressDelay.ToString();
+            }
+        }
+
+        private void ValidateHoldDuration()
+        {
+            var text = HoldDurationTextBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                HoldDurationTextBox.Text = "0";
+                _viewModel.HoldDuration = 0;
+                return;
+            }
+
+            if (double.TryParse(text, out var value))
+            {
+                if (value < 0)
+                {
+                    HoldDurationTextBox.Text = "0";
+                    _viewModel.HoldDuration = 0;
+                }
+                else
+                {
+                    _viewModel.HoldDuration = value;
+                }
+            }
+            else
+            {
+                HoldDurationTextBox.Text = _viewModel.HoldDuration.ToString();
             }
         }
 

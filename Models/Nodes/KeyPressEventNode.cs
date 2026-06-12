@@ -63,9 +63,13 @@ namespace FlowMy.Models
     public sealed class KeyPressEventNode : WorkflowNode
     {
         private int _repeatCount = 1;
-        private int _pressDelay = 100;
+        private double _pressDelay = 100;
         private string _delayUnit = "ms"; // ms, s, m, h
         private bool _isAsync = false;
+
+        private double _holdDuration = 0;
+        private string _holdDurationUnit = "ms";
+        private bool _isHoldAsync = false;
 
         // ── Toạ độ từ node khác ──────────────────────────────────────────────
         private string? _coordSourceNodeId;
@@ -140,12 +144,12 @@ namespace FlowMy.Models
         /// <summary>
         /// Thời gian delay giữa các lần nhấn phím.
         /// </summary>
-        public int PressDelay
+        public double PressDelay
         {
             get => _pressDelay;
             set
             {
-                if (_pressDelay == value) return;
+                if (Math.Abs(_pressDelay - value) < 0.000001) return;
                 _pressDelay = value < 0 ? 0 : value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PressDelayMs)); // Cho tương thích
@@ -181,10 +185,53 @@ namespace FlowMy.Models
             }
         }
 
+        /// <summary>
+        /// Thời gian giữ phím.
+        /// </summary>
+        public double HoldDuration
+        {
+            get => _holdDuration;
+            set
+            {
+                if (Math.Abs(_holdDuration - value) < 0.000001) return;
+                _holdDuration = value < 0 ? 0 : value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Đơn vị thời gian giữ phím (ms, s, m, h).
+        /// </summary>
+        public string HoldDurationUnit
+        {
+            get => _holdDurationUnit;
+            set
+            {
+                var val = value ?? "ms";
+                if (_holdDurationUnit == val) return;
+                _holdDurationUnit = val;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Cờ cho biết việc giữ phím có chạy bất đồng bộ hay không.
+        /// </summary>
+        public bool IsHoldAsync
+        {
+            get => _isHoldAsync;
+            set
+            {
+                if (_isHoldAsync == value) return;
+                _isHoldAsync = value;
+                OnPropertyChanged();
+            }
+        }
+
         [Obsolete("Dùng PressDelay và DelayUnit")]
         public int PressDelayMs
         {
-            get => _pressDelay;
+            get => (int)_pressDelay;
             set => PressDelay = value;
         }
 

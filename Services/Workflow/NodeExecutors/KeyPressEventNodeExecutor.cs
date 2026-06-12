@@ -69,6 +69,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             // ── 3. Nhấn phím ──
             var repeatCount = env.Service.GetRepeatCountFromDynamicInputs(keyNode, connections, env) ?? keyNode.RepeatCount;
             var delayMs = GetDelayMs(keyNode.PressDelay, keyNode.DelayUnit);
+            var holdDurationMs = GetDelayMs(keyNode.HoldDuration, keyNode.HoldDurationUnit);
 
             if (!string.IsNullOrWhiteSpace(keyText))
             {
@@ -79,7 +80,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         try
                         {
-                            await env.Service.KeyboardInput.SendKeyPressAsync(keyText, repeatCount, delayMs, targetHwnd, keyNode.BackgroundInputMode, env.CancellationToken);
+                            await env.Service.KeyboardInput.SendKeyPressAsync(
+                                keyText, repeatCount, delayMs, holdDurationMs, keyNode.IsHoldAsync,
+                                targetHwnd, keyNode.BackgroundInputMode, env.CancellationToken);
                         }
                         catch (Exception ex)
                         {
@@ -96,7 +99,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     // Chạy đồng bộ: chờ xong mới đi tiếp
                     try
                     {
-                        await env.Service.KeyboardInput.SendKeyPressAsync(keyText, repeatCount, delayMs, targetHwnd, keyNode.BackgroundInputMode, env.CancellationToken);
+                        await env.Service.KeyboardInput.SendKeyPressAsync(
+                            keyText, repeatCount, delayMs, holdDurationMs, keyNode.IsHoldAsync,
+                            targetHwnd, keyNode.BackgroundInputMode, env.CancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -139,7 +144,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         // ── Helpers ──────────────────────────────────────────────────────────
 
-        private static int GetDelayMs(int delay, string unit)
+        private static double GetDelayMs(double delay, string unit)
         {
             return (unit?.ToLower()) switch
             {
