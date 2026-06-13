@@ -90,13 +90,15 @@ namespace FlowMy.Views
         private void EnableHideToTrayCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             _enableHideToTray = true;
-            HideToTrayButton.IsEnabled = true;
+            if (HideToTrayButton != null)
+                HideToTrayButton.IsEnabled = true;
         }
 
         private void EnableHideToTrayCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
             _enableHideToTray = false;
-            HideToTrayButton.IsEnabled = false;
+            if (HideToTrayButton != null)
+                HideToTrayButton.IsEnabled = false;
         }
 
         private void ShowWindow()
