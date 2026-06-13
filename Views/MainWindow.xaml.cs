@@ -1,9 +1,9 @@
-using System.Windows;
-using System;
-using System.Windows.Controls;
-using FlowMy.ViewModels;
 using FlowMy.Services.Utilities;
+using FlowMy.ViewModels;
 using FlowMy.Views.Overlays;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace FlowMy.Views
 {
@@ -99,6 +99,14 @@ namespace FlowMy.Views
             _enableHideToTray = false;
             if (HideToTrayButton != null)
                 HideToTrayButton.IsEnabled = false;
+        }
+
+        private void ToggleBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (EnableHideToTrayCheckBox != null)
+            {
+                EnableHideToTrayCheckBox.IsChecked = !EnableHideToTrayCheckBox.IsChecked;
+            }
         }
 
         private void ShowWindow()

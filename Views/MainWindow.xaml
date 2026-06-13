@@ -345,18 +345,24 @@ MinWidth="100">
                                 CornerRadius="20"
                                 Background="#33FFFFFF">
                                         <Grid>
-                                            <TextBlock Text="⚙"
+                                            <TextBlock 
                                            FontSize="16"
                                            Foreground="White"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Visibility="{Binding IsConfigureLastWidgetLoading, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                           Visibility="{Binding DataContext.IsConfigureLastWidgetLoading, RelativeSource={RelativeSource AncestorType=Button}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                <controls:SvgViewboxEx Width="16" Height="16"
+                       Fill="White"
+                       Source="{Binding Source={x:Static sys:String.Empty},
+                                Converter={StaticResource IconKeyToPathConverter},
+                                ConverterParameter='clock-rotate-left duotone'}"/>
+                                            </TextBlock>
                                             <TextBlock Text="⏳"
                                            FontSize="14"
                                            Foreground="White"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Visibility="{Binding IsConfigureLastWidgetLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                           Visibility="{Binding DataContext.IsConfigureLastWidgetLoading, RelativeSource={RelativeSource AncestorType=Button}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                         </Grid>
                                     </Border>
                                     <ControlTemplate.Triggers>
@@ -381,12 +387,18 @@ MinWidth="100">
                                     <Border x:Name="bd"
                                 CornerRadius="20"
                                 Background="#33FFFFFF">
-                                        <TextBlock Text="↻"
+                                        <TextBlock 
                                        FontSize="18"
                                        FontWeight="Bold"
                                        Foreground="White"
                                        HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                                       VerticalAlignment="Center">
+                                                                     <controls:SvgViewboxEx Width="16" Height="16"
+Fill="White"
+Source="{Binding Source={x:Static sys:String.Empty},
+         Converter={StaticResource IconKeyToPathConverter},
+         ConverterParameter='rotate-reverse sharp-solid'}"/>
+                                        </TextBlock>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
@@ -403,7 +415,8 @@ MinWidth="100">
                     Padding="12,8"
                                 Height="40"
                     Margin="0,0,10,0"
-                    Cursor="Hand">
+                    Cursor="Hand"
+                    MouseLeftButtonUp="ToggleBorder_MouseLeftButtonUp">
                             <StackPanel Orientation="Horizontal">
                                 <CheckBox x:Name="EnableHideToTrayCheckBox"
                               IsChecked="True"

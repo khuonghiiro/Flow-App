@@ -34,6 +34,7 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string lastConfiguredWorkflowName = string.Empty;
         [ObservableProperty] private string lastConfiguredNodeId = string.Empty;
         [ObservableProperty] private bool hasLastConfiguredWidget;
+        [ObservableProperty] private bool isConfigureLastWidgetLoading;
         private readonly HashSet<string> _trayPinnedKeys = new(System.StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, WorkflowEditorWindow> _headlessWorkflowWindows = new(System.StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<WorkflowEditorWindow> _isRehidingHeadlessWindow = new();
@@ -484,8 +485,16 @@ namespace FlowMy.ViewModels
                 return;
             }
 
-            await Task.Yield();
-            OpenFloatingWidgetConfigFromMainWindow(LastConfiguredWorkflowName, LastConfiguredNodeId);
+            IsConfigureLastWidgetLoading = true;
+            try
+            {
+                await Task.Yield();
+                OpenFloatingWidgetConfigFromMainWindow(LastConfiguredWorkflowName, LastConfiguredNodeId);
+            }
+            finally
+            {
+                IsConfigureLastWidgetLoading = false;
+            }
         }
 
         private void OpenFloatingWidgetConfigFromMainWindow(string? workflowName, string? nodeId)
