@@ -9,6 +9,7 @@
        xmlns:helper="clr-namespace:FlowMy.Helpers"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:conv="clr-namespace:FlowMy.Converters"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
         mc:Ignorable="d"
         Title="FlowMy"
         Height="720"
@@ -307,6 +308,45 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
+
+                    <Button x:Name="HideToTrayButton"
+                            Width="40" Height="40"
+                            Cursor="Hand"
+                            Margin="0,0,10,0"
+                            ToolTip="Ẩn xuống system tray"
+                            Click="HideToTrayButton_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd"
+                                        CornerRadius="20"
+                                        Background="#33FFFFFF">
+                                    <TextBlock Text="🔽"
+                                               FontSize="16"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#55FFFFFF"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <CheckBox x:Name="EnableHideToTrayCheckBox"
+                              Content="Ẩn xuống tray"
+                              Foreground="White"
+                              FontSize="11"
+                              IsChecked="True"
+                              Margin="0,0,10,0"
+                              VerticalAlignment="Center"
+                              Checked="EnableHideToTrayCheckBox_Checked"
+                              Unchecked="EnableHideToTrayCheckBox_Unchecked"/>
 
                     <!-- 🧱 Node Generator Button (Debug only) -->
                     <Button x:Name="OpenNodeGeneratorButton"

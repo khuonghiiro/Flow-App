@@ -13,6 +13,8 @@ namespace FlowMy.Views
     public partial class MainWindow : Window
     {
         private readonly ColorThemeService? _colorThemeService;
+        private bool _isHiddenToTray = false;
+        private bool _enableHideToTray = true;
 
         public MainWindow()
         {
@@ -45,6 +47,10 @@ namespace FlowMy.Views
                 };
             }
 
+            // Handle window state changes
+            StateChanged += MainWindow_StateChanged;
+            Closing += MainWindow_Closing;
+
             // 🧱 Node Generator button — chỉ hiện trong Debug build
 #if DEBUG
             if (OpenNodeGeneratorButton != null)
@@ -53,6 +59,52 @@ namespace FlowMy.Views
             if (OpenNodeGeneratorButton != null)
                 OpenNodeGeneratorButton.Visibility = Visibility.Collapsed;
 #endif
+        }
+
+        private void MainWindow_StateChanged(object sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Minimized && _enableHideToTray)
+            {
+                Hide();
+                _isHiddenToTray = true;
+            }
+        }
+
+        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_isHiddenToTray)
+            {
+                e.Cancel = true;
+                Hide();
+                _isHiddenToTray = false;
+            }
+        }
+
+        private void HideToTrayButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+            Hide();
+            _isHiddenToTray = true;
+        }
+
+        private void EnableHideToTrayCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            _enableHideToTray = true;
+            HideToTrayButton.IsEnabled = true;
+        }
+
+        private void EnableHideToTrayCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            _enableHideToTray = false;
+            HideToTrayButton.IsEnabled = false;
+        }
+
+        private void ShowWindow()
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            _isHiddenToTray = false;
         }
 
         private void InitializeThemeSelector()
