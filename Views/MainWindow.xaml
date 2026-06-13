@@ -355,7 +355,7 @@ MinWidth="100">
                        Fill="White"
                        Source="{Binding Source={x:Static sys:String.Empty},
                                 Converter={StaticResource IconKeyToPathConverter},
-                                ConverterParameter='clock-rotate-left duotone'}"/>
+                                ConverterParameter='flask-gear duotone-light'}"/>
                                             </TextBlock>
                                             <TextBlock Text="⏳"
                                            FontSize="14"
@@ -816,9 +816,13 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                                         </Style>
                                                                     </Button.Style>
                                                                     <Grid>
-                                                                        <TextBlock Text="&#x26A1;"
-                                                                                   FontSize="14"
-                                                                                   Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                        <controls:SvgViewboxEx Width="18" Height="18"
+       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Margin="4,0,0,0"
+       Source="{Binding Source={x:Static sys:String.Empty},
+                Converter={StaticResource IconKeyToPathConverter},
+                ConverterParameter='play duotone-regular'}"
+       Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                        
                                                                         <TextBlock Text="&#x23F3;"
                                                                                    FontSize="12"
                                                                                    Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
