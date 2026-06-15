@@ -22,7 +22,7 @@
                           Opacity="0.3"/>
 
         <Style x:Key="TimePickerButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="40"/>
+            <Setter Property="Height" Value="35"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Template">
                 <Setter.Value>

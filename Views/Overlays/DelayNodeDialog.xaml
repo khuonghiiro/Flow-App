@@ -1,6 +1,7 @@
 <local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.DelayNodeDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:FlowMy.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
         Title="Delay"
         WindowStyle="None"
@@ -137,16 +138,18 @@
                                               DisplayMemberPath="DisplayName"
                                               SelectedValue="{Binding TimingMode, Mode=TwoWay}"/>
 
-                                    <TextBlock Text="Đơn vị thời gian (áp dụng cho các chế độ)" 
-                                               Foreground="{DynamicResource TextMuted}" 
-                                               FontSize="10" Margin="0,0,0,4"/>
-                                    <ComboBox Height="32"
-                                              Margin="0,0,0,0"
-                                              Style="{DynamicResource BaseComboBox}"
-                                              ItemsSource="{Binding DelayUnitOptions}"
-                                              SelectedValuePath="Value"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValue="{Binding DelayUnit, Mode=TwoWay}"/>
+                                    <StackPanel Visibility="{Binding IsNotTimeMode, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Text="Đơn vị thời gian (áp dụng cho các chế độ)" 
+                                                   Foreground="{DynamicResource TextMuted}" 
+                                                   FontSize="10" Margin="0,0,0,4"/>
+                                        <ComboBox Height="32"
+                                                  Margin="0,0,0,0"
+                                                  Style="{DynamicResource BaseComboBox}"
+                                                  ItemsSource="{Binding DelayUnitOptions}"
+                                                  SelectedValuePath="Value"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding DelayUnit, Mode=TwoWay}"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
@@ -219,6 +222,23 @@
                                                   SelectedValuePath="Key"
                                                   DisplayMemberPath="DisplayName"
                                                   SelectedValue="{Binding DelaySourceOutputKey, Mode=TwoWay}"/>
+                                    </StackPanel>
+
+                                    <!-- Chế độ thời gian cụ thể -->
+                                    <StackPanel Visibility="{Binding IsTimeMode, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0">
+                                        <TextBlock Text="Chọn mốc thời gian cụ thể (chỉ chọn hiện tại/tương lai, thời gian quá khứ sẽ pass ngay)" 
+                                                   Foreground="{DynamicResource TextMuted}" 
+                                                   FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                        <controls:DateTimePickerUserControl 
+                                            PickerMode="DateTime"
+                                            DefaultMode="CurrentDateTime"
+                                            MinDate="{x:Static sys:DateTime.Now}"
+                                            ShowClearButton="False"
+                                            ShowTodayButton="True"
+                                            AllowNull="False"
+                                            PlaceholderText="Chọn thời gian..."
+                                            SelectedDateTime="{Binding TargetTime, Mode=TwoWay}"
+                                            Margin="0,0,0,8" ControlHeight="35"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

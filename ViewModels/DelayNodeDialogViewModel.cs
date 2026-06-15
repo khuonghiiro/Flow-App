@@ -66,6 +66,15 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private bool _isNodeKeyMode;
 
+        [ObservableProperty]
+        private bool _isTimeMode;
+
+        [ObservableProperty]
+        private bool _isNotTimeMode;
+
+        [ObservableProperty]
+        private DateTime? _targetTime;
+
         public ObservableCollection<DelayUnitOption> DelayUnitOptions { get; } = new()
         {
             new DelayUnitOption(DelayTimeUnit.Milliseconds, "ms"),
@@ -79,6 +88,7 @@ namespace FlowMy.ViewModels
             new DelayTimingModeOption(DelayTimingMode.None, "Không có"),
             new DelayTimingModeOption(DelayTimingMode.Random, "Số ngẫu nhiên (min–max)"),
             new DelayTimingModeOption(DelayTimingMode.NodeKey, "Lấy từ node / output key"),
+            new DelayTimingModeOption(DelayTimingMode.Time, "Thời gian cụ thể"),
         };
 
         public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
@@ -96,6 +106,7 @@ namespace FlowMy.ViewModels
             RandomMaxValue = node.RandomMaxValue;
             DelaySourceNodeId = string.IsNullOrWhiteSpace(node.DelaySourceNodeId) ? null : node.DelaySourceNodeId;
             DelaySourceOutputKey = string.IsNullOrWhiteSpace(node.DelaySourceOutputKey) ? null : node.DelaySourceOutputKey;
+            TargetTime = node.TargetTime ?? DateTime.Now;
 
             UpdateModeFlags();
             RefreshAvailableNodes();
@@ -119,6 +130,8 @@ namespace FlowMy.ViewModels
                         DelaySourceNodeId = string.IsNullOrWhiteSpace(node.DelaySourceNodeId) ? null : node.DelaySourceNodeId;
                     else if (e.PropertyName == nameof(DelayNode.DelaySourceOutputKey))
                         DelaySourceOutputKey = string.IsNullOrWhiteSpace(node.DelaySourceOutputKey) ? null : node.DelaySourceOutputKey;
+                    else if (e.PropertyName == nameof(DelayNode.TargetTime))
+                        TargetTime = node.TargetTime ?? DateTime.Now;
                 };
             }
         }
@@ -140,6 +153,8 @@ namespace FlowMy.ViewModels
             IsNoneMode = TimingMode == DelayTimingMode.None;
             IsRandomMode = TimingMode == DelayTimingMode.Random;
             IsNodeKeyMode = TimingMode == DelayTimingMode.NodeKey;
+            IsTimeMode = TimingMode == DelayTimingMode.Time;
+            IsNotTimeMode = !IsTimeMode;
         }
 
         private void RefreshAvailableNodes()
@@ -224,6 +239,12 @@ namespace FlowMy.ViewModels
             if (_delayNode.DelaySourceOutputKey != newKey)
             {
                 _delayNode.DelaySourceOutputKey = newKey;
+                needSync = true;
+            }
+
+            if (_delayNode.TargetTime != TargetTime)
+            {
+                _delayNode.TargetTime = TargetTime;
                 needSync = true;
             }
 

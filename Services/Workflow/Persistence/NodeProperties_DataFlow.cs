@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -160,6 +160,12 @@ public sealed partial class FileWorkflowPersistenceService
 
             if (properties.TryGetValue("DelaySourceOutputKey", out var dskObj))
                 delayNode.DelaySourceOutputKey = dskObj?.ToString() ?? string.Empty;
+
+            if (properties.TryGetValue("TargetTime", out var ttObj) && ttObj != null &&
+                DateTime.TryParse(ttObj.ToString(), out var tt))
+            {
+                delayNode.TargetTime = tt;
+            }
     }
 
     private static void RestoreCallbackNodeProperties(CallbackNode callbackNode, Dictionary<string, object> properties)
@@ -554,6 +560,8 @@ public sealed partial class FileWorkflowPersistenceService
                 dict["DelaySourceNodeId"] = delayNode.DelaySourceNodeId;
             if (!string.IsNullOrWhiteSpace(delayNode.DelaySourceOutputKey))
                 dict["DelaySourceOutputKey"] = delayNode.DelaySourceOutputKey;
+            if (delayNode.TargetTime.HasValue)
+                dict["TargetTime"] = delayNode.TargetTime.Value.ToString("O");
     }
 
     private static void GetCallbackNodeProperties(CallbackNode callbackNode, Dictionary<string, object> dict)

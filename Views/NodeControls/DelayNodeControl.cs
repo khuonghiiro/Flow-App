@@ -107,6 +107,19 @@ namespace FlowMy.Views.NodeControls
                             ? $"({GetUnitLabel(node.DelayUnit)})"
                             : $"{node.DelaySourceOutputKey} · {GetUnitLabel(node.DelayUnit)}";
                         break;
+                    case DelayTimingMode.Time:
+                        if (node.TargetTime.HasValue)
+                        {
+                            var tt = node.TargetTime.Value;
+                            summaryNumberText.Text = tt.ToString("HH:mm:ss");
+                            summaryLabelText.Text = tt.Date == DateTime.Today ? "Hôm nay" : tt.ToString("dd/MM/yyyy");
+                        }
+                        else
+                        {
+                            summaryNumberText.Text = "--:--:--";
+                            summaryLabelText.Text = "Chưa chọn";
+                        }
+                        break;
                     default:
                         summaryNumberText.Text = FormatNumber(node.DelayValue);
                         summaryLabelText.Text = GetUnitLabel(node.DelayUnit);
@@ -173,6 +186,7 @@ namespace FlowMy.Views.NodeControls
                 [nameof(DelayNode.RandomMaxValue)] = _ => SyncSummary(),
                 [nameof(DelayNode.DelaySourceNodeId)] = _ => SyncSummary(),
                 [nameof(DelayNode.DelaySourceOutputKey)] = _ => SyncSummary(),
+                [nameof(DelayNode.TargetTime)] = _ => SyncSummary(),
             };
 
             // --- Initialize with fluent API ---

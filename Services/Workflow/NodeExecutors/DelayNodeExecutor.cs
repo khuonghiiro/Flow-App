@@ -28,6 +28,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 DelayTimingMode.None => delayNode.DelayMilliseconds,
                 DelayTimingMode.Random => ComputeRandomMilliseconds(delayNode),
                 DelayTimingMode.NodeKey => ComputeNodeKeyMilliseconds(delayNode, env),
+                DelayTimingMode.Time => ComputeTimeModeMilliseconds(delayNode),
                 _ => delayNode.DelayMilliseconds
             };
         }
@@ -68,6 +69,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var v = ParseDelayNumeric(raw, defaultValue: 1d);
             var ms = v * UnitMultiplier(delayNode.DelayUnit);
             return ClampToIntMilliseconds(ms);
+        }
+
+        private static int ComputeTimeModeMilliseconds(DelayNode delayNode)
+        {
+            if (delayNode.TargetTime == null)
+                return 0;
+            
+            var diff = delayNode.TargetTime.Value - DateTime.Now;
+            if (diff.TotalMilliseconds <= 0)
+                return 0;
+                
+            return ClampToIntMilliseconds(diff.TotalMilliseconds);
         }
 
         private static double ParseDelayNumeric(string? s, double defaultValue)

@@ -10,7 +10,9 @@ namespace FlowMy.Models
         /// <summary>Chọn ngẫu nhiên một khoảng trong [RandomMinValue, RandomMaxValue] theo DelayUnit.</summary>
         Random = 1,
         /// <summary>Lấy số từ output key của node nguồn (theo DelayUnit).</summary>
-        NodeKey = 2
+        NodeKey = 2,
+        /// <summary>Chờ đến một mốc thời gian cụ thể (chỉ chọn hiện tại và tương lai).</summary>
+        Time = 3
     }
 
     /// <summary>
@@ -28,6 +30,7 @@ namespace FlowMy.Models
         private double _randomMaxValue = 1d;
         private string _delaySourceNodeId = string.Empty;
         private string _delaySourceOutputKey = string.Empty;
+        private DateTime? _targetTime = DateTime.Now;
 
         public DelayNode()
         {
@@ -112,6 +115,20 @@ namespace FlowMy.Models
             {
                 if (_delaySourceOutputKey == value) return;
                 _delaySourceOutputKey = value ?? string.Empty;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Mốc thời gian cụ thể để chờ khi <see cref="TimingMode"/> = Time.
+        /// </summary>
+        public DateTime? TargetTime
+        {
+            get => _targetTime;
+            set
+            {
+                if (_targetTime == value) return;
+                _targetTime = value;
                 OnPropertyChanged();
             }
         }

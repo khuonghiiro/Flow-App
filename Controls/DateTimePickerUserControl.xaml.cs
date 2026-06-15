@@ -23,7 +23,7 @@ namespace FlowMy.Controls
         public static readonly DependencyProperty ControlHeightProperty =
     DependencyProperty.Register(nameof(ControlHeight), typeof(double),
         typeof(DateTimePickerUserControl),
-        new PropertyMetadata(45.0));
+        new PropertyMetadata(35.0));
 
         public static readonly DependencyProperty ShowClearButtonProperty =
             DependencyProperty.Register(nameof(ShowClearButton), typeof(bool),
