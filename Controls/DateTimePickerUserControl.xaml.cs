@@ -1,4 +1,4 @@
-﻿using FlowMy.Interfaces;
+using FlowMy.Interfaces;
 using FlowMy.Models.Enums;
 using System.Globalization;
 using System.Windows;
@@ -427,7 +427,7 @@ namespace FlowMy.Controls
 
             if (scrollViewer != null)
             {
-                double targetOffset = value * 40;
+                double targetOffset = value * 35;
                 scrollViewer.ScrollToVerticalOffset(targetOffset);
 
                 System.Diagnostics.Debug.WriteLine($"[TimeButton_Click] Scrolled {type} to value {value}, offset: {targetOffset}");
@@ -647,9 +647,9 @@ namespace FlowMy.Controls
 
         private void ScrollToTime(ScrollViewer sv1, ScrollViewer sv2, int value)
         {
-            // Để item ở vị trí center, cần scroll đến: value * 40 - 20
-            // Nhưng vì có margin 80 top, nên: (value * 40) là đúng vị trí
-            double targetOffset = value * 40;
+            // Để item ở vị trí center, cần scroll đến: value * 35 - 17.5
+            // Nhưng vì có margin top, nên: (value * 35) là đúng vị trí
+            double targetOffset = value * 35;
 
             System.Diagnostics.Debug.WriteLine($"[ScrollToTime] Scrolling to value {value}, offset: {targetOffset}");
 
@@ -683,11 +683,11 @@ namespace FlowMy.Controls
         {
             if (scrollViewer == null) return 0;
 
-            // Mỗi button cao 40px
-            // Vùng selection ở giữa ScrollViewer có chiều cao 40px
-            // ScrollViewer hiển thị 5 items (200px), selection ở giữa (item thứ 3)
-            // Công thức: offset / 40 = index chính xác
-            int index = (int)Math.Round(scrollViewer.VerticalOffset / 40.0);
+            // Mỗi button cao 35px
+            // Vùng selection ở giữa ScrollViewer có chiều cao 35px
+            // ScrollViewer hiển thị 5 items, selection ở giữa (item thứ 3)
+            // Công thức: offset / 35 = index chính xác
+            int index = (int)Math.Round(scrollViewer.VerticalOffset / 35.0);
 
             // Giới hạn index
             index = Math.Max(0, Math.Min(maxValue, index));
