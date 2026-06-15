@@ -687,8 +687,8 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                         <ItemsControl ItemsSource="{Binding Widgets}" Margin="0,14,0,0">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:WidgetShortcutItem}">
-                                                    <Border Margin="0,0,0,8"
-                                                            Padding="12,10"
+                                                    <Border Margin="0,0,0,6"
+                                                            Padding="10,8"
                                                             CornerRadius="10"
                                                             Background="{DynamicResource WindowBackgroundBrush}"
                                                             BorderBrush="{DynamicResource BorderColor}"
@@ -702,10 +702,10 @@ Source="{Binding Source={x:Static sys:String.Empty},
 
                                                             <!-- Icon -->
                                                             <Border Grid.Column="0"
-                                                                    Width="38" Height="38"
-                                                                    CornerRadius="12"
+                                                                    Width="32" Height="32"
+                                                                    CornerRadius="10"
                                                                     VerticalAlignment="Center"
-                                                                    Margin="0,0,12,0">
+                                                                    Margin="0,0,10,0">
                                                                 <Border.Background>
                                                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                                                         <GradientStop Color="#7C3AED" Offset="0"/>
@@ -713,7 +713,7 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                                     </LinearGradientBrush>
                                                                 </Border.Background>
                                                                 <Grid>
-                                                                    <controls:SvgViewboxEx Width="18" Height="18"
+                                                                    <controls:SvgViewboxEx Width="16" Height="16"
                                                                                            Fill="White"
                                                                                            Source="{Binding IconKey, Converter={StaticResource IconKeyToPathConverter}}">
                                                                         <controls:SvgViewboxEx.Style>
@@ -728,7 +728,7 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                                         </controls:SvgViewboxEx.Style>
                                                                     </controls:SvgViewboxEx>
                                                                     <TextBlock Text="{Binding IconKey}"
-                                                                               FontSize="18"
+                                                                               FontSize="15"
                                                                                Foreground="White"
                                                                                HorizontalAlignment="Center"
                                                                                VerticalAlignment="Center">
@@ -766,8 +766,8 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                                                 <Button Command="{Binding DataContext.ConfigureWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding}"
-                                                                        Margin="0,0,6,0"
-                                                                        Height="35"
+                                                                        Margin="0,0,4,0"
+                                                                        Width="30" Height="30"
                                                                         helper:ButtonHelper.ColorTheme="ChocolateBrown"
                                                                         ToolTip="Mở nhanh màn cấu hình widget này"
                                                                         IsEnabled="True">
@@ -782,80 +782,74 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                                         </Style>
                                                                     </Button.Style>
                                                                     <Grid>
-                                                                        <controls:SvgViewboxEx Width="18" Height="18"
+                                                                        <controls:SvgViewboxEx Width="16" Height="16"
                                                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                                Source="{Binding Source={x:Static sys:String.Empty},
                                                                                         Converter={StaticResource IconKeyToPathConverter},
                                                                                         ConverterParameter='gear-complex light'}"
                                                                                Visibility="{Binding IsConfiguring, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                                                                         <TextBlock Text="&#x23F3;"
-                                                                                   FontSize="12"
+                                                                                   FontSize="11"
                                                                                    Visibility="{Binding IsConfiguring, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                                     </Grid>
                                                                 </Button>
-                                                                <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                        CommandParameter="{Binding}"
-                                                                        Margin="0,0,6,0"
-                                                                        Height="35"
-                                                                        helper:ButtonHelper.ColorTheme="Primary"
-                                                                        ToolTip="Chỉ mở widget này (ngầm)">
-                                                                    <Button.Style>
-                                                                        <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
-                                                                            <Setter Property="IsEnabled" Value="True"/>
-                                                                            <Style.Triggers>
-                                                                                <Trigger Property="IsEnabled" Value="False">
-                                                                                    <Setter Property="Opacity" Value="0.45"/>
-                                                                                </Trigger>
-                                                                                <DataTrigger Binding="{Binding IsLaunchingHeadless}" Value="True">
-                                                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                                                </DataTrigger>
-                                                                                <DataTrigger Binding="{Binding IsWidgetOpen}" Value="True">
-                                                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Button.Style>
-                                                                    <Grid>
-                                                                        <controls:SvgViewboxEx Width="18" Height="18"
-       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Margin="4,0,0,0"
-       Source="{Binding Source={x:Static sys:String.Empty},
-                Converter={StaticResource IconKeyToPathConverter},
-                ConverterParameter='play duotone-regular'}"
-       Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
-                                                                        
-                                                                        <TextBlock Text="&#x23F3;"
-                                                                                   FontSize="12"
-                                                                                   Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                                    </Grid>
-                                                                </Button>
-                                                                <Button Command="{Binding DataContext.StopWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                        CommandParameter="{Binding}"
-                                                                        Margin="0,0,6,0"
-                                                                        Height="35"
-                                                                        helper:ButtonHelper.ColorTheme="Danger"
-                                                                        ToolTip="Dừng widget này"
-                                                                        IsEnabled="{Binding IsWidgetOpen}">
-                                                                    <Button.Style>
-                                                                        <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
-                                                                            <Style.Triggers>
-                                                                                <Trigger Property="IsEnabled" Value="False">
-                                                                                    <Setter Property="Opacity" Value="0.45"/>
-                                                                                </Trigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Button.Style>
-                                                                    <Grid>
-                                                                        <controls:SvgViewboxEx Width="18" Height="18"
-                                                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                                               Source="{Binding Source={x:Static sys:String.Empty},
-                                                                                        Converter={StaticResource IconKeyToPathConverter},
-                                                                                        ConverterParameter='flag-checkered sharp-duotone-solid'}"/>
-                                                                    </Grid>
-                                                                </Button>
+                                                                
+                                                                <Grid Margin="0,0,4,0">
+                                                                    <Button Command="{Binding DataContext.LaunchWidgetHeadlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                            CommandParameter="{Binding}"
+                                                                            Width="30" Height="30"
+                                                                            helper:ButtonHelper.ColorTheme="Primary"
+                                                                            ToolTip="Chỉ mở widget này (ngầm)"
+                                                                            Visibility="{Binding IsWidgetOpen, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                                        <Button.Style>
+                                                                            <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
+                                                                                <Setter Property="IsEnabled" Value="True"/>
+                                                                                <Style.Triggers>
+                                                                                    <Trigger Property="IsEnabled" Value="False">
+                                                                                        <Setter Property="Opacity" Value="0.45"/>
+                                                                                    </Trigger>
+                                                                                    <DataTrigger Binding="{Binding IsLaunchingHeadless}" Value="True">
+                                                                                        <Setter Property="IsEnabled" Value="False"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Button.Style>
+                                                                        <Grid>
+                                                                            <controls:SvgViewboxEx Width="15" Height="15"
+                                                                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Margin="2,0,0,0"
+                                                                                   Source="{Binding Source={x:Static sys:String.Empty},
+                                                                                            Converter={StaticResource IconKeyToPathConverter},
+                                                                                            ConverterParameter='play duotone-regular'}"
+                                                                                   Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                            <TextBlock Text="&#x23F3;"
+                                                                                       FontSize="11"
+                                                                                       Visibility="{Binding IsLaunchingHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                        </Grid>
+                                                                    </Button>
+                                                                    <Button Command="{Binding DataContext.StopWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                            CommandParameter="{Binding}"
+                                                                            Width="30" Height="30"
+                                                                            helper:ButtonHelper.ColorTheme="Danger"
+                                                                            ToolTip="Dừng widget này"
+                                                                            Visibility="{Binding IsWidgetOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                        <Button.Style>
+                                                                            <Style TargetType="Button" BasedOn="{StaticResource DynamicOutlineCircleButton}">
+                                                                            </Style>
+                                                                        </Button.Style>
+                                                                        <Grid>
+                                                                            <controls:SvgViewboxEx Width="15" Height="15"
+                                                                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                                   Source="{Binding Source={x:Static sys:String.Empty},
+                                                                                            Converter={StaticResource IconKeyToPathConverter},
+                                                                                            ConverterParameter='flag-checkered sharp-duotone-solid'}"/>
+                                                                        </Grid>
+                                                                    </Button>
+                                                                </Grid>
+
                                                                 <Button Command="{Binding DataContext.ReopenHeadlessWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding}"
-                                                                        Margin="0,0,6,0"
-                                                                        Height="35"
+                                                                        Margin="0,0,4,0"
+                                                                        Width="30" Height="30"
                                                                         helper:ButtonHelper.ColorTheme="NavyDeep"
                                                                         ToolTip="Mở lại workflow đang chạy ngầm để debug">
                                                                     <Button.Style>
@@ -872,20 +866,20 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                                         </Style>
                                                                     </Button.Style>
                                                                     <Grid>
-                                                                        <controls:SvgViewboxEx Width="18" Height="18"
+                                                                        <controls:SvgViewboxEx Width="16" Height="16"
                                                                            Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                            Source="{Binding Source={x:Static sys:String.Empty},
                                                                                     Converter={StaticResource IconKeyToPathConverter},
                                                                                     ConverterParameter='folder-open duotone-light'}"
                                                                            Visibility="{Binding IsReopeningHeadless, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                                                                         <TextBlock Text="&#x23F3;"
-                                                                                   FontSize="12"
+                                                                                   FontSize="11"
                                                                                    Foreground="{DynamicResource TextOnSuccessBrush}"
                                                                                    HorizontalAlignment="Center"
                                                                                    VerticalAlignment="Center"
                                                                                    Visibility="{Binding IsReopeningHeadless, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                                        <Ellipse Width="8"
-                                                                                 Height="8"
+                                                                        <Ellipse Width="6"
+                                                                                 Height="6"
                                                                                  Fill="{DynamicResource SuccessBrush}"
                                                                                  Stroke="{DynamicResource TextOnSuccessBrush}"
                                                                                  StrokeThickness="1"
@@ -895,9 +889,10 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                                                  Visibility="{Binding IsHeadlessDebugVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                                     </Grid>
                                                                 </Button>
+
                                                                 <Button Command="{Binding DataContext.TogglePinToTrayCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding}"
-                                                                        Height="35"
+                                                                        Width="30" Height="30"
                                                                         helper:ButtonHelper.ColorTheme="NavyDeep"
                                                                         ToolTip="Ghim/bỏ ghim widget vào menu tray">
                                                                     <Button.Style>
@@ -914,10 +909,10 @@ Source="{Binding Source={x:Static sys:String.Empty},
                                                                     </Button.Style>
                                                                     <Grid>
                                                                         <TextBlock Text="&#x1F4CC;"
-                                                                                   FontSize="13"
+                                                                                   FontSize="12"
                                                                                    Visibility="{Binding IsPinnedToTray, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                                                                         <TextBlock Text="&#x1F4CD;"
-                                                                                   FontSize="13"
+                                                                                   FontSize="12"
                                                                                    Visibility="{Binding IsPinnedToTray, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                                     </Grid>
                                                                 </Button>
