@@ -323,6 +323,14 @@ namespace FlowMy.ViewModels
             }
         }
 
+        [RelayCommand]
+        private void StopWidget(WidgetShortcutItem? item)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.NodeId)) return;
+            FloatingWidgetManager.Instance.CloseWidget(item.NodeId);
+            item.IsWidgetOpen = FloatingWidgetManager.Instance.IsWidgetOpen(item.NodeId);
+        }
+
         /// <summary>
         /// Mở tất cả widget của 1 workflow trong chế độ headless (editor ẩn).
         /// </summary>
