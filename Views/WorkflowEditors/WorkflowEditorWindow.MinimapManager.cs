@@ -1090,7 +1090,7 @@ namespace FlowMy.Views
 
             // Lấy danh sách node cần xóa (tất cả trừ Start và End)
             var nodesToDelete = ViewModel.Nodes
-                .Where(n => n.Id != "Node_Start" && n.Id != "Node_End")
+                .Where(n => n.Type != Models.NodeType.Start && n.Type != Models.NodeType.End)
                 .ToList();
 
             // Xóa tất cả connections liên quan đến các node này

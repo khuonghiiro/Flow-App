@@ -3430,7 +3430,7 @@ namespace FlowMy.ViewModels
 
             var startNode = new WorkflowNode
             {
-                Id = "Node_Start",
+                Id = $"Node_Start_{Guid.NewGuid()}",
                 Title = "Start",
                 X = centerX - halfGap - nodeHalfSize,
                 Y = centerY - nodeHalfSize,
@@ -3449,7 +3449,7 @@ namespace FlowMy.ViewModels
 
             var endNode = new WorkflowNode
             {
-                Id = "Node_End",
+                Id = $"Node_End_{Guid.NewGuid()}",
                 Title = "End",
                 X = centerX + halfGap - nodeHalfSize,
                 Y = centerY - nodeHalfSize,
