@@ -247,6 +247,25 @@ namespace FlowMy.ViewModels
             if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(ProjectRoot)) return;
             try
             {
+                // Reset to empty
+                EditIconKey = string.Empty;
+                EditColorKey = string.Empty;
+                EditInputPortColorKey = string.Empty;
+                EditOutputPortColorKey = string.Empty;
+
+                // 1. Try get Icon from [NodeName]NodeControl.cs or [NodeName]Control.cs
+                var controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.cs");
+                if (!File.Exists(controlCsPath)) 
+                    controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.cs");
+
+                if (File.Exists(controlCsPath))
+                {
+                    var content = File.ReadAllText(controlCsPath);
+                    var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*""([^""]+)""");
+                    if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                }
+
+                // 1b. Fallback to [NodeName]Control.xaml
                 var xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.xaml");
                 if (File.Exists(xamlPath))
                 {
@@ -256,6 +275,53 @@ namespace FlowMy.ViewModels
 
                     var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"ConverterParameter='([^']+)'");
                     if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                }
+
+                // 2. Try get Colors from TemplateFactory.cs
+                var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
+                if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
+                if (File.Exists(templateFactoryPath))
+                {
+                    var content = File.ReadAllText(templateFactoryPath);
+                    var createMethodIdx = content.IndexOf($"Create{value}Node(");
+                    if (createMethodIdx > 0)
+                    {
+                        var endIdx = content.IndexOf("return node;", createMethodIdx);
+                        if (endIdx > 0)
+                        {
+                            var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
+                            var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"ColorKey\s*=\s*""([^""]+)""");
+                            if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
+
+                            var inPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
+                            if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+
+                            var outPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
+                            if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                        }
+                    }
+                }
+
+                // 3. Fallback: try get colors from [NodeName]Node.cs
+                var nodeCsPath = Path.Combine(ProjectRoot, "Models", "Nodes", $"{value}Node.cs");
+                if (File.Exists(nodeCsPath))
+                {
+                    var content = File.ReadAllText(nodeCsPath);
+                    if (string.IsNullOrWhiteSpace(EditColorKey))
+                    {
+                        var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(content, @"ColorKey\s*=\s*""([^""]+)""");
+                        if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
+                    }
+                    if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
+                    {
+                        var inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
+                        if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                    }
+                    if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
+                    {
+                        var outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
+                        if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                    }
                 }
             }
             catch { }

@@ -1870,9 +1870,13 @@ namespace FlowMy.Services.Utilities
 
             var nodeCsPath = Path.Combine(projectRoot, "Models", "Nodes", $"{nodeName}Node.cs");
             var nodeXamlPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{nodeName}Control.xaml");
+            var nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{nodeName}NodeControl.cs");
+            if (!File.Exists(nodeControlCsPath)) nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{nodeName}Control.cs");
+            var templateFactoryPath = Path.Combine(projectRoot, "Workflow", "TemplateFactory.cs");
+            if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(projectRoot, "Services", "Workflow", "TemplateFactory.cs");
             var workflowEditorPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.xaml");
 
-            // 1. Sửa Node.cs
+            // 1. Sửa Node.cs (legacy fallback)
             if (File.Exists(nodeCsPath))
             {
                 try
@@ -1887,13 +1891,53 @@ namespace FlowMy.Services.Utilities
                         @"(OutputPorts\.Add\s*\([^;]+?ColorKey\s*=\s*"")[^""]+(""\s*\})", 
                         $"${{1}}{outPortColor}${{2}}");
 
+                    // Replace ColorKey if exists in Node.cs
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(ColorKey\s*=\s*"")[^""]+("")", 
+                        $"${{1}}{colorKey}${{2}}");
+
                     File.WriteAllText(nodeCsPath, content, Encoding.UTF8);
                     result.ModifiedFiles.Add(nodeCsPath);
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Node.cs: {ex.Message}"); }
             }
 
-            // 2. Sửa NodeControl.xaml
+            // 1b. Sửa TemplateFactory.cs (for generated nodes)
+            if (File.Exists(templateFactoryPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(templateFactoryPath);
+                    var createMethodIdx = content.IndexOf($"Create{nodeName}Node(");
+                    if (createMethodIdx > 0)
+                    {
+                        var endIdx = content.IndexOf("return node;", createMethodIdx);
+                        if (endIdx > 0)
+                        {
+                            var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
+                            
+                            // Replace ColorKey
+                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
+                                @"(ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{colorKey}${{2}}");
+                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
+                                @"(TryFindResource\("")([^""]+)Brush(""\))", $"${{1}}{colorKey}${{2}}${{3}}");
+
+                            // Replace Port Colors
+                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
+                                @"(IsInput\s*=\s*true[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{inPortColor}${{2}}");
+                            methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
+                                @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{outPortColor}${{2}}");
+
+                            content = content.Substring(0, createMethodIdx) + methodContent + content.Substring(endIdx);
+                            File.WriteAllText(templateFactoryPath, content, Encoding.UTF8);
+                            result.ModifiedFiles.Add(templateFactoryPath);
+                        }
+                    }
+                }
+                catch (Exception ex) { result.Errors.Add($"Lỗi sửa TemplateFactory.cs: {ex.Message}"); }
+            }
+
+            // 2. Sửa NodeControl.xaml (legacy fallback)
             if (File.Exists(nodeXamlPath))
             {
                 try
@@ -1921,6 +1965,23 @@ namespace FlowMy.Services.Utilities
                     result.ModifiedFiles.Add(nodeXamlPath);
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Control.xaml: {ex.Message}"); }
+            }
+
+            // 2b. Sửa NodeControl.cs (for generated nodes)
+            if (File.Exists(nodeControlCsPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(nodeControlCsPath);
+                    
+                    content = System.Text.RegularExpressions.Regex.Replace(content,
+                        @"(iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*"")[^""]+("")",
+                        $"${{1}}{iconKey}${{2}}");
+
+                    File.WriteAllText(nodeControlCsPath, content, Encoding.UTF8);
+                    result.ModifiedFiles.Add(nodeControlCsPath);
+                }
+                catch (Exception ex) { result.Errors.Add($"Lỗi sửa NodeControl.cs: {ex.Message}"); }
             }
 
             // 3. Sửa WorkflowEditorWindow.xaml
