@@ -135,21 +135,29 @@
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">
-                                        <Border Name="Border" Padding="16,8" Margin="0,0,4,0" CornerRadius="8,8,0,0" Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1,1,1,0">
+                                        <Border Name="Border" Padding="16,8" Margin="0,0,4,0" CornerRadius="6,6,0,0" Background="{DynamicResource ControlBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1,1,1,0">
                                             <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header" Margin="10,2"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource CardColor}" />
-                                                <Setter TargetName="Border" Property="BorderThickness" Value="1,1,1,0" />
+                                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryBrush}" />
+                                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                                                <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="White" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="False">
+                                                <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="{DynamicResource TextMuted}" />
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Border" Property="Opacity" Value="0.8" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Setter.Value>
                             </Setter>
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="FontSize" Value="13"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Cursor" Value="Hand"/>
                         </Style>
                     </TabControl.Resources>
 

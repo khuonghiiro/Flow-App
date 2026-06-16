@@ -171,6 +171,7 @@ namespace FlowMy.ViewModels
                 {
                     ProjectRoot = dir;
                     LoadPaletteCategories();
+                    LoadExistingNodes();
                     return;
                 }
                 var parent = System.IO.Directory.GetParent(dir)?.FullName;
@@ -192,21 +193,22 @@ namespace FlowMy.ViewModels
 
             try
             {
-                var files = Directory.GetFiles(dir, "*NodeControl.xaml");
+                // We generate .cs files for NodeControl now
+                var files = Directory.GetFiles(dir, "*NodeControl.cs");
                 var nodes = new System.Collections.Generic.HashSet<string>();
                 foreach (var f in files)
                 {
                     var name = Path.GetFileNameWithoutExtension(f);
                     if (name.EndsWith("NodeControl"))
                     {
-                        nodes.Add(name.Substring(0, name.Length - "Control".Length));
+                        nodes.Add(name.Substring(0, name.Length - "NodeControl".Length));
                     }
                 }
                 if (nodes.Count > 0)
                 {
                     ExistingNodes.Clear();
                     foreach (var n in nodes) ExistingNodes.Add(n);
-                    if (!ExistingNodes.Contains(SelectedExistingNode))
+                    if (string.IsNullOrWhiteSpace(SelectedExistingNode) || !ExistingNodes.Contains(SelectedExistingNode))
                         SelectedExistingNode = ExistingNodes.FirstOrDefault() ?? string.Empty;
                 }
             }
