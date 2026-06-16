@@ -293,7 +293,8 @@ namespace FlowMy.ViewModels
                 {
                     var content = File.ReadAllText(xamlPath);
                     var bgMatch = System.Text.RegularExpressions.Regex.Match(content, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
-                    if (bgMatch.Success) EditColorKey = bgMatch.Groups[1].Value;
+                    if (bgMatch.Success && bgMatch.Groups[1].Value != "WindowBackground" && bgMatch.Groups[1].Value != "Transparent" && bgMatch.Groups[1].Value != "ControlBorder") 
+                        EditColorKey = bgMatch.Groups[1].Value;
 
                     // Ưu tiên SvgViewboxEx có PaletteSvgIconStyle (chuẩn của Tool)
                     var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx\s+Style=""\{StaticResource\s+PaletteSvgIconStyle\}""[^>]*ConverterParameter='([^']+)'");
@@ -315,6 +316,60 @@ namespace FlowMy.ViewModels
                         var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"typeof\(Uri\),\s*""([^""]+)""");
                         if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                     }
+                }
+
+                // 1c. Fallback using WorkflowEditorViewModel's ResolveNodeIconKey logic
+                if (string.IsNullOrWhiteSpace(EditIconKey))
+                {
+                    EditIconKey = value switch
+                    {
+                        "Start" => "play duotone-regular",
+                        "End" => "flag-checkered sharp-duotone-solid",
+                        "Input" => "left-to-dotted-line duotone-regular",
+                        "Output" => "right-to-dotted-line duotone-regular",
+                        "IfElse" => "list-tree sharp-light",
+                        "Loop" => "arrows-spin duotone",
+                        "Break" => "circle-stop duotone",
+                        "Continue" => "diagram-predecessor duotone-light",
+                        "Delay" => "timer regular",
+                        "Keyboard" => "keyboard duotone",
+                        "KeyPressEvent" => "key duotone-regular",
+                        "HotkeyPressEvent" => "keyboard duotone",
+                        "MouseEvent" => "computer-mouse duotone",
+                        "ScreenPosition" => "crosshairs light",
+                        "ScreenCapture" => "camera-viewfinder duotone-light",
+                        "TextScan" => "camera-circle-ellipsis duotone-light",
+                        "EmbedApplication" => "desktop-arrow-down light",
+                        "StringSplit" => "scissors light",
+                        "ListOut" => "list-radio regular",
+                        "AssignData" => "arrows-left-right duotone",
+                        "MediaGallery" => "image-stack duotone",
+                        "ImageProcessing" => "image notdog-duo-solid",
+                        "VideoProcessing" => "circle-video sharp-light",
+                        "Code" => "code duotone-regular",
+                        "HtmlUi" => "html5 brands",
+                        "Folder" => "folder-open duotone-thin",
+                        "HttpRequest" => "globe-pointer sharp-duotone-light",
+                        "Web" => "internet-explorer brands",
+                        "AsyncTask" => "diagram-project duotone-light",
+                        "MacroRecorder" => "chart-network light",
+                        "BorderHighlight" => "bolt-lightning sharp-light",
+                        "DataFetcher" => "inbox-out duotone-light",
+                        "BodyContainer" => "border-none sharp-duotone-regular",
+                        "FolderFilePaths" => "file-import duotone-light",
+                        "KeyValueBridge" => "list-check solid",
+                        "FlowOverwrite" => "merge sharp-regular",
+                        "Notification" => "message-captions duotone-regular",
+                        "Storage" => "arrow-progress sharp-regular",
+                        "Callback" => "arrows-turn-right regular",
+                        "FileDownload" => "download solid",
+                        "AsyncTaskDispatchCollect" => "list-radio regular",
+                        "KeyScopedStore" => "arrow-progress sharp-regular",
+                        "LoopContext" => "arrows-spin duotone",
+                        "Condition" => "list-tree sharp-light",
+                        "GitSource" => "git-alt brands",
+                        _ => "circle-nodes duotone-regular"
+                    };
                 }
 
                 // 2. Try get Colors from TemplateFactory.cs

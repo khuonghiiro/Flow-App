@@ -115,6 +115,9 @@ namespace FlowMy.Views.Overlays
                     var converter = new FlowMy.Converters.IconKeyToPathConverter();
                     var uri = converter.Convert(iconKeyToUse, typeof(Uri), null, System.Globalization.CultureInfo.InvariantCulture) as Uri;
                     _previewIcon.Source = uri;
+                    
+                    if (!string.IsNullOrWhiteSpace(colorKeyToUse))
+                        _previewIcon.SetResourceReference(FlowMy.Controls.SvgViewboxEx.FillProperty, $"TextOn{colorKeyToUse}Brush");
                 }
 
                 // Update node mock background từ {ColorKey}Brush
