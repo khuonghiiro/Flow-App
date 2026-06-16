@@ -1852,6 +1852,196 @@ namespace FlowMy.Services.Utilities
             }
             return config;
         }
+
+        public NodeGenerationResult UpdateExistingNodeVisuals(
+            string projectRoot, 
+            string nodeName, 
+            string colorKey, 
+            string iconKey, 
+            string inPortColor, 
+            string outPortColor)
+        {
+            var result = new NodeGenerationResult();
+            if (string.IsNullOrWhiteSpace(projectRoot))
+            {
+                result.Errors.Add("Project root rỗng.");
+                return result;
+            }
+
+            var nodeCsPath = Path.Combine(projectRoot, "Models", "Nodes", $"{nodeName}Node.cs");
+            var nodeXamlPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{nodeName}Control.xaml");
+            var workflowEditorPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.xaml");
+
+            // 1. Sửa Node.cs
+            if (File.Exists(nodeCsPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(nodeCsPath);
+                    
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(InputPorts\.Add\s*\([^;]+?ColorKey\s*=\s*"")[^""]+(""\s*\})", 
+                        $"${{1}}{inPortColor}${{2}}");
+                    
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(OutputPorts\.Add\s*\([^;]+?ColorKey\s*=\s*"")[^""]+(""\s*\})", 
+                        $"${{1}}{outPortColor}${{2}}");
+
+                    File.WriteAllText(nodeCsPath, content, Encoding.UTF8);
+                    result.ModifiedFiles.Add(nodeCsPath);
+                }
+                catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Node.cs: {ex.Message}"); }
+            }
+
+            // 2. Sửa NodeControl.xaml
+            if (File.Exists(nodeXamlPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(nodeXamlPath);
+                    var textOnBrushKey = $"TextOn{colorKey}Brush";
+
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(<Border\s+Style=""\{DynamicResource\s+NodeHeaderStyle\}""\s+Background=""\{DynamicResource\s+)[A-Za-z]+Brush(\}""[^>]*>)",
+                        $"${{1}}{colorKey}Brush${{2}}");
+
+                    content = System.Text.RegularExpressions.Regex.Replace(content,
+                        @"Foreground=""\{DynamicResource\s+TextOn[A-Za-z]+Brush\}""",
+                        $"Foreground=\"{{DynamicResource {textOnBrushKey}}}\"");
+
+                    content = System.Text.RegularExpressions.Regex.Replace(content,
+                        @"Fill=""\{DynamicResource\s+TextOn[A-Za-z]+Brush\}""",
+                        $"Fill=\"{{DynamicResource {textOnBrushKey}}}\"");
+
+                    content = System.Text.RegularExpressions.Regex.Replace(content,
+                        @"ConverterParameter='[^']+'",
+                        $"ConverterParameter='{iconKey}'");
+
+                    File.WriteAllText(nodeXamlPath, content, Encoding.UTF8);
+                    result.ModifiedFiles.Add(nodeXamlPath);
+                }
+                catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Control.xaml: {ex.Message}"); }
+            }
+
+            // 3. Sửa WorkflowEditorWindow.xaml
+            if (File.Exists(workflowEditorPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(workflowEditorPath);
+                    var newContent = ReplacePaletteBlock(content, nodeName, colorKey, iconKey);
+                    if (newContent != content)
+                    {
+                        File.WriteAllText(workflowEditorPath, newContent, Encoding.UTF8);
+                        result.ModifiedFiles.Add(workflowEditorPath);
+                    }
+                    else
+                    {
+                        result.Errors.Add($"Không tìm thấy khối Palette XML của {nodeName}Node trong WorkflowEditorWindow.xaml.");
+                    }
+                }
+                catch (Exception ex) { result.Errors.Add($"Lỗi sửa WorkflowEditorWindow.xaml: {ex.Message}"); }
+            }
+
+            return result;
+        }
+
+        private string ReplacePaletteBlock(string content, string nodeName, string colorKey, string iconKey)
+        {
+            var tag = $"Tag=\"{nodeName}Node\"";
+            var tagIdx = content.IndexOf(tag);
+            if (tagIdx < 0) return content;
+
+            var startTag = "<Border Style=\"{StaticResource PaletteIconNodeStyle}\"";
+            var blockStart = content.LastIndexOf(startTag, tagIdx);
+            if (blockStart < 0) return content;
+
+            int openCount = 0;
+            int idx = blockStart;
+            int blockEnd = -1;
+            while (idx < content.Length)
+            {
+                var nextOpen = content.IndexOf("<Border", idx);
+                var nextClose = content.IndexOf("</Border>", idx);
+                
+                if (nextOpen < 0 && nextClose < 0) break;
+                
+                if (nextOpen >= 0 && nextOpen < nextClose)
+                {
+                    openCount++;
+                    idx = nextOpen + 7;
+                }
+                else if (nextClose >= 0)
+                {
+                    openCount--;
+                    idx = nextClose + 9;
+                    if (openCount == 0)
+                    {
+                        blockEnd = idx;
+                        break;
+                    }
+                }
+            }
+
+            if (blockEnd < 0) return content;
+            
+            var oldBlock = content.Substring(blockStart, blockEnd - blockStart);
+            
+            var titleMatch = System.Text.RegularExpressions.Regex.Match(oldBlock, @"<Run\s+Text=""([^""]+)""");
+            string title = titleMatch.Success ? titleMatch.Groups[1].Value : nodeName;
+
+            var brushKey = $"{colorKey}Brush";
+            var textOnBrushKey = $"TextOn{colorKey}Brush";
+            var nl = "\r\n";
+            var paletteXml =
+                "<Border Style=\"{StaticResource PaletteIconNodeStyle}\"" +
+                nl + $"                                    Background=\"{{DynamicResource {brushKey}}}\"" +
+                nl + $"                                    Tag=\"{nodeName}Node\"" +
+                nl + "                                    MouseDown=\"NodeTemplate_MouseDown\"" +
+                nl + "                                    MouseMove=\"NodeTemplate_MouseMove\"" +
+                nl + "                                    MouseUp=\"NodeTemplate_MouseUp\"" +
+                nl + "                                    MouseEnter=\"NodeTemplate_MouseEnter\"" +
+                nl + "                                    MouseLeave=\"NodeTemplate_MouseLeave\">" +
+                nl + "                                <Border.ToolTip>" +
+                nl + "                                    <ToolTip>" +
+                nl + "                                        <StackPanel MaxWidth=\"240\">" +
+                nl + "                                            <TextBlock FontWeight=\"Bold\" FontStyle=\"Italic\">" +
+                nl + $"                                                <Run Text=\"{title}\"/>" +
+                nl + "                                            </TextBlock>" +
+                nl + "                                            <TextBlock Text=\"Node được tạo bởi Node Generator.\"" +
+                nl + "                                                       TextWrapping=\"Wrap\" Margin=\"0,4,0,0\" Opacity=\"0.9\"/>" +
+                nl + "                                        </StackPanel>" +
+                nl + "                                    </ToolTip>" +
+                nl + "                                </Border.ToolTip>" +
+                nl + "                                <Border.ContextMenu>" +
+                nl + "                                    <ContextMenu Placement=\"MousePoint\" StaysOpen=\"False\">" +
+                nl + "                                        <MenuItem IsHitTestVisible=\"False\">" +
+                nl + "                                            <MenuItem.Header>" +
+                nl + $"                                                <Border Background=\"{{DynamicResource {brushKey}}}\"" +
+                nl + "                                                        CornerRadius=\"10\" Padding=\"10\"" +
+                nl + "                                                        BorderBrush=\"{DynamicResource BorderColor}\" BorderThickness=\"1\">" +
+                nl + "                                                    <StackPanel>" +
+                nl + $"                                                        <TextBlock Text=\"{title}\"" +
+                nl + $"                                                                   Foreground=\"{{DynamicResource {textOnBrushKey}}}\"" +
+                nl + "                                                                   FontWeight=\"Bold\" FontSize=\"13\"/>" +
+                nl + "                                                        <TextBlock Text=\"Node tự động sinh bởi Node Generator.\"" +
+                nl + $"                                                                   Foreground=\"{{DynamicResource {textOnBrushKey}}}\"" +
+                nl + "                                                                   Opacity=\"0.9\" TextWrapping=\"Wrap\" Margin=\"0,4,0,0\"/>" +
+                nl + "                                                    </StackPanel>" +
+                nl + "                                                </Border>" +
+                nl + "                                            </MenuItem.Header>" +
+                nl + "                                        </MenuItem>" +
+                nl + "                                    </ContextMenu>" +
+                nl + "                                </Border.ContextMenu>" +
+                nl + "                                <Grid>" +
+                nl + $"                                    <controls:SvgViewboxEx Style=\"{{StaticResource PaletteSvgIconStyle}}\"" +
+                nl + $"                                                          Source=\"{{Binding Source={{x:Static sys:String.Empty}}, Converter={{StaticResource IconKeyToPathConverter}}, ConverterParameter='{iconKey}'}}\"" +
+                nl + $"                                                          Fill=\"{{DynamicResource {textOnBrushKey}}}\"/>" +
+                nl + "                                </Grid>" +
+                nl + "                            </Border>";
+
+            return content.Substring(0, blockStart) + paletteXml + content.Substring(blockEnd);
+        }
     }
 
     public sealed class NodeGenerationResult

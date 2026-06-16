@@ -101,7 +101,7 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="🧱" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="🧱" Foreground="{DynamicResource TextBrush}" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
                         <TextBlock Text="Tạo Base Node" FontSize="16" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                         <Border Background="{DynamicResource PrimaryBrush}" CornerRadius="10" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Center">
@@ -129,8 +129,34 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- ─── LEFT: FORM ─── -->
-                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="20,16,12,16">
-                    <StackPanel>
+                <TabControl Grid.Column="0" Background="Transparent" BorderThickness="0" Margin="10,10,0,10">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TabItem">
+                                        <Border Name="Border" Padding="16,8" Margin="0,0,4,0" CornerRadius="8,8,0,0" Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1,1,1,0">
+                                            <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header" Margin="10,2"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource CardColor}" />
+                                                <Setter TargetName="Border" Property="BorderThickness" Value="1,1,1,0" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Style>
+                    </TabControl.Resources>
+
+                    <TabItem Header="✨ Tạo Node Mới">
+                        <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="0,8,8,8">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16,12,16">
+                                <StackPanel>
 
                         <!-- ■ BASIC INFO -->
                         <Border Style="{StaticResource CardBorder}">
@@ -596,7 +622,76 @@
                         </Border>
 
                     </StackPanel>
-                </ScrollViewer>
+                        </ScrollViewer>
+                        </Border>
+                    </TabItem>
+
+                    <TabItem Header="🛠️ Chỉnh Sửa Visuals Node Cũ">
+                        <Border Background="{DynamicResource CardColor}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="0,8,8,8">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16,12,16">
+                                <StackPanel>
+                                <Border Style="{StaticResource CardBorder}">
+                                    <StackPanel>
+                                        <TextBlock Text="📌 Chọn Node cần sửa" Style="{StaticResource SectionHeader}"/>
+                                        <ComboBox Height="32" Style="{DynamicResource BaseComboBox}" Margin="0,0,0,12"
+                                                  ItemsSource="{Binding ExistingNodes}"
+                                                  SelectedItem="{Binding SelectedExistingNode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  ToolTip="Danh sách các node hiện có trong dự án"/>
+                                        
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="10"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="IconKey mới" Style="{StaticResource FieldLabel}"/>
+                                                <TextBox Height="32" Style="{DynamicResource BaseTextBoxV2}"
+                                                         Text="{Binding EditIconKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Icon mới cho node"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="ColorKey nền mới" Style="{StaticResource FieldLabel}"/>
+                                                <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding ColorKeyOptions}"
+                                                          Text="{Binding EditColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="True"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid Margin="0,16,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="10"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Màu Input Port" Style="{StaticResource FieldLabel}"/>
+                                                <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding ColorKeyOptions}"
+                                                          Text="{Binding EditInputPortColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="True"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Màu Output Port" Style="{StaticResource FieldLabel}"/>
+                                                <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                          ItemsSource="{Binding ColorKeyOptions}"
+                                                          Text="{Binding EditOutputPortColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="True"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Button Margin="0,20,0,0" Height="40" Content="🛠️ CẬP NHẬT NODE VISUALS"
+                                                Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                                Command="{Binding UpdateNodeVisualsCommand}"/>
+
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                        </Border>
+                    </TabItem>
+                </TabControl>
 
                 <!-- ─── SPLITTER ─── -->
                 <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch"

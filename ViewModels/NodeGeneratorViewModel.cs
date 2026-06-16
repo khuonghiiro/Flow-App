@@ -63,6 +63,14 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _paletteCategory = "Screen";
         public ObservableCollection<string> PaletteCategories { get; } = new();
 
+        // ─── Edit Existing Node ───────────────────────────────────────────────
+        [ObservableProperty] private string _selectedExistingNode = string.Empty;
+        [ObservableProperty] private string _editColorKey = "Info";
+        [ObservableProperty] private string _editIconKey = "circle-nodes duotone-regular";
+        [ObservableProperty] private string _editInputPortColorKey = "Info";
+        [ObservableProperty] private string _editOutputPortColorKey = "SunsetOrange";
+        public ObservableCollection<string> ExistingNodes { get; } = new();
+
 
         // ─── Dialog options ───────────────────────────────────────────────────
         [ObservableProperty] private bool _hasInputSection = true;
@@ -173,6 +181,36 @@ namespace FlowMy.ViewModels
             ProjectRoot = AppDomain.CurrentDomain.BaseDirectory;
 
             LoadPaletteCategories();
+            LoadExistingNodes();
+        }
+
+        private void LoadExistingNodes()
+        {
+            if (string.IsNullOrWhiteSpace(ProjectRoot)) return;
+            var dir = Path.Combine(ProjectRoot, "Views", "NodeControls");
+            if (!Directory.Exists(dir)) return;
+
+            try
+            {
+                var files = Directory.GetFiles(dir, "*NodeControl.xaml");
+                var nodes = new System.Collections.Generic.HashSet<string>();
+                foreach (var f in files)
+                {
+                    var name = Path.GetFileNameWithoutExtension(f);
+                    if (name.EndsWith("NodeControl"))
+                    {
+                        nodes.Add(name.Substring(0, name.Length - "Control".Length));
+                    }
+                }
+                if (nodes.Count > 0)
+                {
+                    ExistingNodes.Clear();
+                    foreach (var n in nodes) ExistingNodes.Add(n);
+                    if (!ExistingNodes.Contains(SelectedExistingNode))
+                        SelectedExistingNode = ExistingNodes.FirstOrDefault() ?? string.Empty;
+                }
+            }
+            catch { }
         }
 
         private void LoadPaletteCategories()
@@ -197,6 +235,25 @@ namespace FlowMy.ViewModels
                     foreach (var c in cats) PaletteCategories.Add(c);
                     if (!PaletteCategories.Contains(PaletteCategory)) 
                         PaletteCategory = PaletteCategories.FirstOrDefault() ?? "Screen";
+                }
+            }
+            catch { }
+        }
+
+        partial void OnSelectedExistingNodeChanged(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(ProjectRoot)) return;
+            try
+            {
+                var xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.xaml");
+                if (File.Exists(xamlPath))
+                {
+                    var content = File.ReadAllText(xamlPath);
+                    var bgMatch = System.Text.RegularExpressions.Regex.Match(content, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
+                    if (bgMatch.Success) EditColorKey = bgMatch.Groups[1].Value;
+
+                    var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"ConverterParameter='([^']+)'");
+                    if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                 }
             }
             catch { }
@@ -353,6 +410,38 @@ namespace FlowMy.ViewModels
             ResultText = genResult.ToSummary() + "\n\n" + RegistrationLog;
             HasError = HasRegistrationError;
             IsSuccess = IsRegistered;
+            HasResult = true;
+        }
+
+        [RelayCommand]
+        private void UpdateNodeVisuals()
+        {
+            HasResult = false;
+            ResultText = string.Empty;
+            HasError = false;
+            IsSuccess = false;
+
+            if (string.IsNullOrWhiteSpace(SelectedExistingNode))
+            {
+                ResultText = "❌ Vui lòng chọn Node cần sửa.";
+                HasError = true;
+                HasResult = true;
+                return;
+            }
+
+            var service = new NodeGeneratorService();
+            var result = service.UpdateExistingNodeVisuals(
+                ProjectRoot, 
+                SelectedExistingNode, 
+                EditColorKey, 
+                EditIconKey, 
+                EditInputPortColorKey, 
+                EditOutputPortColorKey
+            );
+
+            ResultText = result.ToSummary();
+            HasError = !result.IsSuccess;
+            IsSuccess = result.IsSuccess;
             HasResult = true;
         }
 
