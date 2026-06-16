@@ -200,15 +200,15 @@ namespace FlowMy.Services.Interaction
                 if (vm.TrySaveFromEditorShortcut())
                 {
                     var name = string.IsNullOrWhiteSpace(vm.CurrentWorkflowName) ? "Workflow" : vm.CurrentWorkflowName;
-                    // SuccessBrush / TextOnSuccessBrush: định nghĩa theo Light/Dark theme → tương phản tốt trên nền app sáng/tối
+                    // Đổi màu hiển thị cho đẹp và đồng nhất với theme (dùng PrimaryBrush thay vì SuccessBrush)
                     ToastNotificationService.ShowToast(
-                        "Đã lưu",
-                        name,
+                        "Đã lưu thành công",
+                        $"Workflow '{name}' đã được lưu an toàn.",
                         durationSeconds: 3,
-                        titleColorKey: "TextOnSuccessBrush",
-                        contentColorKey: "TextOnSuccessBrush",
-                        backgroundColorKey: "SuccessBrush",
-                        backgroundOpacity: 0.96);
+                        titleColorKey: "TextOnPrimaryBrush",
+                        contentColorKey: "TextOnPrimaryBrush",
+                        backgroundColorKey: "PrimaryBrush",
+                        backgroundOpacity: 0.90);
                 }
                 e.Handled = true;
                 return;
