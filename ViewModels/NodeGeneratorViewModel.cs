@@ -59,6 +59,10 @@ namespace FlowMy.ViewModels
         // Guard tránh OnTitleChanged/OnNodeTypeNameChanged fire khi ta tự set từ NodeName
         private bool _isSyncingFromNodeName = false;
 
+        // ─── Palette Category ─────────────────────────────────────────────────
+        [ObservableProperty] private string _paletteCategory = "Screen";
+        public ObservableCollection<string> PaletteCategories { get; } = new();
+
 
         // ─── Dialog options ───────────────────────────────────────────────────
         [ObservableProperty] private bool _hasInputSection = true;
@@ -158,6 +162,7 @@ namespace FlowMy.ViewModels
                 if (System.IO.Directory.GetFiles(dir, "*.csproj").Length > 0)
                 {
                     ProjectRoot = dir;
+                    LoadPaletteCategories();
                     return;
                 }
                 var parent = System.IO.Directory.GetParent(dir)?.FullName;
@@ -166,6 +171,35 @@ namespace FlowMy.ViewModels
             }
             // Fallback: thư mục exe
             ProjectRoot = AppDomain.CurrentDomain.BaseDirectory;
+
+            LoadPaletteCategories();
+        }
+
+        private void LoadPaletteCategories()
+        {
+            if (string.IsNullOrWhiteSpace(ProjectRoot)) return;
+            var path = Path.Combine(ProjectRoot, "Views", "WorkflowEditorWindow.xaml");
+            if (!File.Exists(path)) path = Path.Combine(ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
+            if (!File.Exists(path)) return;
+
+            try
+            {
+                var content = File.ReadAllText(path);
+                var matches = System.Text.RegularExpressions.Regex.Matches(content, @"<TextBlock\s+Text=""([^""]+)""\s+Style=""\{StaticResource\s+PaletteGroupHeaderStyle\}""");
+                var cats = new System.Collections.Generic.HashSet<string>();
+                foreach (System.Text.RegularExpressions.Match m in matches)
+                {
+                    if (m.Groups.Count > 1) cats.Add(m.Groups[1].Value);
+                }
+                if (cats.Count > 0)
+                {
+                    PaletteCategories.Clear();
+                    foreach (var c in cats) PaletteCategories.Add(c);
+                    if (!PaletteCategories.Contains(PaletteCategory)) 
+                        PaletteCategory = PaletteCategories.FirstOrDefault() ?? "Screen";
+                }
+            }
+            catch { }
         }
 
         // ─── Partial onChange ─────────────────────────────────────────────────
@@ -435,6 +469,7 @@ namespace FlowMy.ViewModels
                 HasDynamicInputs = HasDynamicInputs,
                 HasCustomKeyOverride = HasCustomKeyOverride,
                 ProjectRoot = ProjectRoot?.Trim() ?? string.Empty,
+                PaletteCategory = PaletteCategory?.Trim() ?? "Screen",
             };
 
             // Ports

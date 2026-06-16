@@ -54,6 +54,9 @@ namespace FlowMy.Services.Utilities
         /// <summary>Tên NodeType enum value (nếu AddNewNodeType = true). Rỗng = dùng NodeName</summary>
         public string NodeTypeName { get; set; } = string.Empty;
 
+        /// <summary>Menu category trong WorkflowEditorWindow.xaml (VD: "Flow", "Events", "Screen", ...)</summary>
+        public string PaletteCategory { get; set; } = "Screen";
+
         /// <summary>Danh sách TextBox tùy chỉnh trong dialog: Label → BindingPath</summary>
         public List<DialogFieldConfig> CustomTextBoxes { get; set; } = new();
 
@@ -1666,34 +1669,59 @@ namespace FlowMy.Services.Utilities
                     return;
                 }
 
-                // Tìm vị trí block EmbedApplicationNode (node cuối cùng trong palette trước khi thêm mới)
-                // Chiến lược: tìm Tag="EmbedApplicationNode" -> đi tới </Border> kết thúc block -> chèn trước </WrapPanel>
-                var embedTagMarker = "Tag=\"EmbedApplicationNode\"";
-                var embedIdx = content.IndexOf(embedTagMarker, StringComparison.Ordinal);
-                if (embedIdx < 0)
-                {
-                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm thấy block EmbedApplicationNode trong palette. Cần thêm thủ công.");
-                    return;
-                }
+                var categoryMarker = $"<TextBlock Text=\"{config.PaletteCategory}\"";
+                var categoryIdx = content.IndexOf(categoryMarker, StringComparison.Ordinal);
+                int insertPos = -1;
+                bool isNewCategory = false;
 
-                // Từ vị trí EmbedApplicationNode, tìm </WrapPanel> tiếp theo
-                var wrapPanelClose = content.IndexOf("</WrapPanel>", embedIdx, StringComparison.Ordinal);
-                if (wrapPanelClose < 0)
+                if (categoryIdx < 0)
                 {
-                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm thấy </WrapPanel> sau EmbedApplicationNode.");
-                    return;
-                }
+                    // Nếu không tìm thấy category, ta sẽ tạo mới category này ở cuối NodeTemplatesPanel
+                    var templatesPanelIdx = content.IndexOf("x:Name=\"NodeTemplatesPanel\"", StringComparison.Ordinal);
+                    if (templatesPanelIdx < 0)
+                    {
+                        result.Errors.Add($"WorkflowEditorWindow.xaml: Không tìm thấy category '{config.PaletteCategory}' và cũng không tìm thấy NodeTemplatesPanel để tạo mới.");
+                        return;
+                    }
 
-                // Tìm </Border> ngay trước </WrapPanel> (border đóng của EmbedApplicationNode)
-                var borderCloseBeforeWrap = content.LastIndexOf("</Border>", wrapPanelClose - 1, StringComparison.Ordinal);
-                if (borderCloseBeforeWrap < 0)
+                    // Tìm ScrollViewer đóng (nằm ngay sau NodeTemplatesPanel)
+                    var scrollViewerCloseIdx = content.IndexOf("</ScrollViewer>", templatesPanelIdx, StringComparison.Ordinal);
+                    if (scrollViewerCloseIdx < 0)
+                    {
+                        result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm thấy </ScrollViewer> đóng NodeTemplatesPanel.");
+                        return;
+                    }
+
+                    // Tìm </StackPanel> đóng của NodeTemplatesPanel (nằm ngay trước </ScrollViewer>)
+                    var templatesPanelCloseIdx = content.LastIndexOf("</StackPanel>", scrollViewerCloseIdx, StringComparison.Ordinal);
+                    if (templatesPanelCloseIdx < 0)
+                    {
+                        result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm thấy </StackPanel> đóng NodeTemplatesPanel.");
+                        return;
+                    }
+
+                    insertPos = templatesPanelCloseIdx;
+                    isNewCategory = true;
+                }
+                else
                 {
-                    result.Errors.Add("WorkflowEditorWindow.xaml: Không tìm được vị trí chèn palette node.");
-                    return;
-                }
+                    var wrapPanelOpen = content.IndexOf("<WrapPanel", categoryIdx, StringComparison.Ordinal);
+                    if (wrapPanelOpen < 0)
+                    {
+                        result.Errors.Add($"WorkflowEditorWindow.xaml: Không tìm thấy WrapPanel cho category '{config.PaletteCategory}'.");
+                        return;
+                    }
 
-                // Chèn palette XML sau </Border> của EmbedApplicationNode
-                var insertPos = borderCloseBeforeWrap + "</Border>".Length;
+                    var wrapPanelClose = content.IndexOf("</WrapPanel>", wrapPanelOpen, StringComparison.Ordinal);
+                    if (wrapPanelClose < 0)
+                    {
+                        result.Errors.Add($"WorkflowEditorWindow.xaml: Không tìm thấy </WrapPanel> đóng.");
+                        return;
+                    }
+
+                    // Chèn palette XML ngay trước </WrapPanel> (tức là ở cuối danh sách node của category này)
+                    insertPos = wrapPanelClose;
+                }
 
                 var colorKey = config.ColorKey;
                 var brushKey = $"{colorKey}Brush";
@@ -1747,6 +1775,16 @@ namespace FlowMy.Services.Utilities
                     nl + $"                                                          Fill=\"{{DynamicResource {textOnBrushKey}}}\"/>" +
                     nl + "                                </Grid>" +
                     nl + "                            </Border>";
+
+                if (isNewCategory)
+                {
+                    paletteXml =
+                        nl + $"                        <!-- ===== {config.PaletteCategory.ToUpper()} ===== -->" +
+                        nl + $"                        <TextBlock Text=\"{config.PaletteCategory}\" Style=\"{{StaticResource PaletteGroupHeaderStyle}}\"/>" +
+                        nl + "                        <WrapPanel Orientation=\"Horizontal\">" +
+                        paletteXml +
+                        nl + "                        </WrapPanel>" + nl + "                    ";
+                }
 
                 content = content.Substring(0, insertPos) + paletteXml + content.Substring(insertPos);
                 File.WriteAllText(path, content, Encoding.UTF8);
