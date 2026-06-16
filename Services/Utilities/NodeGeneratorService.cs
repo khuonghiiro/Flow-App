@@ -1893,7 +1893,7 @@ namespace FlowMy.Services.Utilities
 
                     // Replace ColorKey if exists in Node.cs
                     content = System.Text.RegularExpressions.Regex.Replace(content, 
-                        @"(ColorKey\s*=\s*"")[^""]+("")", 
+                        @"(?<!new\s+NodePort\s*\{[^}]*)(ColorKey\s*=\s*"")[^""]+("")", 
                         $"${{1}}{colorKey}${{2}}");
 
                     File.WriteAllText(nodeCsPath, content, Encoding.UTF8);
@@ -1918,9 +1918,9 @@ namespace FlowMy.Services.Utilities
                             
                             // Replace ColorKey
                             methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
-                                @"(ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{colorKey}${{2}}");
+                                @"(?<!new\s+NodePort\s*\{[^}]*)(ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{colorKey}${{2}}");
                             methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
-                                @"(TryFindResource\("")([^""]+)Brush(""\))", $"${{1}}{colorKey}${{2}}${{3}}");
+                                @"(TryFindResource\(""|GetBrush\("")([^""]+)Brush(""\))", $"${{1}}{colorKey}Brush${{3}}");
 
                             // Replace Port Colors
                             methodContent = System.Text.RegularExpressions.Regex.Replace(methodContent, 
@@ -1998,14 +1998,10 @@ namespace FlowMy.Services.Utilities
                 {
                     var content = File.ReadAllText(workflowEditorPath);
                     var newContent = ReplacePaletteBlock(content, nodeName, colorKey, iconKey);
-                    if (newContent != content)
+                    if (newContent != null && newContent != content)
                     {
                         File.WriteAllText(workflowEditorPath, newContent, Encoding.UTF8);
                         result.ModifiedFiles.Add(workflowEditorPath);
-                    }
-                    else
-                    {
-                        result.Errors.Add($"Không tìm thấy khối Palette XML của {nodeName}Node trong WorkflowEditorWindow.xaml.");
                     }
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa WorkflowEditorWindow.xaml: {ex.Message}"); }
@@ -2014,7 +2010,7 @@ namespace FlowMy.Services.Utilities
             return result;
         }
 
-        private string ReplacePaletteBlock(string content, string nodeName, string colorKey, string iconKey)
+        private string? ReplacePaletteBlock(string content, string nodeName, string colorKey, string iconKey)
         {
             var targetTag = $"Tag=\"{nodeName}\"";
             var tagIdx = content.IndexOf(targetTag);
@@ -2023,11 +2019,11 @@ namespace FlowMy.Services.Utilities
                 targetTag = $"Tag=\"{nodeName}Node\"";
                 tagIdx = content.IndexOf(targetTag);
             }
-            if (tagIdx < 0) return content;
+            if (tagIdx < 0) return null;
 
             var startTag = "<Border Style=\"{StaticResource PaletteIconNodeStyle}\"";
             var blockStart = content.LastIndexOf(startTag, tagIdx);
-            if (blockStart < 0) return content;
+            if (blockStart < 0) return null;
 
             int openCount = 0;
             int idx = blockStart;
@@ -2039,8 +2035,15 @@ namespace FlowMy.Services.Utilities
                 
                 if (nextOpen < 0 && nextClose < 0) break;
                 
-                if (nextOpen >= 0 && nextOpen < nextClose)
+                if (nextOpen >= 0 && (nextClose < 0 || nextOpen < nextClose))
                 {
+                    int endTagIdx = content.IndexOf(">", nextOpen);
+                    if (endTagIdx > 0 && content[endTagIdx - 1] == '/')
+                    {
+                        // Self-closing tag <Border ... />
+                        idx = endTagIdx + 1;
+                        continue;
+                    }
                     openCount++;
                     idx = nextOpen + 7;
                 }
@@ -2056,7 +2059,7 @@ namespace FlowMy.Services.Utilities
                 }
             }
 
-            if (blockEnd < 0) return content;
+            if (blockEnd < 0) return null;
             
             var oldBlock = content.Substring(blockStart, blockEnd - blockStart);
             

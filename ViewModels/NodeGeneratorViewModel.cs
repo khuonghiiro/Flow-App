@@ -306,6 +306,30 @@ namespace FlowMy.ViewModels
                     if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                 }
 
+                // --- FIX: Extract ColorKey and Port Colors from TemplateFactory.cs ---
+                var myTempPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
+                if (!File.Exists(myTempPath)) myTempPath = Path.Combine(ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
+                
+                if (File.Exists(myTempPath))
+                {
+                    var tfContent = File.ReadAllText(myTempPath);
+                    
+                    var colorMatch = System.Text.RegularExpressions.Regex.Match(tfContent, $@"Create{value}Node.*?ColorKey\s*=\s*""([^""]+)""", System.Text.RegularExpressions.RegexOptions.Singleline);
+                    if (colorMatch.Success) EditColorKey = colorMatch.Groups[1].Value;
+                    
+                    var inPortMatch = System.Text.RegularExpressions.Regex.Match(tfContent, $@"Create{value}Node.*?NodeBrush\s*=\s*_colorThemeService\.GetBrush\(""([^""]+)Brush""\)", System.Text.RegularExpressions.RegexOptions.Singleline);
+                    if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                }
+
+                // --- FIX: Extract IconKey from WorkflowEditorViewModel.cs ---
+                var vmPath = Path.Combine(ProjectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
+                if (File.Exists(vmPath))
+                {
+                    var vmContent = File.ReadAllText(vmPath);
+                    var iconMatch = System.Text.RegularExpressions.Regex.Match(vmContent, $@"NodeType\.{value}\s*=>\s*""([^""]+)""");
+                    if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                }
+
                 // 1b. Try get Icon from NodeControl.cs (for manually created nodes without XAML like HttpRequestNode)
                 var csPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.cs");
                 if (File.Exists(csPath))
