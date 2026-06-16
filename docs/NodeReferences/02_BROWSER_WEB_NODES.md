@@ -5,7 +5,7 @@ Tài liệu này trình bày Logic thực thi và Cấu trúc JSON `Properties` 
 ---
 
 ## 1. Web Node
-- **Type**: `"WebNode"`
+- **Type**: `"Web"`
 - **Chức năng**: Khởi tạo trình duyệt ảo (WebView2), nhúng JS, chặn request, trích xuất dữ liệu.
 - **Ví dụ JSON Properties**:
 ```json
@@ -44,7 +44,7 @@ Tài liệu này trình bày Logic thực thi và Cấu trúc JSON `Properties` 
 ```
 
 ## 3. Embed Application Node
-- **Type**: `"EmbedApplication"`
+- **Type**: `"EmbedApplicationNode"`
 - **Chức năng**: Nhúng cửa sổ ứng dụng Windows (.exe) vào Canvas.
 - **Ví dụ JSON Properties**:
 ```json
