@@ -188,26 +188,45 @@ namespace FlowMy.ViewModels
         private void LoadExistingNodes()
         {
             if (string.IsNullOrWhiteSpace(ProjectRoot)) return;
-            var dir = Path.Combine(ProjectRoot, "Views", "NodeControls");
-            if (!Directory.Exists(dir)) return;
+            
+            var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
+            if (!File.Exists(templateFactoryPath)) return;
 
             try
             {
-                // We generate .cs files for NodeControl now
-                var files = Directory.GetFiles(dir, "*NodeControl.cs");
+                var content = File.ReadAllText(templateFactoryPath);
+                
+                // Find "public WorkflowNode Create("
+                var createMethodIdx = content.IndexOf("public WorkflowNode Create(");
+                if (createMethodIdx < 0) return;
+                
+                var switchIdx = content.IndexOf("switch", createMethodIdx);
+                if (switchIdx < 0) return;
+                
+                // Read until the end of the switch statement
+                var endSwitchIdx = content.IndexOf(";", switchIdx);
+                if (endSwitchIdx < 0) endSwitchIdx = content.IndexOf("_ =>", switchIdx); // fallback
+                if (endSwitchIdx < 0) return;
+                
+                var switchContent = content.Substring(switchIdx, endSwitchIdx - switchIdx);
+                var matches = System.Text.RegularExpressions.Regex.Matches(switchContent, @"\""([^""]+)\""\s*=>");
+                
                 var nodes = new System.Collections.Generic.HashSet<string>();
-                foreach (var f in files)
+                foreach (System.Text.RegularExpressions.Match m in matches)
                 {
-                    var name = Path.GetFileNameWithoutExtension(f);
-                    if (name.EndsWith("NodeControl"))
+                    if (m.Groups.Count > 1) 
                     {
-                        nodes.Add(name.Substring(0, name.Length - "NodeControl".Length));
+                        var nodeType = m.Groups[1].Value;
+                        nodes.Add(nodeType);
                     }
                 }
+                
                 if (nodes.Count > 0)
                 {
                     ExistingNodes.Clear();
-                    foreach (var n in nodes) ExistingNodes.Add(n);
+                    // Sort nodes alphabetically for easier finding
+                    var sortedNodes = nodes.OrderBy(n => n).ToList();
+                    foreach (var n in sortedNodes) ExistingNodes.Add(n);
                     if (string.IsNullOrWhiteSpace(SelectedExistingNode) || !ExistingNodes.Contains(SelectedExistingNode))
                         SelectedExistingNode = ExistingNodes.FirstOrDefault() ?? string.Empty;
                 }
@@ -265,16 +284,37 @@ namespace FlowMy.ViewModels
                     if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                 }
 
-                // 1b. Fallback to [NodeName]Control.xaml
+                // 1b. Fallback to XAML files
                 var xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.xaml");
+                if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.xaml");
+                if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeContentControl.xaml");
+
                 if (File.Exists(xamlPath))
                 {
                     var content = File.ReadAllText(xamlPath);
                     var bgMatch = System.Text.RegularExpressions.Regex.Match(content, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
                     if (bgMatch.Success) EditColorKey = bgMatch.Groups[1].Value;
 
-                    var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"ConverterParameter='([^']+)'");
+                    // Ưu tiên SvgViewboxEx có PaletteSvgIconStyle (chuẩn của Tool)
+                    var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx\s+Style=""\{StaticResource\s+PaletteSvgIconStyle\}""[^>]*ConverterParameter='([^']+)'");
+                    if (!iconMatch.Success)
+                    {
+                        // Nếu không có XAML chuẩn, tìm SvgViewboxEx đầu tiên
+                        iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx[^>]*ConverterParameter='([^']+)'");
+                    }
                     if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                }
+
+                // 1b. Try get Icon from NodeControl.cs (for manually created nodes without XAML like HttpRequestNode)
+                var csPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.cs");
+                if (File.Exists(csPath))
+                {
+                    var content = File.ReadAllText(csPath);
+                    if (string.IsNullOrWhiteSpace(EditIconKey))
+                    {
+                        var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"typeof\(Uri\),\s*""([^""]+)""");
+                        if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                    }
                 }
 
                 // 2. Try get Colors from TemplateFactory.cs
@@ -283,21 +323,34 @@ namespace FlowMy.ViewModels
                 if (File.Exists(templateFactoryPath))
                 {
                     var content = File.ReadAllText(templateFactoryPath);
-                    var createMethodIdx = content.IndexOf($"Create{value}Node(");
+                    var methodPattern = $@"(?:private|public)\s+WorkflowNode\s+Create{value}Node\s*\(";
+                    var createMethodIdx = -1;
+                    var regexMethod = System.Text.RegularExpressions.Regex.Match(content, methodPattern);
+                    if (regexMethod.Success) createMethodIdx = regexMethod.Index;
                     if (createMethodIdx > 0)
                     {
-                        var endIdx = content.IndexOf("return node;", createMethodIdx);
+                        var endIdx = content.IndexOf("return ", createMethodIdx);
                         if (endIdx > 0)
                         {
                             var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
-                            var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"ColorKey\s*=\s*""([^""]+)""");
-                            if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
+                            if (string.IsNullOrWhiteSpace(EditColorKey))
+                            {
+                                var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"(?m)^\s*ColorKey\s*=\s*""([^""]+)""");
+                                if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
+                            }
 
-                            var inPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
-                            if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                            // Tìm List Add trực tiếp có ColorKey cho Input
+                            if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
+                            {
+                                var inPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"(?m)^\s*IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
+                                if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                            }
 
-                            var outPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
-                            if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                            if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
+                            {
+                                var outPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"(?m)^\s*IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
+                                if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                            }
                         }
                     }
                 }
@@ -314,17 +367,83 @@ namespace FlowMy.ViewModels
                     }
                     if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
                     {
-                        var inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
+                        // Các node viết tay cũ không có IsInput=true mà add thẳng vào InputPorts
+                        var inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"InputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");
                         if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                        else
+                        {
+                            inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
+                            if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                        }
                     }
                     if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
                     {
-                        var outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
+                        var outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"OutputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");
                         if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                        else
+                        {
+                            outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
+                            if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                        }
+                    }
+                }
+
+                // 4. Fallback: Parse WorkflowEditorWindow.xaml cho ColorKey và IconKey nếu vẫn trống
+                if (string.IsNullOrWhiteSpace(EditColorKey) || string.IsNullOrWhiteSpace(EditIconKey))
+                {
+                    var wePath = Path.Combine(ProjectRoot, "Views", "WorkflowEditorWindow.xaml");
+                    if (!File.Exists(wePath)) wePath = Path.Combine(ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
+                    if (File.Exists(wePath))
+                    {
+                        var weContent = File.ReadAllText(wePath);
+                        var tagIdx = weContent.IndexOf($"Tag=\"{value}\"");
+                        if (tagIdx < 0) tagIdx = weContent.IndexOf($"Tag=\"{value}Node\"");
+
+                        if (tagIdx >= 0)
+                        {
+                            var borderStart = weContent.LastIndexOf("<Border", tagIdx);
+                            if (borderStart >= 0)
+                            {
+                                var borderTagContent = weContent.Substring(borderStart, tagIdx - borderStart);
+                                if (string.IsNullOrWhiteSpace(EditColorKey) || EditColorKey == "Transparent")
+                                {
+                                    var bgMatch = System.Text.RegularExpressions.Regex.Match(borderTagContent, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
+                                    if (bgMatch.Success && bgMatch.Groups[1].Value != "Transparent") EditColorKey = bgMatch.Groups[1].Value;
+                                }
+                            }
+
+                            // Search up to 2000 characters after the Tag to find the actual Icon and Color
+                            var searchLength = Math.Min(2000, weContent.Length - tagIdx);
+                            var innerContent = weContent.Substring(tagIdx, searchLength);
+                            
+                            // If EditColorKey is still empty or Transparent, try to find it inside the content (e.g. Loop node diamond or context menu)
+                            if (string.IsNullOrWhiteSpace(EditColorKey) || EditColorKey == "Transparent")
+                            {
+                                var bgMatches = System.Text.RegularExpressions.Regex.Matches(innerContent, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
+                                foreach (System.Text.RegularExpressions.Match match in bgMatches)
+                                {
+                                    var color = match.Groups[1].Value;
+                                    if (color != "Transparent" && color != "ControlBorder" && color != "BorderColor")
+                                    {
+                                        EditColorKey = color;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (string.IsNullOrWhiteSpace(EditIconKey))
+                            {
+                                var iconMatch = System.Text.RegularExpressions.Regex.Match(innerContent, @"ConverterParameter='([^']+)'");
+                                if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                            }
+                        }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.ToString());
+            }
         }
 
         // ─── Partial onChange ─────────────────────────────────────────────────

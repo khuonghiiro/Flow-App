@@ -1957,9 +1957,16 @@ namespace FlowMy.Services.Utilities
                         @"Fill=""\{DynamicResource\s+TextOn[A-Za-z]+Brush\}""",
                         $"Fill=\"{{DynamicResource {textOnBrushKey}}}\"");
 
-                    content = System.Text.RegularExpressions.Regex.Replace(content,
-                        @"ConverterParameter='[^']+'",
-                        $"ConverterParameter='{iconKey}'");
+                    var iconRegex = new System.Text.RegularExpressions.Regex(@"(<controls:SvgViewboxEx\s+Style=""\{StaticResource\s+PaletteSvgIconStyle\}""[^>]*ConverterParameter=')([^']+)(')");
+                    if (iconRegex.IsMatch(content))
+                    {
+                        content = iconRegex.Replace(content, $"${{1}}{iconKey}${{3}}");
+                    }
+                    else
+                    {
+                        var fallbackRegex = new System.Text.RegularExpressions.Regex(@"(<controls:SvgViewboxEx[^>]*ConverterParameter=')([^']+)(')");
+                        content = fallbackRegex.Replace(content, $"${{1}}{iconKey}${{3}}", 1); // Chỉ thay SvgViewboxEx đầu tiên
+                    }
 
                     File.WriteAllText(nodeXamlPath, content, Encoding.UTF8);
                     result.ModifiedFiles.Add(nodeXamlPath);
@@ -2009,8 +2016,13 @@ namespace FlowMy.Services.Utilities
 
         private string ReplacePaletteBlock(string content, string nodeName, string colorKey, string iconKey)
         {
-            var tag = $"Tag=\"{nodeName}Node\"";
-            var tagIdx = content.IndexOf(tag);
+            var targetTag = $"Tag=\"{nodeName}\"";
+            var tagIdx = content.IndexOf(targetTag);
+            if (tagIdx < 0)
+            {
+                targetTag = $"Tag=\"{nodeName}Node\"";
+                tagIdx = content.IndexOf(targetTag);
+            }
             if (tagIdx < 0) return content;
 
             var startTag = "<Border Style=\"{StaticResource PaletteIconNodeStyle}\"";
@@ -2057,7 +2069,7 @@ namespace FlowMy.Services.Utilities
             var paletteXml =
                 "<Border Style=\"{StaticResource PaletteIconNodeStyle}\"" +
                 nl + $"                                    Background=\"{{DynamicResource {brushKey}}}\"" +
-                nl + $"                                    Tag=\"{nodeName}Node\"" +
+                nl + $"                                    {targetTag}" +
                 nl + "                                    MouseDown=\"NodeTemplate_MouseDown\"" +
                 nl + "                                    MouseMove=\"NodeTemplate_MouseMove\"" +
                 nl + "                                    MouseUp=\"NodeTemplate_MouseUp\"" +

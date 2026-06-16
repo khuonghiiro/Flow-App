@@ -3,6 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:FlowMy.ViewModels"
         xmlns:conv="clr-namespace:FlowMy.Converters"
+        xmlns:controls="clr-namespace:FlowMy.Controls"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="🧱 Tạo Base Node — FlowMy"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -129,7 +131,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- ─── LEFT: FORM ─── -->
-                <TabControl Grid.Column="0" Background="Transparent" BorderThickness="0" Margin="10,10,0,10">
+                <TabControl x:Name="MainTabControl" Grid.Column="0" Background="Transparent" BorderThickness="0" Margin="10,10,0,10" SelectionChanged="MainTabControl_SelectionChanged">
                     <TabControl.Resources>
                         <Style TargetType="TabItem">
                             <Setter Property="Template">
@@ -747,9 +749,12 @@
                                             <DropShadowEffect Color="Black" ShadowDepth="4" BlurRadius="10" Opacity="0.4" Direction="270"/>
                                         </Border.Effect>
                                         <Grid>
-                                            <TextBlock x:Name="PreviewIcon" Text="◆"
-                                                       FontSize="28" HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center" Foreground="White"/>
+                                            <controls:SvgViewboxEx x:Name="PreviewIcon" 
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center" 
+                                                                  IsHitTestVisible="False"
+                                                                  Fill="White"
+                                                                  Width="32" Height="32"/>
                                         </Grid>
                                     </Border>
                                     <TextBlock x:Name="PreviewNodeTitle" Text="Node Name"

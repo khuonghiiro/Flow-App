@@ -15,7 +15,7 @@ namespace FlowMy.Views.Overlays
 
         // Cache references sau Loaded
         private System.Windows.Controls.Border? _nodeMockBorder;
-        private System.Windows.Controls.TextBlock? _previewIcon;
+        private FlowMy.Controls.SvgViewboxEx? _previewIcon;
         private System.Windows.Controls.TextBlock? _previewNodeTitle;
         private System.Windows.Controls.TextBox? _previewTextBox;
 
@@ -46,7 +46,7 @@ namespace FlowMy.Views.Overlays
             Loaded += (_, __) =>
             {
                 _nodeMockBorder  = FindName("NodeMockBorder")  as System.Windows.Controls.Border;
-                _previewIcon     = FindName("PreviewIcon")      as System.Windows.Controls.TextBlock;
+                _previewIcon     = FindName("PreviewIcon")      as FlowMy.Controls.SvgViewboxEx;
                 _previewNodeTitle= FindName("PreviewNodeTitle") as System.Windows.Controls.TextBlock;
                 _previewTextBox  = FindName("PreviewTextBox")   as System.Windows.Controls.TextBox;
                 UpdatePreview();
@@ -67,6 +67,14 @@ namespace FlowMy.Views.Overlays
 
         // ─── Live preview update ──────────────────────────────────────────────
 
+        private void MainTabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (e.Source is System.Windows.Controls.TabControl)
+            {
+                UpdatePreview();
+            }
+        }
+
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
             => UpdatePreview();
 
@@ -80,26 +88,45 @@ namespace FlowMy.Views.Overlays
                 if (_previewTextBox != null)
                     _previewTextBox.Text = _viewModel.GetPreviewText();
 
-                // Update node title
-                if (_previewNodeTitle != null)
-                    _previewNodeTitle.Text = string.IsNullOrWhiteSpace(_viewModel.Title)
+                bool isEditing = MainTabControl?.SelectedIndex == 1;
+                
+                string nodeTitleText = "Node Name";
+                if (isEditing)
+                {
+                    nodeTitleText = string.IsNullOrWhiteSpace(_viewModel.SelectedExistingNode) ? "Node Name" : _viewModel.SelectedExistingNode;
+                }
+                else
+                {
+                    nodeTitleText = string.IsNullOrWhiteSpace(_viewModel.Title)
                         ? (string.IsNullOrWhiteSpace(_viewModel.NodeName) ? "Node Name" : _viewModel.NodeName)
                         : _viewModel.Title;
+                }
 
-                // Update preview icon (ký tự an toàn, không dùng emoji có thể render lỗi)
+                // Update node title
+                if (_previewNodeTitle != null)
+                    _previewNodeTitle.Text = nodeTitleText;
+
+                string colorKeyToUse = isEditing ? _viewModel.EditColorKey : _viewModel.ColorKey;
+                string iconKeyToUse = isEditing ? _viewModel.EditIconKey : _viewModel.IconKey;
+
+                // Update preview icon
                 if (_previewIcon != null)
-                    _previewIcon.Text = GetIconForColorKey(_viewModel.ColorKey);
+                {
+                    var converter = new FlowMy.Converters.IconKeyToPathConverter();
+                    var uri = converter.Convert(iconKeyToUse, typeof(Uri), null, System.Globalization.CultureInfo.InvariantCulture) as Uri;
+                    _previewIcon.Source = uri;
+                }
 
                 // Update node mock background từ {ColorKey}Brush
                 if (_nodeMockBorder != null)
                 {
-                    var key = _viewModel.ColorKey?.Trim();
+                    var key = colorKeyToUse?.Trim();
                     if (!string.IsNullOrEmpty(key))
                     {
                         // Thử tìm resource với key chính xác
                         var brush = TryFindBrush($"{key}Brush")
                                  ?? TryFindBrush($"{key}") // fallback không có suffix
-                                 ?? Application.Current.TryFindResource("InfoBrush") as Brush;
+                                 ?? this.TryFindResource("InfoBrush") as Brush;
 
                         if (brush != null)
                             _nodeMockBorder.Background = brush;
@@ -112,9 +139,9 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private static Brush? TryFindBrush(string resourceKey)
+        private Brush? TryFindBrush(string resourceKey)
         {
-            try { return Application.Current.TryFindResource(resourceKey) as Brush; }
+            try { return this.TryFindResource(resourceKey) as Brush; }
             catch { return null; }
         }
 
