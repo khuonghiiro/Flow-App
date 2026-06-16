@@ -39,6 +39,16 @@ namespace FlowMy.Services.Utils
         private static bool _curlThinAvailable = false;
         private static readonly object _initLock = new();
 
+        public static bool IsCurlThinAvailable
+        {
+            get
+            {
+                if (!_curlThinInitialized)
+                    TryInitCurlThin();
+                return _curlThinAvailable;
+            }
+        }
+
         static CurlNativeExecutor()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
