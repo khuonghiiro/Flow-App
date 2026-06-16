@@ -57,7 +57,7 @@ Tài liệu này chứa cấu trúc JSON `Properties` và Logic thực thi của
 ```
 
 ## 5. Loop Body (Generic Container)
-- **Type**: `"Generic"`
+- **Type**: `"BodyContainer"`
 - **Chức năng**: Vùng chứa UI bao bọc các Node con bên trong vòng lặp. 
 - **Ví dụ JSON Properties**:
 ```json
@@ -68,7 +68,7 @@ Tài liệu này chứa cấu trúc JSON `Properties` và Logic thực thi của
 ```
 
 ## 6. Conditional Node
-- **Type**: `"Conditional"`
+- **Type**: `"IfElse"`
 - **Chức năng**: Rẽ nhánh `If / Else`.
 - **Ví dụ JSON Properties**:
 ```json
