@@ -69,6 +69,8 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _editIconKey = "circle-nodes duotone-regular";
         [ObservableProperty] private string _editInputPortColorKey = "Info";
         [ObservableProperty] private string _editOutputPortColorKey = "SunsetOrange";
+        [ObservableProperty] private bool _hasExistingInputPort = false;
+        [ObservableProperty] private bool _hasExistingOutputPort = false;
         public ObservableCollection<string> ExistingNodes { get; } = new();
 
 
@@ -271,6 +273,8 @@ namespace FlowMy.ViewModels
                 EditColorKey = string.Empty;
                 EditInputPortColorKey = string.Empty;
                 EditOutputPortColorKey = string.Empty;
+                HasExistingInputPort = false;
+                HasExistingOutputPort = false;
 
                 // ── SOURCE 1: TemplateFactory.cs (nguồn chính xác nhất cho generated nodes) ──
                 var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
@@ -299,6 +303,9 @@ namespace FlowMy.ViewModels
                             }
 
                             // Input port ColorKey: IsInput = true ... ColorKey = "xxx"
+                            var inPortExistsMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*true");
+                            if (inPortExistsMatch.Success) HasExistingInputPort = true;
+
                             if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
                             {
                                 var inPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
@@ -306,6 +313,9 @@ namespace FlowMy.ViewModels
                             }
 
                             // Output port ColorKey: IsInput = false ... ColorKey = "xxx"
+                            var outPortExistsMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*false");
+                            if (outPortExistsMatch.Success) HasExistingOutputPort = true;
+
                             if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
                             {
                                 var outPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
@@ -325,6 +335,9 @@ namespace FlowMy.ViewModels
                         var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(content, @"ColorKey\s*=\s*""([^""]+)""");
                         if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
                     }
+                    var inPortExistsMatch = System.Text.RegularExpressions.Regex.Match(content, @"(InputPorts\.Add\(|IsInput\s*=\s*true)");
+                    if (inPortExistsMatch.Success) HasExistingInputPort = true;
+
                     if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
                     {
                         var inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"InputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");
@@ -335,6 +348,10 @@ namespace FlowMy.ViewModels
                             if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
                         }
                     }
+
+                    var outPortExistsMatch = System.Text.RegularExpressions.Regex.Match(content, @"(OutputPorts\.Add\(|IsInput\s*=\s*false)");
+                    if (outPortExistsMatch.Success) HasExistingOutputPort = true;
+
                     if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
                     {
                         var outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"OutputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");

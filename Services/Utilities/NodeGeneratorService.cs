@@ -1893,6 +1893,14 @@ namespace FlowMy.Services.Utilities
                         @"(OutputPorts\.Add\s*\([^;]+?ColorKey\s*=\s*"")[^""]+(""\s*\})", 
                         $"${{1}}{outPortColor}${{2}}");
 
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(IsInput\s*=\s*true[^}]*ColorKey\s*=\s*"")[^""]+("")", 
+                        $"${{1}}{inPortColor}${{2}}");
+
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", 
+                        $"${{1}}{outPortColor}${{2}}");
+
                     // Replace ColorKey if exists in Node.cs
                     content = System.Text.RegularExpressions.Regex.Replace(content, 
                         @"(?<!new\s+NodePort\s*\{[^}]*)(ColorKey\s*=\s*"")[^""]+("")", 

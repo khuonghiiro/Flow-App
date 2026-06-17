@@ -679,6 +679,7 @@
                                                 <TextBlock Text="Màu Input Port" Style="{StaticResource FieldLabel}"/>
                                                 <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                           ItemsSource="{Binding ColorKeyOptions}"
+                                                          IsEnabled="{Binding HasExistingInputPort}"
                                                           Text="{Binding EditInputPortColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                           IsEditable="True"/>
                                             </StackPanel>
@@ -686,6 +687,7 @@
                                                 <TextBlock Text="Màu Output Port" Style="{StaticResource FieldLabel}"/>
                                                 <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
                                                           ItemsSource="{Binding ColorKeyOptions}"
+                                                          IsEnabled="{Binding HasExistingOutputPort}"
                                                           Text="{Binding EditOutputPortColorKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                           IsEditable="True"/>
                                             </StackPanel>
@@ -740,23 +742,36 @@
                                     <!-- Node mock -->
                                     <TextBlock Text="Node trên Canvas:" Foreground="{DynamicResource TextMuted}"
                                                FontSize="10" Margin="0,0,0,8"/>
-                                    <Border x:Name="NodeMockBorder"
-                                            HorizontalAlignment="Center" Margin="0,0,0,16"
-                                            Width="72" Height="72" CornerRadius="12"
-                                            Background="{DynamicResource InfoBrush}"
-                                            BorderBrush="White" BorderThickness="2">
-                                        <Border.Effect>
-                                            <DropShadowEffect Color="Black" ShadowDepth="4" BlurRadius="10" Opacity="0.4" Direction="270"/>
-                                        </Border.Effect>
-                                        <Grid>
-                                            <controls:SvgViewboxEx x:Name="PreviewIcon" 
-                                                                  HorizontalAlignment="Center"
-                                                                  VerticalAlignment="Center" 
-                                                                  IsHitTestVisible="False"
-                                                                  Fill="White"
-                                                                  Width="32" Height="32"/>
-                                        </Grid>
-                                    </Border>
+                                    <Grid HorizontalAlignment="Center" Margin="0,0,0,16">
+                                        <Border x:Name="NodeMockBorder"
+                                                Width="72" Height="72" CornerRadius="12"
+                                                Background="{DynamicResource InfoBrush}"
+                                                BorderBrush="White" BorderThickness="2">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="Black" ShadowDepth="4" BlurRadius="10" Opacity="0.4" Direction="270"/>
+                                            </Border.Effect>
+                                            <Grid>
+                                                <controls:SvgViewboxEx x:Name="PreviewIcon" 
+                                                                      HorizontalAlignment="Center"
+                                                                      VerticalAlignment="Center" 
+                                                                      IsHitTestVisible="False"
+                                                                      Fill="White"
+                                                                      Width="32" Height="32"/>
+                                            </Grid>
+                                        </Border>
+                                        <Border x:Name="PreviewInputPortBorder"
+                                                Width="18" Height="18" CornerRadius="9"
+                                                Background="{DynamicResource InfoBrush}"
+                                                BorderBrush="White" BorderThickness="2"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Margin="-9,0,0,0"/>
+                                        <Border x:Name="PreviewOutputPortBorder"
+                                                Width="18" Height="18" CornerRadius="9"
+                                                Background="{DynamicResource SunsetOrangeBrush}"
+                                                BorderBrush="White" BorderThickness="2"
+                                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                Margin="0,0,-9,0"/>
+                                    </Grid>
                                     <TextBlock x:Name="PreviewNodeTitle" Text="Node Name"
                                                FontSize="11" FontWeight="SemiBold" TextAlignment="Center"
                                                Foreground="{DynamicResource TextBrush}" Margin="0,0,0,20"/>
