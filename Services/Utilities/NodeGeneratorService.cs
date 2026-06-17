@@ -1875,6 +1875,7 @@ namespace FlowMy.Services.Utilities
             var templateFactoryPath = Path.Combine(projectRoot, "Workflow", "TemplateFactory.cs");
             if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(projectRoot, "Services", "Workflow", "TemplateFactory.cs");
             var workflowEditorPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.xaml");
+            var utf8NoBom = new UTF8Encoding(false);
 
             // 1. Sửa Node.cs (legacy fallback)
             if (File.Exists(nodeCsPath))
@@ -1882,6 +1883,7 @@ namespace FlowMy.Services.Utilities
                 try
                 {
                     var content = File.ReadAllText(nodeCsPath);
+                    var original = content;
                     
                     content = System.Text.RegularExpressions.Regex.Replace(content, 
                         @"(InputPorts\.Add\s*\([^;]+?ColorKey\s*=\s*"")[^""]+(""\s*\})", 
@@ -1896,8 +1898,11 @@ namespace FlowMy.Services.Utilities
                         @"(?<!new\s+NodePort\s*\{[^}]*)(ColorKey\s*=\s*"")[^""]+("")", 
                         $"${{1}}{colorKey}${{2}}");
 
-                    File.WriteAllText(nodeCsPath, content, Encoding.UTF8);
-                    result.ModifiedFiles.Add(nodeCsPath);
+                    if (content != original)
+                    {
+                        File.WriteAllText(nodeCsPath, content, utf8NoBom);
+                        result.ModifiedFiles.Add(nodeCsPath);
+                    }
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Node.cs: {ex.Message}"); }
             }
@@ -1908,10 +1913,15 @@ namespace FlowMy.Services.Utilities
                 try
                 {
                     var content = File.ReadAllText(templateFactoryPath);
-                    var createMethodIdx = content.IndexOf($"Create{nodeName}Node(");
-                    if (createMethodIdx > 0)
+                    // Tìm đúng METHOD DEFINITION (không phải lời gọi trong switch)
+                    // Match: private/public [static] WorkflowNode Create{NodeName}Node(
+                    var methodDefPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{nodeName}Node\s*\(";
+                    var methodDefMatch = System.Text.RegularExpressions.Regex.Match(content, methodDefPattern);
+                    if (methodDefMatch.Success)
                     {
+                        var createMethodIdx = methodDefMatch.Index;
                         var endIdx = content.IndexOf("return node;", createMethodIdx);
+                        if (endIdx < 0) endIdx = content.IndexOf("return ", createMethodIdx);
                         if (endIdx > 0)
                         {
                             var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
@@ -1929,7 +1939,7 @@ namespace FlowMy.Services.Utilities
                                 @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{outPortColor}${{2}}");
 
                             content = content.Substring(0, createMethodIdx) + methodContent + content.Substring(endIdx);
-                            File.WriteAllText(templateFactoryPath, content, Encoding.UTF8);
+                            File.WriteAllText(templateFactoryPath, content, utf8NoBom);
                             result.ModifiedFiles.Add(templateFactoryPath);
                         }
                     }
@@ -1968,7 +1978,7 @@ namespace FlowMy.Services.Utilities
                         content = fallbackRegex.Replace(content, $"${{1}}{iconKey}${{3}}", 1); // Chỉ thay SvgViewboxEx đầu tiên
                     }
 
-                    File.WriteAllText(nodeXamlPath, content, Encoding.UTF8);
+                    File.WriteAllText(nodeXamlPath, content, utf8NoBom);
                     result.ModifiedFiles.Add(nodeXamlPath);
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Control.xaml: {ex.Message}"); }
@@ -1985,7 +1995,7 @@ namespace FlowMy.Services.Utilities
                         @"(iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*"")[^""]+("")",
                         $"${{1}}{iconKey}${{2}}");
 
-                    File.WriteAllText(nodeControlCsPath, content, Encoding.UTF8);
+                    File.WriteAllText(nodeControlCsPath, content, utf8NoBom);
                     result.ModifiedFiles.Add(nodeControlCsPath);
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa NodeControl.cs: {ex.Message}"); }
@@ -2000,7 +2010,7 @@ namespace FlowMy.Services.Utilities
                     var newContent = ReplacePaletteBlock(content, nodeName, colorKey, iconKey);
                     if (newContent != null && newContent != content)
                     {
-                        File.WriteAllText(workflowEditorPath, newContent, Encoding.UTF8);
+                        File.WriteAllText(workflowEditorPath, newContent, utf8NoBom);
                         result.ModifiedFiles.Add(workflowEditorPath);
                     }
                 }
@@ -2023,7 +2033,7 @@ namespace FlowMy.Services.Utilities
                         var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
                         if (replaced != content)
                         {
-                            File.WriteAllText(templateHandlerPath, replaced, Encoding.UTF8);
+                            File.WriteAllText(templateHandlerPath, replaced, utf8NoBom);
                             result.ModifiedFiles.Add(templateHandlerPath);
                         }
                     }
@@ -2042,7 +2052,7 @@ namespace FlowMy.Services.Utilities
                         var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
                         if (replaced != content)
                         {
-                            File.WriteAllText(weVmPath, replaced, Encoding.UTF8);
+                            File.WriteAllText(weVmPath, replaced, utf8NoBom);
                             result.ModifiedFiles.Add(weVmPath);
                         }
                     }
@@ -2062,7 +2072,7 @@ namespace FlowMy.Services.Utilities
                         var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
                         if (replaced != content)
                         {
-                            File.WriteAllText(baseDialogVmPath, replaced, Encoding.UTF8);
+                            File.WriteAllText(baseDialogVmPath, replaced, utf8NoBom);
                             result.ModifiedFiles.Add(baseDialogVmPath);
                         }
                     }
@@ -2082,7 +2092,7 @@ namespace FlowMy.Services.Utilities
                         var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
                         if (replaced != content)
                         {
-                            File.WriteAllText(searchComboPath, replaced, Encoding.UTF8);
+                            File.WriteAllText(searchComboPath, replaced, utf8NoBom);
                             result.ModifiedFiles.Add(searchComboPath);
                         }
                     }
