@@ -1570,6 +1570,7 @@ case YourNode yourNode:
 - [ ] WorkflowEditorEventService.cs: Ctrl+C + Ctrl+V
 - [ ] WorkflowEditorWindow.NodeActions.cs: CreateDuplicateNodeInstance
 - [ ] WorkflowEditorWindow.MultiNodeClipboard.cs: RemapNodeReferenceIds (nếu có *NodeId fields)
+- [ ] Cập nhật file JSON Schema tương ứng trong `docs/NodeReferences/` để Web AI nhận diện được node mới
 ```
 
 ---

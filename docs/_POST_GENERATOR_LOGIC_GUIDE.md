@@ -637,6 +637,7 @@ public void RefreshOutputKeyOptionsFor(YourNodeInputMappingItemViewModel item)
 - [ ] BaseNodeDialogViewModel.cs: icon key
 - [ ] `_NodeRenderer.cs`: field + constructor + 3 branches
 - [ ] DI: `services.AddSingleton<YourNodeRenderer>()`
+- [ ] **BẮT BUỘC**: Cập nhật file JSON Schema trong `docs/NodeReferences/` để Web AI có thể render được node mới này
 
 ### Executor (nếu node cần chạy)
 - [ ] Implement `INodeExecutor` (CanExecute + ExecuteAsync)
