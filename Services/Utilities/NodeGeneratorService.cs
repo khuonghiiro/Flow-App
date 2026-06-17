@@ -2007,6 +2007,89 @@ namespace FlowMy.Services.Utilities
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa WorkflowEditorWindow.xaml: {ex.Message}"); }
             }
 
+            // 4. Sửa icon key trong TemplateNodeHandler.cs (GetIconNameForNodeType — string-based switch)
+            if (!string.IsNullOrWhiteSpace(iconKey))
+            {
+                var templateHandlerPath = Path.Combine(projectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+                if (!File.Exists(templateHandlerPath))
+                    templateHandlerPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+                if (File.Exists(templateHandlerPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(templateHandlerPath);
+                        // Match: "NodeName" => "old-icon-key"
+                        var pattern = $@"(""{System.Text.RegularExpressions.Regex.Escape(nodeName)}""\s*=>\s*"")[^""]+("")";
+                        var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
+                        if (replaced != content)
+                        {
+                            File.WriteAllText(templateHandlerPath, replaced, Encoding.UTF8);
+                            result.ModifiedFiles.Add(templateHandlerPath);
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa TemplateNodeHandler.cs: {ex.Message}"); }
+                }
+
+                // 5. Sửa icon key trong WorkflowEditorViewModel.cs (ResolveNodeIconKey — NodeType-based switch)
+                var weVmPath = Path.Combine(projectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
+                if (File.Exists(weVmPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(weVmPath);
+                        // Match: NodeType.NodeName => "old-icon-key"
+                        var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(nodeName)}\s*=>\s*"")[^""]+("")";
+                        var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
+                        if (replaced != content)
+                        {
+                            File.WriteAllText(weVmPath, replaced, Encoding.UTF8);
+                            result.ModifiedFiles.Add(weVmPath);
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa WorkflowEditorViewModel.cs: {ex.Message}"); }
+                }
+
+                // 6. Sửa icon key trong BaseNodeDialogViewModel.cs (ResolveNodeIconKey — NodeType-based switch)
+                var baseDialogVmPath = Path.Combine(projectRoot, "ViewModels", "BaseNodeDialogViewModel.cs");
+                if (File.Exists(baseDialogVmPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(baseDialogVmPath);
+                        // Match: NodeType.NodeName => "old-icon-key"
+                        var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(nodeName)}\s*=>\s*"")[^""]+("")"
+                        ;
+                        var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
+                        if (replaced != content)
+                        {
+                            File.WriteAllText(baseDialogVmPath, replaced, Encoding.UTF8);
+                            result.ModifiedFiles.Add(baseDialogVmPath);
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa BaseNodeDialogViewModel.cs: {ex.Message}"); }
+                }
+
+                // 7. Sửa icon key trong NodeSearchComboBoxUserControl.xaml.cs (nếu có mapping)
+                var searchComboPath = Path.Combine(projectRoot, "Controls", "NodeSearchComboBoxUserControl.xaml.cs");
+                if (File.Exists(searchComboPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(searchComboPath);
+                        // Match: "NodeName" => "old-icon-key"
+                        var pattern = $@"(""{System.Text.RegularExpressions.Regex.Escape(nodeName)}""\s*=>\s*"")[^""]+("")"
+                        ;
+                        var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
+                        if (replaced != content)
+                        {
+                            File.WriteAllText(searchComboPath, replaced, Encoding.UTF8);
+                            result.ModifiedFiles.Add(searchComboPath);
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa NodeSearchComboBoxUserControl.xaml.cs: {ex.Message}"); }
+                }
+            }
+
             return result;
         }
 
