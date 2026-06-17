@@ -279,7 +279,7 @@ namespace FlowMy.ViewModels
                 {
                     var content = File.ReadAllText(templateFactoryPath);
                     // Tìm chính xác method Create{NodeName}Node
-                    var methodPattern = $@"(?:private|public)\s+WorkflowNode\s+Create{value}Node\s*\(";
+                    var methodPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{value}Node\s*\(";
                     var regexMethod = System.Text.RegularExpressions.Regex.Match(content, methodPattern);
                     if (regexMethod.Success)
                     {
