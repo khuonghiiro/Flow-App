@@ -1875,6 +1875,7 @@ namespace FlowMy.Services.Utilities
             var templateFactoryPath = Path.Combine(projectRoot, "Workflow", "TemplateFactory.cs");
             if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(projectRoot, "Services", "Workflow", "TemplateFactory.cs");
             var workflowEditorPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.xaml");
+            var utf8NoBom = new UTF8Encoding(false);
 
             // 1. Sửa Node.cs (legacy fallback)
             if (File.Exists(nodeCsPath))
@@ -1882,6 +1883,7 @@ namespace FlowMy.Services.Utilities
                 try
                 {
                     var content = File.ReadAllText(nodeCsPath);
+                    var original = content;
                     
                     content = System.Text.RegularExpressions.Regex.Replace(content, 
                         @"(InputPorts\.Add\s*\([^;]+?ColorKey\s*=\s*"")[^""]+(""\s*\})", 
@@ -1891,13 +1893,24 @@ namespace FlowMy.Services.Utilities
                         @"(OutputPorts\.Add\s*\([^;]+?ColorKey\s*=\s*"")[^""]+(""\s*\})", 
                         $"${{1}}{outPortColor}${{2}}");
 
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(IsInput\s*=\s*true[^}]*ColorKey\s*=\s*"")[^""]+("")", 
+                        $"${{1}}{inPortColor}${{2}}");
+
+                    content = System.Text.RegularExpressions.Regex.Replace(content, 
+                        @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", 
+                        $"${{1}}{outPortColor}${{2}}");
+
                     // Replace ColorKey if exists in Node.cs
                     content = System.Text.RegularExpressions.Regex.Replace(content, 
                         @"(?<!new\s+NodePort\s*\{[^}]*)(ColorKey\s*=\s*"")[^""]+("")", 
                         $"${{1}}{colorKey}${{2}}");
 
-                    File.WriteAllText(nodeCsPath, content, Encoding.UTF8);
-                    result.ModifiedFiles.Add(nodeCsPath);
+                    if (content != original)
+                    {
+                        File.WriteAllText(nodeCsPath, content, utf8NoBom);
+                        result.ModifiedFiles.Add(nodeCsPath);
+                    }
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Node.cs: {ex.Message}"); }
             }
@@ -1908,10 +1921,15 @@ namespace FlowMy.Services.Utilities
                 try
                 {
                     var content = File.ReadAllText(templateFactoryPath);
-                    var createMethodIdx = content.IndexOf($"Create{nodeName}Node(");
-                    if (createMethodIdx > 0)
+                    // Tìm đúng METHOD DEFINITION (không phải lời gọi trong switch)
+                    // Match: private/public [static] WorkflowNode Create{NodeName}Node(
+                    var methodDefPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{nodeName}Node\s*\(";
+                    var methodDefMatch = System.Text.RegularExpressions.Regex.Match(content, methodDefPattern);
+                    if (methodDefMatch.Success)
                     {
+                        var createMethodIdx = methodDefMatch.Index;
                         var endIdx = content.IndexOf("return node;", createMethodIdx);
+                        if (endIdx < 0) endIdx = content.IndexOf("return ", createMethodIdx);
                         if (endIdx > 0)
                         {
                             var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
@@ -1929,7 +1947,7 @@ namespace FlowMy.Services.Utilities
                                 @"(IsInput\s*=\s*false[^}]*ColorKey\s*=\s*"")[^""]+("")", $"${{1}}{outPortColor}${{2}}");
 
                             content = content.Substring(0, createMethodIdx) + methodContent + content.Substring(endIdx);
-                            File.WriteAllText(templateFactoryPath, content, Encoding.UTF8);
+                            File.WriteAllText(templateFactoryPath, content, utf8NoBom);
                             result.ModifiedFiles.Add(templateFactoryPath);
                         }
                     }
@@ -1968,7 +1986,7 @@ namespace FlowMy.Services.Utilities
                         content = fallbackRegex.Replace(content, $"${{1}}{iconKey}${{3}}", 1); // Chỉ thay SvgViewboxEx đầu tiên
                     }
 
-                    File.WriteAllText(nodeXamlPath, content, Encoding.UTF8);
+                    File.WriteAllText(nodeXamlPath, content, utf8NoBom);
                     result.ModifiedFiles.Add(nodeXamlPath);
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Control.xaml: {ex.Message}"); }
@@ -1985,7 +2003,7 @@ namespace FlowMy.Services.Utilities
                         @"(iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*"")[^""]+("")",
                         $"${{1}}{iconKey}${{2}}");
 
-                    File.WriteAllText(nodeControlCsPath, content, Encoding.UTF8);
+                    File.WriteAllText(nodeControlCsPath, content, utf8NoBom);
                     result.ModifiedFiles.Add(nodeControlCsPath);
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa NodeControl.cs: {ex.Message}"); }
@@ -2000,16 +2018,129 @@ namespace FlowMy.Services.Utilities
                     var newContent = ReplacePaletteBlock(content, nodeName, colorKey, iconKey);
                     if (newContent != null && newContent != content)
                     {
-                        File.WriteAllText(workflowEditorPath, newContent, Encoding.UTF8);
+                        File.WriteAllText(workflowEditorPath, newContent, utf8NoBom);
                         result.ModifiedFiles.Add(workflowEditorPath);
                     }
                 }
                 catch (Exception ex) { result.Errors.Add($"Lỗi sửa WorkflowEditorWindow.xaml: {ex.Message}"); }
             }
 
+            // 4. Sửa icon key trong TemplateNodeHandler.cs (GetIconNameForNodeType — string-based switch)
+            if (!string.IsNullOrWhiteSpace(iconKey))
+            {
+                var templateHandlerPath = Path.Combine(projectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+                if (!File.Exists(templateHandlerPath))
+                    templateHandlerPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.TemplateNodeHandler.cs");
+                if (File.Exists(templateHandlerPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(templateHandlerPath);
+                        // Match: "NodeName" => "old-icon-key"
+                        var iconMethodMatch = System.Text.RegularExpressions.Regex.Match(content, @"GetIconNameForNodeType\s*\(");
+                        if (iconMethodMatch.Success)
+                        {
+                            var methodStart = iconMethodMatch.Index;
+                            var nextMethodOrEnd = content.IndexOf("\n        }", methodStart + 50);
+                            if (nextMethodOrEnd > 0)
+                            {
+                                var beforeMethod = content.Substring(0, methodStart);
+                                var methodBody = content.Substring(methodStart, nextMethodOrEnd - methodStart);
+                                var afterMethod = content.Substring(nextMethodOrEnd);
+                                var pattern = $@"(""{System.Text.RegularExpressions.Regex.Escape(nodeName)}""\s*=>\s*"")[^""]+("")";
+                                var replacedBody = System.Text.RegularExpressions.Regex.Replace(methodBody, pattern, $"${{1}}{iconKey}${{2}}");
+                                if (replacedBody != methodBody)
+                                {
+                                    var replaced = beforeMethod + replacedBody + afterMethod;
+                                    File.WriteAllText(templateHandlerPath, replaced, utf8NoBom);
+                                    result.ModifiedFiles.Add(templateHandlerPath);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa TemplateNodeHandler.cs: {ex.Message}"); }
+                }
+
+                // 5. Sửa icon key trong WorkflowEditorViewModel.cs (ResolveNodeIconKey — NodeType-based switch)
+                var weVmPath = Path.Combine(projectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
+                if (File.Exists(weVmPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(weVmPath);
+                        // Chỉ sửa trong ResolveNodeIconKey, KHÔNG sửa ResolveNodeTypeDisplayName
+                        var iconMethodMatch = System.Text.RegularExpressions.Regex.Match(content, @"ResolveNodeIconKey\s*\(");
+                        if (iconMethodMatch.Success)
+                        {
+                            var methodStart = iconMethodMatch.Index;
+                            // Tìm kết thúc method (dấu } đầu tiên ở cùng indent level)
+                            var nextMethodOrEnd = content.IndexOf("\n        }", methodStart + 50);
+                            if (nextMethodOrEnd > 0)
+                            {
+                                var beforeMethod = content.Substring(0, methodStart);
+                                var methodBody = content.Substring(methodStart, nextMethodOrEnd - methodStart);
+                                var afterMethod = content.Substring(nextMethodOrEnd);
+                                var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(nodeName)}\s*=>\s*"")[^""]+("")";
+                                var replacedBody = System.Text.RegularExpressions.Regex.Replace(methodBody, pattern, $"${{1}}{iconKey}${{2}}");
+                                if (replacedBody != methodBody)
+                                {
+                                    var replaced = beforeMethod + replacedBody + afterMethod;
+                                    File.WriteAllText(weVmPath, replaced, utf8NoBom);
+                                    result.ModifiedFiles.Add(weVmPath);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa WorkflowEditorViewModel.cs: {ex.Message}"); }
+                }
+
+                // 6. Sửa icon key trong BaseNodeDialogViewModel.cs (ResolveNodeIconKey — NodeType-based switch)
+                var baseDialogVmPath = Path.Combine(projectRoot, "ViewModels", "BaseNodeDialogViewModel.cs");
+                if (File.Exists(baseDialogVmPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(baseDialogVmPath);
+                        // Match: NodeType.NodeName => "old-icon-key"
+                        var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(nodeName)}\s*=>\s*"")[^""]+("")"
+                        ;
+                        var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
+                        if (replaced != content)
+                        {
+                            File.WriteAllText(baseDialogVmPath, replaced, utf8NoBom);
+                            result.ModifiedFiles.Add(baseDialogVmPath);
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa BaseNodeDialogViewModel.cs: {ex.Message}"); }
+                }
+
+                // 7. Sửa icon key trong NodeSearchComboBoxUserControl.xaml.cs (nếu có mapping)
+                var searchComboPath = Path.Combine(projectRoot, "Controls", "NodeSearchComboBoxUserControl.xaml.cs");
+                if (File.Exists(searchComboPath))
+                {
+                    try
+                    {
+                        var content = File.ReadAllText(searchComboPath);
+                        // Match: "NodeName" => "old-icon-key"
+                        var pattern = $@"(""{System.Text.RegularExpressions.Regex.Escape(nodeName)}""\s*=>\s*"")[^""]+("")"
+                        ;
+                        var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
+                        if (replaced != content)
+                        {
+                            File.WriteAllText(searchComboPath, replaced, utf8NoBom);
+                            result.ModifiedFiles.Add(searchComboPath);
+                        }
+                    }
+                    catch (Exception ex) { result.Errors.Add($"Lỗi sửa NodeSearchComboBoxUserControl.xaml.cs: {ex.Message}"); }
+                }
+            }
+
             return result;
         }
 
+        /// <summary>
+        /// Chỉ thay thế các giá trị brush/icon trong palette block hiện tại, GIỮ NGUYÊN nội dung tooltip/contextmenu.
+        /// </summary>
         private string? ReplacePaletteBlock(string content, string nodeName, string colorKey, string iconKey)
         {
             var targetTag = $"Tag=\"{nodeName}\"";
@@ -2025,6 +2156,8 @@ namespace FlowMy.Services.Utilities
             var blockStart = content.LastIndexOf(startTag, tagIdx);
             if (blockStart < 0) return null;
 
+            // Tìm kết thúc palette block bằng đếm cặp <Border>...</Border>
+            // QUAN TRỌNG: Phải bỏ qua <Border.ToolTip>, <Border.ContextMenu>, </Border.xxx> (property elements)
             int openCount = 0;
             int idx = blockStart;
             int blockEnd = -1;
@@ -2034,13 +2167,32 @@ namespace FlowMy.Services.Utilities
                 var nextClose = content.IndexOf("</Border>", idx);
                 
                 if (nextOpen < 0 && nextClose < 0) break;
+
+                // Bỏ qua </Border.xxx> (property element closing tags like </Border.ToolTip>)
+                if (nextClose >= 0)
+                {
+                    // Kiểm tra xem sau </Border có phải là > hay .xxx>
+                    // "</Border>" = 9 chars, check char at nextClose + 8
+                    // Nếu có </Border.ToolTip> thì IndexOf("</Border>") sẽ KHÔNG match
+                    // vì "</Border>" chỉ match chính xác "</Border>" (9 chars)
+                    // Nhưng cần đảm bảo không có </Border.xxx> trước </Border>
+                }
                 
+                // Kiểm tra <Border — nếu ký tự tiếp theo là '.' thì đây là property element, bỏ qua
                 if (nextOpen >= 0 && (nextClose < 0 || nextOpen < nextClose))
                 {
+                    var charAfterBorder = (nextOpen + 7 < content.Length) ? content[nextOpen + 7] : ' ';
+                    if (charAfterBorder == '.')
+                    {
+                        // Đây là <Border.ToolTip>, <Border.ContextMenu>, etc. — bỏ qua
+                        idx = nextOpen + 7;
+                        continue;
+                    }
+
                     int endTagIdx = content.IndexOf(">", nextOpen);
                     if (endTagIdx > 0 && content[endTagIdx - 1] == '/')
                     {
-                        // Self-closing tag <Border ... />
+                        // Self-closing: <Border ... />
                         idx = endTagIdx + 1;
                         continue;
                     }
@@ -2050,7 +2202,7 @@ namespace FlowMy.Services.Utilities
                 else if (nextClose >= 0)
                 {
                     openCount--;
-                    idx = nextClose + 9;
+                    idx = nextClose + 9; // "</Border>".Length = 9
                     if (openCount == 0)
                     {
                         blockEnd = idx;
@@ -2062,61 +2214,34 @@ namespace FlowMy.Services.Utilities
             if (blockEnd < 0) return null;
             
             var oldBlock = content.Substring(blockStart, blockEnd - blockStart);
-            
-            var titleMatch = System.Text.RegularExpressions.Regex.Match(oldBlock, @"<Run\s+Text=""([^""]+)""");
-            string title = titleMatch.Success ? titleMatch.Groups[1].Value : nodeName;
-
             var brushKey = $"{colorKey}Brush";
             var textOnBrushKey = $"TextOn{colorKey}Brush";
-            var nl = "\r\n";
-            var paletteXml =
-                "<Border Style=\"{StaticResource PaletteIconNodeStyle}\"" +
-                nl + $"                                    Background=\"{{DynamicResource {brushKey}}}\"" +
-                nl + $"                                    {targetTag}" +
-                nl + "                                    MouseDown=\"NodeTemplate_MouseDown\"" +
-                nl + "                                    MouseMove=\"NodeTemplate_MouseMove\"" +
-                nl + "                                    MouseUp=\"NodeTemplate_MouseUp\"" +
-                nl + "                                    MouseEnter=\"NodeTemplate_MouseEnter\"" +
-                nl + "                                    MouseLeave=\"NodeTemplate_MouseLeave\">" +
-                nl + "                                <Border.ToolTip>" +
-                nl + "                                    <ToolTip>" +
-                nl + "                                        <StackPanel MaxWidth=\"240\">" +
-                nl + "                                            <TextBlock FontWeight=\"Bold\" FontStyle=\"Italic\">" +
-                nl + $"                                                <Run Text=\"{title}\"/>" +
-                nl + "                                            </TextBlock>" +
-                nl + "                                            <TextBlock Text=\"Node được tạo bởi Node Generator.\"" +
-                nl + "                                                       TextWrapping=\"Wrap\" Margin=\"0,4,0,0\" Opacity=\"0.9\"/>" +
-                nl + "                                        </StackPanel>" +
-                nl + "                                    </ToolTip>" +
-                nl + "                                </Border.ToolTip>" +
-                nl + "                                <Border.ContextMenu>" +
-                nl + "                                    <ContextMenu Placement=\"MousePoint\" StaysOpen=\"False\">" +
-                nl + "                                        <MenuItem IsHitTestVisible=\"False\">" +
-                nl + "                                            <MenuItem.Header>" +
-                nl + $"                                                <Border Background=\"{{DynamicResource {brushKey}}}\"" +
-                nl + "                                                        CornerRadius=\"10\" Padding=\"10\"" +
-                nl + "                                                        BorderBrush=\"{DynamicResource BorderColor}\" BorderThickness=\"1\">" +
-                nl + "                                                    <StackPanel>" +
-                nl + $"                                                        <TextBlock Text=\"{title}\"" +
-                nl + $"                                                                   Foreground=\"{{DynamicResource {textOnBrushKey}}}\"" +
-                nl + "                                                                   FontWeight=\"Bold\" FontSize=\"13\"/>" +
-                nl + "                                                        <TextBlock Text=\"Node tự động sinh bởi Node Generator.\"" +
-                nl + $"                                                                   Foreground=\"{{DynamicResource {textOnBrushKey}}}\"" +
-                nl + "                                                                   Opacity=\"0.9\" TextWrapping=\"Wrap\" Margin=\"0,4,0,0\"/>" +
-                nl + "                                                    </StackPanel>" +
-                nl + "                                                </Border>" +
-                nl + "                                            </MenuItem.Header>" +
-                nl + "                                        </MenuItem>" +
-                nl + "                                    </ContextMenu>" +
-                nl + "                                </Border.ContextMenu>" +
-                nl + "                                <Grid>" +
-                nl + $"                                    <controls:SvgViewboxEx Style=\"{{StaticResource PaletteSvgIconStyle}}\"" +
-                nl + $"                                                          Source=\"{{Binding Source={{x:Static sys:String.Empty}}, Converter={{StaticResource IconKeyToPathConverter}}, ConverterParameter='{iconKey}'}}\"" +
-                nl + $"                                                          Fill=\"{{DynamicResource {textOnBrushKey}}}\"/>" +
-                nl + "                                </Grid>" +
-                nl + "                            </Border>";
 
-            return content.Substring(0, blockStart) + paletteXml + content.Substring(blockEnd);
+            // Thay thế Background brush chính (trên Border gốc và Border context menu)
+            var newBlock = System.Text.RegularExpressions.Regex.Replace(oldBlock,
+                @"Background=""\{DynamicResource\s+[A-Za-z]+Brush\}""",
+                $"Background=\"{{DynamicResource {brushKey}}}\"");
+
+            // Thay thế Foreground (TextOn...Brush)
+            newBlock = System.Text.RegularExpressions.Regex.Replace(newBlock,
+                @"Foreground=""\{DynamicResource\s+TextOn[A-Za-z]+Brush\}""",
+                $"Foreground=\"{{DynamicResource {textOnBrushKey}}}\"");
+
+            // Thay thế Fill (icon SVG dùng TextOn...Brush)
+            newBlock = System.Text.RegularExpressions.Regex.Replace(newBlock,
+                @"Fill=""\{DynamicResource\s+TextOn[A-Za-z]+Brush\}""",
+                $"Fill=\"{{DynamicResource {textOnBrushKey}}}\"");
+
+            // Thay thế icon key (ConverterParameter='old-icon')
+            if (!string.IsNullOrWhiteSpace(iconKey))
+            {
+                newBlock = System.Text.RegularExpressions.Regex.Replace(newBlock,
+                    @"(ConverterParameter=')([^']+)(')",
+                    $"${{1}}{iconKey}${{3}}");
+            }
+
+            if (newBlock == oldBlock) return null;
+            return content.Substring(0, blockStart) + newBlock + content.Substring(blockEnd);
         }
     }
 

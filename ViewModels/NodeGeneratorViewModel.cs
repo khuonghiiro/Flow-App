@@ -69,6 +69,8 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private string _editIconKey = "circle-nodes duotone-regular";
         [ObservableProperty] private string _editInputPortColorKey = "Info";
         [ObservableProperty] private string _editOutputPortColorKey = "SunsetOrange";
+        [ObservableProperty] private bool _hasExistingInputPort = false;
+        [ObservableProperty] private bool _hasExistingOutputPort = false;
         public ObservableCollection<string> ExistingNodes { get; } = new();
 
 
@@ -271,20 +273,98 @@ namespace FlowMy.ViewModels
                 EditColorKey = string.Empty;
                 EditInputPortColorKey = string.Empty;
                 EditOutputPortColorKey = string.Empty;
+                HasExistingInputPort = false;
+                HasExistingOutputPort = false;
 
-                // 1. Try get Icon from [NodeName]NodeControl.cs or [NodeName]Control.cs
-                var controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.cs");
-                if (!File.Exists(controlCsPath)) 
-                    controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.cs");
-
-                if (File.Exists(controlCsPath))
+                // ── SOURCE 1: TemplateFactory.cs (nguồn chính xác nhất cho generated nodes) ──
+                var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
+                if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
+                if (File.Exists(templateFactoryPath))
                 {
-                    var content = File.ReadAllText(controlCsPath);
-                    var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*""([^""]+)""");
-                    if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                    var content = File.ReadAllText(templateFactoryPath);
+                    // Tìm chính xác method Create{NodeName}Node
+                    var methodPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{value}Node\s*\(";
+                    var regexMethod = System.Text.RegularExpressions.Regex.Match(content, methodPattern);
+                    if (regexMethod.Success)
+                    {
+                        var createMethodIdx = regexMethod.Index;
+                        var endIdx = content.IndexOf("return ", createMethodIdx);
+                        if (endIdx < 0) endIdx = content.IndexOf("return\r\n", createMethodIdx);
+                        if (endIdx > 0)
+                        {
+                            // Chỉ search trong phạm vi method này, tránh match sang method khác
+                            var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
+
+                            // ColorKey (ngoài NodePort block)
+                            if (string.IsNullOrWhiteSpace(EditColorKey))
+                            {
+                                var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"(?m)^\s*ColorKey\s*=\s*""([^""]+)""");
+                                if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
+                            }
+
+                            // Input port ColorKey: IsInput = true ... ColorKey = "xxx"
+                            var inPortExistsMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*true");
+                            if (inPortExistsMatch.Success) HasExistingInputPort = true;
+
+                            if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
+                            {
+                                var inPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
+                                if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                            }
+
+                            // Output port ColorKey: IsInput = false ... ColorKey = "xxx"
+                            var outPortExistsMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*false");
+                            if (outPortExistsMatch.Success) HasExistingOutputPort = true;
+
+                            if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
+                            {
+                                var outPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
+                                if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                            }
+                        }
+                    }
                 }
 
-                // 1b. Fallback to XAML files
+                // ── SOURCE 2: [NodeName]Node.cs (cho các node viết tay) ──
+                var nodeCsPath = Path.Combine(ProjectRoot, "Models", "Nodes", $"{value}Node.cs");
+                if (File.Exists(nodeCsPath))
+                {
+                    var content = File.ReadAllText(nodeCsPath);
+                    if (string.IsNullOrWhiteSpace(EditColorKey))
+                    {
+                        var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(content, @"ColorKey\s*=\s*""([^""]+)""");
+                        if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
+                    }
+                    var inPortExistsMatch = System.Text.RegularExpressions.Regex.Match(content, @"(InputPorts\.Add\(|IsInput\s*=\s*true)");
+                    if (inPortExistsMatch.Success) HasExistingInputPort = true;
+
+                    if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
+                    {
+                        var inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"InputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");
+                        if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                        else
+                        {
+                            inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
+                            if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
+                        }
+                    }
+
+                    var outPortExistsMatch = System.Text.RegularExpressions.Regex.Match(content, @"(OutputPorts\.Add\(|IsInput\s*=\s*false)");
+                    if (outPortExistsMatch.Success) HasExistingOutputPort = true;
+
+                    if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
+                    {
+                        var outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"OutputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");
+                        if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                        else
+                        {
+                            outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
+                            if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
+                        }
+                    }
+                }
+
+                // ── SOURCE 3: NodeControl XAML (cho icon và màu nền từ giao diện) ──
                 var xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.xaml");
                 if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.xaml");
                 if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeContentControl.xaml");
@@ -292,57 +372,109 @@ namespace FlowMy.ViewModels
                 if (File.Exists(xamlPath))
                 {
                     var content = File.ReadAllText(xamlPath);
-                    var bgMatch = System.Text.RegularExpressions.Regex.Match(content, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
-                    if (bgMatch.Success && bgMatch.Groups[1].Value != "WindowBackground" && bgMatch.Groups[1].Value != "Transparent" && bgMatch.Groups[1].Value != "ControlBorder") 
-                        EditColorKey = bgMatch.Groups[1].Value;
 
-                    // Ưu tiên SvgViewboxEx có PaletteSvgIconStyle (chuẩn của Tool)
-                    var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx\s+Style=""\{StaticResource\s+PaletteSvgIconStyle\}""[^>]*ConverterParameter='([^']+)'");
-                    if (!iconMatch.Success)
+                    // ColorKey từ Background
+                    if (string.IsNullOrWhiteSpace(EditColorKey))
                     {
-                        // Nếu không có XAML chuẩn, tìm SvgViewboxEx đầu tiên
-                        iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx[^>]*ConverterParameter='([^']+)'");
+                        var bgMatch = System.Text.RegularExpressions.Regex.Match(content, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
+                        if (bgMatch.Success && bgMatch.Groups[1].Value != "WindowBackground" && bgMatch.Groups[1].Value != "Transparent" && bgMatch.Groups[1].Value != "ControlBorder") 
+                            EditColorKey = bgMatch.Groups[1].Value;
                     }
-                    if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
-                }
 
-                // --- FIX: Extract ColorKey and Port Colors from TemplateFactory.cs ---
-                var myTempPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
-                if (!File.Exists(myTempPath)) myTempPath = Path.Combine(ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
-                
-                if (File.Exists(myTempPath))
-                {
-                    var tfContent = File.ReadAllText(myTempPath);
-                    
-                    var colorMatch = System.Text.RegularExpressions.Regex.Match(tfContent, $@"Create{value}Node.*?ColorKey\s*=\s*""([^""]+)""", System.Text.RegularExpressions.RegexOptions.Singleline);
-                    if (colorMatch.Success) EditColorKey = colorMatch.Groups[1].Value;
-                    
-                    var inPortMatch = System.Text.RegularExpressions.Regex.Match(tfContent, $@"Create{value}Node.*?NodeBrush\s*=\s*_colorThemeService\.GetBrush\(""([^""]+)Brush""\)", System.Text.RegularExpressions.RegexOptions.Singleline);
-                    if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
-                }
-
-                // --- FIX: Extract IconKey from WorkflowEditorViewModel.cs ---
-                var vmPath = Path.Combine(ProjectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
-                if (File.Exists(vmPath))
-                {
-                    var vmContent = File.ReadAllText(vmPath);
-                    var iconMatch = System.Text.RegularExpressions.Regex.Match(vmContent, $@"NodeType\.{value}\s*=>\s*""([^""]+)""");
-                    if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
-                }
-
-                // 1b. Try get Icon from NodeControl.cs (for manually created nodes without XAML like HttpRequestNode)
-                var csPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.cs");
-                if (File.Exists(csPath))
-                {
-                    var content = File.ReadAllText(csPath);
+                    // IconKey từ SvgViewboxEx
                     if (string.IsNullOrWhiteSpace(EditIconKey))
                     {
-                        var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"typeof\(Uri\),\s*""([^""]+)""");
+                        // Ưu tiên SvgViewboxEx có PaletteSvgIconStyle (chuẩn của Tool)
+                        var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx\s+Style=""\{StaticResource\s+PaletteSvgIconStyle\}""[^>]*ConverterParameter='([^']+)'");
+                        if (!iconMatch.Success)
+                        {
+                            // Fallback: SvgViewboxEx đầu tiên
+                            iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"<controls:SvgViewboxEx[^>]*ConverterParameter='([^']+)'");
+                        }
                         if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                     }
                 }
 
-                // 1c. Fallback using WorkflowEditorViewModel's ResolveNodeIconKey logic
+                // ── SOURCE 4: NodeControl.cs (cho icon từ code-behind) ──
+                var controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.cs");
+                if (!File.Exists(controlCsPath)) 
+                    controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.cs");
+                if (File.Exists(controlCsPath))
+                {
+                    var content = File.ReadAllText(controlCsPath);
+                    if (string.IsNullOrWhiteSpace(EditIconKey))
+                    {
+                        var iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"iconConverter\.Convert\(null,\s*typeof\(Uri\),\s*""([^""]+)""");
+                        if (!iconMatch.Success)
+                            iconMatch = System.Text.RegularExpressions.Regex.Match(content, @"typeof\(Uri\),\s*""([^""]+)""");
+                        if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                    }
+                }
+
+                // ── SOURCE 5: WorkflowEditorViewModel.cs (icon key từ NodeType switch) ──
+                if (string.IsNullOrWhiteSpace(EditIconKey))
+                {
+                    var vmPath = Path.Combine(ProjectRoot, "ViewModels", "WorkflowEditorViewModel.cs");
+                    if (File.Exists(vmPath))
+                    {
+                        var vmContent = File.ReadAllText(vmPath);
+                        var iconMatch = System.Text.RegularExpressions.Regex.Match(vmContent, $@"NodeType\.{value}\s*=>\s*""([^""]+)""");
+                        if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                    }
+                }
+
+                // ── SOURCE 6: WorkflowEditorWindow.xaml (palette — lấy màu nền + icon từ palette block) ──
+                if (string.IsNullOrWhiteSpace(EditColorKey) || string.IsNullOrWhiteSpace(EditIconKey))
+                {
+                    var wePath = Path.Combine(ProjectRoot, "Views", "WorkflowEditorWindow.xaml");
+                    if (!File.Exists(wePath)) wePath = Path.Combine(ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
+                    if (File.Exists(wePath))
+                    {
+                        var weContent = File.ReadAllText(wePath);
+                        var tagIdx = weContent.IndexOf($"Tag=\"{value}\"");
+                        if (tagIdx < 0) tagIdx = weContent.IndexOf($"Tag=\"{value}Node\"");
+
+                        if (tagIdx >= 0)
+                        {
+                            var borderStart = weContent.LastIndexOf("<Border", tagIdx);
+                            if (borderStart >= 0)
+                            {
+                                var borderTagContent = weContent.Substring(borderStart, tagIdx - borderStart);
+                                if (string.IsNullOrWhiteSpace(EditColorKey) || EditColorKey == "Transparent")
+                                {
+                                    var bgMatch = System.Text.RegularExpressions.Regex.Match(borderTagContent, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
+                                    if (bgMatch.Success && bgMatch.Groups[1].Value != "Transparent") EditColorKey = bgMatch.Groups[1].Value;
+                                }
+                            }
+
+                            // Search after Tag for icon and deeper color matches
+                            var searchLength = Math.Min(2000, weContent.Length - tagIdx);
+                            var innerContent = weContent.Substring(tagIdx, searchLength);
+                            
+                            if (string.IsNullOrWhiteSpace(EditColorKey) || EditColorKey == "Transparent")
+                            {
+                                var bgMatches = System.Text.RegularExpressions.Regex.Matches(innerContent, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
+                                foreach (System.Text.RegularExpressions.Match match in bgMatches)
+                                {
+                                    var color = match.Groups[1].Value;
+                                    if (color != "Transparent" && color != "ControlBorder" && color != "BorderColor")
+                                    {
+                                        EditColorKey = color;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (string.IsNullOrWhiteSpace(EditIconKey))
+                            {
+                                var iconMatch = System.Text.RegularExpressions.Regex.Match(innerContent, @"ConverterParameter='([^']+)'");
+                                if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
+                            }
+                        }
+                    }
+                }
+
+                // ── FALLBACK: Hardcoded icon switch (cho các node hệ thống chuẩn) ──
                 if (string.IsNullOrWhiteSpace(EditIconKey))
                 {
                     EditIconKey = value switch
@@ -394,129 +526,6 @@ namespace FlowMy.ViewModels
                         "GitSource" => "git-alt brands",
                         _ => "circle-nodes duotone-regular"
                     };
-                }
-
-                // 2. Try get Colors from TemplateFactory.cs
-                var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
-                if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
-                if (File.Exists(templateFactoryPath))
-                {
-                    var content = File.ReadAllText(templateFactoryPath);
-                    var methodPattern = $@"(?:private|public)\s+WorkflowNode\s+Create{value}Node\s*\(";
-                    var createMethodIdx = -1;
-                    var regexMethod = System.Text.RegularExpressions.Regex.Match(content, methodPattern);
-                    if (regexMethod.Success) createMethodIdx = regexMethod.Index;
-                    if (createMethodIdx > 0)
-                    {
-                        var endIdx = content.IndexOf("return ", createMethodIdx);
-                        if (endIdx > 0)
-                        {
-                            var methodContent = content.Substring(createMethodIdx, endIdx - createMethodIdx);
-                            if (string.IsNullOrWhiteSpace(EditColorKey))
-                            {
-                                var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"(?m)^\s*ColorKey\s*=\s*""([^""]+)""");
-                                if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
-                            }
-
-                            // Tìm List Add trực tiếp có ColorKey cho Input
-                            if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
-                            {
-                                var inPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"(?m)^\s*IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
-                                if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
-                            }
-
-                            if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
-                            {
-                                var outPortMatch = System.Text.RegularExpressions.Regex.Match(methodContent, @"(?m)^\s*IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
-                                if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
-                            }
-                        }
-                    }
-                }
-
-                // 3. Fallback: try get colors from [NodeName]Node.cs
-                var nodeCsPath = Path.Combine(ProjectRoot, "Models", "Nodes", $"{value}Node.cs");
-                if (File.Exists(nodeCsPath))
-                {
-                    var content = File.ReadAllText(nodeCsPath);
-                    if (string.IsNullOrWhiteSpace(EditColorKey))
-                    {
-                        var colorKeyMatch = System.Text.RegularExpressions.Regex.Match(content, @"ColorKey\s*=\s*""([^""]+)""");
-                        if (colorKeyMatch.Success) EditColorKey = colorKeyMatch.Groups[1].Value;
-                    }
-                    if (string.IsNullOrWhiteSpace(EditInputPortColorKey))
-                    {
-                        // Các node viết tay cũ không có IsInput=true mà add thẳng vào InputPorts
-                        var inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"InputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");
-                        if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
-                        else
-                        {
-                            inPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*true[^}]*ColorKey\s*=\s*""([^""]+)""");
-                            if (inPortMatch.Success) EditInputPortColorKey = inPortMatch.Groups[1].Value;
-                        }
-                    }
-                    if (string.IsNullOrWhiteSpace(EditOutputPortColorKey))
-                    {
-                        var outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"OutputPorts\.Add\([^;]+ColorKey\s*=\s*""([^""]+)""");
-                        if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
-                        else
-                        {
-                            outPortMatch = System.Text.RegularExpressions.Regex.Match(content, @"IsInput\s*=\s*false[^}]*ColorKey\s*=\s*""([^""]+)""");
-                            if (outPortMatch.Success) EditOutputPortColorKey = outPortMatch.Groups[1].Value;
-                        }
-                    }
-                }
-
-                // 4. Fallback: Parse WorkflowEditorWindow.xaml cho ColorKey và IconKey nếu vẫn trống
-                if (string.IsNullOrWhiteSpace(EditColorKey) || string.IsNullOrWhiteSpace(EditIconKey))
-                {
-                    var wePath = Path.Combine(ProjectRoot, "Views", "WorkflowEditorWindow.xaml");
-                    if (!File.Exists(wePath)) wePath = Path.Combine(ProjectRoot, "Views", "WorkflowEditors", "WorkflowEditorWindow.xaml");
-                    if (File.Exists(wePath))
-                    {
-                        var weContent = File.ReadAllText(wePath);
-                        var tagIdx = weContent.IndexOf($"Tag=\"{value}\"");
-                        if (tagIdx < 0) tagIdx = weContent.IndexOf($"Tag=\"{value}Node\"");
-
-                        if (tagIdx >= 0)
-                        {
-                            var borderStart = weContent.LastIndexOf("<Border", tagIdx);
-                            if (borderStart >= 0)
-                            {
-                                var borderTagContent = weContent.Substring(borderStart, tagIdx - borderStart);
-                                if (string.IsNullOrWhiteSpace(EditColorKey) || EditColorKey == "Transparent")
-                                {
-                                    var bgMatch = System.Text.RegularExpressions.Regex.Match(borderTagContent, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
-                                    if (bgMatch.Success && bgMatch.Groups[1].Value != "Transparent") EditColorKey = bgMatch.Groups[1].Value;
-                                }
-                            }
-
-                            // Search up to 2000 characters after the Tag to find the actual Icon and Color
-                            var searchLength = Math.Min(2000, weContent.Length - tagIdx);
-                            var innerContent = weContent.Substring(tagIdx, searchLength);
-                            
-                            // If EditColorKey is still empty or Transparent, try to find it inside the content (e.g. Loop node diamond or context menu)
-                            if (string.IsNullOrWhiteSpace(EditColorKey) || EditColorKey == "Transparent")
-                            {
-                                var bgMatches = System.Text.RegularExpressions.Regex.Matches(innerContent, @"Background=""\{DynamicResource\s+([A-Za-z]+)Brush\}""");
-                                foreach (System.Text.RegularExpressions.Match match in bgMatches)
-                                {
-                                    var color = match.Groups[1].Value;
-                                    if (color != "Transparent" && color != "ControlBorder" && color != "BorderColor")
-                                    {
-                                        EditColorKey = color;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (string.IsNullOrWhiteSpace(EditIconKey))
-                            {
-                                var iconMatch = System.Text.RegularExpressions.Regex.Match(innerContent, @"ConverterParameter='([^']+)'");
-                                if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
-                            }
-                        }
-                    }
                 }
             }
             catch (Exception ex)

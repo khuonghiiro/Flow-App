@@ -15,6 +15,8 @@ namespace FlowMy.Views.Overlays
 
         // Cache references sau Loaded
         private System.Windows.Controls.Border? _nodeMockBorder;
+        private System.Windows.Controls.Border? _previewInputPortBorder;
+        private System.Windows.Controls.Border? _previewOutputPortBorder;
         private FlowMy.Controls.SvgViewboxEx? _previewIcon;
         private System.Windows.Controls.TextBlock? _previewNodeTitle;
         private System.Windows.Controls.TextBox? _previewTextBox;
@@ -46,6 +48,8 @@ namespace FlowMy.Views.Overlays
             Loaded += (_, __) =>
             {
                 _nodeMockBorder  = FindName("NodeMockBorder")  as System.Windows.Controls.Border;
+                _previewInputPortBorder = FindName("PreviewInputPortBorder") as System.Windows.Controls.Border;
+                _previewOutputPortBorder = FindName("PreviewOutputPortBorder") as System.Windows.Controls.Border;
                 _previewIcon     = FindName("PreviewIcon")      as FlowMy.Controls.SvgViewboxEx;
                 _previewNodeTitle= FindName("PreviewNodeTitle") as System.Windows.Controls.TextBlock;
                 _previewTextBox  = FindName("PreviewTextBox")   as System.Windows.Controls.TextBox;
@@ -133,6 +137,32 @@ namespace FlowMy.Views.Overlays
 
                         if (brush != null)
                             _nodeMockBorder.Background = brush;
+                    }
+                }
+
+                // Update port mock background
+                bool hasIn = isEditing ? _viewModel.HasExistingInputPort : _viewModel.HasInputSection;
+                bool hasOut = isEditing ? _viewModel.HasExistingOutputPort : _viewModel.HasOutputsPanel;
+
+                if (_previewInputPortBorder != null)
+                {
+                    _previewInputPortBorder.Visibility = hasIn ? Visibility.Visible : Visibility.Collapsed;
+                    if (hasIn)
+                    {
+                        string inColor = isEditing ? _viewModel.EditInputPortColorKey : (_viewModel.InputPorts.Count > 0 ? _viewModel.InputPorts[0].ColorKey : "Info");
+                        var brush = TryFindBrush($"{inColor?.Trim()}Brush") ?? TryFindBrush($"{inColor?.Trim()}") ?? TryFindBrush("InfoBrush");
+                        if (brush != null) _previewInputPortBorder.Background = brush;
+                    }
+                }
+
+                if (_previewOutputPortBorder != null)
+                {
+                    _previewOutputPortBorder.Visibility = hasOut ? Visibility.Visible : Visibility.Collapsed;
+                    if (hasOut)
+                    {
+                        string outColor = isEditing ? _viewModel.EditOutputPortColorKey : (_viewModel.OutputPorts.Count > 0 ? _viewModel.OutputPorts[0].ColorKey : "SunsetOrange");
+                        var brush = TryFindBrush($"{outColor?.Trim()}Brush") ?? TryFindBrush($"{outColor?.Trim()}") ?? TryFindBrush("SunsetOrangeBrush");
+                        if (brush != null) _previewOutputPortBorder.Background = brush;
                     }
                 }
             }
