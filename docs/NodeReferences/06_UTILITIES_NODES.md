@@ -92,3 +92,16 @@ Tài liệu này trình bày Logic thực thi và Cấu trúc JSON `Properties` 
   "BorderColor": "#FF0000"
 }
 ```
+
+## 8. Folder Node
+- **Type**: `"Folder"`
+- **Chức năng**: Tự động tạo thư mục động theo đường dẫn/template chứa các biến thay thế như {YYYY}, {MM}, {DD} hoặc {key} đầu vào.
+- **Ví dụ JSON Properties**:
+```json
+"Properties": {
+  "RootFolderPresetKey": "downloads",
+  "RootFolderPath": "",
+  "SubPathTemplate": "BaoCao_{YYYY}-{MM}-{DD}\\{username}",
+  "KeyValueInputs": "[{\"EffectiveKey\":\"username\", \"SourceNodeId\":\"123\", \"SourceOutputKey\":\"user_name\"}]"
+}
+```

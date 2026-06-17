@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Utilities;
 using System.Linq;
@@ -61,6 +61,7 @@ namespace FlowMy.Workflow
                 "BorderHighlight" => CreateBorderHighlightNode(x, y),
                 "TextScan" => CreateTextScanNode(x, y),
                 "EmbedApplicationNode" => CreateEmbedApplicationNode(x, y),
+                "KeyScopedStore" => CreateKeyScopedStoreNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -81,6 +82,43 @@ namespace FlowMy.Workflow
                 ColorKey = "SkyAzure",
                 Type = NodeType.AsyncTaskDispatchCollect
             };
+
+            return node;
+        }
+
+        private WorkflowNode CreateKeyScopedStoreNode(double x, double y)
+        {
+            var nodeBrush = _colorThemeService.GetBrush("WarningBrush")
+                            ?? Brushes.Orange;
+
+            var node = new KeyScopedNode
+            {
+                Id = $"Node_KeyScopedStore_{Guid.NewGuid()}",
+                Title = "Key Scoped Store",
+                X = x - 75,
+                Y = y - 40,
+                NodeBrush = nodeBrush,
+                ColorKey = "Warning",
+                Type = NodeType.KeyScopedStore
+            };
+
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = true,
+                Position = PortPosition.Left,
+                IsVisible = true,
+                ColorKey = "Info"
+            });
+
+            node.Ports.Add(new NodePort
+            {
+                Id = Guid.NewGuid().ToString(),
+                IsInput = false,
+                Position = PortPosition.Right,
+                IsVisible = true,
+                ColorKey = "SunsetOrange"
+            });
 
             return node;
         }

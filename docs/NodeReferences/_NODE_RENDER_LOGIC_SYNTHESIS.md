@@ -33,6 +33,7 @@ Một Workflow hoàn chỉnh xuất ra file JSON luôn có dạng gốc như sau
 ## 2. Cấu Trúc Object Cơ Bản Của 1 Node
 Bên trong mảng `Nodes`, mỗi node đều phải có bộ khung cố định. Lưu ý phần `Ports` phải chứa `Index` và `BranchIndex`.
 - **Vị trí (X, Y)**: Giá trị tọa độ `X` và `Y` thường nằm trong khoảng lớn (vd: 9000-11000) để nằm giữa không gian vô tận của Canvas.
+- **Quan trọng về Viewport Camera**: Tham số `SavedViewportCenterX` và `SavedViewportCenterY` trong Global Scope **BẮT BUỘC** phải trỏ đúng vào trọng tâm của cụm Node (Ví dụ: `10000.0`). Nếu Node ở `10000` mà Viewport ở `960`, người dùng sẽ mở lên thấy màn hình trống trơn do khuất góc nhìn.
 - **Kích thước và Khoảng cách (Size & Spacing Guidelines)**: Đa số các node thông thường có kích thước `Width` ~ 200px, `Height` ~ 150px (riêng node tròn như Start/End là 60x60). Vì vậy khi AI sắp xếp các node nối tiếp nhau, tọa độ `X` của node sau nên cách node trước ít nhất **300 - 400px** và `Y` nên cách **200px** để tránh bị đè (overlap). 
 - **Lưu ý các Node khổng lồ**: Có một số node chứa control lớn, hãy chừa khoảng trống tương xứng: `VideoProcessing` (1360x768), `BodyContainer` (800x600), `HtmlUi` (420x320), `ImageProcessing` (360x280). Khi render tự động các node này, nên dùng khoảng cách an toàn `X_Spacing` > 1500, `Y_Spacing` > 800.
 
@@ -110,7 +111,7 @@ Nối dây dữ liệu giữa các Node:
 
 ### 4.1 Nhóm Điều khiển Luồng (Core Flow)
 Tham chiếu file: `docs/NodeReferences/01_CORE_FLOW_NODES.md`
-- Chứa các node: **Start, End, Delay, Loop, IfElse, AsyncTask, BodyContainer**.
+- Chứa các node: **Start, End, Delay, Loop, IfElse, AsyncTask, BodyContainer, Break, Continue, Callback, AsyncTaskDispatchCollect**.
 
 ### 4.2 Nhóm Web & Mạng (Browser & Web)
 Tham chiếu file: `docs/NodeReferences/02_BROWSER_WEB_NODES.md`
@@ -122,7 +123,7 @@ Tham chiếu file: `docs/NodeReferences/03_USER_INTERACTION_NODES.md`
 
 ### 4.4 Nhóm Dữ liệu & Biến (Data & Variables)
 Tham chiếu file: `docs/NodeReferences/04_DATA_VARIABLES_NODES.md`
-- Chứa các node: **Input, Output, Storage, ListOut, AssignData, KeyValueBridge, StringSplit**.
+- Chứa các node: **Input, Output, Storage, ListOut, AssignData, KeyValueBridge, StringSplit, TextScan, KeyScoped**.
 
 ### 4.5 Nhóm Xử lý Đa phương tiện (Media)
 Tham chiếu file: `docs/NodeReferences/05_MEDIA_PROCESSING_NODES.md`
@@ -130,4 +131,4 @@ Tham chiếu file: `docs/NodeReferences/05_MEDIA_PROCESSING_NODES.md`
 
 ### 4.6 Nhóm Tiện ích Mở rộng (Utilities)
 Tham chiếu file: `docs/NodeReferences/06_UTILITIES_NODES.md`
-- Chứa các node: **Code (C#), FolderFilePaths, DataFetcher, GitSource, FlowOverwrite, Notification**.
+- Chứa các node: **Code (C#), FolderFilePaths, DataFetcher, GitSource, FlowOverwrite, Notification, BorderHighlight, Folder**.

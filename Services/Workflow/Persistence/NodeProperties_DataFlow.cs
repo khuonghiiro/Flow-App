@@ -530,6 +530,38 @@ public sealed partial class FileWorkflowPersistenceService
             flowOverwriteNode.RebuildDynamicOutputs();
     }
 
+    private static void RestoreKeyScopedNodeProperties(KeyScopedNode keyScopedNode, Dictionary<string, object> properties)
+    {
+            if (properties.TryGetValue("IsWriteMode", out var isWriteModeObj))
+            {
+                if (isWriteModeObj is bool isWriteMode)
+                    keyScopedNode.IsWriteMode = isWriteMode;
+                else if (bool.TryParse(isWriteModeObj?.ToString(), out var parsed))
+                    keyScopedNode.IsWriteMode = parsed;
+            }
+
+            if (properties.TryGetValue("StaticKey", out var staticKeyObj))
+            {
+                keyScopedNode.StaticKey = staticKeyObj?.ToString() ?? string.Empty;
+            }
+
+            if (properties.TryGetValue("PollTimeValue", out var pollTimeObj) &&
+                int.TryParse(pollTimeObj?.ToString(), out var pollTime))
+            {
+                keyScopedNode.PollTimeValue = pollTime;
+            }
+
+            if (properties.TryGetValue("PollUnit", out var pollUnitObj))
+            {
+                var unitStr = pollUnitObj?.ToString();
+                if (!string.IsNullOrWhiteSpace(unitStr) &&
+                    Enum.TryParse<KeyScopedPollUnit>(unitStr, out var parsedUnit))
+                {
+                    keyScopedNode.PollUnit = parsedUnit;
+                }
+            }
+    }
+
     // -- GET (Serialize) --
 
     private static void GetInputNodeProperties(InputNode inputNode, Dictionary<string, object> dict)
@@ -668,6 +700,15 @@ public sealed partial class FileWorkflowPersistenceService
                     })
                     .ToList());
             }
+    }
+
+    private static void GetKeyScopedNodeProperties(KeyScopedNode keyScopedNode, Dictionary<string, object> dict)
+    {
+            dict["IsWriteMode"] = keyScopedNode.IsWriteMode;
+            if (!string.IsNullOrWhiteSpace(keyScopedNode.StaticKey))
+                dict["StaticKey"] = keyScopedNode.StaticKey;
+            dict["PollTimeValue"] = keyScopedNode.PollTimeValue;
+            dict["PollUnit"] = keyScopedNode.PollUnit.ToString();
     }
 
 }

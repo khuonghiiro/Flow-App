@@ -99,3 +99,26 @@ Tài liệu này chứa cấu trúc JSON `Properties` và Logic thực thi của
   "TargetLoopId": "node_loop_1" 
 }
 ```
+
+## 9. Callback Node
+- **Type**: `"Callback"`
+- **Chức năng**: Nhảy cóc (jump) về một Node đã chạy trước đó để tạo vòng lặp retry. Tích hợp bộ đếm giới hạn số lần nhảy.
+- **Ví dụ JSON Properties**:
+```json
+"Properties": {
+  "TargetNodeId": "node_id_123",
+  "MaxCallbackCount": 3,
+  "FlowBehavior": "JumpThenContinue"
+}
+```
+
+## 10. Async Task Dispatch Collect Node
+- **Type**: `"AsyncTaskDispatchCollect"`
+- **Chức năng**: Dùng kết hợp với AsyncTask. Gom toàn bộ kết quả trả về từ các luồng (threads) thành 1 cục JSON duy nhất dạng `{ "0": "val1", "1": "val2" }`.
+- **Ví dụ JSON Properties**:
+```json
+"Properties": {
+  "SourceBodyNodeId": "node_ben_trong_asynctask_id",
+  "SourceOutputKey": "ket_qua"
+}
+```

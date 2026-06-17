@@ -94,3 +94,16 @@ Tài liệu này trình bày Logic thực thi và Cấu trúc JSON `Properties` 
   "DynIn_InputText_SrcKey": "content"
 }
 ```
+
+## 8. Key Scoped Node
+- **Type**: `"KeyScopedStore"`
+- **Chức năng**: Tạo bộ nhớ đệm (Dictionary Bucket) gom dữ liệu trong phiên chạy (ExecutionId). Có thể ghi dữ liệu gộp từ nhiều luồng vào 1 bucket hoặc đọc bucket ra thành chuỗi JSON.
+- **Ví dụ JSON Properties**:
+```json
+"Properties": {
+  "IsWriteMode": true, 
+  "StaticKey": "my_bucket",
+  "PollTimeValue": 2,
+  "PollUnit": "Seconds"
+}
+```

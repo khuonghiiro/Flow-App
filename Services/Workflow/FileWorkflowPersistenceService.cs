@@ -851,6 +851,9 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case StorageNode storageNode:
                 RestoreStorageNodeProperties(storageNode, properties);
                 break;
+            case KeyScopedNode keyScopedNode:
+                RestoreKeyScopedNodeProperties(keyScopedNode, properties);
+                break;
             case AsyncTaskDispatchCollectNode collectNode:
                 RestoreAsyncTaskDispatchCollectNodeProperties(collectNode, properties);
                 break;
@@ -985,6 +988,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case NotificationNode notificationNode: GetNotificationNodeProperties(notificationNode, dict); break;
             case EmbedApplicationNode embedApp: GetEmbedApplicationNodeProperties(embedApp, dict); break;
             case StorageNode storageNode: GetStorageNodeProperties(storageNode, dict); break;
+            case KeyScopedNode keyScopedNode: GetKeyScopedNodeProperties(keyScopedNode, dict); break;
         }
         GetReuseRoutes(node, dict);
         GetSharedFooterProperties(node, dict);
