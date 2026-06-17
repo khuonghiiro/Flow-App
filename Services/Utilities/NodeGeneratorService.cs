@@ -2149,6 +2149,7 @@ namespace FlowMy.Services.Utilities
             if (blockStart < 0) return null;
 
             // Tìm kết thúc palette block bằng đếm cặp <Border>...</Border>
+            // QUAN TRỌNG: Phải bỏ qua <Border.ToolTip>, <Border.ContextMenu>, </Border.xxx> (property elements)
             int openCount = 0;
             int idx = blockStart;
             int blockEnd = -1;
@@ -2158,12 +2159,32 @@ namespace FlowMy.Services.Utilities
                 var nextClose = content.IndexOf("</Border>", idx);
                 
                 if (nextOpen < 0 && nextClose < 0) break;
+
+                // Bỏ qua </Border.xxx> (property element closing tags like </Border.ToolTip>)
+                if (nextClose >= 0)
+                {
+                    // Kiểm tra xem sau </Border có phải là > hay .xxx>
+                    // "</Border>" = 9 chars, check char at nextClose + 8
+                    // Nếu có </Border.ToolTip> thì IndexOf("</Border>") sẽ KHÔNG match
+                    // vì "</Border>" chỉ match chính xác "</Border>" (9 chars)
+                    // Nhưng cần đảm bảo không có </Border.xxx> trước </Border>
+                }
                 
+                // Kiểm tra <Border — nếu ký tự tiếp theo là '.' thì đây là property element, bỏ qua
                 if (nextOpen >= 0 && (nextClose < 0 || nextOpen < nextClose))
                 {
+                    var charAfterBorder = (nextOpen + 7 < content.Length) ? content[nextOpen + 7] : ' ';
+                    if (charAfterBorder == '.')
+                    {
+                        // Đây là <Border.ToolTip>, <Border.ContextMenu>, etc. — bỏ qua
+                        idx = nextOpen + 7;
+                        continue;
+                    }
+
                     int endTagIdx = content.IndexOf(">", nextOpen);
                     if (endTagIdx > 0 && content[endTagIdx - 1] == '/')
                     {
+                        // Self-closing: <Border ... />
                         idx = endTagIdx + 1;
                         continue;
                     }
@@ -2173,7 +2194,7 @@ namespace FlowMy.Services.Utilities
                 else if (nextClose >= 0)
                 {
                     openCount--;
-                    idx = nextClose + 9;
+                    idx = nextClose + 9; // "</Border>".Length = 9
                     if (openCount == 0)
                     {
                         blockEnd = idx;
