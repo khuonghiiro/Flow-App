@@ -558,29 +558,12 @@ namespace FlowMy.Services.Rendering
                     var deltaX = currentPos.X - containerDragStart.X;
                     var deltaY = currentPos.Y - containerDragStart.Y;
 
-                    var proposedX = containerOriginalPos.X + deltaX;
-                    var proposedY = containerOriginalPos.Y + deltaY;
-                    var moveDx = proposedX - loopNode.LoopBodyNode.X;
-                    var moveDy = proposedY - loopNode.LoopBodyNode.Y;
-
-                    // ✅ Kiểm tra nếu di chuyển LoopBody sẽ lọt vào locked BodyContainerNode → chặn
-                    if (Host.ViewModel != null)
-                    {
-                        var movingGroup = new System.Collections.Generic.List<WorkflowNode> { loopNode.LoopBodyNode, loopNode };
-                        if (bodyClusterNodes != null) movingGroup.AddRange(bodyClusterNodes);
-                        if (LockedBodyHelper.WouldEnterLockedBody(Host.ViewModel, movingGroup, moveDx, moveDy))
-                        {
-                            e.Handled = true;
-                            return;
-                        }
-                    }
-
                     // ✅ Capture old position
                     double oldX = loopNode.LoopBodyNode.X;
                     double oldY = loopNode.LoopBodyNode.Y;
 
-                    loopNode.LoopBodyNode.X = proposedX;
-                    loopNode.LoopBodyNode.Y = proposedY;
+                    loopNode.LoopBodyNode.X = containerOriginalPos.X + deltaX;
+                    loopNode.LoopBodyNode.Y = containerOriginalPos.Y + deltaY;
 
                     Canvas.SetLeft(containerBorder, loopNode.LoopBodyNode.X);
                     Canvas.SetTop(containerBorder, loopNode.LoopBodyNode.Y);
@@ -653,6 +636,11 @@ namespace FlowMy.Services.Rendering
                                 foreach (var cc in childConns) Host.UpdateConnectionPath(cc);
                             }
                         }
+
+                        // ✅ Đẩy locked bodies ra khi LoopBody overlap (push effect)
+                        var movingGroup = new System.Collections.Generic.List<WorkflowNode> { loopNode.LoopBodyNode, loopNode };
+                        if (bodyClusterNodes != null) movingGroup.AddRange(bodyClusterNodes);
+                        LockedBodyHelper.PushLockedBodiesAway(vm, Host, movingGroup);
                     }
 
                     e.Handled = true;

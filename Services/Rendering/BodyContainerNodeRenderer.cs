@@ -132,25 +132,8 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             var dx = current.X - startPoint.X;
             var dy = current.Y - startPoint.Y;
 
-            var proposedX = origin.X + dx;
-            var proposedY = origin.Y + dy;
-
-            // ✅ Kiểm tra nếu di chuyển body sẽ lọt vào locked BodyContainerNode khác → chặn
-            if (Host.ViewModel != null)
-            {
-                var movingGroup = new List<WorkflowNode> { bodyNode };
-                if (nodesInside != null) movingGroup.AddRange(nodesInside);
-                var moveDx = proposedX - bodyNode.X;
-                var moveDy = proposedY - bodyNode.Y;
-                if (LockedBodyHelper.WouldEnterLockedBody(Host.ViewModel, movingGroup, moveDx, moveDy))
-                {
-                    e.Handled = true;
-                    return;
-                }
-            }
-
-            bodyNode.X = proposedX;
-            bodyNode.Y = proposedY;
+            bodyNode.X = origin.X + dx;
+            bodyNode.Y = origin.Y + dy;
             Canvas.SetLeft(border, bodyNode.X);
             Canvas.SetTop(border, bodyNode.Y);
 
@@ -164,8 +147,21 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
                 }
             }
 
+            // ✅ Nếu body KHÔNG locked → đẩy locked bodies ra khi overlap (push effect)
+            if (!bodyNode.LockInnerNodes && Host.ViewModel != null)
+            {
+                var movingGroup = new List<WorkflowNode> { bodyNode };
+                if (nodesInside != null) movingGroup.AddRange(nodesInside);
+                LockedBodyHelper.PushLockedBodiesAway(Host.ViewModel, Host, movingGroup);
+            }
+
+            // ✅ Nếu body locked → đẩy external nodes và child bodies ra ngoài
             if (bodyNode.LockInnerNodes && Host.ViewModel != null)
             {
+                var lockedSet = new HashSet<WorkflowNode>(nodesInside ?? new List<WorkflowNode>()) { bodyNode };
+                // Đẩy body con (LoopBody, AsyncBody, BodyContainer) ra - dùng cùng logic push mượt
+                LockedBodyHelper.PushChildBodiesAwayFromLockedBody(Host.ViewModel, Host, bodyNode, lockedSet);
+                // Đẩy nodes thường ra ngoài
                 PushExternalNodesOutOfBody(bodyNode, nodesInside ?? new List<WorkflowNode>());
             }
 
@@ -311,6 +307,12 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         if (vm == null) return;
 
         var bodyBounds = new Rect(bodyNode.X, bodyNode.Y, bodyNode.BodyWidth, bodyNode.BodyHeight);
+        // Mở rộng vùng phát hiện thêm margin để đẩy sớm hơn (khi cách 10px viền)
+        var inflatedBounds = new Rect(
+            bodyBounds.X - LockedBodyHelper.Margin,
+            bodyBounds.Y - LockedBodyHelper.Margin,
+            bodyBounds.Width + LockedBodyHelper.Margin * 2,
+            bodyBounds.Height + LockedBodyHelper.Margin * 2);
         var lockedSet = new HashSet<WorkflowNode>(lockedNodes) { bodyNode };
         const double gap = 12.0;
         var movedNodes = new List<WorkflowNode>();
@@ -319,7 +321,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         {
             if (lockedSet.Contains(node)) continue;
             var nodeRect = LockedBodyHelper.GetNodeRect(node);
-            if (!bodyBounds.IntersectsWith(nodeRect)) continue;
+            if (!inflatedBounds.IntersectsWith(nodeRect)) continue;
 
             var center = new Point(nodeRect.Left + nodeRect.Width / 2.0, nodeRect.Top + nodeRect.Height / 2.0);
             var leftDist = Math.Abs(center.X - bodyBounds.Left);
@@ -390,6 +392,8 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
             // Move the pushed node itself
             Host.UpdateNodePosition(node, targetX, targetY);
+            // ✅ Force cập nhật visual cho body-type nodes (bypass RenderTransform optimization)
+            ForceCanvasPosition(node, targetX, targetY);
             foreach (var conn in vm.Connections.Where(c => c.FromNode == node || c.ToNode == node))
             {
                 Host.UpdateConnectionPath(conn);
@@ -399,7 +403,10 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             // Move linked nodes directly
             foreach (var inner in linkedNodes)
             {
-                Host.UpdateNodePosition(inner, inner.X + dx, inner.Y + dy);
+                var innerTargetX = inner.X + dx;
+                var innerTargetY = inner.Y + dy;
+                Host.UpdateNodePosition(inner, innerTargetX, innerTargetY);
+                ForceCanvasPosition(inner, innerTargetX, innerTargetY);
                 foreach (var conn in vm.Connections.Where(c => c.FromNode == inner || c.ToNode == inner))
                 {
                     Host.UpdateConnectionPath(conn);
@@ -411,6 +418,24 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         {
             _collisionResolver.ResolveCollision(vm, moved, Host);
         }
+    }
+
+    /// <summary>
+    /// Force cập nhật Canvas position cho node, bypass RenderTransform optimization.
+    /// Cần thiết khi push body-type nodes (LoopBodyNode, AsyncTaskBodyNode) vì
+    /// _NodeRenderer.UpdateNodePosition skip Canvas.SetLeft/Top khi có RenderTransform.
+    /// </summary>
+    private static void ForceCanvasPosition(WorkflowNode node, double x, double y)
+    {
+        if (node.Border == null) return;
+        // Reset RenderTransform nếu có để tránh position drift
+        if (node.Border.RenderTransform is System.Windows.Media.TranslateTransform tt && (tt.X != 0 || tt.Y != 0))
+        {
+            tt.X = 0;
+            tt.Y = 0;
+        }
+        Canvas.SetLeft(node.Border, x);
+        Canvas.SetTop(node.Border, y);
     }
 
     private List<WorkflowNode> CaptureLoopOrAsyncBodyChildren(FlowMy.ViewModels.WorkflowEditorViewModel vm, WorkflowNode bodyNode)

@@ -798,28 +798,11 @@ namespace FlowMy.Services.Rendering
                 var deltaX = currentPos.X - containerDragStart.X;
                 var deltaY = currentPos.Y - containerDragStart.Y;
 
-                var proposedX = containerOriginalPos.X + deltaX;
-                var proposedY = containerOriginalPos.Y + deltaY;
-                var moveDx = proposedX - body.X;
-                var moveDy = proposedY - body.Y;
-
-                // ✅ Kiểm tra nếu di chuyển AsyncTaskBody sẽ lọt vào locked BodyContainerNode → chặn
-                if (_host.ViewModel != null)
-                {
-                    var movingGroup = new System.Collections.Generic.List<WorkflowNode> { body, asyncTaskNode };
-                    if (bodyClusterNodes != null) movingGroup.AddRange(bodyClusterNodes);
-                    if (LockedBodyHelper.WouldEnterLockedBody(_host.ViewModel, movingGroup, moveDx, moveDy))
-                    {
-                        e.Handled = true;
-                        return;
-                    }
-                }
-
                 double oldX = body.X;
                 double oldY = body.Y;
 
-                body.X = proposedX;
-                body.Y = proposedY;
+                body.X = containerOriginalPos.X + deltaX;
+                body.Y = containerOriginalPos.Y + deltaY;
 
                 Canvas.SetLeft(containerBorder, body.X);
                 Canvas.SetTop(containerBorder, body.Y);
@@ -844,8 +827,6 @@ namespace FlowMy.Services.Rendering
 
                             double cx = child.X + stepX;
                             double cy = child.Y + stepY;
-                            // Update renderer first so specialized renderers (e.g. Conditional diamond)
-                            // can compute movement delta from previous X/Y and move their satellite visuals.
                             _host.UpdateNodePosition(child, cx, cy);
                             vm.UpdateNodePosition(child, cx, cy);
 
@@ -869,6 +850,11 @@ namespace FlowMy.Services.Rendering
                                 _host.UpdateConnectionPath(cc);
                         }
                     }
+
+                    // ✅ Đẩy locked bodies ra khi AsyncTaskBody overlap (push effect)
+                    var movingGroup = new System.Collections.Generic.List<WorkflowNode> { body, asyncTaskNode };
+                    if (bodyClusterNodes != null) movingGroup.AddRange(bodyClusterNodes);
+                    LockedBodyHelper.PushLockedBodiesAway(vm, _host, movingGroup);
                 }
 
                 e.Handled = true;
