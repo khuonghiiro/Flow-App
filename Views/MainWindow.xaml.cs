@@ -14,7 +14,7 @@ namespace FlowMy.Views
     {
         private readonly ColorThemeService? _colorThemeService;
         private bool _isHiddenToTray = false;
-        private bool _enableHideToTray = true;
+        private bool _enableHideToTray = Properties.Settings.Default.EnableHideToTray;
 
         public MainWindow()
         {
@@ -24,6 +24,16 @@ namespace FlowMy.Views
             if (DataContext == null && App.Services != null)
             {
                 DataContext = App.Services.GetService(typeof(MainViewModel));
+            }
+
+            // Khôi phục trạng thái "Ẩn tray" từ lần chạy trước
+            if (EnableHideToTrayCheckBox != null)
+            {
+                EnableHideToTrayCheckBox.IsChecked = _enableHideToTray;
+            }
+            if (HideToTrayButton != null)
+            {
+                HideToTrayButton.IsEnabled = _enableHideToTray;
             }
 
             // Mỗi lần window được Activate (quay lại từ Editor), refresh danh sách widgets (async để không block UI)
@@ -92,6 +102,8 @@ namespace FlowMy.Views
             _enableHideToTray = true;
             if (HideToTrayButton != null)
                 HideToTrayButton.IsEnabled = true;
+            Properties.Settings.Default.EnableHideToTray = true;
+            Properties.Settings.Default.Save();
         }
 
         private void EnableHideToTrayCheckBox_Unchecked(object sender, RoutedEventArgs e)
@@ -99,6 +111,8 @@ namespace FlowMy.Views
             _enableHideToTray = false;
             if (HideToTrayButton != null)
                 HideToTrayButton.IsEnabled = false;
+            Properties.Settings.Default.EnableHideToTray = false;
+            Properties.Settings.Default.Save();
         }
 
         private void ToggleBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
