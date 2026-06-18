@@ -30,7 +30,7 @@ public static class LockedBodyHelper
     {
         if (node is BodyContainerNode) return null;
 
-        var nodeRect = GetNodeRect(node);
+        var nodeRect = GetNodeRect(viewModel, node);
 
         foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
         {
@@ -44,6 +44,51 @@ public static class LockedBodyHelper
                 return body;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Kiểm tra xem nếu BodyContainerNode di chuyển thêm (dx, dy) thì có lọt vào
+    /// trong viền của một LoopBodyNode, AsyncTaskBodyNode, hoặc BodyContainerNode khác hay không.
+    /// Dùng để chặn di chuyển (block) thay vì push.
+    /// </summary>
+    public static bool WouldBodyEnterOtherContainerBodies(
+        ViewModels.WorkflowEditorViewModel viewModel,
+        BodyContainerNode movingBody,
+        double moveDx, double moveDy)
+    {
+        var originalRect = GetNodeRect(viewModel, movingBody);
+        var proposedRect = new Rect(
+            originalRect.X + moveDx,
+            originalRect.Y + moveDy,
+            originalRect.Width,
+            originalRect.Height);
+
+        // Mở rộng thêm margin để chặn từ xa
+        var inflatedProposed = new Rect(
+            proposedRect.X - Margin,
+            proposedRect.Y - Margin,
+            proposedRect.Width + Margin * 2,
+            proposedRect.Height + Margin * 2);
+
+        foreach (var node in viewModel.Nodes)
+        {
+            if (ReferenceEquals(node, movingBody)) continue;
+            // Chỉ kiểm tra block với các body-type nodes
+            if (node is not (LoopBodyNode or AsyncTaskBodyNode or BodyContainerNode)) continue;
+
+            // Nếu movingBody chứa node này (node này là con của movingBody), thì không block
+            if (movingBody.LockInnerNodes)
+            {
+                var bodyOriginalRect = new Rect(movingBody.X, movingBody.Y, movingBody.BodyWidth, movingBody.BodyHeight);
+                var nodeCenter = GetNodeCenter(viewModel, node);
+                if (bodyOriginalRect.Contains(nodeCenter)) continue; // là con, bỏ qua
+            }
+
+            var targetRect = GetNodeRect(viewModel, node);
+            if (inflatedProposed.IntersectsWith(targetRect))
+                return true; // Sẽ lọt vào -> block
+        }
+        return false;
     }
 
     /// <summary>
@@ -84,7 +129,7 @@ public static class LockedBodyHelper
             {
                 if (node is BodyContainerNode) continue; // Body không push body khác bằng cách này
 
-                var nodeRect = GetNodeRect(node);
+                var nodeRect = GetNodeRect(viewModel, node);
                 if (!inflatedRect.IntersectsWith(nodeRect)) continue;
 
                 // Tính overlap trên mỗi cạnh
@@ -142,12 +187,20 @@ public static class LockedBodyHelper
 
         var lockedSet = new HashSet<WorkflowNode>(lockedInnerNodes) { lockedBody };
 
-        foreach (var node in viewModel.Nodes.ToList())
+        var targetBodies = new List<WorkflowNode>();
+        foreach (var node in viewModel.Nodes)
         {
-            if (lockedSet.Contains(node)) continue;
-            if (node is not (LoopBodyNode or AsyncTaskBodyNode or BodyContainerNode)) continue;
+            if (node is BodyContainerNode bcn && !lockedSet.Contains(bcn))
+                targetBodies.Add(bcn);
+            else if (node is LoopNode ln && ln.LoopBodyNode != null && !lockedSet.Contains(ln.LoopBodyNode))
+                targetBodies.Add(ln.LoopBodyNode);
+            else if (node is AsyncTaskNode an && an.AsyncTaskBodyNode != null && !lockedSet.Contains(an.AsyncTaskBodyNode))
+                targetBodies.Add(an.AsyncTaskBodyNode);
+        }
 
-            var nodeRect = GetNodeRect(node);
+        foreach (var node in targetBodies)
+        {
+            var nodeRect = GetNodeRect(viewModel, node);
             if (!inflatedRect.IntersectsWith(nodeRect)) continue;
 
             double overlapRight = lockedRect.Right + Margin - nodeRect.Left;
@@ -193,19 +246,19 @@ public static class LockedBodyHelper
                 foreach (var inner in viewModel.Nodes)
                 {
                     if (ReferenceEquals(inner, childBody) || lockedSet.Contains(inner)) continue;
-                    if (bodyRect2.Contains(GetNodeCenter(inner)))
+                    if (bodyRect2.Contains(GetNodeCenter(viewModel, inner)))
                         linkedNodes.Add(inner);
                 }
             }
 
             // Di chuyển node chính + linked nodes
             host.UpdateNodePosition(node, node.X + pushDx, node.Y + pushDy);
-            ForceCanvasPosition(node, node.X, node.Y);
+            ForceCanvasPosition(viewModel, node, node.X, node.Y);
 
             foreach (var linked in linkedNodes)
             {
                 host.UpdateNodePosition(linked, linked.X + pushDx, linked.Y + pushDy);
-                ForceCanvasPosition(linked, linked.X, linked.Y);
+                ForceCanvasPosition(viewModel, linked, linked.X, linked.Y);
             }
 
             var allMoved = new HashSet<WorkflowNode>(linkedNodes) { node };
@@ -224,12 +277,12 @@ public static class LockedBodyHelper
         ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode bodyNode)
     {
         var result = new List<WorkflowNode>();
-        var bodyRect = GetNodeRect(bodyNode);
+        var bodyRect = GetNodeRect(viewModel, bodyNode);
         foreach (var child in viewModel.Nodes)
         {
             if (ReferenceEquals(child, bodyNode)) continue;
             if (child is LoopNode || child is AsyncTaskNode || child is BodyContainerNode) continue;
-            if (bodyRect.Contains(GetNodeCenter(child)))
+            if (bodyRect.Contains(GetNodeCenter(viewModel, child)))
                 result.Add(child);
         }
         return result;
@@ -255,20 +308,20 @@ public static class LockedBodyHelper
             if (ReferenceEquals(node, lockedBody)) continue;
             if (excludeNodes != null && excludeNodes.Contains(node)) continue;
 
-            var nodeCenter = GetNodeCenter(node);
+            var nodeCenter = GetNodeCenter(viewModel, node);
             if (bodyRect.Contains(nodeCenter))
                 innerNodes.Add(node);
         }
 
         // Di chuyển locked body
         host.UpdateNodePosition(lockedBody, lockedBody.X + dx, lockedBody.Y + dy);
-        ForceCanvasPosition(lockedBody, lockedBody.X, lockedBody.Y);
+        ForceCanvasPosition(viewModel, lockedBody, lockedBody.X, lockedBody.Y);
 
         // Di chuyển inner nodes
         foreach (var inner in innerNodes)
         {
             host.UpdateNodePosition(inner, inner.X + dx, inner.Y + dy);
-            ForceCanvasPosition(inner, inner.X, inner.Y);
+            ForceCanvasPosition(viewModel, inner, inner.X, inner.Y);
         }
 
         // Cập nhật tất cả connections liên quan
@@ -283,50 +336,69 @@ public static class LockedBodyHelper
     /// <summary>
     /// Lấy bounding rect của một node.
     /// </summary>
-    public static Rect GetNodeRect(WorkflowNode node)
+    public static Rect GetNodeRect(ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node)
     {
-        double nodeW, nodeH;
-        if (node is LoopBodyNode lb)
+        double nodeW = 150, nodeH = 80;
+        Border? targetBorder = node.Border;
+        
+        if (node is LoopBodyNode loopBody)
         {
-            nodeW = lb.Width > 0 ? lb.Width : (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150);
-            nodeH = lb.Height > 0 ? lb.Height : (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80);
+            var parentLoop = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+            if (parentLoop != null) targetBorder = parentLoop.ContainerBorder;
+            nodeW = loopBody.Width > 0 ? loopBody.Width : (targetBorder?.ActualWidth > 1 ? targetBorder.ActualWidth : 150);
+            nodeH = loopBody.Height > 0 ? loopBody.Height : (targetBorder?.ActualHeight > 1 ? targetBorder.ActualHeight : 80);
         }
-        else if (node is AsyncTaskBodyNode ab)
+        else if (node is AsyncTaskBodyNode asyncBody)
         {
-            nodeW = ab.Width > 0 ? ab.Width : (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150);
-            nodeH = ab.Height > 0 ? ab.Height : (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80);
+            var parentAsync = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+            if (parentAsync != null) targetBorder = parentAsync.ContainerBorder;
+            nodeW = asyncBody.Width > 0 ? asyncBody.Width : (targetBorder?.ActualWidth > 1 ? targetBorder.ActualWidth : 150);
+            nodeH = asyncBody.Height > 0 ? asyncBody.Height : (targetBorder?.ActualHeight > 1 ? targetBorder.ActualHeight : 80);
         }
         else if (node is BodyContainerNode bcn)
         {
-            nodeW = bcn.BodyWidth > 0 ? bcn.BodyWidth : (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150);
-            nodeH = bcn.BodyHeight > 0 ? bcn.BodyHeight : (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80);
+            nodeW = bcn.BodyWidth > 0 ? bcn.BodyWidth : (targetBorder?.ActualWidth > 1 ? targetBorder.ActualWidth : 150);
+            nodeH = bcn.BodyHeight > 0 ? bcn.BodyHeight : (targetBorder?.ActualHeight > 1 ? targetBorder.ActualHeight : 80);
         }
         else
         {
-            nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-            nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+            nodeW = targetBorder?.ActualWidth > 1 ? targetBorder.ActualWidth : 150;
+            nodeH = targetBorder?.ActualHeight > 1 ? targetBorder.ActualHeight : 80;
         }
+        
         return new Rect(node.X, node.Y, nodeW, nodeH);
     }
 
-    private static Point GetNodeCenter(WorkflowNode node)
+    private static Point GetNodeCenter(ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node)
     {
-        var rect = GetNodeRect(node);
+        var rect = GetNodeRect(viewModel, node);
         return new Point(rect.X + rect.Width / 2.0, rect.Y + rect.Height / 2.0);
     }
     /// <summary>
     /// Force cập nhật Canvas position cho node, bypass RenderTransform optimization.
     /// Reset TranslateTransform nếu có để tránh position drift.
     /// </summary>
-    private static void ForceCanvasPosition(WorkflowNode node, double x, double y)
+    private static void ForceCanvasPosition(ViewModels.WorkflowEditorViewModel viewModel, WorkflowNode node, double x, double y)
     {
-        if (node.Border == null) return;
-        if (node.Border.RenderTransform is System.Windows.Media.TranslateTransform tt && (tt.X != 0 || tt.Y != 0))
+        Border? targetBorder = node.Border;
+        if (node is LoopBodyNode loopBody)
+        {
+            var parentLoop = viewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+            if (parentLoop != null) targetBorder = parentLoop.ContainerBorder;
+        }
+        else if (node is AsyncTaskBodyNode asyncBody)
+        {
+            var parentAsync = viewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+            if (parentAsync != null) targetBorder = parentAsync.ContainerBorder;
+        }
+
+        if (targetBorder == null) return;
+        if (targetBorder.RenderTransform is System.Windows.Media.TranslateTransform tt && (tt.X != 0 || tt.Y != 0))
         {
             tt.X = 0;
             tt.Y = 0;
         }
-        Canvas.SetLeft(node.Border, x);
-        Canvas.SetTop(node.Border, y);
+        Canvas.SetLeft(targetBorder, x);
+        Canvas.SetTop(targetBorder, y);
     }
 }

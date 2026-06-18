@@ -132,8 +132,11 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             var dx = current.X - startPoint.X;
             var dy = current.Y - startPoint.Y;
 
-            bodyNode.X = origin.X + dx;
-            bodyNode.Y = origin.Y + dy;
+            var proposedX = origin.X + dx;
+            var proposedY = origin.Y + dy;
+
+            bodyNode.X = proposedX;
+            bodyNode.Y = proposedY;
             Canvas.SetLeft(border, bodyNode.X);
             Canvas.SetTop(border, bodyNode.Y);
 
@@ -320,7 +323,9 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         foreach (var node in vm.Nodes)
         {
             if (lockedSet.Contains(node)) continue;
-            var nodeRect = LockedBodyHelper.GetNodeRect(node);
+            // Bỏ qua các body-type nodes vì chúng đã được xử lý bởi PushChildBodiesAwayFromLockedBody
+            if (node is LoopBodyNode or AsyncTaskBodyNode or BodyContainerNode) continue;
+            var nodeRect = LockedBodyHelper.GetNodeRect(vm, node);
             if (!inflatedBounds.IntersectsWith(nodeRect)) continue;
 
             var center = new Point(nodeRect.Left + nodeRect.Width / 2.0, nodeRect.Top + nodeRect.Height / 2.0);
@@ -425,17 +430,30 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
     /// Cần thiết khi push body-type nodes (LoopBodyNode, AsyncTaskBodyNode) vì
     /// _NodeRenderer.UpdateNodePosition skip Canvas.SetLeft/Top khi có RenderTransform.
     /// </summary>
-    private static void ForceCanvasPosition(WorkflowNode node, double x, double y)
+    private void ForceCanvasPosition(WorkflowNode node, double x, double y)
     {
-        if (node.Border == null) return;
+        Border? targetBorder = node.Border;
+        if (node is LoopBodyNode loopBody && Host.ViewModel != null)
+        {
+            var parentLoop = Host.ViewModel.Nodes.OfType<LoopNode>().FirstOrDefault(n => n.LoopBodyNode == loopBody);
+            if (parentLoop != null) targetBorder = parentLoop.ContainerBorder;
+        }
+        else if (node is AsyncTaskBodyNode asyncBody && Host.ViewModel != null)
+        {
+            var parentAsync = Host.ViewModel.Nodes.OfType<AsyncTaskNode>().FirstOrDefault(n => n.AsyncTaskBodyNode == asyncBody);
+            if (parentAsync != null) targetBorder = parentAsync.ContainerBorder;
+        }
+
+        if (targetBorder == null) return;
+
         // Reset RenderTransform nếu có để tránh position drift
-        if (node.Border.RenderTransform is System.Windows.Media.TranslateTransform tt && (tt.X != 0 || tt.Y != 0))
+        if (targetBorder.RenderTransform is System.Windows.Media.TranslateTransform tt && (tt.X != 0 || tt.Y != 0))
         {
             tt.X = 0;
             tt.Y = 0;
         }
-        Canvas.SetLeft(node.Border, x);
-        Canvas.SetTop(node.Border, y);
+        Canvas.SetLeft(targetBorder, x);
+        Canvas.SetTop(targetBorder, y);
     }
 
     private List<WorkflowNode> CaptureLoopOrAsyncBodyChildren(FlowMy.ViewModels.WorkflowEditorViewModel vm, WorkflowNode bodyNode)
