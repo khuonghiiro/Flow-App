@@ -37,6 +37,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private bool isConfigureLastWidgetLoading;
         private readonly HashSet<string> _trayPinnedKeys = new(System.StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, WorkflowEditorWindow> _headlessWorkflowWindows = new(System.StringComparer.OrdinalIgnoreCase);
+        /// <summary>Debounce: thời điểm lần cuối RefreshWidgetShortcuts chạy xong.</summary>
+        private DateTime _lastRefreshUtc = DateTime.MinValue;
+        private const int RefreshDebounceMs = 300;
         private readonly HashSet<WorkflowEditorWindow> _isRehidingHeadlessWindow = new();
 
         public MainViewModel()
@@ -56,6 +59,12 @@ namespace FlowMy.ViewModels
         [RelayCommand]
         public void RefreshWidgetShortcuts()
         {
+            // Debounce: bỏ qua nếu vừa refresh xong trong khoảng ngắn
+            // (tránh Closed + Activated cùng trigger scan file 2 lần liên tiếp).
+            var now = DateTime.UtcNow;
+            if ((now - _lastRefreshUtc).TotalMilliseconds < RefreshDebounceMs)
+                return;
+
             WidgetShortcuts.Clear();
             WidgetGroups.Clear();
             try
@@ -90,8 +99,79 @@ namespace FlowMy.ViewModels
             SyncPinnedStatesFromCache();
             RefreshGroupPinnedStatesAndSort();
             SyncTrayPinnedMenu();
+            _lastRefreshUtc = DateTime.UtcNow;
 
             // Validate shortcut gần nhất còn tồn tại sau khi refresh.
+            if (!string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) &&
+                !string.IsNullOrWhiteSpace(LastConfiguredNodeId))
+            {
+                HasLastConfiguredWidget = WidgetShortcuts.Any(w =>
+                    string.Equals(w.WorkflowName, LastConfiguredWorkflowName, System.StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(w.NodeId, LastConfiguredNodeId, System.StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                HasLastConfiguredWidget = false;
+            }
+        }
+
+        /// <summary>
+        /// Async variant: chạy file scan trên background thread,
+        /// cập nhật UI collections trên dispatcher — không block UI.
+        /// </summary>
+        public async Task RefreshWidgetShortcutsAsync()
+        {
+            // Debounce
+            var now = DateTime.UtcNow;
+            if ((now - _lastRefreshUtc).TotalMilliseconds < RefreshDebounceMs)
+                return;
+
+            WidgetShortcutScanner.ScanResult scan;
+            try
+            {
+                scan = await WidgetShortcutScanner.ScanAsync();
+            }
+            catch
+            {
+                return;
+            }
+
+            // Cập nhật collections trên UI thread
+            WidgetShortcuts.Clear();
+            WidgetGroups.Clear();
+            try
+            {
+                var ordered = scan.Items
+                    .OrderBy(i => i.WorkflowName)
+                    .ThenBy(i => i.WidgetName)
+                    .ToList();
+
+                foreach (var item in ordered)
+                {
+                    WidgetShortcuts.Add(item);
+                }
+                WidgetEnabledCount = scan.EnabledCount;
+
+                foreach (var group in ordered.GroupBy(i => i.WorkflowName))
+                {
+                    var g = new WorkflowWidgetGroupItem { WorkflowName = group.Key };
+                    foreach (var w in group) g.Widgets.Add(w);
+                    WidgetGroups.Add(g);
+                }
+                WorkflowCount = WidgetGroups.Count;
+            }
+            catch
+            {
+                WidgetEnabledCount = 0;
+                WorkflowCount = 0;
+            }
+            HasWidgetShortcuts = WidgetShortcuts.Count > 0;
+            SyncWidgetOpenStates();
+            SyncPinnedStatesFromCache();
+            RefreshGroupPinnedStatesAndSort();
+            SyncTrayPinnedMenu();
+            _lastRefreshUtc = DateTime.UtcNow;
+
             if (!string.IsNullOrWhiteSpace(LastConfiguredWorkflowName) &&
                 !string.IsNullOrWhiteSpace(LastConfiguredNodeId))
             {
@@ -757,7 +837,7 @@ namespace FlowMy.ViewModels
                 mainWindow?.Hide();
             }
 
-            workflowWindow.Closed += (_, __) =>
+            workflowWindow.Closed += async (_, __) =>
             {
                 scope.Dispose();
                 foreach (var kv in _headlessWorkflowWindows.Where(kv => ReferenceEquals(kv.Value, workflowWindow)).ToList())
@@ -770,7 +850,7 @@ namespace FlowMy.ViewModels
                     mainWindow.Show();
                     mainWindow.Activate();
                 }
-                RefreshWidgetShortcuts();
+                await RefreshWidgetShortcutsAsync();
             };
 
             void ActivateWidgets()

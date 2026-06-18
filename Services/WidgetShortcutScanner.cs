@@ -41,8 +41,15 @@ namespace FlowMy.Services
                 try
                 {
                     var workflowName = Path.GetFileNameWithoutExtension(path);
-                    var json = File.ReadAllText(path);
-                    using var doc = JsonDocument.Parse(json);
+
+                    // Đọc trực tiếp bằng FileStream + JsonDocument thay vì ReadAllText
+                    // → giảm string allocation cho file lớn.
+                    using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var doc = JsonDocument.Parse(fs, new JsonDocumentOptions
+                    {
+                        AllowTrailingCommas = true,
+                        CommentHandling = JsonCommentHandling.Skip
+                    });
                     var root = doc.RootElement;
 
                     if (!root.TryGetProperty("Nodes", out var nodesEl) ||
@@ -93,6 +100,15 @@ namespace FlowMy.Services
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Async variant: chạy toàn bộ file I/O trên background thread,
+        /// trả kết quả về UI thread để bind.
+        /// </summary>
+        public static async System.Threading.Tasks.Task<ScanResult> ScanAsync()
+        {
+            return await System.Threading.Tasks.Task.Run(() => Scan()).ConfigureAwait(false);
         }
     }
 }

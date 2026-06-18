@@ -26,12 +26,12 @@ namespace FlowMy.Views
                 DataContext = App.Services.GetService(typeof(MainViewModel));
             }
 
-            // Mỗi lần window được Activate (quay lại từ Editor), refresh danh sách widgets
-            Activated += (_, __) =>
+            // Mỗi lần window được Activate (quay lại từ Editor), refresh danh sách widgets (async để không block UI)
+            Activated += async (_, __) =>
             {
                 if (DataContext is MainViewModel vm)
                 {
-                    vm.RefreshWidgetShortcuts();
+                    await vm.RefreshWidgetShortcutsAsync();
                 }
             };
 
