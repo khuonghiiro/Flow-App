@@ -758,6 +758,17 @@ namespace FlowMy.Services.Rendering
                     CloseNodeDialogIfOpen();
                 }
 
+                // ✅ Nếu AsyncTaskBodyNode nằm bên trong một locked BodyContainerNode → không cho kéo
+                if (_host.ViewModel != null)
+                {
+                    var owningLocked = LockedBodyHelper.FindOwningLockedBody(_host.ViewModel, body);
+                    if (owningLocked != null)
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
                 _host.ZIndexManager.SelectNode(body);
 
                 if (_host.ViewModel != null)
@@ -787,11 +798,28 @@ namespace FlowMy.Services.Rendering
                 var deltaX = currentPos.X - containerDragStart.X;
                 var deltaY = currentPos.Y - containerDragStart.Y;
 
+                var proposedX = containerOriginalPos.X + deltaX;
+                var proposedY = containerOriginalPos.Y + deltaY;
+                var moveDx = proposedX - body.X;
+                var moveDy = proposedY - body.Y;
+
+                // ✅ Kiểm tra nếu di chuyển AsyncTaskBody sẽ lọt vào locked BodyContainerNode → chặn
+                if (_host.ViewModel != null)
+                {
+                    var movingGroup = new System.Collections.Generic.List<WorkflowNode> { body, asyncTaskNode };
+                    if (bodyClusterNodes != null) movingGroup.AddRange(bodyClusterNodes);
+                    if (LockedBodyHelper.WouldEnterLockedBody(_host.ViewModel, movingGroup, moveDx, moveDy))
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
                 double oldX = body.X;
                 double oldY = body.Y;
 
-                body.X = containerOriginalPos.X + deltaX;
-                body.Y = containerOriginalPos.Y + deltaY;
+                body.X = proposedX;
+                body.Y = proposedY;
 
                 Canvas.SetLeft(containerBorder, body.X);
                 Canvas.SetTop(containerBorder, body.Y);

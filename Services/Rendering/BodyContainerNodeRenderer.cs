@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
@@ -103,6 +104,18 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             }
 
             if (e.LeftButton != MouseButtonState.Pressed) return;
+
+            // ✅ Nếu bodyNode này nằm bên trong một locked BodyContainerNode khác → không cho kéo
+            if (Host.ViewModel != null)
+            {
+                var owningLocked = FindOwningLockedBodyForBody(Host.ViewModel, bodyNode);
+                if (owningLocked != null)
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             dragging = true;
             startPoint = e.GetPosition(Host.WorkflowCanvas);
             origin = new Point(bodyNode.X, bodyNode.Y);
@@ -119,8 +132,25 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             var dx = current.X - startPoint.X;
             var dy = current.Y - startPoint.Y;
 
-            bodyNode.X = origin.X + dx;
-            bodyNode.Y = origin.Y + dy;
+            var proposedX = origin.X + dx;
+            var proposedY = origin.Y + dy;
+
+            // ✅ Kiểm tra nếu di chuyển body sẽ lọt vào locked BodyContainerNode khác → chặn
+            if (Host.ViewModel != null)
+            {
+                var movingGroup = new List<WorkflowNode> { bodyNode };
+                if (nodesInside != null) movingGroup.AddRange(nodesInside);
+                var moveDx = proposedX - bodyNode.X;
+                var moveDy = proposedY - bodyNode.Y;
+                if (LockedBodyHelper.WouldEnterLockedBody(Host.ViewModel, movingGroup, moveDx, moveDy))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            bodyNode.X = proposedX;
+            bodyNode.Y = proposedY;
             Canvas.SetLeft(border, bodyNode.X);
             Canvas.SetTop(border, bodyNode.Y);
 
@@ -427,5 +457,32 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
             ClearEffectsRecursive(child);
         }
+    }
+    /// <summary>
+    /// Kiểm tra xem BodyContainerNode này có nằm bên trong một locked BodyContainerNode khác không.
+    /// Khác với FindOwningLockedBody thông thường (skip BodyContainerNode), method này cho phép
+    /// kiểm tra BodyContainerNode con bên trong BodyContainerNode cha.
+    /// </summary>
+    private static BodyContainerNode? FindOwningLockedBodyForBody(
+        ViewModels.WorkflowEditorViewModel viewModel,
+        BodyContainerNode childBody)
+    {
+        double nodeW = childBody.BodyWidth > 0 ? childBody.BodyWidth : (childBody.Border?.ActualWidth ?? 150);
+        double nodeH = childBody.BodyHeight > 0 ? childBody.BodyHeight : (childBody.Border?.ActualHeight ?? 80);
+        var center = new Point(childBody.X + nodeW / 2.0, childBody.Y + nodeH / 2.0);
+
+        foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
+        {
+            if (ReferenceEquals(body, childBody)) continue; // Skip chính nó
+            if (!body.LockInnerNodes) continue;
+            var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
+            var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+            if (width <= 0 || height <= 0) continue;
+
+            var rect = new Rect(body.X, body.Y, width, height);
+            if (rect.Contains(center))
+                return body;
+        }
+        return null;
     }
 }

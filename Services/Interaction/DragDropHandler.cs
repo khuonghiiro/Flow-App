@@ -392,6 +392,17 @@ namespace FlowMy.Services.Interaction
             if (host.DraggedNode != null)
                 host.ClampNodeDragToAutoScheduledScope(host.DraggedNode, ref newX, ref newY);
 
+            // ✅ Ràng buộc: Không cho phép kéo node vào trong locked BodyContainerNode
+            if (host.DraggedNode != null && host.DraggedNode is not BodyContainerNode)
+            {
+                if (LockedBodyHelper.WouldSingleNodeEnterLockedBody(viewModel, host.DraggedNode, newX, newY))
+                {
+                    // Chặn di chuyển: giữ nguyên vị trí cũ
+                    newX = host.DraggedNode.X;
+                    newY = host.DraggedNode.Y;
+                }
+            }
+
             // ✅ Logic 2: Kéo LoopBody -> Kéo theo các node con (Connected Children)
             if (host.DraggedNode is LoopBodyNode bodyNode)
             {
