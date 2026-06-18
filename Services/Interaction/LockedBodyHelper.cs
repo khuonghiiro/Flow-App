@@ -15,7 +15,12 @@ namespace FlowMy.Services.Interaction;
 public static class LockedBodyHelper
 {
     /// <summary>
-    /// Tìm locked BodyContainerNode đang chứa node này (dựa trên center point).
+    /// Khoảng cách margin (px) giữa node và locked body edge trước khi bị chặn.
+    /// </summary>
+    private const double Margin = 10.0;
+
+    /// <summary>
+    /// Tìm locked BodyContainerNode đang chứa node này (dựa trên rect overlap).
     /// Trả về null nếu node không nằm trong bất kỳ locked body nào.
     /// </summary>
     public static BodyContainerNode? FindOwningLockedBody(
@@ -25,7 +30,7 @@ public static class LockedBodyHelper
         // BodyContainerNode không thể bị nhốt bởi body khác (trong context này)
         if (node is BodyContainerNode) return null;
 
-        var center = GetNodeCenter(node);
+        var nodeRect = GetNodeRect(node);
 
         foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
         {
@@ -34,8 +39,8 @@ public static class LockedBodyHelper
             var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
             if (width <= 0 || height <= 0) continue;
 
-            var rect = new Rect(body.X, body.Y, width, height);
-            if (rect.Contains(center))
+            var bodyRect = new Rect(body.X, body.Y, width, height);
+            if (bodyRect.IntersectsWith(nodeRect))
                 return body;
         }
         return null;
@@ -44,12 +49,8 @@ public static class LockedBodyHelper
     /// <summary>
     /// Kiểm tra xem node (hoặc nhóm nodes di chuyển cùng nó) có sẽ lọt vào
     /// một locked BodyContainerNode sau khi di chuyển theo (dx, dy) hay không.
+    /// Sử dụng rect overlap với 10px margin thay vì center-point containment.
     /// </summary>
-    /// <param name="viewModel">ViewModel chứa danh sách nodes</param>
-    /// <param name="movingNodes">Tất cả nodes sẽ di chuyển cùng (bao gồm bản thân node chính)</param>
-    /// <param name="dx">Delta X</param>
-    /// <param name="dy">Delta Y</param>
-    /// <returns>true nếu sẽ lọt vào → cần chặn di chuyển</returns>
     public static bool WouldEnterLockedBody(
         ViewModels.WorkflowEditorViewModel viewModel,
         IEnumerable<WorkflowNode> movingNodes,
@@ -57,7 +58,6 @@ public static class LockedBodyHelper
     {
         var movingSet = new HashSet<WorkflowNode>(movingNodes);
 
-        // Lấy danh sách tất cả locked BodyContainerNode mà KHÔNG thuộc nhóm đang di chuyển
         var lockedBodies = viewModel.Nodes.OfType<BodyContainerNode>()
             .Where(b => b.LockInnerNodes && !movingSet.Contains(b))
             .ToList();
@@ -66,26 +66,24 @@ public static class LockedBodyHelper
 
         foreach (var node in movingSet)
         {
-            // Bỏ qua BodyContainerNode (chúng không bị nhốt vào body khác)
             if (node is BodyContainerNode) continue;
 
-            double nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-            double nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-            if (node is LoopBodyNode lb) { nodeW = lb.Width > 0 ? lb.Width : nodeW; nodeH = lb.Height > 0 ? lb.Height : nodeH; }
-            else if (node is AsyncTaskBodyNode ab) { nodeW = ab.Width > 0 ? ab.Width : nodeW; nodeH = ab.Height > 0 ? ab.Height : nodeH; }
-
-            var currentCenter = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
-            var newCenter = new Point(node.X + dx + nodeW / 2.0, node.Y + dy + nodeH / 2.0);
+            var currentRect = GetNodeRect(node);
+            var proposedRect = new Rect(node.X + dx, node.Y + dy, currentRect.Width, currentRect.Height);
 
             foreach (var lockedBody in lockedBodies)
             {
-                var bodyRect = new Rect(lockedBody.X, lockedBody.Y, lockedBody.BodyWidth, lockedBody.BodyHeight);
+                // Mở rộng locked body rect thêm Margin px mỗi bên
+                var inflatedBodyRect = new Rect(
+                    lockedBody.X - Margin,
+                    lockedBody.Y - Margin,
+                    lockedBody.BodyWidth + Margin * 2,
+                    lockedBody.BodyHeight + Margin * 2);
 
-                // Chỉ chặn nếu node CHƯA nằm trong locked body nhưng SAU khi di chuyển SẼ lọt vào
-                bool wasInside = bodyRect.Contains(currentCenter);
-                bool wouldBeInside = bodyRect.Contains(newCenter);
+                bool wasOverlapping = inflatedBodyRect.IntersectsWith(currentRect);
+                bool wouldOverlap = inflatedBodyRect.IntersectsWith(proposedRect);
 
-                if (!wasInside && wouldBeInside)
+                if (!wasOverlapping && wouldOverlap)
                     return true;
             }
         }
@@ -95,7 +93,7 @@ public static class LockedBodyHelper
 
     /// <summary>
     /// Kiểm tra xem một node cụ thể (không tính nhóm) có sẽ lọt vào locked body hay không.
-    /// Dùng cho trường hợp đơn giản khi chỉ cần check 1 node.
+    /// Sử dụng rect overlap với 10px margin.
     /// </summary>
     public static bool WouldSingleNodeEnterLockedBody(
         ViewModels.WorkflowEditorViewModel viewModel,
@@ -104,35 +102,55 @@ public static class LockedBodyHelper
     {
         if (node is BodyContainerNode) return false;
 
-        double nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-        double nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-        if (node is LoopBodyNode lb) { nodeW = lb.Width > 0 ? lb.Width : nodeW; nodeH = lb.Height > 0 ? lb.Height : nodeH; }
-        else if (node is AsyncTaskBodyNode ab) { nodeW = ab.Width > 0 ? ab.Width : nodeW; nodeH = ab.Height > 0 ? ab.Height : nodeH; }
-
-        var currentCenter = new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
-        var newCenter = new Point(newX + nodeW / 2.0, newY + nodeH / 2.0);
+        var currentRect = GetNodeRect(node);
+        var proposedRect = new Rect(newX, newY, currentRect.Width, currentRect.Height);
 
         foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
         {
             if (!body.LockInnerNodes) continue;
-            var bodyRect = new Rect(body.X, body.Y, body.BodyWidth, body.BodyHeight);
 
-            bool wasInside = bodyRect.Contains(currentCenter);
-            bool wouldBeInside = bodyRect.Contains(newCenter);
+            var inflatedBodyRect = new Rect(
+                body.X - Margin,
+                body.Y - Margin,
+                body.BodyWidth + Margin * 2,
+                body.BodyHeight + Margin * 2);
 
-            if (!wasInside && wouldBeInside)
+            bool wasOverlapping = inflatedBodyRect.IntersectsWith(currentRect);
+            bool wouldOverlap = inflatedBodyRect.IntersectsWith(proposedRect);
+
+            if (!wasOverlapping && wouldOverlap)
                 return true;
         }
 
         return false;
     }
 
-    private static Point GetNodeCenter(WorkflowNode node)
+    /// <summary>
+    /// Lấy bounding rect của một node.
+    /// </summary>
+    public static Rect GetNodeRect(WorkflowNode node)
     {
-        double nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-        double nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-        if (node is LoopBodyNode lb) { nodeW = lb.Width > 0 ? lb.Width : nodeW; nodeH = lb.Height > 0 ? lb.Height : nodeH; }
-        else if (node is AsyncTaskBodyNode ab) { nodeW = ab.Width > 0 ? ab.Width : nodeW; nodeH = ab.Height > 0 ? ab.Height : nodeH; }
-        return new Point(node.X + nodeW / 2.0, node.Y + nodeH / 2.0);
+        double nodeW, nodeH;
+        if (node is LoopBodyNode lb)
+        {
+            nodeW = lb.Width > 0 ? lb.Width : (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150);
+            nodeH = lb.Height > 0 ? lb.Height : (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80);
+        }
+        else if (node is AsyncTaskBodyNode ab)
+        {
+            nodeW = ab.Width > 0 ? ab.Width : (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150);
+            nodeH = ab.Height > 0 ? ab.Height : (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80);
+        }
+        else if (node is BodyContainerNode bcn)
+        {
+            nodeW = bcn.BodyWidth > 0 ? bcn.BodyWidth : (node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150);
+            nodeH = bcn.BodyHeight > 0 ? bcn.BodyHeight : (node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80);
+        }
+        else
+        {
+            nodeW = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
+            nodeH = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
+        }
+        return new Rect(node.X, node.Y, nodeW, nodeH);
     }
 }

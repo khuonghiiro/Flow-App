@@ -318,9 +318,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         foreach (var node in vm.Nodes)
         {
             if (lockedSet.Contains(node)) continue;
-            var width = node.Border?.ActualWidth > 1 ? node.Border.ActualWidth : 150;
-            var height = node.Border?.ActualHeight > 1 ? node.Border.ActualHeight : 80;
-            var nodeRect = new Rect(node.X, node.Y, width, height);
+            var nodeRect = LockedBodyHelper.GetNodeRect(node);
             if (!bodyBounds.IntersectsWith(nodeRect)) continue;
 
             var center = new Point(nodeRect.Left + nodeRect.Width / 2.0, nodeRect.Top + nodeRect.Height / 2.0);
@@ -335,7 +333,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
             if (minDist == leftDist)
             {
-                targetX = bodyBounds.Left - width - gap;
+                targetX = bodyBounds.Left - nodeRect.Width - gap;
             }
             else if (minDist == rightDist)
             {
@@ -343,7 +341,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             }
             else if (minDist == topDist)
             {
-                targetY = bodyBounds.Top - height - gap;
+                targetY = bodyBounds.Top - nodeRect.Height - gap;
             }
             else
             {
