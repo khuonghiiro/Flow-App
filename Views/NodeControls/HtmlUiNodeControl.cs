@@ -722,59 +722,8 @@ namespace FlowMy.Views.NodeControls
                     }
                 }
 
-                // ── Inject hostAsync runtime TRƯỚC user JS (normalize, không phá bridge đã có) ──
-                {
-                    var asyncRuntimeTag = @"
-    <script>
-    (function() {
-      window.hostAsync = window.hostAsync || {};
-      window.hostAsync.values = window.hostAsync.values || {};
-      window.hostAsync._callbacks = Array.isArray(window.hostAsync._callbacks) ? window.hostAsync._callbacks : [];
-
-      window.hostAsync.on = function() {
-        var args = Array.prototype.slice.call(arguments);
-        var cb = args[args.length - 1];
-        if (typeof cb !== 'function') return;
-        if (args.length === 1) {
-          window.hostAsync._callbacks.push({ keys: [], cb: cb });
-          setTimeout(function() { try { cb(window.hostAsync.values); } catch(e) {} }, 0);
-        } else {
-          var keys = args.slice(0, -1);
-          window.hostAsync._callbacks.push({ keys: keys, cb: cb });
-          // Chỉ fire lần đầu khi tất cả key đã có giá trị thực sự.
-          var hasAll = keys.every(function(k){ return Object.prototype.hasOwnProperty.call(window.hostAsync.values, k); });
-          if (hasAll) {
-            var vals0 = keys.map(function(k) { return window.hostAsync.values[k]; });
-            setTimeout(function() { try { cb.apply(null, vals0); } catch(e) {} }, 0);
-          }
-        }
-      };
-
-      window.hostAsyncPush = function(key, value) {
-        window.hostAsync.values[key] = value;
-        var cbs = window.hostAsync._callbacks || [];
-        for (var i = 0; i < cbs.length; i++) {
-          var sub = cbs[i];
-          try {
-            if (!sub || typeof sub.cb !== 'function') continue;
-            if (!Array.isArray(sub.keys) || sub.keys.length === 0) {
-              sub.cb(window.hostAsync.values);
-            } else if (sub.keys.indexOf(key) >= 0) {
-              var vals = sub.keys.map(function(k) { return window.hostAsync.values[k]; });
-              sub.cb.apply(null, vals);
-            }
-          } catch (e) { console.error('hostAsync callback error:', e); }
-        }
-      };
-    })();
-    </script>";
-                    if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
-                        html = html.Replace("</head>", asyncRuntimeTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
-                    else if (html.Contains("<body", StringComparison.OrdinalIgnoreCase))
-                        html = System.Text.RegularExpressions.Regex.Replace(html, @"(<body\b[^>]*>)", "$1" + asyncRuntimeTag, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                    else
-                        html = asyncRuntimeTag + html;
-                }
+                // hostAsync runtime đã được inject sớm qua AddScriptToExecuteOnDocumentCreatedAsync
+                // (có guard __hostAsyncReady) → không cần inject inline ở đây nữa.
 
                 // Inject JS vào trước </body> hoặc vào <head> nếu không có body
                 if (!string.IsNullOrWhiteSpace(js))

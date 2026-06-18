@@ -1,4 +1,4 @@
-<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.HtmlUiNodeDialog"
+﻿<local:BaseNodeDialog x:Class="FlowMy.Views.Overlays.HtmlUiNodeDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FlowMy.Views.Overlays"
@@ -276,528 +276,6 @@
                             Command="{Binding AddInputMappingCommand}"
                             Width="140" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
 
-                    <!-- Ví dụ & Gợi ý -->
-                    <Expander x:Name="ExampleHintsExpander" IsExpanded="False" Margin="0,0,0,12">
-                        <Expander.Header>
-                            <TextBlock Text="Hướng dẫn biến {variableName} + API mới (hostLive/hostAsync/host*)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
-                        </Expander.Header>
-                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
-                            <StackPanel>
-                                <TextBlock Text="Cách truyền value từ node vào HTML/CSS/JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
-                                    <Run Text="1) Cấu hình Input: Chọn Node nguồn + Key (ví dụ node HttpRequest, key responseBody)."/>
-                                    <LineBreak/>
-                                    <Run Text="2) Đặt 'Biến dùng trong Html/Js' (ví dụ: apiResponse, hoặc để trống = dùng key)."/>
-                                    <LineBreak/>
-                                    <Run Text="3) Trong HTML/CSS/JS, dùng {variableName} để thay thế bằng giá trị từ node nguồn."/>
-                                </TextBlock>
-                                <TextBlock Text="Ví dụ trong HTML:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="• Hiển thị giá trị trực tiếp:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run Text="&lt;div&gt;Kết quả: {apiResponse}&lt;/div&gt;"/>
-                                        </TextBlock>
-                                        <TextBlock Text="• Dùng trong attribute:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="&lt;input value=&quot;{userId}&quot; /&gt;"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                                <TextBlock Text="Ví dụ trong JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="• Parse JSON từ input:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run Text="const data = JSON.parse('{apiResponse}');"/>
-                                        </TextBlock>
-                                        <TextBlock Text="• Dùng trong string:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run Text="const url = 'https://api.example.com/data?id={userId}';"/>
-                                        </TextBlock>
-                                        <TextBlock Text="• Biến hiện tại:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="const input = '{"/>
-                                            <Run Text="{Binding FirstInputVariableName, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="}';"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                                <TextBlock Text="Ví dụ trong CSS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="• Dùng cho màu sắc:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run Text=".button { background-color: {primaryColor}; }"/>
-                                        </TextBlock>
-                                        <TextBlock Text="• Dùng cho kích thước:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="body { font-size: {fontSize}px; }"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                                <TextBlock Text="Lưu ý:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,14">
-                                    <StackPanel>
-                                        <TextBlock Text="• {variableName} sẽ được replace bằng giá trị string từ node nguồn" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Text="• Nếu giá trị là JSON, dùng JSON.parse('{variableName}') trong JS để parse" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Text="• Nếu giá trị chứa ký tự đặc biệt HTML, cần escape hoặc dùng textContent thay vì innerHTML" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Text="• Nếu không tìm thấy variable, {variableName} sẽ giữ nguyên (không replace)" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                                        <TextBlock Margin="0,4,0,0">
-                                            <Run Text="• Biến hiện tại: " Foreground="{DynamicResource TextSecondary}"/>
-                                            <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- === REAL-TIME window.hostLive === -->
-                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,0">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                            <TextBlock Text="⚡ Real-time: " Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
-                                            <TextBlock FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center">
-                                                <Run Text="window.hostLive.on(key, callback)"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
-                                            <Run Text="Khi input có checkbox "/>
-                                            <Run Text="☑ Auto push JS" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text=" được bật, C# sẽ tự động push giá trị mới nhất vào JS theo khoảng thời gian. Dùng API dưới để nhận và xử lý."/>
-                                        </TextBlock>
-
-                                        <!-- Ví dụ 1 -->
-                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                    <TextBlock Text="Cách 1 — Nhận 1 param:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="CopySnippet_Click"
-                                                            Tag="window.hostLive.on('price', function(price) {&#xA;    document.getElementById('price').textContent = price;&#xA;});"/>
-                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="ApplyExample_Click" Tag="ex1"
-                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ này vào editor"/>
-                                                </StackPanel>
-                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="window.hostLive.on("/>
-                                                    <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text=", function(price) {"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    document.getElementById('price').textContent = price;"/>
-                                                    <LineBreak/>
-                                                    <Run Text="});"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Ví dụ 2 -->
-                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                    <TextBlock Text="Cách 2 — Nhận nhiều params cùng lúc:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="CopySnippet_Click"
-                                                            Tag="// Khi cả price lẫn quantity thay đổi đều gọi callback này&#xA;window.hostLive.on('price', 'quantity', function(price, quantity) {&#xA;    var total = parseFloat(price || 0) * parseInt(quantity || 0);&#xA;    document.getElementById('total').textContent = 'Tổng: ' + total;&#xA;});"/>
-                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="ApplyExample_Click" Tag="ex2"
-                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ price × quantity vào editor"/>
-                                                </StackPanel>
-                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="window.hostLive.on("/>
-                                                    <Run Text="'price', 'quantity'" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text=", function(price, qty) {"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    var total = parseFloat(price||0) * parseInt(qty||0);"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    document.getElementById('total').textContent = total;"/>
-                                                    <LineBreak/>
-                                                    <Run Text="});"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Ví dụ 3: gọi nhiều func trong 1 callback -->
-                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                    <TextBlock Text="Cách 3 — Gọi nhiều func khi 1 param thay đổi:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="CopySnippet_Click"
-                                                            Tag="function updateChart(price) { /* vẽ chart */ }&#xA;function updateBadge(price) { /* cập nhật badge */ }&#xA;function updateHistory(price) { /* thêm vào lịch sử */ }&#xA;&#xA;// Gọi 3 func trong 1 callback khi price cập nhật&#xA;window.hostLive.on('price', function(price) {&#xA;    updateChart(price);&#xA;    updateBadge(price);&#xA;    updateHistory(price);&#xA;});"/>
-                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="ApplyExample_Click" Tag="ex3"
-                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ chart + badge + history vào editor"/>
-                                                </StackPanel>
-                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
-                                                    → 1 param "price" nhưng gọi 3 func khác nhau:
-                                                </TextBlock>
-                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="function updateChart(p) { /* vẽ chart */ }"/>
-                                                    <LineBreak/>
-                                                    <Run Text="function updateBadge(p) { /* cập nhật badge */ }"/>
-                                                    <LineBreak/>
-                                                    <Run Text="function updateHistory(p) { /* lưu lịch sử */ }"/>
-                                                    <LineBreak/><LineBreak/>
-                                                    <Run Text="window.hostLive.on("/>
-                                                    <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text=", function(price) {"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    updateChart(price);"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    updateBadge(price);"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    updateHistory(price);"/>
-                                                    <LineBreak/>
-                                                    <Run Text="});"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Ví dụ 4: đọc trực tiếp -->
-                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,0">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                    <TextBlock Text="Cách 4 — Đọc trực tiếp (polling):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="CopySnippet_Click"
-                                                            Tag="setInterval(function() {&#xA;    var p = window.hostLive.values['price'];  // luôn là giá trị mới nhất&#xA;    document.getElementById('out').textContent = p ?? '—';&#xA;}, 500);"/>
-                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="ApplyExample_Click" Tag="ex4"
-                                                            ToolTip="Điền sẵn HTML/CSS/JS ví dụ polling dashboard vào editor"/>
-                                                </StackPanel>
-                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="setInterval(function() {"/>
-                                                    <LineBreak/>
-                                                    <Run Text="  var p = window.hostLive.values["/>
-                                                    <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text="];"/>
-                                                    <LineBreak/>
-                                                    <Run Text="  document.getElementById('out').textContent = p ?? '—';"/>
-                                                    <LineBreak/>
-                                                    <Run Text="}, 500);"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Ví dụ 5: download curl + local url -->
-                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,8,0,0">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                    <TextBlock Text="Cách 5 — Tải file bằng curl và lấy link local trả về:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="CopySnippet_Click"
-                                                            Tag="// 1) Gọi host tải file bằng raw curl&#xA;var rawCurl = &quot;curl --location 'https://assets.grok.com/.../generated_video.mp4?cache=1' --header 'Cookie: ...'&quot;;&#xA;var key = 'gid|https://assets.grok.com/...';&#xA;if (typeof hostCurl === 'function') {&#xA;  hostCurl(rawCurl, 'grok_video.mp4', key);&#xA;}&#xA;&#xA;// 2) Nhận kết quả tải xong từ host&#xA;window.addEventListener('hostCurlDone', function (ev) {&#xA;  var d = (ev &amp;&amp; ev.detail) ? ev.detail : {};&#xA;  if (!d.ok) {&#xA;    console.log('Download fail:', d.error);&#xA;    return;&#xA;  }&#xA;  // d.localUrl: URL local dạng https://downloads.local/xxx.mp4 (phát được trong UI)&#xA;  // d.path: đường dẫn file thật trong Downloads\\Workflow_Downloads\\Videos&#xA;  document.getElementById('status').textContent = d.localUrl || d.path;&#xA;});"/>
-                                                </StackPanel>
-                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
-                                                    Hàm host hỗ trợ:
-                                                    <Run Text=" hostCurl(rawCurl, fileName, downloadKey) " Foreground="{DynamicResource WarningColor}"/>
-                                                    và event
-                                                    <Run Text=" hostCurlDone " Foreground="{DynamicResource WarningColor}"/>.
-                                                </TextBlock>
-                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="// Gọi tải file"/>
-                                                    <LineBreak/>
-                                                    <Run Text="hostCurl(rawCurl, 'grok_video.mp4', 'gid|videoUrl');"/>
-                                                    <LineBreak/><LineBreak/>
-                                                    <Run Text="// Nhận kết quả"/>
-                                                    <LineBreak/>
-                                                    <Run Text="window.addEventListener('hostCurlDone', function(ev) {"/>
-                                                    <LineBreak/>
-                                                    <Run Text="  var d = ev.detail || {};"/>
-                                                    <LineBreak/>
-                                                    <Run Text="  if (d.ok) {"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    // d.localUrl: dùng gán video.src để xem ngay trong UI"/>
-                                                    <LineBreak/>
-                                                    <Run Text="    // d.path: file thật trong C:\Users\&lt;user&gt;\Downloads\Workflow_Downloads\Videos"/>
-                                                    <LineBreak/>
-                                                    <Run Text="  }"/>
-                                                    <LineBreak/>
-                                                    <Run Text="});"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Ví dụ 6: datas {guildId: localPath} -->
-                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource TextBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,8,0,0">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                    <TextBlock Text="Cách 6 — Nhận datas dạng {guildId: localPath} và phát video local (không bị chặn):" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="CopySnippet_Click"
-                                                            Tag="// Input mapping gợi ý: key = datas (string JSON/object)&#xA;// Ví dụ datas: {&quot;8a85...733f&quot;:&quot;C:\\_DU_AN\\App_Desktop\\download_20260409_145008.mp4&quot;}&#xA;(function() {&#xA;  var currentGuildId = ''; // set từ outputGuildId hoặc từ UI của bạn&#xA;  var v = document.getElementById('previewVideo');&#xA;  if (!v) return;&#xA;&#xA;  function pickPathFromDatas(datas, gid) {&#xA;    if (!datas) return '';&#xA;    if (typeof datas === 'string') {&#xA;      try { datas = JSON.parse(datas); } catch (_) { return ''; }&#xA;    }&#xA;    if (!datas || typeof datas !== 'object') return '';&#xA;    var p = datas[gid];&#xA;    if (typeof p !== 'string') return '';&#xA;    return p.trim();&#xA;  }&#xA;&#xA;  function playLocalPath(localPath) {&#xA;    if (!localPath || typeof hostResolvePath !== 'function') return;&#xA;    var reqId = 'play_' + Date.now();&#xA;    function onResolved(ev) {&#xA;      var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;      if (String(d.requestId || '') !== reqId) return;&#xA;      window.removeEventListener('hostPathResolved', onResolved);&#xA;      if (!d.ok || !d.localUrl) return;&#xA;      // QUAN TRỌNG: dùng localUrl https://localfiles-*.local..., KHÔNG dùng file:///...&#xA;      v.src = d.localUrl;&#xA;      try { v.load(); } catch (_) {}&#xA;      var pp = v.play &amp;&amp; v.play();&#xA;      if (pp &amp;&amp; typeof pp.catch === 'function') pp.catch(function(){});&#xA;    }&#xA;    window.addEventListener('hostPathResolved', onResolved);&#xA;    hostResolvePath(localPath, reqId);&#xA;  }&#xA;&#xA;  if (window.hostLive &amp;&amp; typeof window.hostLive.on === 'function') {&#xA;    window.hostLive.on('datas', function(datas) {&#xA;      var path = pickPathFromDatas(datas, currentGuildId);&#xA;      if (path) playLocalPath(path);&#xA;    });&#xA;  }&#xA;})();"/>
-                                                </StackPanel>
-                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
-                                                    Quy trình đúng:
-                                                    <Run Text=" datas[guid] => localPath tuyệt đối " Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text="→ gọi "/>
-                                                    <Run Text="hostResolvePath(localPath, reqId)" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text=" → nhận event "/>
-                                                    <Run Text="hostPathResolved" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text=" với "/>
-                                                    <Run Text="d.localUrl" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text=" → gán vào "/>
-                                                    <Run Text="video.src" Foreground="{DynamicResource WarningColor}"/>
-                                                    <Run Text=". Không dùng trực tiếp "/>
-                                                    <Run Text="file:///..." Foreground="{DynamicResource DangerColor}"/>
-                                                    <Run Text=" trong HTML UI."/>
-                                                </TextBlock>
-                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                    <Run Text="// datas ví dụ"/>
-                                                    <LineBreak/>
-                                                    <Run Text="JSON ví dụ: &quot;8a85...733f&quot; =&gt; &quot;C:\..\Downloads\\download_video.mp4&quot;"/>
-                                                    <LineBreak/><LineBreak/>
-                                                    <Run Text="// dùng localPath -> resolve -> localUrl -> video.src"/>
-                                                    <LineBreak/>
-                                                    <Run Text="hostResolvePath(localPath, reqId);"/>
-                                                    <LineBreak/>
-                                                    <Run Text="// event hostPathResolved => d.localUrl"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Ví dụ 7: áp dụng thực tế theo grok.* -->
-                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                    <TextBlock Text="Ví dụ áp dụng nhanh (theo grok.html / grok.js / grok.css):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="CopySnippet_Click"
-                                                            Tag="// HTML&#xA;&lt;div class=&quot;card-media card-media-inline&quot;&gt;&#xA;  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;&#xA;&lt;/div&gt;&#xA;&#xA;// JS&#xA;var currentGuildId = (window.hostLive &amp;&amp; window.hostLive.values) ? (window.hostLive.values.outputGuildId || '') : '';&#xA;window.hostLive.on('datas', function(datas) {&#xA;  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }&#xA;  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';&#xA;  if (!localPath || typeof hostResolvePath !== 'function') return;&#xA;  var reqId = 'play_' + Date.now();&#xA;  window.addEventListener('hostPathResolved', function onR(ev) {&#xA;    var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;    if (String(d.requestId || '') !== reqId) return;&#xA;    window.removeEventListener('hostPathResolved', onR);&#xA;    if (!d.ok || !d.localUrl) return;&#xA;    var v = document.getElementById('previewVideo'); if (!v) return;&#xA;    v.src = d.localUrl; try { v.load(); } catch (_) {}&#xA;  });&#xA;  hostResolvePath(localPath, reqId);&#xA;});&#xA;&#xA;// CSS&#xA;.card-media-inline { position: relative; }&#xA;.card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
-                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                            Click="ApplyExample_Click" Tag="ex_grok_local"
-                                                            ToolTip="Điền sẵn mẫu grok local video vào 4 tab code"/>
-                                                </StackPanel>
-                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,8">
-                                                    1) Trong HTML tạo video: id=previewVideo
-                                                    <LineBreak/>
-                                                    2) Trong JS đọc datas theo guildId hiện tại
-                                                    <LineBreak/>
-                                                    3) Gọi hostResolvePath rồi set video.src = d.localUrl
-                                                    <LineBreak/>
-                                                    4) CSS cho video fill card
-                                                </TextBlock>
-
-                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
-                                                    <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                        <Run Text="// HTML (giống card media trong grok.html)"/>
-                                                        <LineBreak/>
-                                                        <Run Text="&lt;div class=&quot;card-media card-media-inline&quot;&gt;"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;"/>
-                                                        <LineBreak/>
-                                                        <Run Text="&lt;/div&gt;"/>
-                                                    </TextBlock>
-                                                </Border>
-
-                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
-                                                    <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                        <Run Text="// JS (giống flow resolve trong grok.js)"/>
-                                                        <LineBreak/>
-                                                        <Run Text="var currentGuildId = (window.hostLive &amp;&amp; window.hostLive.values) ? (window.hostLive.values.outputGuildId || '') : '';"/>
-                                                        <LineBreak/>
-                                                        <Run Text="window.hostLive.on('datas', function(datas) {"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  if (!localPath || typeof hostResolvePath !== 'function') return;"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  var reqId = 'play_' + Date.now();"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  window.addEventListener('hostPathResolved', function onR(ev) {"/>
-                                                        <LineBreak/>
-                                                        <Run Text="    var d = ev &amp;&amp; ev.detail ? ev.detail : {};"/>
-                                                        <LineBreak/>
-                                                        <Run Text="    if (String(d.requestId || '') !== reqId) return;"/>
-                                                        <LineBreak/>
-                                                        <Run Text="    window.removeEventListener('hostPathResolved', onR);"/>
-                                                        <LineBreak/>
-                                                        <Run Text="    if (!d.ok || !d.localUrl) return;"/>
-                                                        <LineBreak/>
-                                                        <Run Text="    var v = document.getElementById('previewVideo'); if (!v) return;"/>
-                                                        <LineBreak/>
-                                                        <Run Text="    v.src = d.localUrl; try { v.load(); } catch (_) {}"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  });"/>
-                                                        <LineBreak/>
-                                                        <Run Text="  hostResolvePath(localPath, reqId);"/>
-                                                        <LineBreak/>
-                                                        <Run Text="});"/>
-                                                    </TextBlock>
-                                                </Border>
-
-                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8">
-                                                    <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                                        <Run Text="// CSS (giống grok.css)"/>
-                                                        <LineBreak/>
-                                                        <Run Text=".card-media-inline { position: relative; }"/>
-                                                        <LineBreak/>
-                                                        <Run Text=".card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
-                                                    </TextBlock>
-                                                </Border>
-                                            </StackPanel>
-                                        </Border>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-                    </Expander>
-
-                    <!-- Tab1 Injection Expander: chỉ hiển thị khi UseWebTab = true -->
-                    <Expander x:Name="Tab1InjectExpander" IsExpanded="False" Margin="0,0,0,12"
-                              Visibility="{Binding UseWebTab, Converter={StaticResource BoolToVisibility}}">
-                        <Expander.Header>
-                            <TextBlock Text="🌐 Gửi JS từ Tab2 → Tab1  (tab1Seq / tab1Par)"
-                                       Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
-                        </Expander.Header>
-                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14"
-                                BorderBrush="{DynamicResource TextBrush}" BorderThickness="1">
-                            <StackPanel>
-
-                                <!-- Mô tả tổng quan -->
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8">
-                                    <Run Text="Khi chế độ 2-tab bật, JS trong Tab2 có thể inject và chạy code trong Tab1 (trình duyệt có session / cookie) qua 2 hàm:"/>
-                                </TextBlock>
-
-                                <!-- API Reference box -->
-                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="10" Margin="0,0,0,12"
-                                        BorderBrush="{DynamicResource TextBrush}" BorderThickness="1">
-                                    <StackPanel>
-                                        <TextBlock Text="📌 API Reference:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="tab1Seq(jsString)" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text=" — Sequential: request2 đợi request1 hoàn thành rồi mới chạy."/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Par(jsString)" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text=" — Parallel: các request chạy đồng thời, không đợi nhau."/>
-                                            <LineBreak/><LineBreak/>
-                                            <Run Text="// jsString = đoạn JS sẽ chạy bên trong Tab1 (có session/cookie của trang đó)"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- SEQ Example 1: Click → Fill → Submit -->
-                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                            <TextBlock Text="SEQ 1 — Nhiều bước tuần tự (click → fill → submit):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                    Click="CopySnippet_Click"
-                                                    Tag="// SEQ: từng bước chạy xong mới sang bước tiếp theo&#xA;// Bước 1: click nút&#xA;tab1Seq(`document.querySelector('#loginBtn').click();`);&#xA;&#xA;// Bước 2: đợi bước 1 xong, rồi fill input (Tab1 đã mở modal/form)&#xA;tab1Seq(`document.querySelector('#usernameInput').value = 'myUser';`);&#xA;&#xA;// Bước 3: submit&#xA;tab1Seq(`document.querySelector('form').submit();`);"/>
-                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                    Click="ApplyExample_Click" Tag="tab1_seq1"
-                                                    ToolTip="Điền sẵn ví dụ sequential Tab2→Tab1 vào editor"/>
-                                        </StackPanel>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="// Bước 1: click nút ở Tab1"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="`document.querySelector('#loginBtn').click();`"/>
-                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
-                                            <LineBreak/>
-                                            <Run Text="// Bước 2 — chờ bước 1 XONG mới chạy: fill input"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="`document.querySelector('#username').value = 'myUser';`"/>
-                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
-                                            <LineBreak/>
-                                            <Run Text="// Bước 3 — submit sau khi đã fill"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="`document.querySelector('form').submit();`"/>
-                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- PAR Example: Nhiều request chạy song song -->
-                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                            <TextBlock Text="PAR — 2 request chạy song song (không đợi nhau):" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                    Click="CopySnippet_Click"
-                                                    Tag="// PAR: cả 2 chạy ngay lập tức, không đợi nhau&#xA;tab1Par(`console.log('[Tab1] request1 started:', Date.now());`);&#xA;tab1Par(`document.title = 'Processing...';`);&#xA;&#xA;// Khác với SEQ: par2 KHÔNG đợi par1 xong"/>
-                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                    Click="ApplyExample_Click" Tag="tab1_par1"
-                                                    ToolTip="Điền sẵn ví dụ parallel Tab2→Tab1 vào editor"/>
-                                        </StackPanel>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="// Cả 2 request inject vào Tab1 đồng thời, không đợi nhau"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Par(" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="`console.log('[Tab1] par1:', Date.now());`"/>
-                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Par(" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="`document.title = 'Processing...';`"/>
-                                            <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
-                                            <LineBreak/><LineBreak/>
-                                            <Run Text="// par2 KHÔNG đợi par1 xong → cả 2 chạy song song"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- SEQ Example 2: Fetch trong Tab1 (Tab1 có session) -->
-                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,0">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                            <TextBlock Text="SEQ 2 — Fetch API trong Tab1 + navigate sau khi done:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
-                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                    Click="CopySnippet_Click"
-                                                    Tag="// SEQ: dùng fetch trong Tab1 (có session/cookie đầy đủ)&#xA;// Bước 1: ensure Tab1 ở đúng origin&#xA;tab1Seq(`&#xA;    if (!window.location.href.includes('grok.com')) {&#xA;        window.location.href = 'https://grok.com';&#xA;    }&#xA;`);&#xA;&#xA;// Bước 2: dùng async fetch trong Tab1 (có cookie grok.com)&#xA;tab1Seq(`&#xA;    (async () => {&#xA;        const r = await fetch('/api/data', { credentials: 'include' });&#xA;        const data = await r.json();&#xA;        window.__tab1Data = data; // lưu cho bước sau&#xA;        console.log('[Tab1 fetch]', data);&#xA;    })();&#xA;`);&#xA;&#xA;// Bước 3: navigate Tab1 đến kết quả&#xA;tab1Seq(`window.location.href = '/result/' + (window.__tab1Data?.id ?? '');`);"/>
-                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
-                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
-                                                    Click="ApplyExample_Click" Tag="tab1_seq2"
-                                                    ToolTip="Điền sẵn ví dụ fetch + navigate Tab1 vào editor"/>
-                                        </StackPanel>
-                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
-                                            <Run Text="// Bước 1: navigate Tab1 đến grok.com (ensure cookie origin)"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Seq(`window.location.href = 'https://grok.com';`);" Foreground="{DynamicResource WarningColor}"/>
-                                            <LineBreak/><LineBreak/>
-                                            <Run Text="// Bước 2: async fetch bên trong Tab1 (có session đầy đủ)"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Seq(`" Foreground="{DynamicResource WarningColor}"/>
-                                            <Run Text="(async () => {"/>
-                                            <LineBreak/>
-                                            <Run Text="    const r = await fetch('/api/data', { credentials: 'include' });"/>
-                                            <LineBreak/>
-                                            <Run Text="    window.__tab1Data = await r.json();"/>
-                                            <LineBreak/>
-                                            <Run Text="    console.log('[Tab1 fetch]', window.__tab1Data);"/>
-                                            <LineBreak/>
-                                            <Run Text="})();"/>
-                                            <Run Text="`);" Foreground="{DynamicResource WarningColor}"/>
-                                            <LineBreak/><LineBreak/>
-                                            <Run Text="// Bước 3: navigate Tab1 đến kết quả sau khi fetch xong"/>
-                                            <LineBreak/>
-                                            <Run Text="tab1Seq(`window.location.href='/result/'+window.__tab1Data?.id;`);" Foreground="{DynamicResource WarningColor}"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-
-                            </StackPanel>
-                        </Border>
-                    </Expander>
 
                     <!-- Code editors: 4 tabs Html / Js / Css / Params -->
                     <Grid Margin="0,0,0,8">
@@ -1764,6 +1242,530 @@
                 <TabItem Header="🤖 Hướng dẫn AI" Style="{DynamicResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
+                            <!-- Moved from Tab Logic: Variable guide + Tab1 Injection -->
+                            <!-- Ví dụ & Gợi ý -->
+                            <Expander x:Name="ExampleHintsExpander" IsExpanded="False" Margin="0,0,0,12">
+                                <Expander.Header>
+                                    <TextBlock Text="Hướng dẫn biến {variableName} + API mới (hostLive/hostAsync/host*)" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
+                                </Expander.Header>
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="Cách truyền value từ node vào HTML/CSS/JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                        <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
+                                            <Run Text="1) Cấu hình Input: Chọn Node nguồn + Key (ví dụ node HttpRequest, key responseBody)."/>
+                                            <LineBreak/>
+                                            <Run Text="2) Đặt 'Biến dùng trong Html/Js' (ví dụ: apiResponse, hoặc để trống = dùng key)."/>
+                                            <LineBreak/>
+                                            <Run Text="3) Trong HTML/CSS/JS, dùng {variableName} để thay thế bằng giá trị từ node nguồn."/>
+                                        </TextBlock>
+                                        <TextBlock Text="Ví dụ trong HTML:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                        <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                            <StackPanel>
+                                                <TextBlock Text="• Hiển thị giá trị trực tiếp:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                                    <Run Text="&lt;div&gt;Kết quả: {apiResponse}&lt;/div&gt;"/>
+                                                </TextBlock>
+                                                <TextBlock Text="• Dùng trong attribute:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="&lt;input value=&quot;{userId}&quot; /&gt;"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Text="Ví dụ trong JS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                        <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                            <StackPanel>
+                                                <TextBlock Text="• Parse JSON từ input:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                                    <Run Text="const data = JSON.parse('{apiResponse}');"/>
+                                                </TextBlock>
+                                                <TextBlock Text="• Dùng trong string:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                                    <Run Text="const url = 'https://api.example.com/data?id={userId}';"/>
+                                                </TextBlock>
+                                                <TextBlock Text="• Biến hiện tại:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="const input = '{"/>
+                                                    <Run Text="{Binding FirstInputVariableName, Mode=OneWay}" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="}';"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Text="Ví dụ trong CSS:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                        <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,10">
+                                            <StackPanel>
+                                                <TextBlock Text="• Dùng cho màu sắc:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                                    <Run Text=".button { background-color: {primaryColor}; }"/>
+                                                </TextBlock>
+                                                <TextBlock Text="• Dùng cho kích thước:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="body { font-size: {fontSize}px; }"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Text="Lưu ý:" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
+                                        <Border Background="{DynamicResource CardColor}" Padding="10" CornerRadius="6" Margin="0,0,0,14">
+                                            <StackPanel>
+                                                <TextBlock Text="• {variableName} sẽ được replace bằng giá trị string từ node nguồn" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                                <TextBlock Text="• Nếu giá trị là JSON, dùng JSON.parse('{variableName}') trong JS để parse" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                                <TextBlock Text="• Nếu giá trị chứa ký tự đặc biệt HTML, cần escape hoặc dùng textContent thay vì innerHTML" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                                <TextBlock Text="• Nếu không tìm thấy variable, {variableName} sẽ giữ nguyên (không replace)" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                                <TextBlock Margin="0,4,0,0">
+                                                    <Run Text="• Biến hiện tại: " Foreground="{DynamicResource TextSecondary}"/>
+                                                    <Run Text="{Binding EffectiveInputKeyDisplay, Mode=OneWay}" Foreground="{DynamicResource WarningColor}" FontWeight="SemiBold"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- === REAL-TIME window.hostLive === -->
+                                        <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                    <TextBlock Text="⚡ Real-time: " Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                                                    <TextBlock FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center">
+                                                        <Run Text="window.hostLive.on(key, callback)"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
+                                                    <Run Text="Khi input có checkbox "/>
+                                                    <Run Text="☑ Auto push JS" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=" được bật, C# sẽ tự động push giá trị mới nhất vào JS theo khoảng thời gian. Dùng API dưới để nhận và xử lý."/>
+                                                </TextBlock>
+
+                                                <!-- Ví dụ 1 -->
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                            <TextBlock Text="Cách 1 — Nhận 1 param:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="CopySnippet_Click"
+                                                                    Tag="window.hostLive.on('price', function(price) {&#xA;    document.getElementById('price').textContent = price;&#xA;});"/>
+                                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="ApplyExample_Click" Tag="ex1"
+                                                                    ToolTip="Điền sẵn HTML/CSS/JS ví dụ này vào editor"/>
+                                                        </StackPanel>
+                                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                            <Run Text="window.hostLive.on("/>
+                                                            <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text=", function(price) {"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    document.getElementById('price').textContent = price;"/>
+                                                            <LineBreak/>
+                                                            <Run Text="});"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- Ví dụ 2 -->
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                            <TextBlock Text="Cách 2 — Nhận nhiều params cùng lúc:" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="CopySnippet_Click"
+                                                                    Tag="// Khi cả price lẫn quantity thay đổi đều gọi callback này&#xA;window.hostLive.on('price', 'quantity', function(price, quantity) {&#xA;    var total = parseFloat(price || 0) * parseInt(quantity || 0);&#xA;    document.getElementById('total').textContent = 'Tổng: ' + total;&#xA;});"/>
+                                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="ApplyExample_Click" Tag="ex2"
+                                                                    ToolTip="Điền sẵn HTML/CSS/JS ví dụ price × quantity vào editor"/>
+                                                        </StackPanel>
+                                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                            <Run Text="window.hostLive.on("/>
+                                                            <Run Text="'price', 'quantity'" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text=", function(price, qty) {"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    var total = parseFloat(price||0) * parseInt(qty||0);"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    document.getElementById('total').textContent = total;"/>
+                                                            <LineBreak/>
+                                                            <Run Text="});"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- Ví dụ 3: gọi nhiều func trong 1 callback -->
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                            <TextBlock Text="Cách 3 — Gọi nhiều func khi 1 param thay đổi:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="CopySnippet_Click"
+                                                                    Tag="function updateChart(price) { /* vẽ chart */ }&#xA;function updateBadge(price) { /* cập nhật badge */ }&#xA;function updateHistory(price) { /* thêm vào lịch sử */ }&#xA;&#xA;// Gọi 3 func trong 1 callback khi price cập nhật&#xA;window.hostLive.on('price', function(price) {&#xA;    updateChart(price);&#xA;    updateBadge(price);&#xA;    updateHistory(price);&#xA;});"/>
+                                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="ApplyExample_Click" Tag="ex3"
+                                                                    ToolTip="Điền sẵn HTML/CSS/JS ví dụ chart + badge + history vào editor"/>
+                                                        </StackPanel>
+                                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
+                                                            → 1 param "price" nhưng gọi 3 func khác nhau:
+                                                        </TextBlock>
+                                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                            <Run Text="function updateChart(p) { /* vẽ chart */ }"/>
+                                                            <LineBreak/>
+                                                            <Run Text="function updateBadge(p) { /* cập nhật badge */ }"/>
+                                                            <LineBreak/>
+                                                            <Run Text="function updateHistory(p) { /* lưu lịch sử */ }"/>
+                                                            <LineBreak/><LineBreak/>
+                                                            <Run Text="window.hostLive.on("/>
+                                                            <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text=", function(price) {"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    updateChart(price);"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    updateBadge(price);"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    updateHistory(price);"/>
+                                                            <LineBreak/>
+                                                            <Run Text="});"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- Ví dụ 4: đọc trực tiếp -->
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,0">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                            <TextBlock Text="Cách 4 — Đọc trực tiếp (polling):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="CopySnippet_Click"
+                                                                    Tag="setInterval(function() {&#xA;    var p = window.hostLive.values['price'];  // luôn là giá trị mới nhất&#xA;    document.getElementById('out').textContent = p ?? '—';&#xA;}, 500);"/>
+                                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="ApplyExample_Click" Tag="ex4"
+                                                                    ToolTip="Điền sẵn HTML/CSS/JS ví dụ polling dashboard vào editor"/>
+                                                        </StackPanel>
+                                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                            <Run Text="setInterval(function() {"/>
+                                                            <LineBreak/>
+                                                            <Run Text="  var p = window.hostLive.values["/>
+                                                            <Run Text="'price'" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text="];"/>
+                                                            <LineBreak/>
+                                                            <Run Text="  document.getElementById('out').textContent = p ?? '—';"/>
+                                                            <LineBreak/>
+                                                            <Run Text="}, 500);"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- Ví dụ 5: download curl + local url -->
+                                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,8,0,0">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                            <TextBlock Text="Cách 5 — Tải file bằng curl và lấy link local trả về:" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="CopySnippet_Click"
+                                                                    Tag="// 1) Gọi host tải file bằng raw curl&#xA;var rawCurl = &quot;curl --location 'https://assets.grok.com/.../generated_video.mp4?cache=1' --header 'Cookie: ...'&quot;;&#xA;var key = 'gid|https://assets.grok.com/...';&#xA;if (typeof hostCurl === 'function') {&#xA;  hostCurl(rawCurl, 'grok_video.mp4', key);&#xA;}&#xA;&#xA;// 2) Nhận kết quả tải xong từ host&#xA;window.addEventListener('hostCurlDone', function (ev) {&#xA;  var d = (ev &amp;&amp; ev.detail) ? ev.detail : {};&#xA;  if (!d.ok) {&#xA;    console.log('Download fail:', d.error);&#xA;    return;&#xA;  }&#xA;  // d.localUrl: URL local dạng https://downloads.local/xxx.mp4 (phát được trong UI)&#xA;  // d.path: đường dẫn file thật trong Downloads\\Workflow_Downloads\\Videos&#xA;  document.getElementById('status').textContent = d.localUrl || d.path;&#xA;});"/>
+                                                        </StackPanel>
+                                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
+                                                            Hàm host hỗ trợ:
+                                                            <Run Text=" hostCurl(rawCurl, fileName, downloadKey) " Foreground="{DynamicResource WarningColor}"/>
+                                                            và event
+                                                            <Run Text=" hostCurlDone " Foreground="{DynamicResource WarningColor}"/>.
+                                                        </TextBlock>
+                                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                            <Run Text="// Gọi tải file"/>
+                                                            <LineBreak/>
+                                                            <Run Text="hostCurl(rawCurl, 'grok_video.mp4', 'gid|videoUrl');"/>
+                                                            <LineBreak/><LineBreak/>
+                                                            <Run Text="// Nhận kết quả"/>
+                                                            <LineBreak/>
+                                                            <Run Text="window.addEventListener('hostCurlDone', function(ev) {"/>
+                                                            <LineBreak/>
+                                                            <Run Text="  var d = ev.detail || {};"/>
+                                                            <LineBreak/>
+                                                            <Run Text="  if (d.ok) {"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    // d.localUrl: dùng gán video.src để xem ngay trong UI"/>
+                                                            <LineBreak/>
+                                                            <Run Text="    // d.path: file thật trong C:\Users\&lt;user&gt;\Downloads\Workflow_Downloads\Videos"/>
+                                                            <LineBreak/>
+                                                            <Run Text="  }"/>
+                                                            <LineBreak/>
+                                                            <Run Text="});"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- Ví dụ 6: datas {guildId: localPath} -->
+                                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource TextBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,8,0,0">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                            <TextBlock Text="Cách 6 — Nhận datas dạng {guildId: localPath} và phát video local (không bị chặn):" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="CopySnippet_Click"
+                                                                    Tag="// Input mapping gợi ý: key = datas (string JSON/object)&#xA;// Ví dụ datas: {&quot;8a85...733f&quot;:&quot;C:\\_DU_AN\\App_Desktop\\download_20260409_145008.mp4&quot;}&#xA;(function() {&#xA;  var currentGuildId = ''; // set từ outputGuildId hoặc từ UI của bạn&#xA;  var v = document.getElementById('previewVideo');&#xA;  if (!v) return;&#xA;&#xA;  function pickPathFromDatas(datas, gid) {&#xA;    if (!datas) return '';&#xA;    if (typeof datas === 'string') {&#xA;      try { datas = JSON.parse(datas); } catch (_) { return ''; }&#xA;    }&#xA;    if (!datas || typeof datas !== 'object') return '';&#xA;    var p = datas[gid];&#xA;    if (typeof p !== 'string') return '';&#xA;    return p.trim();&#xA;  }&#xA;&#xA;  function playLocalPath(localPath) {&#xA;    if (!localPath || typeof hostResolvePath !== 'function') return;&#xA;    var reqId = 'play_' + Date.now();&#xA;    function onResolved(ev) {&#xA;      var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;      if (String(d.requestId || '') !== reqId) return;&#xA;      window.removeEventListener('hostPathResolved', onResolved);&#xA;      if (!d.ok || !d.localUrl) return;&#xA;      // QUAN TRỌNG: dùng localUrl https://localfiles-*.local..., KHÔNG dùng file:///...&#xA;      v.src = d.localUrl;&#xA;      try { v.load(); } catch (_) {}&#xA;      var pp = v.play &amp;&amp; v.play();&#xA;      if (pp &amp;&amp; typeof pp.catch === 'function') pp.catch(function(){});&#xA;    }&#xA;    window.addEventListener('hostPathResolved', onResolved);&#xA;    hostResolvePath(localPath, reqId);&#xA;  }&#xA;&#xA;  if (window.hostLive &amp;&amp; typeof window.hostLive.on === 'function') {&#xA;    window.hostLive.on('datas', function(datas) {&#xA;      var path = pickPathFromDatas(datas, currentGuildId);&#xA;      if (path) playLocalPath(path);&#xA;    });&#xA;  }&#xA;})();"/>
+                                                        </StackPanel>
+                                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,4">
+                                                            Quy trình đúng:
+                                                            <Run Text=" datas[guid] => localPath tuyệt đối " Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text="→ gọi "/>
+                                                            <Run Text="hostResolvePath(localPath, reqId)" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text=" → nhận event "/>
+                                                            <Run Text="hostPathResolved" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text=" với "/>
+                                                            <Run Text="d.localUrl" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text=" → gán vào "/>
+                                                            <Run Text="video.src" Foreground="{DynamicResource WarningColor}"/>
+                                                            <Run Text=". Không dùng trực tiếp "/>
+                                                            <Run Text="file:///..." Foreground="{DynamicResource DangerColor}"/>
+                                                            <Run Text=" trong HTML UI."/>
+                                                        </TextBlock>
+                                                        <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                            <Run Text="// datas ví dụ"/>
+                                                            <LineBreak/>
+                                                            <Run Text="JSON ví dụ: &quot;8a85...733f&quot; =&gt; &quot;C:\..\Downloads\\download_video.mp4&quot;"/>
+                                                            <LineBreak/><LineBreak/>
+                                                            <Run Text="// dùng localPath -> resolve -> localUrl -> video.src"/>
+                                                            <LineBreak/>
+                                                            <Run Text="hostResolvePath(localPath, reqId);"/>
+                                                            <LineBreak/>
+                                                            <Run Text="// event hostPathResolved => d.localUrl"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- Ví dụ 7: áp dụng thực tế theo grok.* -->
+                                                <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                            <TextBlock Text="Ví dụ áp dụng nhanh (theo grok.html / grok.js / grok.css):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                                    Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="CopySnippet_Click"
+                                                                    Tag="// HTML&#xA;&lt;div class=&quot;card-media card-media-inline&quot;&gt;&#xA;  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;&#xA;&lt;/div&gt;&#xA;&#xA;// JS&#xA;var currentGuildId = (window.hostLive &amp;&amp; window.hostLive.values) ? (window.hostLive.values.outputGuildId || '') : '';&#xA;window.hostLive.on('datas', function(datas) {&#xA;  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }&#xA;  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';&#xA;  if (!localPath || typeof hostResolvePath !== 'function') return;&#xA;  var reqId = 'play_' + Date.now();&#xA;  window.addEventListener('hostPathResolved', function onR(ev) {&#xA;    var d = ev &amp;&amp; ev.detail ? ev.detail : {};&#xA;    if (String(d.requestId || '') !== reqId) return;&#xA;    window.removeEventListener('hostPathResolved', onR);&#xA;    if (!d.ok || !d.localUrl) return;&#xA;    var v = document.getElementById('previewVideo'); if (!v) return;&#xA;    v.src = d.localUrl; try { v.load(); } catch (_) {}&#xA;  });&#xA;  hostResolvePath(localPath, reqId);&#xA;});&#xA;&#xA;// CSS&#xA;.card-media-inline { position: relative; }&#xA;.card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
+                                                            <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                                    Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                                    Click="ApplyExample_Click" Tag="ex_grok_local"
+                                                                    ToolTip="Điền sẵn mẫu grok local video vào 4 tab code"/>
+                                                        </StackPanel>
+                                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,0,0,8">
+                                                            1) Trong HTML tạo video: id=previewVideo
+                                                            <LineBreak/>
+                                                            2) Trong JS đọc datas theo guildId hiện tại
+                                                            <LineBreak/>
+                                                            3) Gọi hostResolvePath rồi set video.src = d.localUrl
+                                                            <LineBreak/>
+                                                            4) CSS cho video fill card
+                                                        </TextBlock>
+
+                                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                                <Run Text="// HTML (giống card media trong grok.html)"/>
+                                                                <LineBreak/>
+                                                                <Run Text="&lt;div class=&quot;card-media card-media-inline&quot;&gt;"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  &lt;video id=&quot;previewVideo&quot; class=&quot;card-video-inline&quot; controls playsinline preload=&quot;metadata&quot;&gt;&lt;/video&gt;"/>
+                                                                <LineBreak/>
+                                                                <Run Text="&lt;/div&gt;"/>
+                                                            </TextBlock>
+                                                        </Border>
+
+                                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                                <Run Text="// JS (giống flow resolve trong grok.js)"/>
+                                                                <LineBreak/>
+                                                                <Run Text="var currentGuildId = (window.hostLive &amp;&amp; window.hostLive.values) ? (window.hostLive.values.outputGuildId || '') : '';"/>
+                                                                <LineBreak/>
+                                                                <Run Text="window.hostLive.on('datas', function(datas) {"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  if (typeof datas === 'string') { try { datas = JSON.parse(datas); } catch (_) { return; } }"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  var localPath = datas &amp;&amp; datas[currentGuildId] ? String(datas[currentGuildId]).trim() : '';"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  if (!localPath || typeof hostResolvePath !== 'function') return;"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  var reqId = 'play_' + Date.now();"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  window.addEventListener('hostPathResolved', function onR(ev) {"/>
+                                                                <LineBreak/>
+                                                                <Run Text="    var d = ev &amp;&amp; ev.detail ? ev.detail : {};"/>
+                                                                <LineBreak/>
+                                                                <Run Text="    if (String(d.requestId || '') !== reqId) return;"/>
+                                                                <LineBreak/>
+                                                                <Run Text="    window.removeEventListener('hostPathResolved', onR);"/>
+                                                                <LineBreak/>
+                                                                <Run Text="    if (!d.ok || !d.localUrl) return;"/>
+                                                                <LineBreak/>
+                                                                <Run Text="    var v = document.getElementById('previewVideo'); if (!v) return;"/>
+                                                                <LineBreak/>
+                                                                <Run Text="    v.src = d.localUrl; try { v.load(); } catch (_) {}"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  });"/>
+                                                                <LineBreak/>
+                                                                <Run Text="  hostResolvePath(localPath, reqId);"/>
+                                                                <LineBreak/>
+                                                                <Run Text="});"/>
+                                                            </TextBlock>
+                                                        </Border>
+
+                                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8">
+                                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                                <Run Text="// CSS (giống grok.css)"/>
+                                                                <LineBreak/>
+                                                                <Run Text=".card-media-inline { position: relative; }"/>
+                                                                <LineBreak/>
+                                                                <Run Text=".card-video-inline { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }"/>
+                                                            </TextBlock>
+                                                        </Border>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </Expander>
+
+                            <!-- Tab1 Injection Expander: chỉ hiển thị khi UseWebTab = true -->
+                            <Expander x:Name="Tab1InjectExpander" IsExpanded="False" Margin="0,0,0,12"
+                                      Visibility="{Binding UseWebTab, Converter={StaticResource BoolToVisibility}}">
+                                <Expander.Header>
+                                    <TextBlock Text="🌐 Gửi JS từ Tab2 → Tab1  (tab1Seq / tab1Par)"
+                                               Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"/>
+                                </Expander.Header>
+                                <Border Background="{DynamicResource WindowBackground}" CornerRadius="8" Padding="14"
+                                        BorderBrush="{DynamicResource TextBrush}" BorderThickness="1">
+                                    <StackPanel>
+
+                                        <!-- Mô tả tổng quan -->
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,8">
+                                            <Run Text="Khi chế độ 2-tab bật, JS trong Tab2 có thể inject và chạy code trong Tab1 (trình duyệt có session / cookie) qua 2 hàm:"/>
+                                        </TextBlock>
+
+                                        <!-- API Reference box -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="10" Margin="0,0,0,12"
+                                                BorderBrush="{DynamicResource TextBrush}" BorderThickness="1">
+                                            <StackPanel>
+                                                <TextBlock Text="📌 API Reference:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="tab1Seq(jsString)" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=" — Sequential: request2 đợi request1 hoàn thành rồi mới chạy."/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Par(jsString)" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text=" — Parallel: các request chạy đồng thời, không đợi nhau."/>
+                                                    <LineBreak/><LineBreak/>
+                                                    <Run Text="// jsString = đoạn JS sẽ chạy bên trong Tab1 (có session/cookie của trang đó)"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- SEQ Example 1: Click → Fill → Submit -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="SEQ 1 — Nhiều bước tuần tự (click → fill → submit):" Foreground="{DynamicResource SuccessColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="// SEQ: từng bước chạy xong mới sang bước tiếp theo&#xA;// Bước 1: click nút&#xA;tab1Seq(`document.querySelector('#loginBtn').click();`);&#xA;&#xA;// Bước 2: đợi bước 1 xong, rồi fill input (Tab1 đã mở modal/form)&#xA;tab1Seq(`document.querySelector('#usernameInput').value = 'myUser';`);&#xA;&#xA;// Bước 3: submit&#xA;tab1Seq(`document.querySelector('form').submit();`);"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="tab1_seq1"
+                                                            ToolTip="Điền sẵn ví dụ sequential Tab2→Tab1 vào editor"/>
+                                                </StackPanel>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="// Bước 1: click nút ở Tab1"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="`document.querySelector('#loginBtn').click();`"/>
+                                                    <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                                    <LineBreak/>
+                                                    <Run Text="// Bước 2 — chờ bước 1 XONG mới chạy: fill input"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="`document.querySelector('#username').value = 'myUser';`"/>
+                                                    <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                                    <LineBreak/>
+                                                    <Run Text="// Bước 3 — submit sau khi đã fill"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Seq(" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="`document.querySelector('form').submit();`"/>
+                                                    <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- PAR Example: Nhiều request chạy song song -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="PAR — 2 request chạy song song (không đợi nhau):" Foreground="{DynamicResource WarningColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="// PAR: cả 2 chạy ngay lập tức, không đợi nhau&#xA;tab1Par(`console.log('[Tab1] request1 started:', Date.now());`);&#xA;tab1Par(`document.title = 'Processing...';`);&#xA;&#xA;// Khác với SEQ: par2 KHÔNG đợi par1 xong"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="tab1_par1"
+                                                            ToolTip="Điền sẵn ví dụ parallel Tab2→Tab1 vào editor"/>
+                                                </StackPanel>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="// Cả 2 request inject vào Tab1 đồng thời, không đợi nhau"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Par(" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="`console.log('[Tab1] par1:', Date.now());`"/>
+                                                    <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Par(" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="`document.title = 'Processing...';`"/>
+                                                    <Run Text=");" Foreground="{DynamicResource WarningColor}"/>
+                                                    <LineBreak/><LineBreak/>
+                                                    <Run Text="// par2 KHÔNG đợi par1 xong → cả 2 chạy song song"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- SEQ Example 2: Fetch trong Tab1 (Tab1 có session) -->
+                                        <Border Background="{DynamicResource WindowBackground}" CornerRadius="6" Padding="8" Margin="0,0,0,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="SEQ 2 — Fetch API trong Tab1 + navigate sau khi done:" Foreground="{DynamicResource PrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <Button Content="📋 Copy" FontSize="10" Height="20" Padding="6,0" Margin="8,0,0,0"
+                                                            Background="{DynamicResource PrimaryBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="CopySnippet_Click"
+                                                            Tag="// SEQ: dùng fetch trong Tab1 (có session/cookie đầy đủ)&#xA;// Bước 1: ensure Tab1 ở đúng origin&#xA;tab1Seq(`&#xA;    if (!window.location.href.includes('grok.com')) {&#xA;        window.location.href = 'https://grok.com';&#xA;    }&#xA;`);&#xA;&#xA;// Bước 2: dùng async fetch trong Tab1 (có cookie grok.com)&#xA;tab1Seq(`&#xA;    (async () => {&#xA;        const r = await fetch('/api/data', { credentials: 'include' });&#xA;        const data = await r.json();&#xA;        window.__tab1Data = data; // lưu cho bước sau&#xA;        console.log('[Tab1 fetch]', data);&#xA;    })();&#xA;`);&#xA;&#xA;// Bước 3: navigate Tab1 đến kết quả&#xA;tab1Seq(`window.location.href = '/result/' + (window.__tab1Data?.id ?? '');`);"/>
+                                                    <Button Content="🖊 Áp dụng" FontSize="10" Height="20" Padding="6,0" Margin="4,0,0,0"
+                                                            Background="{DynamicResource SuccessBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Cursor="Hand"
+                                                            Click="ApplyExample_Click" Tag="tab1_seq2"
+                                                            ToolTip="Điền sẵn ví dụ fetch + navigate Tab1 vào editor"/>
+                                                </StackPanel>
+                                                <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap">
+                                                    <Run Text="// Bước 1: navigate Tab1 đến grok.com (ensure cookie origin)"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Seq(`window.location.href = 'https://grok.com';`);" Foreground="{DynamicResource WarningColor}"/>
+                                                    <LineBreak/><LineBreak/>
+                                                    <Run Text="// Bước 2: async fetch bên trong Tab1 (có session đầy đủ)"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Seq(`" Foreground="{DynamicResource WarningColor}"/>
+                                                    <Run Text="(async () => {"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    const r = await fetch('/api/data', { credentials: 'include' });"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    window.__tab1Data = await r.json();"/>
+                                                    <LineBreak/>
+                                                    <Run Text="    console.log('[Tab1 fetch]', window.__tab1Data);"/>
+                                                    <LineBreak/>
+                                                    <Run Text="})();"/>
+                                                    <Run Text="`);" Foreground="{DynamicResource WarningColor}"/>
+                                                    <LineBreak/><LineBreak/>
+                                                    <Run Text="// Bước 3: navigate Tab1 đến kết quả sau khi fetch xong"/>
+                                                    <LineBreak/>
+                                                    <Run Text="tab1Seq(`window.location.href='/result/'+window.__tab1Data?.id;`);" Foreground="{DynamicResource WarningColor}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                    </StackPanel>
+                                </Border>
+                            </Expander>
+
                             <Border Background="{DynamicResource WindowBackground}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
                                 <StackPanel>
                                     <TextBlock Text="Prompt chuẩn để gửi AI tạo HTML UI node"
