@@ -41,6 +41,9 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         Canvas.SetTop(border, bodyNode.Y);
         canvas.Children.Add(border);
         Host.ZIndexManager.InitializeNodeZIndex(bodyNode, border);
+        // Nếu đã locked từ đầu → nâng z-index lên trên inner nodes
+        if (bodyNode.LockInnerNodes)
+            Host.ZIndexManager.SetLockedBodyZIndex(bodyNode);
         // Đảm bảo border không có shadow từ Canvas
         border.Effect = null;
         canvas.Effect = null;
@@ -51,7 +54,13 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
         if (bodyNode is INotifyPropertyChanged notifier)
         {
-            notifier.PropertyChanged += (_, _) => RefreshNodeVisual(bodyNode);
+            notifier.PropertyChanged += (_, e) =>
+            {
+                RefreshNodeVisual(bodyNode);
+                // Khi LockInnerNodes thay đổi → cập nhật z-index
+                if (e.PropertyName == nameof(BodyContainerNode.LockInnerNodes))
+                    Host.ZIndexManager.SetLockedBodyZIndex(bodyNode);
+            };
         }
         RefreshNodeVisual(bodyNode);
     }

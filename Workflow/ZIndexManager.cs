@@ -24,6 +24,7 @@ namespace FlowMy.Workflow
         // Nội bộ Body Tier:
         private const int BackgroundBase = 100;    // Loop Body nodes
         private const int ForegroundBase = 10000;  // Normal nodes
+        private const int LockedBodyZIndexOffset = 50000; // Locked body: nằm trên ForegroundBase (10000+) nhưng dưới SelectedOffset (100000)
         private const int SelectedOffset = 100000; // Offset khi được chọn
         private const int DraggingOffset = 200000; // Offset khi đang kéo
 
@@ -91,7 +92,9 @@ namespace FlowMy.Workflow
         public void SelectNode(WorkflowNode node) 
         {
             int baseZ = _nodeOriginalZIndex.ContainsKey(node) ? _nodeOriginalZIndex[node] : ForegroundBase;
-            RaiseNodeZIndex(node, baseZ + SelectedOffset);
+            int targetZ = baseZ + SelectedOffset;
+            if (node.Border != null && Panel.GetZIndex(node.Border) == targetZ) return;
+            RaiseNodeZIndex(node, targetZ);
         }
 
         public void DragNode(WorkflowNode node)
@@ -100,10 +103,16 @@ namespace FlowMy.Workflow
             if (node is FlowMy.Models.Nodes.BodyContainerNode)
             {
                 // Body container should stay behind normal nodes/lines.
-                RaiseNodeZIndex(node, baseZ);
+                // Nhưng nếu locked thì giữ z-index cao hơn để chặn click vào inner nodes.
+                var bcn = (FlowMy.Models.Nodes.BodyContainerNode)node;
+                int targetZ = bcn.LockInnerNodes ? baseZ + LockedBodyZIndexOffset : baseZ;
+                if (node.Border != null && Panel.GetZIndex(node.Border) == targetZ) return;
+                RaiseNodeZIndex(node, targetZ);
                 return;
             }
-            RaiseNodeZIndex(node, baseZ + DraggingOffset);
+            int dragZ = baseZ + DraggingOffset;
+            if (node.Border != null && Panel.GetZIndex(node.Border) == dragZ) return;
+            RaiseNodeZIndex(node, dragZ);
         }
 
         public void RestoreNodeZIndex(WorkflowNode node)
@@ -112,8 +121,13 @@ namespace FlowMy.Workflow
 
             if (_nodeOriginalZIndex.TryGetValue(node, out int originalZIndex))
             {
-                Panel.SetZIndex(node.Border, originalZIndex);
-                UpdateAllPortsZIndex(node, PortTierBase + originalZIndex);
+                // Nếu là locked BodyContainerNode → giữ z-index cao hơn inner nodes
+                int targetZ = originalZIndex;
+                if (node is FlowMy.Models.Nodes.BodyContainerNode bcn && bcn.LockInnerNodes)
+                    targetZ = originalZIndex + LockedBodyZIndexOffset;
+
+                Panel.SetZIndex(node.Border, targetZ);
+                UpdateAllPortsZIndex(node, PortTierBase + targetZ);
             }
         }
 
@@ -125,6 +139,21 @@ namespace FlowMy.Workflow
         public void RemoveNode(WorkflowNode node)
         {
             _nodeOriginalZIndex.Remove(node);
+        }
+
+        /// <summary>
+        /// Cập nhật z-index cho BodyContainerNode khi LockInnerNodes thay đổi.
+        /// Khi locked, nâng z-index lên trên các node con để chặn mọi thao tác chuột.
+        /// Khi unlocked, hạ z-index về vị trí ban đầu (background).
+        /// </summary>
+        public void SetLockedBodyZIndex(FlowMy.Models.Nodes.BodyContainerNode bodyNode)
+        {
+            if (bodyNode.Border == null) return;
+            if (!_nodeOriginalZIndex.TryGetValue(bodyNode, out int baseZ)) return;
+
+            int targetZ = bodyNode.LockInnerNodes ? baseZ + LockedBodyZIndexOffset : baseZ;
+            Panel.SetZIndex(bodyNode.Border, targetZ);
+            UpdateAllPortsZIndex(bodyNode, PortTierBase + targetZ);
         }
     }
 }
