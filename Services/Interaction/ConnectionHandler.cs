@@ -499,6 +499,7 @@ namespace FlowMy.Services.Interaction
             {
                 _host.IsPanning = false;
                 try { _host.WorkflowCanvas.ReleaseMouseCapture(); } catch { }
+                _host.WorkflowCanvas.Cursor = Cursors.Arrow;
             }
 
             if (_host.IsBoxSelecting)
@@ -741,6 +742,7 @@ namespace FlowMy.Services.Interaction
             {
                 _host.IsPanning = false;
                 _host.WorkflowCanvas.ReleaseMouseCapture();
+                _host.WorkflowCanvas.Cursor = Cursors.Arrow;
                 
                 // Re-enable NodeChrome handlers after pan ends
                 var viewModel = _host.ViewModel;
@@ -792,6 +794,7 @@ namespace FlowMy.Services.Interaction
             {
                 _host.IsPanning = false;
                 try { _host.WorkflowCanvas.ReleaseMouseCapture(); } catch { }
+                _host.WorkflowCanvas.Cursor = Cursors.Arrow;
             }
 
             // Kiểm tra xem click có phải vào dialog không
@@ -859,6 +862,7 @@ namespace FlowMy.Services.Interaction
                     _host.IsPanning = true;
                     _host.PanStartPoint = e.GetPosition(_host.ScrollViewer);
                     _host.WorkflowCanvas.CaptureMouse();
+                    _host.WorkflowCanvas.Cursor = Cursors.SizeAll;
                     viewModel.SelectedNode = null;
                     _host.RestoreAllNodesZIndex();
                     

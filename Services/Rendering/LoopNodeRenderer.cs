@@ -544,6 +544,7 @@ namespace FlowMy.Services.Rendering
                 bodyClusterNodes = GetLoopBodyClusterNodes(loopNode);
 
                 containerBorder.CaptureMouse();
+                containerBorder.Cursor = Cursors.SizeAll;
                 e.Handled = true;
             };
 
@@ -653,6 +654,7 @@ namespace FlowMy.Services.Rendering
                 {
                     isDraggingContainer = false;
                     containerBorder.ReleaseMouseCapture();
+                    containerBorder.Cursor = Cursors.Arrow;
                     bodyClusterNodes = null; // clear cached cluster
                     
                     // ✅ Khôi phục Z-index ban đầu của Loop Body (-100)

@@ -167,6 +167,8 @@ namespace FlowMy.Services.Interaction
             host.DragOffset = new Point(mousePos.X - host.DraggedNode.X, mousePos.Y - host.DraggedNode.Y);
 
             host.DraggedNode.Border?.CaptureMouse();
+            if (host.DraggedNode.Border != null)
+                host.DraggedNode.Border.Cursor = Cursors.SizeAll;
             viewModel.SelectedNode = host.DraggedNode;
             host.FocusWindow();
 
@@ -967,6 +969,8 @@ namespace FlowMy.Services.Interaction
                     }
                 }
                 
+                if (host.DraggedNode?.Border != null)
+                    host.DraggedNode.Border.Cursor = Cursors.Hand;
                 host.DraggedNode = null;
                 _draggedNodeConnections = null;
                 _dragAdjacency = null;

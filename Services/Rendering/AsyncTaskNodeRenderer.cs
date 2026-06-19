@@ -785,6 +785,7 @@ namespace FlowMy.Services.Rendering
                 containerOriginalPos = new Point(body.X, body.Y);
                 bodyClusterNodes = GetAsyncTaskBodyClusterNodes(asyncTaskNode);
                 containerBorder.CaptureMouse();
+                containerBorder.Cursor = Cursors.SizeAll;
                 e.Handled = true;
             };
 
@@ -865,6 +866,7 @@ namespace FlowMy.Services.Rendering
                 if (!isDraggingContainer) return;
                 isDraggingContainer = false;
                 containerBorder.ReleaseMouseCapture();
+                containerBorder.Cursor = Cursors.Arrow;
                 bodyClusterNodes = null;
                 _host.ZIndexManager.RestoreNodeZIndex(body);
                 _host.UpdateMinimap();

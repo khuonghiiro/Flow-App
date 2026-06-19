@@ -121,6 +121,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             origin = new Point(bodyNode.X, bodyNode.Y);
             nodesInside = bodyNode.LockInnerNodes ? CaptureNodesInsideBody(bodyNode) : null;
             border.CaptureMouse();
+            border.Cursor = Cursors.SizeAll;
             Host.ZIndexManager.DragNode(bodyNode);
             e.Handled = true;
         };
@@ -185,6 +186,7 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
             dragging = false;
             nodesInside = null;
             border.ReleaseMouseCapture();
+            border.Cursor = Cursors.Arrow;
             Host.ZIndexManager.RestoreNodeZIndex(bodyNode);
             e.Handled = true;
         };

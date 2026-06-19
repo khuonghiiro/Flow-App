@@ -297,6 +297,7 @@ public static class BodyContainerControl
             originalW = node.BodyWidth;
             originalH = node.BodyHeight;
             border.CaptureMouse();
+            border.Cursor = GetCursor(dir);
             e.Handled = true;
         };
 
@@ -346,6 +347,7 @@ public static class BodyContainerControl
             isResizing = false;
             resizeDirection = ResizeDirection.None;
             border.ReleaseMouseCapture();
+            border.Cursor = Cursors.Arrow;
             e.Handled = true;
         };
     }
