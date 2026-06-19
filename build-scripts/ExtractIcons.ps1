@@ -50,7 +50,7 @@ Get-ChildItem -Path $ProjectRoot -Filter "*.cs" -Recurse | ForEach-Object {
             }
         }
     }
-    
+
     # Find GetIconPath("icon-name")
     $matches2 = [regex]::Matches($content, 'GetIconPath\(["'']([^"'']+)["'']\)')
     foreach ($match in $matches2) {
@@ -60,7 +60,7 @@ Get-ChildItem -Path $ProjectRoot -Filter "*.cs" -Recurse | ForEach-Object {
             Write-Host "  Found GetIconPath: $iconKey" -ForegroundColor Gray
         }
     }
-    
+
     # Skip fallback paths scanning as they don't have subfolder info
 }
 
@@ -71,17 +71,17 @@ if (Test-Path $iconsTextFile) {
     Write-Host "Loading icons from icons.txt" -ForegroundColor Cyan
     Write-Host "================================================" -ForegroundColor Cyan
     Write-Host "Reading icons from: $iconsTextFile" -ForegroundColor Green
-    
+
     $fileContent = Get-Content $iconsTextFile
     $addedFromFile = 0
-    
+
     foreach ($line in $fileContent) {
         $line = $line.Trim()
         # Skip empty lines and comments
         if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith('#')) {
             continue
         }
-        
+
         # Check if line has format "icon-name subfolder"
         if ($line -match '\s') {
             if ($usedIconKeys.Add($line)) {
@@ -94,7 +94,7 @@ if (Test-Path $iconsTextFile) {
             Write-Host "  Skipped (no subfolder): $line" -ForegroundColor DarkGray
         }
     }
-    
+
     Write-Host "Added $addedFromFile new icons from icons.txt" -ForegroundColor Green
 } else {
     Write-Host "`nicons.txt not found in script directory, skipping additional icons..." -ForegroundColor Yellow
@@ -120,7 +120,7 @@ $sourceIconsFolder = $null
 if (Test-Path $envIconFile) {
     Write-Host "Reading source folder paths from: $envIconFile" -ForegroundColor Green
     $lines = Get-Content $envIconFile
-    
+
     if ($lines.Count -eq 0) {
         Write-Host "env_icon.txt is empty, using default folder" -ForegroundColor Yellow
         $sourceIconsFolder = $defaultSourceFolder
@@ -130,22 +130,22 @@ if (Test-Path $envIconFile) {
         foreach ($line in $lines) {
             $lineNumber++
             $line = $line.Trim()
-            
+
             # Bo qua dong trong hoac comment
             if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith('#')) {
                 Write-Host "  Line $lineNumber : Skipped (empty or comment)" -ForegroundColor DarkGray
                 continue
             }
-            
+
             # Xu ly duong dan tuyet doi hoac tuong doi
             if ([System.IO.Path]::IsPathRooted($line)) {
                 $testPath = $line
             } else {
                 $testPath = Join-Path $ProjectRoot $line
             }
-            
+
             Write-Host "  Line $lineNumber : Testing path: $testPath" -ForegroundColor Cyan
-            
+
             # Kiem tra neu thu muc ton tai
             if (Test-Path $testPath) {
                 $sourceIconsFolder = $testPath
@@ -156,7 +156,7 @@ if (Test-Path $envIconFile) {
                 Write-Host "  Line $lineNumber : Folder not found, trying next line..." -ForegroundColor Yellow
             }
         }
-        
+
         # Neu khong tim thay thu muc nao ton tai
         if (-not $sourceIconsFolder) {
             Write-Host "No valid folder found in env_icon.txt, using default folder" -ForegroundColor Yellow
@@ -178,10 +178,17 @@ if (-not (Test-Path $sourceIconsFolder)) {
     $sourceIconsFolder = $null
 }
 
+# Dem so icon DA TON TAI SAN trong Assets/Icons TRUOC khi copy, dung de thong ke chinh xac
+$existingIconsBeforeCopy = 0
+if (Test-Path $targetIconsFolder) {
+    $existingIconsBeforeCopy = (Get-ChildItem -Path $targetIconsFolder -Filter "*.svg" -Recurse -File | Measure-Object).Count
+}
+
 $copiedCount = 0
 $skippedCount = 0
 $notFoundCount = 0
 $usedIconPaths = New-Object System.Collections.Generic.HashSet[string]
+$newlyCopiedPaths = New-Object System.Collections.Generic.List[string]
 
 $iconKeysToCopy = @()
 if ($sourceIconsFolder) {
@@ -194,31 +201,31 @@ if ($sourceIconsFolder) {
 foreach ($iconKey in $iconKeysToCopy) {
     # Parse icon key: "icon-name subfolder" (must have space)
     $parts = $iconKey -split '\s+', 2
-    
+
     if ($parts.Count -ne 2) {
         # Skip if doesn't have exactly 2 parts (icon-name and subfolder)
         Write-Host "  Skipped (invalid format): $iconKey" -ForegroundColor DarkGray
         continue
     }
-    
+
     # Format: "icon-name subfolder"
     $iconName = $parts[0]
     $subfolder = $parts[1]
     $fileName = "$iconName.svg"
-    
+
     # Source: Assets/Icons_All/subfolder/icon-name.svg
     $sourcePath = Join-Path $sourceIconsFolder "$subfolder\$fileName"
-    
+
     # Target: Assets/Icons/subfolder/icon-name.svg (keep subfolder structure)
     $targetSubfolder = Join-Path $targetIconsFolder $subfolder
     $targetPath = Join-Path $targetSubfolder $fileName
-    
+
     # Create subfolder if not exists
     if (-not (Test-Path $targetSubfolder)) {
         New-Item -ItemType Directory -Path $targetSubfolder -Force | Out-Null
         Write-Host "  Created subfolder: $subfolder" -ForegroundColor Cyan
     }
-    
+
     # Check if target file already exists
     if (Test-Path $targetPath) {
         $relativePath = "$subfolder\$fileName"
@@ -227,7 +234,7 @@ foreach ($iconKey in $iconKeysToCopy) {
         $usedIconPaths.Add("Assets\Icons\$relativePath") | Out-Null
         continue
     }
-    
+
     # Check if source file exists and copy
     if (Test-Path $sourcePath) {
         Copy-Item -Path $sourcePath -Destination $targetPath -Force
@@ -235,6 +242,7 @@ foreach ($iconKey in $iconKeysToCopy) {
         Write-Host "  Copied: $relativePath" -ForegroundColor Green
         $copiedCount++
         $usedIconPaths.Add("Assets\Icons\$relativePath") | Out-Null
+        $newlyCopiedPaths.Add("Assets\Icons\$relativePath")
     } else {
         Write-Warning "  Not found: $iconKey"
         Write-Host "    Searched: $sourcePath" -ForegroundColor DarkGray
@@ -286,30 +294,40 @@ foreach ($svgFile in $allSvgFiles) {
 [System.IO.File]::WriteAllLines($manifestPath, $manifestLines, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "  Wrote $manifestCount entries to: $manifestPath" -ForegroundColor Green
 
-# 7. Display summary
-Write-Host "`n================================================" -ForegroundColor Cyan
-Write-Host "Summary:" -ForegroundColor Cyan
-Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  Found $($usedIconKeys.Count) unique icon keys with subfolders" -ForegroundColor Green
-Write-Host "  Copied: $copiedCount icons" -ForegroundColor Green
-Write-Host "  Skipped (already exist): $skippedCount icons" -ForegroundColor Yellow
-Write-Host "  Not found: $notFoundCount icons" -ForegroundColor Red
-Write-Host "  Total icons in Assets/Icons: $($usedIconPaths.Count)" -ForegroundColor Green
-Write-Host "  Manifest entries: $manifestCount" -ForegroundColor Green
-Write-Host "  Manifest file: $manifestPath" -ForegroundColor Green
-
-# Display icon list
-if ($usedIconPaths.Count -gt 0) {
-    Write-Host "`nCopied icon files:" -ForegroundColor Cyan
-    $usedIconPaths | Sort-Object | ForEach-Object {
-        Write-Host "  $_" -ForegroundColor Gray
-    }
-}
-
-# Pause before exit (bo qua khi chay non-interactive)
+# 7. Banner hoan thanh (hien thi truoc phan tong hop, de phan tong hop la thu cuoi cung nguoi dung nhin thay)
 Write-Host "`n================================================" -ForegroundColor Cyan
 Write-Host "Script completed!" -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Cyan
+
+# 8. TONG HOP THONG KE - LUON nam o duoi cung cua output
+$totalIconsNow = $allSvgFiles.Count
+Write-Host "`n================================================" -ForegroundColor Cyan
+Write-Host "                 TONG HOP / SUMMARY" -ForegroundColor Cyan
+Write-Host "================================================" -ForegroundColor Cyan
+Write-Host ("  {0,-48}: {1}" -f "Icon key tim thay trong code/icons.txt", $usedIconKeys.Count) -ForegroundColor White
+Write-Host ("  {0,-48}: {1}" -f "Icon da ton tai san truoc khi chay script", $existingIconsBeforeCopy) -ForegroundColor Yellow
+Write-Host ("  {0,-48}: {1}" -f "Icon MOI duoc copy them vao", $copiedCount) -ForegroundColor Green
+Write-Host ("  {0,-48}: {1}" -f "Icon bi bo qua (da co san, trung)", $skippedCount) -ForegroundColor DarkYellow
+Write-Host ("  {0,-48}: {1}" -f "Icon khong tim thay o thu muc nguon", $notFoundCount) -ForegroundColor Red
+Write-Host ("  {0,-48}: {1}" -f "Tong so icon hien co trong Assets/Icons", $totalIconsNow) -ForegroundColor Cyan
+Write-Host ("  {0,-48}: {1}" -f "So dong da ghi vao manifest", $manifestCount) -ForegroundColor Green
+Write-Host "------------------------------------------------" -ForegroundColor DarkGray
+Write-Host "  File manifest: $manifestPath" -ForegroundColor Gray
+
+if ($newlyCopiedPaths.Count -gt 0) {
+    Write-Host "`n  Danh sach icon MOI duoc them ($($newlyCopiedPaths.Count)):" -ForegroundColor Green
+    $newlyCopiedPaths | Sort-Object | ForEach-Object {
+        Write-Host "    [+] $_" -ForegroundColor Gray
+    }
+}
+
+if ($notFoundCount -gt 0) {
+    Write-Host "`n  Canh bao: co $notFoundCount icon khong tim thay trong thu muc nguon." -ForegroundColor Red
+}
+
+Write-Host "================================================`n" -ForegroundColor Cyan
+
+# Pause before exit (bo qua khi chay non-interactive)
 if (-not $NoPause) {
     try {
         Write-Host "Press any key to exit..." -ForegroundColor Cyan

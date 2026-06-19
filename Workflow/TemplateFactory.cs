@@ -1,4 +1,4 @@
-using FlowMy.Models;
+﻿using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Utilities;
 using System.Linq;
@@ -62,6 +62,7 @@ namespace FlowMy.Workflow
                 "TextScan" => CreateTextScanNode(x, y),
                 "EmbedApplicationNode" => CreateEmbedApplicationNode(x, y),
                 "KeyScopedStore" => CreateKeyScopedStoreNode(x, y),
+                                "ActionCanVasNode" => CreateActionCanVasNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1600,7 +1601,26 @@ namespace FlowMy.Workflow
             task2Branch.Port = task2Port;
             node.Ports.Add(task2Port);
             node.AsyncTaskBranches.Add(task2Branch);
+        }
+        private WorkflowNode CreateActionCanVasNode(double x, double y)
+        {
+            var node = new FlowMy.Models.Nodes.ActionCanVasNode
+            {
+                Id = $"Node_ActionCanVas_{Guid.NewGuid()}",
+                Title = "Thao tác canvas",
+                X = x - 30,
+                Y = y - 30,
+                ColorKey = "Amethyst",
+                NodeBrush = Application.Current.TryFindResource("AmethystBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.CornflowerBlue,
+                Type = NodeType.ActionCanVas
+            };
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = "Info" });
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "JsonStep", DisplayName = "JsonStep", IsMultiple = false, OutputType = WorkflowDataType.String });
+
+            return node;
         }
+
     }
 }
 

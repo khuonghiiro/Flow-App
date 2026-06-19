@@ -1,4 +1,4 @@
-using FlowMy.Controls;
+﻿using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -378,6 +378,7 @@ namespace FlowMy.Views
                 "Callback" => "arrows-turn-right regular",
                 "FileDownload" => "download solid",
                 "GitSource" => "git-alt brands",
+                                "ActionCanVasNode" => "square-share-nodes light",
                 _ => "circle duotone"
             };
         }

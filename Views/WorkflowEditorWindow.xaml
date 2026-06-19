@@ -1,4 +1,4 @@
-<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
+﻿<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -789,7 +789,52 @@ Cursor="Hand"
                                 </Grid>
                             </Border>
                             
-                        </WrapPanel>
+                        
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
+                                    Background="{DynamicResource AmethystBrush}"
+                                    Tag="ActionCanVasNode"
+                                    MouseDown="NodeTemplate_MouseDown"
+                                    MouseMove="NodeTemplate_MouseMove"
+                                    MouseUp="NodeTemplate_MouseUp"
+                                    MouseEnter="NodeTemplate_MouseEnter"
+                                    MouseLeave="NodeTemplate_MouseLeave">
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="240">
+                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
+                                                <Run Text="Thao tác canvas"/>
+                                            </TextBlock>
+                                            <TextBlock Text="Node được tạo bởi Node Generator."
+                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <Border.ContextMenu>
+                                    <ContextMenu Placement="MousePoint" StaysOpen="False">
+                                        <MenuItem IsHitTestVisible="False">
+                                            <MenuItem.Header>
+                                                <Border Background="{DynamicResource AmethystBrush}"
+                                                        CornerRadius="10" Padding="10"
+                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Thao tác canvas"
+                                                                   Foreground="{DynamicResource TextOnAmethystBrush}"
+                                                                   FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Node tự động sinh bởi Node Generator."
+                                                                   Foreground="{DynamicResource TextOnAmethystBrush}"
+                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid>
+                                    <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
+                                                          Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='square-share-nodes light'}"
+                                                          Fill="{DynamicResource TextOnAmethystBrush}"/>
+                                </Grid>
+                            </Border></WrapPanel>
 
                         <TextBlock Text="Loop" Style="{StaticResource PaletteGroupHeaderStyle}"/>
                         <WrapPanel Orientation="Horizontal" x:Name="LoopWrapPanel">

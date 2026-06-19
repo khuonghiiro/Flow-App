@@ -64,7 +64,9 @@
         /// <summary>Quét text từ ảnh (OCR) với Windows.Media.Ocr hoặc OpenCV/ML.NET.</summary>
         TextScan,
         /// <summary>Nhúng ứng dụng desktop vào canvas với kích thước và tương tác tùy chỉnh.</summary>
-        EmbedApplication
+        EmbedApplication,
+        /// <summary>Thao tác canvas node — được tạo tự động.</summary>
+        ActionCanVas
     }
 }
 

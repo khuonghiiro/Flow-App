@@ -49,6 +49,7 @@ namespace FlowMy.Services.Rendering
         private readonly GitSourceNodeRenderer _gitSourceNodeRenderer;
         private readonly MacroRecorderNodeRenderer _macroRecorderNodeRenderer;
         private readonly BorderHighlightNodeRenderer _borderHighlightNodeRenderer;
+        private readonly ActionCanVasNodeRenderer _actionCanVasNodeRenderer;
         private readonly EmbedApplicationNodeRenderer _embedApplicationNodeRenderer;
 
         // Dispatch map: node concrete type → renderer
@@ -95,6 +96,7 @@ namespace FlowMy.Services.Rendering
             GitSourceNodeRenderer gitSourceNodeRenderer,
             MacroRecorderNodeRenderer macroRecorderNodeRenderer,
             BorderHighlightNodeRenderer borderHighlightNodeRenderer,
+            ActionCanVasNodeRenderer actionCanVasNodeRenderer,
             EmbedApplicationNodeRenderer embedApplicationNodeRenderer
             )
         {
@@ -135,6 +137,7 @@ namespace FlowMy.Services.Rendering
             _gitSourceNodeRenderer = gitSourceNodeRenderer ?? throw new ArgumentNullException(nameof(gitSourceNodeRenderer));
             _macroRecorderNodeRenderer = macroRecorderNodeRenderer ?? throw new ArgumentNullException(nameof(macroRecorderNodeRenderer));
             _borderHighlightNodeRenderer = borderHighlightNodeRenderer ?? throw new ArgumentNullException(nameof(borderHighlightNodeRenderer));
+            _actionCanVasNodeRenderer = actionCanVasNodeRenderer ?? throw new ArgumentNullException(nameof(actionCanVasNodeRenderer));
             _embedApplicationNodeRenderer = embedApplicationNodeRenderer ?? throw new ArgumentNullException(nameof(embedApplicationNodeRenderer));
 
             BuildRendererMap();
@@ -183,6 +186,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(GitSourceNode)]         = _gitSourceNodeRenderer,
                 [typeof(MacroRecorderNode)]     = _macroRecorderNodeRenderer,
                 [typeof(BorderHighlightNode)]   = _borderHighlightNodeRenderer,
+                [typeof(FlowMy.Models.Nodes.ActionCanVasNode)] = _actionCanVasNodeRenderer,
                 [typeof(EmbedApplicationNode)]  = _embedApplicationNodeRenderer,
             };
         }
