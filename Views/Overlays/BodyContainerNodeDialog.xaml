@@ -220,7 +220,7 @@
                                       IsEnabled="{Binding LockInnerNodes}"
                                       Foreground="{DynamicResource TextBrush}"
                                       FontSize="11"
-                                      Margin="16,0,0,12"
+                                      Margin="16,5,0,12"
                                       ToolTip="Khi bật: body che phủ node con, không tương tác được.&#x0a;Khi tắt: vẫn kéo/chuột phải node con bình thường, nhưng kéo sẽ di chuyển cả body."/>
 
                             <!-- 💧 Độ trong suốt viền -->

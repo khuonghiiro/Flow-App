@@ -753,10 +753,9 @@ namespace FlowMy.Services.Rendering
             containerBorder.PreviewMouseDown += (s, e) =>
             {
                 if (e.OriginalSource is Ellipse) return;
-                if (e.LeftButton == MouseButtonState.Pressed)
-                {
-                    CloseNodeDialogIfOpen();
-                }
+
+                // ✅ Đóng dialog đang mở khi click vào body (giống click canvas)
+                CloseNodeDialogIfOpen();
 
                 // ✅ Nếu AsyncTaskBodyNode nằm bên trong một locked BodyContainerNode → không cho kéo
                 if (_host.ViewModel != null)

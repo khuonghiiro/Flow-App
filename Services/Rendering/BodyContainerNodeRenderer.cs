@@ -105,6 +105,10 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
         border.PreviewMouseDown += (_, e) =>
         {
             if (e.OriginalSource is Ellipse) return;
+
+            // ✅ Đóng dialog đang mở khi click vào body (giống click canvas)
+            CloseNodeDialogIfOpen();
+
             if (e.ChangedButton == System.Windows.Input.MouseButton.Right)
             {
                 OpenNodeDialog(bodyNode);
@@ -284,6 +288,17 @@ public sealed class BodyContainerNodeRenderer : INodeRenderer
 
         var dialog = new BodyContainerNodeDialog(node, Host, Host.OwnerWindow);
         dialogManager.OpenDialog(node, dialog, Host);
+    }
+
+    private void CloseNodeDialogIfOpen()
+    {
+        if (Host.OwnerWindow is not WorkflowEditorWindow window) return;
+        var field = typeof(WorkflowEditorWindow).GetField("_nodeDialogManager",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (field?.GetValue(window) is NodeDialogManager manager && manager.IsDialogOpen)
+        {
+            manager.CloseCurrentDialog();
+        }
     }
 
     private void AttachHoverTitleBehavior(BodyContainerNode bodyNode, Border border)

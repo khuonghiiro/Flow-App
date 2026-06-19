@@ -505,10 +505,9 @@ namespace FlowMy.Services.Rendering
             {
                 // ✅ Allow dragging on background or headers (excluding resize handles)
                 if (e.OriginalSource is Ellipse) return; // Ignore resize handles
-                if (e.LeftButton == MouseButtonState.Pressed)
-                {
-                    CloseNodeDialogIfOpen();
-                }
+
+                // ✅ Đóng dialog đang mở khi click vào body (giống click canvas)
+                CloseNodeDialogIfOpen();
 
                 // ✅ Nếu LoopBodyNode nằm bên trong một locked BodyContainerNode → không cho kéo
                 if (Host.ViewModel != null)
