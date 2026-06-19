@@ -1128,7 +1128,7 @@ namespace FlowMy.ViewModels
                 NodeType.MacroRecorder => "chart-network light",
                 NodeType.BorderHighlight => "bolt-lightning sharp-light",
                 NodeType.DataFetcher => "inbox-out duotone-light",
-                NodeType.BodyContainer => "border-none sharp-duotone-regular",
+                NodeType.BodyContainer => "square-dashed duotone-light",
                 NodeType.FolderFilePaths => "file-import duotone-light",
                 NodeType.KeyValueBridge => "list-check solid",
                 NodeType.FlowOverwrite => "merge sharp-regular",

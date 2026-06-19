@@ -1,4 +1,4 @@
-﻿using FlowMy.Controls;
+using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -372,7 +372,7 @@ namespace FlowMy.Views
                 "FolderFilePaths" => "file-import duotone-light",
                 "KeyValueBridge" => "list-check solid",
                 "FlowOverwrite" => "merge sharp-regular",
-                "BodyContainer" => "border-none sharp-duotone-regular",
+                "BodyContainer" => "square-dashed duotone-light",
                 "Notification" => "message-captions duotone-regular",
                 "Storage" => "arrow-progress sharp-regular",
                 "Callback" => "arrows-turn-right regular",

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -870,7 +870,7 @@ namespace FlowMy.ViewModels
                 NodeType.FolderFilePaths => "Folder File Paths",
                 NodeType.AsyncTaskDispatchCollect => "Async Dispatch Collect",
                 NodeType.KeyScopedStore => "Key Scoped Store",
-                NodeType.BodyContainer => "Body Container",
+                NodeType.BodyContainer => "square-dashed duotone-light",
                 _ => type.ToString()
             };
         }
@@ -913,7 +913,7 @@ namespace FlowMy.ViewModels
                 NodeType.FolderFilePaths => "file-import duotone-light",
                 NodeType.KeyValueBridge => "list-check solid",
                 NodeType.FlowOverwrite => "merge sharp-regular",
-                NodeType.BodyContainer => "border-none sharp-duotone-regular",
+                NodeType.BodyContainer => "square-dashed duotone-light",
                 NodeType.Notification => "message-captions duotone-regular",
                 NodeType.Storage => "arrow-progress sharp-regular",
                 NodeType.Callback => "arrows-turn-right regular",
