@@ -21,6 +21,12 @@ public static class LockedBodyHelper
     public const double Margin = 10.0;
 
     /// <summary>
+    /// Re-entrancy guard: ngăn vòng lặp vô hạn khi push A đẩy B rồi B đẩy lại A.
+    /// </summary>
+    [ThreadStatic]
+    private static bool _isPushing;
+
+    /// <summary>
     /// Tìm locked BodyContainerNode đang chứa node này (dựa trên rect overlap).
     /// Trả về null nếu node không nằm trong bất kỳ locked body nào.
     /// </summary>
@@ -103,6 +109,20 @@ public static class LockedBodyHelper
         IWorkflowEditorHost host,
         IEnumerable<WorkflowNode> movingNodes)
     {
+        if (_isPushing) return;
+        _isPushing = true;
+        try
+        {
+        PushLockedBodiesAwayCore(viewModel, host, movingNodes);
+        }
+        finally { _isPushing = false; }
+    }
+
+    private static void PushLockedBodiesAwayCore(
+        ViewModels.WorkflowEditorViewModel viewModel,
+        IWorkflowEditorHost host,
+        IEnumerable<WorkflowNode> movingNodes)
+    {
         var movingSet = new HashSet<WorkflowNode>(movingNodes);
 
         var lockedBodies = viewModel.Nodes.OfType<BodyContainerNode>()
@@ -173,6 +193,21 @@ public static class LockedBodyHelper
     /// Dùng CÙNG logic overlap/push như PushLockedBodiesAway nhưng đảo vai trò.
     /// </summary>
     public static void PushChildBodiesAwayFromLockedBody(
+        ViewModels.WorkflowEditorViewModel viewModel,
+        IWorkflowEditorHost host,
+        BodyContainerNode lockedBody,
+        HashSet<WorkflowNode> lockedInnerNodes)
+    {
+        if (_isPushing) return;
+        _isPushing = true;
+        try
+        {
+        PushChildBodiesAwayCore(viewModel, host, lockedBody, lockedInnerNodes);
+        }
+        finally { _isPushing = false; }
+    }
+
+    private static void PushChildBodiesAwayCore(
         ViewModels.WorkflowEditorViewModel viewModel,
         IWorkflowEditorHost host,
         BodyContainerNode lockedBody,
@@ -313,6 +348,29 @@ public static class LockedBodyHelper
                 innerNodes.Add(node);
         }
 
+        // ✅ Thu thập cả LoopBodyNode/AsyncTaskBodyNode pseudo-nodes nằm trong body
+        // (chúng không nằm trong viewModel.Nodes nên phải quét qua parent nodes)
+        var pseudoBodyNodes = new List<WorkflowNode>();
+        foreach (var node in viewModel.Nodes)
+        {
+            if (node is LoopNode ln && ln.LoopBodyNode != null
+                && !ReferenceEquals(ln.LoopBodyNode, lockedBody)
+                && (excludeNodes == null || !excludeNodes.Contains(ln.LoopBodyNode)))
+            {
+                var lbCenter = GetNodeCenter(viewModel, ln.LoopBodyNode);
+                if (bodyRect.Contains(lbCenter))
+                    pseudoBodyNodes.Add(ln.LoopBodyNode);
+            }
+            else if (node is AsyncTaskNode an && an.AsyncTaskBodyNode != null
+                && !ReferenceEquals(an.AsyncTaskBodyNode, lockedBody)
+                && (excludeNodes == null || !excludeNodes.Contains(an.AsyncTaskBodyNode)))
+            {
+                var abCenter = GetNodeCenter(viewModel, an.AsyncTaskBodyNode);
+                if (bodyRect.Contains(abCenter))
+                    pseudoBodyNodes.Add(an.AsyncTaskBodyNode);
+            }
+        }
+
         // Di chuyển locked body
         host.UpdateNodePosition(lockedBody, lockedBody.X + dx, lockedBody.Y + dy);
         ForceCanvasPosition(viewModel, lockedBody, lockedBody.X, lockedBody.Y);
@@ -324,8 +382,16 @@ public static class LockedBodyHelper
             ForceCanvasPosition(viewModel, inner, inner.X, inner.Y);
         }
 
+        // Di chuyển pseudo body nodes (LoopBodyNode, AsyncTaskBodyNode)
+        foreach (var pseudo in pseudoBodyNodes)
+        {
+            host.UpdateNodePosition(pseudo, pseudo.X + dx, pseudo.Y + dy);
+            ForceCanvasPosition(viewModel, pseudo, pseudo.X, pseudo.Y);
+        }
+
         // Cập nhật tất cả connections liên quan
         var affectedNodes = new HashSet<WorkflowNode>(innerNodes) { lockedBody };
+        foreach (var pseudo in pseudoBodyNodes) affectedNodes.Add(pseudo);
         foreach (var conn in viewModel.Connections)
         {
             if (affectedNodes.Contains(conn.FromNode) || affectedNodes.Contains(conn.ToNode))

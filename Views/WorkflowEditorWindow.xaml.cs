@@ -1,25 +1,20 @@
 using FlowMy.Models;
+using FlowMy.Properties;
 using FlowMy.Services.Interaction;
 using FlowMy.Services.Rendering;
 using FlowMy.Services.Utilities;
 using FlowMy.ViewModels;
 using FlowMy.Views.NodeControls;
 using FlowMy.Workflow;
-using FlowMy.Properties;
 using Microsoft.Web.WebView2.Wpf;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using ShapesPath = System.Windows.Shapes.Path;
 using System.Windows.Threading;
 using static FlowMy.Services.Rendering.ConnectionRenderer;
+using ShapesPath = System.Windows.Shapes.Path;
 
 namespace FlowMy.Views
 {
@@ -94,7 +89,7 @@ namespace FlowMy.Views
         private CanvasToolbarPreferences? _debugCanvasToolbarPreferences;
         private const double HeadlessWebNodeWidth = 1366d;
         private const double HeadlessWebNodeHeight = 768d;
-        
+
         // UI chrome hide/show when expanding a node to viewport
         private bool _isViewportExpandedUiHidden = false;
         private Visibility _prevLeftMenuBorderVisibility = Visibility.Visible;
@@ -146,7 +141,7 @@ namespace FlowMy.Views
         private double _nodeSpinnerBlinkIntensity = 0.65;
         private double _nodeSpinnerBlinkBaseOpacity = 0.16;
         private double _nodeSpinnerBlinkPeakOpacity = 0.60;
-        
+
         private enum CanvasDisplayMode
         {
             ShowAll = 0,
@@ -544,11 +539,11 @@ namespace FlowMy.Views
         {
             // Assign host for scoped services
             _hostAccessor.Host = this;
-            
+
             // Load GPU settings
             LoadGpuSettings();
         }
-        
+
         /// <summary>
         /// Load GPU settings từ user preferences
         /// </summary>
@@ -556,17 +551,17 @@ namespace FlowMy.Views
         {
             _gpuEnabled = Settings.Default.GpuEnabled;
             _gpuRenderQuality = (GpuRenderQuality)Settings.Default.GpuRenderQuality;
-            
+
             // Validate quality value
             if (_gpuRenderQuality < GpuRenderQuality.Low || _gpuRenderQuality > GpuRenderQuality.Best)
             {
                 _gpuRenderQuality = GpuRenderQuality.Medium;
             }
-            
+
             // Apply settings
             ApplyGpuSettings();
         }
-        
+
         /// <summary>
         /// Apply GPU settings to canvas và re-apply cho tất cả nodes/connections
         /// Tối ưu: Chỉ re-apply khi cần thiết để tránh lag
@@ -574,7 +569,7 @@ namespace FlowMy.Views
         private void ApplyGpuSettings()
         {
             OptimizeCanvasForGPU();
-            
+
             // Re-apply GPU settings cho tất cả nodes và connections
             // Sử dụng Dispatcher.BeginInvoke để không block UI thread
             if (ViewModel != null && WorkflowCanvas != null)
@@ -586,7 +581,7 @@ namespace FlowMy.Views
                     {
                         if (node.Border != null && node != _draggedNode)
                             ImageProcessingNodeControl.ApplyEditorGpuChrome(node, node.Border, _cacheNodeEnabled);
-                        
+
                         // Re-apply cho ports
                         foreach (var port in node.Ports.Where(p => p.PortUI != null))
                         {
@@ -597,14 +592,14 @@ namespace FlowMy.Views
                             }
                         }
                     }
-                    
+
                     // Re-apply cho tất cả connections
                     foreach (var conn in ViewModel.Connections)
                     {
                         if (conn.LineUI != null)
                         {
                             GpuOptimizationHelper.ApplyToPath(conn.LineUI, allowCache: !_isAnimationEnabled);
-                            
+
                             // Re-apply drop shadow for arrow head
                             if (conn.LineUI.Tag is ConnectionTag tag && tag.ArrowHead != null)
                             {
@@ -836,7 +831,7 @@ namespace FlowMy.Views
                 catch { }
             }));
         }
-        
+
         /// <summary>
         /// Property để binding với CheckBox
         /// </summary>
@@ -854,7 +849,7 @@ namespace FlowMy.Views
                 }
             }
         }
-        
+
         /// <summary>
         /// Property để binding với ComboBox
         /// </summary>
@@ -883,7 +878,7 @@ namespace FlowMy.Views
             Deactivated += WorkflowEditorWindow_Deactivated;
             // Đóng dialog khi window bị minimize
             StateChanged += WorkflowEditorWindow_StateChanged;
-            
+
             // Responsive layout khi thay đổi kích thước window
             SizeChanged += WorkflowEditorWindow_SizeChanged;
 
@@ -898,7 +893,7 @@ namespace FlowMy.Views
             Loaded += (s, e) =>
             {
                 OptimizeCanvasForGPU();
-                
+
                 // Initialize GPU settings UI
                 InitializeGpuSettingsUI();
                 ApplyCanvasDisplayMode(_canvasDisplayMode, forceRefresh: false);
@@ -1354,7 +1349,7 @@ namespace FlowMy.Views
 
             var windowWidth = e.NewSize.Width;
             var windowHeight = e.NewSize.Height;
-            
+
             // Breakpoints cho responsive design
             const double smallScreenWidth = 1200;
             const double smallScreenHeight = 700;
@@ -1832,7 +1827,7 @@ namespace FlowMy.Views
                             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                             {
                                 _eventService.SetConnectionAnimationDisplayMode(GetCurrentConnectionAnimationDisplayMode());
-                            ApplyCanvasToolbarPreferences();
+                                ApplyCanvasToolbarPreferences();
                             }));
 
                             // Sau khi khôi phục view: nếu có node đang được đánh dấu phóng to thì ẩn chrome (left menu + top bar)
@@ -2481,13 +2476,13 @@ namespace FlowMy.Views
                 var edgeMode = GpuRenderQualityHelper.GetEdgeMode(_gpuRenderQuality);
                 var useLayoutRounding = GpuRenderQualityHelper.ShouldUseLayoutRounding(_gpuRenderQuality);
                 var snapToDevicePixels = GpuRenderQualityHelper.ShouldSnapToDevicePixels(_gpuRenderQuality);
-                
+
                 void applyGpuOptimization(Canvas c)
                 {
                     // Áp dụng layout rounding và snaps to device pixels dựa trên quality
                     c.UseLayoutRounding = useLayoutRounding;
                     c.SnapsToDevicePixels = snapToDevicePixels;
-                    
+
                     // Enable hardware acceleration với quality đã chọn
                     RenderOptions.SetBitmapScalingMode(c, scalingMode);
                     // Dùng EdgeMode dựa trên quality - Unspecified = anti-aliasing (mịn màng)
@@ -2495,10 +2490,10 @@ namespace FlowMy.Views
                     // Không cache canvas để tránh ghost effects khi di chuyển nodes
                     RenderOptions.SetCachingHint(c, CachingHint.Unspecified);
                     c.CacheMode = null;
-                    
+
                     // Force hardware rendering
                     c.ClipToBounds = false; // Đã có trong XAML, đảm bảo không clip
-                    
+
                     // Invalidate để đảm bảo render mới
                     c.InvalidateVisual();
                     c.InvalidateArrange();
@@ -2514,7 +2509,7 @@ namespace FlowMy.Views
                     RenderOptions.SetBitmapScalingMode(ScrollViewer, scalingMode);
                     RenderOptions.SetCachingHint(ScrollViewer, CachingHint.Unspecified);
                     ScrollViewer.CacheMode = null;
-                    
+
                     // Enable hardware scrolling
                     ScrollViewer.UseLayoutRounding = true;
                     ScrollViewer.SnapsToDevicePixels = true;
@@ -2539,10 +2534,10 @@ namespace FlowMy.Views
                     RenderOptions.SetCachingHint(c, CachingHint.Unspecified);
                     c.CacheMode = null;
                 }
-                
+
                 applyCpuQuality(WorkflowCanvas);
                 applyCpuQuality(GridCanvas);
-                
+
                 if (ScrollViewer != null)
                 {
                     RenderOptions.SetBitmapScalingMode(ScrollViewer, scalingMode);
