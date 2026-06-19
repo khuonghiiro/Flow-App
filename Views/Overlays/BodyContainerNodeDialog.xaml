@@ -211,7 +211,17 @@
                                       IsChecked="{Binding LockInnerNodes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Foreground="{DynamicResource TextBrush}"
                                       FontSize="11"
-                                      Margin="0,0,0,12"/>
+                                      Margin="0,0,0,4"/>
+
+                            <!-- 🔐 Khoá toàn phần -->
+                            <CheckBox x:Name="FullLockInnerNodesCheckBox"
+                                      Content="Khoá toàn phần (chặn mọi thao tác vào node con)"
+                                      IsChecked="{Binding FullLockInnerNodes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEnabled="{Binding LockInnerNodes}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      FontSize="11"
+                                      Margin="16,0,0,12"
+                                      ToolTip="Khi bật: body che phủ node con, không tương tác được.&#x0a;Khi tắt: vẫn kéo/chuột phải node con bình thường, nhưng kéo sẽ di chuyển cả body."/>
 
                             <!-- 💧 Độ trong suốt viền -->
                             <Border Background="{DynamicResource WindowBackground}"

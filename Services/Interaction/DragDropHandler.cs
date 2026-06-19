@@ -120,7 +120,12 @@ namespace FlowMy.Services.Interaction
                 {
                     _draggedOwningLockedBody = owningLockedBody;
                     _draggedLockedBodyChildren = CaptureNodesInsideBody(viewModel, owningLockedBody);
-                    host.DraggedNode = owningLockedBody;
+                    // Chỉ redirect khi FullLockInnerNodes (khoá toàn phần)
+                    // Khi không FullLock, giữ inner node làm DraggedNode để event handlers vẫn hoạt động
+                    if (owningLockedBody.FullLockInnerNodes)
+                    {
+                        host.DraggedNode = owningLockedBody;
+                    }
                 }
             }
 
@@ -188,7 +193,16 @@ namespace FlowMy.Services.Interaction
 
             if (host.DraggedNode is BodyContainerNode draggedBodyForConnections && draggedBodyForConnections.LockInnerNodes && _draggedLockedBodyChildren != null)
             {
+                // FullLock mode: body is DraggedNode
                 var lockedSet = new HashSet<WorkflowNode>(_draggedLockedBodyChildren) { draggedBodyForConnections };
+                _draggedNodeConnections = viewModel.Connections
+                    .Where(conn => lockedSet.Contains(conn.FromNode) || lockedSet.Contains(conn.ToNode))
+                    .ToList();
+            }
+            else if (_draggedOwningLockedBody != null && _draggedLockedBodyChildren != null)
+            {
+                // Non-FullLock mode: inner node is DraggedNode, nhưng cần cache tất cả connections cho body + children
+                var lockedSet = new HashSet<WorkflowNode>(_draggedLockedBodyChildren) { _draggedOwningLockedBody };
                 _draggedNodeConnections = viewModel.Connections
                     .Where(conn => lockedSet.Contains(conn.FromNode) || lockedSet.Contains(conn.ToNode))
                     .ToList();
@@ -395,7 +409,8 @@ namespace FlowMy.Services.Interaction
                 host.ClampNodeDragToAutoScheduledScope(host.DraggedNode, ref newX, ref newY);
 
             // ✅ Đẩy locked bodies ra khi node thường overlap (push effect thay vì block cứng)
-            if (host.DraggedNode != null && host.DraggedNode is not BodyContainerNode)
+            // Nhưng KHÔNG đẩy khi node đang nằm trong locked body (non-FullLock mode)
+            if (host.DraggedNode != null && host.DraggedNode is not BodyContainerNode && _draggedOwningLockedBody == null)
             {
                 LockedBodyHelper.PushLockedBodiesAway(viewModel, host, new[] { host.DraggedNode });
             }
@@ -485,6 +500,7 @@ namespace FlowMy.Services.Interaction
             {
                 if (host.DraggedNode is BodyContainerNode draggedBody && draggedBody.LockInnerNodes && _draggedLockedBodyChildren != null)
                 {
+                    // FullLock mode: DraggedNode = body → di chuyển children theo body
                     var dxBody = newX - draggedBody.X;
                     var dyBody = newY - draggedBody.Y;
                     if (Math.Abs(dxBody) > 0.001 || Math.Abs(dyBody) > 0.001)
@@ -493,6 +509,54 @@ namespace FlowMy.Services.Interaction
                         {
                             var cx = Math.Round(child.X + dxBody);
                             var cy = Math.Round(child.Y + dyBody);
+                            host.UpdateNodePosition(child, cx, cy);
+                            viewModel.UpdateNodePosition(child, cx, cy);
+
+                            if (child.Border != null)
+                            {
+                                Canvas.SetLeft(child.Border, cx);
+                                Canvas.SetTop(child.Border, cy);
+                            }
+
+                            if (child.IsConditionalNode && child.ConditionalVisualMode == ConditionalVisualMode.Diamond)
+                            {
+                                host.RenderConditionalNodePorts(child);
+                            }
+                            else
+                            {
+                                foreach (var port in child.Ports.Where(p => p.IsVisible))
+                                    host.UpdatePortsPositionOnSide(child, port.Position);
+                            }
+
+                            host.ViewportCullingService?.OnNodeChanged(child);
+                        }
+                    }
+                }
+                else if (_draggedOwningLockedBody != null && _draggedLockedBodyChildren != null)
+                {
+                    // Non-FullLock mode: DraggedNode = inner node → di chuyển body + tất cả children theo delta
+                    var dxInner = newX - host.DraggedNode.X;
+                    var dyInner = newY - host.DraggedNode.Y;
+                    if (Math.Abs(dxInner) > 0.001 || Math.Abs(dyInner) > 0.001)
+                    {
+                        // Di chuyển body
+                        var bx = Math.Round(_draggedOwningLockedBody.X + dxInner);
+                        var by = Math.Round(_draggedOwningLockedBody.Y + dyInner);
+                        host.UpdateNodePosition(_draggedOwningLockedBody, bx, by);
+                        viewModel.UpdateNodePosition(_draggedOwningLockedBody, bx, by);
+                        if (_draggedOwningLockedBody.Border != null)
+                        {
+                            Canvas.SetLeft(_draggedOwningLockedBody.Border, bx);
+                            Canvas.SetTop(_draggedOwningLockedBody.Border, by);
+                        }
+                        host.ViewportCullingService?.OnNodeChanged(_draggedOwningLockedBody);
+
+                        // Di chuyển tất cả children (trừ DraggedNode vì nó sẽ được di chuyển bên dưới)
+                        foreach (var child in _draggedLockedBodyChildren)
+                        {
+                            if (ReferenceEquals(child, host.DraggedNode)) continue;
+                            var cx = Math.Round(child.X + dxInner);
+                            var cy = Math.Round(child.Y + dyInner);
                             host.UpdateNodePosition(child, cx, cy);
                             viewModel.UpdateNodePosition(child, cx, cy);
 
@@ -899,8 +963,9 @@ namespace FlowMy.Services.Interaction
                 host.DraggedNode.Border.ReleaseMouseCapture();
                 
                 // ✅ Resolve collision khi nhả chuột - đẩy các node bị overlap
+                // Nhưng KHÔNG resolve khi node nằm trong locked body (non-FullLock mode)
                 var viewModel = host.ViewModel;
-                if (viewModel != null && host.DraggedNode != null)
+                if (viewModel != null && host.DraggedNode != null && _draggedOwningLockedBody == null)
                 {
                     if (host.DraggedNode is not BodyContainerNode bodyNode || !bodyNode.LockInnerNodes)
                     {

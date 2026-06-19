@@ -31,6 +31,9 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
     private bool _lockInnerNodes;
 
     [ObservableProperty]
+    private bool _fullLockInnerNodes;
+
+    [ObservableProperty]
     private string? _bodyBackgroundColorKey;
 
     [ObservableProperty]
@@ -95,6 +98,7 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         _useUnifiedColors = node.UseUnifiedColors;
         _backgroundOpacityPercent = node.BackgroundOpacityPercent;
         _lockInnerNodes = node.LockInnerNodes;
+        _fullLockInnerNodes = node.FullLockInnerNodes;
         _bodyBackgroundColorKey = node.BodyBackgroundColorHex;
         _bodyBorderColorKey = node.BodyBorderColorHex;
         _borderOpacityPercent = node.BorderOpacityPercent;
@@ -121,6 +125,7 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
         _nodeRef.UseUnifiedColors = UseUnifiedColors;
         _nodeRef.BackgroundOpacityPercent = BackgroundOpacityPercent;
         _nodeRef.LockInnerNodes = LockInnerNodes;
+        _nodeRef.FullLockInnerNodes = FullLockInnerNodes;
         _nodeRef.BorderOpacityPercent = BorderOpacityPercent;
         _nodeRef.BorderThickness = BorderThickness;
         _nodeRef.BorderDashSpacing = BorderDashSpacing;
@@ -184,6 +189,15 @@ public sealed partial class BodyContainerNodeDialogViewModel : BaseNodeDialogVie
     partial void OnLockInnerNodesChanged(bool value)
     {
         _nodeRef.LockInnerNodes = value;
+        // Khi tắt LockInnerNodes → tắt luôn FullLock
+        if (!value && FullLockInnerNodes)
+            FullLockInnerNodes = false;
+        RefreshBodyVisualImmediate();
+    }
+
+    partial void OnFullLockInnerNodesChanged(bool value)
+    {
+        _nodeRef.FullLockInnerNodes = value;
         RefreshBodyVisualImmediate();
     }
 

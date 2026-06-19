@@ -37,7 +37,8 @@ public partial class BodyContainerNodeDialog : BaseNodeDialog
                 e.PropertyName == nameof(BodyContainerNodeDialogViewModel.BodyBorderColorHex) ||
                 e.PropertyName == nameof(BodyContainerNodeDialogViewModel.UseUnifiedColors) ||
                 e.PropertyName == nameof(BodyContainerNodeDialogViewModel.BackgroundOpacityPercent) ||
-                e.PropertyName == nameof(BodyContainerNodeDialogViewModel.LockInnerNodes))
+                e.PropertyName == nameof(BodyContainerNodeDialogViewModel.LockInnerNodes) ||
+                e.PropertyName == nameof(BodyContainerNodeDialogViewModel.FullLockInnerNodes))
             {
                 // Direct refresh safeguard from dialog side.
                 BodyContainerControl.RefreshVisualFromNode(_node);
@@ -135,6 +136,7 @@ public partial class BodyContainerNodeDialog : BaseNodeDialog
         BodyBorderColorComboBox?.GetBindingExpression(ComboBox.SelectedValueProperty)?.UpdateSource();
         UseUnifiedColorsCheckBox?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
         LockInnerNodesCheckBox?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
+        FullLockInnerNodesCheckBox?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
         BackgroundOpacitySlider?.GetBindingExpression(Slider.ValueProperty)?.UpdateSource();
         TitleTextBox?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
         BindingOperations.GetBindingExpressionBase(this, DataContextProperty)?.UpdateSource();

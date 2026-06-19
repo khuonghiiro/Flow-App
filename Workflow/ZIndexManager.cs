@@ -103,9 +103,9 @@ namespace FlowMy.Workflow
             if (node is FlowMy.Models.Nodes.BodyContainerNode)
             {
                 // Body container should stay behind normal nodes/lines.
-                // Nhưng nếu locked thì giữ z-index cao hơn để chặn click vào inner nodes.
+                // Chỉ khi FullLockInnerNodes mới nâng z-index lên chặn click vào inner nodes.
                 var bcn = (FlowMy.Models.Nodes.BodyContainerNode)node;
-                int targetZ = bcn.LockInnerNodes ? baseZ + LockedBodyZIndexOffset : baseZ;
+                int targetZ = bcn.FullLockInnerNodes ? baseZ + LockedBodyZIndexOffset : baseZ;
                 if (node.Border != null && Panel.GetZIndex(node.Border) == targetZ) return;
                 RaiseNodeZIndex(node, targetZ);
                 return;
@@ -121,9 +121,9 @@ namespace FlowMy.Workflow
 
             if (_nodeOriginalZIndex.TryGetValue(node, out int originalZIndex))
             {
-                // Nếu là locked BodyContainerNode → giữ z-index cao hơn inner nodes
+                // Chỉ khi FullLockInnerNodes → giữ z-index cao hơn inner nodes
                 int targetZ = originalZIndex;
-                if (node is FlowMy.Models.Nodes.BodyContainerNode bcn && bcn.LockInnerNodes)
+                if (node is FlowMy.Models.Nodes.BodyContainerNode bcn && bcn.FullLockInnerNodes)
                     targetZ = originalZIndex + LockedBodyZIndexOffset;
 
                 Panel.SetZIndex(node.Border, targetZ);
@@ -142,16 +142,16 @@ namespace FlowMy.Workflow
         }
 
         /// <summary>
-        /// Cập nhật z-index cho BodyContainerNode khi LockInnerNodes thay đổi.
-        /// Khi locked, nâng z-index lên trên các node con để chặn mọi thao tác chuột.
-        /// Khi unlocked, hạ z-index về vị trí ban đầu (background).
+        /// Cập nhật z-index cho BodyContainerNode khi FullLockInnerNodes thay đổi.
+        /// Khi FullLock, nâng z-index lên trên các node con để chặn mọi thao tác chuột.
+        /// Khi không FullLock, hạ z-index về vị trí ban đầu (background).
         /// </summary>
         public void SetLockedBodyZIndex(FlowMy.Models.Nodes.BodyContainerNode bodyNode)
         {
             if (bodyNode.Border == null) return;
             if (!_nodeOriginalZIndex.TryGetValue(bodyNode, out int baseZ)) return;
 
-            int targetZ = bodyNode.LockInnerNodes ? baseZ + LockedBodyZIndexOffset : baseZ;
+            int targetZ = bodyNode.FullLockInnerNodes ? baseZ + LockedBodyZIndexOffset : baseZ;
             Panel.SetZIndex(bodyNode.Border, targetZ);
             UpdateAllPortsZIndex(bodyNode, PortTierBase + targetZ);
         }

@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -291,6 +291,12 @@ public sealed partial class FileWorkflowPersistenceService
                 bool.TryParse(lockObj.ToString(), out var lockInner))
             {
                 bodyContainerNode.LockInnerNodes = lockInner;
+            }
+            if (properties.TryGetValue("FullLockInnerNodes", out var fullLockObj) &&
+                fullLockObj != null &&
+                bool.TryParse(fullLockObj.ToString(), out var fullLockInner))
+            {
+                bodyContainerNode.FullLockInnerNodes = fullLockInner;
             }
             if (properties.TryGetValue("BorderOpacityPercent", out var borderOpacityObj) &&
                 borderOpacityObj != null &&
@@ -906,6 +912,7 @@ public sealed partial class FileWorkflowPersistenceService
             dict["UseUnifiedColors"] = bodyContainerNode.UseUnifiedColors;
             dict["BackgroundOpacityPercent"] = bodyContainerNode.BackgroundOpacityPercent;
             dict["LockInnerNodes"] = bodyContainerNode.LockInnerNodes;
+            dict["FullLockInnerNodes"] = bodyContainerNode.FullLockInnerNodes;
             dict["BorderOpacityPercent"] = bodyContainerNode.BorderOpacityPercent;
             dict["BorderThickness"] = bodyContainerNode.BorderThickness;
             dict["BorderDashSpacing"] = bodyContainerNode.BorderDashSpacing;

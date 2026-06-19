@@ -21,6 +21,7 @@ public sealed class BodyContainerNode : WorkflowNode
     private bool _useUnifiedColors = true;
     private double _backgroundOpacityPercent = 10;
     private bool _lockInnerNodes;
+    private bool _fullLockInnerNodes;
     private double _borderOpacityPercent = 100;
     private double _borderThickness = 2;
     private double _borderDashSpacing = 3;
@@ -116,6 +117,21 @@ public sealed class BodyContainerNode : WorkflowNode
         {
             if (_lockInnerNodes == value) return;
             _lockInnerNodes = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Khoá toàn phần: body z-index nằm trên inner nodes, chặn mọi thao tác chuột vào node con.
+    /// Khi false (mặc định): user vẫn tương tác được với node con, nhưng kéo node con sẽ kéo cả body theo.
+    /// </summary>
+    public bool FullLockInnerNodes
+    {
+        get => _fullLockInnerNodes;
+        set
+        {
+            if (_fullLockInnerNodes == value) return;
+            _fullLockInnerNodes = value;
             OnPropertyChanged();
         }
     }
