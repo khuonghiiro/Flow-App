@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using FlowMy.Views.NodeControls;
@@ -41,8 +41,6 @@ namespace FlowMy.Services.Rendering
             actionCanVasNode.Border.MouseDown  += Host.NodeMouseDown;
             actionCanVasNode.Border.MouseMove  += Host.NodeMouseMove;
             actionCanVasNode.Border.MouseUp    += Host.NodeMouseUp;
-            actionCanVasNode.Border.MouseEnter += Host.NodeBorderMouseEnter;
-            actionCanVasNode.Border.MouseLeave += Host.NodeBorderMouseLeave;
             actionCanVasNode.Border.ContextMenu = null;
 
             // 4. Đặt vị trí và thêm vào canvas
@@ -81,23 +79,25 @@ namespace FlowMy.Services.Rendering
                 Canvas.SetTop(node.Border, y);
             }
 
-            if (node is ActionCanVasNode actionCanVasN && actionCanVasN.TitleTextBlockUI != null && Host.WorkflowCanvas != null)
+            if (node is ActionCanVasNode actionNode &&
+                actionNode.TitleTextBlockUI != null &&
+                Host.WorkflowCanvas != null)
             {
-                var title = actionCanVasN.TitleTextBlockUI;
-                if (!Host.WorkflowCanvas.Children.Contains(title))
+                var tb = actionNode.TitleTextBlockUI;
+                if (!Host.WorkflowCanvas.Children.Contains(tb))
                 {
-                    Host.WorkflowCanvas.Children.Add(title);
-                    Panel.SetZIndex(title, 20000);
+                    Host.WorkflowCanvas.Children.Add(tb);
+                    Panel.SetZIndex(tb, 20000);
                 }
                 if (node.Border != null)
                 {
-                    if (title.ActualWidth == 0 || title.ActualHeight == 0)
+                    if (tb.ActualWidth == 0 || tb.ActualHeight == 0)
                     {
-                        title.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                        title.Arrange(new Rect(title.DesiredSize));
+                        tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                        tb.Arrange(new Rect(tb.DesiredSize));
                     }
-                    Canvas.SetLeft(title, x + (node.Border.ActualWidth / 2) - (title.ActualWidth / 2));
-                    Canvas.SetTop(title, y - title.ActualHeight - 4);
+                    Canvas.SetLeft(tb, x + (node.Border.ActualWidth / 2) - (tb.ActualWidth / 2));
+                    Canvas.SetTop(tb, y - tb.ActualHeight - 4);
                 }
             }
 
@@ -123,11 +123,11 @@ namespace FlowMy.Services.Rendering
 
         public void RemoveNode(WorkflowNode node, Canvas canvas)
         {
-            if (node is ActionCanVasNode actionCanVasN && actionCanVasN.TitleTextBlockUI != null)
+            if (node is ActionCanVasNode actionNode && actionNode.TitleTextBlockUI != null)
             {
-                if (canvas.Children.Contains(actionCanVasN.TitleTextBlockUI))
-                    canvas.Children.Remove(actionCanVasN.TitleTextBlockUI);
-                actionCanVasN.TitleTextBlockUI = null;
+                if (canvas.Children.Contains(actionNode.TitleTextBlockUI))
+                    canvas.Children.Remove(actionNode.TitleTextBlockUI);
+                actionNode.TitleTextBlockUI = null;
             }
 
             if (node.Border != null && canvas.Children.Contains(node.Border))

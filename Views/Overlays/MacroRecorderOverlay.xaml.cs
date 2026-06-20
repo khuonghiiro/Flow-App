@@ -278,7 +278,10 @@ namespace FlowMy.Views.Overlays
 
         // ─── Constructor ─────────────────────────────────────────────────────────
 
-        public MacroRecorderOverlay(bool showMouseTrail, MacroExecutionMode executionMode = MacroExecutionMode.Free, string targetProcess = "", string targetTitle = "")
+        private readonly Rect? _recordingBounds;
+        private readonly bool _forceClickThrough;
+
+        public MacroRecorderOverlay(bool showMouseTrail, MacroExecutionMode executionMode = MacroExecutionMode.Free, string targetProcess = "", string targetTitle = "", Rect? recordingBounds = null, bool forceClickThrough = false)
         {
             InitializeComponent();
 
@@ -286,6 +289,8 @@ namespace FlowMy.Views.Overlays
             _executionMode = executionMode;
             _targetProcess = targetProcess;
             _targetTitle = targetTitle;
+            _recordingBounds = recordingBounds;
+            _forceClickThrough = forceClickThrough;
 
             _keyboardProc = KeyboardHookCallback;
             _mouseProc = MouseHookCallback;
@@ -324,7 +329,17 @@ namespace FlowMy.Views.Overlays
             _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, hMod, 0);
             _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, hMod, 0);
 
-            UpdateUI();
+            if (_forceClickThrough)
+            {
+                _realActionMode = true;
+                _state = OverlayState.Recording;
+                StartRecording();
+                SetClickThroughMode(true);
+            }
+            else
+            {
+                UpdateUI();
+            }
         }
 
         private void OnClosed(object sender, EventArgs e)
@@ -752,6 +767,10 @@ namespace FlowMy.Views.Overlays
 
                 // Skip events we injected ourselves (real-action mode re-injection)
                 if (ms.dwExtraInfo == OurExtraInfo)
+                    return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+
+                // ActionCanVas mode: ignore clicks outside bounds
+                if (_recordingBounds.HasValue && !_recordingBounds.Value.Contains(new System.Windows.Point(x, y)))
                     return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
 
                 // Real-action mode: overlay is minimized, record normally — no special handling needed
@@ -1783,6 +1802,15 @@ namespace FlowMy.Views.Overlays
 
         private (int X, int Y, double RelX, double RelY) GetActionCoords(int screenX, int screenY)
         {
+            if (_recordingBounds.HasValue)
+            {
+                int relAbsX = screenX - (int)_recordingBounds.Value.Left;
+                int relAbsY = screenY - (int)_recordingBounds.Value.Top;
+                double relX = Math.Clamp((double)relAbsX / _recordingBounds.Value.Width, 0.0, 1.0);
+                double relY = Math.Clamp((double)relAbsY / _recordingBounds.Value.Height, 0.0, 1.0);
+                return (relAbsX, relAbsY, relX, relY);
+            }
+
             // TargetApp mode: also compute relative coords (0.0–1.0) within the target's client area.
             // These allow the executor to rescale positions when the app is resized at playback time.
             if (_executionMode == MacroExecutionMode.TargetApp && _targetHwnd != IntPtr.Zero

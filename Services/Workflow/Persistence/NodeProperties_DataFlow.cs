@@ -1,4 +1,4 @@
-using FlowMy.Models;
+﻿using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -315,7 +315,7 @@ public sealed partial class FileWorkflowPersistenceService
                 }
                 catch
                 {
-                    // ignore – best effort
+                    // ignore â€“ best effort
                 }
             }
 
@@ -409,8 +409,8 @@ public sealed partial class FileWorkflowPersistenceService
             foreach (var port in storageNode.Ports)
             {
                 bool shouldShowPort = storageNode.IsInputMode
-                    ? port.IsInput  // IsInputMode = true: chỉ hiện port IN
-                    : !port.IsInput; // IsInputMode = false: chỉ hiện port OUT
+                    ? port.IsInput  // IsInputMode = true: chá»‰ hiá»‡n port IN
+                    : !port.IsInput; // IsInputMode = false: chá»‰ hiá»‡n port OUT
                 port.IsVisible = shouldShowPort;
             }
     }
@@ -640,7 +640,7 @@ public sealed partial class FileWorkflowPersistenceService
             // IsInputMode
             dict["IsInputMode"] = storageNode.IsInputMode;
 
-            // Lưu StoredOutputs – các giá trị đã được gán vào node
+            // LÆ°u StoredOutputs â€“ cÃ¡c giÃ¡ trá»‹ Ä‘Ã£ Ä‘Æ°á»£c gÃ¡n vÃ o node
             if (storageNode.StoredOutputs.Count > 0)
             {
                 dict["StoredOutputs"] = storageNode.StoredOutputs.ToDictionary(
@@ -648,7 +648,7 @@ public sealed partial class FileWorkflowPersistenceService
                     kv => (object?)kv.Value ?? string.Empty);
             }
 
-            // Lưu danh sách OutputKeys hiện tại để khôi phục cấu trúc outputs
+            // LÆ°u danh sÃ¡ch OutputKeys hiá»‡n táº¡i Ä‘á»ƒ khÃ´i phá»¥c cáº¥u trÃºc outputs
             if (storageNode.DynamicOutputs != null && storageNode.DynamicOutputs.Count > 0)
             {
                 var keys = storageNode.DynamicOutputs

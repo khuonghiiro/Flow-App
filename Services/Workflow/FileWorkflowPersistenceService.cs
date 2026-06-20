@@ -12,7 +12,7 @@ namespace FlowMy.Services.Workflow;
 
 public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenceService
 {
-    /// <summary>ThÆ° má»¥c con trong Documents khi lÆ°u workflow máº·c Ä‘á»‹nh (khÃ´ng phá»¥ thuá»™c thÆ° má»¥c cháº¡y / bin).</summary>
+    /// <summary>ThÃ†Â° mÃ¡Â»Â¥c con trong Documents khi lÃ†Â°u workflow mÃ¡ÂºÂ·c Ã„â€˜Ã¡Â»â€¹nh (khÃƒÂ´ng phÃ¡Â»Â¥ thuÃ¡Â»â„¢c thÃ†Â° mÃ¡Â»Â¥c chÃ¡ÂºÂ¡y / bin).</summary>
     public const string DefaultWorkflowJsonFolderName = "Workflow_Json";
     private const string FlowMyRootFolderName = "FlowMy";
 
@@ -22,7 +22,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
 
     private sealed record CachedWorkflowJson(DateTime LastWriteUtc, string Json);
 
-    /// <summary>ÄÆ°á»ng dáº«n máº·c Ä‘á»‹nh: Documents\FlowMy\Workflow_Json; náº¿u khÃ´ng láº¥y Ä‘Æ°á»£c Documents thÃ¬ fallback cáº¡nh exe.</summary>
+    /// <summary>Ã„ÂÃ†Â°Ã¡Â»Âng dÃ¡ÂºÂ«n mÃ¡ÂºÂ·c Ã„â€˜Ã¡Â»â€¹nh: Documents\FlowMy\Workflow_Json; nÃ¡ÂºÂ¿u khÃƒÂ´ng lÃ¡ÂºÂ¥y Ã„â€˜Ã†Â°Ã¡Â»Â£c Documents thÃƒÂ¬ fallback cÃ¡ÂºÂ¡nh exe.</summary>
     public static string GetDefaultWorkflowsDirectory()
     {
         try
@@ -87,7 +87,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             if (!Directory.Exists(_workflowsDir))
                 Directory.CreateDirectory(_workflowsDir);
 
-            // Ctrl+S / Save button: lÆ°u Ä‘áº§y Ä‘á»§ logic (khÃ´ng runtime output)
+            // Ctrl+S / Save button: lÃ†Â°u Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§ logic (khÃƒÂ´ng runtime output)
             WorkflowDto? dto = null;
             try
             {
@@ -117,14 +117,14 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                 var options = new JsonSerializerOptions
                 {
                     WriteIndented = true,
-                    MaxDepth = 64 // Giá»›i háº¡n Ä‘á»™ sÃ¢u Ä‘á»ƒ trÃ¡nh stack overflow
+                    MaxDepth = 64 // GiÃ¡Â»â€ºi hÃ¡ÂºÂ¡n Ã„â€˜Ã¡Â»â„¢ sÃƒÂ¢u Ã„â€˜Ã¡Â»Æ’ trÃƒÂ¡nh stack overflow
                 };
                 json = JsonSerializer.Serialize(dto, options);
             }
             catch (System.Text.Json.JsonException ex)
             {
                 System.Diagnostics.Debug.WriteLine($"JSON serialization error: {ex.Message}\n{ex.StackTrace}");
-                // Thá»­ láº¡i khÃ´ng serialize output values
+                // ThÃ¡Â»Â­ lÃ¡ÂºÂ¡i khÃƒÂ´ng serialize output values
                 dto = BuildWorkflowDto(
                     workflowName,
                     nodes,
@@ -158,7 +158,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error saving workflow: {ex.Message}\n{ex.StackTrace}");
-            throw; // Re-throw Ä‘á»ƒ caller cÃ³ thá»ƒ xá»­ lÃ½
+            throw; // Re-throw Ã„â€˜Ã¡Â»Æ’ caller cÃƒÂ³ thÃ¡Â»Æ’ xÃ¡Â»Â­ lÃƒÂ½
         }
     }
 
@@ -192,7 +192,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Load: giáº£i nÃ©n web bundle lá»—i: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Load: giÃ¡ÂºÂ£i nÃƒÂ©n web bundle lÃ¡Â»â€”i: {ex.Message}");
                         }
                     }
                 }
@@ -218,8 +218,8 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
     }
 
     /// <summary>
-    /// Export chá»‰ logic (nodes, connections, properties), khÃ´ng cÃ³ output/runtime.
-    /// DÃ¹ng cho nÃºt Export vÃ  chia sáº» file.
+    /// Export chÃ¡Â»â€° logic (nodes, connections, properties), khÃƒÂ´ng cÃƒÂ³ output/runtime.
+    /// DÃƒÂ¹ng cho nÃƒÂºt Export vÃƒÂ  chia sÃ¡ÂºÂ» file.
     /// </summary>
     public string ExportToJson(
         string workflowName,
@@ -372,20 +372,20 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
         if (node.DynamicOutputs == null || node.DynamicOutputs.Count == 0)
             return null;
 
-        // âš ï¸ CRITICAL: KhÃ´ng lÆ°u output values cho InputNode vÃ  cÃ¡c node cÃ³ property trá»±c tiáº¿p
-        // Ä‘á»ƒ trÃ¡nh tÃ¬nh tráº¡ng giÃ¡ trá»‹ cÅ© (tá»« execution) override giÃ¡ trá»‹ má»›i (tá»« user edit)
+        // Ã¢Å¡Â Ã¯Â¸Â CRITICAL: KhÃƒÂ´ng lÃ†Â°u output values cho InputNode vÃƒÂ  cÃƒÂ¡c node cÃƒÂ³ property trÃ¡Â»Â±c tiÃ¡ÂºÂ¿p
+        // Ã„â€˜Ã¡Â»Æ’ trÃƒÂ¡nh tÃƒÂ¬nh trÃ¡ÂºÂ¡ng giÃƒÂ¡ trÃ¡Â»â€¹ cÃ…Â© (tÃ¡Â»Â« execution) override giÃƒÂ¡ trÃ¡Â»â€¹ mÃ¡Â»â€ºi (tÃ¡Â»Â« user edit)
         if (node is InputNode)
         {
-            // InputNode cÃ³ property Value/ArrayValues mÃ  user cÃ³ thá»ƒ sá»­a trá»±c tiáº¿p
-            // KhÃ´ng lÆ°u UserValueOverride Ä‘á»ƒ trÃ¡nh conflict vá»›i giÃ¡ trá»‹ má»›i
+            // InputNode cÃƒÂ³ property Value/ArrayValues mÃƒÂ  user cÃƒÂ³ thÃ¡Â»Æ’ sÃ¡Â»Â­a trÃ¡Â»Â±c tiÃ¡ÂºÂ¿p
+            // KhÃƒÂ´ng lÃ†Â°u UserValueOverride Ã„â€˜Ã¡Â»Æ’ trÃƒÂ¡nh conflict vÃ¡Â»â€ºi giÃƒÂ¡ trÃ¡Â»â€¹ mÃ¡Â»â€ºi
             return null;
         }
 
-        // Äáº·c biá»‡t xá»­ lÃ½ WebNode: khÃ´ng serialize output values khi WebView2 Ä‘ang cháº¡y
-        // vÃ¬ cÃ³ thá»ƒ cÃ³ cÃ¡c giÃ¡ trá»‹ lá»›n hoáº·c phá»©c táº¡p khÃ´ng thá»ƒ serialize
+        // Ã„ÂÃ¡ÂºÂ·c biÃ¡Â»â€¡t xÃ¡Â»Â­ lÃƒÂ½ WebNode: khÃƒÂ´ng serialize output values khi WebView2 Ã„â€˜ang chÃ¡ÂºÂ¡y
+        // vÃƒÂ¬ cÃƒÂ³ thÃ¡Â»Æ’ cÃƒÂ³ cÃƒÂ¡c giÃƒÂ¡ trÃ¡Â»â€¹ lÃ¡Â»â€ºn hoÃ¡ÂºÂ·c phÃ¡Â»Â©c tÃ¡ÂºÂ¡p khÃƒÂ´ng thÃ¡Â»Æ’ serialize
         if (node is WebNode)
         {
-            // Bá» qua serialize output values cho WebNode Ä‘á»ƒ trÃ¡nh lá»—i
+            // BÃ¡Â»Â qua serialize output values cho WebNode Ã„â€˜Ã¡Â»Æ’ trÃƒÂ¡nh lÃ¡Â»â€”i
             return null;
         }
 
@@ -398,9 +398,9 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                 if (string.IsNullOrWhiteSpace(key)) continue;
 
                 var value = NodeDataPanelService.ResolveDynamicValueByKey(node, key);
-                if (string.IsNullOrWhiteSpace(value) || value == "â€”") continue;
+                if (string.IsNullOrWhiteSpace(value) || value == "Ã¢â‚¬â€") continue;
 
-                // Giá»›i háº¡n Ä‘á»™ dÃ i giÃ¡ trá»‹ Ä‘á»ƒ trÃ¡nh serialize quÃ¡ lá»›n (max 10KB per value)
+                // GiÃ¡Â»â€ºi hÃ¡ÂºÂ¡n Ã„â€˜Ã¡Â»â„¢ dÃƒÂ i giÃƒÂ¡ trÃ¡Â»â€¹ Ã„â€˜Ã¡Â»Æ’ trÃƒÂ¡nh serialize quÃƒÂ¡ lÃ¡Â»â€ºn (max 10KB per value)
                 //const int maxValueLength = 10 * 1024;
                 //if (value.Length > maxValueLength)
                 //{
@@ -465,13 +465,13 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                 node.Y = nodeDto.Y;
                 node.ColorKey = nodeDto.ColorKey;
 
-                // ConditionalNode vÃ  AsyncTaskNode: restore branches trÆ°á»›c Ä‘á»ƒ cÃ³ Ä‘á»§ sá»‘ port trÆ°á»›c khi restore Port IDs
+                // ConditionalNode vÃƒÂ  AsyncTaskNode: restore branches trÃ†Â°Ã¡Â»â€ºc Ã„â€˜Ã¡Â»Æ’ cÃƒÂ³ Ã„â€˜Ã¡Â»Â§ sÃ¡Â»â€˜ port trÃ†Â°Ã¡Â»â€ºc khi restore Port IDs
                 if (node.IsConditionalNode || node is AsyncTaskNode)
                 {
                     RestoreNodeProperties(node, nodeDto.Properties);
                 }
 
-                // Restore Ports (Id + Position) náº¿u workflow cÃ³ lÆ°u láº¡i cáº¥u hÃ¬nh port
+                // Restore Ports (Id + Position) nÃ¡ÂºÂ¿u workflow cÃƒÂ³ lÃ†Â°u lÃ¡ÂºÂ¡i cÃ¡ÂºÂ¥u hÃƒÂ¬nh port
                 if (nodeDto.Ports != null && nodeDto.Ports.Any())
                 {
                     foreach (var portDto in nodeDto.Ports)
@@ -481,13 +481,13 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
 
                         NodePort? targetPort = null;
 
-                        // ConditionalNode/AsyncTaskNode: match input port trá»±c tiáº¿p (chá»‰ cÃ³ 1 input port)
+                        // ConditionalNode/AsyncTaskNode: match input port trÃ¡Â»Â±c tiÃ¡ÂºÂ¿p (chÃ¡Â»â€° cÃƒÂ³ 1 input port)
                         if (portDto.IsInput)
                         {
                             targetPort = node.Ports.FirstOrDefault(p => p.IsInput);
                         }
-                        // ConditionalNode: match output port theo BranchIndex (file má»›i cÃ³ BranchIndex).
-                        // Fallback sang Index Ä‘á»ƒ tÆ°Æ¡ng thÃ­ch file cÅ©, trÃ¡nh map nháº§m theo Position (vÃ¬ nhiá»u nhÃ¡nh cÃ¹ng Position).
+                        // ConditionalNode: match output port theo BranchIndex (file mÃ¡Â»â€ºi cÃƒÂ³ BranchIndex).
+                        // Fallback sang Index Ã„â€˜Ã¡Â»Æ’ tÃ†Â°Ã†Â¡ng thÃƒÂ­ch file cÃ…Â©, trÃƒÂ¡nh map nhÃ¡ÂºÂ§m theo Position (vÃƒÂ¬ nhiÃ¡Â»Âu nhÃƒÂ¡nh cÃƒÂ¹ng Position).
                         else if (node.IsConditionalNode && node.ConditionalBranches != null)
                         {
                             int? bi = portDto.BranchIndex;
@@ -496,14 +496,14 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                             else if (portDto.Index >= 0 && portDto.Index < node.ConditionalBranches.Count)
                                 targetPort = node.ConditionalBranches[portDto.Index].Port;
                         }
-                        // AsyncTaskNode (manual): match output port theo BranchIndex (file má»›i)
+                        // AsyncTaskNode (manual): match output port theo BranchIndex (file mÃ¡Â»â€ºi)
                         else if (node is AsyncTaskNode atn && atn.UiPresentationMode == AsyncTaskUiPresentationMode.ManualBranches && atn.AsyncTaskBranches != null)
                         {
                             int? bi = portDto.BranchIndex;
                             if (bi.HasValue && bi.Value >= 0 && bi.Value < atn.AsyncTaskBranches.Count)
                                 targetPort = atn.AsyncTaskBranches[bi.Value].Port;
                         }
-                        // Fallback: match theo ID, Position, hoáº·c Index (cho node khÃ¡c hoáº·c file cÅ©)
+                        // Fallback: match theo ID, Position, hoÃ¡ÂºÂ·c Index (cho node khÃƒÂ¡c hoÃ¡ÂºÂ·c file cÃ…Â©)
                         if (targetPort == null)
                         {
                             var portById = node.Ports.FirstOrDefault(p => p.Id == portDto.Id);
@@ -532,7 +532,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                     }
                 }
 
-                // RestoreNodeProperties Ä‘Ã£ gá»i á»Ÿ trÃªn cho Conditional/AsyncTask; vá»›i cÃ¡c node khÃ¡c gá»i á»Ÿ Ä‘Ã¢y
+                // RestoreNodeProperties Ã„â€˜ÃƒÂ£ gÃ¡Â»Âi Ã¡Â»Å¸ trÃƒÂªn cho Conditional/AsyncTask; vÃ¡Â»â€ºi cÃƒÂ¡c node khÃƒÂ¡c gÃ¡Â»Âi Ã¡Â»Å¸ Ã„â€˜ÃƒÂ¢y
                 if (!node.IsConditionalNode && !(node is AsyncTaskNode))
                 {
                     RestoreNodeProperties(node, nodeDto.Properties);
@@ -556,7 +556,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                     loopNode.LoopBodyNode.Title = importedBody.Title;
                     loopNode.LoopBodyNode.X = importedBody.X;
                     loopNode.LoopBodyNode.Y = importedBody.Y;
-                    // âœ… Guard: Ä‘áº£m báº£o Width/Height há»£p lá»‡ trÃ¡nh lá»—i 'height must be non-negative' khi import
+                    // Ã¢Å“â€¦ Guard: Ã„â€˜Ã¡ÂºÂ£m bÃ¡ÂºÂ£o Width/Height hÃ¡Â»Â£p lÃ¡Â»â€¡ trÃƒÂ¡nh lÃ¡Â»â€”i 'height must be non-negative' khi import
                     loopNode.LoopBodyNode.Width = Math.Max(100, importedBody.Width);
                     loopNode.LoopBodyNode.Height = Math.Max(80, importedBody.Height);
 
@@ -570,8 +570,8 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                     nodeMap[link.ToNodeId] = loopNode.LoopBodyNode;
                 }
 
-                // âœ… Äáº£m báº£o LoopNode ports cÃ³ Ä‘Ãºng ID vÃ  Position sau khi restore
-                // Äáº·c biá»‡t quan trá»ng cho LoopNodeBottom vÃ  LoopNodeOut
+                // Ã¢Å“â€¦ Ã„ÂÃ¡ÂºÂ£m bÃ¡ÂºÂ£o LoopNode ports cÃƒÂ³ Ã„â€˜ÃƒÂºng ID vÃƒÂ  Position sau khi restore
+                // Ã„ÂÃ¡ÂºÂ·c biÃ¡Â»â€¡t quan trÃ¡Â»Âng cho LoopNodeBottom vÃƒÂ  LoopNodeOut
                 var loopNodeDto = dto.Nodes.FirstOrDefault(n => n.Id == loopNode.Id);
                 if (loopNodeDto?.Ports != null)
                 {
@@ -580,7 +580,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                         if (!Enum.TryParse<PortPosition>(portDto.Position, out var pos))
                             continue;
 
-                        // TÃ¬m port theo ID trÆ°á»›c
+                        // TÃƒÂ¬m port theo ID trÃ†Â°Ã¡Â»â€ºc
                         var existingPort = loopNode.Ports.FirstOrDefault(p => p.Id == portDto.Id);
                         if (existingPort != null)
                         {
@@ -588,7 +588,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                             continue;
                         }
 
-                        // Náº¿u chÆ°a cÃ³, tÃ¬m port theo Position vÃ  Direction
+                        // NÃ¡ÂºÂ¿u chÃ†Â°a cÃƒÂ³, tÃƒÂ¬m port theo Position vÃƒÂ  Direction
                         var portByPos = loopNode.Ports
                             .FirstOrDefault(p => p.IsInput == portDto.IsInput && p.Position == pos);
                         if (portByPos != null)
@@ -618,7 +618,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                 officialBody.Title = importedAsyncBody.Title;
                 officialBody.X = importedAsyncBody.X;
                 officialBody.Y = importedAsyncBody.Y;
-                // âœ… Guard: Ä‘áº£m báº£o Width/Height há»£p lá»‡ trÃ¡nh lá»—i 'height must be non-negative' khi import
+                // Ã¢Å“â€¦ Guard: Ã„â€˜Ã¡ÂºÂ£m bÃ¡ÂºÂ£o Width/Height hÃ¡Â»Â£p lÃ¡Â»â€¡ trÃƒÂ¡nh lÃ¡Â»â€”i 'height must be non-negative' khi import
                 officialBody.Width = Math.Max(200, importedAsyncBody.Width);
                 officialBody.Height = Math.Max(200, importedAsyncBody.Height);
                 officialBody.ParentAsyncTaskNode = asyncTaskNode;
@@ -644,7 +644,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                     if (fromNode is AsyncTaskBodyNode fromAtBody) WorkflowExecutionService.EnsureAsyncTaskBodyPortsExist(fromAtBody);
                     if (toNode is AsyncTaskBodyNode toAtBody) WorkflowExecutionService.EnsureAsyncTaskBodyPortsExist(toAtBody);
 
-                    // âœ… Æ¯u tiÃªn match theo Port ID (chÃ­nh xÃ¡c nháº¥t)
+                    // Ã¢Å“â€¦ Ã†Â¯u tiÃƒÂªn match theo Port ID (chÃƒÂ­nh xÃƒÂ¡c nhÃ¡ÂºÂ¥t)
                     NodePort? fromPort = null;
                     NodePort? toPort = null;
 
@@ -658,8 +658,8 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                         toPort = toNode.Ports.FirstOrDefault(p => p.Id == connDto.ToPortId);
                     }
 
-                    // âœ… Náº¿u khÃ´ng tÃ¬m tháº¥y theo ID, chá»‰ fallback cho node cÃ³ 1 port out duy nháº¥t.
-                    // LoopNode, ConditionalNode, AsyncTaskNode cÃ³ nhiá»u output ports - khÃ´ng fallback.
+                    // Ã¢Å“â€¦ NÃ¡ÂºÂ¿u khÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y theo ID, chÃ¡Â»â€° fallback cho node cÃƒÂ³ 1 port out duy nhÃ¡ÂºÂ¥t.
+                    // LoopNode, ConditionalNode, AsyncTaskNode cÃƒÂ³ nhiÃ¡Â»Âu output ports - khÃƒÂ´ng fallback.
                     if (fromPort == null && !(fromNode is LoopNode) && !fromNode.IsConditionalNode && !(fromNode is AsyncTaskNode))
                     {
                         fromPort = fromNode.Ports.FirstOrDefault(p => !p.IsInput);
@@ -670,14 +670,14 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                         toPort = toNode.Ports.FirstOrDefault(p => p.IsInput);
                     }
 
-                    // âœ… Äá»‘i vá»›i LoopNode, ConditionalNode, AsyncTaskNode, LoopBodyNode: chá»‰ táº¡o connection náº¿u tÃ¬m tháº¥y Ä‘Ãºng port theo ID
+                    // Ã¢Å“â€¦ Ã„ÂÃ¡Â»â€˜i vÃ¡Â»â€ºi LoopNode, ConditionalNode, AsyncTaskNode, LoopBodyNode: chÃ¡Â»â€° tÃ¡ÂºÂ¡o connection nÃ¡ÂºÂ¿u tÃƒÂ¬m thÃ¡ÂºÂ¥y Ã„â€˜ÃƒÂºng port theo ID
                     if (fromNode is LoopNode || toNode is LoopNode || fromNode is LoopBodyNode || toNode is LoopBodyNode
                         || fromNode is AsyncTaskBodyNode || toNode is AsyncTaskBodyNode
                         || fromNode.IsConditionalNode || fromNode is AsyncTaskNode)
                     {
                         if (fromPort == null || toPort == null)
                         {
-                            // Skip connection náº¿u khÃ´ng tÃ¬m tháº¥y Ä‘Ãºng port cho loop nodes
+                            // Skip connection nÃ¡ÂºÂ¿u khÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y Ã„â€˜ÃƒÂºng port cho loop nodes
                             continue;
                         }
                     }
@@ -696,8 +696,8 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                 }
             }
 
-            // âœ… Rebuild LoopNode outputs tá»« ListOutNodes trong LoopBody
-            // Pháº£i gá»i sau khi Ä‘Ã£ cÃ³ Ä‘áº§y Ä‘á»§ connections
+            // Ã¢Å“â€¦ Rebuild LoopNode outputs tÃ¡Â»Â« ListOutNodes trong LoopBody
+            // PhÃ¡ÂºÂ£i gÃ¡Â»Âi sau khi Ã„â€˜ÃƒÂ£ cÃƒÂ³ Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§ connections
             foreach (var loopNode in nodes.OfType<LoopNode>())
             {
                 loopNode.RebuildOutputsFromLoopBody(connections, nodes);
@@ -923,6 +923,9 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case MacroRecorderNode macroRecorderNode:
                 RestoreMacroRecorderNodeProperties(macroRecorderNode, properties);
                 break;
+            case ActionCanVasNode actionCanVasNode:
+                RestoreActionCanVasNodeProperties(actionCanVasNode, properties);
+                break;
             case BorderHighlightNode borderHighlightNode:
                 RestoreBorderHighlightNodeProperties(borderHighlightNode, properties);
                 break;
@@ -934,7 +937,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                 break;
         }
 
-        // Shared: ReuseRoutes, DynamicInputs, Title (Ã¡p dá»¥ng cho má»i loáº¡i node)
+        // Shared: ReuseRoutes, DynamicInputs, Title (ÃƒÂ¡p dÃ¡Â»Â¥ng cho mÃ¡Â»Âi loÃ¡ÂºÂ¡i node)
         RestoreReuseRoutes(node, properties);
         RestoreDynamicInputProperties(node, properties);
         RestoreSharedTitleProperties(node, properties);
@@ -984,6 +987,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             case HttpRequestNode httpRequestNode: GetHttpRequestNodeProperties(httpRequestNode, dict); break;
             case OutputNode outputNode: GetOutputNodeProperties(outputNode, dict); break;
             case MacroRecorderNode macroNode: GetMacroRecorderNodeProperties(macroNode, dict); break;
+            case ActionCanVasNode actionNode: GetActionCanVasNodeProperties(actionNode, dict); break;
             case BorderHighlightNode borderHighlightNode: GetBorderHighlightNodeProperties(borderHighlightNode, dict); break;
             case NotificationNode notificationNode: GetNotificationNodeProperties(notificationNode, dict); break;
             case EmbedApplicationNode embedApp: GetEmbedApplicationNodeProperties(embedApp, dict); break;

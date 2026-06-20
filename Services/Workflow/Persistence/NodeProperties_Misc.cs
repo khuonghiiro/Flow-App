@@ -952,6 +952,66 @@ public sealed partial class FileWorkflowPersistenceService
 
 
     }
+    private static void RestoreActionCanVasNodeProperties(ActionCanVasNode actionCanVasNode, Dictionary<string, object> properties)
+    {
+            if (properties.TryGetValue("BodyWidth", out var widthObj) && widthObj != null && double.TryParse(widthObj.ToString(), out var bodyWidth))
+                actionCanVasNode.BodyWidth = bodyWidth;
+            if (properties.TryGetValue("BodyHeight", out var heightObj) && heightObj != null && double.TryParse(heightObj.ToString(), out var bodyHeight))
+                actionCanVasNode.BodyHeight = bodyHeight;
+            if (properties.TryGetValue("BodyBackgroundColorHex", out var bgObj))
+                actionCanVasNode.BodyBackgroundColorHex = bgObj?.ToString() ?? actionCanVasNode.BodyBackgroundColorHex;
+            if (properties.TryGetValue("BodyBorderColorHex", out var borderObj))
+                actionCanVasNode.BodyBorderColorHex = borderObj?.ToString() ?? actionCanVasNode.BodyBorderColorHex;
+            if (properties.TryGetValue("UseUnifiedColors", out var unifiedObj) && unifiedObj != null && bool.TryParse(unifiedObj.ToString(), out var unified))
+                actionCanVasNode.UseUnifiedColors = unified;
+            if (properties.TryGetValue("BackgroundOpacityPercent", out var opacityObj) && opacityObj != null && double.TryParse(opacityObj.ToString(), out var opacity))
+                actionCanVasNode.BackgroundOpacityPercent = opacity;
+            if (properties.TryGetValue("BorderOpacityPercent", out var borderOpacityObj) && borderOpacityObj != null && double.TryParse(borderOpacityObj.ToString(), out var borderOpacity))
+                actionCanVasNode.BorderOpacityPercent = borderOpacity;
+            if (properties.TryGetValue("BorderThickness", out var borderThicknessObj) && borderThicknessObj != null && double.TryParse(borderThicknessObj.ToString(), out var borderThickness))
+                actionCanVasNode.BorderThickness = borderThickness;
+            if (properties.TryGetValue("BorderDashSpacing", out var borderDashSpacingObj) && borderDashSpacingObj != null && double.TryParse(borderDashSpacingObj.ToString(), out var borderDashSpacing))
+                actionCanVasNode.BorderDashSpacing = borderDashSpacing;
+            if (properties.TryGetValue("BorderDashStyle", out var borderDashStyleObj) && borderDashStyleObj != null && Enum.TryParse<BorderDashStyle>(borderDashStyleObj.ToString(), out var borderDashStyle))
+                actionCanVasNode.BorderDashStyle = borderDashStyle;
+
+            if (properties.TryGetValue("OutputKey", out var mkObj))
+                actionCanVasNode.OutputKey = mkObj?.ToString() ?? "canvasData";
+            if (properties.TryGetValue("MacroDataJson", out var mdjObj))
+                actionCanVasNode.MacroDataJson = mdjObj?.ToString() ?? "";
+            if (properties.TryGetValue("PlaybackMode", out var pmObj) && Enum.TryParse<MacroPlaybackMode>(pmObj?.ToString(), out var pm))
+                actionCanVasNode.PlaybackMode = pm;
+            if (properties.TryGetValue("RepeatIntervalMs", out var rimObj) && int.TryParse(rimObj?.ToString(), out var rim))
+                actionCanVasNode.RepeatIntervalMs = Math.Max(0, rim);
+            if (properties.TryGetValue("RepeatCount", out var mrcObj) && int.TryParse(mrcObj?.ToString(), out var mrc))
+                actionCanVasNode.RepeatCount = Math.Max(1, mrc);
+            if (properties.TryGetValue("VisualPlaybackMode", out var vpmObj) && Enum.TryParse<VisualPlaybackMode>(vpmObj?.ToString(), out var vpm))
+                actionCanVasNode.VisualPlaybackMode = vpm;
+            if (properties.TryGetValue("CountdownSeconds", out var csObj) && int.TryParse(csObj?.ToString(), out var cs))
+                actionCanVasNode.CountdownSeconds = Math.Max(0, Math.Min(10, cs));
+    }
+
+    private static void GetActionCanVasNodeProperties(ActionCanVasNode actionNode, Dictionary<string, object> dict)
+    {
+            dict["BodyWidth"] = actionNode.BodyWidth;
+            dict["BodyHeight"] = actionNode.BodyHeight;
+            dict["BodyBackgroundColorHex"] = actionNode.BodyBackgroundColorHex;
+            dict["BodyBorderColorHex"] = actionNode.BodyBorderColorHex;
+            dict["UseUnifiedColors"] = actionNode.UseUnifiedColors;
+            dict["BackgroundOpacityPercent"] = actionNode.BackgroundOpacityPercent;
+            dict["BorderOpacityPercent"] = actionNode.BorderOpacityPercent;
+            dict["BorderThickness"] = actionNode.BorderThickness;
+            dict["BorderDashSpacing"] = actionNode.BorderDashSpacing;
+            dict["BorderDashStyle"] = actionNode.BorderDashStyle.ToString();
+
+            dict["OutputKey"] = actionNode.OutputKey;
+            dict["MacroDataJson"] = actionNode.MacroDataJson;
+            dict["PlaybackMode"] = actionNode.PlaybackMode.ToString();
+            dict["RepeatIntervalMs"] = actionNode.RepeatIntervalMs;
+            dict["RepeatCount"] = actionNode.RepeatCount;
+            dict["VisualPlaybackMode"] = actionNode.VisualPlaybackMode.ToString();
+            dict["CountdownSeconds"] = actionNode.CountdownSeconds;
+    }
 
     private static void GetMacroRecorderNodeProperties(MacroRecorderNode macroNode, Dictionary<string, object> dict)
     {
