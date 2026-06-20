@@ -42,7 +42,7 @@ namespace FlowMy.Workflow
                 {
                     _nodeOriginalZIndex[node] = originalZIndex.Value;
                 }
-                else if (node is LoopBodyNode or AsyncTaskBodyNode or FlowMy.Models.Nodes.BodyContainerNode)
+                else if (node is LoopBodyNode or AsyncTaskBodyNode or FlowMy.Models.Nodes.BodyContainerNode or FlowMy.Models.Nodes.ActionCanVasNode)
                 {
                     // Giống Loop Body: khung vùng body phải nằm dưới các node foreground (~10000+)
                     // để kéo/chuột phải vào node con trên canvas (các node là sibling, không nằm trong Border).
@@ -108,6 +108,13 @@ namespace FlowMy.Workflow
                 int targetZ = bcn.FullLockInnerNodes ? baseZ + LockedBodyZIndexOffset : baseZ;
                 if (node.Border != null && Panel.GetZIndex(node.Border) == targetZ) return;
                 RaiseNodeZIndex(node, targetZ);
+                return;
+            }
+            if (node is FlowMy.Models.Nodes.ActionCanVasNode)
+            {
+                // ActionCanVasNode should stay behind normal nodes/lines.
+                if (node.Border != null && Panel.GetZIndex(node.Border) == baseZ) return;
+                RaiseNodeZIndex(node, baseZ);
                 return;
             }
             int dragZ = baseZ + DraggingOffset;

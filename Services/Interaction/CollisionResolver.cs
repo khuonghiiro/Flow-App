@@ -73,8 +73,12 @@ namespace FlowMy.Services.Interaction
                     if (otherNode.Border == null) continue; // Skip node chưa được render
                     if (overlappingNodes.Any(o => o.otherNode == otherNode)) continue; // Đã xử lý va chạm với otherNode này
 
-                    // Nếu otherNode là unlocked BodyContainerNode, skip collision (cho phép đè lên body)
+                    // Nếu otherNode là unlocked BodyContainerNode hoặc ActionCanVasNode, skip collision (cho phép đè lên body)
                     if (otherNode is BodyContainerNode otherBody && !otherBody.LockInnerNodes) continue;
+                    if (otherNode is ActionCanVasNode) continue;
+                    
+                    // Nếu targetNode là ActionCanVasNode, không đẩy các node khác
+                    if (targetNode is ActionCanVasNode) continue;
 
                     // Nếu otherNode nằm trong locked body, skip - không được di chuyển
                     if (FindOwningLockedBody(viewModel, otherNode) != null) continue;

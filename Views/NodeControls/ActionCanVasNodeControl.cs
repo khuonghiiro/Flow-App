@@ -69,9 +69,11 @@ namespace FlowMy.Views.NodeControls
             AddResizeHandle(root, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top);
             AddResizeHandle(root, ResizeDirection.Top, HorizontalAlignment.Center, VerticalAlignment.Top);
             AddResizeHandle(root, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top);
+            AddResizeHandle(root, ResizeDirection.Right, HorizontalAlignment.Right, VerticalAlignment.Center);
             AddResizeHandle(root, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom);
             AddResizeHandle(root, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom);
             AddResizeHandle(root, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom);
+            AddResizeHandle(root, ResizeDirection.Left, HorizontalAlignment.Left, VerticalAlignment.Center);
 
             void RefreshPortsAndConnections()
             {
@@ -157,20 +159,7 @@ namespace FlowMy.Views.NodeControls
             titleText.Margin = new Thickness(0);
             titleText.Foreground = ResolveTitleBrush(node, borderColor);
 
-            // Resize handle colors and scale
-            if (border.Child is Grid root)
-            {
-                var scale = Math.Clamp(titleScale, 1.0, 2.0);
-                foreach (var child in root.Children)
-                {
-                    if (child is Ellipse handle && handle.Tag is ResizeDirection)
-                    {
-                        handle.Fill = new SolidColorBrush(borderColor);
-                        handle.RenderTransformOrigin = new Point(0.5, 0.5);
-                        handle.RenderTransform = new ScaleTransform(scale, scale);
-                    }
-                }
-            }
+            UpdateResizeHandleScale(border, node.BodyWidth, node.BodyHeight, borderColor);
             
             // Connection port scaling on ApplyVisuals
             if (node.Ports != null)
@@ -203,6 +192,19 @@ namespace FlowMy.Views.NodeControls
                 Cursor = GetCursor(direction)
             };
             grid.Children.Add(handle);
+        }
+
+        private static void UpdateResizeHandleScale(Border border, double bodyWidth, double bodyHeight, Color handleColor)
+        {
+            if (border.Child is not Grid grid) return;
+            var scale = Math.Clamp(Math.Max(bodyWidth / 600.0, bodyHeight / 300.0), 1.0, 2.0);
+            foreach (var child in grid.Children)
+            {
+                if (child is not Ellipse handle || handle.Tag is not ResizeDirection) continue;
+                handle.Fill = new SolidColorBrush(handleColor);
+                handle.RenderTransformOrigin = new Point(0.5, 0.5);
+                handle.RenderTransform = new ScaleTransform(scale, scale);
+            }
         }
 
         private static void AttachResizeLogic(Border border, ActionCanVasNode node, Action refreshPortsAndConnections)
@@ -255,18 +257,13 @@ namespace FlowMy.Views.NodeControls
                 node.BodyWidth = newW; node.BodyHeight = newH;
                 border.Width = newW; border.Height = newH;
                 
+                var borderColor = ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Colors.Blue);
+                var borderAlpha = (byte)Math.Round(Math.Clamp(node.BorderOpacityPercent / 100.0, 0, 1) * 255);
+                borderColor.A = borderAlpha;
+                UpdateResizeHandleScale(border, newW, newH, borderColor);
+                
                 var titleScaleDynamic = Math.Max(1.0, Math.Max(newW / 600.0, newH / 300.0));
                 var scaleDynamic = Math.Clamp(titleScaleDynamic, 1.0, 2.0);
-                if (border.Child is Grid rootGrid)
-                {
-                    foreach (var child in rootGrid.Children)
-                    {
-                        if (child is Ellipse handle && handle.Tag is ResizeDirection)
-                        {
-                            handle.RenderTransform = new ScaleTransform(scaleDynamic, scaleDynamic);
-                        }
-                    }
-                }
                 if (node.Ports != null)
                 {
                     foreach (var port in node.Ports)
