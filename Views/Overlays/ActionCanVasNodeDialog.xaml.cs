@@ -108,7 +108,8 @@ namespace FlowMy.Views.Overlays
             if (border == null) return;
 
             var pt = border.PointToScreen(new Point(0, 0));
-            var bounds = new Rect(pt.X, pt.Y, border.ActualWidth, border.ActualHeight);
+            var ptBottomRight = border.PointToScreen(new Point(border.ActualWidth, border.ActualHeight));
+            var bounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
 
             this.Hide();
 

@@ -297,6 +297,12 @@ namespace FlowMy.Services.Interaction
             // Some keys like volume keys may not have valid scan codes
             ushort scanCode = (scan > 0 && scan <= 0xFF) ? (ushort)scan : (ushort)0;
 
+            // Map specific L/R modifier keys to generic ones for SendInput to prevent Error 87
+            ushort sendVk = (ushort)vk;
+            if (vk == 0xA0 || vk == 0xA1) sendVk = 0x10; // VK_SHIFT
+            else if (vk == 0xA2 || vk == 0xA3) sendVk = 0x11; // VK_CONTROL
+            else if (vk == 0xA4 || vk == 0xA5) sendVk = 0x12; // VK_MENU
+
             // Send key down
             var keyDown = new INPUT
             {
@@ -305,7 +311,7 @@ namespace FlowMy.Services.Interaction
                 {
                     ki = new KEYBDINPUT
                     {
-                        wVk = (ushort)vk,
+                        wVk = sendVk,
                         wScan = scanCode,
                         dwFlags = KEYEVENTF_KEYDOWN | extendedFlag,
                         time = 0,
@@ -359,7 +365,7 @@ namespace FlowMy.Services.Interaction
                 {
                     ki = new KEYBDINPUT
                     {
-                        wVk = (ushort)vk,
+                        wVk = sendVk,
                         wScan = scanCode,
                         dwFlags = KEYEVENTF_KEYUP | extendedFlag,
                         time = 0,
@@ -530,17 +536,17 @@ namespace FlowMy.Services.Interaction
             var vk = KeyInterop.VirtualKeyFromKey(key);
             if (vk == 0) return;
 
-            // Check if this is Win key - use keybd_event for better compatibility
-            if (vk == 0x5B || vk == 0x5C) // VK_LWIN or VK_RWIN
+            // Check if this is Win key or L/R Modifier key - use keybd_event for better compatibility
+            if (vk == 0x5B || vk == 0x5C || (vk >= 0xA0 && vk <= 0xA5)) // VK_LWIN, VK_RWIN, or L/R Shift/Ctrl/Alt
             {
                 try
                 {
-                    keybd_event((byte)vk, 0, 0, IntPtr.Zero);
+                    keybd_event((byte)vk, 0, 0, IntPtr.Zero); // 0 = KEYEVENTF_KEYDOWN
                     return;
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"keybd_event failed for Win key VK={vk}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"keybd_event failed for modifier/Win key VK={vk}: {ex.Message}");
                     return;
                 }
             }
@@ -555,6 +561,12 @@ namespace FlowMy.Services.Interaction
                 scanCode = (ushort)scan;
             }
             
+            // Map specific L/R modifier keys to generic ones for SendInput to prevent Error 87
+            ushort sendVk = (ushort)vk;
+            if (vk == 0xA0 || vk == 0xA1) sendVk = 0x10; // VK_SHIFT
+            else if (vk == 0xA2 || vk == 0xA3) sendVk = 0x11; // VK_CONTROL
+            else if (vk == 0xA4 || vk == 0xA5) sendVk = 0x12; // VK_MENU
+
             var input = new INPUT
             {
                 type = INPUT_KEYBOARD,
@@ -562,7 +574,7 @@ namespace FlowMy.Services.Interaction
                 {
                     ki = new KEYBDINPUT
                     {
-                        wVk = (ushort)vk,
+                        wVk = sendVk,
                         wScan = scanCode,
                         dwFlags = KEYEVENTF_KEYDOWN | (isExtended ? KEYEVENTF_EXTENDEDKEY : 0),
                         time = 0,
@@ -604,8 +616,8 @@ namespace FlowMy.Services.Interaction
             var vk = KeyInterop.VirtualKeyFromKey(key);
             if (vk == 0) return;
 
-            // Check if this is Win key - use keybd_event for better compatibility
-            if (vk == 0x5B || vk == 0x5C) // VK_LWIN or VK_RWIN
+            // Check if this is Win key or L/R Modifier key - use keybd_event for better compatibility
+            if (vk == 0x5B || vk == 0x5C || (vk >= 0xA0 && vk <= 0xA5)) // VK_LWIN, VK_RWIN, or L/R Shift/Ctrl/Alt
             {
                 try
                 {
@@ -614,7 +626,7 @@ namespace FlowMy.Services.Interaction
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"keybd_event failed for Win key VK={vk}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"keybd_event failed for modifier/Win key VK={vk}: {ex.Message}");
                     return;
                 }
             }
@@ -629,6 +641,12 @@ namespace FlowMy.Services.Interaction
                 scanCode = (ushort)scan;
             }
             
+            // Map specific L/R modifier keys to generic ones for SendInput to prevent Error 87
+            ushort sendVk = (ushort)vk;
+            if (vk == 0xA0 || vk == 0xA1) sendVk = 0x10; // VK_SHIFT
+            else if (vk == 0xA2 || vk == 0xA3) sendVk = 0x11; // VK_CONTROL
+            else if (vk == 0xA4 || vk == 0xA5) sendVk = 0x12; // VK_MENU
+
             var input = new INPUT
             {
                 type = INPUT_KEYBOARD,
@@ -636,7 +654,7 @@ namespace FlowMy.Services.Interaction
                 {
                     ki = new KEYBDINPUT
                     {
-                        wVk = (ushort)vk,
+                        wVk = sendVk,
                         wScan = scanCode,
                         dwFlags = KEYEVENTF_KEYUP | (isExtended ? KEYEVENTF_EXTENDEDKEY : 0),
                         time = 0,

@@ -41,11 +41,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private static (int screenX, int screenY) ResolveScreenCoords(MacroAction action, Rect bounds)
         {
-            if ((action.RelX > 0 || action.RelY > 0) && !bounds.IsEmpty)
+            if (!bounds.IsEmpty)
             {
-                int clientX = (int)(action.RelX * bounds.Width);
-                int clientY = (int)(action.RelY * bounds.Height);
-                return ((int)bounds.Left + clientX, (int)bounds.Top + clientY);
+                if (action.RelX != 0 || action.RelY != 0)
+                {
+                    double rx = Math.Clamp(action.RelX, 0.0, 1.0);
+                    double ry = Math.Clamp(action.RelY, 0.0, 1.0);
+                    int clientX = (int)(rx * bounds.Width);
+                    int clientY = (int)(ry * bounds.Height);
+                    return ((int)bounds.Left + clientX, (int)bounds.Top + clientY);
+                }
+                else
+                {
+                    // Fallback if RelX/RelY is exactly 0 or missing, but still clamp within bounds
+                    int cx = (int)Math.Clamp(action.X, bounds.Left, bounds.Right);
+                    int cy = (int)Math.Clamp(action.Y, bounds.Top, bounds.Bottom);
+                    return (cx, cy);
+                }
             }
             return (action.X, action.Y);
         }
@@ -304,7 +316,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     if (macroNode.Border != null)
                     {
                         var pt = macroNode.Border.PointToScreen(new Point(0, 0));
-                        bounds = new Rect(pt.X, pt.Y, macroNode.Border.ActualWidth, macroNode.Border.ActualHeight);
+                        var ptBottomRight = macroNode.Border.PointToScreen(new Point(macroNode.Border.ActualWidth, macroNode.Border.ActualHeight));
+                        bounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
                     }
                 }, DispatcherPriority.Normal);
             }

@@ -66,6 +66,12 @@ namespace FlowMy.Views.Overlays
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
             int X, int Y, int cx, int cy, uint uFlags);
 
+        [DllImport("user32.dll")]
+        private static extern bool ClipCursor(ref RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern bool ClipCursor(IntPtr lpRect);
+
         private const int GWL_EXSTYLE        = -20;
         private const int WS_EX_TRANSPARENT  = 0x00000020;
         private const int WS_EX_NOACTIVATE   = 0x08000000;
@@ -345,6 +351,7 @@ namespace FlowMy.Views.Overlays
         private void OnClosed(object sender, EventArgs e)
         {
             _timer.Stop();
+            ClipCursor(IntPtr.Zero);
             if (_keyboardHook != IntPtr.Zero) { UnhookWindowsHookEx(_keyboardHook); _keyboardHook = IntPtr.Zero; }
             if (_mouseHook != IntPtr.Zero) { UnhookWindowsHookEx(_mouseHook); _mouseHook = IntPtr.Zero; }
         }
@@ -1020,6 +1027,31 @@ namespace FlowMy.Views.Overlays
             VirtualCursor.Visibility = Visibility.Visible;
             RecordingBorder.Visibility = Visibility.Visible;
 
+            if (_recordingBounds.HasValue)
+            {
+                double scaleX = 1.0, scaleY = 1.0;
+                var source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget != null)
+                {
+                    scaleX = source.CompositionTarget.TransformToDevice.M11;
+                    scaleY = source.CompositionTarget.TransformToDevice.M22;
+                }
+
+                RecordingBorder.HorizontalAlignment = HorizontalAlignment.Left;
+                RecordingBorder.VerticalAlignment = VerticalAlignment.Top;
+                RecordingBorder.Margin = new Thickness(_recordingBounds.Value.Left / scaleX, _recordingBounds.Value.Top / scaleY, 0, 0);
+                RecordingBorder.Width = _recordingBounds.Value.Width / scaleX;
+                RecordingBorder.Height = _recordingBounds.Value.Height / scaleY;
+            }
+            else
+            {
+                RecordingBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
+                RecordingBorder.VerticalAlignment = VerticalAlignment.Stretch;
+                RecordingBorder.Margin = new Thickness(0);
+                RecordingBorder.Width = double.NaN;
+                RecordingBorder.Height = double.NaN;
+            }
+
             // Normal mouse-move trail: adaptive color — only shown when user opted in
             // Initial color will be updated per-point via GetContrastingTrailColor
             if (_showMouseTrail)
@@ -1037,10 +1069,23 @@ namespace FlowMy.Views.Overlays
 
             _timer.Start();
             UpdateUI();
+
+            if (_recordingBounds.HasValue)
+            {
+                var r = new RECT 
+                { 
+                    Left = (int)_recordingBounds.Value.Left, 
+                    Top = (int)_recordingBounds.Value.Top, 
+                    Right = (int)_recordingBounds.Value.Right, 
+                    Bottom = (int)_recordingBounds.Value.Bottom 
+                };
+                ClipCursor(ref r);
+            }
         }
 
         private void StopRecording(bool save)
         {
+            ClipCursor(IntPtr.Zero);
             _timer.Stop();
             _realActionMode = false;
             // Ensure click-through is off when stopping
