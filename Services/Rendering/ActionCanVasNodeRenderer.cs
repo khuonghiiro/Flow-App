@@ -55,12 +55,15 @@ namespace FlowMy.Services.Rendering
                 var portColor = ResolvePortColor(port);
                 if (port.PortUI == null)
                 {
-                    port.PortUI = _portRenderer.CreatePort(portColor);
+                    var margin = GetPortMarginForPosition(port.Position);
+                    port.PortUI = _portRenderer.CreateRectangularPortWithMargin(portColor, margin, width: 12, height: 25);
                     port.PortUI.Tag = port;
                 }
-                else if (port.PortUI is Ellipse ellipse)
+                else
                 {
-                    ellipse.Fill = new SolidColorBrush(portColor);
+                    var shape = FlowMy.Services.Rendering.PortRenderer.GetActualPortShape(port.PortUI);
+                    if (shape != null)
+                        shape.Fill = new SolidColorBrush(portColor);
                 }
                 _portRenderer.UpdatePortsPositionOnSide(actionCanVasNode, port.Position);
                 _portRenderer.EnsurePortAddedToCanvas(port);
@@ -106,12 +109,15 @@ namespace FlowMy.Services.Rendering
                 var portColor = ResolvePortColor(port);
                 if (port.PortUI == null)
                 {
-                    port.PortUI = _portRenderer.CreatePort(portColor);
+                    var margin = GetPortMarginForPosition(port.Position);
+                    port.PortUI = _portRenderer.CreateRectangularPortWithMargin(portColor, margin, width: 12, height: 25);
                     port.PortUI.Tag = port;
                 }
-                else if (port.PortUI is Ellipse ellipse)
+                else
                 {
-                    ellipse.Fill = new SolidColorBrush(portColor);
+                    var shape = FlowMy.Services.Rendering.PortRenderer.GetActualPortShape(port.PortUI);
+                    if (shape != null)
+                        shape.Fill = new SolidColorBrush(portColor);
                 }
                 _portRenderer.UpdatePortsPositionOnSide(node, port.Position);
                 _portRenderer.EnsurePortAddedToCanvas(port);
@@ -167,6 +173,18 @@ namespace FlowMy.Services.Rendering
         {
             try { return (Application.Current.TryFindResource(key) as SolidColorBrush)?.Color; }
             catch { return null; }
+        }
+
+        private static Thickness GetPortMarginForPosition(PortPosition position)
+        {
+            return position switch
+            {
+                PortPosition.Left => new Thickness(6, 2, 15, 2),
+                PortPosition.Right => new Thickness(15, 2, 6, 2),
+                PortPosition.Top => new Thickness(2, 3, 2, 1),
+                PortPosition.Bottom => new Thickness(2, 1, 2, 3),
+                _ => new Thickness(2)
+            };
         }
     }
 }

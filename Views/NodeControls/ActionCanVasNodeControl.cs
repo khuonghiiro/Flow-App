@@ -69,11 +69,9 @@ namespace FlowMy.Views.NodeControls
             AddResizeHandle(root, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top);
             AddResizeHandle(root, ResizeDirection.Top, HorizontalAlignment.Center, VerticalAlignment.Top);
             AddResizeHandle(root, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top);
-            AddResizeHandle(root, ResizeDirection.Right, HorizontalAlignment.Right, VerticalAlignment.Center);
             AddResizeHandle(root, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom);
             AddResizeHandle(root, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom);
             AddResizeHandle(root, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom);
-            AddResizeHandle(root, ResizeDirection.Left, HorizontalAlignment.Left, VerticalAlignment.Center);
 
             void RefreshPortsAndConnections()
             {
@@ -114,6 +112,7 @@ namespace FlowMy.Views.NodeControls
                 [nameof(ActionCanVasNode.BorderThickness)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
                 [nameof(ActionCanVasNode.BorderDashStyle)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
                 [nameof(ActionCanVasNode.BorderDashSpacing)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
+                [nameof(WorkflowNode.NodeBrush)] = ctx => { /* Do nothing to Border.Background, we manage our own fill */ },
                 ["TitleColorMode"] = ctx => titleText.Foreground = ResolveTitleBrush(node, ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Colors.Blue)),
                 ["TitleColorKey"] = ctx => titleText.Foreground = ResolveTitleBrush(node, ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Colors.Blue))
             };
@@ -158,7 +157,7 @@ namespace FlowMy.Views.NodeControls
             titleText.Margin = new Thickness(0);
             titleText.Foreground = ResolveTitleBrush(node, borderColor);
 
-            // Resize handle colors
+            // Resize handle colors and scale
             if (border.Child is Grid root)
             {
                 var scale = Math.Clamp(titleScale, 1.0, 2.0);
@@ -169,6 +168,25 @@ namespace FlowMy.Views.NodeControls
                         handle.Fill = new SolidColorBrush(borderColor);
                         handle.RenderTransformOrigin = new Point(0.5, 0.5);
                         handle.RenderTransform = new ScaleTransform(scale, scale);
+                    }
+                }
+            }
+            
+            // Connection port scaling on ApplyVisuals
+            if (node.Ports != null)
+            {
+                var scale = Math.Clamp(titleScale, 1.0, 2.0);
+                foreach (var port in node.Ports)
+                {
+                    if (port.PortUI != null)
+                    {
+                        var shape = FlowMy.Services.Rendering.PortRenderer.GetActualPortShape(port.PortUI);
+                        if (shape != null)
+                        {
+                            shape.Width = 12 * scale;
+                            shape.Height = 25 * scale;
+                            shape.Tag = new Size(shape.Width, shape.Height);
+                        }
                     }
                 }
             }
@@ -237,8 +255,42 @@ namespace FlowMy.Views.NodeControls
                 node.BodyWidth = newW; node.BodyHeight = newH;
                 border.Width = newW; border.Height = newH;
                 
+                var titleScaleDynamic = Math.Max(1.0, Math.Max(newW / 600.0, newH / 300.0));
+                var scaleDynamic = Math.Clamp(titleScaleDynamic, 1.0, 2.0);
+                if (border.Child is Grid rootGrid)
+                {
+                    foreach (var child in rootGrid.Children)
+                    {
+                        if (child is Ellipse handle && handle.Tag is ResizeDirection)
+                        {
+                            handle.RenderTransform = new ScaleTransform(scaleDynamic, scaleDynamic);
+                        }
+                    }
+                }
+                if (node.Ports != null)
+                {
+                    foreach (var port in node.Ports)
+                    {
+                        if (port.PortUI != null)
+                        {
+                            var shape = FlowMy.Services.Rendering.PortRenderer.GetActualPortShape(port.PortUI);
+                            if (shape != null)
+                            {
+                                shape.Width = 12 * scaleDynamic;
+                                shape.Height = 25 * scaleDynamic;
+                                // Cập nhật lại kích thước cho Tag để highlighter không bị sai
+                                shape.Tag = new Size(shape.Width, shape.Height);
+                            }
+                        }
+                    }
+                }
+                
                 Canvas.SetLeft(border, newX);
                 Canvas.SetTop(border, newY);
+                
+                border.UpdateLayout();
+                refreshPortsAndConnections();
+                
                 e.Handled = true;
             };
 

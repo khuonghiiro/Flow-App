@@ -948,9 +948,10 @@ namespace FlowMy.Services.Interaction
             {
                 // ⚠️ Skip setting background for diamond-like nodes (custom shape)
                 if (host.DraggedNode is LoopNode ||
-                    (host.DraggedNode.IsConditionalNode && host.DraggedNode.ConditionalVisualMode == ConditionalVisualMode.Diamond))
+                    (host.DraggedNode.IsConditionalNode && host.DraggedNode.ConditionalVisualMode == ConditionalVisualMode.Diamond) ||
+                    host.DraggedNode is FlowMy.Models.Nodes.ActionCanVasNode)
                 {
-                    // keep loop background behavior
+                    // keep loop and custom background behavior
                 }
                 else if (host.DraggedNode is AsyncTaskNode at && at.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch)
                 {
