@@ -292,7 +292,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             List<MacroAction>? actions;
             try
             {
-                actions = JsonSerializer.Deserialize<List<MacroAction>>(macroNode.MacroDataJson);
+                actions = JsonSerializer.Deserialize<List<MacroAction>>(macroNode.MacroDataJson, _jsonOptions);
             }
             catch (Exception ex)
             {
