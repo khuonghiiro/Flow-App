@@ -120,12 +120,6 @@ namespace FlowMy.Services.Interaction
 
             if (host.DraggedNode == null) return;
             
-            // ✅ Ngăn chặn việc di chuyển ActionCanVasNode (người dùng yêu cầu: border phải đứng im, chỉ di chuyển node bên trong)
-            if (host.DraggedNode is FlowMy.Models.Nodes.ActionCanVasNode)
-            {
-                host.DraggedNode = null;
-                return;
-            }
 
             _draggedOwningLockedBody = null;
             _draggedLockedBodyChildren = null;

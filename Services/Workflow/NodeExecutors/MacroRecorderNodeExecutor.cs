@@ -628,7 +628,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (!string.IsNullOrWhiteSpace(action.Key))
                                 {
                                     string keyDisplay = action.Key;
-                                    string desc = $"Đang nhấn phím {action.Key}";
+                                    string desc = $"\u0110ang nh\u1EA5n ph\u00EDm {action.Key}";
                                     
                                     overlay?.ShowRightActionInfo(keyDisplay, desc);
                                     
@@ -682,8 +682,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                             case "MouseScroll":
                             {
-                                string scrollDir = action.ScrollDelta > 0 ? "lên" : "xuống";
-                                string desc = $"Đang cuộn chuột {scrollDir}";
+                                string scrollDir = action.ScrollDelta > 0 ? "l\u00EAn" : "xu\u1ED1ng";
+                                string desc = $"\u0110ang cu\u1ED9n chu\u1ED9t {scrollDir}";
                                 
                                 overlay?.ShowRightActionInfo("Scroll", desc);
                                 
@@ -792,7 +792,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (ctrl)  parts.Add("Ctrl");
             if (alt)   parts.Add("Alt");
             if (shift) parts.Add("Shift");
-            parts.Add(button == "Right" ? "Chuột phải" : "Chuột trái");
+            parts.Add(button == "Right" ? "Chu\u1ED9t ph\u1EA3i" : "Chu\u1ED9t tr\u00E1i");
             return string.Join(" + ", parts);
         }
 
@@ -809,13 +809,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (modParts.Count > 0)
                 modifiers = string.Join("+", modParts) + " + ";
 
-            string buttonName = button == "Right" ? "chuột phải" : "chuột trái";
+            string buttonName = button == "Right" ? "chu\u1ED9t ph\u1EA3i" : "chu\u1ED9t tr\u00E1i";
 
             return actionType switch
             {
-                "MouseClick" => $"Đang nhấn {modifiers}{buttonName}",
-                "MouseDown"  => $"Đang giữ {modifiers}{buttonName}",
-                _            => $"Đang thao tác {modifiers}{buttonName}"
+                "MouseClick" => $"\u0110ang nh\u1EA5n {modifiers}{buttonName}",
+                "MouseDown"  => $"\u0110ang gi\u1EEF {modifiers}{buttonName}",
+                _            => $"\u0110ang thao t\u00E1c {modifiers}{buttonName}"
             };
         }
     }

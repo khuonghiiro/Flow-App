@@ -218,6 +218,15 @@ namespace FlowMy.Views.NodeControls
 
             border.PreviewMouseDown += (_, e) =>
             {
+                bool isRecording = false;
+                try { isRecording = Application.Current.Windows.OfType<MacroRecorderOverlay>().Any(w => w.IsVisible); } catch { }
+                bool isPlaying = node.ExecutionStatusTextUI?.Text?.Contains("⏳") == true;
+                if (isRecording || isPlaying)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 if (e.OriginalSource is not Ellipse handle || handle.Tag is not ResizeDirection dir) return;
                 isResizing = true;
                 resizeDirection = dir;
@@ -295,6 +304,15 @@ namespace FlowMy.Views.NodeControls
 
             border.PreviewMouseUp += (_, e) =>
             {
+                bool isRecording = false;
+                try { isRecording = Application.Current.Windows.OfType<MacroRecorderOverlay>().Any(w => w.IsVisible); } catch { }
+                bool isPlaying = node.ExecutionStatusTextUI?.Text?.Contains("⏳") == true;
+                if (isRecording || isPlaying)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 if (!isResizing) return;
                 isResizing = false;
                 resizeDirection = ResizeDirection.None;

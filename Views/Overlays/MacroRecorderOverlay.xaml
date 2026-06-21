@@ -9,7 +9,14 @@
         WindowState="Maximized"
         ShowInTaskbar="False"
         Focusable="True"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI, Arial">
+
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+    </Window.Resources>
 
     <Grid>
         <!-- Viền xanh khi đang ghi — hiển thị để biết overlay đang active -->

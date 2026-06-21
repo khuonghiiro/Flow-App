@@ -11,7 +11,14 @@
         ShowInTaskbar="False"
         IsHitTestVisible="False"
         Focusable="False"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI, Arial">
+
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+    </Window.Resources>
 
     <Grid>
         <Grid x:Name="GlowBorder" IsHitTestVisible="False" Opacity="0.85" Panel.ZIndex="100">
