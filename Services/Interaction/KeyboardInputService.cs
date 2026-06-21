@@ -325,7 +325,7 @@ namespace FlowMy.Services.Interaction
             if (resultDown != 1)
             {
                 var error = Marshal.GetLastWin32Error();
-                System.Diagnostics.Debug.WriteLine($"SendKeyDown failed: error code: {error}, vk={vk}, scan={scanCode}");
+                if (error != 87) System.Diagnostics.Debug.WriteLine($"SendKeyDown failed: error code: {error}, vk={vk}, scan={scanCode}");
                 // Try with scan code = 0 if it failed
                 if (scanCode != 0)
                 {
@@ -335,7 +335,7 @@ namespace FlowMy.Services.Interaction
                     if (resultDown != 1)
                     {
                         error = Marshal.GetLastWin32Error();
-                        System.Diagnostics.Debug.WriteLine($"SendKeyDown retry failed: error code: {error}. Trying keybd_event fallback.");
+                        if (error != 87) System.Diagnostics.Debug.WriteLine($"SendKeyDown retry failed: error code: {error}. Trying keybd_event fallback.");
                         // Fallback to keybd_event
                         try
                         {
@@ -379,7 +379,7 @@ namespace FlowMy.Services.Interaction
             if (resultUp != 1)
             {
                 var error = Marshal.GetLastWin32Error();
-                System.Diagnostics.Debug.WriteLine($"SendKeyUp failed: error code: {error}, vk={vk}, scan={scanCode}");
+                if (error != 87) System.Diagnostics.Debug.WriteLine($"SendKeyUp failed: error code: {error}, vk={vk}, scan={scanCode}");
                 // Try with scan code = 0 if it failed
                 if (scanCode != 0)
                 {
@@ -389,7 +389,7 @@ namespace FlowMy.Services.Interaction
                     if (resultUp != 1)
                     {
                         error = Marshal.GetLastWin32Error();
-                        System.Diagnostics.Debug.WriteLine($"SendKeyUp retry failed: error code: {error}. Trying keybd_event fallback.");
+                        if (error != 87) System.Diagnostics.Debug.WriteLine($"SendKeyUp retry failed: error code: {error}. Trying keybd_event fallback.");
                         // Fallback to keybd_event
                         try
                         {
@@ -667,7 +667,7 @@ namespace FlowMy.Services.Interaction
             if (result != 1)
             {
                 var error = Marshal.GetLastWin32Error();
-                System.Diagnostics.Debug.WriteLine($"SendKeyUp failed: error code: {error}, vk={vk}, scan={scanCode}");
+                if (error != 87) System.Diagnostics.Debug.WriteLine($"SendKeyUp failed: error code: {error}, vk={vk}, scan={scanCode}");
                 // Try with scan = 0 if it failed
                 if (scanCode != 0)
                 {
@@ -676,7 +676,10 @@ namespace FlowMy.Services.Interaction
                     if (result != 1)
                     {
                         error = Marshal.GetLastWin32Error();
-                        System.Diagnostics.Debug.WriteLine($"SendKeyUp retry failed: error code: {error}. Trying keybd_event fallback.");
+                        if (error != 87)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"SendKeyUp retry failed: error code: {error}. Trying keybd_event fallback.");
+                        }
                         // Fallback to keybd_event
                         try
                         {

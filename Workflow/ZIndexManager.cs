@@ -93,6 +93,18 @@ namespace FlowMy.Workflow
         {
             int baseZ = _nodeOriginalZIndex.ContainsKey(node) ? _nodeOriginalZIndex[node] : ForegroundBase;
             int targetZ = baseZ + SelectedOffset;
+
+            if (node is FlowMy.Models.Nodes.BodyContainerNode bcn)
+            {
+                // Container should stay behind normal nodes even when selected, unless locked
+                targetZ = bcn.FullLockInnerNodes ? baseZ + LockedBodyZIndexOffset + SelectedOffset : baseZ;
+            }
+            else if (node is FlowMy.Models.Nodes.ActionCanVasNode)
+            {
+                // ActionCanVasNode should stay behind normal nodes even when selected
+                targetZ = baseZ;
+            }
+
             if (node.Border != null && Panel.GetZIndex(node.Border) == targetZ) return;
             RaiseNodeZIndex(node, targetZ);
         }

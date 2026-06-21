@@ -110,6 +110,7 @@ namespace FlowMy.Views.Overlays
         private const int WM_LBUTTONUP = 0x0202;
         private const int WM_RBUTTONDOWN = 0x0204;
         private const int WM_RBUTTONUP = 0x0205;
+        private const int WM_MBUTTONDOWN = 0x0207;
         private const int WM_MOUSEMOVE = 0x0200;
         private const int WM_MOUSEWHEEL = 0x020A;
 
@@ -137,6 +138,9 @@ namespace FlowMy.Views.Overlays
 
         [DllImport("gdi32.dll")]
         private static extern uint GetPixel(IntPtr hdc, int nXPos, int nYPos);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetCursorPos(int X, int Y);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetDC(IntPtr hwnd);
@@ -799,9 +803,22 @@ namespace FlowMy.Views.Overlays
                 if (ms.dwExtraInfo == OurExtraInfo)
                     return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
 
-                // ActionCanVas mode: ignore clicks outside bounds
+                // ActionCanVas mode: restrict cursor and ignore clicks outside bounds
                 if (_recordingBounds.HasValue && !_recordingBounds.Value.Contains(new System.Windows.Point(x, y)))
+                {
+                    if (wParam == (IntPtr)WM_MOUSEMOVE)
+                    {
+                        int snappedX = (int)Math.Max(_recordingBounds.Value.Left, Math.Min(x, _recordingBounds.Value.Right - 1));
+                        int snappedY = (int)Math.Max(_recordingBounds.Value.Top, Math.Min(y, _recordingBounds.Value.Bottom - 1));
+                        SetCursorPos(snappedX, snappedY);
+                        return (IntPtr)1; // Block original move
+                    }
+                    if (wParam == (IntPtr)WM_LBUTTONDOWN || wParam == (IntPtr)WM_RBUTTONDOWN || wParam == (IntPtr)WM_MBUTTONDOWN)
+                    {
+                        return (IntPtr)1; // Block clicks outside
+                    }
                     return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+                }
 
                 // Real-action mode: overlay is minimized, record normally — no special handling needed
 

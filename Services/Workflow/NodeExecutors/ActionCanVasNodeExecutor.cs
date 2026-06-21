@@ -340,6 +340,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         overlay = new MacroPlaybackOverlay();
                         overlay.PrepareForTargetMode();
+                        overlay.PositionOverBounds(bounds);
                         loadedTask = overlay.WhenLoaded;
                         overlay.Show();
                     }
