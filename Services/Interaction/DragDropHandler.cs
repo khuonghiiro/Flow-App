@@ -92,8 +92,17 @@ namespace FlowMy.Services.Interaction
                 {
                     if (manager.IsDialogOpen)
                     {
-                        // Có dialog đang mở -> không drag node
-                        return;
+                        // Ngoại lệ: Nếu dialog đang mở là ActionCanVasNodeDialog, ta VẪN cho phép drag child nodes
+                        // Điều này hỗ trợ ghi hình thao tác trong vùng canvas của ActionCanVasNode
+                        if (manager.GetCurrentDialog() is FlowMy.Views.Overlays.ActionCanVasNodeDialog)
+                        {
+                            // Cho phép tiếp tục
+                        }
+                        else
+                        {
+                            // Có dialog đang mở -> không drag node
+                            return;
+                        }
                     }
                 }
             }
@@ -110,6 +119,14 @@ namespace FlowMy.Services.Interaction
             host.DraggedNode = viewModel.Nodes.FirstOrDefault(n => n.Border == border);
 
             if (host.DraggedNode == null) return;
+            
+            // ✅ Ngăn chặn việc di chuyển ActionCanVasNode (người dùng yêu cầu: border phải đứng im, chỉ di chuyển node bên trong)
+            if (host.DraggedNode is FlowMy.Models.Nodes.ActionCanVasNode)
+            {
+                host.DraggedNode = null;
+                return;
+            }
+
             _draggedOwningLockedBody = null;
             _draggedLockedBodyChildren = null;
 

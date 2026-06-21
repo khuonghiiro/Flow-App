@@ -17,12 +17,14 @@ namespace FlowMy.Views.Overlays
     {
         private readonly ActionCanVasNodeDialogViewModel _viewModel;
         private readonly ActionCanVasNode _node;
+        private readonly IWorkflowEditorHost _host;
 
         public ActionCanVasNodeDialog(ActionCanVasNode node, IWorkflowEditorHost host, Window? owner)
             : base()
         {
             InitializeComponent();
             _node = node;
+            _host = host;
             _viewModel = new ActionCanVasNodeDialogViewModel(node, host);
             InitializeBase(_viewModel, owner);
 
@@ -121,14 +123,41 @@ namespace FlowMy.Views.Overlays
             this.Hide();
 
             var overlay = new MacroRecorderOverlay(false, FlowMy.Models.MacroExecutionMode.Free, "", "", bounds, true);
-            overlay.ShowDialog();
-
-            if (!string.IsNullOrEmpty(overlay.RecordedJson))
+            
+            overlay.Closed += (s, args) =>
             {
-                _viewModel.MacroDataJson = overlay.RecordedJson;
-            }
-
-            this.Show();
+                if (!string.IsNullOrEmpty(overlay.RecordedJson))
+                {
+                    _viewModel.MacroDataJson = overlay.RecordedJson;
+                    _node.MacroDataJson = overlay.RecordedJson; // Ensure node model is updated
+                }
+                
+                try 
+                {
+                    if (this.IsLoaded)
+                    {
+                        this.Show();
+                    }
+                    else
+                    {
+                        var manager = FlowMy.Views.NodeControls.Helpers.BaseNodeControlHelper.GetOrCreateDialogManager(_host);
+                        var newDlg = new ActionCanVasNodeDialog(_node, _host, Application.Current?.MainWindow);
+                        manager.OpenDialog(_node, newDlg, _host);
+                    }
+                }
+                catch
+                {
+                    try
+                    {
+                        var manager = FlowMy.Views.NodeControls.Helpers.BaseNodeControlHelper.GetOrCreateDialogManager(_host);
+                        var newDlg = new ActionCanVasNodeDialog(_node, _host, Application.Current?.MainWindow);
+                        manager.OpenDialog(_node, newDlg, _host);
+                    }
+                    catch { } // Fallback
+                }
+            };
+            
+            overlay.Show();
         }
 
         private void ImportJsonButton_Click(object sender, RoutedEventArgs e)

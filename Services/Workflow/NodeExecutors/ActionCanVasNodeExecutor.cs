@@ -361,11 +361,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         overlay?.PositionOverBounds(bounds);
                         overlay?.ConfigureBorder(
-                            macroNode.PlaybackBorderColorHex,
-                            macroNode.PlaybackBorderThickness,
-                            macroNode.PlaybackGradientSize,
-                            macroNode.PlaybackOpacity,
-                            macroNode.PlaybackEffectType);
+                            "#00000000",
+                            0,
+                            0,
+                            0,
+                            Models.BorderEffectType.None);
+                            
+                        FlowMy.Views.NodeControls.ActionCanVasNodeControl.StartPlaybackEffect(macroNode);
                     }, DispatcherPriority.Normal);
                 }
             }
@@ -510,6 +512,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
+                if (dispatcher != null)
+                {
+                    dispatcher.Invoke(() =>
+                    {
+                        FlowMy.Views.NodeControls.ActionCanVasNodeControl.StopPlaybackEffect(macroNode);
+                    }, DispatcherPriority.Normal);
+                }
+
                 env.Service.MouseInput.ReleaseAllModifiers();
                 env.Service.KeyboardInput.ReleaseAllModifiers();
                 if (overlay != null)

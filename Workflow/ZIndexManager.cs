@@ -99,9 +99,9 @@ namespace FlowMy.Workflow
                 // Container should stay behind normal nodes even when selected, unless locked
                 targetZ = bcn.FullLockInnerNodes ? baseZ + LockedBodyZIndexOffset + SelectedOffset : baseZ;
             }
-            else if (node is FlowMy.Models.Nodes.ActionCanVasNode)
+            else if (node is LoopBodyNode or AsyncTaskBodyNode or FlowMy.Models.Nodes.ActionCanVasNode)
             {
-                // ActionCanVasNode should stay behind normal nodes even when selected
+                // Containers should stay behind normal nodes even when selected
                 targetZ = baseZ;
             }
 

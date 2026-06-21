@@ -418,8 +418,9 @@ namespace FlowMy.Views.Overlays
         /// </summary>
         private void SetClickThroughMode(bool enable)
         {
-            // 1. Toggle HitTestRect — khi ẩn, WPF không capture mouse nữa
+            // 1. Toggle HitTestRect and Window hit testing — khi ẩn, WPF không capture mouse nữa
             HitTestRect.IsHitTestVisible = !enable;
+            this.IsHitTestVisible = !enable;
             HitTestRect.Fill = enable
                 ? System.Windows.Media.Brushes.Transparent
                 : new System.Windows.Media.SolidColorBrush(

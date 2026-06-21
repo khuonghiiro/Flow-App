@@ -10,8 +10,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Shapes;
+using System.Linq;
 
 namespace FlowMy.Views.NodeControls
 {
@@ -300,6 +302,89 @@ namespace FlowMy.Views.NodeControls
                 border.Cursor = Cursors.Arrow;
                 e.Handled = true;
             };
+        }
+
+        private static Storyboard? _currentPlaybackStoryboard;
+
+        public static void StartPlaybackEffect(ActionCanVasNode node)
+        {
+            if (node.Border == null) return;
+            var border = node.Border;
+            var effectType = node.PlaybackEffectType;
+            if (effectType == Models.BorderEffectType.None) return;
+
+            var color = ParseColor(node.PlaybackBorderColorHex, Colors.Cyan);
+
+            var dropShadow = new DropShadowEffect
+            {
+                Color = color,
+                Direction = 0,
+                ShadowDepth = 0,
+                BlurRadius = node.PlaybackGradientSize > 0 ? node.PlaybackGradientSize : 10,
+                Opacity = node.PlaybackOpacity
+            };
+            border.Effect = dropShadow;
+            border.BorderBrush = new SolidColorBrush(color);
+            border.BorderThickness = new Thickness(node.PlaybackBorderThickness);
+
+            _currentPlaybackStoryboard?.Stop();
+            _currentPlaybackStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
+
+            switch (effectType)
+            {
+                case Models.BorderEffectType.Pulse:
+                case Models.BorderEffectType.Glow:
+                    var pulseAnim = new DoubleAnimation { From = 0.3, To = node.PlaybackOpacity, Duration = TimeSpan.FromSeconds(0.5), AutoReverse = true };
+                    Storyboard.SetTarget(pulseAnim, border);
+                    Storyboard.SetTargetProperty(pulseAnim, new PropertyPath("(UIElement.Effect).(DropShadowEffect.Opacity)"));
+                    _currentPlaybackStoryboard.Children.Add(pulseAnim);
+                    break;
+                case Models.BorderEffectType.Rainbow:
+                    var colors = new[] { Colors.Red, Colors.Orange, Colors.Yellow, Colors.Green, Colors.Blue, Colors.Indigo, Colors.Violet };
+                    for (int i = 0; i < colors.Length; i++)
+                    {
+                        var colorAnim = new ColorAnimation
+                        {
+                            From = colors[i], To = colors[(i + 1) % colors.Length],
+                            Duration = TimeSpan.FromSeconds(1), BeginTime = TimeSpan.FromSeconds(i)
+                        };
+                        Storyboard.SetTarget(colorAnim, border);
+                        Storyboard.SetTargetProperty(colorAnim, new PropertyPath("(UIElement.Effect).(DropShadowEffect.Color)"));
+                        _currentPlaybackStoryboard.Children.Add(colorAnim);
+                        
+                        var brushColorAnim = new ColorAnimation
+                        {
+                            From = colors[i], To = colors[(i + 1) % colors.Length],
+                            Duration = TimeSpan.FromSeconds(1), BeginTime = TimeSpan.FromSeconds(i)
+                        };
+                        Storyboard.SetTarget(brushColorAnim, border);
+                        Storyboard.SetTargetProperty(brushColorAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Color)"));
+                        _currentPlaybackStoryboard.Children.Add(brushColorAnim);
+                    }
+                    break;
+            }
+
+            _currentPlaybackStoryboard.Begin();
+        }
+
+        public static void StopPlaybackEffect(ActionCanVasNode node)
+        {
+            if (node.Border == null) return;
+            _currentPlaybackStoryboard?.Stop();
+            _currentPlaybackStoryboard = null;
+            node.Border.Effect = null;
+            
+            // Restore visual state
+            if (node.Border.Child is Grid grid)
+            {
+                var fillRect = grid.Children.OfType<Rectangle>().FirstOrDefault(r => r.Fill != null);
+                var borderRect = grid.Children.OfType<Rectangle>().FirstOrDefault(r => r.Stroke != null);
+                var titleText = grid.Children.OfType<TextBlock>().FirstOrDefault();
+                if (fillRect != null && borderRect != null && titleText != null)
+                {
+                    ApplyVisuals(node, node.Border, fillRect, borderRect, titleText);
+                }
+            }
         }
 
         private static Cursor GetCursor(ResizeDirection direction) => direction switch
