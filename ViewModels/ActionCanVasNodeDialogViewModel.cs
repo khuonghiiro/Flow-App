@@ -52,6 +52,21 @@ namespace FlowMy.ViewModels
             new BorderDashStyleOption(BorderDashStyle.DashDotDot, "Dash-Dot-Dot")
         };
 
+        // ─── Playback Highlight Properties ───
+        [ObservableProperty] private string _playbackBorderColorHex = string.Empty;
+        [ObservableProperty] private int _playbackBorderThickness;
+        [ObservableProperty] private int _playbackGradientSize;
+        [ObservableProperty] private double _playbackOpacity;
+        [ObservableProperty] private BorderEffectType _playbackEffectType = BorderEffectType.Pulse;
+
+        public ObservableCollection<DisplayValuePair<BorderEffectType>> EffectTypeOptions { get; } = new()
+        {
+            new DisplayValuePair<BorderEffectType>(BorderEffectType.None, "Không có"),
+            new DisplayValuePair<BorderEffectType>(BorderEffectType.Pulse, "Pulse (Nhịp đập)"),
+            new DisplayValuePair<BorderEffectType>(BorderEffectType.Glow, "Glow (Phát sáng)"),
+            new DisplayValuePair<BorderEffectType>(BorderEffectType.Rainbow, "Rainbow (Cầu vồng)")
+        };
+
         // ─── Macro Recording Properties ───
         [ObservableProperty] private string _outputKey = string.Empty;
         [ObservableProperty] private string _macroDataJson = string.Empty;
@@ -92,6 +107,12 @@ namespace FlowMy.ViewModels
             _bodyBackgroundColorKey = node.BodyBackgroundColorHex;
             _bodyBorderColorKey = node.BodyBorderColorHex;
 
+            _playbackBorderColorHex = node.PlaybackBorderColorHex;
+            _playbackBorderThickness = node.PlaybackBorderThickness;
+            _playbackGradientSize = node.PlaybackGradientSize;
+            _playbackOpacity = node.PlaybackOpacity;
+            _playbackEffectType = node.PlaybackEffectType;
+
             _outputKey = node.OutputKey ?? "canvasData";
             _macroDataJson = node.MacroDataJson ?? "";
             _selectedPlaybackMode = node.PlaybackMode == MacroPlaybackMode.Repeat ? "Lặp lại" : "Chạy 1 lần";
@@ -114,6 +135,12 @@ namespace FlowMy.ViewModels
                     else if (e.PropertyName == nameof(ActionCanVasNode.BorderThickness)) BorderThickness = node.BorderThickness;
                     else if (e.PropertyName == nameof(ActionCanVasNode.BorderDashStyle)) BorderDashStyle = node.BorderDashStyle;
                     else if (e.PropertyName == nameof(ActionCanVasNode.BorderDashSpacing)) BorderDashSpacing = node.BorderDashSpacing;
+
+                    else if (e.PropertyName == nameof(ActionCanVasNode.PlaybackBorderColorHex)) PlaybackBorderColorHex = node.PlaybackBorderColorHex;
+                    else if (e.PropertyName == nameof(ActionCanVasNode.PlaybackBorderThickness)) PlaybackBorderThickness = node.PlaybackBorderThickness;
+                    else if (e.PropertyName == nameof(ActionCanVasNode.PlaybackGradientSize)) PlaybackGradientSize = node.PlaybackGradientSize;
+                    else if (e.PropertyName == nameof(ActionCanVasNode.PlaybackOpacity)) PlaybackOpacity = node.PlaybackOpacity;
+                    else if (e.PropertyName == nameof(ActionCanVasNode.PlaybackEffectType)) PlaybackEffectType = node.PlaybackEffectType;
 
                     else if (e.PropertyName == nameof(ActionCanVasNode.OutputKey)) OutputKey = node.OutputKey ?? "canvasData";
                     else if (e.PropertyName == nameof(ActionCanVasNode.MacroDataJson))
@@ -233,6 +260,17 @@ namespace FlowMy.ViewModels
             { _actionCanVasNode.BorderDashStyle = BorderDashStyle; needSync = true; }
             if (Math.Abs(_actionCanVasNode.BorderDashSpacing - BorderDashSpacing) > 0.01)
             { _actionCanVasNode.BorderDashSpacing = BorderDashSpacing; needSync = true; }
+
+            if (_actionCanVasNode.PlaybackBorderColorHex != PlaybackBorderColorHex)
+            { _actionCanVasNode.PlaybackBorderColorHex = PlaybackBorderColorHex; needSync = true; }
+            if (_actionCanVasNode.PlaybackBorderThickness != PlaybackBorderThickness)
+            { _actionCanVasNode.PlaybackBorderThickness = PlaybackBorderThickness; needSync = true; }
+            if (_actionCanVasNode.PlaybackGradientSize != PlaybackGradientSize)
+            { _actionCanVasNode.PlaybackGradientSize = PlaybackGradientSize; needSync = true; }
+            if (Math.Abs(_actionCanVasNode.PlaybackOpacity - PlaybackOpacity) > 0.01)
+            { _actionCanVasNode.PlaybackOpacity = PlaybackOpacity; needSync = true; }
+            if (_actionCanVasNode.PlaybackEffectType != PlaybackEffectType)
+            { _actionCanVasNode.PlaybackEffectType = PlaybackEffectType; needSync = true; }
 
             if (_actionCanVasNode.OutputKey != OutputKey)
             { _actionCanVasNode.OutputKey = OutputKey; needSync = true; }

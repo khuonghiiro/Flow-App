@@ -269,6 +269,7 @@ namespace FlowMy.Views.Overlays
 
         // Timer
         private readonly DispatcherTimer _timer = new();
+        private DispatcherTimer? _clipCursorTimer;
         private DateTime _recordingStartDateTime;
 
         // Target App Mode
@@ -346,11 +347,33 @@ namespace FlowMy.Views.Overlays
             {
                 UpdateUI();
             }
+
+            if (_recordingBounds.HasValue)
+            {
+                _clipCursorTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+                _clipCursorTimer.Tick += (_, _) =>
+                {
+                    var r = new RECT 
+                    { 
+                        Left = (int)_recordingBounds.Value.Left, 
+                        Top = (int)_recordingBounds.Value.Top, 
+                        Right = (int)_recordingBounds.Value.Right, 
+                        Bottom = (int)_recordingBounds.Value.Bottom 
+                    };
+                    ClipCursor(ref r);
+                };
+                _clipCursorTimer.Start();
+            }
         }
 
         private void OnClosed(object sender, EventArgs e)
         {
             _timer.Stop();
+            if (_clipCursorTimer != null)
+            {
+                _clipCursorTimer.Stop();
+                _clipCursorTimer = null;
+            }
             ClipCursor(IntPtr.Zero);
             if (_keyboardHook != IntPtr.Zero) { UnhookWindowsHookEx(_keyboardHook); _keyboardHook = IntPtr.Zero; }
             if (_mouseHook != IntPtr.Zero) { UnhookWindowsHookEx(_mouseHook); _mouseHook = IntPtr.Zero; }

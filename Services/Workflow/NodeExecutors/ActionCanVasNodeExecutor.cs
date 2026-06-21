@@ -339,6 +339,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     try
                     {
                         overlay = new MacroPlaybackOverlay();
+                        overlay.PrepareForTargetMode();
                         loadedTask = overlay.WhenLoaded;
                         overlay.Show();
                     }
@@ -354,6 +355,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     try { await loadedTask.WaitAsync(TimeSpan.FromSeconds(3)); }
                     catch { /* timeout */ }
+
+                    await dispatcher.InvokeAsync(() =>
+                    {
+                        overlay?.PositionOverBounds(bounds);
+                        overlay?.ConfigureBorder(
+                            macroNode.PlaybackBorderColorHex,
+                            macroNode.PlaybackBorderThickness,
+                            macroNode.PlaybackGradientSize,
+                            macroNode.PlaybackOpacity,
+                            macroNode.PlaybackEffectType);
+                    }, DispatcherPriority.Normal);
                 }
             }
 
@@ -420,7 +432,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
                                 
                                 var btn = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
-                                env.Service.MouseInput.SendMouseClickAt((int)ax, (int)ay, btn, 1, 0.05, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                env.Service.MouseInput.SendMouseClickAt((int)ax, (int)ay, btn, 1, 0.05, action.ShiftHeld, action.CtrlHeld, action.AltHeld, restoreCursor: false);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -445,7 +457,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
                                 var btnUp = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
-                                env.Service.MouseInput.SendMouseUpAt(ax, ay, btnUp, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                env.Service.MouseInput.SendMouseUpAt(ax, ay, btnUp, action.ShiftHeld, action.CtrlHeld, action.AltHeld, restoreCursor: false);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -467,6 +479,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
                                 break;
                             case "MouseMove":
+                                env.Service.MouseInput.MoveCursorTo(ax, ay);
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent) overlay?.AddTrailPoint(ax, ay);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);

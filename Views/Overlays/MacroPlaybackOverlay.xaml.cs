@@ -99,6 +99,9 @@ namespace FlowMy.Views.Overlays
         // ─── Hover-fade timer ─────────────────────────────────────────────────────
         private DispatcherTimer? _hoverTimer;
 
+        // ─── Animation ─────────────────────────────────────────────────────────────
+        private Storyboard? _animationStoryboard;
+
         public MacroPlaybackOverlay()
         {
             InitializeComponent();
@@ -113,15 +116,151 @@ namespace FlowMy.Views.Overlays
             };
             Loaded += (_, _) =>
             {
-                // Free mode: go fullscreen; TargetApp mode will be repositioned
-                // after load via PositionOverTargetAfterLoad()
                 if (!_isTargetMode)
+                {
                     WindowState = WindowState.Maximized;
+                }
                 DrawingCanvas.Children.Add(_trailPolyline);
                 MakeClickThrough();
                 StartHoverFadeTimer();
                 _loadedTcs.TrySetResult();
             };
+        }
+
+        public void PositionOverBounds(Rect bounds)
+        {
+            double scaleX = 1.0, scaleY = 1.0;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                scaleX = source.CompositionTarget.TransformToDevice.M11;
+                scaleY = source.CompositionTarget.TransformToDevice.M22;
+            }
+
+            _overlayScreenLeft = bounds.Left;
+            _overlayScreenTop = bounds.Top;
+
+            this.WindowState = WindowState.Normal;
+            this.Left = bounds.Left / scaleX;
+            this.Top = bounds.Top / scaleY;
+            this.Width = bounds.Width / scaleX;
+            this.Height = bounds.Height / scaleY;
+
+            var glowBorder = (Grid)this.FindName("GlowBorder");
+            if (glowBorder != null)
+            {
+                glowBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
+                glowBorder.VerticalAlignment = VerticalAlignment.Stretch;
+                glowBorder.Margin = new Thickness(0);
+                glowBorder.Width = double.NaN;
+                glowBorder.Height = double.NaN;
+            }
+        }
+
+        public void ConfigureBorder(string borderColorHex, int borderThickness, int gradientSize, double opacity, BorderEffectType effectType)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                var color = ParseColor(borderColorHex);
+
+                if (OuterBorder != null)
+                {
+                    OuterBorder.BorderBrush = new SolidColorBrush(color);
+                    OuterBorder.BorderThickness = new Thickness(borderThickness);
+                }
+
+                if (TopGradient != null) TopGradient.Height = gradientSize;
+                if (BottomGradient != null) BottomGradient.Height = gradientSize;
+                if (LeftGradient != null) LeftGradient.Width = gradientSize;
+                if (RightGradient != null) RightGradient.Width = gradientSize;
+
+                if (GlowBorder != null) GlowBorder.Opacity = opacity;
+
+                if (TopGradient != null) TopGradient.Fill = CreateGradientBrush(color, gradientSize);
+                if (BottomGradient != null) BottomGradient.Fill = CreateGradientBrush(color, gradientSize, true);
+                if (LeftGradient != null) LeftGradient.Fill = CreateGradientBrush(color, gradientSize, false, true);
+                if (RightGradient != null) RightGradient.Fill = CreateGradientBrush(color, gradientSize, false, true, true);
+
+                ApplyEffectAnimation(effectType);
+            });
+        }
+
+        private Color ParseColor(string hex)
+        {
+            try
+            {
+                if (hex.StartsWith("#")) return (Color)ColorConverter.ConvertFromString(hex);
+                return Colors.Cyan;
+            }
+            catch { return Colors.Cyan; }
+        }
+
+        private LinearGradientBrush CreateGradientBrush(Color color, int size, bool reverse = false, bool horizontal = false, bool reverseHorizontal = false)
+        {
+            var brush = new LinearGradientBrush();
+            if (horizontal)
+            {
+                brush.StartPoint = reverseHorizontal ? new System.Windows.Point(1, 0) : new System.Windows.Point(0, 0);
+                brush.EndPoint = reverseHorizontal ? new System.Windows.Point(0, 0) : new System.Windows.Point(1, 0);
+            }
+            else
+            {
+                brush.StartPoint = reverse ? new System.Windows.Point(0, 1) : new System.Windows.Point(0, 0);
+                brush.EndPoint = reverse ? new System.Windows.Point(0, 0) : new System.Windows.Point(0, 1);
+            }
+
+            var color1 = Color.FromArgb((byte)(color.A * 0.5), color.R, color.G, color.B);
+            var color2 = Color.FromArgb((byte)(color.A * 0.13), color.R, color.G, color.B);
+            var color3 = Color.FromArgb(0, color.R, color.G, color.B);
+
+            brush.GradientStops.Add(new GradientStop(color1, 0.0));
+            brush.GradientStops.Add(new GradientStop(color2, 0.4));
+            brush.GradientStops.Add(new GradientStop(color3, 1.0));
+
+            return brush;
+        }
+
+        private void ApplyEffectAnimation(BorderEffectType effectType)
+        {
+            _animationStoryboard?.Stop();
+            _animationStoryboard = null;
+            if (GlowBorder == null || OuterBorder == null) return;
+
+            switch (effectType)
+            {
+                case BorderEffectType.Pulse:
+                    _animationStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
+                    var pulseAnim = new DoubleAnimation { From = 0.3, To = 1.0, Duration = TimeSpan.FromSeconds(1.0), AutoReverse = true };
+                    Storyboard.SetTarget(pulseAnim, GlowBorder);
+                    Storyboard.SetTargetProperty(pulseAnim, new PropertyPath("Opacity"));
+                    _animationStoryboard.Children.Add(pulseAnim);
+                    _animationStoryboard.Begin();
+                    break;
+                case BorderEffectType.Glow:
+                    _animationStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
+                    var glowAnim = new DoubleAnimation { From = 0.5, To = 1.0, Duration = TimeSpan.FromSeconds(0.5), AutoReverse = true };
+                    Storyboard.SetTarget(glowAnim, OuterBorder);
+                    Storyboard.SetTargetProperty(glowAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Opacity)"));
+                    _animationStoryboard.Children.Add(glowAnim);
+                    _animationStoryboard.Begin();
+                    break;
+                case BorderEffectType.Rainbow:
+                    _animationStoryboard = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
+                    var colors = new[] { Colors.Red, Colors.Orange, Colors.Yellow, Colors.Green, Colors.Blue, Colors.Indigo, Colors.Violet };
+                    for (int i = 0; i < colors.Length; i++)
+                    {
+                        var colorAnim = new ColorAnimation
+                        {
+                            From = colors[i], To = colors[(i + 1) % colors.Length],
+                            Duration = TimeSpan.FromSeconds(1), BeginTime = TimeSpan.FromSeconds(i)
+                        };
+                        Storyboard.SetTarget(colorAnim, OuterBorder);
+                        Storyboard.SetTargetProperty(colorAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Color)"));
+                        _animationStoryboard.Children.Add(colorAnim);
+                    }
+                    _animationStoryboard.Begin();
+                    break;
+            }
         }
 
         /// <summary>

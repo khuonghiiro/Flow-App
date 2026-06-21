@@ -392,6 +392,115 @@
                     </ScrollViewer>
                 </TabItem>
 
+                <!-- TAB: BORDER HIGHLIGHT -->
+                <TabItem Header="Border Highlight" Style="{StaticResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- 🎨 Preview -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="20" Margin="0,0,0,12"
+                                    HorizontalAlignment="Center">
+                                <StackPanel>
+                                    <TextBlock Text="Preview" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                                    <Grid Width="200" Height="100">
+                                        <!-- Giả lập Window hoặc Desktop -->
+                                        <Border Background="#1E1E1E" CornerRadius="4" BorderBrush="#333" BorderThickness="1"/>
+                                        <TextBlock Text="FlowMy" Foreground="#888" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="14" FontWeight="Bold"/>
+                                        
+                                        <!-- Effect Preview Border -->
+                                        <Border x:Name="EffectPreview" 
+                                                BorderThickness="{Binding PlaybackBorderThickness}" 
+                                                CornerRadius="4"
+                                                Opacity="{Binding PlaybackOpacity}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ⚙️ Cấu hình hiển thị -->
+                            <Border Background="{DynamicResource WindowBackground}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ Cấu hình hiển thị" Foreground="{DynamicResource TextBrush}"
+                                               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Màu viền" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Height="32" Style="{DynamicResource BaseTextBoxV2}"
+                                                         Text="{Binding PlaybackBorderColorHex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <Button Grid.Column="1" Content="🎨" Width="32" Height="32" Padding="0" Margin="4,0,0,0"
+                                                        ToolTip="Chọn màu tuỳ ý" Click="PlaybackBorderColorPickerButton_Click"/>
+                                            </Grid>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Hiệu ứng" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                      ItemsSource="{Binding EffectTypeOptions}"
+                                                      SelectedValuePath="Value" DisplayMemberPath="DisplayName"
+                                                      SelectedValue="{Binding PlaybackEffectType, Mode=TwoWay}"
+                                                      SelectionChanged="PlaybackEffectTypeComboBox_SelectionChanged"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Độ dày viền (px)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Slider Minimum="1" Maximum="10" Value="{Binding PlaybackBorderThickness, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                                <TextBlock Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" FontSize="10" Text="{Binding PlaybackBorderThickness, StringFormat={}{0} px}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Gradient vào trong (px)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Slider Minimum="5" Maximum="50" Value="{Binding PlaybackGradientSize, Mode=TwoWay}" TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                                <TextBlock Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" FontSize="10" Text="{Binding PlaybackGradientSize, StringFormat={}{0} px}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="Độ trong suốt (0.1 - 1.0)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider Minimum="0.1" Maximum="1.0" Value="{Binding PlaybackOpacity, Mode=TwoWay}" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                                            <TextBlock Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" FontSize="10" Text="{Binding PlaybackOpacity, StringFormat={}{0:F1}}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
                 <!-- TAB: CẤU HÌNH CƠ BẢN -->
                 <TabItem Header="Cấu hình cơ bản" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">

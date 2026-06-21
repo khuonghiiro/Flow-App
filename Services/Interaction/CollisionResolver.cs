@@ -84,7 +84,9 @@ namespace FlowMy.Services.Interaction
                     if (FindOwningLockedBody(viewModel, otherNode) != null) continue;
 
                     var otherOwningBody = FindOwningBody(viewModel, otherNode);
-                    var otherInUnlockedBody = otherOwningBody != null && !otherOwningBody.LockInnerNodes;
+                    var otherInUnlockedBody = otherOwningBody != null && 
+                                              (otherOwningBody is ActionCanVasNode || 
+                                              (otherOwningBody is BodyContainerNode bcn && !bcn.LockInnerNodes));
 
                     // Nếu otherNode là locked body, không cho phép node lọt vào trong nó
                     if (otherNode is BodyContainerNode otherBodyLocked && otherBodyLocked.LockInnerNodes)
@@ -345,13 +347,26 @@ namespace FlowMy.Services.Interaction
             return null;
         }
 
-        private static BodyContainerNode? FindOwningBody(WorkflowEditorViewModel viewModel, WorkflowNode node)
+        private static WorkflowNode? FindOwningBody(WorkflowEditorViewModel viewModel, WorkflowNode node)
         {
-            if (node is BodyContainerNode) return null;
-            foreach (var body in viewModel.Nodes.OfType<BodyContainerNode>())
+            if (node is BodyContainerNode || node is ActionCanVasNode) return null;
+            
+            foreach (var body in viewModel.Nodes)
             {
-                var width = body.BodyWidth > 0 ? body.BodyWidth : (body.Border?.ActualWidth ?? body.Border?.Width ?? 0);
-                var height = body.BodyHeight > 0 ? body.BodyHeight : (body.Border?.ActualHeight ?? body.Border?.Height ?? 0);
+                if (body is not BodyContainerNode && body is not ActionCanVasNode) continue;
+                
+                double width = 0, height = 0;
+                if (body is BodyContainerNode bcn)
+                {
+                    width = bcn.BodyWidth > 0 ? bcn.BodyWidth : (bcn.Border?.ActualWidth ?? bcn.Border?.Width ?? 0);
+                    height = bcn.BodyHeight > 0 ? bcn.BodyHeight : (bcn.Border?.ActualHeight ?? bcn.Border?.Height ?? 0);
+                }
+                else if (body is ActionCanVasNode acn)
+                {
+                    width = acn.BodyWidth > 0 ? acn.BodyWidth : (acn.Border?.ActualWidth ?? acn.Border?.Width ?? 0);
+                    height = acn.BodyHeight > 0 ? acn.BodyHeight : (acn.Border?.ActualHeight ?? acn.Border?.Height ?? 0);
+                }
+                
                 if (width <= 0 || height <= 0) continue;
 
                 if (new Rect(body.X, body.Y, width, height).Contains(GetNodeCenter(node)))

@@ -29,6 +29,13 @@ namespace FlowMy.Models.Nodes
         private VisualPlaybackMode _visualPlaybackMode = VisualPlaybackMode.Live;
         private int _countdownSeconds = 3;
 
+        // ─── Playback Highlight Properties (giống BorderHighlightNode) ───
+        private string _playbackBorderColorHex = "#00D2FF";
+        private int _playbackBorderThickness = 2;
+        private int _playbackGradientSize = 15;
+        private double _playbackOpacity = 0.85;
+        private BorderEffectType _playbackEffectType = BorderEffectType.Pulse;
+
         public const string OutputKey_JsonStep = "JsonStep";
 
         public ActionCanVasNode()
@@ -156,6 +163,38 @@ namespace FlowMy.Models.Nodes
         {
             get => _countdownSeconds;
             set { var v = Math.Clamp(value, 0, 10); if (_countdownSeconds != v) { _countdownSeconds = v; OnPropertyChanged(); } }
+        }
+
+        // ─── Playback Highlight Properties ───
+
+        public string PlaybackBorderColorHex
+        {
+            get => _playbackBorderColorHex;
+            set { var s = value ?? "#00D2FF"; if (_playbackBorderColorHex != s) { _playbackBorderColorHex = s; OnPropertyChanged(); } }
+        }
+
+        public int PlaybackBorderThickness
+        {
+            get => _playbackBorderThickness;
+            set { var v = value < 1 ? 1 : value > 10 ? 10 : value; if (_playbackBorderThickness != v) { _playbackBorderThickness = v; OnPropertyChanged(); } }
+        }
+
+        public int PlaybackGradientSize
+        {
+            get => _playbackGradientSize;
+            set { var v = value < 5 ? 5 : value > 50 ? 50 : value; if (_playbackGradientSize != v) { _playbackGradientSize = v; OnPropertyChanged(); } }
+        }
+
+        public double PlaybackOpacity
+        {
+            get => _playbackOpacity;
+            set { var v = value < 0.1 ? 0.1 : value > 1.0 ? 1.0 : value; if (Math.Abs(_playbackOpacity - v) > 0.01) { _playbackOpacity = v; OnPropertyChanged(); } }
+        }
+
+        public BorderEffectType PlaybackEffectType
+        {
+            get => _playbackEffectType;
+            set { if (_playbackEffectType != value) { _playbackEffectType = value; OnPropertyChanged(); } }
         }
 
         [System.Text.Json.Serialization.JsonIgnore]

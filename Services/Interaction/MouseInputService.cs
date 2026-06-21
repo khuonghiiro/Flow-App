@@ -55,6 +55,7 @@ namespace FlowMy.Services.Interaction
         }
 
         private const int INPUT_MOUSE             = 0;
+        private const uint MOUSEEVENTF_MOVE       = 0x0001;
         private const uint MOUSEEVENTF_LEFTDOWN   = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP     = 0x0004;
         private const uint MOUSEEVENTF_RIGHTDOWN  = 0x0008;
@@ -108,16 +109,16 @@ namespace FlowMy.Services.Interaction
         /// Click tại tọa độ action, sau đó trả chuột về vị trí cũ của user.
         /// </summary>
         public void SendMouseClickAt(int screenX, int screenY, MouseButton button,
-                                     int repeatCount = 1, double holdDurationSeconds = 0,
-                                     bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
+                                     int repeatCount = 1, double holdDurationSeconds = 0.05,
+                                     bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false, bool restoreCursor = true)
         {
-            SendMouseClickAt(screenX, screenY, button, repeatCount, holdDurationSeconds, shiftHeld, ctrlHeld, altHeld, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+            SendMouseClickAt(screenX, screenY, button, repeatCount, holdDurationSeconds, shiftHeld, ctrlHeld, altHeld, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto, restoreCursor);
         }
 
         public void SendMouseClickAt(int screenX, int screenY, MouseButton button,
                                      int repeatCount, double holdDurationSeconds,
                                      bool shiftHeld, bool ctrlHeld, bool altHeld,
-                                     IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+                                     IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode, bool restoreCursor = true)
         {
             if (repeatCount < 1) repeatCount = 1;
             if (holdDurationSeconds < 0) holdDurationSeconds = 0;
@@ -153,11 +154,24 @@ namespace FlowMy.Services.Interaction
                 if (i < repeatCount - 1) Thread.Sleep(50);
             }
 
-            SetCursorPos(saved.X, saved.Y);
+            if (restoreCursor)
+            {
+                SetCursorPos(saved.X, saved.Y);
+            }
         }
 
         /// <summary>Lưu vị trí chuột hiện tại trước khi drag.</summary>
         public void SaveCursorPos() => GetCursorPos(out _savedPosBeforeDrag);
+
+        /// <summary>Di chuyển chuột thật trên màn hình.</summary>
+        public void MoveCursorTo(int screenX, int screenY)
+        {
+            SetCursorPos(screenX, screenY);
+            // Inject a 0-distance relative move to force the system to generate a WM_MOUSEMOVE message.
+            // This is required for WPF and other frameworks to detect drag-and-drop gestures during playback.
+            var input = new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { dwFlags = MOUSEEVENTF_MOVE, dx = 0, dy = 0 } };
+            SendInput(1, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
+        }
 
         public void SendMouseDownAt(int screenX, int screenY, MouseButton button,
                                     bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
@@ -195,14 +209,14 @@ namespace FlowMy.Services.Interaction
         }
 
         public void SendMouseUpAt(int screenX, int screenY, MouseButton button,
-                                  bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false)
+                                  bool shiftHeld = false, bool ctrlHeld = false, bool altHeld = false, bool restoreCursor = true)
         {
-            SendMouseUpAt(screenX, screenY, button, shiftHeld, ctrlHeld, altHeld, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto);
+            SendMouseUpAt(screenX, screenY, button, shiftHeld, ctrlHeld, altHeld, IntPtr.Zero, FlowMy.Helpers.BackgroundInputHelper.InputMode.Auto, restoreCursor);
         }
 
         public void SendMouseUpAt(int screenX, int screenY, MouseButton button,
                                   bool shiftHeld, bool ctrlHeld, bool altHeld,
-                                  IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode)
+                                  IntPtr targetHwnd, FlowMy.Helpers.BackgroundInputHelper.InputMode mode, bool restoreCursor = true)
         {
             // Use BackgroundInputHelper if targetHwnd is provided and mode is not ForegroundActivation
             if (targetHwnd != IntPtr.Zero && mode != FlowMy.Helpers.BackgroundInputHelper.InputMode.ForegroundActivation)
@@ -224,8 +238,11 @@ namespace FlowMy.Services.Interaction
             keybd_event(VK_MENU,    0, KEYEVENTF_KEYUP, IntPtr.Zero);
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
             
-            // Trả chuột về vị trí user ban đầu
-            SetCursorPos(_savedPosBeforeDrag.X, _savedPosBeforeDrag.Y);
+            if (restoreCursor)
+            {
+                // Trả chuột về vị trí user ban đầu
+                SetCursorPos(_savedPosBeforeDrag.X, _savedPosBeforeDrag.Y);
+            }
         }
 
         /// <summary>

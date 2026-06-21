@@ -975,6 +975,17 @@ public sealed partial class FileWorkflowPersistenceService
             if (properties.TryGetValue("BorderDashStyle", out var borderDashStyleObj) && borderDashStyleObj != null && Enum.TryParse<BorderDashStyle>(borderDashStyleObj.ToString(), out var borderDashStyle))
                 actionCanVasNode.BorderDashStyle = borderDashStyle;
 
+            if (properties.TryGetValue("PlaybackBorderColorHex", out var pbColorObj))
+                actionCanVasNode.PlaybackBorderColorHex = pbColorObj?.ToString() ?? actionCanVasNode.PlaybackBorderColorHex;
+            if (properties.TryGetValue("PlaybackBorderThickness", out var pbThickObj) && pbThickObj != null && int.TryParse(pbThickObj.ToString(), out var pbThick))
+                actionCanVasNode.PlaybackBorderThickness = pbThick;
+            if (properties.TryGetValue("PlaybackGradientSize", out var pbGradObj) && pbGradObj != null && int.TryParse(pbGradObj.ToString(), out var pbGrad))
+                actionCanVasNode.PlaybackGradientSize = pbGrad;
+            if (properties.TryGetValue("PlaybackOpacity", out var pbOpObj) && pbOpObj != null && double.TryParse(pbOpObj.ToString(), out var pbOp))
+                actionCanVasNode.PlaybackOpacity = pbOp;
+            if (properties.TryGetValue("PlaybackEffectType", out var pbEfObj) && pbEfObj != null && Enum.TryParse<BorderEffectType>(pbEfObj.ToString(), out var pbEf))
+                actionCanVasNode.PlaybackEffectType = pbEf;
+
             if (properties.TryGetValue("OutputKey", out var mkObj))
                 actionCanVasNode.OutputKey = mkObj?.ToString() ?? "canvasData";
             if (properties.TryGetValue("MacroDataJson", out var mdjObj))
@@ -1003,6 +1014,12 @@ public sealed partial class FileWorkflowPersistenceService
             dict["BorderThickness"] = actionNode.BorderThickness;
             dict["BorderDashSpacing"] = actionNode.BorderDashSpacing;
             dict["BorderDashStyle"] = actionNode.BorderDashStyle.ToString();
+
+            dict["PlaybackBorderColorHex"] = actionNode.PlaybackBorderColorHex;
+            dict["PlaybackBorderThickness"] = actionNode.PlaybackBorderThickness;
+            dict["PlaybackGradientSize"] = actionNode.PlaybackGradientSize;
+            dict["PlaybackOpacity"] = actionNode.PlaybackOpacity;
+            dict["PlaybackEffectType"] = actionNode.PlaybackEffectType.ToString();
 
             dict["OutputKey"] = actionNode.OutputKey;
             dict["MacroDataJson"] = actionNode.MacroDataJson;

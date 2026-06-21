@@ -264,10 +264,10 @@ namespace FlowMy.Services.Interaction
                 return;
             }
 
-            // Check if this is an unsupported key (multimedia keys)
-            if (IsUnsupportedKey(vk))
+            // Check if this is an unsupported key (multimedia keys) or a modifier key
+            if (IsUnsupportedKey(vk) || vk == 0x5B || vk == 0x5C || (vk >= 0xA0 && vk <= 0xA5))
             {
-                System.Diagnostics.Debug.WriteLine($"Warning: Key {key} (VK={vk}) is a multimedia/special key. Using keybd_event fallback.");
+                System.Diagnostics.Debug.WriteLine($"Warning: Key {key} (VK={vk}) is a multimedia/modifier key. Using keybd_event fallback.");
                 // Try using keybd_event as fallback for multimedia keys
                 try
                 {
