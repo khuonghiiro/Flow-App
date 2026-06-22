@@ -552,7 +552,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         /// <summary>
-        /// Táº¡o label hiá»ƒn thá»‹ cho tooltip: "Chuá»™t trÃ¡i", "Chuá»™t pháº£i", "Ctrl + Chuá»™t trÃ¡i", v.v.
+        /// Tạo label hiển thị cho tooltip: "Chuột trái", "Chuột phải", "Ctrl + Chuột trái", v.v.
         /// </summary>
         private static string BuildClickHint(string? button, bool shift, bool ctrl, bool alt)
         {
@@ -560,12 +560,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (ctrl)  parts.Add("Ctrl");
             if (alt)   parts.Add("Alt");
             if (shift) parts.Add("Shift");
-            parts.Add(button == "Right" ? "Chuá»™t pháº£i" : "Chuá»™t trÃ¡i");
+            parts.Add(button == "Right" ? "Chuột phải" : "Chuột trái");
             return string.Join(" + ", parts);
         }
 
         /// <summary>
-        /// Táº¡o mÃ´ táº£ hÃ nh Ä‘á»™ng cho floating tooltip.
+        /// Tạo mô tả hành động cho floating tooltip.
         /// </summary>
         private static string GetActionDescription(string actionType, string? button, bool shift, bool ctrl, bool alt)
         {
@@ -577,13 +577,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             if (modParts.Count > 0)
                 modifiers = string.Join("+", modParts) + " + ";
 
-            string buttonName = button == "Right" ? "chuá»™t pháº£i" : "chuá»™t trÃ¡i";
+            string buttonName = button == "Right" ? "chuột phải" : "chuột trái";
 
             return actionType switch
             {
-                "MouseClick" => $"Äang nháº¥n {modifiers}{buttonName}",
-                "MouseDown"  => $"Äang giá»¯ {modifiers}{buttonName}",
-                _            => $"Äang thao tÃ¡c {modifiers}{buttonName}"
+                "MouseClick" => $"Đang nhấn {modifiers}{buttonName}",
+                "MouseDown"  => $"Đang giữ {modifiers}{buttonName}",
+                _            => $"Đang thao tác {modifiers}{buttonName}"
             };
         }
     }
