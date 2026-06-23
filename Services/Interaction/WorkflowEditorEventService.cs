@@ -466,7 +466,7 @@ namespace FlowMy.Services.Interaction
         {
             if (node?.Border == null) return;
 
-            ImageProcessingNodeControl.ApplyEditorGpuChrome(node, node.Border, Host.CacheNodeEnabled);
+            FlowMy.Services.Rendering.NodeVisualHelper.ApplyEditorGpuChrome(node, node.Border, Host.CacheNodeEnabled);
         }
 
         private void TrackNodeNotifier(WorkflowNode node)

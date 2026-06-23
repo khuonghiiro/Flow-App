@@ -580,7 +580,7 @@ namespace FlowMy.Views
                     foreach (var node in ViewModel.Nodes)
                     {
                         if (node.Border != null && node != _draggedNode)
-                            ImageProcessingNodeControl.ApplyEditorGpuChrome(node, node.Border, _cacheNodeEnabled);
+                            FlowMy.Services.Rendering.NodeVisualHelper.ApplyEditorGpuChrome(node, node.Border, _cacheNodeEnabled);
 
                         // Re-apply cho ports
                         foreach (var port in node.Ports.Where(p => p.PortUI != null))

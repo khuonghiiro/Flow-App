@@ -2035,31 +2035,6 @@ namespace FlowMy.Views.NodeControls
             GpuOptimizationHelper.ApplyToElement(plate);
         }
 
-        /// <summary>
-        /// Image: bóng trên shadowPlate; không cache Border ngoài (tránh mờ toolbar/ảnh).
-        /// Video: cùng nguyên tắc — không gắn DropShadow/BitmapCache lên Border bọc toàn bộ UI (làm mờ như design vs canvas).
-        /// </summary>
-        internal static void ApplyEditorGpuChrome(WorkflowNode node, Border border, bool hostWantsNodeCache)
-        {
-            if (border == null) return;
-            if (node is ImageProcessingNode)
-            {
-                border.Effect = null;
-                GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: false);
-                RefreshImageWorkflowChromeDropShadow(border);
-                return;
-            }
-
-            if (node is VideoProcessingNode || node is FlowMy.Models.Nodes.BodyContainerNode || node is FlowMy.Models.Nodes.ActionCanVasNode)
-            {
-                border.Effect = null;
-                GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: false);
-                return;
-            }
-
-            GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: hostWantsNodeCache);
-            border.Effect = GpuOptimizationHelper.CreateDropShadowEffect();
-        }
     }
 
     /// <summary>Converter: int Order → "#N" label (ví dụ 2 → "#2").</summary>

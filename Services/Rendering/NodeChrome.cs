@@ -71,8 +71,8 @@ namespace FlowMy.Services.Rendering
                 }
             }
 
-            if (node is ImageProcessingNode or VideoProcessingNode)
-                ImageProcessingNodeControl.ApplyEditorGpuChrome(node, border, host.CacheNodeEnabled);
+            if (node is ImageProcessingNode or VideoProcessingNode || node is FlowMy.Models.Nodes.BodyContainerNode || node is FlowMy.Models.Nodes.ActionCanVasNode)
+                NodeVisualHelper.ApplyEditorGpuChrome(node, border, host.CacheNodeEnabled);
             else
                 GpuOptimizationHelper.ApplyToBorder(border, isDragging: false);
 

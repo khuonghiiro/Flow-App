@@ -1023,7 +1023,7 @@ namespace FlowMy.Services.Interaction
                     // Re-apply cache cho node đã drag
                     if (host.DraggedNode?.Border != null)
                     {
-                        ImageProcessingNodeControl.ApplyEditorGpuChrome(
+                        FlowMy.Services.Rendering.NodeVisualHelper.ApplyEditorGpuChrome(
                             host.DraggedNode,
                             host.DraggedNode.Border,
                             host.CacheNodeEnabled);

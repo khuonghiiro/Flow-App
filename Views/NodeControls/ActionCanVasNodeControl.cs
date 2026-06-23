@@ -73,7 +73,7 @@ namespace FlowMy.Views.NodeControls
                 Content = node.ShowPlaybackInfo ? "👁" : "🚫",
                 Width = 24,
                 Height = 24,
-                Margin = new Thickness(0, 8, 30, 0),
+                Margin = new Thickness(0, -18, 0, 0),
                 Padding = new Thickness(0),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -491,8 +491,8 @@ namespace FlowMy.Views.NodeControls
 
         /*
          * 💡 HƯỚNG DẪN LOẠI BỎ SHADOW CHO NODE:
-         * Bóng đổ (shadow) của các Node trong Editor được áp dụng tự động bởi phương thức:
-         * ImageProcessingNodeControl.ApplyEditorGpuChrome(...) [Views/NodeControls/ImageProcessingNodeControl.cs]
+         * Bóng đổ (shadow) của các Node trong Editor được quản lý tập trung bởi phương thức:
+         * NodeVisualHelper.ApplyEditorGpuChrome(...) [Services/Rendering/NodeVisualHelper.cs]
          * Khi kéo, thả, chọn hoặc tải lại workflow, hàm đó sẽ gán border.Effect = GpuOptimizationHelper.CreateDropShadowEffect().
          * Để bỏ shadow hoàn toàn cho một Node mới (như ActionCanVasNode hoặc BodyContainerNode):
          * Thêm loại Node đó vào nhánh check loại trừ của hàm ApplyEditorGpuChrome:

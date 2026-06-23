@@ -145,10 +145,10 @@ Các node không có WebView2 / queue tương tự (vd. **Image Processing**) ch
 2. **`BitmapCache` trên `node.Border` + vị trí `Canvas.Left/Top` lệch pixel**  
    `GpuOptimizationHelper.ApplyToBorder` (khi `forceCache: true`) có logic snap tọa độ canvas về số nguyên — cache ở offset subpixel bị **resample bilinear** → mờ. Node rich UI (video, ảnh) **không** nên cache cả khối border bọc UI.
 
-3. **`ApplyEditorGpuChrome` — nhánh theo loại node** (`Views/NodeControls/ImageProcessingNodeControl.cs`)  
+3. **`ApplyEditorGpuChrome` — nhánh theo loại node** (`Services/Rendering/NodeVisualHelper.cs`)  
    - **`ImageProcessingNode`** và **`VideoProcessingNode`**: `border.Effect = null`, `ApplyToBorder(..., forceCache: false)` — **không** `DropShadowEffect` + **không** bitmap cache trên border bọc toàn UI.  
    - Các node khác: vẫn có thể bật shadow + cache theo `hostWantsNodeCache` (cân nhắc nếu node có XAML phức tạp).  
-   **`NodeChrome.Apply`** (`Services/Rendering/NodeChrome.cs`) phải gọi `ApplyEditorGpuChrome` cho **cả Image và Video** (đồng bộ với `WorkflowEditorWindow.ApplyGpuSettings` / sau drag).
+   **`NodeChrome.Apply`** (`Services/Rendering/NodeChrome.cs`) phải gọi `ApplyEditorGpuChrome` cho **các node cần cấu hình GPU/shadow** (đồng bộ với `WorkflowEditorWindow.ApplyGpuSettings` / sau drag).
 
 4. **Đừng “chữa” mờ canvas bằng `LayoutTransform` scale cả `RootContentGrid` theo `1/ZoomLevel`**  
    Image không làm vậy; họ dùng **scale có chọn lọc** trên vùng chrome (`TopMenuBorder`, `LeftMenuBorder`, …) trong `ApplyResponsiveScale()`. Scale toàn cây + zoom canvas dễ tạo **scale kép** và hinting xấu.
@@ -168,7 +168,7 @@ Các node không có WebView2 / queue tương tự (vd. **Image Processing**) ch
 
 | Chủ đề | File |
 |--------|------|
-| Nhánh GPU/sharp cho Image + Video | `ImageProcessingNodeControl.ApplyEditorGpuChrome` |
+| Nhánh GPU/sharp cho các Node đặc biệt | `NodeVisualHelper.ApplyEditorGpuChrome` |
 | Gọi GPU khi bọc chrome | `Services/Rendering/NodeChrome.Apply` |
 | Helper cache / scaling / snap | `Services/Rendering/GpuOptimizationHelper.cs` |
 | Cấu trúc bóng tách lớp (Image) | `ImageProcessingNodeControl.CreateBorder` (`shadowPlate` + `outerGrid`) |
@@ -430,4 +430,4 @@ cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePe
 
 ## 10. Tóm tắt một dòng cho agent
 
-**Widget vs canvas (Image): dùng `chromeBorder == null` + `freezeScaleInWidget` — widget thì `LayoutTransform = Identity`, chỉnh DIP / `dipNativeLayout`, bỏ Viewbox nội bộ; canvas thì responsive theo vùng (không scale cả cây vô tội vạ). Trên canvas: đừng gắn `DropShadowEffect` + `BitmapCache` lên `Border` bọc toàn XAML — dùng cùng nhánh `ApplyEditorGpuChrome` như Image/Video, cấu trúc `shadowPlate` nếu cần bóng. XAML: layout rounding, snap pixel, font nguyên, `TextOptions` hợp lý. `FloatingWidgetManager` whitelist khi cần ẩn node canvas. Running indicator: thêm Border vào idle shape, animation heartbeat + color trong code-behind, vị trí động theo edge màn hình. Play button: event handler gọi `_host.RequestRunSingleNode(_node)`. SlideHidePercent: chia 200 thay vì 100 để workaround lỗi nhân đôi.**
+**Widget vs canvas (Image): dùng `chromeBorder == null` + `freezeScaleInWidget` — widget thì `LayoutTransform = Identity`, chỉnh DIP / `dipNativeLayout`, bỏ Viewbox nội bộ; canvas thì responsive theo vùng (không scale cả cây vô tội vạ). Trên canvas: đừng gắn `DropShadowEffect` + `BitmapCache` lên `Border` bọc toàn XAML — dùng cùng nhánh `NodeVisualHelper.ApplyEditorGpuChrome`, cấu trúc `shadowPlate` nếu cần bóng. XAML: layout rounding, snap pixel, font nguyên, `TextOptions` hợp lý. `FloatingWidgetManager` whitelist khi cần ẩn node canvas. Running indicator: thêm Border vào idle shape, animation heartbeat + color trong code-behind, vị trí động theo edge màn hình. Play button: event handler gọi `_host.RequestRunSingleNode(_node)`. SlideHidePercent: chia 200 thay vì 100 để workaround lỗi nhân đôi.**
