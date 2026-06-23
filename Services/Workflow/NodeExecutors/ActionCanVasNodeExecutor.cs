@@ -917,13 +917,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(clientPt.X, clientPt.Y);
 
+            bool handledByCdp = false;
+
             // Direct WPF Event Dispatching
             if (editorWindow != null)
             {
                 var dispatcher = editorWindow.Dispatcher;
                 if (dispatcher != null)
                 {
-                    dispatcher.Invoke(() =>
+                    Func<Task> uiTask = async () =>
                     {
                         try
                         {
@@ -954,7 +956,92 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }),
                                 new System.Windows.Media.PointHitTestParameters(wpfPoint));
 
+                            bool isNativeHost = false;
+                            Microsoft.Web.WebView2.Wpf.WebView2? webView = null;
                             if (hitElement != null)
+                            {
+                                System.Windows.DependencyObject current = hitElement;
+                                while (current != null)
+                                {
+                                    if (current is Microsoft.Web.WebView2.Wpf.WebView2 wv2)
+                                    {
+                                        webView = wv2;
+                                        isNativeHost = true;
+                                        break;
+                                    }
+                                    if (current is System.Windows.Interop.HwndHost || current.GetType().Name.Contains("WebView2"))
+                                    {
+                                        isNativeHost = true;
+                                        if (current is Microsoft.Web.WebView2.Wpf.WebView2 v) webView = v;
+                                    }
+                                    current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
+                                }
+                            }
+
+                            if (webView != null && webView.CoreWebView2 != null)
+                            {
+                                handledByCdp = true;
+                                try 
+                                {
+                                    var wvPoint = editorWindow.TranslatePoint(wpfPoint, webView);
+                                    string cdpType = "";
+                                    string cdpButton = "none";
+                                    int cdpButtons = 0;
+                                    if (isLeftDown) cdpButtons |= 1;
+                                    if (isRightDown) cdpButtons |= 2;
+                                    
+                                    if (actionType == "MouseMove") {
+                                        cdpType = "mouseMoved";
+                                    } else if (actionType == "MouseDown") {
+                                        cdpType = "mousePressed";
+                                        cdpButton = buttonStr.ToLower();
+                                        if (cdpButton == "left") cdpButtons |= 1;
+                                        if (cdpButton == "right") cdpButtons |= 2;
+                                    } else if (actionType == "MouseUp") {
+                                        cdpType = "mouseReleased";
+                                        cdpButton = buttonStr.ToLower();
+                                        if (cdpButton == "left") cdpButtons &= ~1;
+                                        if (cdpButton == "right") cdpButtons &= ~2;
+                                    }
+
+                                    if (actionType == "MouseClick")
+                                    {
+                                        var btn = buttonStr.ToLower();
+                                        var downPayload = new { type = "mousePressed", x = wvPoint.X, y = wvPoint.Y, button = btn, buttons = btn == "left" ? 1 : 2, clickCount = 1 };
+                                        await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(downPayload));
+                                        
+                                        await Task.Delay(40);
+                                        
+                                        var upPayload = new { type = "mouseReleased", x = wvPoint.X, y = wvPoint.Y, button = btn, buttons = 0, clickCount = 1 };
+                                        await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(upPayload));
+                                    }
+                                    else if (actionType == "MouseScroll")
+                                    {
+                                        var scrollPayload = new { type = "mouseWheel", x = wvPoint.X, y = wvPoint.Y, deltaX = 0, deltaY = -scrollDelta * 120 };
+                                        await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(scrollPayload));
+                                    }
+                                    else
+                                    {
+                                        var payload = new { type = cdpType, x = wvPoint.X, y = wvPoint.Y, button = cdpButton, buttons = cdpButtons, clickCount = 1 };
+                                        await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(payload));
+                                    }
+
+                                    // Always bubble up MouseUp to WPF to clear any stuck DragDropHandler state
+                                    if (actionType == "MouseUp" || actionType == "MouseClick")
+                                    {
+                                        try {
+                                            var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left)
+                                            {
+                                                RoutedEvent = UIElement.MouseUpEvent,
+                                                Source = hitElement ?? editorWindow
+                                            };
+                                            (hitElement ?? editorWindow).RaiseEvent(args);
+                                        } catch { }
+                                    }
+                                }
+                                catch (Exception cdpEx) { System.Diagnostics.Debug.WriteLine($"CDP Error: {cdpEx}"); }
+                            }
+                            else if (hitElement != null && !isNativeHost)
                             {
                                 var time = Environment.TickCount;
                                 if (actionType == "MouseMove")
@@ -1018,11 +1105,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             System.Diagnostics.Debug.WriteLine($"[MacroExecutor] WPF direct event dispatch failed: {ex}");
                         }
-                    }, System.Windows.Threading.DispatcherPriority.Input);
+                    };
+                    
+                    await dispatcher.InvokeAsync(uiTask, System.Windows.Threading.DispatcherPriority.Input).Task.Unwrap();
                 }
             }
 
             bool isRight = buttonStr == "Right";
+
+            if (actionType == "MouseDown" && !isRight) IsVirtualLeftButtonDown = true;
+            if ((actionType == "MouseUp" || actionType == "MouseClick") && !isRight) IsVirtualLeftButtonDown = false;
+
+            if (handledByCdp) return targetHwnd;
 
             if (actionType == "MouseMove")
             {
