@@ -52,7 +52,7 @@ namespace FlowMy.Services.Rendering
 
             // ── Liquid Glass: transform border appearance trước khi apply GPU/chrome ──
             // Skip cho các node dùng hình thoi (diamond) — border của chúng là transparent container
-            if (LiquidGlassHelper.IsLiquidGlassMode(host))
+            if (LiquidGlassHelper.IsLiquidGlassMode(host) && !(node is ActionCanVasNode))
             {
                 var isDiamondNode = node is LoopNode
                     || (node.IsConditionalNode && node.ConditionalVisualMode == ConditionalVisualMode.Diamond)

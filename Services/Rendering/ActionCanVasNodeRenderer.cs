@@ -34,20 +34,27 @@ namespace FlowMy.Services.Rendering
                 Host);
             actionCanVasNode.Border.Tag = actionCanVasNode;
 
-            // 2. Apply chrome (execution badge, GPU optimization)
-            NodeChrome.Apply(actionCanVasNode.Border, actionCanVasNode, Host);
+            // 2. Không gọi NodeChrome.Apply() để tránh bị áp dụng Liquid Glass shadow
+            actionCanVasNode.Border.ContextMenu = Host.CreateNodeContextMenu(actionCanVasNode);
 
             // 3. Attach mouse handlers
             actionCanVasNode.Border.MouseDown  += Host.NodeMouseDown;
             actionCanVasNode.Border.MouseMove  += Host.NodeMouseMove;
             actionCanVasNode.Border.MouseUp    += Host.NodeMouseUp;
-            actionCanVasNode.Border.ContextMenu = null;
 
             // 4. Đặt vị trí và thêm vào canvas
             Canvas.SetLeft(actionCanVasNode.Border, actionCanVasNode.X);
             Canvas.SetTop(actionCanVasNode.Border, actionCanVasNode.Y);
             canvas.Children.Add(actionCanVasNode.Border);
             Host.ZIndexManager.InitializeNodeZIndex(actionCanVasNode, actionCanVasNode.Border);
+
+            // Đảm bảo border không có shadow từ Canvas
+            actionCanVasNode.Border.Effect = null;
+            canvas.Effect = null;
+            // Clear style để tránh implicit style từ WPF
+            actionCanVasNode.Border.Style = null;
+            // Xóa effect cho tất cả element con
+            ClearEffectsRecursive(actionCanVasNode.Border);
 
             // 5. Render ports
             foreach (var port in actionCanVasNode.Ports.Where(p => p.IsVisible))
@@ -185,6 +192,21 @@ namespace FlowMy.Services.Rendering
                 PortPosition.Bottom => new Thickness(2, 1, 2, 3),
                 _ => new Thickness(2)
             };
+        }
+
+        private static void ClearEffectsRecursive(DependencyObject parent)
+        {
+            if (parent is UIElement uiElement)
+            {
+                uiElement.Effect = null;
+            }
+
+            int childrenCount = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < childrenCount; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                ClearEffectsRecursive(child);
+            }
         }
     }
 }

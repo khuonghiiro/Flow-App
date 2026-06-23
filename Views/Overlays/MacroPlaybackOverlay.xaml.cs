@@ -1,6 +1,4 @@
 using FlowMy.Models;
-using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -49,7 +47,7 @@ namespace FlowMy.Views.Overlays
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int X, Y; }
 
-        private const int GWL_EXSTYLE       = -20;
+        private const int GWL_EXSTYLE = -20;
         private const int WS_EX_TRANSPARENT = 0x00000020;
 
         // ─── Target-mode positioning ──────────────────────────────────────────────
@@ -59,7 +57,7 @@ namespace FlowMy.Views.Overlays
         public bool IsTargetMode => _isTargetMode;
         /// <summary>Screen-pixel offset of the overlay's top-left corner (used in ScreenToCanvas).</summary>
         private double _overlayScreenLeft = 0;
-        private double _overlayScreenTop  = 0;
+        private double _overlayScreenTop = 0;
 
         /// <summary>
         /// Call BEFORE Show() to tell the overlay it will be positioned over a target
@@ -71,7 +69,7 @@ namespace FlowMy.Views.Overlays
         }
 
         // ─── Foreground tracking (TargetApp mode) — poll-based ───────────────────
-        private IntPtr _targetHwnd  = IntPtr.Zero;
+        private IntPtr _targetHwnd = IntPtr.Zero;
         private DispatcherTimer? _foregroundTimer;
         // Trail polyline for mouse move
         private Polyline? _trailPolyline;
@@ -80,11 +78,11 @@ namespace FlowMy.Views.Overlays
         private readonly Dictionary<int, List<UIElement>> _ghostMarkers = new();
 
         // Colors matching the recording overlay
-        private static readonly Color ColorLeftClick      = Color.FromRgb(0x22, 0x99, 0xFF);
-        private static readonly Color ColorRightClick     = Color.FromRgb(0xFF, 0x33, 0x33);
+        private static readonly Color ColorLeftClick = Color.FromRgb(0x22, 0x99, 0xFF);
+        private static readonly Color ColorRightClick = Color.FromRgb(0xFF, 0x33, 0x33);
         private static readonly Color ColorShiftLeftClick = Color.FromRgb(0xFF, 0xA5, 0x00);
-        private static readonly Color ColorScroll         = Color.FromRgb(0x44, 0xDD, 0x88);
-        private static readonly Color ColorKeyPress       = Color.FromRgb(0xAA, 0x88, 0xFF);
+        private static readonly Color ColorScroll = Color.FromRgb(0x44, 0xDD, 0x88);
+        private static readonly Color ColorKeyPress = Color.FromRgb(0xAA, 0x88, 0xFF);
         private const int MarkerRadius = 12;
 
         // TaskCompletionSource to signal when the overlay is fully loaded and ready
@@ -251,8 +249,10 @@ namespace FlowMy.Views.Overlays
                     {
                         var colorAnim = new ColorAnimation
                         {
-                            From = colors[i], To = colors[(i + 1) % colors.Length],
-                            Duration = TimeSpan.FromSeconds(1), BeginTime = TimeSpan.FromSeconds(i)
+                            From = colors[i],
+                            To = colors[(i + 1) % colors.Length],
+                            Duration = TimeSpan.FromSeconds(1),
+                            BeginTime = TimeSpan.FromSeconds(i)
                         };
                         Storyboard.SetTarget(colorAnim, OuterBorder);
                         Storyboard.SetTargetProperty(colorAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Color)"));
@@ -279,8 +279,8 @@ namespace FlowMy.Views.Overlays
         {
             if (targetHwnd == IntPtr.Zero) return;
 
-            _isTargetMode      = true;
-            _targetHwnd        = targetHwnd;
+            _isTargetMode = true;
+            _targetHwnd = targetHwnd;
 
             if (!ApplyClientRect(targetHwnd)) return;
 
@@ -304,7 +304,7 @@ namespace FlowMy.Views.Overlays
             ClientToScreen(hwnd, ref ptOrigin);
 
             _overlayScreenLeft = ptOrigin.X;
-            _overlayScreenTop  = ptOrigin.Y;
+            _overlayScreenTop = ptOrigin.Y;
 
             double scaleX = 1.0, scaleY = 1.0;
             var source = PresentationSource.FromVisual(this);
@@ -314,10 +314,10 @@ namespace FlowMy.Views.Overlays
                 scaleY = source.CompositionTarget.TransformToDevice.M22;
             }
 
-            Left   = ptOrigin.X / scaleX;
-            Top    = ptOrigin.Y / scaleY;
-            Width  = cr.Right   / scaleX;
-            Height = cr.Bottom  / scaleY;
+            Left = ptOrigin.X / scaleX;
+            Top = ptOrigin.Y / scaleY;
+            Width = cr.Right / scaleX;
+            Height = cr.Bottom / scaleY;
             return true;
         }
 
@@ -417,10 +417,10 @@ namespace FlowMy.Views.Overlays
             {
                 if (!GetCursorPos(out POINT cur)) return;
 
-                bool overStatus   = IsPointOverElement(StatusPanel,   cur.X, cur.Y);
+                bool overStatus = IsPointOverElement(StatusPanel, cur.X, cur.Y);
                 bool overProgress = IsPointOverElement(ProgressPanel, cur.X, cur.Y);
 
-                SetPanelOpacity(StatusPanel,   overStatus   ? 0.2 : 1.0);
+                SetPanelOpacity(StatusPanel, overStatus ? 0.2 : 1.0);
                 SetPanelOpacity(ProgressPanel, overProgress ? 0.2 : 1.0);
             };
             _hoverTimer.Start();
@@ -435,7 +435,7 @@ namespace FlowMy.Views.Overlays
             if (!el.IsVisible) return false;
             try
             {
-                var topLeft     = el.PointToScreen(new System.Windows.Point(0, 0));
+                var topLeft = el.PointToScreen(new System.Windows.Point(0, 0));
                 var bottomRight = el.PointToScreen(new System.Windows.Point(el.ActualWidth, el.ActualHeight));
                 return px >= topLeft.X && px <= bottomRight.X
                     && py >= topLeft.Y && py <= bottomRight.Y;
@@ -456,6 +456,43 @@ namespace FlowMy.Views.Overlays
             {
                 StatusPanel.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
                 ProgressPanel.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            });
+        }
+
+        public void SetCompactMode(bool isCompact)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (isCompact)
+                {
+                    StatusPanel.Margin = new Thickness(0, 8, 0, 0);
+                    StatusPanel.CornerRadius = new CornerRadius(6);
+                    StatusPanel.Padding = new Thickness(12, 6, 12, 6);
+                    if (FindName("StatusIcon") is TextBlock statusIcon) statusIcon.FontSize = 12;
+                    StatusText.FontSize = 12;
+                    ActionText.FontSize = 12;
+
+                    ProgressPanel.Margin = new Thickness(0, 8, 8, 0);
+                    ProgressPanel.CornerRadius = new CornerRadius(6);
+                    ProgressPanel.Padding = new Thickness(10, 6, 10, 6);
+                    if (FindName("ProgressIcon") is TextBlock progressIcon) progressIcon.FontSize = 12;
+                    ProgressText.FontSize = 12;
+                }
+                else
+                {
+                    StatusPanel.Margin = new Thickness(0, 24, 0, 0);
+                    StatusPanel.CornerRadius = new CornerRadius(8);
+                    StatusPanel.Padding = new Thickness(20, 10, 20, 10);
+                    if (FindName("StatusIcon") is TextBlock statusIcon) statusIcon.FontSize = 16;
+                    StatusText.FontSize = 14;
+                    ActionText.FontSize = 13;
+
+                    ProgressPanel.Margin = new Thickness(0, 24, 24, 0);
+                    ProgressPanel.CornerRadius = new CornerRadius(8);
+                    ProgressPanel.Padding = new Thickness(16, 8, 16, 8);
+                    if (FindName("ProgressIcon") is TextBlock progressIcon) progressIcon.FontSize = 14;
+                    ProgressText.FontSize = 14;
+                }
             });
         }
 
@@ -538,11 +575,11 @@ namespace FlowMy.Views.Overlays
 
             const double offsetX = 18; // horizontal gap from cursor tip
             const double offsetY = 18; // vertical gap from cursor tip
-            const double margin  = 12; // min distance from screen edge
+            const double margin = 12; // min distance from screen edge
 
             // Try right-bottom first (default)
             double left = cursorX + offsetX;
-            double top  = cursorY + offsetY;
+            double top = cursorY + offsetY;
 
             // Flip horizontal if would overflow right edge
             if (left + hw > screenW - margin)
@@ -554,10 +591,10 @@ namespace FlowMy.Views.Overlays
 
             // Clamp to screen bounds
             left = Math.Max(margin, Math.Min(left, screenW - hw - margin));
-            top  = Math.Max(margin, Math.Min(top,  screenH - hh - margin));
+            top = Math.Max(margin, Math.Min(top, screenH - hh - margin));
 
             Canvas.SetLeft(ActionHintBorder, left);
-            Canvas.SetTop(ActionHintBorder,  top);
+            Canvas.SetTop(ActionHintBorder, top);
         }
 
         /// <summary>
@@ -795,7 +832,11 @@ namespace FlowMy.Views.Overlays
                     Padding = new Thickness(8, 2, 8, 2),
                     Child = new TextBlock
                     {
-                        Text = arrow, FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, IsHitTestVisible = false
+                        Text = arrow,
+                        FontSize = 10,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = Brushes.White,
+                        IsHitTestVisible = false
                     },
                     IsHitTestVisible = false
                 };
@@ -876,7 +917,10 @@ namespace FlowMy.Views.Overlays
                     Child = new TextBlock
                     {
                         Text = isCombo ? keyName.Replace("+", " + ") : keyName, // Better spacing
-                        FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, IsHitTestVisible = false
+                        FontSize = 10,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = Brushes.White,
+                        IsHitTestVisible = false
                     },
                     IsHitTestVisible = false
                 };
@@ -957,7 +1001,7 @@ namespace FlowMy.Views.Overlays
             for (int i = 0; i < significant.Count - 1; i++)
             {
                 var from = ScreenToCanvas(significant[i].X, significant[i].Y);
-                var to   = ScreenToCanvas(significant[i + 1].X, significant[i + 1].Y);
+                var to = ScreenToCanvas(significant[i + 1].X, significant[i + 1].Y);
 
                 // Only draw connector if points are far enough apart
                 double dist = Math.Sqrt(Math.Pow(to.X - from.X, 2) + Math.Pow(to.Y - from.Y, 2));
@@ -965,8 +1009,10 @@ namespace FlowMy.Views.Overlays
 
                 var connector = new Line
                 {
-                    X1 = from.X, Y1 = from.Y,
-                    X2 = to.X,   Y2 = to.Y,
+                    X1 = from.X,
+                    Y1 = from.Y,
+                    X2 = to.X,
+                    Y2 = to.Y,
                     Stroke = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)),
                     StrokeThickness = 1,
                     StrokeDashArray = new DoubleCollection { 3, 5 },
@@ -1035,79 +1081,79 @@ namespace FlowMy.Views.Overlays
             var pt = ScreenToCanvas(screenX, screenY);
             Color fillColor = button switch
             {
-                "Left"      => ColorLeftClick,
-                "Right"     => ColorRightClick,
+                "Left" => ColorLeftClick,
+                "Right" => ColorRightClick,
                 "ShiftLeft" => ColorShiftLeftClick,
-                _           => ColorLeftClick
+                _ => ColorLeftClick
             };
             string label = button switch
             {
-                "Left"      => "L",
-                "Right"     => "R",
+                "Left" => "L",
+                "Right" => "R",
                 "ShiftLeft" => "⇧L",
-                _           => "?"
+                _ => "?"
             };
 
             // Ghost circle — dashed border, semi-transparent fill
             var circle = new Ellipse
             {
-                Width  = MarkerRadius * 2,
+                Width = MarkerRadius * 2,
                 Height = MarkerRadius * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
+                Fill = new SolidColorBrush(Color.FromArgb(50, fillColor.R, fillColor.G, fillColor.B)),
                 Stroke = new SolidColorBrush(Color.FromArgb(180, fillColor.R, fillColor.G, fillColor.B)),
                 StrokeThickness = 1.5,
                 StrokeDashArray = new DoubleCollection { 3, 2 },
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(circle, pt.X - MarkerRadius);
-            Canvas.SetTop(circle,  pt.Y - MarkerRadius);
+            Canvas.SetTop(circle, pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(circle);
             elements.Add(circle);
 
             // "+" cross — horizontal bar (ghost, semi-transparent)
             var hBar = new Rectangle
             {
-                Width  = MarkerRadius,
+                Width = MarkerRadius,
                 Height = 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(160, fillColor.R, fillColor.G, fillColor.B)),
+                Fill = new SolidColorBrush(Color.FromArgb(160, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(hBar, pt.X - MarkerRadius / 2.0);
-            Canvas.SetTop(hBar,  pt.Y - 1);
+            Canvas.SetTop(hBar, pt.Y - 1);
             DrawingCanvas.Children.Add(hBar);
             elements.Add(hBar);
 
             // "+" cross — vertical bar
             var vBar = new Rectangle
             {
-                Width  = 2,
+                Width = 2,
                 Height = MarkerRadius,
-                Fill   = new SolidColorBrush(Color.FromArgb(160, fillColor.R, fillColor.G, fillColor.B)),
+                Fill = new SolidColorBrush(Color.FromArgb(160, fillColor.R, fillColor.G, fillColor.B)),
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(vBar, pt.X - 1);
-            Canvas.SetTop(vBar,  pt.Y - MarkerRadius / 2.0);
+            Canvas.SetTop(vBar, pt.Y - MarkerRadius / 2.0);
             DrawingCanvas.Children.Add(vBar);
             elements.Add(vBar);
 
             // Sequence label pill
             var pill = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(120, 10, 10, 10)),
+                Background = new SolidColorBrush(Color.FromArgb(120, 10, 10, 10)),
                 CornerRadius = new CornerRadius(4),
-                BorderBrush  = new SolidColorBrush(Color.FromArgb(100, fillColor.R, fillColor.G, fillColor.B)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(100, fillColor.R, fillColor.G, fillColor.B)),
                 BorderThickness = new Thickness(1),
-                Padding      = new Thickness(4, 1, 4, 1),
-                Child        = new TextBlock
+                Padding = new Thickness(4, 1, 4, 1),
+                Child = new TextBlock
                 {
-                    Text       = $"[{seq}] {label}",
-                    FontSize   = 10,
+                    Text = $"[{seq}] {label}",
+                    FontSize = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255))
                 },
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(pill, pt.X + MarkerRadius + 2);
-            Canvas.SetTop(pill,  pt.Y - MarkerRadius);
+            Canvas.SetTop(pill, pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(pill);
             elements.Add(pill);
         }
@@ -1118,49 +1164,49 @@ namespace FlowMy.Views.Overlays
             // Dashed open circle — orange, marks drag release point
             var circle = new Ellipse
             {
-                Width  = MarkerRadius * 2,
+                Width = MarkerRadius * 2,
                 Height = MarkerRadius * 2,
-                Fill   = new SolidColorBrush(Color.FromArgb(25, 0xFF, 0xA5, 0x00)),
+                Fill = new SolidColorBrush(Color.FromArgb(25, 0xFF, 0xA5, 0x00)),
                 Stroke = new SolidColorBrush(Color.FromArgb(150, 0xFF, 0xA5, 0x00)),
                 StrokeThickness = 1.5,
                 StrokeDashArray = new DoubleCollection { 4, 2 },
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(circle, pt.X - MarkerRadius);
-            Canvas.SetTop(circle,  pt.Y - MarkerRadius);
+            Canvas.SetTop(circle, pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(circle);
             elements.Add(circle);
 
             // Small upward arrow indicator
             var arrow = new TextBlock
             {
-                Text       = "↑",
-                FontSize   = 10,
+                Text = "↑",
+                FontSize = 10,
                 Foreground = new SolidColorBrush(Color.FromArgb(160, 0xFF, 0xA5, 0x00)),
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(arrow, pt.X - 5);
-            Canvas.SetTop(arrow,  pt.Y - 7);
+            Canvas.SetTop(arrow, pt.Y - 7);
             DrawingCanvas.Children.Add(arrow);
             elements.Add(arrow);
 
             var pill = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(100, 10, 10, 10)),
+                Background = new SolidColorBrush(Color.FromArgb(100, 10, 10, 10)),
                 CornerRadius = new CornerRadius(4),
-                BorderBrush  = new SolidColorBrush(Color.FromArgb(100, 0xFF, 0xA5, 0x00)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(100, 0xFF, 0xA5, 0x00)),
                 BorderThickness = new Thickness(1),
-                Padding      = new Thickness(4, 1, 4, 1),
-                Child        = new TextBlock
+                Padding = new Thickness(4, 1, 4, 1),
+                Child = new TextBlock
                 {
-                    Text       = $"[{seq}] ↑L",
-                    FontSize   = 10,
+                    Text = $"[{seq}] ↑L",
+                    FontSize = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255))
                 },
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(pill, pt.X + MarkerRadius + 2);
-            Canvas.SetTop(pill,  pt.Y - MarkerRadius);
+            Canvas.SetTop(pill, pt.Y - MarkerRadius);
             DrawingCanvas.Children.Add(pill);
             elements.Add(pill);
         }
@@ -1170,21 +1216,21 @@ namespace FlowMy.Views.Overlays
             var pt = ScreenToCanvas(screenX, screenY);
             var pill = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(80, 30, 30, 60)),
+                Background = new SolidColorBrush(Color.FromArgb(80, 30, 30, 60)),
                 CornerRadius = new CornerRadius(4),
-                BorderBrush  = new SolidColorBrush(Color.FromArgb(120, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(120, ColorKeyPress.R, ColorKeyPress.G, ColorKeyPress.B)),
                 BorderThickness = new Thickness(1),
-                Padding      = new Thickness(4, 1, 4, 1),
-                Child        = new TextBlock
+                Padding = new Thickness(4, 1, 4, 1),
+                Child = new TextBlock
                 {
-                    Text       = $"[{seq}] {keyName}",
-                    FontSize   = 10,
+                    Text = $"[{seq}] {keyName}",
+                    FontSize = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255))
                 },
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(pill, pt.X + 8);
-            Canvas.SetTop(pill,  pt.Y - 8);
+            Canvas.SetTop(pill, pt.Y - 8);
             DrawingCanvas.Children.Add(pill);
             elements.Add(pill);
         }
@@ -1195,19 +1241,19 @@ namespace FlowMy.Views.Overlays
             string arrow = notches >= 0 ? "▲" : "▼";
             var pill = new Border
             {
-                Background   = new SolidColorBrush(Color.FromArgb(80, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
+                Background = new SolidColorBrush(Color.FromArgb(80, ColorScroll.R, ColorScroll.G, ColorScroll.B)),
                 CornerRadius = new CornerRadius(6),
-                Padding      = new Thickness(5, 2, 5, 2),
-                Child        = new TextBlock
+                Padding = new Thickness(5, 2, 5, 2),
+                Child = new TextBlock
                 {
-                    Text       = $"[{seq}] {arrow} {Math.Abs(notches)}",
-                    FontSize   = 10,
+                    Text = $"[{seq}] {arrow} {Math.Abs(notches)}",
+                    FontSize = 10,
                     Foreground = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255))
                 },
                 IsHitTestVisible = false
             };
             Canvas.SetLeft(pill, pt.X + 10);
-            Canvas.SetTop(pill,  pt.Y - 10);
+            Canvas.SetTop(pill, pt.Y - 10);
             DrawingCanvas.Children.Add(pill);
             elements.Add(pill);
         }
@@ -1221,11 +1267,11 @@ namespace FlowMy.Views.Overlays
         private static string ExtractModifierPart(string button)
         {
             if (string.IsNullOrEmpty(button)) return "";
-            
+
             // Tìm dấu "+" cuối cùng
             int lastPlusIndex = button.LastIndexOf('+');
             if (lastPlusIndex < 0) return ""; // không có modifier
-            
+
             // Trả về phần trước dấu "+" cuối cùng
             return button[..lastPlusIndex];
         }

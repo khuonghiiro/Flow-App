@@ -2,10 +2,10 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ============================================ -->
-    <!-- Äá»ŠNH NGHÄ¨A MÃ€U Sáº®C CHO SCROLLBAR -->
+    <!-- ĐỊNH NGHĨA MÀU SẮC CHO SCROLLBAR -->
     <!-- ============================================ -->
 
-    <!-- MÃ u track (ná»n) -->
+    <!-- Màu track (nền) -->
     <SolidColorBrush x:Key="ScrollBarTrackBackground" Color="Transparent"/>
 
     <!-- Thumb / track colors: Base/SemanticTokens.xaml + Base/Colors/{Theme}.xaml -->
@@ -77,7 +77,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
                     <Grid x:Name="ScrollBarRoot" Background="Transparent">
-                        <!-- Track background vá»›i mÃ u nháº¹ -->
+                        <!-- Track background với màu nhẹ -->
                         <Border x:Name="TrackBackground"
                                 Background="{DynamicResource ScrollBarTrackBackground}"
                                 CornerRadius="5"
@@ -103,7 +103,7 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <!-- Hover: tÄƒng Ä‘á»™ rÃµ -->
+                        <!-- Hover: tăng độ rõ -->
                         <EventTrigger RoutedEvent="MouseEnter">
                             <BeginStoryboard>
                                 <Storyboard>
@@ -116,7 +116,7 @@
                             </BeginStoryboard>
                         </EventTrigger>
 
-                        <!-- Leave: giá»¯ opacity cao Ä‘á»ƒ dá»… nhÃ¬n -->
+                        <!-- Leave: giữ opacity cao để dễ nhìn -->
                         <EventTrigger RoutedEvent="MouseLeave">
                             <BeginStoryboard>
                                 <Storyboard>
@@ -285,7 +285,7 @@
     </Style>
 
     <!-- ============================================ -->
-    <!-- ULTRA COMPACT SCROLLBAR - MÃ€U Äáº¸P HÆ N -->
+    <!-- ULTRA COMPACT SCROLLBAR - MÀU ĐẸP HƠN -->
     <!-- ============================================ -->
     <Style x:Key="UltraCompactScrollBar" TargetType="ScrollBar">
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -325,7 +325,7 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <!-- Hover: má»Ÿ rá»™ng -->
+                        <!-- Hover: mở rộng -->
                         <EventTrigger RoutedEvent="MouseEnter">
                             <BeginStoryboard>
                                 <Storyboard>
@@ -344,7 +344,7 @@
                             </BeginStoryboard>
                         </EventTrigger>
 
-                        <!-- Leave: giá»¯ opacity cao -->
+                        <!-- Leave: giữ opacity cao -->
                         <EventTrigger RoutedEvent="MouseLeave">
                             <BeginStoryboard>
                                 <Storyboard>

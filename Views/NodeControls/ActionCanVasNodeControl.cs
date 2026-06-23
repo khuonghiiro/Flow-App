@@ -37,6 +37,7 @@ namespace FlowMy.Views.NodeControls
                 Tag = node,
                 Background = Brushes.Transparent // Needed for hit testing
             };
+            border.Style = null; // Đảm bảo không có style mặc định từ WPF gây shadow
 
             var root = new Grid { ClipToBounds = false };
             border.Child = root;
@@ -67,34 +68,40 @@ namespace FlowMy.Views.NodeControls
             titleText.Style = null; // Prevent global WPF styles
             node.TitleTextBlockUI = titleText;
 
-            var togglePlaybackInfoBtn = new System.Windows.Controls.Primitives.ToggleButton
+            var togglePlaybackInfoBtn = new System.Windows.Controls.Button
             {
                 Content = node.ShowPlaybackInfo ? "👁" : "🚫",
-                IsChecked = node.ShowPlaybackInfo,
                 Width = 24,
                 Height = 24,
-                Margin = new Thickness(0, 8, 8, 0),
+                Margin = new Thickness(0, 8, 30, 0),
+                Padding = new Thickness(0),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
                 ToolTip = "Bật/tắt hiển thị dòng thông tin trạng thái khi chạy",
-                Cursor = Cursors.Hand,
-                Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
-                Foreground = Brushes.White,
-                BorderThickness = new Thickness(0)
+                Cursor = Cursors.Hand
             };
-            togglePlaybackInfoBtn.Checked += (s, e) => { node.ShowPlaybackInfo = true; togglePlaybackInfoBtn.Content = "👁"; };
-            togglePlaybackInfoBtn.Unchecked += (s, e) => { node.ShowPlaybackInfo = false; togglePlaybackInfoBtn.Content = "🚫"; };
+            
+            var btnStyle = Application.Current?.TryFindResource("DynamicOutlineCircleButton") as Style;
+            if (btnStyle != null) togglePlaybackInfoBtn.Style = btnStyle;
+
+            FlowMy.Helpers.ButtonHelper.SetColorTheme(togglePlaybackInfoBtn, node.ShowPlaybackInfo ? "Primary" : "Danger");
+
+            Panel.SetZIndex(togglePlaybackInfoBtn, 100);
+            togglePlaybackInfoBtn.Click += (s, e) => 
+            { 
+                node.ShowPlaybackInfo = !node.ShowPlaybackInfo; 
+                togglePlaybackInfoBtn.Content = node.ShowPlaybackInfo ? "👁" : "🚫"; 
+                FlowMy.Helpers.ButtonHelper.SetColorTheme(togglePlaybackInfoBtn, node.ShowPlaybackInfo ? "Primary" : "Danger");
+            };
             root.Children.Add(togglePlaybackInfoBtn);
 
             // Add Resize Handles
             AddResizeHandle(root, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top);
             AddResizeHandle(root, ResizeDirection.Top, HorizontalAlignment.Center, VerticalAlignment.Top);
             AddResizeHandle(root, ResizeDirection.TopRight, HorizontalAlignment.Right, VerticalAlignment.Top);
-            AddResizeHandle(root, ResizeDirection.Right, HorizontalAlignment.Right, VerticalAlignment.Center);
             AddResizeHandle(root, ResizeDirection.BottomRight, HorizontalAlignment.Right, VerticalAlignment.Bottom);
             AddResizeHandle(root, ResizeDirection.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom);
             AddResizeHandle(root, ResizeDirection.BottomLeft, HorizontalAlignment.Left, VerticalAlignment.Bottom);
-            AddResizeHandle(root, ResizeDirection.Left, HorizontalAlignment.Left, VerticalAlignment.Center);
 
             void RefreshPortsAndConnections()
             {
@@ -136,8 +143,8 @@ namespace FlowMy.Views.NodeControls
                 [nameof(ActionCanVasNode.BorderDashStyle)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
                 [nameof(ActionCanVasNode.BorderDashSpacing)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
                 [nameof(ActionCanVasNode.ShowPlaybackInfo)] = ctx => {
-                    togglePlaybackInfoBtn.IsChecked = node.ShowPlaybackInfo;
                     togglePlaybackInfoBtn.Content = node.ShowPlaybackInfo ? "👁" : "🚫";
+                    FlowMy.Helpers.ButtonHelper.SetColorTheme(togglePlaybackInfoBtn, node.ShowPlaybackInfo ? "Success" : "Secondary");
                 },
                 [nameof(WorkflowNode.NodeBrush)] = ctx => { /* Do nothing to Border.Background, we manage our own fill */ },
                 ["TitleColorMode"] = ctx => titleText.Foreground = ResolveTitleBrush(node, ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Colors.Blue)),
@@ -148,7 +155,6 @@ namespace FlowMy.Views.NodeControls
             BaseNodeControlHelper
                 .Initialize(border, titleText, node, host)
                 .WithTitleManagement()
-                .WithHoverBehavior()
                 .WithKeyboardPorts()
                 .WithPropertySync(customPropertyHandlers)
                 .WithDialogSupport(ctx => new ActionCanVasNodeDialog(node, host, ownerWindow ?? Application.Current?.MainWindow))
@@ -157,6 +163,7 @@ namespace FlowMy.Views.NodeControls
                 .WithCanvasIntegration()
                 .Build();
 
+            border.Effect = null;
             return border;
         }
 
@@ -356,15 +363,8 @@ namespace FlowMy.Views.NodeControls
 
             var color = ParseColor(node.PlaybackBorderColorHex, Colors.Cyan);
 
-            var dropShadow = new DropShadowEffect
-            {
-                Color = color,
-                Direction = 0,
-                ShadowDepth = 0,
-                BlurRadius = node.PlaybackGradientSize > 0 ? node.PlaybackGradientSize : 10,
-                Opacity = node.PlaybackOpacity
-            };
-            border.Effect = dropShadow;
+            // Bỏ hẳn DropShadowEffect theo yêu cầu người dùng
+            border.Effect = null;
             border.BorderBrush = new SolidColorBrush(color);
             border.BorderThickness = new Thickness(node.PlaybackBorderThickness);
 
@@ -377,22 +377,13 @@ namespace FlowMy.Views.NodeControls
                 case Models.BorderEffectType.Glow:
                     var pulseAnim = new DoubleAnimation { From = 0.3, To = node.PlaybackOpacity, Duration = TimeSpan.FromSeconds(0.5), AutoReverse = true };
                     Storyboard.SetTarget(pulseAnim, border);
-                    Storyboard.SetTargetProperty(pulseAnim, new PropertyPath("(UIElement.Effect).(DropShadowEffect.Opacity)"));
+                    Storyboard.SetTargetProperty(pulseAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Opacity)"));
                     _currentPlaybackStoryboard.Children.Add(pulseAnim);
                     break;
                 case Models.BorderEffectType.Rainbow:
                     var colors = new[] { Colors.Red, Colors.Orange, Colors.Yellow, Colors.Green, Colors.Blue, Colors.Indigo, Colors.Violet };
                     for (int i = 0; i < colors.Length; i++)
                     {
-                        var colorAnim = new ColorAnimation
-                        {
-                            From = colors[i], To = colors[(i + 1) % colors.Length],
-                            Duration = TimeSpan.FromSeconds(1), BeginTime = TimeSpan.FromSeconds(i)
-                        };
-                        Storyboard.SetTarget(colorAnim, border);
-                        Storyboard.SetTargetProperty(colorAnim, new PropertyPath("(UIElement.Effect).(DropShadowEffect.Color)"));
-                        _currentPlaybackStoryboard.Children.Add(colorAnim);
-                        
                         var brushColorAnim = new ColorAnimation
                         {
                             From = colors[i], To = colors[(i + 1) % colors.Length],
@@ -414,6 +405,8 @@ namespace FlowMy.Views.NodeControls
             _currentPlaybackStoryboard?.Stop();
             _currentPlaybackStoryboard = null;
             node.Border.Effect = null;
+            node.Border.BorderThickness = new Thickness(0);
+            node.Border.BorderBrush = Brushes.Transparent;
             
             // Restore visual state
             if (node.Border.Child is Grid grid)
@@ -486,7 +479,28 @@ namespace FlowMy.Views.NodeControls
                 else
                     resultBrush = new SolidColorBrush(fallback);
             }
+
+            // Đảm bảo brush không có effect
+            if (resultBrush is SolidColorBrush solidBrush)
+            {
+                // SolidColorBrush không có effect property
+            }
+
             return resultBrush;
         }
+
+        /*
+         * 💡 HƯỚNG DẪN LOẠI BỎ SHADOW CHO NODE:
+         * Bóng đổ (shadow) của các Node trong Editor được áp dụng tự động bởi phương thức:
+         * ImageProcessingNodeControl.ApplyEditorGpuChrome(...) [Views/NodeControls/ImageProcessingNodeControl.cs]
+         * Khi kéo, thả, chọn hoặc tải lại workflow, hàm đó sẽ gán border.Effect = GpuOptimizationHelper.CreateDropShadowEffect().
+         * Để bỏ shadow hoàn toàn cho một Node mới (như ActionCanVasNode hoặc BodyContainerNode):
+         * Thêm loại Node đó vào nhánh check loại trừ của hàm ApplyEditorGpuChrome:
+         *     if (node is VideoProcessingNode || node is FlowMy.Models.Nodes.BodyContainerNode || node is FlowMy.Models.Nodes.ActionCanVasNode) {
+         *         border.Effect = null;
+         *         GpuOptimizationHelper.ApplyToBorder(border, isDragging: false, forceCache: false);
+         *         return;
+         *     }
+         */
     }
 }

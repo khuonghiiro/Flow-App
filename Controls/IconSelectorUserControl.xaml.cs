@@ -1,4 +1,4 @@
-﻿using FlowMy.Controls;
+using FlowMy.Controls;
 using SharpVectors.Converters;
 using SharpVectors.Renderers.Wpf;
 using SharpVectors.Runtime;
@@ -14,8 +14,8 @@ namespace FlowMy.Controls
 {
     public partial class IconSelectorUserControl : UserControl, INotifyPropertyChanged
     {
-        // Ưu tiên manifest động (available_icons.txt) tạo bởi ExtractIcons.ps1, fallback
-        // AvailableIcons dictionary tĩnh. Dùng qua IconResources.EffectiveIcons.
+        // Uu ti�n manifest d?ng (available_icons.txt) t?o b?i ExtractIcons.ps1, fallback
+        // AvailableIcons dictionary tinh. D�ng qua IconResources.EffectiveIcons.
         private IReadOnlyDictionary<string, string> availableIcons => IconResources.EffectiveIcons;
         private string selectedIcon;
         private Dictionary<string, string> filteredIcons;
@@ -24,7 +24,7 @@ namespace FlowMy.Controls
         private int currentPage = 0;
         private int itemsPerPage = 56; // 8 columns x 7 rows
 
-        // Dependency Property cho icon Ä‘Ã£ chá»n
+        // Dependency Property cho icon đã chọn
         public static readonly DependencyProperty SelectedIconProperty =
             DependencyProperty.Register("SelectedIcon", typeof(string), typeof(IconSelectorUserControl),
                 new FrameworkPropertyMetadata(string.Empty,
@@ -37,7 +37,7 @@ namespace FlowMy.Controls
             set { SetValue(SelectedIconProperty, value); }
         }
 
-        // Dependency Property cho chiá»u cao button
+        // Dependency Property cho chiều cao button
         public static readonly DependencyProperty ButtonHeightProperty =
             DependencyProperty.Register("ButtonHeight", typeof(double), typeof(IconSelectorUserControl),
                 new PropertyMetadata(44.0));
@@ -48,7 +48,7 @@ namespace FlowMy.Controls
             set { SetValue(ButtonHeightProperty, value); }
         }
 
-        // Dependency Property cho việc sử dụng màu gốc của SVG
+        // Dependency Property cho vi?c s? d?ng m�u g?c c?a SVG
         public static readonly DependencyProperty UseOriginalColorsProperty =
             DependencyProperty.Register("UseOriginalColors", typeof(bool), typeof(IconSelectorUserControl),
                 new PropertyMetadata(false));
@@ -59,7 +59,7 @@ namespace FlowMy.Controls
             set { SetValue(UseOriginalColorsProperty, value); }
         }
 
-        // Event callback khi SelectedIcon thay Ä‘á»•i
+        // Event callback khi SelectedIcon thay đổi
         private static void OnSelectedIconChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is IconSelectorUserControl control)
@@ -81,20 +81,20 @@ namespace FlowMy.Controls
             Loaded += (s, e) =>
             {
                 UpdateClearButtonVisibility();
-                InitializeIconGrid(); // Load trang Ä‘áº§u tiÃªn
+                InitializeIconGrid(); // Load trang đầu tiên
             };
         }
 
         private void InitializeIconGrid()
         {
-            // TÃ­nh toÃ¡n pagination
+            // Tính toán pagination
             int totalPages = Math.Max(1, (int)Math.Ceiling((double)filteredIcons.Count / itemsPerPage));
 
-            // Äáº£m báº£o currentPage há»£p lá»‡
+            // Đảm bảo currentPage hợp lệ
             if (currentPage >= totalPages)
                 currentPage = Math.Max(0, totalPages - 1);
 
-            // Láº¥y icons cho trang hiá»‡n táº¡i
+            // Lấy icons cho trang hiện tại
             var pagedIcons = filteredIcons
                 .Skip(currentPage * itemsPerPage)
                 .Take(itemsPerPage);
@@ -112,8 +112,8 @@ namespace FlowMy.Controls
                     Padding = new Thickness(5)
                 };
 
-                // Dùng SvgViewboxEx; Fill fallback về TextBrush nếu theme không có TextOnPrimaryBrush.
-                // Không set UseOriginalColors để auto-detect hoạt động tự động dựa trên folder name (.color)
+                // D�ng SvgViewboxEx; Fill fallback v? TextBrush n?u theme kh�ng c� TextOnPrimaryBrush.
+                // Kh�ng set UseOriginalColors d? auto-detect ho?t d?ng t? d?ng d?a tr�n folder name (.color)
                 var svgViewbox = new SvgViewboxEx
                 {
                     Source = new Uri(iconPair.Value, UriKind.RelativeOrAbsolute),
@@ -164,13 +164,13 @@ namespace FlowMy.Controls
             }
         }
 
-        // XÃ“A METHOD NÃ€Y
+        // XÓA METHOD NÀY
         // private void IconDisplayBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { }
 
-        // XÃ“A METHOD NÃ€Y
+        // XÓA METHOD NÀY
         // private void IconDisplayBorder_MouseEnter(object sender, MouseEventArgs e) { }
 
-        // XÃ“A METHOD NÃ€Y
+        // XÓA METHOD NÀY
         // private void IconDisplayBorder_MouseLeave(object sender, MouseEventArgs e) { }
 
         private void IconButton_Click(object sender, RoutedEventArgs e)
@@ -203,7 +203,7 @@ namespace FlowMy.Controls
         {
             if (ClearButton != null)
             {
-                // LUÃ”N HIá»†N khi cÃ³ icon, khÃ´ng cáº§n hover
+                // LUÔN HIỆN khi có icon, không cần hover
                 ClearButton.Visibility = !string.IsNullOrEmpty(SelectedIcon)
                     ? Visibility.Visible
                     : Visibility.Collapsed;
@@ -223,7 +223,7 @@ namespace FlowMy.Controls
             var binding = BindingOperations.GetBindingExpression(this, SelectedIconProperty);
             binding?.UpdateSource();
 
-            // KhÃ´ng cáº§n set Visibility á»Ÿ Ä‘Ã¢y vÃ¬ UpdateClearButtonVisibility sáº½ xá»­ lÃ½
+            // Không cần set Visibility ở đây vì UpdateClearButtonVisibility sẽ xử lý
         }
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -243,7 +243,7 @@ namespace FlowMy.Controls
                         .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 }
 
-                // Reset vá» trang Ä‘áº§u khi search
+                // Reset về trang đầu khi search
                 currentPage = 0;
                 InitializeIconGrid();
             }
@@ -320,15 +320,15 @@ namespace FlowMy.Controls
 
 
     /// <summary>
-    /// SVG icon control hỗ trợ Fill color và tự inherit Foreground.
-    /// Dùng FileSvgReader để load trực tiếp → apply màu trước freeze → đảm bảo màu đúng.
+    /// SVG icon control h? tr? Fill color v� t? inherit Foreground.
+    /// D�ng FileSvgReader d? load tr?c ti?p ? apply m�u tru?c freeze ? d?m b?o m�u d�ng.
     /// </summary>
     public class SvgViewboxEx : Viewbox
     {
         private readonly System.Windows.Controls.Image _image;
         private bool _useOriginalColorsExplicitlySet = false;
 
-        // ── Source ─────────────────────────────────────────────────────────
+        // -- Source ---------------------------------------------------------
         public static readonly DependencyProperty SourceProperty =
             DependencyProperty.Register(nameof(Source), typeof(object), typeof(SvgViewboxEx),
                 new PropertyMetadata(null, OnSourceOrFillChanged));
@@ -339,7 +339,7 @@ namespace FlowMy.Controls
             set => SetValue(SourceProperty, value);
         }
 
-        // ── Fill ────────────────────────────────────────────────────────────
+        // -- Fill ------------------------------------------------------------
         public static readonly DependencyProperty FillProperty =
             DependencyProperty.Register(nameof(Fill), typeof(Brush), typeof(SvgViewboxEx),
                 new FrameworkPropertyMetadata(null,
@@ -352,7 +352,7 @@ namespace FlowMy.Controls
             set => SetValue(FillProperty, value);
         }
 
-        // ── Stroke (API compat) ─────────────────────────────────────────────
+        // -- Stroke (API compat) ---------------------------------------------
         public static readonly DependencyProperty StrokeProperty =
             DependencyProperty.Register(nameof(Stroke), typeof(Brush), typeof(SvgViewboxEx),
                 new PropertyMetadata(null));
@@ -363,7 +363,7 @@ namespace FlowMy.Controls
             set => SetValue(StrokeProperty, value);
         }
 
-        // ── UseOriginalColors ───────────────────────────────────────────────
+        // -- UseOriginalColors -----------------------------------------------
         public static readonly DependencyProperty UseOriginalColorsProperty =
             DependencyProperty.Register(nameof(UseOriginalColors), typeof(bool), typeof(SvgViewboxEx),
                 new FrameworkPropertyMetadata(false,
@@ -389,7 +389,7 @@ namespace FlowMy.Controls
             }
         }
 
-        // ── Constructor ─────────────────────────────────────────────────────
+        // -- Constructor -----------------------------------------------------
         public SvgViewboxEx()
         {
             Stretch = Stretch.Uniform;
@@ -397,7 +397,7 @@ namespace FlowMy.Controls
             Child = _image;
         }
 
-        // ── Auto detect UseOriginalColors based on folder name ─────────────
+        // -- Auto detect UseOriginalColors based on folder name -------------
         private void AutoDetectUseOriginalColors()
         {
             // Only auto-detect if user hasn't explicitly set UseOriginalColors
@@ -417,7 +417,7 @@ namespace FlowMy.Controls
             SetValue(UseOriginalColorsProperty, hasColorFolder);
         }
 
-        // ── Khi parent đổi, reload để resolve lại màu ───────────────────────
+        // -- Khi parent d?i, reload d? resolve l?i m�u -----------------------
         protected override void OnVisualParentChanged(DependencyObject oldParent)
         {
             base.OnVisualParentChanged(oldParent);
@@ -425,7 +425,7 @@ namespace FlowMy.Controls
             ReloadIcon();
         }
 
-        // ── Core: load SVG → apply color → set ImageSource ─────────────────
+        // -- Core: load SVG ? apply color ? set ImageSource -----------------
         private void ReloadIcon()
         {
             var src = Source;
@@ -455,12 +455,12 @@ namespace FlowMy.Controls
                     TextAsGeometry = false,
                     OptimizePath = true
                 };
-                // Use Read(string) — URI overload causes NullRef inside SharpVectors
+                // Use Read(string) � URI overload causes NullRef inside SharpVectors
                 var reader = new FileSvgReader(settings);
                 DrawingGroup drawing = reader.Read(path);
                 if (drawing == null) { _image.Source = null; return; }
 
-                // Apply fill BEFORE any freeze (chỉ khi không dùng màu gốc)
+                // Apply fill BEFORE any freeze (ch? khi kh�ng d�ng m�u g?c)
                 if (!UseOriginalColors)
                 {
                     var fill = GetEffectiveFill();
@@ -480,7 +480,7 @@ namespace FlowMy.Controls
         {
             if (drawing is GeometryDrawing gd)
             {
-                // Chỉ thay nếu brush hiện tại không phải transparent/none
+                // Ch? thay n?u brush hi?n t?i kh�ng ph?i transparent/none
                 if (gd.Brush != null) gd.Brush = fill;
             }
             else if (drawing is DrawingGroup dg)
@@ -492,10 +492,10 @@ namespace FlowMy.Controls
 
         private Brush GetEffectiveFill()
         {
-            // Ưu tiên Fill nếu được cung cấp.
+            // Uu ti�n Fill n?u du?c cung c?p.
             if (Fill != null) return Fill;
 
-            // Nếu icon nằm trong ControlTemplate, thử lấy Foreground từ TemplatedParent trước.
+            // N?u icon n?m trong ControlTemplate, th? l?y Foreground t? TemplatedParent tru?c.
             if (TemplatedParent is Control templatedControl && templatedControl.Foreground != null)
             {
                 return templatedControl.Foreground;
@@ -505,14 +505,14 @@ namespace FlowMy.Controls
                 return templatedText.Foreground;
             }
 
-            // Fill null => fallback lấy Foreground từ control cha gần nhất.
+            // Fill null => fallback l?y Foreground t? control cha g?n nh?t.
             DependencyObject p = VisualTreeHelper.GetParent(this);
             while (p != null)
             {
                 if (p is Control c && c.Foreground != null) return c.Foreground;
                 if (p is TextBlock t && t.Foreground != null) return t.Foreground;
 
-                // Một số trường hợp parent không phải Control nhưng có TemplatedParent là Button.
+                // M?t s? tru?ng h?p parent kh�ng ph?i Control nhung c� TemplatedParent l� Button.
                 if (p is FrameworkElement fe && fe.TemplatedParent is Control parentControl && parentControl.Foreground != null)
                 {
                     return parentControl.Foreground;
@@ -532,8 +532,8 @@ namespace FlowMy.Controls
 //                      Fill="{DynamicResource TextOnCharcoalMistBrush}"
 //                      UseOriginalColors="True"/>
 
-//UseOriginalColors="True" → dùng màu gốc của SVG
-//UseOriginalColors="False" hoặc không set → dùng màu từ Fill hoặc màu cha (mặc định)
+//UseOriginalColors="True" ? d�ng m�u g?c c?a SVG
+//UseOriginalColors="False" ho?c kh�ng set ? d�ng m�u t? Fill ho?c m�u cha (m?c d?nh)
 
-//<local:IconSelectorUserControl UseOriginalColors = "True" />  < !--Dùng màu gốc SVG -->
-//<local:IconSelectorUserControl UseOriginalColors = "False" /> < !--Dùng màu cha/fill (mặc định) -->
+//<local:IconSelectorUserControl UseOriginalColors = "True" />  < !--D�ng m�u g?c SVG -->
+//<local:IconSelectorUserControl UseOriginalColors = "False" /> < !--D�ng m�u cha/fill (m?c d?nh) -->

@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -129,7 +129,7 @@ public sealed partial class FileWorkflowPersistenceService
 
     private void RestoreAsyncTaskNodeProperties(AsyncTaskNode asyncTaskNode, Dictionary<string, object> properties)
     {
-        // Deserialize RunInParallel trÆ°á»›c (cáº§n dÃ¹ng khi táº¡o port má»›i)
+        // Deserialize RunInParallel trước (cần dùng khi tạo port mới)
         if (properties.TryGetValue("RunInParallel", out var runInParallelObj))
         {
             if (bool.TryParse(runInParallelObj?.ToString(), out var runInParallel))
@@ -159,7 +159,7 @@ public sealed partial class FileWorkflowPersistenceService
         if (asyncTaskNode.UiPresentationMode == AsyncTaskUiPresentationMode.LoopLikeDispatch)
             _templateFactory.ConfigureAsyncTaskLoopLikePorts(asyncTaskNode);
 
-        // Deserialize AsyncTaskBranches (cháº¿ Ä‘á»™ nhÃ¡nh tay)
+        // Deserialize AsyncTaskBranches (chế độ nhánh tay)
         if (asyncTaskNode.UiPresentationMode == AsyncTaskUiPresentationMode.ManualBranches &&
             properties.TryGetValue("AsyncTaskBranches", out var asyncBranchesObj))
         {
@@ -181,7 +181,7 @@ public sealed partial class FileWorkflowPersistenceService
             }
             if (branchList != null && asyncTaskNode.AsyncTaskBranches != null && branchList.Count > 0)
             {
-                // Khi load, template chá»‰ cÃ³ 1 task. Náº¿u Ä‘Ã£ lÆ°u thÃªm task thÃ¬ táº¡o Ä‘á»§ task trÆ°á»›c khi restore.
+                // Khi load, template chỉ có 1 task. Nếu đã lưu thêm task thì tạo đủ task trước khi restore.
                 var portPosition = asyncTaskNode.AsyncTaskBranches.FirstOrDefault(b => b.Port != null)?.Port?.Position ?? PortPosition.Right;
                 var executionMode = asyncTaskNode.RunInParallel ? PortExecutionMode.Parallel : PortExecutionMode.Sequential;
                 while (asyncTaskNode.AsyncTaskBranches.Count < branchList.Count)
@@ -211,8 +211,8 @@ public sealed partial class FileWorkflowPersistenceService
                     if (d.TryGetValue("CanRemove", out v) && bool.TryParse(GetStringFromJsonValue(v), out var cr)) branch.CanRemove = cr;
                 }
 
-                // Äá»“ng bá»™ láº¡i ExecutionMode/ExecutionOrder cho toÃ n bá»™ task ports
-                // theo RunInParallel Ä‘Ã£ restore Ä‘á»ƒ trÃ¡nh workflow cÅ© hoáº·c template lá»‡ch mode.
+                // Đồng bộ lại ExecutionMode/ExecutionOrder cho toàn bộ task ports
+                // theo RunInParallel đã restore để tránh workflow cũ hoặc template lệch mode.
                 var mode = asyncTaskNode.RunInParallel ? PortExecutionMode.Parallel : PortExecutionMode.Sequential;
                 var order = 0;
                 foreach (var b in asyncTaskNode.AsyncTaskBranches)

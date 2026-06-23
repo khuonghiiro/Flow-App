@@ -9,8 +9,8 @@ using System.Windows;
 namespace FlowMy.Services.Workflow
 {
     /// <summary>
-    /// Service xá»­ lÃ½ logic thá»±c thi workflow tá»« Start node Ä‘áº¿n End node.
-    /// Há»— trá»£ sequential vÃ  parallel execution cho cÃ¡c output ports.
+    /// Service xử lý logic thực thi workflow từ Start node đến End node.
+    /// Hỗ trợ sequential và parallel execution cho các output ports.
     /// </summary>
     public class WorkflowExecutionService
     {
@@ -20,7 +20,7 @@ namespace FlowMy.Services.Workflow
 
         private readonly List<NodeExecutors.INodeExecutor> _nodeExecutors;
 
-        // âœ… LoopBody / AsyncTaskBody "return-to-right" synchronization â€” key gá»“m executionId + bodyId + branchScope (Ä‘á»ƒ nhiá»u vÃ²ng song song).
+        // ✅ LoopBody / AsyncTaskBody "return-to-right" synchronization — key gồm executionId + bodyId + branchScope (để nhiều vòng song song).
         private readonly Dictionary<string, LoopBodyReturnWaiter> _loopBodyReturnWaiters = new();
 
         private static string LoopBodyWaiterCompositeKey(string executionId, string loopBodyNodeId, string? branchScope = null)
@@ -30,22 +30,22 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Output chuá»—i theo tá»«ng láº§n cháº¡y (ExecutionId â†’ NodeId â†’ key â†’ value).
-        /// TrÃ¡nh hai workflow cháº¡y Ä‘á»“ng thá»i trÃªn cÃ¹ng graph ghi Ä‘Ã¨ <see cref="CodeNode.ResolvedOutputs"/> láº«n nhau khi Ä‘á»c downstream trong cÃ¹ng luá»“ng.
+        /// Output chuỗi theo từng lần chạy (ExecutionId → NodeId → key → value).
+        /// Tránh hai workflow chạy đồng thời trên cùng graph ghi đè <see cref="CodeNode.ResolvedOutputs"/> lẫn nhau khi đọc downstream trong cùng luồng.
         /// </summary>
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>> _scopedStringOutputsByRun =
             new(StringComparer.Ordinal);
 
         /// <summary>
-        /// Báº£n sao "bá»n" theo gá»‘c root-run: RootRunId â†’ ExecutionId â†’ NodeId â†’ key â†’ value.
-        /// Giá»¯ láº¡i giÃ¡ trá»‹ ngay cáº£ khi <see cref="_scopedStringOutputsByRun"/> bá»‹ clear/evict trÆ°á»›c khi downstream Ä‘á»c
-        /// (vÃ­ dá»¥: AsyncTask nhiá»u dispatch + HTTP cháº¡y lÃ¢u â†’ lookup chain primary miss, sticky cover).
-        /// Chá»‰ bá»‹ xÃ³a khi root run thá»±c sá»± káº¿t thÃºc (xem <see cref="ClearScopedOutputsForRun"/>).
+        /// Bản sao "bền" theo gốc root-run: RootRunId → ExecutionId → NodeId → key → value.
+        /// Giữ lại giá trị ngay cả khi <see cref="_scopedStringOutputsByRun"/> bị clear/evict trước khi downstream đọc
+        /// (ví dụ: AsyncTask nhiều dispatch + HTTP chạy lâu → lookup chain primary miss, sticky cover).
+        /// Chỉ bị xóa khi root run thực sự kết thúc (xem <see cref="ClearScopedOutputsForRun"/>).
         /// </summary>
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, ConcurrentDictionary<string, string?>>>> _stickyScopedStringOutputsByRoot =
             new(StringComparer.Ordinal);
 
-        /// <summary>Giá»›i háº¡n sá»‘ snapshot run cÃ²n giá»¯ trong RAM (trÃ¡nh rÃ² náº¿u quÃªn Clear); run cÅ© nháº¥t bá»‹ evict.</summary>
+        /// <summary>Giới hạn số snapshot run còn giữ trong RAM (tránh rò nếu quên Clear); run cũ nhất bị evict.</summary>
         private const int MaxScopedRunsRetained = 64;
 
         private readonly object _scopedRunRegistryLock = new();
@@ -68,7 +68,7 @@ namespace FlowMy.Services.Workflow
                 static _ => new ConcurrentDictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
             byKey[k] = value;
 
-            // Mirror vÃ o sticky theo root run Ä‘á»ƒ downstream váº«n Ä‘á»c Ä‘Æ°á»£c dÃ¹ primary scoped bá»‹ evict/clear sá»›m.
+            // Mirror vào sticky theo root run để downstream vẫn đọc được dù primary scoped bị evict/clear sớm.
             var rootId = NormalizeToRootRunId(executionId);
             if (!string.IsNullOrWhiteSpace(rootId))
             {
@@ -104,7 +104,7 @@ namespace FlowMy.Services.Workflow
                 }
             }
 
-            // 2) Sticky fallback (theo root run): tá»“n táº¡i ká»ƒ cáº£ sau khi primary bá»‹ clear/evict sá»›m.
+            // 2) Sticky fallback (theo root run): tồn tại kể cả sau khi primary bị clear/evict sớm.
             var rootId = NormalizeToRootRunId(executionId);
             if (!string.IsNullOrWhiteSpace(rootId) &&
                 _stickyScopedStringOutputsByRoot.TryGetValue(rootId, out var stickyByExec) &&
@@ -126,10 +126,10 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Äá»c output scoped theo chuá»—i <see cref="WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds"/>:
-        /// cÃ¹ng láº§n cháº¡y hiá»‡n táº¡i rá»“i tá»• tiÃªn (bá» <c>:at-manual-</c>, <c>:dispatch-</c>).
-        /// DÃ¹ng khi node downstream (FlowOverwrite, v.v.) cháº¡y vá»›i id khÃ¡c id lÃºc producer ghi snapshot.
-        /// KhÃ´ng Ä‘i ngang sang nhÃ¡nh song song khÃ¡c â€” chá»‰ Ä‘i lÃªn cha.
+        /// Đọc output scoped theo chuỗi <see cref="WorkflowKeyValueStore.EnumerateScopedLookupExecutionIds"/>:
+        /// cùng lần chạy hiện tại rồi tổ tiên (bỏ <c>:at-manual-</c>, <c>:dispatch-</c>).
+        /// Dùng khi node downstream (FlowOverwrite, v.v.) chạy với id khác id lúc producer ghi snapshot.
+        /// Không đi ngang sang nhánh song song khác — chỉ đi lên cha.
         /// </summary>
         internal bool TryGetScopedNodeStringOutputForLookupChain(string? executionId, string nodeId, string key, out string? value)
         {
@@ -175,8 +175,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Äáº©y toÃ n bá»™ <see cref="StorageNode.StoredOutputs"/> vÃ o snapshot scoped cá»§a <paramref name="executionId"/>.
-        /// Gá»i sau AssignData / Loop ghi Storage Ä‘á»ƒ downstream trong cÃ¹ng láº§n cháº¡y Ä‘á»c Ä‘Ãºng (khÃ´ng trá»™n vá»›i run khÃ¡c).
+        /// Đẩy toàn bộ <see cref="StorageNode.StoredOutputs"/> vào snapshot scoped của <paramref name="executionId"/>.
+        /// Gọi sau AssignData / Loop ghi Storage để downstream trong cùng lần chạy đọc đúng (không trộn với run khác).
         /// </summary>
         internal void PublishStorageOutputsToScoped(StorageNode storage, string executionId)
         {
@@ -189,9 +189,9 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// XÃ³a snapshot output cá»§a má»™t láº§n cháº¡y (gá»i sau khi workflow káº¿t thÃºc Ä‘á»ƒ giáº£m RAM).
-        /// Chá»‰ xÃ³a sticky store khi <paramref name="executionId"/> lÃ  ROOT run (khÃ´ng pháº£i dispatch/at-manual branch) â€”
-        /// downstream trong cÃ¹ng root run váº«n Ä‘á»c Ä‘Æ°á»£c giÃ¡ trá»‹ cá»§a cÃ¡c dispatch Ä‘Ã£ hoÃ n táº¥t.
+        /// Xóa snapshot output của một lần chạy (gọi sau khi workflow kết thúc để giảm RAM).
+        /// Chỉ xóa sticky store khi <paramref name="executionId"/> là ROOT run (không phải dispatch/at-manual branch) —
+        /// downstream trong cùng root run vẫn đọc được giá trị của các dispatch đã hoàn tất.
         /// </summary>
         public void ClearScopedOutputsForRun(string executionId)
         {
@@ -208,13 +208,13 @@ namespace FlowMy.Services.Workflow
                 }
             }
 
-            // Sticky store: chá»‰ xÃ³a khi root run (khÃ´ng pháº£i dispatch/at-manual branch).
-            // LÃ½ do: nhiá»u dispatch cÃ³ thá»ƒ clear primary trong quÃ¡ trÃ¬nh loop nhÆ°ng downstream váº«n cáº§n Ä‘á»c giÃ¡ trá»‹.
+            // Sticky store: chỉ xóa khi root run (không phải dispatch/at-manual branch).
+            // Lý do: nhiều dispatch có thể clear primary trong quá trình loop nhưng downstream vẫn cần đọc giá trị.
             if (!IsParallelScopedRun(executionId))
             {
                 _stickyScopedStringOutputsByRoot.TryRemove(executionId, out _);
 
-                // Dá»n luÃ´n má»i entry primary thuá»™c root nÃ y (dispatch-X / at-manual-â€¦) Ä‘á»ƒ trÃ¡nh leak.
+                // Dọn luôn mọi entry primary thuộc root này (dispatch-X / at-manual-…) để tránh leak.
                 var prefix = executionId + ":";
                 var orphanKeys = _scopedStringOutputsByRun.Keys
                     .Where(k => k.StartsWith(prefix, StringComparison.Ordinal))
@@ -235,9 +235,9 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// True náº¿u <paramref name="executionId"/> náº±m trong nhÃ¡nh cháº¡y song song (AsyncTask dispatch hoáº·c at-manual branch).
-        /// Trong cÃ¡c nhÃ¡nh nÃ y KHÃ”NG Ä‘Æ°á»£c fallback vá» state dÃ¹ng chung cá»§a <see cref="WorkflowNode.ResolvedOutputs"/>
-        /// vÃ¬ nÃ³ bá»‹ ghi Ä‘Ã¨ chÃ©o giá»¯a cÃ¡c dispatch (dispatch hoÃ n thÃ nh sau cÃ¹ng "tháº¯ng").
+        /// True nếu <paramref name="executionId"/> nằm trong nhánh chạy song song (AsyncTask dispatch hoặc at-manual branch).
+        /// Trong các nhánh này KHÔNG được fallback về state dùng chung của <see cref="WorkflowNode.ResolvedOutputs"/>
+        /// vì nó bị ghi đè chéo giữa các dispatch (dispatch hoàn thành sau cùng "thắng").
         /// </summary>
         internal static bool IsParallelScopedRun(string? executionId)
         {
@@ -247,8 +247,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// BÃ³c toÃ n bá»™ háº­u tá»‘ <c>:dispatch-â€¦</c> vÃ  <c>:at-manual-â€¦</c> Ä‘á»ƒ láº¥y id gá»‘c cá»§a root run
-        /// (dÃ¹ng lÃ m khÃ³a cho <see cref="_stickyScopedStringOutputsByRoot"/>).
+        /// Bóc toàn bộ hậu tố <c>:dispatch-…</c> và <c>:at-manual-…</c> để lấy id gốc của root run
+        /// (dùng làm khóa cho <see cref="_stickyScopedStringOutputsByRoot"/>).
         /// </summary>
         private static string NormalizeToRootRunId(string? executionId)
         {
@@ -265,11 +265,11 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Resolve theo snapshot scoped cá»§a <paramref name="executionId"/> (náº¿u cÃ³), fallback UI/node pháº³ng.
-        /// DÃ¹ng khi khÃ´ng cÃ³ full <see cref="NodeExecutors.NodeExecutionEnvironment"/> (mirror Storage, v.v.).
-        /// Lookup chain Ä‘Ã£ Ä‘Æ°á»£c gia cá»‘ báº±ng sticky-per-root-run (xem <see cref="SetScopedNodeStringOutput"/>)
-        /// nÃªn primary miss háº§u nhÆ° chá»‰ xáº£y ra vá»›i node publish qua sá»± kiá»‡n ngoÃ i (WebNode browser events, v.v.).
-        /// Vá»›i cÃ¡c node Ä‘Ã³ shared <see cref="WorkflowNode.DynamicOutputs"/> lÃ  nguá»“n há»£p lá»‡ duy nháº¥t.
+        /// Resolve theo snapshot scoped của <paramref name="executionId"/> (nếu có), fallback UI/node phẳng.
+        /// Dùng khi không có full <see cref="NodeExecutors.NodeExecutionEnvironment"/> (mirror Storage, v.v.).
+        /// Lookup chain đã được gia cố bằng sticky-per-root-run (xem <see cref="SetScopedNodeStringOutput"/>)
+        /// nên primary miss hầu như chỉ xảy ra với node publish qua sự kiện ngoài (WebNode browser events, v.v.).
+        /// Với các node đó shared <see cref="WorkflowNode.DynamicOutputs"/> là nguồn hợp lệ duy nhất.
         /// </summary>
         internal string ResolveDynamicValueForRun(WorkflowNode? node, string? key, string? executionId)
         {
@@ -287,12 +287,12 @@ namespace FlowMy.Services.Workflow
             {
                 resolved = NodeDataPanelService.ResolveDynamicValueByKey(node, k) ?? string.Empty;
             }
-            return string.Equals(resolved, "â€”", StringComparison.Ordinal) ? string.Empty : resolved;
+            return string.Equals(resolved, "—", StringComparison.Ordinal) ? string.Empty : resolved;
         }
 
         /// <summary>
-        /// Resolve giÃ¡ trá»‹ khi thá»±c thi: Æ°u tiÃªn output Ä‘Ã£ lÆ°u theo <see cref="NodeExecutors.NodeExecutionEnvironment.ExecutionId"/>,
-        /// rá»“i má»›i fallback <see cref="NodeDataPanelService.ResolveDynamicValueByKey"/> (UI / node máº·t pháº³ng).
+        /// Resolve giá trị khi thực thi: ưu tiên output đã lưu theo <see cref="NodeExecutors.NodeExecutionEnvironment.ExecutionId"/>,
+        /// rồi mới fallback <see cref="NodeDataPanelService.ResolveDynamicValueByKey"/> (UI / node mặt phẳng).
         /// </summary>
         internal string ResolveDynamicValueForExecution(
             WorkflowNode node,
@@ -305,14 +305,14 @@ namespace FlowMy.Services.Workflow
             if (env.RefreshOnly)
             {
                 var r = NodeDataPanelService.ResolveDynamicValueByKey(node, k) ?? string.Empty;
-                return string.Equals(r, "â€”", StringComparison.Ordinal) ? string.Empty : r;
+                return string.Equals(r, "—", StringComparison.Ordinal) ? string.Empty : r;
             }
 
             return ResolveDynamicValueForRun(node, k, env.ExecutionId);
         }
 
         /// <summary>
-        /// Giá»‘ng <see cref="ResolveValueByNodeIdAndKey"/> nhÆ°ng Æ°u tiÃªn snapshot scoped cá»§a láº§n cháº¡y hiá»‡n táº¡i (<paramref name="env"/>).
+        /// Giống <see cref="ResolveValueByNodeIdAndKey"/> nhưng ưu tiên snapshot scoped của lần chạy hiện tại (<paramref name="env"/>).
         /// </summary>
         internal string ResolveValueByNodeIdAndKeyForExecution(
             IEnumerable<WorkflowConnection> connections,
@@ -328,7 +328,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Legacy path upstream vÃ o conditional: dÃ¹ng scoped khi cÃ³ <paramref name="env"/>.
+        /// Legacy path upstream vào conditional: dùng scoped khi có <paramref name="env"/>.
         /// </summary>
         internal string ResolveConditionFromUpstreamForExecution(
             WorkflowNode conditionalNode,
@@ -360,8 +360,8 @@ namespace FlowMy.Services.Workflow
             };
 
         /// <summary>
-        /// Äáº©y dictionary output (vd. Code vá»«a tÃ­nh xong) vÃ o scoped store trÆ°á»›c khi gá»i node downstream â€”
-        /// cáº§n khi nhiá»u dispatch song song cÃ¹ng graph (mirror trong finally cá»§a ExecuteNodeAsync cháº¡y quÃ¡ muá»™n).
+        /// Đẩy dictionary output (vd. Code vừa tính xong) vào scoped store trước khi gọi node downstream —
+        /// cần khi nhiều dispatch song song cùng graph (mirror trong finally của ExecuteNodeAsync chạy quá muộn).
         /// </summary>
         internal void PublishDictionaryOutputsToScopedStore(string executionId, string nodeId, Dictionary<string, object?> outputs)
         {
@@ -374,23 +374,23 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Public wrapper: mirror node outputs vÃ o scoped store TRÆ¯á»šC khi traverse downstream.
-        /// Giáº£i quyáº¿t race condition trong parallel mode (AsyncTask) khi nhiá»u iteration dÃ¹ng chung node object.
+        /// Public wrapper: mirror node outputs vào scoped store TRƯỚC khi traverse downstream.
+        /// Giải quyết race condition trong parallel mode (AsyncTask) khi nhiều iteration dùng chung node object.
         /// </summary>
         internal void PreTraverseMirrorToScopedStore(WorkflowNode node, string executionId)
             => MirrorRuntimeOutputsToScopedStore(node, executionId);
 
         /// <summary>
-        /// Copy runtime outputs vÃ o kho theo <paramref name="executionId"/> Ä‘á»ƒ <see cref="ResolveDynamicValueForExecution"/> Ä‘á»c Ä‘Ãºng khi nhiá»u luá»“ng cháº¡y cÃ¹ng graph.
+        /// Copy runtime outputs vào kho theo <paramref name="executionId"/> để <see cref="ResolveDynamicValueForExecution"/> đọc đúng khi nhiều luồng chạy cùng graph.
         /// </summary>
         private void MirrorRuntimeOutputsToScopedStore(WorkflowNode node, string executionId)
         {
             if (string.IsNullOrWhiteSpace(executionId) || node == null) return;
 
-            // CodeNode/OutputNode Ä‘Ã£ tá»± publish vÃ o scoped store ngay trong executor
-            // trÆ°á»›c khi ghi vÃ o shared runtime fields.
-            // Náº¿u mirror láº¡i tá»« object shared á»Ÿ Ä‘Ã¢y, parallel dispatch cÃ³ thá»ƒ ghi Ä‘Ã¨ chÃ©o
-            // executionId (race), lÃ m nhiá»u dispatch Ä‘á»c cÃ¹ng má»™t giÃ¡ trá»‹.
+            // CodeNode/OutputNode đã tự publish vào scoped store ngay trong executor
+            // trước khi ghi vào shared runtime fields.
+            // Nếu mirror lại từ object shared ở đây, parallel dispatch có thể ghi đè chéo
+            // executionId (race), làm nhiều dispatch đọc cùng một giá trị.
             if (node is CodeNode
                 or OutputNode
                 or ListOutNode
@@ -533,8 +533,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Sau <see cref="ExecuteNodeLogicOnlyAsync"/> giá»¯a má»™t láº§n cháº¡y workflow, Ä‘á»“ng bá»™ output runtime cá»§a node vÃ o snapshot
-        /// Ä‘á»ƒ <see cref="ResolveDynamicValueForRun"/> khÃ´ng cÃ²n Ä‘á»c giÃ¡ trá»‹ scoped cÅ©.
+        /// Sau <see cref="ExecuteNodeLogicOnlyAsync"/> giữa một lần chạy workflow, đồng bộ output runtime của node vào snapshot
+        /// để <see cref="ResolveDynamicValueForRun"/> không còn đọc giá trị scoped cũ.
         /// </summary>
         internal void RefreshScopedOutputsFromNodeRuntime(WorkflowNode node, string executionId)
             => MirrorRuntimeOutputsToScopedStore(node, executionId);
@@ -548,7 +548,7 @@ namespace FlowMy.Services.Workflow
             _keyboardInput = keyboardInput ?? throw new ArgumentNullException(nameof(keyboardInput));
             _mouseInput = mouseInput ?? throw new ArgumentNullException(nameof(mouseInput));
 
-            // ÄÄƒng kÃ½ cÃ¡c executor cho tá»«ng loáº¡i node.
+            // Đăng ký các executor cho từng loại node.
             _nodeExecutors = new List<NodeExecutors.INodeExecutor>
             {
                 new NodeExecutors.LoopNodeExecutor(),
@@ -691,9 +691,9 @@ namespace FlowMy.Services.Workflow
 
             if (waiter == null) return;
 
-            // âœ… 1) mark return reached
+            // ✅ 1) mark return reached
             waiter.Tcs.TrySetResult(conn);
-            // âœ… 2) hard stop: cancel the iteration CTS so any other pending branches stop ASAP
+            // ✅ 2) hard stop: cancel the iteration CTS so any other pending branches stop ASAP
             if (waiter.HardStopCts != null && !waiter.HardStopCts.IsCancellationRequested)
             {
                 try { waiter.HardStopCts.Cancel(); } catch { /* ignore */ }
@@ -701,7 +701,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// TÃ¬m táº¥t cáº£ Start nodes trong workflow
+        /// Tìm tất cả Start nodes trong workflow
         /// </summary>
         public List<WorkflowNode> FindStartNodes(IEnumerable<WorkflowNode> nodes)
         {
@@ -711,7 +711,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// TÃ¬m táº¥t cáº£ End nodes trong workflow
+        /// Tìm tất cả End nodes trong workflow
         /// </summary>
         public List<WorkflowNode> FindEndNodes(IEnumerable<WorkflowNode> nodes)
         {
@@ -719,7 +719,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Láº¥y táº¥t cáº£ connections tá»« má»™t output port cá»¥ thá»ƒ
+        /// Lấy tất cả connections từ một output port cụ thể
         /// </summary>
         public List<WorkflowConnection> GetConnectionsFromPort(
             NodePort port,
@@ -785,20 +785,20 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Láº¥y táº¥t cáº£ output ports cá»§a má»™t node, sáº¯p xáº¿p theo ExecutionOrder
+        /// Lấy tất cả output ports của một node, sắp xếp theo ExecutionOrder
         /// </summary>
         public List<NodePort> GetOrderedOutputPorts(WorkflowNode node)
         {
             return node.Ports
                 .Where(p => !p.IsInput && p.IsVisible)
                 .OrderBy(p => p.ExecutionOrder)
-                .ThenBy(p => p.Position) // Náº¿u cÃ¹ng ExecutionOrder, sáº¯p xáº¿p theo Position
+                .ThenBy(p => p.Position) // Nếu cùng ExecutionOrder, sắp xếp theo Position
                 .ToList();
         }
 
         /// <summary>
-        /// XÃ¡c Ä‘á»‹nh luá»“ng thá»±c thi tá»« Start node Ä‘áº¿n End node.
-        /// Tráº£ vá» danh sÃ¡ch cÃ¡c node theo thá»© tá»± thá»±c thi.
+        /// Xác định luồng thực thi từ Start node đến End node.
+        /// Trả về danh sách các node theo thứ tự thực thi.
         /// </summary>
         public List<WorkflowNode> DetermineExecutionFlow(
             IEnumerable<WorkflowNode> nodes,
@@ -809,14 +809,14 @@ namespace FlowMy.Services.Workflow
             var executionOrder = new List<WorkflowNode>();
             var visited = new HashSet<WorkflowNode>();
 
-            // TÃ¬m Start nodes
+            // Tìm Start nodes
             var startNodes = FindStartNodes(nodeList);
             if (startNodes.Count == 0)
             {
-                return executionOrder; // KhÃ´ng cÃ³ Start node
+                return executionOrder; // Không có Start node
             }
 
-            // Báº¯t Ä‘áº§u tá»« má»—i Start node
+            // Bắt đầu từ mỗi Start node
             foreach (var startNode in startNodes)
             {
                 TraverseFromNode(startNode, connectionList, executionOrder, visited);
@@ -826,7 +826,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Duyá»‡t Ä‘á»“ thá»‹ tá»« má»™t node, theo thá»© tá»± execution cá»§a cÃ¡c output ports
+        /// Duyệt đồ thị từ một node, theo thứ tự execution của các output ports
         /// </summary>
         private void TraverseFromNode(
             WorkflowNode currentNode,
@@ -834,37 +834,37 @@ namespace FlowMy.Services.Workflow
             List<WorkflowNode> executionOrder,
             HashSet<WorkflowNode> visited)
         {
-            // Náº¿u Ä‘Ã£ thÄƒm rá»“i, bá» qua (trÃ¡nh vÃ²ng láº·p)
+            // Nếu đã thăm rồi, bỏ qua (tránh vòng lặp)
             if (visited.Contains(currentNode))
             {
                 return;
             }
 
-            // ThÃªm node vÃ o danh sÃ¡ch thá»±c thi
+            // Thêm node vào danh sách thực thi
             if (!executionOrder.Contains(currentNode))
             {
                 executionOrder.Add(currentNode);
             }
             visited.Add(currentNode);
 
-            // Náº¿u lÃ  End node, dá»«ng láº¡i
+            // Nếu là End node, dừng lại
             if (currentNode.Type == NodeType.End)
             {
                 return;
             }
 
-            // Láº¥y táº¥t cáº£ output ports Ä‘Ã£ sáº¯p xáº¿p
+            // Lấy tất cả output ports đã sắp xếp
             var outputPorts = GetOrderedOutputPorts(currentNode);
             if (outputPorts.Count == 0)
             {
-                return; // KhÃ´ng cÃ³ output ports
+                return; // Không có output ports
             }
 
-            // NhÃ³m ports theo ExecutionMode
+            // Nhóm ports theo ExecutionMode
             var sequentialPorts = outputPorts.Where(p => p.ExecutionMode == PortExecutionMode.Sequential).ToList();
             var parallelPorts = outputPorts.Where(p => p.ExecutionMode == PortExecutionMode.Parallel).ToList();
 
-            // Xá»­ lÃ½ Sequential ports trÆ°á»›c (theo thá»© tá»±)
+            // Xử lý Sequential ports trước (theo thứ tự)
             foreach (var port in sequentialPorts)
             {
                 var portConnections = connections.Where(c => c.FromNode == currentNode && c.FromPort == port).ToList();
@@ -877,9 +877,9 @@ namespace FlowMy.Services.Workflow
                 }
             }
 
-            // Xá»­ lÃ½ Parallel ports (cÃ³ thá»ƒ cháº¡y song song)
-            // Trong mÃ´ hÃ¬nh nÃ y, chÃºng ta váº«n duyá»‡t tuáº§n tá»± nhÆ°ng Ä‘Ã¡nh dáº¥u lÃ  parallel
-            // Runtime execution engine sáº½ quyáº¿t Ä‘á»‹nh cÃ¡ch thá»±c thi song song
+            // Xử lý Parallel ports (có thể chạy song song)
+            // Trong mô hình này, chúng ta vẫn duyệt tuần tự nhưng đánh dấu là parallel
+            // Runtime execution engine sẽ quyết định cách thực thi song song
             foreach (var port in parallelPorts.OrderBy(p => p.ExecutionOrder))
             {
                 var portConnections = connections.Where(c => c.FromNode == currentNode && c.FromPort == port).ToList();
@@ -894,7 +894,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Kiá»ƒm tra xem workflow cÃ³ há»£p lá»‡ khÃ´ng (cÃ³ Start vÃ  End nodes, khÃ´ng cÃ³ vÃ²ng láº·p flow)
+        /// Kiểm tra xem workflow có hợp lệ không (có Start và End nodes, không có vòng lặp flow)
         /// </summary>
         public WorkflowValidationResult ValidateWorkflow(
             IEnumerable<WorkflowNode> nodes,
@@ -904,18 +904,18 @@ namespace FlowMy.Services.Workflow
             var connectionList = connections.ToList();
             var result = new WorkflowValidationResult();
 
-            // Kiá»ƒm tra Start nodes
+            // Kiểm tra Start nodes
             var startNodes = FindStartNodes(nodeList);
             if (startNodes.Count == 0)
             {
-                result.Errors.Add("Workflow pháº£i cÃ³ Ã­t nháº¥t má»™t Start node");
+                result.Errors.Add("Workflow phải có ít nhất một Start node");
             }
 
-            // Kiá»ƒm tra End nodes
+            // Kiểm tra End nodes
             var endNodes = FindEndNodes(nodeList);
             if (endNodes.Count == 0)
             {
-                result.Errors.Add("Workflow pháº£i cÃ³ Ã­t nháº¥t má»™t End node");
+                result.Errors.Add("Workflow phải có ít nhất một End node");
             }
 
             var scopedStarts = startNodes
@@ -928,7 +928,7 @@ namespace FlowMy.Services.Workflow
                 .ToList();
             if (duplicatedScopeKeys.Count > 0)
             {
-                result.Warnings.Add($"FlowScopeKey bá»‹ trÃ¹ng: {string.Join(", ", duplicatedScopeKeys)}. Äiá»u nÃ y cÃ³ thá»ƒ gÃ¢y khÃ³ truy váº¿t nhÃ¡nh async.");
+                result.Warnings.Add($"FlowScopeKey bị trùng: {string.Join(", ", duplicatedScopeKeys)}. Điều này có thể gây khó truy vết nhánh async.");
             }
 
             var hasSubFlowStartWithoutEnd = startNodes.Any(s =>
@@ -936,29 +936,29 @@ namespace FlowMy.Services.Workflow
                 !HasReachableEndNode(s, connectionList, endNodes));
             if (hasSubFlowStartWithoutEnd)
             {
-                result.Warnings.Add("CÃ³ SubFlow Start khÃ´ng Ä‘i tá»›i End node nÃ o. HÃ£y kiá»ƒm tra Ä‘á»ƒ trÃ¡nh luá»“ng con cháº¡y dá»Ÿ dang.");
+                result.Warnings.Add("Có SubFlow Start không đi tới End node nào. Hãy kiểm tra để tránh luồng con chạy dở dang.");
             }
 
-            // Kiá»ƒm tra vÃ²ng láº·p flow.
-            // TrÆ°á»›c Ä‘Ã¢y flow loops bá»‹ cháº·n hoÃ n toÃ n, nhÆ°ng Ä‘á»ƒ há»— trá»£ cÃ¡c ká»‹ch báº£n tÃ¡i sá»­ dá»¥ng node
-            // (vÃ­ dá»¥ Start -> A -> B -> M -> A vÃ  M -> C) chÃºng ta chá»‰ cáº£nh bÃ¡o,
-            // cho phÃ©p user tá»± kiá»ƒm soÃ¡t trÃ¡nh láº·p vÃ´ háº¡n trong logic.
+            // Kiểm tra vòng lặp flow.
+            // Trước đây flow loops bị chặn hoàn toàn, nhưng để hỗ trợ các kịch bản tái sử dụng node
+            // (ví dụ Start -> A -> B -> M -> A và M -> C) chúng ta chỉ cảnh báo,
+            // cho phép user tự kiểm soát tránh lặp vô hạn trong logic.
             var hasFlowLoop = DetectFlowLoop(connectionList);
             if (hasFlowLoop)
             {
-                result.Warnings.Add("Workflow Ä‘ang cÃ³ vÃ²ng láº·p flow (flow loop). HÃ£y Ä‘áº£m báº£o khÃ´ng táº¡o láº·p vÃ´ háº¡n (vÃ­ dá»¥ M -> A -> B -> M ...).");
+                result.Warnings.Add("Workflow đang có vòng lặp flow (flow loop). Hãy đảm bảo không tạo lặp vô hạn (ví dụ M -> A -> B -> M ...).");
             }
 
-            // Kiá»ƒm tra káº¿t ná»‘i há»£p lá»‡ (chá»‰ cho phÃ©p outPort -> inPort)
+            // Kiểm tra kết nối hợp lệ (chỉ cho phép outPort -> inPort)
             foreach (var conn in connectionList)
             {
                 if (conn.FromPort != null && conn.FromPort.IsInput)
                 {
-                    result.Errors.Add($"Connection khÃ´ng há»£p lá»‡: khÃ´ng thá»ƒ káº¿t ná»‘i tá»« input port cá»§a node '{conn.FromNode?.Title}'");
+                    result.Errors.Add($"Connection không hợp lệ: không thể kết nối từ input port của node '{conn.FromNode?.Title}'");
                 }
                 if (conn.ToPort != null && !conn.ToPort.IsInput)
                 {
-                    result.Errors.Add($"Connection khÃ´ng há»£p lá»‡: khÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n output port cá»§a node '{conn.ToNode?.Title}'");
+                    result.Errors.Add($"Connection không hợp lệ: không thể kết nối đến output port của node '{conn.ToNode?.Title}'");
                 }
             }
 
@@ -993,15 +993,15 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// PhÃ¡t hiá»‡n vÃ²ng láº·p flow trong workflow
+        /// Phát hiện vòng lặp flow trong workflow
         /// </summary>
         private bool DetectFlowLoop(List<WorkflowConnection> connections)
         {
-            // âœ… Allow cycles inside LoopBody cluster (LoopBody logic is meant to be "code-like")
+            // ✅ Allow cycles inside LoopBody cluster (LoopBody logic is meant to be "code-like")
             // but still forbid flow cycles outside loop containers.
             var loopBodyClusters = BuildLoopBodyClusters(connections);
 
-            // Táº¡o Ä‘á»“ thá»‹ hÆ°á»›ng tá»« connections
+            // Tạo đồ thị hướng từ connections
             var graph = new Dictionary<WorkflowNode, List<WorkflowNode>>();
             foreach (var conn in connections)
             {
@@ -1021,7 +1021,7 @@ namespace FlowMy.Services.Workflow
                 }
             }
 
-            // DFS Ä‘á»ƒ phÃ¡t hiá»‡n cycle
+            // DFS để phát hiện cycle
             var visited = new HashSet<WorkflowNode>();
             var recStack = new HashSet<WorkflowNode>();
 
@@ -1087,7 +1087,7 @@ namespace FlowMy.Services.Workflow
 
                     foreach (var neighbor in neighbors)
                     {
-                        // Bá» qua LoopNode cha Ä‘á»ƒ khÃ´ng lan ra ngoÃ i qua default connection
+                        // Bỏ qua LoopNode cha để không lan ra ngoài qua default connection
                         if (ReferenceEquals(neighbor, loop)) continue;
 
                         if (visited.Add(neighbor))
@@ -1112,7 +1112,7 @@ namespace FlowMy.Services.Workflow
         {
             if (recStack.Contains(node))
             {
-                return true; // PhÃ¡t hiá»‡n cycle
+                return true; // Phát hiện cycle
             }
 
             if (visited.Contains(node))
@@ -1139,7 +1139,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Láº¥y thÃ´ng tin vá» cÃ¡c node tiáº¿p theo tá»« má»™t node cá»¥ thá»ƒ
+        /// Lấy thông tin về các node tiếp theo từ một node cụ thể
         /// </summary>
         public List<WorkflowNode> GetNextNodes(
             WorkflowNode currentNode,
@@ -1167,7 +1167,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Láº¥y thÃ´ng tin vá» cÃ¡c node trÆ°á»›c Ä‘Ã³ tá»« má»™t node cá»¥ thá»ƒ
+        /// Lấy thông tin về các node trước đó từ một node cụ thể
         /// </summary>
         public List<WorkflowNode> GetPreviousNodes(
             WorkflowNode currentNode,
@@ -1195,14 +1195,14 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// TÃ­nh táº­p cÃ¡c node cÃ³ thá»ƒ dáº«n tá»›i báº¥t ká»³ End node nÃ o (theo flow).
-        /// DÃ¹ng Ä‘á»ƒ loáº¡i bá» cÃ¡c nhÃ¡nh khÃ´ng ná»‘i Ä‘Æ°á»£c tá»›i End khi thá»±c thi.
+        /// Tính tập các node có thể dẫn tới bất kỳ End node nào (theo flow).
+        /// Dùng để loại bỏ các nhánh không nối được tới End khi thực thi.
         /// </summary>
         private HashSet<WorkflowNode> ComputeNodesReachingEnd(IEnumerable<WorkflowConnection> connections)
         {
             var connectionList = connections.ToList();
 
-            // XÃ¢y Ä‘á»“ thá»‹ ngÆ°á»£c: ToNode -> list FromNode
+            // Xây đồ thị ngược: ToNode -> list FromNode
             var reverseGraph = new Dictionary<WorkflowNode, List<WorkflowNode>>();
 
             foreach (var conn in connectionList)
@@ -1220,7 +1220,7 @@ namespace FlowMy.Services.Workflow
                 }
             }
 
-            // TÃ¬m táº¥t cáº£ End nodes
+            // Tìm tất cả End nodes
             var endNodes = connectionList
                 .SelectMany(c => new[] { c.FromNode, c.ToNode })
                 .Where(n => n != null && n.Type == NodeType.End)
@@ -1230,11 +1230,11 @@ namespace FlowMy.Services.Workflow
 
             if (endNodes.Count == 0)
             {
-                // KhÃ´ng cÃ³ End node -> khÃ´ng filter gÃ¬, cho phÃ©p cháº¡y toÃ n bá»™ graph hiá»‡n táº¡i
+                // Không có End node -> không filter gì, cho phép chạy toàn bộ graph hiện tại
                 return reachable;
             }
 
-            // BFS/DFS ngÆ°á»£c tá»« cÃ¡c End node
+            // BFS/DFS ngược từ các End node
             var queue = new Queue<WorkflowNode>();
             foreach (var end in endNodes)
             {
@@ -1258,13 +1258,13 @@ namespace FlowMy.Services.Workflow
                 }
             }
 
-            // Má»ž Rá»˜NG: giá»¯ láº¡i toÃ n bá»™ cÃ¡c node náº±m trong cÃ¹ng "cá»¥m káº¿t ná»‘i" (undirected)
-            // vá»›i báº¥t ká»³ node nÃ o cÃ³ thá»ƒ reach End.
+            // MỞ RỘNG: giữ lại toàn bộ các node nằm trong cùng "cụm kết nối" (undirected)
+            // với bất kỳ node nào có thể reach End.
             //
-            // Äiá»u nÃ y Ä‘áº£m báº£o:
-            // - CÃ¡c node chá»‰ ná»‘i "bÃªn hÃ´ng" vÃ o flow chÃ­nh (vÃ­ dá»¥ Storage chá»‰ cÃ³ 1 connection ra tá»« ScreenCapture)
-            //   nhÆ°ng váº«n náº±m trong cá»¥m Start-End sáº½ KHÃ”NG bá»‹ coi lÃ  nhÃ¡nh rÃ¡c.
-            // - Chá»‰ cÃ¡c node hoÃ n toÃ n tÃ¡ch biá»‡t khá»i cá»¥m Start-End má»›i bá»‹ bá» qua.
+            // Điều này đảm bảo:
+            // - Các node chỉ nối "bên hông" vào flow chính (ví dụ Storage chỉ có 1 connection ra từ ScreenCapture)
+            //   nhưng vẫn nằm trong cụm Start-End sẽ KHÔNG bị coi là nhánh rác.
+            // - Chỉ các node hoàn toàn tách biệt khỏi cụm Start-End mới bị bỏ qua.
             if (reachable.Count > 0)
             {
                 var undirected = new Dictionary<WorkflowNode, List<WorkflowNode>>();
@@ -1314,12 +1314,12 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Thá»±c thi node theo luá»“ng connections.
-        /// - Chá»‰ Ä‘i theo cÃ¡c nhÃ¡nh cÃ³ thá»ƒ dáº«n tá»›i End node (loáº¡i bá» cÃ¡c nhÃ¡nh "cá»¥t" khÃ´ng ná»‘i Ä‘Æ°á»£c tá»›i End).
-        /// - Há»— trá»£ cÃ¡c node cÃ³ action riÃªng (Delay, MouseEvent, KeyPress, HotkeyPress, v.v.).
+        /// Thực thi node theo luồng connections.
+        /// - Chỉ đi theo các nhánh có thể dẫn tới End node (loại bỏ các nhánh "cụt" không nối được tới End).
+        /// - Hỗ trợ các node có action riêng (Delay, MouseEvent, KeyPress, HotkeyPress, v.v.).
         /// 
-        /// Äá»ƒ dá»… báº£o trÃ¬, hÃ m nÃ y chá»‰ Ä‘iá»u phá»‘i control-flow chÃ­nh vÃ  á»§y quyá»n
-        /// cho cÃ¡c handler nhá» hÆ¡n theo tá»«ng loáº¡i node.
+        /// Để dễ bảo trì, hàm này chỉ điều phối control-flow chính và ủy quyền
+        /// cho các handler nhỏ hơn theo từng loại node.
         /// </summary>
         public async Task ExecuteNodeAsync(
             WorkflowNode node,
@@ -1345,15 +1345,15 @@ namespace FlowMy.Services.Workflow
 
             var connectionList = connections?.ToList() ?? new List<WorkflowConnection>();
 
-            // TÃ­nh trÆ°á»›c táº­p cÃ¡c node cÃ³ thá»ƒ Ä‘i tá»›i End (dÃ¹ng chung cho toÃ n bá»™ Ä‘á»‡ quy)
+            // Tính trước tập các node có thể đi tới End (dùng chung cho toàn bộ đệ quy)
             if (reachableToEnd == null)
             {
                 reachableToEnd = ComputeNodesReachingEnd(connectionList);
             }
 
-            // Náº¿u workflow cÃ³ End node vÃ  node hiá»‡n táº¡i KHÃ”NG náº±m trÃªn báº¥t ká»³ Ä‘Æ°á»ng nÃ o tá»›i End
-            // => bá» qua, khÃ´ng thá»±c thi logic vÃ  cÅ©ng khÃ´ng Ä‘i tiáº¿p (nhÃ¡nh "rÃ¡c").
-            // âš ï¸ NGOáº I Lá»†: StorageNode LUÃ”N Ä‘Æ°á»£c cháº¡y khi cÃ³ incoming connection (Ä‘á»ƒ set dá»¯ liá»‡u)
+            // Nếu workflow có End node và node hiện tại KHÔNG nằm trên bất kỳ đường nào tới End
+            // => bỏ qua, không thực thi logic và cũng không đi tiếp (nhánh "rác").
+            // ⚠️ NGOẠI LỆ: StorageNode LUÔN được chạy khi có incoming connection (để set dữ liệu)
             if (reachableToEnd.Count > 0 &&
                 node.Type != NodeType.End &&
                 node is not FlowMy.Models.Nodes.StorageNode &&
@@ -1374,13 +1374,13 @@ namespace FlowMy.Services.Workflow
             // instance, so the field above can be raced. AsyncLocal isolates each dispatch per async flow.
             WorkflowExecutionContext.CurrentExecutionId = executionId;
 
-            // BÃ¡o cho UI biáº¿t connection dáº«n tá»›i node Ä‘ang xá»­ lÃ½ (náº¿u cÃ³)
+            // Báo cho UI biết connection dẫn tới node đang xử lý (nếu có)
             onEnteringNode?.Invoke(incomingConnection);
             onNodeStarted?.Invoke(node, incomingConnection);
 
-            // â”€â”€ AutoTrigger: Kiá»ƒm tra vÃ  kÃ­ch hoáº¡t chá»©c nÄƒng tá»± Ä‘á»™ng tá»« ReuseRoutes â”€â”€
-            // Khi workflow cháº¡y Ä‘áº¿n node nÃ y, kiá»ƒm tra xem cÃ³ node nÃ o cáº¥u hÃ¬nh FunctionType trong ReuseRoutes khÃ´ng
-            // Náº¿u cÃ³ FunctionType = "Capture", kÃ­ch hoáº¡t cÆ¡ cháº¿ chá»¥p áº£nh trÆ°á»›c khi cháº¡y logic
+            // ── AutoTrigger: Kiểm tra và kích hoạt chức năng tự động từ ReuseRoutes ──
+            // Khi workflow chạy đến node này, kiểm tra xem có node nào cấu hình FunctionType trong ReuseRoutes không
+            // Nếu có FunctionType = "Capture", kích hoạt cơ chế chụp ảnh trước khi chạy logic
             await ProcessReuseRouteFunctionTypeAsync(node, incomingConnection, connectionList, cancellationToken).ConfigureAwait(false);
 
             // Flow-control trong LoopBody (Break / Continue)
@@ -1395,7 +1395,7 @@ namespace FlowMy.Services.Workflow
                 throw new LoopContinueException();
             }
 
-            // Äiá»u phá»‘i theo INodeExecutor
+            // Điều phối theo INodeExecutor
             var env = new NodeExecutors.NodeExecutionEnvironment(
                 service: this,
                 connections: connectionList,
@@ -1422,11 +1422,11 @@ namespace FlowMy.Services.Workflow
             {
                 try
                 {
-                    // ConfigureAwait(false): trÃ¡nh marshal ngÆ°á»£c vá» WPF SynchronizationContext sau má»—i await
-                    // bÃªn trong executor (HTTP call, File IO, v.v.) â€” giá»¯ execution trÃªn ThreadPool thread.
+                    // ConfigureAwait(false): tránh marshal ngược về WPF SynchronizationContext sau mỗi await
+                    // bên trong executor (HTTP call, File IO, v.v.) — giữ execution trên ThreadPool thread.
                     await executor.ExecuteAsync(node, env).ConfigureAwait(false);
 
-                    // Sau khi node cháº¡y xong, tá»± Ä‘á»™ng mirror outputs sang cÃ¡c StorageNode trá» tá»›i node nÃ y
+                    // Sau khi node chạy xong, tự động mirror outputs sang các StorageNode trỏ tới node này
                     MirrorOutputsToStorageNodes(node, connectionList, reachableToEnd, executionId);
                 }
                 finally
@@ -1437,18 +1437,18 @@ namespace FlowMy.Services.Workflow
             }
             catch (Exception ex) when (ex is not LoopBreakException and not LoopContinueException)
             {
-                // KhÃ´ng gá»i onNodeFailed á»Ÿ Ä‘Ã¢y: khi node con throw, exception ná»•i lÃªn vÃ  catch nÃ y cháº¡y vá»›i node = node CHA.
-                // Chá»‰ executor cá»§a node thá»±c sá»± lá»—i Ä‘Ã£ gá»i env.OnNodeFailed(nodeLá»—i) trÆ°á»›c khi throw â†’ chá»‰ node Ä‘Ã³ hiá»‡n toggle lá»—i.
+                // Không gọi onNodeFailed ở đây: khi node con throw, exception nổi lên và catch này chạy với node = node CHA.
+                // Chỉ executor của node thực sự lỗi đã gọi env.OnNodeFailed(nodeLỗi) trước khi throw → chỉ node đó hiện toggle lỗi.
                 throw;
             }
         }
 
         /// <summary>
-        /// Chá»‰ cháº¡y logic cá»§a node (cáº­p nháº­t output), khÃ´ng cháº¡y cÃ¡c node tiáº¿p theo.
-        /// DÃ¹ng khi AssignData cáº§n láº¥y giÃ¡ trá»‹ má»›i nháº¥t tá»« node nguá»“n (RefreshSourceBeforeUse),
-        /// hoáº·c khi nháº¥n nÃºt Play trong dialog (single node run).
+        /// Chỉ chạy logic của node (cập nhật output), không chạy các node tiếp theo.
+        /// Dùng khi AssignData cần lấy giá trị mới nhất từ node nguồn (RefreshSourceBeforeUse),
+        /// hoặc khi nhấn nút Play trong dialog (single node run).
         /// </summary>
-        /// <param name="allNodesForLookup">Khi cháº¡y single node tá»« dialog: truyá»n toÃ n bá»™ nodes cá»§a workflow Ä‘á»ƒ executor cÃ³ thá»ƒ resolve node nguá»“n theo Id (vÃ­ dá»¥ MediaGalleryNode.JsonSourceNodeId). Null = dÃ¹ng set rá»—ng.</param>
+        /// <param name="allNodesForLookup">Khi chạy single node từ dialog: truyền toàn bộ nodes của workflow để executor có thể resolve node nguồn theo Id (ví dụ MediaGalleryNode.JsonSourceNodeId). Null = dùng set rỗng.</param>
         internal async Task ExecuteNodeLogicOnlyAsync(
             WorkflowNode node,
             List<WorkflowConnection> connections,
@@ -1482,8 +1482,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Xá»­ lÃ½ FunctionType tá»« ReuseRoutes: Khi workflow cháº¡y Ä‘áº¿n node nÃ y, kiá»ƒm tra xem cÃ³ node nÃ o cáº¥u hÃ¬nh FunctionType trong ReuseRoutes khÃ´ng
-        /// Náº¿u cÃ³ FunctionType = "Capture", kÃ­ch hoáº¡t cÆ¡ cháº¿ chá»¥p áº£nh trÆ°á»›c khi cháº¡y logic
+        /// Xử lý FunctionType từ ReuseRoutes: Khi workflow chạy đến node này, kiểm tra xem có node nào cấu hình FunctionType trong ReuseRoutes không
+        /// Nếu có FunctionType = "Capture", kích hoạt cơ chế chụp ảnh trước khi chạy logic
         /// </summary>
         private async Task ProcessReuseRouteFunctionTypeAsync(
             WorkflowNode node,
@@ -1494,10 +1494,10 @@ namespace FlowMy.Services.Workflow
             if (node == null || connections == null) return;
             if (node.ReuseRoutes == null || node.ReuseRoutes.Count == 0) return;
 
-            // Debug log: hiá»ƒn thá»‹ táº¥t cáº£ ReuseRoute cá»§a node
+            // Debug log: hiển thị tất cả ReuseRoute của node
             System.Diagnostics.Debug.WriteLine($"ProcessReuseRouteFunctionType: Node {node.Title} ({node.Id}) has {node.ReuseRoutes.Count} ReuseRoutes, IncomingConnection: {incomingConnection?.FromNode?.Title ?? "null"}");
 
-            // TÃ¬m ReuseRoute tÆ°Æ¡ng á»©ng vá»›i incoming connection hiá»‡n táº¡i
+            // Tìm ReuseRoute tương ứng với incoming connection hiện tại
             var incomingNodeId = incomingConnection?.FromNode?.Id;
             var matchingRoute = node.ReuseRoutes.FirstOrDefault(r => 
                 string.Equals(r.IncomingNodeId, incomingNodeId, StringComparison.OrdinalIgnoreCase));
@@ -1506,7 +1506,7 @@ namespace FlowMy.Services.Workflow
             {
                 System.Diagnostics.Debug.WriteLine($"  - Found matching route: Incoming: {matchingRoute.IncomingNodeId}, Outgoing: {matchingRoute.OutgoingNodeId}, FunctionType: '{matchingRoute.FunctionType}'");
 
-                // Chá»‰ trigger capture náº¿u ReuseRoute tÆ°Æ¡ng á»©ng cÃ³ FunctionType = "Capture"
+                // Chỉ trigger capture nếu ReuseRoute tương ứng có FunctionType = "Capture"
                 if (string.Equals(matchingRoute.FunctionType, "Capture", StringComparison.OrdinalIgnoreCase))
                 {
                     System.Diagnostics.Debug.WriteLine($"ProcessReuseRouteFunctionType: Triggering capture for route from {matchingRoute.IncomingNodeId} to {matchingRoute.OutgoingNodeId}");
@@ -1524,20 +1524,20 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Thá»±c thi chá»¥p mÃ n hÃ¬nh cho node
+        /// Thực thi chụp màn hình cho node
         /// </summary>
         private async Task ExecuteScreenCaptureAsync(WorkflowNode node, CancellationToken cancellationToken)
         {
-            // Khi FunctionType = "Capture", luÃ´n trigger capture má»—i láº§n workflow cháº¡y vÃ o node
-            // KhÃ´ng check xem node Ä‘Ã£ cÃ³ áº£nh hay chÆ°a
+            // Khi FunctionType = "Capture", luôn trigger capture mỗi lần workflow chạy vào node
+            // Không check xem node đã có ảnh hay chưa
             System.Diagnostics.Debug.WriteLine($"AutoTrigger: Triggering screen capture for {node.Type} node {node.Id}");
 
-            // Gá»i ScreenCaptureHelper trá»±c tiáº¿p trÃªn UI thread
+            // Gọi ScreenCaptureHelper trực tiếp trên UI thread
             bool captureResult = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 try
                 {
-                    // Láº¥y main window
+                    // Lấy main window
                     var mainWindow = System.Windows.Application.Current.MainWindow;
                     if (mainWindow == null)
                     {
@@ -1545,7 +1545,7 @@ namespace FlowMy.Services.Workflow
                         return false;
                     }
 
-                    // Sá»­ dá»¥ng ScreenCaptureHelper Ä‘á»ƒ thá»±c hiá»‡n capture
+                    // Sử dụng ScreenCaptureHelper để thực hiện capture
                     if (node is TextScanNode textScanNode)
                     {
                         return FlowMy.Helpers.ScreenCaptureHelper.CaptureForTextScanNode(textScanNode, mainWindow);
@@ -1615,8 +1615,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Helper dÃ¹ng chung cho cÃ¡c node cÃ³ Ä‘Ãºng má»™t output port chÃ­nh + há»— trá»£ legacy connections.
-        /// DÃ¹ng cho KeyPressEventNode, HotkeyPressEventNode, v.v.
+        /// Helper dùng chung cho các node có đúng một output port chính + hỗ trợ legacy connections.
+        /// Dùng cho KeyPressEventNode, HotkeyPressEventNode, v.v.
         /// </summary>
         internal async Task TraverseSingleOutputAndLegacyAsync(
             WorkflowNode node,
@@ -1673,8 +1673,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Resolve giÃ¡ trá»‹ Ä‘iá»u kiá»‡n tá»« node nguá»“n ná»‘i vÃ o input port cá»§a conditional node.
-        /// DÃ¹ng cho ConditionalNodeExecutor khi Ä‘Ã¡nh giÃ¡ if/else if.
+        /// Resolve giá trị điều kiện từ node nguồn nối vào input port của conditional node.
+        /// Dùng cho ConditionalNodeExecutor khi đánh giá if/else if.
         /// </summary>
         internal string ResolveConditionFromUpstream(
             WorkflowNode conditionalNode,
@@ -1697,7 +1697,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Resolve giÃ¡ trá»‹ tá»« node theo Id (trong graph) vÃ  key. DÃ¹ng cho Ä‘iá»u kiá»‡n Left/Right trong dialog.
+        /// Resolve giá trị từ node theo Id (trong graph) và key. Dùng cho điều kiện Left/Right trong dialog.
         /// </summary>
         internal string ResolveValueByNodeIdAndKey(
             IEnumerable<WorkflowConnection> connections,
@@ -1712,7 +1712,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// So sÃ¡nh hai giÃ¡ trá»‹ theo toÃ¡n tá»­. Tráº£ vá» true náº¿u Ä‘iá»u kiá»‡n thá»a.
+        /// So sánh hai giá trị theo toán tử. Trả về true nếu điều kiện thỏa.
         /// </summary>
         internal static bool EvaluateCondition(string? left, string? right, ConditionOperator op)
         {
@@ -1753,8 +1753,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Chuyá»ƒn giÃ¡ trá»‹ string thÃ nh bool cho Ä‘iá»u kiá»‡n if/else if.
-        /// true: "true", "1", "yes", sá»‘ khÃ¡c 0; false: "false", "0", "no", empty.
+        /// Chuyển giá trị string thành bool cho điều kiện if/else if.
+        /// true: "true", "1", "yes", số khác 0; false: "false", "0", "no", empty.
         /// </summary>
         internal static bool ConditionValueToBool(string? value)
         {
@@ -1950,7 +1950,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Tá»± Ä‘á»™ng Ä‘á»“ng bá»™ outputs cá»§a node nguá»“n sang táº¥t cáº£ StorageNode cÃ³ SourceNodeId trá» tá»›i node Ä‘Ã³.
+        /// Tự động đồng bộ outputs của node nguồn sang tất cả StorageNode có SourceNodeId trỏ tới node đó.
         /// </summary>
         private void MirrorOutputsToStorageNodes(
             WorkflowNode sourceNode,
@@ -1958,8 +1958,8 @@ namespace FlowMy.Services.Workflow
             HashSet<WorkflowNode> reachableToEnd,
             string? executionId)
         {
-            // KhÃ´ng phá»¥ thuá»™c vÃ o reachableToEnd (Ä‘áº·c biá»‡t trong LoopBody, reachableToEnd cÃ³ thá»ƒ rá»—ng/noPrune).
-            // Thay vÃ o Ä‘Ã³, build táº­p node tá»« toÃ n bá»™ connections hiá»‡n táº¡i.
+            // Không phụ thuộc vào reachableToEnd (đặc biệt trong LoopBody, reachableToEnd có thể rỗng/noPrune).
+            // Thay vào đó, build tập node từ toàn bộ connections hiện tại.
             var allNodes = new HashSet<WorkflowNode>();
             foreach (var c in connections)
             {
@@ -1982,7 +1982,7 @@ namespace FlowMy.Services.Workflow
                 {
                     if (string.IsNullOrWhiteSpace(storageNode.SourceOutputKey))
                     {
-                        // Copy táº¥t cáº£ outputs
+                        // Copy tất cả outputs
                         storageNode.StoredOutputs.Clear();
                         storageNode.DynamicOutputs.Clear();
 
@@ -2008,7 +2008,7 @@ namespace FlowMy.Services.Workflow
                     }
                     else
                     {
-                        // Chá»‰ copy má»™t key duy nháº¥t
+                        // Chỉ copy một key duy nhất
                         var key = storageNode.SourceOutputKey.Trim();
                         var value = ResolveDynamicValueForRun(sourceNode, key, executionId);
 
@@ -2030,7 +2030,7 @@ namespace FlowMy.Services.Workflow
                 }
                 catch
                 {
-                    // best-effort, khÃ´ng Ä‘á»ƒ lá»—i mirror lÃ m há»ng workflow
+                    // best-effort, không để lỗi mirror làm hỏng workflow
                 }
             }
         }
@@ -2056,14 +2056,14 @@ namespace FlowMy.Services.Workflow
 
             if (string.IsNullOrWhiteSpace(input.SelectedSourceNodeId)) return new List<string>();
 
-            // 1) TÃ¬m Ä‘Ãºng node nguá»“n theo SelectedSourceNodeId (node combobox Ä‘Ã£ chá»n),
-            //    khÃ´ng chá»‰ node ngay trÆ°á»›c Loop trong graph.
+            // 1) Tìm đúng node nguồn theo SelectedSourceNodeId (node combobox đã chọn),
+            //    không chỉ node ngay trước Loop trong graph.
             var srcNode = connections
                 .Where(c => c.FromNode != null && c.FromNode.Id == input.SelectedSourceNodeId)
                 .Select(c => c.FromNode)
                 .FirstOrDefault();
 
-            // Náº¿u khÃ´ng tÃ¬m Ä‘Æ°á»£c qua connections (edge case), fallback: node ngay upstream
+            // Nếu không tìm được qua connections (edge case), fallback: node ngay upstream
             if (srcNode == null)
             {
                 var upstreamConnections = connections
@@ -2075,10 +2075,10 @@ namespace FlowMy.Services.Workflow
                 if (srcNode == null) return new List<string>();
             }
 
-            // 2) Láº¥y key Ä‘Ã£ chá»n tá»« combobox key (SelectedSourceOutputKey / UserKeyOverride / Key)
+            // 2) Lấy key đã chọn từ combobox key (SelectedSourceOutputKey / UserKeyOverride / Key)
             var key = (input.SelectedSourceOutputKey ?? input.UserKeyOverride ?? input.Key ?? string.Empty).Trim();
 
-            // 3) CÃ¡c Ä‘áº·c biá»‡t: StringSplitNode vÃ  InputNode array dÃ¹ng state sáºµn cÃ³ trÃªn node
+            // 3) Các đặc biệt: StringSplitNode và InputNode array dùng state sẵn có trên node
             if (srcNode is FlowMy.Models.Nodes.StringSplitNode splitNode)
                 return splitNode.SplitResult?.ToList() ?? new List<string>();
 
@@ -2091,9 +2091,9 @@ namespace FlowMy.Services.Workflow
                 var resolved = ResolveDynamicValueForExecution(srcNode, key, env);
                 if (!string.IsNullOrWhiteSpace(resolved))
                 {
-                    // âœ… Æ¯u tiÃªn parse JSON array trÆ°á»›c (khi source lÃ  CodeNode, KeyValueBridgeNode, etc.
-                    //    tráº£ vá» dáº¡ng ["a","b","c"]).
-                    //    Náº¿u split newline thÃ¬ cáº£ cá»¥c JSON thÃ nh 1 item duy nháº¥t â†’ bug!
+                    // ✅ Ưu tiên parse JSON array trước (khi source là CodeNode, KeyValueBridgeNode, etc.
+                    //    trả về dạng ["a","b","c"]).
+                    //    Nếu split newline thì cả cục JSON thành 1 item duy nhất → bug!
                     var trimmed = resolved.TrimStart();
                     if (trimmed.StartsWith("["))
                     {
@@ -2115,10 +2115,10 @@ namespace FlowMy.Services.Workflow
                                     return elements;
                             }
                         }
-                        catch { /* khÃ´ng parse Ä‘Æ°á»£c JSON, fallback newline */ }
+                        catch { /* không parse được JSON, fallback newline */ }
                     }
 
-                    // Fallback: split theo newline (plain text, má»—i dÃ²ng 1 item)
+                    // Fallback: split theo newline (plain text, mỗi dòng 1 item)
                     return resolved
                         .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(s => s.Trim())
@@ -2148,7 +2148,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// GÃ¡n giÃ¡ trá»‹ cho key cá»§a node (output hoáº·c input UserValueOverride). DÃ¹ng cho DataAssignments trong loop.
+        /// Gán giá trị cho key của node (output hoặc input UserValueOverride). Dùng cho DataAssignments trong loop.
         /// </summary>
         internal static void SetDynamicValueByKey(WorkflowNode node, string key, string value)
         {
@@ -2205,8 +2205,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Láº¥y repeat count tá»« DynamicInputs. 
-        /// Æ¯u tiÃªn UserValueOverride (textbox), náº¿u khÃ´ng cÃ³ thÃ¬ resolve tá»« output key cá»§a source node.
+        /// Lấy repeat count từ DynamicInputs. 
+        /// Ưu tiên UserValueOverride (textbox), nếu không có thì resolve từ output key của source node.
         /// </summary>
         internal int? GetRepeatCountFromDynamicInputs(
             WorkflowNode node,
@@ -2219,10 +2219,10 @@ namespace FlowMy.Services.Workflow
                 string.Equals(i.Key, "repeatCount", StringComparison.OrdinalIgnoreCase));
             if (input == null) return null;
 
-            // Æ¯u tiÃªn UserValueOverride (value tá»« textbox)
+            // Ưu tiên UserValueOverride (value từ textbox)
             var valueText = input.UserValueOverride?.Trim();
 
-            // Náº¿u khÃ´ng cÃ³ UserValueOverride, resolve tá»« output key cá»§a source node
+            // Nếu không có UserValueOverride, resolve từ output key của source node
             if (string.IsNullOrWhiteSpace(valueText) && connections != null && !string.IsNullOrWhiteSpace(input.SelectedSourceNodeId))
             {
                 valueText = ResolveInputValueFromConnections(node, input, connections, env);
@@ -2253,7 +2253,7 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Resolve giÃ¡ trá»‹ input tá»« output key cá»§a source node thÃ´ng qua connections.
+        /// Resolve giá trị input từ output key của source node thông qua connections.
         /// </summary>
         private string ResolveInputValueFromConnections(
             WorkflowNode toNode,
@@ -2265,14 +2265,14 @@ namespace FlowMy.Services.Workflow
 
             var connectionList = connections.ToList();
 
-            // TÃ¬m source node tá»« upstream connections
+            // Tìm source node từ upstream connections
             var upstreamConnections = connectionList
                 .Where(c => c.ToNode == toNode && c.FromNode != null)
                 .ToList();
 
             if (upstreamConnections.Count == 0) return string.Empty;
 
-            // TÃ¬m source node tá»« SelectedSourceNodeId
+            // Tìm source node từ SelectedSourceNodeId
             WorkflowNode? srcNode = null;
             var matchingConnection = upstreamConnections.FirstOrDefault(c =>
                 c.FromNode != null && c.FromNode.Id == input.SelectedSourceNodeId);
@@ -2281,11 +2281,11 @@ namespace FlowMy.Services.Workflow
             {
                 srcNode = matchingConnection.FromNode;
             }
-            // KhÃ´ng fallback vá» connection Ä‘áº§u tiÃªn â€” náº¿u SelectedSourceNodeId khÃ´ng match thÃ¬ khÃ´ng resolve
+            // Không fallback về connection đầu tiên — nếu SelectedSourceNodeId không match thì không resolve
 
             if (srcNode == null) return string.Empty;
 
-            // Láº¥y key Ä‘á»ƒ resolve (Æ°u tiÃªn SelectedSourceOutputKey)
+            // Lấy key để resolve (ưu tiên SelectedSourceOutputKey)
             var key = (input.SelectedSourceOutputKey ?? input.UserKeyOverride ?? input.Key ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(key)) return string.Empty;
 
@@ -2296,8 +2296,8 @@ namespace FlowMy.Services.Workflow
         }
 
         /// <summary>
-        /// Resolve giÃ¡ trá»‹ tá»« node theo key (dÃ¹ng trong execution).
-        /// á»¦y quyá»n cho NodeDataPanelService Ä‘á»ƒ láº¥y Ä‘Ãºng value tá»« StringSplitNode (SplitResult),
+        /// Resolve giá trị từ node theo key (dùng trong execution).
+        /// Ủy quyền cho NodeDataPanelService để lấy đúng value từ StringSplitNode (SplitResult),
         /// ListOutNode (ResolvedOutputs), InputNode (Value), HttpRequestNode, LoopNode, v.v.
         /// </summary>
         private string ResolveDynamicValueByKey(WorkflowNode node, string key)
@@ -2306,13 +2306,13 @@ namespace FlowMy.Services.Workflow
             if (string.IsNullOrWhiteSpace(key)) return string.Empty;
 
             var resolved = NodeDataPanelService.ResolveDynamicValueByKey(node, key);
-            // Chuáº©n hÃ³a "â€”" (placeholder trá»‘ng trong UI) thÃ nh empty cho so sÃ¡nh Ä‘iá»u kiá»‡n
-            return string.Equals(resolved, "â€”", StringComparison.Ordinal) ? string.Empty : (resolved ?? string.Empty);
+            // Chuẩn hóa "—" (placeholder trống trong UI) thành empty cho so sánh điều kiện
+            return string.Equals(resolved, "—", StringComparison.Ordinal) ? string.Empty : (resolved ?? string.Empty);
         }
     }
 
     /// <summary>
-    /// Káº¿t quáº£ validation cá»§a workflow
+    /// Kết quả validation của workflow
     /// </summary>
     public class WorkflowValidationResult
     {

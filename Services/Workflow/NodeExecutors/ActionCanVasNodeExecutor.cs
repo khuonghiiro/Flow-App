@@ -26,18 +26,93 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
         [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+        private static extern IntPtr WindowFromPoint(POINT Point);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        private const uint GW_HWNDNEXT = 2;
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT { public int Left, Top, Right, Bottom; }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int X, Y; }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+        private const uint GA_ROOT = 2;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
+        private const uint WM_MOUSEMOVE = 0x0200;
+        private const uint WM_LBUTTONDOWN = 0x0201;
+        private const uint WM_LBUTTONUP = 0x0202;
+        private const uint WM_RBUTTONDOWN = 0x0204;
+        private const uint WM_RBUTTONUP = 0x0205;
+        private const uint WM_MOUSEWHEEL = 0x020A;
+        private const uint MK_LBUTTON = 0x0001;
+        private const uint MK_RBUTTON = 0x0002;
+
+        private static IntPtr GetRealTargetHwnd(int x, int y)
+        {
+            IntPtr hwnd = WindowFromPoint(new POINT { X = x, Y = y });
+            if (hwnd == IntPtr.Zero) return IntPtr.Zero;
+
+            uint myPid = GetCurrentProcessId();
+            GetWindowThreadProcessId(hwnd, out uint pid);
+
+            // Bỏ qua cửa sổ thuộc process của ứng dụng (FlowMy / Overlay)
+            if (pid == myPid)
+            {
+                IntPtr current = hwnd;
+                while (current != IntPtr.Zero)
+                {
+                    current = GetWindow(current, GW_HWNDNEXT);
+                    if (current != IntPtr.Zero && IsWindowVisible(current))
+                    {
+                        GetWindowRect(current, out RECT rect);
+                        if (x >= rect.Left && x <= rect.Right && y >= rect.Top && y <= rect.Bottom)
+                        {
+                            GetWindowThreadProcessId(current, out uint nextPid);
+                            if (nextPid != myPid)
+                            {
+                                hwnd = current;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (hwnd != IntPtr.Zero)
+            {
+                var deepest = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(hwnd, x, y);
+                if (deepest.Hwnd != IntPtr.Zero && deepest.Hwnd != hwnd)
+                {
+                    return deepest.Hwnd;
+                }
+            }
+
+            return hwnd;
+        }
+
+        private static uint GetCurrentProcessId()
+        {
+            return (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
+        }
 
         private static (int screenX, int screenY) ResolveScreenCoords(MacroAction action, Rect bounds)
         {
@@ -216,8 +291,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         };
 
         /// <summary>
-        /// Map tÃªn key (tá»« GetKeyName trong recorder) â†’ VK code.
-        /// Bao gá»“m Ä‘áº§y Ä‘á»§: phÃ­m sá»‘, chá»¯, F-keys, navigation, numpad, kÃ½ tá»± Ä‘áº·c biá»‡t.
+        /// Map tên key (từ GetKeyName trong recorder) -> VK code.
+        /// Bao gồm đầy đủ: phím số, chữ, F-keys, navigation, numpad, ký tự đặc biệt.
         /// </summary>
         private static ushort KeyNameToVk(string name) => name switch
         {
@@ -233,17 +308,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             "PageDown"  => 0x22,
             "End"       => 0x23,
             "Home"      => 0x24,
-            "â†"         => 0x25,
-            "â†‘"         => 0x26,
-            "â†’"         => 0x27,
-            "â†“"         => 0x28,
+            "←"         => 0x25,
+            "↑"         => 0x26,
+            "→"         => 0x27,
+            "↓"         => 0x28,
             "PrtSc"     => 0x2C,
             "Insert"    => 0x2D,
             "Delete"    => 0x2E,
-            // Digits 0â€“9
+            // Digits 0-9
             "0" => 0x30, "1" => 0x31, "2" => 0x32, "3" => 0x33, "4" => 0x34,
             "5" => 0x35, "6" => 0x36, "7" => 0x37, "8" => 0x38, "9" => 0x39,
-            // Letters Aâ€“Z (VK = uppercase ASCII)
+            // Letters A-Z (VK = uppercase ASCII)
             "A" => 0x41, "B" => 0x42, "C" => 0x43, "D" => 0x44, "E" => 0x45,
             "F" => 0x46, "G" => 0x47, "H" => 0x48, "I" => 0x49, "J" => 0x4A,
             "K" => 0x4B, "L" => 0x4C, "M" => 0x4D, "N" => 0x4E, "O" => 0x4F,
@@ -255,7 +330,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             "Num4" => 0x64, "Num5" => 0x65, "Num6" => 0x66, "Num7" => 0x67,
             "Num8" => 0x68, "Num9" => 0x69,
             "Num*" => 0x6A, "Num+" => 0x6B, "Num-" => 0x6D, "Num." => 0x6E, "Num/" => 0x6F,
-            // F-keys F1â€“F24
+            // F-keys F1-F24
             "F1"  => 0x70, "F2"  => 0x71, "F3"  => 0x72, "F4"  => 0x73,
             "F5"  => 0x74, "F6"  => 0x75, "F7"  => 0x76, "F8"  => 0x77,
             "F9"  => 0x78, "F10" => 0x79, "F11" => 0x7A, "F12" => 0x7B,
@@ -272,6 +347,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             _   => 0
         };
 
+        private async Task<Rect> GetNodeBoundsAsync(ActionCanVasNode macroNode)
+        {
+            Rect bounds = Rect.Empty;
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null)
+            {
+                await dispatcher.InvokeAsync(() =>
+                {
+                    if (macroNode.Border != null)
+                    {
+                        var pt = macroNode.Border.PointToScreen(new Point(0, 0));
+                        var ptBottomRight = macroNode.Border.PointToScreen(new Point(macroNode.Border.ActualWidth, macroNode.Border.ActualHeight));
+                        bounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
+                    }
+                }, System.Windows.Threading.DispatcherPriority.Normal);
+            }
+            return bounds;
+        }
+
         public bool CanExecute(WorkflowNode node) => node is ActionCanVasNode;
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
@@ -279,7 +373,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var macroNode = (ActionCanVasNode)node;
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            // Empty JSON â†’ traverse and finish without throwing
+            // Empty JSON → traverse and finish without throwing
             if (string.IsNullOrWhiteSpace(macroNode.MacroDataJson))
             {
                 sw.Stop();
@@ -307,20 +401,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             // ─── Lấy bounds của ActionCanvas trên màn hình ───
-            Rect bounds = Rect.Empty;
-            var dispatcher = Application.Current?.Dispatcher;
-            if (dispatcher != null)
-            {
-                await dispatcher.InvokeAsync(() =>
-                {
-                    if (macroNode.Border != null)
-                    {
-                        var pt = macroNode.Border.PointToScreen(new Point(0, 0));
-                        var ptBottomRight = macroNode.Border.PointToScreen(new Point(macroNode.Border.ActualWidth, macroNode.Border.ActualHeight));
-                        bounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
-                    }
-                }, DispatcherPriority.Normal);
-            }
+            Rect bounds = await GetNodeBoundsAsync(macroNode);
 
             if (bounds.IsEmpty || bounds.Width == 0 || bounds.Height == 0)
             {
@@ -330,6 +411,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             int cycles = macroNode.PlaybackMode == MacroPlaybackMode.Once ? 1 : macroNode.RepeatCount;
             var visualMode = macroNode.VisualPlaybackMode;
 
+            object boundsLock = new object();
+            Rect sharedBounds = bounds;
+
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
             MacroPlaybackOverlay? overlay = null;
             if (visualMode != VisualPlaybackMode.Silent && dispatcher != null)
             {
@@ -342,6 +427,51 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         overlay.PrepareForTargetMode();
                         overlay.PositionOverBounds(bounds);
                         loadedTask = overlay.WhenLoaded;
+
+                        bool isClosed = false;
+                        var borderRef = macroNode.Border;
+                        EventHandler? layoutUpdatedHandler = null;
+                        layoutUpdatedHandler = (s, e) =>
+                        {
+                            if (isClosed || borderRef == null) return;
+                            try
+                            {
+                                var pt = borderRef.PointToScreen(new Point(0, 0));
+                                var ptBottomRight = borderRef.PointToScreen(new Point(borderRef.ActualWidth, borderRef.ActualHeight));
+                                var newBounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
+                                if (!newBounds.IsEmpty && newBounds.Width > 0 && newBounds.Height > 0)
+                                {
+                                    lock (boundsLock)
+                                    {
+                                        sharedBounds = newBounds;
+                                    }
+                                    overlay.PositionOverBounds(newBounds);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[MacroExecutor] LayoutUpdated reposition failed: {ex}");
+                            }
+                        };
+
+                        if (borderRef != null)
+                        {
+                            borderRef.LayoutUpdated += layoutUpdatedHandler;
+                        }
+
+                        overlay.Closed += (s, e) =>
+                        {
+                            isClosed = true;
+                            if (borderRef != null && layoutUpdatedHandler != null)
+                            {
+                                try
+                                {
+                                    borderRef.LayoutUpdated -= layoutUpdatedHandler;
+                                }
+                                catch { }
+                            }
+                        };
+
                         overlay.Show();
                     }
                     catch (Exception ex)
@@ -359,7 +489,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                     await dispatcher.InvokeAsync(() =>
                     {
-                        overlay?.PositionOverBounds(bounds);
+                        Rect currentBounds;
+                        lock (boundsLock)
+                        {
+                            currentBounds = sharedBounds;
+                        }
+                        overlay?.PositionOverBounds(currentBounds);
                         overlay?.ConfigureBorder(
                             "#00000000",
                             0,
@@ -367,6 +502,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             0,
                             Models.BorderEffectType.None);
                             
+                        overlay?.SetCompactMode(true);
                         overlay?.SetInfoVisibility(macroNode.ShowPlaybackInfo);
                         FlowMy.Views.NodeControls.ActionCanVasNodeControl.StartPlaybackEffect(macroNode);
                     }, DispatcherPriority.Normal);
@@ -433,6 +569,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
 
                         var action = actions[i];
+                        
+                        // ─── Cập nhật bounds liên tục để bám theo node nếu canvas bị di chuyển ───
+                        Rect currentBounds;
+                        lock (boundsLock)
+                        {
+                            currentBounds = sharedBounds;
+                        }
+                        bounds = currentBounds;
+
                         var (ax, ay) = ResolveScreenCoords(action, bounds);
 
                         overlay?.UpdateHeldModifiers(action.ShiftHeld, action.CtrlHeld, action.AltHeld);
@@ -447,9 +592,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawClick(ax, ay, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                
-                                var btn = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
-                                env.Service.MouseInput.SendMouseClickAt((int)ax, (int)ay, btn, 1, 0.05, action.ShiftHeld, action.CtrlHeld, action.AltHeld, restoreCursor: false);
+
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseClick", action.Button, 0);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -464,8 +608,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawClick(ax, ay, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                var btnDown = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
-                                env.Service.MouseInput.SendMouseDownAt(ax, ay, btnDown, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0);
                                 break;
                             }
                             case "MouseUp":
@@ -473,8 +616,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                var btnUp = action.Button == "Right" ? MouseButton.Right : MouseButton.Left;
-                                env.Service.MouseInput.SendMouseUpAt(ax, ay, btnUp, action.ShiftHeld, action.CtrlHeld, action.AltHeld, restoreCursor: false);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -496,10 +638,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }
                                 break;
                             case "MouseMove":
-                                env.Service.MouseInput.MoveCursorTo(ax, ay);
+                                // Do not move the real mouse to allow background processing
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent) overlay?.AddTrailPoint(ax, ay);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseMove", "", 0);
                                 break;
                             case "MouseScroll":
                             {
@@ -508,7 +651,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawScroll(ax, ay, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                env.Service.MouseInput.SendMouseScrollAt(ax, ay, action.ScrollDelta);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseScroll", "", action.ScrollDelta);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -605,5 +748,66 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 _            => $"Đang thao tác {modifiers}{buttonName}"
             };
         }
+        
+        private async Task SimulateVirtualMouseEventAsync(int ax, int ay, string actionType, string buttonStr, int scrollDelta)
+        {
+            IntPtr targetHwnd = GetRealTargetHwnd(ax, ay);
+            if (targetHwnd == IntPtr.Zero) return;
+
+            IntPtr topHwnd = GetAncestor(targetHwnd, GA_ROOT);
+            if (topHwnd == IntPtr.Zero) topHwnd = targetHwnd;
+
+            POINT clientPt = new POINT { X = ax, Y = ay };
+            ScreenToClient(targetHwnd, ref clientPt);
+            IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(clientPt.X, clientPt.Y);
+
+            bool isRight = buttonStr == "Right";
+
+            if (actionType == "MouseMove")
+            {
+                int mkMv = 0;
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)mkMv, lParam);
+            }
+            else if (actionType == "MouseDown")
+            {
+                uint msg = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
+                int wParam = isRight ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, 0x0021 /*WM_MOUSEACTIVATE*/, topHwnd, (IntPtr)((msg << 16) | 1));
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, 0x0020 /*WM_SETCURSOR*/, targetHwnd, (IntPtr)((FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE << 16) | 1));
+
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msg, (IntPtr)wParam, lParam);
+            }
+            else if (actionType == "MouseUp")
+            {
+                uint msg = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
+                
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msg, IntPtr.Zero, lParam);
+            }
+            else if (actionType == "MouseClick")
+            {
+                uint msgDown = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
+                uint msgUp = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
+                int wParam = isRight ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                
+                // Gửi thông điệp kích hoạt cho các ứng dụng yêu cầu MOUSEACTIVATE ở background
+                FlowMy.Helpers.WindowHelper.SendMessage(targetHwnd, 0x0021 /*WM_MOUSEACTIVATE*/, topHwnd, (IntPtr)((0x0201 /*WM_LBUTTONDOWN*/ << 16) | 1 /*HTCLIENT*/));
+
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgDown, (IntPtr)wParam, lParam);
+                
+                await Task.Delay(40); // Quan trọng: delay để ứng dụng kịp nhận MouseDown trước khi nhả chuột
+                
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgUp, IntPtr.Zero, lParam);
+            }
+            else if (actionType == "MouseScroll")
+            {
+                int wParamScroll = (scrollDelta * 120) << 16;
+                IntPtr lpScroll = FlowMy.Helpers.WindowHelper.MakeLParam(ax, ay); // WM_MOUSEWHEEL requires screen coords
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEWHEEL, (IntPtr)wParamScroll, lpScroll);
+            }
+        }
+
     }
 }
