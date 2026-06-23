@@ -1038,6 +1038,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 int wParam = isRight ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 wParam |= 0x4000;
 
+                if (!isRight) IsVirtualLeftButtonDown = true;
+
                 if (isLeftDown) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
 
@@ -1056,6 +1058,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 uint msg = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
                 
                 int wParam = 0x4000;
+                
+                if (!isRight) IsVirtualLeftButtonDown = false;
                 if (isLeftDown && isRight) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown && !isRight) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
 

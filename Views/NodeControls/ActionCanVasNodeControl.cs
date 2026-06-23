@@ -248,6 +248,8 @@ namespace FlowMy.Views.NodeControls
 
             border.PreviewMouseDown += (_, e) =>
             {
+                if (e.OriginalSource is not Ellipse handle || handle.Tag is not ResizeDirection dir) return;
+
                 bool isRecording = false;
                 try { isRecording = Application.Current.Windows.OfType<MacroRecorderOverlay>().Any(w => w.IsVisible); } catch { }
                 bool isPlaying = node.ExecutionStatusTextUI?.Text?.Contains("⏳") == true;
@@ -257,7 +259,6 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                if (e.OriginalSource is not Ellipse handle || handle.Tag is not ResizeDirection dir) return;
                 isResizing = true;
                 resizeDirection = dir;
                 start = e.GetPosition(border.Parent as UIElement);
@@ -334,6 +335,8 @@ namespace FlowMy.Views.NodeControls
 
             border.PreviewMouseUp += (_, e) =>
             {
+                if (!isResizing) return;
+
                 bool isRecording = false;
                 try { isRecording = Application.Current.Windows.OfType<MacroRecorderOverlay>().Any(w => w.IsVisible); } catch { }
                 bool isPlaying = node.ExecutionStatusTextUI?.Text?.Contains("⏳") == true;
@@ -343,7 +346,6 @@ namespace FlowMy.Views.NodeControls
                     return;
                 }
 
-                if (!isResizing) return;
                 isResizing = false;
                 resizeDirection = ResizeDirection.None;
                 border.ReleaseMouseCapture();
