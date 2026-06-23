@@ -179,7 +179,17 @@ namespace FlowMy.Services.Interaction
                 }
             }
 
-            Point mousePos = e.GetPosition(host.WorkflowCanvas);
+            Point mousePos;
+            var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
+            if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+            {
+                try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
+                catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+            }
+            else
+            {
+                mousePos = e.GetPosition(host.WorkflowCanvas);
+            }
             host.DragOffset = new Point(mousePos.X - host.DraggedNode.X, mousePos.Y - host.DraggedNode.Y);
 
             host.DraggedNode.Border?.CaptureMouse();
@@ -348,11 +358,23 @@ namespace FlowMy.Services.Interaction
             if (viewModel == null) return;
 
             if (host.DraggedNode?.Border == null) return;
-            if (e.LeftButton != MouseButtonState.Pressed) return;
+            if (e.LeftButton != MouseButtonState.Pressed && 
+                !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown) 
+                return;
 
             host.ZIndexManager.DragNode(host.DraggedNode);
 
-            Point mousePos = e.GetPosition(host.WorkflowCanvas);
+            Point mousePos;
+            var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
+            if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+            {
+                try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
+                catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+            }
+            else
+            {
+                mousePos = e.GetPosition(host.WorkflowCanvas);
+            }
             double newX = mousePos.X - host.DragOffset.X;
             double newY = mousePos.Y - host.DragOffset.Y;
             double moveDist = 0.0;

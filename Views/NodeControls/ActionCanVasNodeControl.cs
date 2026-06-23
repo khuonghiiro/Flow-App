@@ -73,7 +73,7 @@ namespace FlowMy.Views.NodeControls
                 Content = node.ShowPlaybackInfo ? "👁" : "🚫",
                 Width = 24,
                 Height = 24,
-                Margin = new Thickness(0, -18, 0, 0),
+                Margin = new Thickness(0, -30, 0, 0),
                 Padding = new Thickness(0),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
