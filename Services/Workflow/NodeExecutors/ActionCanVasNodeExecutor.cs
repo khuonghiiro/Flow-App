@@ -367,6 +367,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             0,
                             Models.BorderEffectType.None);
                             
+                        overlay?.SetInfoVisibility(macroNode.ShowPlaybackInfo);
                         FlowMy.Views.NodeControls.ActionCanVasNodeControl.StartPlaybackEffect(macroNode);
                     }, DispatcherPriority.Normal);
                 }
@@ -384,6 +385,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         win.Activate();
                     }
                 }, DispatcherPriority.Normal);
+            }
+
+            System.ComponentModel.PropertyChangedEventHandler? propHandler = null;
+            if (overlay != null)
+            {
+                propHandler = (s, e) =>
+                {
+                    if (e.PropertyName == nameof(ActionCanVasNode.ShowPlaybackInfo))
+                    {
+                        overlay.SetInfoVisibility(macroNode.ShowPlaybackInfo);
+                    }
+                };
+                macroNode.PropertyChanged += propHandler;
             }
 
             try
@@ -512,6 +526,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
+                if (propHandler != null)
+                {
+                    macroNode.PropertyChanged -= propHandler;
+                }
+
                 if (dispatcher != null)
                 {
                     dispatcher.Invoke(() =>

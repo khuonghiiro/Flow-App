@@ -197,6 +197,13 @@ namespace FlowMy.Models.Nodes
             set { if (_playbackEffectType != value) { _playbackEffectType = value; OnPropertyChanged(); } }
         }
 
+        private bool _showPlaybackInfo = true;
+        public bool ShowPlaybackInfo
+        {
+            get => _showPlaybackInfo;
+            set { if (_showPlaybackInfo != value) { _showPlaybackInfo = value; OnPropertyChanged(); } }
+        }
+
         [System.Text.Json.Serialization.JsonIgnore]
         public System.Windows.Controls.Border? ContainerBorder { get; set; }
     }

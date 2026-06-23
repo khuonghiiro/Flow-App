@@ -67,6 +67,25 @@ namespace FlowMy.Views.NodeControls
             titleText.Style = null; // Prevent global WPF styles
             node.TitleTextBlockUI = titleText;
 
+            var togglePlaybackInfoBtn = new System.Windows.Controls.Primitives.ToggleButton
+            {
+                Content = node.ShowPlaybackInfo ? "👁" : "🚫",
+                IsChecked = node.ShowPlaybackInfo,
+                Width = 24,
+                Height = 24,
+                Margin = new Thickness(0, 8, 8, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                ToolTip = "Bật/tắt hiển thị dòng thông tin trạng thái khi chạy",
+                Cursor = Cursors.Hand,
+                Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
+                Foreground = Brushes.White,
+                BorderThickness = new Thickness(0)
+            };
+            togglePlaybackInfoBtn.Checked += (s, e) => { node.ShowPlaybackInfo = true; togglePlaybackInfoBtn.Content = "👁"; };
+            togglePlaybackInfoBtn.Unchecked += (s, e) => { node.ShowPlaybackInfo = false; togglePlaybackInfoBtn.Content = "🚫"; };
+            root.Children.Add(togglePlaybackInfoBtn);
+
             // Add Resize Handles
             AddResizeHandle(root, ResizeDirection.TopLeft, HorizontalAlignment.Left, VerticalAlignment.Top);
             AddResizeHandle(root, ResizeDirection.Top, HorizontalAlignment.Center, VerticalAlignment.Top);
@@ -116,6 +135,10 @@ namespace FlowMy.Views.NodeControls
                 [nameof(ActionCanVasNode.BorderThickness)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
                 [nameof(ActionCanVasNode.BorderDashStyle)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
                 [nameof(ActionCanVasNode.BorderDashSpacing)] = ctx => ApplyVisuals(node, border, fillRect, borderRect, titleText),
+                [nameof(ActionCanVasNode.ShowPlaybackInfo)] = ctx => {
+                    togglePlaybackInfoBtn.IsChecked = node.ShowPlaybackInfo;
+                    togglePlaybackInfoBtn.Content = node.ShowPlaybackInfo ? "👁" : "🚫";
+                },
                 [nameof(WorkflowNode.NodeBrush)] = ctx => { /* Do nothing to Border.Background, we manage our own fill */ },
                 ["TitleColorMode"] = ctx => titleText.Foreground = ResolveTitleBrush(node, ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Colors.Blue)),
                 ["TitleColorKey"] = ctx => titleText.Foreground = ResolveTitleBrush(node, ParseColor(node.UseUnifiedColors ? node.BodyBackgroundColorHex : node.BodyBorderColorHex, Colors.Blue))

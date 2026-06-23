@@ -450,6 +450,15 @@ namespace FlowMy.Views.Overlays
             el.BeginAnimation(UIElement.OpacityProperty, anim);
         }
 
+        public void SetInfoVisibility(bool isVisible)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                StatusPanel.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+                ProgressPanel.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            });
+        }
+
         // ─── Public API called from executor ─────────────────────────────────────
 
         /// <summary>
