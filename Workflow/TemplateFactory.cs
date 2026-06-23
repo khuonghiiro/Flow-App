@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Utilities;
 using System.Linq;
@@ -62,7 +62,8 @@ namespace FlowMy.Workflow
                 "TextScan" => CreateTextScanNode(x, y),
                 "EmbedApplicationNode" => CreateEmbedApplicationNode(x, y),
                 "KeyScopedStore" => CreateKeyScopedStoreNode(x, y),
-                                "ActionCanVasNode" => CreateActionCanVasNode(x, y),
+                "ActionCanVas" => CreateActionCanVasNode(x, y),
+                "ActionCanVasNode" => CreateActionCanVasNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }

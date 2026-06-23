@@ -1151,10 +1151,48 @@ namespace FlowMy.Views
                 dstMacro.TitleColorKey = srcMacro.TitleColorKey;
             }
 
+            if (source is ActionCanVasNode srcAction && node is ActionCanVasNode dstAction)
+            {
+                dstAction.BodyWidth = srcAction.BodyWidth;
+                dstAction.BodyHeight = srcAction.BodyHeight;
+                dstAction.BodyBackgroundColorHex = srcAction.BodyBackgroundColorHex;
+                dstAction.BodyBorderColorHex = srcAction.BodyBorderColorHex;
+                dstAction.UseUnifiedColors = srcAction.UseUnifiedColors;
+                dstAction.BackgroundOpacityPercent = srcAction.BackgroundOpacityPercent;
+                dstAction.BorderOpacityPercent = srcAction.BorderOpacityPercent;
+                dstAction.BorderThickness = srcAction.BorderThickness;
+                dstAction.BorderDashStyle = srcAction.BorderDashStyle;
+                dstAction.BorderDashSpacing = srcAction.BorderDashSpacing;
+
+                dstAction.OutputKey = srcAction.OutputKey;
+                dstAction.MacroDataJson = srcAction.MacroDataJson;
+                dstAction.PlaybackMode = srcAction.PlaybackMode;
+                dstAction.RepeatIntervalMs = srcAction.RepeatIntervalMs;
+                dstAction.RepeatCount = srcAction.RepeatCount;
+                dstAction.VisualPlaybackMode = srcAction.VisualPlaybackMode;
+                dstAction.CountdownSeconds = srcAction.CountdownSeconds;
+
+                dstAction.PlaybackBorderColorHex = srcAction.PlaybackBorderColorHex;
+                dstAction.PlaybackBorderThickness = srcAction.PlaybackBorderThickness;
+                dstAction.PlaybackGradientSize = srcAction.PlaybackGradientSize;
+                dstAction.PlaybackOpacity = srcAction.PlaybackOpacity;
+                dstAction.PlaybackEffectType = srcAction.PlaybackEffectType;
+                dstAction.ShowPlaybackInfo = srcAction.ShowPlaybackInfo;
+
+                dstAction.TitleDisplayMode = srcAction.TitleDisplayMode;
+                dstAction.TitleColorMode = srcAction.TitleColorMode;
+                dstAction.TitleColorKey = srcAction.TitleColorKey;
+                dstAction.NotifyTitleChanged();
+            }
+
             // ⚠️ CRITICAL: Trigger PropertyChanged cho các node có INotifyPropertyChanged
             if (node is OutputNode outputNode)
             {
                 outputNode.NotifyTitleChanged();
+            }
+            else if (node is ActionCanVasNode actionNode)
+            {
+                actionNode.NotifyTitleChanged();
             }
             else if (node is NotificationNode notificationNode)
             {

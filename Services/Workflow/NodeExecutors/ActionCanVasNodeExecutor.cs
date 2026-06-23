@@ -19,6 +19,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     internal sealed class ActionCanVasNodeExecutor : INodeExecutor
     {
         public static bool IsVirtualLeftButtonDown { get; set; }
+        public static bool IsPlaybackActive { get; set; }
 
         private static object _coordsLock = new object();
         private static Point? _virtualScreenMousePosition;
@@ -559,6 +560,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 macroNode.PropertyChanged += propHandler;
             }
 
+            IsPlaybackActive = true;
             try
             {
                 bool isLeftDown = false;
@@ -706,6 +708,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
             finally
             {
+                IsPlaybackActive = false;
                 IsVirtualLeftButtonDown = false;
                 VirtualScreenMousePosition = null;
                 if (propHandler != null)
@@ -821,7 +824,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             if (actionType == "MouseMove")
             {
-                int mkMv = 0;
+                int mkMv = 0x4000;
                 if (isLeftDown) mkMv |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown) mkMv |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
 
@@ -831,6 +834,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 uint msg = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
                 int wParam = isRight ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                wParam |= 0x4000;
 
                 if (isLeftDown) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
@@ -838,7 +842,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, 0x0021 /*WM_MOUSEACTIVATE*/, topHwnd, (IntPtr)((msg << 16) | 1));
                 FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, 0x0020 /*WM_SETCURSOR*/, targetHwnd, (IntPtr)((FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE << 16) | 1));
 
-                int mkMv = 0;
+                int mkMv = 0x4000;
                 if (isLeftDown && isRight) mkMv |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown && !isRight) mkMv |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
 
@@ -849,11 +853,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 uint msg = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
                 
-                int wParam = 0;
+                int wParam = 0x4000;
                 if (isLeftDown && isRight) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown && !isRight) wParam |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
 
-                int mkMv = 0;
+                int mkMv = 0x4000;
                 if (isLeftDown) mkMv |= (int)FlowMy.Helpers.WindowHelper.MK_LBUTTON;
                 if (isRightDown) mkMv |= (int)FlowMy.Helpers.WindowHelper.MK_RBUTTON;
 
@@ -865,22 +869,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 uint msgDown = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONDOWN : FlowMy.Helpers.WindowHelper.WM_LBUTTONDOWN;
                 uint msgUp = isRight ? FlowMy.Helpers.WindowHelper.WM_RBUTTONUP : FlowMy.Helpers.WindowHelper.WM_LBUTTONUP;
                 int wParam = isRight ? FlowMy.Helpers.WindowHelper.MK_RBUTTON : FlowMy.Helpers.WindowHelper.MK_LBUTTON;
+                wParam |= 0x4000;
                 
                 // Gửi thông điệp kích hoạt cho các ứng dụng yêu cầu MOUSEACTIVATE ở background
                 FlowMy.Helpers.WindowHelper.SendMessage(targetHwnd, 0x0021 /*WM_MOUSEACTIVATE*/, topHwnd, (IntPtr)((0x0201 /*WM_LBUTTONDOWN*/ << 16) | 1 /*HTCLIENT*/));
 
                 if (!isRight) IsVirtualLeftButtonDown = true;
-                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, IntPtr.Zero, lParam);
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEMOVE, (IntPtr)0x4000, lParam);
                 FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgDown, (IntPtr)wParam, lParam);
                 
                 await Task.Delay(40); // Quan trọng: delay để ứng dụng kịp nhận MouseDown trước khi nhả chuột
                 
-                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgUp, IntPtr.Zero, lParam);
+                FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, msgUp, (IntPtr)0x4000, lParam);
                 if (!isRight) IsVirtualLeftButtonDown = false;
             }
             else if (actionType == "MouseScroll")
             {
-                int wParamScroll = (scrollDelta * 120) << 16;
+                int wParamScroll = ((scrollDelta * 120) << 16) | 0x4000;
                 IntPtr lpScroll = FlowMy.Helpers.WindowHelper.MakeLParam(ax, ay); // WM_MOUSEWHEEL requires screen coords
                 FlowMy.Helpers.WindowHelper.PostMessage(targetHwnd, FlowMy.Helpers.WindowHelper.WM_MOUSEWHEEL, (IntPtr)wParamScroll, lpScroll);
             }

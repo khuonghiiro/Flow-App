@@ -12,6 +12,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using static FlowMy.Services.Rendering.ConnectionRenderer;
 using ShapesPath = System.Windows.Shapes.Path;
@@ -27,6 +28,7 @@ namespace FlowMy.Views
         private readonly IWorkflowEditorHostAccessor _hostAccessor;
         private readonly WorkflowEditorEventService _eventService;
 
+        private HwndSource? _hwndSource;
         private WorkflowNode? _draggedNode;
         private Point _dragOffset;
         private WorkflowNode? _connectingFromNode;
@@ -518,10 +520,21 @@ namespace FlowMy.Views
                 SyncExecutionTraceDetachState();
                 SyncLeftMenuForExecutionTraceDockMode();
                 LoadSavedGitRepos();
+
+                _hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+                if (_hwndSource != null)
+                {
+                    _hwndSource.AddHook(WndProc);
+                }
             };
             // Đảm bảo đóng cửa sổ detach khi main window close để không bị window dangling.
             Closed += (_, _) =>
             {
+                if (_hwndSource != null)
+                {
+                    try { _hwndSource.RemoveHook(WndProc); } catch { }
+                    _hwndSource = null;
+                }
                 try { _executionTraceDetachedWindow?.Close(); } catch { }
                 _executionTraceDetachedWindow = null;
                 try
@@ -533,6 +546,39 @@ namespace FlowMy.Views
                 }
                 catch { }
             };
+        }
+
+        private const int WM_MOUSEMOVE = 0x0200;
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_LBUTTONUP = 0x0202;
+        private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_RBUTTONUP = 0x0205;
+        private const int WM_MOUSEWHEEL = 0x020A;
+        private const int WM_LBUTTONDBLCLK = 0x0203;
+        private const int WM_RBUTTONDBLCLK = 0x0206;
+        private const int WM_MBUTTONDOWN = 0x0207;
+        private const int WM_MBUTTONUP = 0x0208;
+        private const int WM_MBUTTONDBLCLK = 0x0209;
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive)
+            {
+                if (msg == WM_MOUSEMOVE || 
+                    msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP || msg == WM_LBUTTONDBLCLK ||
+                    msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP || msg == WM_RBUTTONDBLCLK ||
+                    msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP || msg == WM_MBUTTONDBLCLK ||
+                    msg == WM_MOUSEWHEEL)
+                {
+                    bool isVirtual = (wParam.ToInt64() & 0x4000) != 0;
+                    if (!isVirtual)
+                    {
+                        handled = true;
+                        return IntPtr.Zero;
+                    }
+                }
+            }
+            return IntPtr.Zero;
         }
 
         private void InitializeServices()

@@ -119,6 +119,23 @@ namespace FlowMy.Services.Interaction
             host.DraggedNode = viewModel.Nodes.FirstOrDefault(n => n.Border == border);
 
             if (host.DraggedNode == null) return;
+
+            if (host.DraggedNode is ActionCanVasNode)
+            {
+                bool isPlaybackActive = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive;
+                bool isRecordingActive = false;
+                try
+                {
+                    isRecordingActive = Application.Current?.Windows.OfType<FlowMy.Views.Overlays.MacroRecorderOverlay>().Any(w => w.IsVisible) == true;
+                }
+                catch { }
+
+                if (isPlaybackActive || isRecordingActive)
+                {
+                    host.DraggedNode = null;
+                    return;
+                }
+            }
             
 
             _draggedOwningLockedBody = null;
