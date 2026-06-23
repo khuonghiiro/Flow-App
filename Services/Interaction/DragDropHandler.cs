@@ -197,15 +197,25 @@ namespace FlowMy.Services.Interaction
             }
 
             Point mousePos;
-            var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
-            if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+            var virtWinPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
+            var editorWin = System.Windows.Window.GetWindow(host.WorkflowCanvas);
+            if (virtWinPos.HasValue && editorWin != null)
             {
-                try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
+                try { mousePos = editorWin.TranslatePoint(virtWinPos.Value, host.WorkflowCanvas); }
                 catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
             }
             else
             {
-                mousePos = e.GetPosition(host.WorkflowCanvas);
+                var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
+                if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+                {
+                    try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
+                    catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+                }
+                else
+                {
+                    mousePos = e.GetPosition(host.WorkflowCanvas);
+                }
             }
             host.DragOffset = new Point(mousePos.X - host.DraggedNode.X, mousePos.Y - host.DraggedNode.Y);
 
@@ -382,15 +392,25 @@ namespace FlowMy.Services.Interaction
             host.ZIndexManager.DragNode(host.DraggedNode);
 
             Point mousePos;
-            var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
-            if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+            var virtWinPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
+            var editorWin = System.Windows.Window.GetWindow(host.WorkflowCanvas);
+            if (virtWinPos.HasValue && editorWin != null)
             {
-                try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
+                try { mousePos = editorWin.TranslatePoint(virtWinPos.Value, host.WorkflowCanvas); }
                 catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
             }
             else
             {
-                mousePos = e.GetPosition(host.WorkflowCanvas);
+                var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
+                if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+                {
+                    try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
+                    catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+                }
+                else
+                {
+                    mousePos = e.GetPosition(host.WorkflowCanvas);
+                }
             }
             double newX = mousePos.X - host.DragOffset.X;
             double newY = mousePos.Y - host.DragOffset.Y;

@@ -548,6 +548,54 @@ namespace FlowMy.Views
             };
         }
 
+        private bool _isSimulatedMinimized = false;
+        private double _lastLeft;
+        private double _lastTop;
+        private WindowState _lastStateBeforeMinimize = WindowState.Normal;
+        private WindowState _lastState = WindowState.Normal;
+        private bool _allowRestore = true;
+
+        protected override void OnStateChanged(System.EventArgs e)
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                if (!_isSimulatedMinimized)
+                {
+                    _lastStateBeforeMinimize = _lastState;
+                    _lastLeft = Left;
+                    _lastTop = Top;
+                    _isSimulatedMinimized = true;
+                    _allowRestore = false;
+                    
+                    WindowState = WindowState.Normal;
+                    Left = -32000;
+                    Top = -32000;
+
+                    Dispatcher.BeginInvoke(new System.Action(() => { _allowRestore = true; }), System.Windows.Threading.DispatcherPriority.Loaded);
+                }
+            }
+            else
+            {
+                _lastState = WindowState;
+            }
+            base.OnStateChanged(e);
+        }
+
+        protected override void OnActivated(System.EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_isSimulatedMinimized && _allowRestore)
+            {
+                Left = _lastLeft;
+                Top = _lastTop;
+                if (_lastStateBeforeMinimize == WindowState.Maximized)
+                {
+                    WindowState = WindowState.Maximized;
+                }
+                _isSimulatedMinimized = false;
+            }
+        }
+
         private const int WM_MOUSEMOVE = 0x0200;
         private const int WM_LBUTTONDOWN = 0x0201;
         private const int WM_LBUTTONUP = 0x0202;
@@ -562,22 +610,7 @@ namespace FlowMy.Views
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive)
-            {
-                if (msg == WM_MOUSEMOVE || 
-                    msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP || msg == WM_LBUTTONDBLCLK ||
-                    msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP || msg == WM_RBUTTONDBLCLK ||
-                    msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP || msg == WM_MBUTTONDBLCLK ||
-                    msg == WM_MOUSEWHEEL)
-                {
-                    bool isVirtual = (wParam.ToInt64() & 0x4000) != 0;
-                    if (!isVirtual)
-                    {
-                        handled = true;
-                        return IntPtr.Zero;
-                    }
-                }
-            }
+            // Do not swallow physical mouse events during virtual playback to keep the physical mouse unlocked.
             return IntPtr.Zero;
         }
 

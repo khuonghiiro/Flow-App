@@ -123,6 +123,10 @@ namespace FlowMy.Views.Overlays
                 StartHoverFadeTimer();
                 _loadedTcs.TrySetResult();
             };
+            Closed += (_, _) =>
+            {
+                UnsubscribeOwnerEvents();
+            };
         }
 
         public void PositionOverBounds(Rect bounds)
@@ -1323,5 +1327,22 @@ namespace FlowMy.Views.Overlays
             };
             timer.Start();
         }
+
+        // ─── Owner Window Activation and Visibility Tracking ──────────────────────
+        private Window? _ownerWindow;
+
+        public void SetOwnerWindow(Window owner)
+        {
+            _ownerWindow = owner;
+        }
+
+        private void UnsubscribeOwnerEvents()
+        {
+            if (_ownerWindow != null)
+            {
+                _ownerWindow = null;
+            }
+        }
+
     }
 }

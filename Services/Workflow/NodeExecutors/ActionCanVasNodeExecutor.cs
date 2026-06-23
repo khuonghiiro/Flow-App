@@ -29,6 +29,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             set { lock (_coordsLock) _virtualScreenMousePosition = value; }
         }
 
+        private static Point? _virtualWindowMousePosition;
+        public static Point? VirtualWindowMousePosition
+        {
+            get { lock (_coordsLock) return _virtualWindowMousePosition; }
+            set { lock (_coordsLock) _virtualWindowMousePosition = value; }
+        }
+
         [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hWnd);
@@ -67,6 +74,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         [DllImport("user32.dll")]
         private static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern int MapWindowPoints(IntPtr hWndFrom, IntPtr hWndTo, ref POINT lpPoints, uint cPoints);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsIconic(IntPtr hWnd);
 
         private const uint WM_MOUSEMOVE = 0x0200;
         private const uint WM_LBUTTONDOWN = 0x0201;
@@ -419,6 +436,24 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             Rect sharedBounds = bounds;
 
             var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            Window? editorWindow = null;
+            IntPtr editorHwnd = IntPtr.Zero;
+            POINT lastValidClientOrigin = new POINT { X = 0, Y = 0 };
+
+            if (dispatcher != null)
+            {
+                await dispatcher.InvokeAsync(() =>
+                {
+                    editorWindow = Window.GetWindow(macroNode.Border);
+                    if (editorWindow == null) editorWindow = Application.Current?.MainWindow;
+                    if (editorWindow != null)
+                    {
+                        editorHwnd = new System.Windows.Interop.WindowInteropHelper(editorWindow).Handle;
+                        ClientToScreen(editorHwnd, ref lastValidClientOrigin);
+                    }
+                }, DispatcherPriority.Normal);
+            }
+
             MacroPlaybackOverlay? overlay = null;
             IntPtr overlayHwnd = IntPtr.Zero;
             if (visualMode != VisualPlaybackMode.Silent && dispatcher != null)
@@ -429,6 +464,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     try
                     {
                         overlay = new MacroPlaybackOverlay();
+                        if (editorWindow != null)
+                        {
+                            overlay.Owner = editorWindow;
+                            overlay.SetOwnerWindow(editorWindow);
+                        }
                         overlay.PrepareForTargetMode();
                         overlay.PositionOverBounds(bounds);
                         loadedTask = overlay.WhenLoaded;
@@ -446,7 +486,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 var pt = borderRef.PointToScreen(new Point(0, 0));
                                 var ptBottomRight = borderRef.PointToScreen(new Point(borderRef.ActualWidth, borderRef.ActualHeight));
                                 var newBounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
-                                if (!newBounds.IsEmpty && newBounds.Width > 0 && newBounds.Height > 0)
+                                if (!newBounds.IsEmpty && newBounds.Width > 0 && newBounds.Height > 0 && pt.X > -10000 && pt.Y > -10000)
                                 {
                                     bool changed = false;
                                     lock (boundsLock)
@@ -604,6 +644,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
                         bounds = currentBounds;
 
+                        if (editorHwnd != IntPtr.Zero && !IsIconic(editorHwnd))
+                        {
+                            POINT currentOrigin = new POINT { X = 0, Y = 0 };
+                            ClientToScreen(editorHwnd, ref currentOrigin);
+                             if (currentOrigin.X > -10000 && currentOrigin.Y > -10000)
+                            {
+                                lastValidClientOrigin = currentOrigin;
+                            }
+                        }
+
                         var (ax, ay) = ResolveScreenCoords(action, bounds);
 
                         overlay?.UpdateHeldModifiers(action.ShiftHeld, action.CtrlHeld, action.AltHeld);
@@ -619,7 +669,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawClick(ax, ay, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseClick", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseClick", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -640,7 +690,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     isLeftDown = true;
                                     IsVirtualLeftButtonDown = true;
                                 }
-                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown);
+                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
                                 break;
                             }
                             case "MouseUp":
@@ -648,7 +698,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
                                 capturedHwnd = IntPtr.Zero;
                                 if (action.Button == "Right") isRightDown = false;
                                 else
@@ -681,7 +731,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent) overlay?.AddTrailPoint(ax, ay);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseMove", "", 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseMove", "", 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
                                 break;
                             case "MouseScroll":
                             {
@@ -690,7 +740,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawScroll(ax, ay, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseScroll", "", action.ScrollDelta, overlayHwnd, capturedHwnd, isLeftDown, isRightDown);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseScroll", "", action.ScrollDelta, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -711,6 +761,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 IsPlaybackActive = false;
                 IsVirtualLeftButtonDown = false;
                 VirtualScreenMousePosition = null;
+                VirtualWindowMousePosition = null;
                 if (propHandler != null)
                 {
                     macroNode.PropertyChanged -= propHandler;
@@ -799,7 +850,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             IntPtr overlayHwnd, 
             IntPtr capturedHwnd,
             bool isLeftDown,
-            bool isRightDown)
+            bool isRightDown,
+            Window? editorWindow,
+            IntPtr editorHwnd,
+            POINT lastValidClientOrigin)
         {
             VirtualScreenMousePosition = new Point(ax, ay);
             IntPtr targetHwnd = capturedHwnd;
@@ -811,14 +865,162 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 targetHwnd = GetRealTargetHwnd(ax, ay, overlayHwnd);
             }
+
+            // Constrain targetHwnd to editorHwnd or its children
+            if (editorHwnd != IntPtr.Zero)
+            {
+                bool isSelfOrChildOfEditor = (targetHwnd == editorHwnd) || (GetAncestor(targetHwnd, GA_ROOT) == editorHwnd);
+                if (!isSelfOrChildOfEditor)
+                {
+                    if (!IsIconic(editorHwnd))
+                    {
+                        var deepest = FlowMy.Helpers.WindowHelper.GetDeepestChildFromPoint(editorHwnd, ax, ay);
+                        targetHwnd = deepest.Hwnd != IntPtr.Zero ? deepest.Hwnd : editorHwnd;
+                    }
+                    else
+                    {
+                        targetHwnd = editorHwnd;
+                    }
+                }
+            }
+
+            if (targetHwnd == IntPtr.Zero) targetHwnd = editorHwnd;
             if (targetHwnd == IntPtr.Zero) return IntPtr.Zero;
 
             IntPtr topHwnd = GetAncestor(targetHwnd, GA_ROOT);
             if (topHwnd == IntPtr.Zero) topHwnd = targetHwnd;
 
-            POINT clientPt = new POINT { X = ax, Y = ay };
-            ScreenToClient(targetHwnd, ref clientPt);
+            bool isOffScreen = false;
+            if (editorHwnd != IntPtr.Zero)
+            {
+                POINT origin = new POINT { X = 0, Y = 0 };
+                ClientToScreen(editorHwnd, ref origin);
+                if (origin.X <= -10000 || origin.Y <= -10000)
+                {
+                    isOffScreen = true;
+                }
+            }
+
+            POINT clientPt;
+            if (editorHwnd != IntPtr.Zero && (IsIconic(editorHwnd) || isOffScreen))
+            {
+                clientPt = new POINT { X = ax - lastValidClientOrigin.X, Y = ay - lastValidClientOrigin.Y };
+                if (targetHwnd != editorHwnd)
+                {
+                    MapWindowPoints(editorHwnd, targetHwnd, ref clientPt, 1);
+                }
+            }
+            else
+            {
+                clientPt = new POINT { X = ax, Y = ay };
+                ScreenToClient(targetHwnd, ref clientPt);
+            }
             IntPtr lParam = FlowMy.Helpers.WindowHelper.MakeLParam(clientPt.X, clientPt.Y);
+
+            // Direct WPF Event Dispatching
+            if (editorWindow != null)
+            {
+                var dispatcher = editorWindow.Dispatcher;
+                if (dispatcher != null)
+                {
+                    dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            POINT editorPt;
+                            if (isOffScreen || IsIconic(editorHwnd))
+                            {
+                                editorPt = new POINT { X = ax - lastValidClientOrigin.X, Y = ay - lastValidClientOrigin.Y };
+                            }
+                            else
+                            {
+                                editorPt = new POINT { X = ax, Y = ay };
+                                ScreenToClient(editorHwnd, ref editorPt);
+                            }
+
+                            var wpfPoint = new Point(editorPt.X, editorPt.Y);
+                            VirtualWindowMousePosition = wpfPoint;
+                            UIElement? hitElement = null;
+                            System.Windows.Media.VisualTreeHelper.HitTest(editorWindow,
+                                null,
+                                new System.Windows.Media.HitTestResultCallback(result =>
+                                {
+                                    if (result.VisualHit is UIElement elem && elem.IsVisible)
+                                    {
+                                        hitElement = elem;
+                                        return System.Windows.Media.HitTestResultBehavior.Stop;
+                                    }
+                                    return System.Windows.Media.HitTestResultBehavior.Continue;
+                                }),
+                                new System.Windows.Media.PointHitTestParameters(wpfPoint));
+
+                            if (hitElement != null)
+                            {
+                                var time = Environment.TickCount;
+                                if (actionType == "MouseMove")
+                                {
+                                    var args = new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time)
+                                    {
+                                        RoutedEvent = UIElement.MouseMoveEvent,
+                                        Source = hitElement
+                                    };
+                                    hitElement.RaiseEvent(args);
+                                }
+                                else if (actionType == "MouseDown")
+                                {
+                                    var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
+                                    var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                    {
+                                        RoutedEvent = UIElement.MouseDownEvent,
+                                        Source = hitElement
+                                    };
+                                    hitElement.RaiseEvent(args);
+                                }
+                                else if (actionType == "MouseUp")
+                                {
+                                    var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
+                                    var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                    {
+                                        RoutedEvent = UIElement.MouseUpEvent,
+                                        Source = hitElement
+                                    };
+                                    hitElement.RaiseEvent(args);
+                                }
+                                else if (actionType == "MouseClick")
+                                {
+                                    var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
+                                    var downArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                    {
+                                        RoutedEvent = UIElement.MouseDownEvent,
+                                        Source = hitElement
+                                    };
+                                    hitElement.RaiseEvent(downArgs);
+
+                                    var upArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time + 10, button)
+                                    {
+                                        RoutedEvent = UIElement.MouseUpEvent,
+                                        Source = hitElement
+                                    };
+                                    hitElement.RaiseEvent(upArgs);
+                                }
+                                else if (actionType == "MouseScroll")
+                                {
+                                    var args = new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, scrollDelta * 120)
+                                    {
+                                        RoutedEvent = UIElement.MouseWheelEvent,
+                                        Source = hitElement
+                                    };
+                                    hitElement.RaiseEvent(args);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MacroExecutor] WPF direct event dispatch failed: {ex}");
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Input);
+                }
+            }
 
             bool isRight = buttonStr == "Right";
 
