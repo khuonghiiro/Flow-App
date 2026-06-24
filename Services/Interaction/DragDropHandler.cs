@@ -128,7 +128,30 @@ namespace FlowMy.Services.Interaction
             }
             catch { }
 
-            if (isPlaybackActive || isRecordingActive)
+            if (isPlaybackActive)
+            {
+                var webView = host.DraggedNode.Border != null ? FindWebView2Control(host.DraggedNode.Border) : null;
+                if (webView != null && webView.IsVisible)
+                {
+                    var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
+                    var pWin = Window.GetWindow(host.WorkflowCanvas);
+                    if (virtPos.HasValue && pWin != null)
+                    {
+                        try
+                        {
+                            Point posInWebView = pWin.TranslatePoint(virtPos.Value, webView);
+                            if (posInWebView.X >= 0 && posInWebView.X <= webView.ActualWidth &&
+                                posInWebView.Y >= 0 && posInWebView.Y <= webView.ActualHeight)
+                            {
+                                host.DraggedNode = null;
+                                return;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            else if (isRecordingActive)
             {
                 host.DraggedNode = null;
                 return;
@@ -156,6 +179,7 @@ namespace FlowMy.Services.Interaction
 
             host.ZIndexManager.SelectNode(host.DraggedNode);
             
+            if (host.DraggedNode == null) return;
             // Tối ưu GPU: Clear cache khi bắt đầu drag để tránh ghost effects
             if (GpuDetectionHelper.IsGpuAvailable && host.DraggedNode.Border != null)
             {
@@ -163,15 +187,19 @@ namespace FlowMy.Services.Interaction
                 RenderOptions.SetCachingHint(host.DraggedNode.Border, CachingHint.Unspecified);
             }
 
+            if (host.DraggedNode == null) return;
             foreach (var port in host.DraggedNode.Ports.Where(p => p.PortUI != null && p.IsVisible))
             {
+                if (host.DraggedNode == null) return;
                 host.ZIndexManager.SetPortZIndex(host.DraggedNode, port.PortUI!);
             }
 
+            if (host.DraggedNode == null) return;
             if (host.DraggedNode.IsConditionalNode && host.DraggedNode.ConditionalBranches != null)
             {
                 foreach (var branch in host.DraggedNode.ConditionalBranches)
                 {
+                    if (host.DraggedNode == null) return;
                     if (branch.Port?.PortUI != null && branch.Port.IsVisible)
                     {
                         host.ZIndexManager.SetPortZIndex(host.DraggedNode, branch.Port.PortUI);
@@ -181,11 +209,13 @@ namespace FlowMy.Services.Interaction
 
             foreach (var otherNode in viewModel.Nodes)
             {
+                if (host.DraggedNode == null) return;
                 if (otherNode != host.DraggedNode && otherNode.Border != null)
                 {
                     host.ZIndexManager.RestoreNodeZIndex(otherNode);
                 }
 
+                if (host.DraggedNode == null) return;
                 // Nếu node khác là LoopNode, cần khôi phục z-index cho cả LoopBody của nó
                 if (otherNode is LoopNode loopNode && loopNode.LoopBodyNode != host.DraggedNode)
                 {
@@ -381,13 +411,8 @@ namespace FlowMy.Services.Interaction
             var viewModel = host.ViewModel;
             if (viewModel == null) return;
 
-            if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive)
-            {
-                host.DraggedNode = null;
-                return;
-            }
-
             if (host.DraggedNode?.Border == null) return;
+            if (!host.DraggedNode.Border.IsMouseCaptured) return;
             if (e.LeftButton != MouseButtonState.Pressed && 
                 !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown) 
                 return;
@@ -1213,6 +1238,23 @@ namespace FlowMy.Services.Interaction
             }
 
             return result;
+        }
+
+        private static FrameworkElement? FindWebView2Control(DependencyObject parent)
+        {
+            if (parent == null) return null;
+            if (parent is System.Windows.Interop.HwndHost || parent.GetType().Name.Contains("WebView2"))
+            {
+                return parent as FrameworkElement;
+            }
+            int childrenCount = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < childrenCount; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                var result = FindWebView2Control(child);
+                if (result != null) return result;
+            }
+            return null;
         }
     }
 }
