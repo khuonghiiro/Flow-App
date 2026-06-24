@@ -3451,6 +3451,36 @@ Cursor="Hand"
                                VerticalAlignment="Bottom"
                                MaxWidth="600">
 
+                        <!-- Zoom Lock Button -->
+                        <Button x:Name="ZoomLockButton"
+                            Click="ZoomLockButton_Click"
+                            Height="25"
+                            Width="25"
+                            Margin="0, 0,10,0"
+                            VerticalAlignment="Bottom"
+                            Style="{DynamicResource TransparentButtonStyle}"
+                            ToolTip="Khóa / Mở khóa zoom canvas">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.5"/>
+                            </Button.Effect>
+                            <controls:SvgViewboxEx Width="18" Height="18">
+                                <controls:SvgViewboxEx.Style>
+                                    <Style TargetType="controls:SvgViewboxEx">
+                                        <!-- Default: Unlocked -->
+                                        <Setter Property="Source" Value="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='lock-open jelly-regular'}" />
+                                        <Setter Property="Fill" Value="{DynamicResource SkyAzureBrush}" />
+                                        <Style.Triggers>
+                                            <!-- Locked -->
+                                            <DataTrigger Binding="{Binding ViewModel.IsZoomLocked, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter Property="Source" Value="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='lock jelly-regular'}" />
+                                                <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </controls:SvgViewboxEx.Style>
+                            </controls:SvgViewboxEx>
+                        </Button>
+
                         <!-- Canvas Settings Popup Button -->
                         <Button x:Name="CanvasSettingsPopupButton"
                             Click="CanvasSettingsPopupButton_Click"

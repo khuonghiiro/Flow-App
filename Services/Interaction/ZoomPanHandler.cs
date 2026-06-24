@@ -191,6 +191,13 @@ namespace FlowMy.Services.Interaction
         public void PreviewMouseWheel(MouseWheelEventArgs e)
         {
             var host = Host;
+            var viewModel = host.ViewModel;
+
+            if (viewModel?.IsZoomLocked == true)
+            {
+                return;
+            }
+
             if (Keyboard.Modifiers == ModifierKeys.Control)
             {
                 return;
@@ -220,7 +227,6 @@ namespace FlowMy.Services.Interaction
             // Chỉ throttle NodeChrome handlers (ẩn title, ẩn WebView2, throttle ports)
             // khi canvas có nhiều nodes. Với ít nodes, ẩn title không cải thiện performance
             // mà còn gây delay 1-3s khi restore sau zoom.
-            var viewModel = host.ViewModel;
             int nodeCount = viewModel?.Nodes?.Count ?? 0;
             if (nodeCount >= ZoomTitleHideThreshold)
             {

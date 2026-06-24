@@ -18,6 +18,7 @@ public sealed class WorkflowLoadResult
     public double? SavedScreenHeight { get; init; }
     public double? SavedViewportCenterX { get; init; }
     public double? SavedViewportCenterY { get; init; }
+    public bool IsZoomLocked { get; init; }
 
     /// <summary>
     /// Kiểu vẽ đường kết nối (Bezier/Orthogonal/Straight) đã lưu trong workflow.
@@ -43,6 +44,7 @@ public interface IWorkflowPersistenceService
         double? savedScreenHeight = null,
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
+        bool isZoomLocked = false,
         string? connectionLineStyle = null);
 
     WorkflowLoadResult? Load(string workflowName);
@@ -58,6 +60,7 @@ public interface IWorkflowPersistenceService
         double? savedScreenHeight = null,
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
+        bool isZoomLocked = false,
         string? connectionLineStyle = null,
         string? portableWebBundleFileName = null,
         bool includeRuntimeOutput = false,

@@ -87,6 +87,14 @@ namespace FlowMy.Views
             // Context menu sẽ tự động hiển thị
         }
 
+        private void ZoomLockButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel != null)
+            {
+                ViewModel.IsZoomLocked = !ViewModel.IsZoomLocked;
+            }
+        }
+
         private void CanvasSettingsPopupButton_Click(object sender, RoutedEventArgs e)
         {
             var current = IsDebugReopenSession

@@ -77,6 +77,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
         double? savedScreenHeight = null,
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
+        bool isZoomLocked = false,
         string? connectionLineStyle = null)
     {
         if (string.IsNullOrWhiteSpace(workflowName))
@@ -103,6 +104,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                     savedScreenHeight,
                     savedViewportCenterX,
                     savedViewportCenterY,
+                    isZoomLocked,
                     connectionLineStyle);
             }
             catch (Exception ex)
@@ -137,6 +139,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                     savedScreenHeight,
                     savedViewportCenterX,
                     savedViewportCenterY,
+                    isZoomLocked,
                     connectionLineStyle);
                 var options = new JsonSerializerOptions
                 {
@@ -232,6 +235,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
         double? savedScreenHeight = null,
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
+        bool isZoomLocked = false,
         string? connectionLineStyle = null,
         string? portableWebBundleFileName = null,
         bool includeRuntimeOutput = false,
@@ -250,6 +254,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             savedScreenHeight,
             savedViewportCenterX,
             savedViewportCenterY,
+            isZoomLocked,
             connectionLineStyle,
             portableWebBundleFileName,
             exportOptions,
@@ -269,6 +274,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
         double? savedScreenHeight = null,
         double? savedViewportCenterX = null,
         double? savedViewportCenterY = null,
+        bool isZoomLocked = false,
         string? connectionLineStyle = null,
         string? portableWebBundleFileName = null,
         WorkflowExportOptionsDto? exportOptions = null,
@@ -293,6 +299,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
             SavedScreenHeight = savedScreenHeight,
             SavedViewportCenterX = savedViewportCenterX,
             SavedViewportCenterY = savedViewportCenterY,
+            IsZoomLocked = isZoomLocked,
             ConnectionLineStyle = string.IsNullOrWhiteSpace(connectionLineStyle)
                 ? "Bezier"
                 : connectionLineStyle,
@@ -715,6 +722,7 @@ public sealed partial class FileWorkflowPersistenceService : IWorkflowPersistenc
                 SavedScreenHeight = dto.SavedScreenHeight,
                 SavedViewportCenterX = dto.SavedViewportCenterX,
                 SavedViewportCenterY = dto.SavedViewportCenterY,
+                IsZoomLocked = dto.IsZoomLocked,
                 ConnectionLineStyle = dto.ConnectionLineStyle,
                 PortableWebBundleFileName = string.IsNullOrWhiteSpace(dto.PortableWebBundleFileName)
                     ? null

@@ -17,6 +17,7 @@ namespace FlowMy.Models.Persistence
         public double? SavedScreenHeight { get; set; }
         public double? SavedViewportCenterX { get; set; }
         public double? SavedViewportCenterY { get; set; }
+        public bool IsZoomLocked { get; set; }
 
         /// <summary>
         /// Kiểu vẽ đường kết nối (Bezier/Orthogonal/Straight).

@@ -100,6 +100,9 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private double panY = 0.0;
 
+        [ObservableProperty]
+        private bool isZoomLocked = false;
+
         // Connection line style (Bezier/Orthogonal/Straight) per workflow
         [ObservableProperty]
         private ConnectionLineStyle connectionLineStyle = ConnectionLineStyle.Bezier;
@@ -2446,6 +2449,7 @@ namespace FlowMy.ViewModels
             {
                 // Cập nhật view state
                 ZoomLevel = result.ZoomLevel;
+                IsZoomLocked = result.IsZoomLocked;
                 PanX = result.PanX;
                 PanY = result.PanY;
                 SavedScreenWidth = result.SavedScreenWidth ?? 0;
@@ -2722,6 +2726,7 @@ namespace FlowMy.ViewModels
                     SavedScreenHeight,
                     SavedViewportCenterX,
                     SavedViewportCenterY,
+                    IsZoomLocked,
                     ConnectionLineStyle.ToString());
 
                 RefreshUiAfterSave();
@@ -2770,6 +2775,7 @@ namespace FlowMy.ViewModels
                 SavedScreenHeight,
                 SavedViewportCenterX,
                 SavedViewportCenterY,
+                IsZoomLocked,
                 ConnectionLineStyle.ToString(),
                 portableWebBundleFileName,
                 includeRuntimeOutput,
@@ -2895,6 +2901,7 @@ namespace FlowMy.ViewModels
                 CurrentWorkflowName = result.Name;
 
                 ZoomLevel = result.ZoomLevel;
+                IsZoomLocked = result.IsZoomLocked;
                 PanX = result.PanX;
                 PanY = result.PanY;
                 SavedScreenWidth = result.SavedScreenWidth ?? 0;
