@@ -120,21 +120,18 @@ namespace FlowMy.Services.Interaction
 
             if (host.DraggedNode == null) return;
 
-            if (host.DraggedNode is ActionCanVasNode)
+            bool isPlaybackActive = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive;
+            bool isRecordingActive = false;
+            try
             {
-                bool isPlaybackActive = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive;
-                bool isRecordingActive = false;
-                try
-                {
-                    isRecordingActive = Application.Current?.Windows.OfType<FlowMy.Views.Overlays.MacroRecorderOverlay>().Any(w => w.IsVisible) == true;
-                }
-                catch { }
+                isRecordingActive = Application.Current?.Windows.OfType<FlowMy.Views.Overlays.MacroRecorderOverlay>().Any(w => w.IsVisible) == true;
+            }
+            catch { }
 
-                if (isPlaybackActive || isRecordingActive)
-                {
-                    host.DraggedNode = null;
-                    return;
-                }
+            if (isPlaybackActive || isRecordingActive)
+            {
+                host.DraggedNode = null;
+                return;
             }
             
 
@@ -383,6 +380,12 @@ namespace FlowMy.Services.Interaction
             var host = Host;
             var viewModel = host.ViewModel;
             if (viewModel == null) return;
+
+            if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive)
+            {
+                host.DraggedNode = null;
+                return;
+            }
 
             if (host.DraggedNode?.Border == null) return;
             if (e.LeftButton != MouseButtonState.Pressed && 

@@ -20,6 +20,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     {
         public static bool IsVirtualLeftButtonDown { get; set; }
         public static bool IsPlaybackActive { get; set; }
+        public static Microsoft.Web.WebView2.Wpf.WebView2? ActiveVirtualCdpWebView { get; set; }
 
         private static object _coordsLock = new object();
         private static Point? _virtualScreenMousePosition;
@@ -601,6 +602,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             IsPlaybackActive = true;
+            if (dispatcher != null && editorWindow != null)
+            {
+                await dispatcher.InvokeAsync(() =>
+                {
+                    if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost host)
+                    {
+                        host.DraggedNode = null;
+                    }
+                }, DispatcherPriority.Normal);
+            }
+
             try
             {
                 bool isLeftDown = false;
@@ -669,7 +681,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawClick(ax, ay, action.Button == "Right", action.SequenceNumber, hint);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseClick", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseClick", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -690,7 +702,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     isLeftDown = true;
                                     IsVirtualLeftButtonDown = true;
                                 }
-                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
+                                capturedHwnd = await SimulateVirtualMouseEventAsync(ax, ay, "MouseDown", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
                                 break;
                             }
                             case "MouseUp":
@@ -698,7 +710,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: true);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseUp", action.Button, 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
                                 capturedHwnd = IntPtr.Zero;
                                 if (action.Button == "Right") isRightDown = false;
                                 else
@@ -731,7 +743,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 overlay?.MoveVirtualCursor(ax, ay, syncBeforeAction: false);
                                 if (visualMode != VisualPlaybackMode.Silent) overlay?.AddTrailPoint(ax, ay);
                                 if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseMove", "", 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseMove", "", 0, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
                                 break;
                             case "MouseScroll":
                             {
@@ -740,7 +752,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 if (visualMode == VisualPlaybackMode.Live) overlay?.DrawScroll(ax, ay, action.ScrollDelta, action.SequenceNumber);
                                 else if (visualMode == VisualPlaybackMode.Ghost) overlay?.RemoveGhostMarker(action.SequenceNumber);
 
-                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseScroll", "", action.ScrollDelta, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin);
+                                await SimulateVirtualMouseEventAsync(ax, ay, "MouseScroll", "", action.ScrollDelta, overlayHwnd, capturedHwnd, isLeftDown, isRightDown, editorWindow, editorHwnd, lastValidClientOrigin, action.ShiftHeld, action.CtrlHeld, action.AltHeld);
                                 
                                 await Task.Delay(50);
                                 overlay?.ShowRightActionInfo(null, null);
@@ -760,6 +772,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 IsPlaybackActive = false;
                 IsVirtualLeftButtonDown = false;
+                ActiveVirtualCdpWebView = null;
                 VirtualScreenMousePosition = null;
                 VirtualWindowMousePosition = null;
                 if (propHandler != null)
@@ -853,7 +866,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             bool isRightDown,
             Window? editorWindow,
             IntPtr editorHwnd,
-            POINT lastValidClientOrigin)
+            POINT lastValidClientOrigin,
+            bool shiftHeld = false,
+            bool ctrlHeld = false,
+            bool altHeld = false)
         {
             VirtualScreenMousePosition = new Point(ax, ay);
             IntPtr targetHwnd = capturedHwnd;
@@ -956,25 +972,29 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 }),
                                 new System.Windows.Media.PointHitTestParameters(wpfPoint));
 
-                            bool isNativeHost = false;
-                            Microsoft.Web.WebView2.Wpf.WebView2? webView = null;
-                            if (hitElement != null)
+                            Microsoft.Web.WebView2.Wpf.WebView2? webView = ActiveVirtualCdpWebView;
+                            bool isNativeHost = webView != null;
+
+                            if (webView == null)
                             {
-                                System.Windows.DependencyObject current = hitElement;
-                                while (current != null)
+                                if (hitElement != null)
                                 {
-                                    if (current is Microsoft.Web.WebView2.Wpf.WebView2 wv2)
+                                    System.Windows.DependencyObject current = hitElement;
+                                    while (current != null)
                                     {
-                                        webView = wv2;
-                                        isNativeHost = true;
-                                        break;
+                                        if (current is Microsoft.Web.WebView2.Wpf.WebView2 wv2)
+                                        {
+                                            webView = wv2;
+                                            isNativeHost = true;
+                                            break;
+                                        }
+                                        if (current is System.Windows.Interop.HwndHost || current.GetType().Name.Contains("WebView2"))
+                                        {
+                                            isNativeHost = true;
+                                            if (current is Microsoft.Web.WebView2.Wpf.WebView2 v) webView = v;
+                                        }
+                                        current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
                                     }
-                                    if (current is System.Windows.Interop.HwndHost || current.GetType().Name.Contains("WebView2"))
-                                    {
-                                        isNativeHost = true;
-                                        if (current is Microsoft.Web.WebView2.Wpf.WebView2 v) webView = v;
-                                    }
-                                    current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
                                 }
                             }
 
@@ -987,43 +1007,75 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                     string cdpType = "";
                                     string cdpButton = "none";
                                     int cdpButtons = 0;
+                                    int clickCount = 0;
+
                                     if (isLeftDown) cdpButtons |= 1;
                                     if (isRightDown) cdpButtons |= 2;
                                     
                                     if (actionType == "MouseMove") {
                                         cdpType = "mouseMoved";
+                                        cdpButton = "none";
+                                        clickCount = 0;
                                     } else if (actionType == "MouseDown") {
                                         cdpType = "mousePressed";
                                         cdpButton = buttonStr.ToLower();
+                                        clickCount = 1;
                                         if (cdpButton == "left") cdpButtons |= 1;
                                         if (cdpButton == "right") cdpButtons |= 2;
                                     } else if (actionType == "MouseUp") {
                                         cdpType = "mouseReleased";
                                         cdpButton = buttonStr.ToLower();
+                                        clickCount = 1;
                                         if (cdpButton == "left") cdpButtons &= ~1;
                                         if (cdpButton == "right") cdpButtons &= ~2;
+                                    }
+
+                                    int modifiers = 0;
+                                    if (shiftHeld) modifiers |= 8;
+                                    if (ctrlHeld) modifiers |= 2;
+                                    if (altHeld) modifiers |= 1;
+
+                                    if (actionType == "MouseDown" && webView != null)
+                                    {
+                                        ActiveVirtualCdpWebView = webView;
+                                    }
+
+                                    if (actionType == "MouseDown" || actionType == "MouseClick")
+                                    {
+                                        // Gửi mouseMoved trước để đồng bộ hover/focus
+                                        var hoverPayload = new { type = "mouseMoved", x = wvPoint.X, y = wvPoint.Y, button = "none", buttons = 0, clickCount = 0, modifiers = modifiers };
+                                        await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(hoverPayload));
+                                        await Task.Delay(15);
                                     }
 
                                     if (actionType == "MouseClick")
                                     {
                                         var btn = buttonStr.ToLower();
-                                        var downPayload = new { type = "mousePressed", x = wvPoint.X, y = wvPoint.Y, button = btn, buttons = btn == "left" ? 1 : 2, clickCount = 1 };
+                                        int downButtons = btn == "left" ? 1 : 2;
+                                        var downPayload = new { type = "mousePressed", x = wvPoint.X, y = wvPoint.Y, button = btn, buttons = downButtons, clickCount = 1, modifiers = modifiers };
                                         await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(downPayload));
                                         
                                         await Task.Delay(40);
                                         
-                                        var upPayload = new { type = "mouseReleased", x = wvPoint.X, y = wvPoint.Y, button = btn, buttons = 0, clickCount = 1 };
+                                        var upPayload = new { type = "mouseReleased", x = wvPoint.X, y = wvPoint.Y, button = btn, buttons = 0, clickCount = 1, modifiers = modifiers };
                                         await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(upPayload));
+                                        
+                                        ActiveVirtualCdpWebView = null;
                                     }
                                     else if (actionType == "MouseScroll")
                                     {
-                                        var scrollPayload = new { type = "mouseWheel", x = wvPoint.X, y = wvPoint.Y, deltaX = 0, deltaY = -scrollDelta * 120 };
+                                        var scrollPayload = new { type = "mouseWheel", x = wvPoint.X, y = wvPoint.Y, deltaX = 0, deltaY = -scrollDelta * 120, modifiers = modifiers };
                                         await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(scrollPayload));
                                     }
                                     else
                                     {
-                                        var payload = new { type = cdpType, x = wvPoint.X, y = wvPoint.Y, button = cdpButton, buttons = cdpButtons, clickCount = 1 };
+                                        var payload = new { type = cdpType, x = wvPoint.X, y = wvPoint.Y, button = cdpButton, buttons = cdpButtons, clickCount = clickCount, modifiers = modifiers };
                                         await webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent", System.Text.Json.JsonSerializer.Serialize(payload));
+                                        
+                                        if (actionType == "MouseUp")
+                                        {
+                                            ActiveVirtualCdpWebView = null;
+                                        }
                                     }
 
                                     // Always bubble up MouseUp to WPF to clear any stuck DragDropHandler state
