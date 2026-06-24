@@ -420,6 +420,39 @@ namespace FlowMy.Views
             if (ImportButton != null) ImportButton.IsEnabled = !busy;
         }
 
+        private async void ReloadWorkflowButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel == null) return;
+
+            // Phải có workflow đang mở mới reload được
+            if (string.IsNullOrWhiteSpace(ViewModel.CurrentWorkflowName))
+            {
+                MessageBox.Show(
+                    this,
+                    "Chưa có workflow nào được chọn để tải lại.",
+                    "Reload workflow",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            // Xác nhận trước khi reload
+            var result = MessageBox.Show(
+                "Bạn có muốn tải lại workflow từ lần lưu cuối cùng không?\n\n" +
+                "• Tất cả thay đổi chưa lưu sẽ bị mất.\n" +
+                "• Nội dung WebView2 trong node HTML/Web sẽ được giữ nguyên — tự F5 để reload.",
+                "Reload workflow",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            // Dọn visuals trước khi reload (trừ WebView2 nodes được giữ lại trong ViewModel)
+            ClearVisualsForReload();
+
+            await ViewModel.ReloadFromLastSaveAsync();
+        }
+
         private void NewWorkflowButton_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel == null) return;

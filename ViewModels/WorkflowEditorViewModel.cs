@@ -2328,6 +2328,266 @@ namespace FlowMy.ViewModels
             ConnectionLineStyle = ConnectionLineStyle.Bezier;
         }
 
+        /// <summary>
+        /// Tải lại workflow từ lần lưu cuối cùng.
+        /// Với các node có WebView2 (ActionCanVas, Web, HtmlUi) — chỉ cập nhật vị trí và dữ liệu input/output,
+        /// không tạo lại node object → WebView2 vẫn giữ nguyên. User tự F5 để reload nội dung WebView2.
+        /// </summary>
+        public async Task ReloadFromLastSaveAsync()
+        {
+            var name = CurrentWorkflowName;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                ToastNotificationService.ShowToast(
+                    "Reload",
+                    "Chưa có workflow nào được lưu để tải lại.",
+                    durationSeconds: 3,
+                    titleColorKey: "TextOnWarningBrush",
+                    contentColorKey: "TextOnWarningBrush",
+                    backgroundColorKey: "WarningBrush",
+                    backgroundOpacity: 0.95);
+                return;
+            }
+
+            if (!SavedWorkflows.Contains(name))
+            {
+                var match = SavedWorkflows.FirstOrDefault(n =>
+                    string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+                if (match == null)
+                {
+                    ToastNotificationService.ShowToast(
+                        "Reload",
+                        $"Workflow \"{name}\" chưa được lưu. Hãy Save trước.",
+                        durationSeconds: 3,
+                        titleColorKey: "TextOnWarningBrush",
+                        contentColorKey: "TextOnWarningBrush",
+                        backgroundColorKey: "WarningBrush",
+                        backgroundOpacity: 0.95);
+                    return;
+                }
+                name = match;
+            }
+
+            CancellationTokenSource? previousCts = null;
+            var cts = new CancellationTokenSource();
+            previousCts = Interlocked.Exchange(ref _workflowLoadCts, cts);
+            previousCts?.Cancel();
+            previousCts?.Dispose();
+
+            try
+            {
+                IsLoading = true;
+                var token = cts.Token;
+                var result = await Task.Run(() =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    return _persistenceService.Load(name);
+                }, token);
+
+                if (token.IsCancellationRequested || !ReferenceEquals(_workflowLoadCts, cts))
+                    return;
+
+                if (result == null)
+                {
+                    ToastNotificationService.ShowToast(
+                        "Reload",
+                        "Không thể đọc workflow từ file.",
+                        durationSeconds: 3,
+                        titleColorKey: "TextOnDangerBrush",
+                        contentColorKey: "TextOnDangerBrush",
+                        backgroundColorKey: "DangerBrush",
+                        backgroundOpacity: 0.95);
+                    return;
+                }
+
+                ApplyWorkflowReloadResult(result);
+
+                ToastNotificationService.ShowToast(
+                    "Reload",
+                    "Đã tải lại workflow từ lần lưu cuối cùng.",
+                    durationSeconds: 2,
+                    titleColorKey: "TextOnSuccessBrush",
+                    contentColorKey: "TextOnSuccessBrush",
+                    backgroundColorKey: "SuccessBrush",
+                    backgroundOpacity: 0.95);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error reloading workflow: {ex.Message}");
+                ToastNotificationService.ShowToast(
+                    "Reload lỗi",
+                    ex.Message,
+                    durationSeconds: 4,
+                    titleColorKey: "TextOnDangerBrush",
+                    contentColorKey: "TextOnDangerBrush",
+                    backgroundColorKey: "DangerBrush",
+                    backgroundOpacity: 0.95);
+            }
+            finally
+            {
+                if (ReferenceEquals(_workflowLoadCts, cts))
+                {
+                    _workflowLoadCts = null;
+                }
+                cts.Dispose();
+                IsLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// Áp dụng kết quả reload: giữ nguyên node WebView2 (ActionCanVas, Web, HtmlUi),
+        /// chỉ cập nhật vị trí và dữ liệu. Các node khác được thay mới hoàn toàn.
+        /// </summary>
+        private void ApplyWorkflowReloadResult(WorkflowLoadResult result)
+        {
+            IsLoading = true;
+            try
+            {
+                // Cập nhật view state
+                ZoomLevel = result.ZoomLevel;
+                PanX = result.PanX;
+                PanY = result.PanY;
+                SavedScreenWidth = result.SavedScreenWidth ?? 0;
+                SavedScreenHeight = result.SavedScreenHeight ?? 0;
+                SavedViewportCenterX = result.SavedViewportCenterX ?? 0;
+                SavedViewportCenterY = result.SavedViewportCenterY ?? 0;
+
+                if (!string.IsNullOrWhiteSpace(result.ConnectionLineStyle) &&
+                    Enum.TryParse<ConnectionLineStyle>(result.ConnectionLineStyle, out var restoredStyle))
+                    ConnectionLineStyle = restoredStyle;
+                else
+                    ConnectionLineStyle = ConnectionLineStyle.Bezier;
+
+                // --- Node WebView2: giữ instance cũ, chỉ cập nhật vị trí + data ---
+                var canvasNodeTypes = new HashSet<NodeType>
+                {
+                    NodeType.ActionCanVas,
+                    NodeType.Web,
+                    NodeType.HtmlUi
+                };
+
+                // Map node cũ theo Id để tra nhanh
+                var existingNodesById = new Dictionary<string, WorkflowNode>(StringComparer.OrdinalIgnoreCase);
+                foreach (var node in Nodes)
+                    existingNodesById[node.Id] = node;
+
+                // Tạo danh sách node kết quả: nếu node cũ là WebView2 type thì giữ lại instance, cập nhật thuộc tính
+                var mergedNodes = new List<WorkflowNode>();
+                foreach (var savedNode in result.Nodes)
+                {
+                    if (canvasNodeTypes.Contains(savedNode.Type) &&
+                        existingNodesById.TryGetValue(savedNode.Id, out var existingNode) &&
+                        existingNode.Type == savedNode.Type)
+                    {
+                        // Giữ instance cũ (WebView2 vẫn sống), chỉ cập nhật vị trí + data
+                        existingNode.X = savedNode.X;
+                        existingNode.Y = savedNode.Y;
+                        existingNode.Title = savedNode.Title;
+                        existingNode.ColorKey = savedNode.ColorKey;
+                        existingNode.NodeBrush = savedNode.NodeBrush;
+
+                        // Cập nhật DynamicInputs (dữ liệu input)
+                        existingNode.DynamicInputs.Clear();
+                        foreach (var di in savedNode.DynamicInputs)
+                            existingNode.DynamicInputs.Add(di);
+
+                        // Cập nhật DynamicOutputs (dữ liệu output)
+                        existingNode.DynamicOutputs.Clear();
+                        foreach (var dout in savedNode.DynamicOutputs)
+                            existingNode.DynamicOutputs.Add(dout);
+
+                        // Cập nhật metadata chung
+                        existingNode.IsDefaultSampleStartEnd = savedNode.IsDefaultSampleStartEnd;
+
+                        // Cập nhật Ports (giữ port structure từ saved)
+                        existingNode.Ports.Clear();
+                        foreach (var port in savedNode.Ports)
+                            existingNode.Ports.Add(port);
+
+                        // Cập nhật thuộc tính riêng theo loại node
+                        CopyCanvasNodeSpecificProperties(savedNode, existingNode);
+
+                        mergedNodes.Add(existingNode);
+                    }
+                    else
+                    {
+                        // Node không phải WebView2 type → dùng node mới từ file
+                        mergedNodes.Add(savedNode);
+                    }
+                }
+
+                // Batch replace collections
+                Nodes = new ObservableCollection<WorkflowNode>(mergedNodes);
+                Connections = new ObservableCollection<WorkflowConnection>(result.Connections);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying reload result: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// Copy các thuộc tính đặc thù của từng loại canvas/WebView2 node (Web, HtmlUi, ActionCanVas).
+        /// Chỉ copy dữ liệu cấu hình, KHÔNG copy các tham chiếu runtime UI (WebView2 instance v.v.).
+        /// </summary>
+        private static void CopyCanvasNodeSpecificProperties(WorkflowNode source, WorkflowNode target)
+        {
+            // Web node: cập nhật URL, cookie, response outputs, JS injection mappings...
+            if (source is FlowMy.Models.Nodes.WebNode srcWeb && target is FlowMy.Models.Nodes.WebNode tgtWeb)
+            {
+                tgtWeb.ExtractUrl = srcWeb.ExtractUrl;
+                tgtWeb.ExtractRequestMethod = srcWeb.ExtractRequestMethod;
+                tgtWeb.ExtractStatusCode = srcWeb.ExtractStatusCode;
+                tgtWeb.CookieText = srcWeb.CookieText;
+                tgtWeb.SyncLiveOutputsToResults = srcWeb.SyncLiveOutputsToResults;
+                tgtWeb.ResponseOutputsWaitTimeoutMs = srcWeb.ResponseOutputsWaitTimeoutMs;
+                tgtWeb.CssZoom = srcWeb.CssZoom;
+                tgtWeb.Width = srcWeb.Width;
+                tgtWeb.Height = srcWeb.Height;
+
+                // ResponseOutputs
+                tgtWeb.ResponseOutputs.Clear();
+                foreach (var ro in srcWeb.ResponseOutputs)
+                    tgtWeb.ResponseOutputs.Add(ro);
+
+                // JS Sources mappings
+                tgtWeb.JsSources.Clear();
+                foreach (var jm in srcWeb.JsSources)
+                    tgtWeb.JsSources.Add(jm);
+            }
+
+            // HtmlUi node: cập nhật HTML/CSS/JS content, outputs config...
+            if (source is FlowMy.Models.Nodes.HtmlUiNode srcHtml && target is FlowMy.Models.Nodes.HtmlUiNode tgtHtml)
+            {
+                tgtHtml.HtmlCode = srcHtml.HtmlCode;
+                tgtHtml.CssCode = srcHtml.CssCode;
+                tgtHtml.JsCode = srcHtml.JsCode;
+                tgtHtml.AutoReloadOnDialogClose = srcHtml.AutoReloadOnDialogClose;
+                tgtHtml.Width = srcHtml.Width;
+                tgtHtml.Height = srcHtml.Height;
+                tgtHtml.CssZoom = srcHtml.CssZoom;
+
+                // OutputKeys
+                tgtHtml.OutputKeys.Clear();
+                foreach (var ok in srcHtml.OutputKeys)
+                    tgtHtml.OutputKeys.Add(ok);
+
+                // AsyncDataSources
+                tgtHtml.AsyncDataSources.Clear();
+                foreach (var ads in srcHtml.AsyncDataSources)
+                    tgtHtml.AsyncDataSources.Add(ads);
+            }
+
+            // ActionCanVas node: tuỳ thuộc cấu trúc class (nếu cần mở rộng thêm thuộc tính)
+            // Hiện tại copy các thuộc tính chung đã đủ (X, Y, Title, DynamicInputMappings, SavedOutputs).
+        }
+
+
         [RelayCommand]
         public void SaveWorkflow()
         {

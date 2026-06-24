@@ -1,4 +1,4 @@
-﻿<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
+<Window x:Class="FlowMy.Views.WorkflowEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -92,6 +92,20 @@
                                   Height="32"
                                   VerticalAlignment="Center"
                                   Margin="0,0,8,0"/>
+                        <Button x:Name="ReloadWorkflowButton"
+                                Click="ReloadWorkflowButton_Click"
+                                Style="{DynamicResource TransparentButtonStyle}"
+                                Padding="6,4"
+                                ToolTip="Tải lại workflow từ lần lưu cuối cùng (không reload WebView2 — tự F5 trong node HTML/Web)"
+                                Cursor="Hand"
+                                VerticalAlignment="Center"
+                                MinWidth="32">
+                            <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
+                                 Converter={StaticResource IconKeyToPathConverter}, 
+                                 ConverterParameter='arrow-rotate-left sharp-duotone-regular'}"
+                              Width="16" Height="16" Fill="White" Opacity="0.8"/>
+                        </Button>
+                        
                         <Button x:Name="NewWorkflowButton"
                                 Click="NewWorkflowButton_Click"
                                 Style="{DynamicResource TransparentButtonStyle}"
@@ -106,6 +120,7 @@
                                              ConverterParameter='clone-plus duotone'}"
                                           Width="20" Height="20" Fill="White" Opacity="0.8"/>
                         </Button>
+                        
                         <Button x:Name="ManageWorkflowsButton"
                                 Click="ManageWorkflowsButton_Click"
                                 Style="{DynamicResource TransparentButtonStyle}"
