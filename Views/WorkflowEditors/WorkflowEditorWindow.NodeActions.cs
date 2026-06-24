@@ -102,6 +102,9 @@ namespace FlowMy.Views
             var clone = CreateDuplicateNodeInstance(source, offsetX: 30, offsetY: 30);
             if (clone == null) return;
 
+            // Snapshot trước khi thêm node (cho Ctrl+Z)
+            PushUndoSnapshot();
+
             ViewModel.Nodes.Add(clone);
             ViewModel.SelectedNode = clone;
         }
@@ -117,6 +120,9 @@ namespace FlowMy.Views
 
             var clone = CreateDuplicateNodeInstance(source, offsetX, offsetY);
             if (clone == null) return;
+
+            // Snapshot trước khi thêm node (cho Ctrl+Z)
+            PushUndoSnapshot();
 
             ViewModel.Nodes.Add(clone);
             ViewModel.SelectedNode = clone;

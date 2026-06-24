@@ -1040,6 +1040,9 @@ namespace FlowMy.Services.Interaction
                 return;
             }
 
+            // Snapshot trước khi xóa connection (cho Ctrl+Z)
+            Host.PushUndoSnapshot();
+
             _connectionRenderer.RemoveConnectionVisuals(connection);
             vm.Connections.Remove(connection);
             Host.SelectedConnection = null;

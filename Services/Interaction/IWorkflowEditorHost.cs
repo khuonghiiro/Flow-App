@@ -165,6 +165,9 @@ namespace FlowMy.Services.Interaction
 
         /// <summary>Chạy logic của một node (từ dialog — nút Play). Chỉ thực thi node đó, cập nhật output.</summary>
         void RequestRunSingleNode(WorkflowNode node);
+
+        /// <summary>Chụp snapshot trạng thái hiện tại vào undo stack (cho Ctrl+Z).</summary>
+        void PushUndoSnapshot();
     }
 }
 

@@ -359,6 +359,7 @@ namespace FlowMy.Views
             progressDlg.Show();
 
             ClearVisualsForReload();
+            ClearUndoRedoStacks();
             SetExportImportBusy(true);
             try
             {
@@ -449,6 +450,7 @@ namespace FlowMy.Views
 
             // Dọn visuals trước khi reload (trừ WebView2 nodes được giữ lại trong ViewModel)
             ClearVisualsForReload();
+            ClearUndoRedoStacks();
 
             await ViewModel.ReloadFromLastSaveAsync();
         }
@@ -500,6 +502,9 @@ namespace FlowMy.Views
 
             // Dọn UI cũ trước khi reset
             ClearVisualsForReload();
+
+            // Xóa undo/redo stacks khi tạo workflow mới
+            ClearUndoRedoStacks();
 
             // Reset workflow về trạng thái ban đầu (chỉ có Start và End)
             if (ViewModel.ResetWorkflowCommand.CanExecute(null))

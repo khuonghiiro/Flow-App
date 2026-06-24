@@ -76,6 +76,9 @@ namespace FlowMy.Views
                 .ToList();
             if (nodesToDelete.Count == 0) return false;
 
+            // Snapshot trước khi xóa (cho Ctrl+Z)
+            PushUndoSnapshot();
+
             var nodeIds = new HashSet<string>(nodesToDelete.Select(n => n.Id), StringComparer.OrdinalIgnoreCase);
             var connectionsToDelete = vm.Connections
                 .Where(c => nodeIds.Contains(c.FromNode.Id) || nodeIds.Contains(c.ToNode.Id))
@@ -192,6 +195,9 @@ namespace FlowMy.Views
                 .Where(n => n is not LoopBodyNode && n is not AsyncTaskBodyNode)
                 .ToList();
             if (importableNodes.Count == 0) return false;
+
+            // Snapshot trước khi paste (cho Ctrl+Z)
+            PushUndoSnapshot();
 
             var minX = importableNodes.Min(n => n.X);
             var minY = importableNodes.Min(n => n.Y);

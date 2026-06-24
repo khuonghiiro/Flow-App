@@ -1,4 +1,4 @@
-﻿using FlowMy.Controls;
+using FlowMy.Controls;
 using FlowMy.Converters;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
@@ -166,6 +166,9 @@ namespace FlowMy.Views
 
             // Áp dụng màu title hàng loạt nếu có
             ApplyBulkTitleColorToNode(newNode);
+
+            // Snapshot trước khi thêm node (cho Ctrl+Z)
+            PushUndoSnapshot();
 
             ViewModel.Nodes.Add(newNode);
 

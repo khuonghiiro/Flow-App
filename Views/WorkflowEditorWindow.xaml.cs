@@ -1833,6 +1833,10 @@ namespace FlowMy.Views
 
         private void WorkflowEditorWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Undo/Redo: Ctrl+Z / Ctrl+Y (trước clipboard shortcuts vì cùng modifier Ctrl)
+            if (TryHandleUndoRedoShortcuts(e))
+                return;
+
             if (TryHandleWorkflowClipboardShortcuts(e))
                 return;
 
@@ -1865,12 +1869,23 @@ namespace FlowMy.Views
                 SyncLeftMenuForExecutionTraceDockMode();
             }
 
+            // Ẩn/hiện nút Reload theo trạng thái workflow
+            if (e.PropertyName == nameof(WorkflowEditorViewModel.CurrentWorkflowName))
+            {
+                ReloadWorkflowButton.Visibility = string.IsNullOrWhiteSpace(ViewModel?.CurrentWorkflowName)
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            }
+
             // Khi bắt đầu load workflow (IsLoading -> true) dọn UI cũ để tránh port/line rác.
             if (e.PropertyName == nameof(WorkflowEditorViewModel.IsLoading))
             {
                 if (ViewModel?.IsLoading == true)
                 {
                     ClearVisualsForReload();
+                    // Chỉ xóa undo/redo khi load workflow thật (không phải đang undo/redo restore)
+                    if (!_isRestoringSnapshot)
+                        ClearUndoRedoStacks();
                 }
                 else if (ViewModel?.IsLoading == false)
                 {

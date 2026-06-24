@@ -34,6 +34,7 @@ namespace FlowMy.Services.Interaction
         private List<WorkflowNode>? _draggedAsyncBodyChildren;
         private BodyContainerNode? _draggedOwningLockedBody;
         private List<WorkflowNode>? _draggedLockedBodyChildren;
+        private bool _dragUndoPushed;
         
         // Sử dụng CompositionTarget.Rendering để sync với refresh rate và tăng hiệu suất GPU
         private EventHandler? _renderingHandler;
@@ -246,6 +247,9 @@ namespace FlowMy.Services.Interaction
             }
             host.DragOffset = new Point(mousePos.X - host.DraggedNode.X, mousePos.Y - host.DraggedNode.Y);
 
+            // Đánh dấu chưa push undo — sẽ push lần đầu khi thực sự di chuyển
+            _dragUndoPushed = false;
+
             host.DraggedNode.Border?.CaptureMouse();
             if (host.DraggedNode.Border != null)
                 host.DraggedNode.Border.Cursor = Cursors.SizeAll;
@@ -416,6 +420,13 @@ namespace FlowMy.Services.Interaction
             if (e.LeftButton != MouseButtonState.Pressed && 
                 !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown) 
                 return;
+
+            // Push undo snapshot lần đầu khi thực sự di chuyển node (tránh push khi chỉ click)
+            if (!_dragUndoPushed)
+            {
+                _dragUndoPushed = true;
+                host.PushUndoSnapshot();
+            }
 
             host.ZIndexManager.DragNode(host.DraggedNode);
 
@@ -1144,6 +1155,7 @@ namespace FlowMy.Services.Interaction
                 _draggedAsyncBodyChildren = null;
                 _draggedOwningLockedBody = null;
                 _draggedLockedBodyChildren = null;
+                _dragUndoPushed = false;
             }
         }
 

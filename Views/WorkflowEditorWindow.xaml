@@ -99,7 +99,8 @@
                                 ToolTip="Tải lại workflow từ lần lưu cuối cùng (không reload WebView2 — tự F5 trong node HTML/Web)"
                                 Cursor="Hand"
                                 VerticalAlignment="Center"
-                                MinWidth="32">
+                                MinWidth="32"
+                                Visibility="Collapsed">
                             <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
                                  Converter={StaticResource IconKeyToPathConverter}, 
                                  ConverterParameter='arrow-rotate-left sharp-duotone-regular'}"

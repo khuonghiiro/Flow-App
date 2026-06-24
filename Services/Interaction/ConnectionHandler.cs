@@ -446,6 +446,9 @@ namespace FlowMy.Services.Interaction
                         c.FromPort == connection.FromPort &&
                         c.ToPort == connection.ToPort))
                     {
+                        // Snapshot trước khi thêm connection (cho Ctrl+Z)
+                        _host.PushUndoSnapshot();
+
                         viewModel.Connections.Add(connection);
                         _host.RenderConnection(connection);
                         
