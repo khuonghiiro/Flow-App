@@ -60,6 +60,11 @@ namespace FlowMy.Services.Interaction
             var viewModel = host.ViewModel;
             if (viewModel == null) return;
 
+            // Guard: khi playback đang chạy, chỉ xử lý virtual events (không xử lý real mouse click)
+            if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive &&
+                !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualEventDispatching)
+                return;
+
             // Resize handles are Ellipse; do not start node dragging from those grips.
             if (sender is Border bodyBorder &&
                 bodyBorder.Tag is BodyContainerNode &&
@@ -129,33 +134,51 @@ namespace FlowMy.Services.Interaction
             }
             catch { }
 
-            if (isPlaybackActive)
+            // 1. Không cho phép kéo/di chuyển ActionCanVasNode trong lúc đang phát lại (playback) hoặc đang ghi (recording)
+            if (host.DraggedNode.Type == FlowMy.Models.NodeType.ActionCanVas || 
+                host.DraggedNode == FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.ExecutingMacroNode)
             {
-                var webView = host.DraggedNode.Border != null ? FindWebView2Control(host.DraggedNode.Border) : null;
-                if (webView != null && webView.IsVisible)
+                if (isPlaybackActive || isRecordingActive)
                 {
-                    var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
-                    var pWin = Window.GetWindow(host.WorkflowCanvas);
-                    if (virtPos.HasValue && pWin != null)
-                    {
-                        try
-                        {
-                            Point posInWebView = pWin.TranslatePoint(virtPos.Value, webView);
-                            if (posInWebView.X >= 0 && posInWebView.X <= webView.ActualWidth &&
-                                posInWebView.Y >= 0 && posInWebView.Y <= webView.ActualHeight)
-                            {
-                                host.DraggedNode = null;
-                                return;
-                            }
-                        }
-                        catch { }
-                    }
+                    host.DraggedNode = null;
+                    return;
                 }
             }
-            else if (isRecordingActive)
+
+            // 2. Nếu click nằm trong vùng WebView2 của WebNode/HtmlUiNode/EmbedApplicationNode, block drag của node đó
+            var webView = host.DraggedNode.Border != null ? FindWebView2Control(host.DraggedNode.Border) : null;
+            if (webView != null && webView.IsVisible)
             {
-                host.DraggedNode = null;
-                return;
+                try
+                {
+                    Point posInWebView;
+                    if (isPlaybackActive)
+                    {
+                        var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
+                        var pWin = Window.GetWindow(host.WorkflowCanvas);
+                        if (virtPos.HasValue && pWin != null)
+                        {
+                            posInWebView = pWin.TranslatePoint(virtPos.Value, webView);
+                        }
+                        else
+                        {
+                            posInWebView = new Point(-1, -1);
+                        }
+                    }
+                    else
+                    {
+                        // Khi đang ghi hình hoặc thiết kế bình thường, dùng toạ độ chuột thực tế từ event
+                        posInWebView = e.GetPosition(webView);
+                    }
+
+                    if (posInWebView.X >= 0 && posInWebView.X <= webView.ActualWidth &&
+                        posInWebView.Y >= 0 && posInWebView.Y <= webView.ActualHeight)
+                    {
+                        host.DraggedNode = null;
+                        return;
+                    }
+                }
+                catch { }
             }
             
 
@@ -230,15 +253,45 @@ namespace FlowMy.Services.Interaction
             if (virtWinPos.HasValue && editorWin != null)
             {
                 try { mousePos = editorWin.TranslatePoint(virtWinPos.Value, host.WorkflowCanvas); }
-                catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+                catch
+                {
+                    // TranslatePoint fail khi window inactive → tính thủ công
+                    var scale = host.ScaleTransform?.ScaleX ?? 1.0;
+                    var tx = host.TranslateTransform?.X ?? 0;
+                    var ty = host.TranslateTransform?.Y ?? 0;
+                    mousePos = new Point(
+                        (virtWinPos.Value.X - tx) / scale,
+                        (virtWinPos.Value.Y - ty) / scale);
+                }
             }
             else
             {
                 var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
-                if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+                if (virtPos.HasValue)
                 {
-                    try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
-                    catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+                    bool converted = false;
+                    if (PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+                    {
+                        try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); converted = true; }
+                        catch { converted = false; mousePos = default; }
+                    }
+                    else { mousePos = default; }
+                    
+                    if (!converted)
+                    {
+                        // PointFromScreen fail → tính thủ công từ virtual window pos
+                        var vwp = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
+                        if (vwp.HasValue)
+                        {
+                            var scale = host.ScaleTransform?.ScaleX ?? 1.0;
+                            var tx = host.TranslateTransform?.X ?? 0;
+                            var ty = host.TranslateTransform?.Y ?? 0;
+                            mousePos = new Point(
+                                (vwp.Value.X - tx) / scale,
+                                (vwp.Value.Y - ty) / scale);
+                        }
+                        else mousePos = e.GetPosition(host.WorkflowCanvas);
+                    }
                 }
                 else
                 {
@@ -415,11 +468,21 @@ namespace FlowMy.Services.Interaction
             var viewModel = host.ViewModel;
             if (viewModel == null) return;
 
-            if (host.DraggedNode?.Border == null) return;
-            if (!host.DraggedNode.Border.IsMouseCaptured) return;
+            if (host.DraggedNode?.Border == null)
+            {
+                if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive)
+                    System.Diagnostics.Debug.WriteLine($"[DragDrop] NodeMouseMove SKIP: DraggedNode is null");
+                return;
+            }
+            if (!host.DraggedNode.Border.IsMouseCaptured && 
+                !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive) return;
             if (e.LeftButton != MouseButtonState.Pressed && 
                 !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown) 
+            {
+                System.Diagnostics.Debug.WriteLine($"[DragDrop] NodeMouseMove SKIP: LeftButton={e.LeftButton} VirtualLeft={FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualLeftButtonDown}");
                 return;
+            }
+            System.Diagnostics.Debug.WriteLine($"[DragDrop] NodeMouseMove PASSED guards, DraggedNode={host.DraggedNode?.Title ?? "?"}");
 
             // Push undo snapshot lần đầu khi thực sự di chuyển node (tránh push khi chỉ click)
             if (!_dragUndoPushed)
@@ -436,15 +499,44 @@ namespace FlowMy.Services.Interaction
             if (virtWinPos.HasValue && editorWin != null)
             {
                 try { mousePos = editorWin.TranslatePoint(virtWinPos.Value, host.WorkflowCanvas); }
-                catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+                catch
+                {
+                    // TranslatePoint fail khi window inactive → tính thủ công
+                    var scale = host.ScaleTransform?.ScaleX ?? 1.0;
+                    var tx = host.TranslateTransform?.X ?? 0;
+                    var ty = host.TranslateTransform?.Y ?? 0;
+                    mousePos = new Point(
+                        (virtWinPos.Value.X - tx) / scale,
+                        (virtWinPos.Value.Y - ty) / scale);
+                }
             }
             else
             {
                 var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualScreenMousePosition;
-                if (virtPos.HasValue && PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+                if (virtPos.HasValue)
                 {
-                    try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); }
-                    catch { mousePos = e.GetPosition(host.WorkflowCanvas); }
+                    bool converted = false;
+                    if (PresentationSource.FromVisual(host.WorkflowCanvas) != null)
+                    {
+                        try { mousePos = host.WorkflowCanvas.PointFromScreen(virtPos.Value); converted = true; }
+                        catch { converted = false; mousePos = default; }
+                    }
+                    else { mousePos = default; }
+                    
+                    if (!converted)
+                    {
+                        var vwp = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
+                        if (vwp.HasValue)
+                        {
+                            var scale = host.ScaleTransform?.ScaleX ?? 1.0;
+                            var tx = host.TranslateTransform?.X ?? 0;
+                            var ty = host.TranslateTransform?.Y ?? 0;
+                            mousePos = new Point(
+                                (vwp.Value.X - tx) / scale,
+                                (vwp.Value.Y - ty) / scale);
+                        }
+                        else mousePos = e.GetPosition(host.WorkflowCanvas);
+                    }
                 }
                 else
                 {
@@ -1053,6 +1145,12 @@ namespace FlowMy.Services.Interaction
         public void NodeMouseUp(object sender, MouseButtonEventArgs e)
         {
             var host = Host;
+
+            // Guard: khi playback đang chạy, chỉ xử lý virtual events
+            if (FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsPlaybackActive &&
+                !FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.IsVirtualEventDispatching)
+                return;
+
             if (host.DraggedNode?.Border != null)
             {
                 // ⚠️ Skip setting background for diamond-like nodes (custom shape)

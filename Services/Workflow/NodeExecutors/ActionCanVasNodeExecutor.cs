@@ -21,6 +21,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         public static bool IsVirtualLeftButtonDown { get; set; }
         public static bool IsPlaybackActive { get; set; }
         public static Microsoft.Web.WebView2.Wpf.WebView2? ActiveVirtualCdpWebView { get; set; }
+        public static bool IsVirtualEventDispatching { get; set; }
+
+        // ─── Direct drag state — track internally, không phụ thuộc mouse capture ───
+        private static FlowMy.Models.WorkflowNode? _directDragNode;
+        private static Point _directDragOffset;
+
+        // ─── HitElement cache — dùng khi HitTest fail (window deactivated) ───
+        private static UIElement? _lastWpfHitElement;
+        // ─── MacroNode đang execute — dùng để exclude khỏi direct manipulation ───
+        private static FlowMy.Models.WorkflowNode? _executingMacroNode;
+        public static FlowMy.Models.WorkflowNode? ExecutingMacroNode => _executingMacroNode;
 
         private static object _coordsLock = new object();
         private static Point? _virtualScreenMousePosition;
@@ -601,6 +612,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 macroNode.PropertyChanged += propHandler;
             }
 
+            _executingMacroNode = macroNode;
             IsPlaybackActive = true;
             if (dispatcher != null && editorWindow != null)
             {
@@ -775,6 +787,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 ActiveVirtualCdpWebView = null;
                 VirtualScreenMousePosition = null;
                 VirtualWindowMousePosition = null;
+                _directDragNode = null;
+                _lastWpfHitElement = null;
+                _executingMacroNode = null;
                 if (propHandler != null)
                 {
                     macroNode.PropertyChanged -= propHandler;
@@ -959,18 +974,37 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             var wpfPoint = new Point(editorPt.X, editorPt.Y);
                             VirtualWindowMousePosition = wpfPoint;
                             UIElement? hitElement = null;
-                            System.Windows.Media.VisualTreeHelper.HitTest(editorWindow,
-                                null,
-                                new System.Windows.Media.HitTestResultCallback(result =>
-                                {
-                                    if (result.VisualHit is UIElement elem && elem.IsVisible)
+                            bool hitTestSucceeded = false;
+                            try
+                            {
+                                System.Windows.Media.VisualTreeHelper.HitTest(editorWindow,
+                                    null,
+                                    new System.Windows.Media.HitTestResultCallback(result =>
                                     {
-                                        hitElement = elem;
-                                        return System.Windows.Media.HitTestResultBehavior.Stop;
-                                    }
-                                    return System.Windows.Media.HitTestResultBehavior.Continue;
-                                }),
-                                new System.Windows.Media.PointHitTestParameters(wpfPoint));
+                                        if (result.VisualHit is UIElement elem && elem.IsVisible)
+                                        {
+                                            hitElement = elem;
+                                            return System.Windows.Media.HitTestResultBehavior.Stop;
+                                        }
+                                        return System.Windows.Media.HitTestResultBehavior.Continue;
+                                    }),
+                                    new System.Windows.Media.PointHitTestParameters(wpfPoint));
+                                hitTestSucceeded = hitElement != null;
+                            }
+                            catch (Exception htEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[MacroExecutor] HitTest EXCEPTION: {htEx.Message}");
+                            }
+
+                            // Cache hitElement: khi HitTest fail (window mất focus),
+                            // dùng element cache từ lần hit thành công trước.
+                            if (hitElement != null)
+                                _lastWpfHitElement = hitElement;
+                            else if (_lastWpfHitElement != null)
+                                hitElement = _lastWpfHitElement;
+
+                            bool isWindowActive = editorWindow.IsActive;
+                            System.Diagnostics.Debug.WriteLine($"[MacroExecutor] {actionType} wpfPt=({wpfPoint.X:F0},{wpfPoint.Y:F0}) hitTest={hitTestSucceeded} cached={hitElement == _lastWpfHitElement && !hitTestSucceeded} hitElem={hitElement?.GetType().Name ?? "NULL"} windowActive={isWindowActive}");
 
                             Microsoft.Web.WebView2.Wpf.WebView2? webView = ActiveVirtualCdpWebView;
                             bool isNativeHost = webView != null;
@@ -1003,7 +1037,80 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 handledByCdp = true;
                                 try 
                                 {
-                                    var wvPoint = editorWindow.TranslatePoint(wpfPoint, webView);
+                                    Point wvPoint;
+                                    try
+                                    {
+                                        if (isOffScreen || !editorWindow.IsActive)
+                                        {
+                                            throw new InvalidOperationException("Force fallback translation when window is deactivated or offscreen");
+                                        }
+                                        wvPoint = editorWindow.TranslatePoint(wpfPoint, webView);
+                                    }
+                                    catch
+                                    {
+                                        // Fallback manual calculation of wvPoint relative to webView
+                                        if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
+                                        {
+                                            var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
+                                            var txVal = directHost.TranslateTransform?.X ?? 0;
+                                            var tyVal = directHost.TranslateTransform?.Y ?? 0;
+                                            double canvasX = (wpfPoint.X - txVal) / scale;
+                                            double canvasY = (wpfPoint.Y - tyVal) / scale;
+                                            
+                                            FlowMy.Models.WorkflowNode? hostNode = null;
+                                            var vm = directHost.ViewModel;
+                                            if (vm != null)
+                                            {
+                                                System.Windows.DependencyObject current = webView;
+                                                while (current != null)
+                                                {
+                                                    if (current is System.Windows.Controls.Border borderVal)
+                                                    {
+                                                        var match = vm.Nodes.FirstOrDefault(n => n.Border == borderVal);
+                                                        if (match != null)
+                                                        {
+                                                            hostNode = match;
+                                                            break;
+                                                        }
+                                                    }
+                                                    current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
+                                                }
+                                            }
+                                            
+                                            if (hostNode != null)
+                                            {
+                                                double nodeRelX = canvasX - hostNode.X;
+                                                double nodeRelY = canvasY - hostNode.Y;
+                                                
+                                                double webViewOffsetX = 0;
+                                                double webViewOffsetY = 0;
+                                                try
+                                                {
+                                                    var zeroInWebView = webView.TransformToAncestor(hostNode.Border).Transform(new Point(0, 0));
+                                                    webViewOffsetX = zeroInWebView.X;
+                                                    webViewOffsetY = zeroInWebView.Y;
+                                                }
+                                                catch
+                                                {
+                                                    webViewOffsetX = 0;
+                                                    if (hostNode.Type == FlowMy.Models.NodeType.EmbedApplication)
+                                                        webViewOffsetY = 32;
+                                                    else
+                                                        webViewOffsetY = 38;
+                                                }
+                                                
+                                                wvPoint = new Point(nodeRelX - webViewOffsetX, nodeRelY - webViewOffsetY);
+                                            }
+                                            else
+                                            {
+                                                wvPoint = wpfPoint;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            wvPoint = wpfPoint;
+                                        }
+                                    }
                                     string cdpType = "";
                                     string cdpButton = "none";
                                     int cdpButtons = 0;
@@ -1096,60 +1203,163 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             else if (hitElement != null && !isNativeHost)
                             {
                                 var time = Environment.TickCount;
-                                if (actionType == "MouseMove")
-                                {
-                                    var args = new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time)
-                                    {
-                                        RoutedEvent = UIElement.MouseMoveEvent,
-                                        Source = hitElement
-                                    };
-                                    hitElement.RaiseEvent(args);
-                                }
-                                else if (actionType == "MouseDown")
-                                {
-                                    var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
-                                    var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
-                                    {
-                                        RoutedEvent = UIElement.MouseDownEvent,
-                                        Source = hitElement
-                                    };
-                                    hitElement.RaiseEvent(args);
-                                }
-                                else if (actionType == "MouseUp")
-                                {
-                                    var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
-                                    var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
-                                    {
-                                        RoutedEvent = UIElement.MouseUpEvent,
-                                        Source = hitElement
-                                    };
-                                    hitElement.RaiseEvent(args);
-                                }
-                                else if (actionType == "MouseClick")
-                                {
-                                    var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
-                                    var downArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
-                                    {
-                                        RoutedEvent = UIElement.MouseDownEvent,
-                                        Source = hitElement
-                                    };
-                                    hitElement.RaiseEvent(downArgs);
 
-                                    var upArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time + 10, button)
-                                    {
-                                        RoutedEvent = UIElement.MouseUpEvent,
-                                        Source = hitElement
-                                    };
-                                    hitElement.RaiseEvent(upArgs);
-                                }
-                                else if (actionType == "MouseScroll")
+                                // ─── Strategy 1: Direct Node Manipulation ───
+                                // Bypass hoàn toàn WPF event system cho drag operations.
+                                // RaiseEvent dùng Mouse.PrimaryDevice → e.GetPosition() trả vị trí chuột thật (sai).
+                                // hitElement thường là canvas Rectangle → event bubble không đến node Border.
+                                bool directHandled = false;
+                                if (actionType == "MouseDown" || actionType == "MouseMove" || actionType == "MouseUp")
                                 {
-                                    var args = new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, scrollDelta * 120)
+                                    if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
                                     {
-                                        RoutedEvent = UIElement.MouseWheelEvent,
-                                        Source = hitElement
-                                    };
-                                    hitElement.RaiseEvent(args);
+                                        var vm = directHost.ViewModel;
+                                        if (vm != null)
+                                        {
+                                            var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
+                                            var txVal = directHost.TranslateTransform?.X ?? 0;
+                                            var tyVal = directHost.TranslateTransform?.Y ?? 0;
+                                            double canvasX = (wpfPoint.X - txVal) / scale;
+                                            double canvasY = (wpfPoint.Y - tyVal) / scale;
+
+                                            if (actionType == "MouseDown" && buttonStr != "Right")
+                                            {
+                                                // Tìm node tại vị trí (exclude macroNode)
+                                                FlowMy.Models.WorkflowNode? foundNode = null;
+                                                foreach (var n in vm.Nodes)
+                                                {
+                                                    if (n.Border == null) continue;
+                                                    if (n == _executingMacroNode) continue;
+                                                    // Skip ActionCanVas nodes — KHÔNG BAO GIỜ drag ActionCanVas 
+                                                    // trong lúc playback (nó chính là node đang execute)
+                                                    if (n.Type == FlowMy.Models.NodeType.ActionCanVas) continue;
+                                                    // Skip nodes chứa WebView2 — interactions trên WebView2 
+                                                    // phải đi qua CDP/PostMessage, không phải drag node
+                                                    if (n.Type == FlowMy.Models.NodeType.Web || 
+                                                        n.Type == FlowMy.Models.NodeType.HtmlUi ||
+                                                        n.Type == FlowMy.Models.NodeType.EmbedApplication) continue;
+                                                    double nw = n.Border.ActualWidth > 0 ? n.Border.ActualWidth : 150;
+                                                    double nh = n.Border.ActualHeight > 0 ? n.Border.ActualHeight : 80;
+                                                    if (canvasX >= n.X && canvasX <= n.X + nw &&
+                                                        canvasY >= n.Y && canvasY <= n.Y + nh)
+                                                    {
+                                                        foundNode = n;
+                                                    }
+                                                }
+                                                if (foundNode != null)
+                                                {
+                                                    _directDragNode = foundNode;
+                                                    _directDragOffset = new Point(canvasX - foundNode.X, canvasY - foundNode.Y);
+                                                    vm.SelectedNode = foundNode;
+                                                    try { directHost.ZIndexManager.SelectNode(foundNode); } catch { }
+                                                    try { directHost.ZIndexManager.DragNode(foundNode); } catch { }
+                                                    directHandled = true;
+                                                    System.Diagnostics.Debug.WriteLine($"[DirectManip] MouseDown on node: {foundNode.Title ?? foundNode.Id} at ({canvasX:F0},{canvasY:F0})");
+                                                }
+                                            }
+                                            else if (actionType == "MouseMove" && _directDragNode != null)
+                                            {
+                                                double newX = Math.Round(canvasX - _directDragOffset.X);
+                                                double newY = Math.Round(canvasY - _directDragOffset.Y);
+                                                directHost.UpdateNodePosition(_directDragNode, newX, newY);
+                                                if (_directDragNode.Border != null)
+                                                {
+                                                    System.Windows.Controls.Canvas.SetLeft(_directDragNode.Border, newX);
+                                                    System.Windows.Controls.Canvas.SetTop(_directDragNode.Border, newY);
+                                                }
+                                                if (_directDragNode.Ports != null)
+                                                {
+                                                    foreach (var pos in _directDragNode.Ports
+                                                        .Where(p => p.IsVisible)
+                                                        .Select(p => p.Position)
+                                                        .Distinct())
+                                                    {
+                                                        directHost.UpdatePortsPositionOnSide(_directDragNode, pos);
+                                                    }
+                                                }
+                                                foreach (var conn in vm.Connections
+                                                    .Where(c => c.FromNode == _directDragNode || c.ToNode == _directDragNode)
+                                                    .ToList())
+                                                {
+                                                    directHost.UpdateConnectionPath(conn);
+                                                }
+                                                directHandled = true;
+                                            }
+                                            else if (actionType == "MouseUp" && _directDragNode != null)
+                                            {
+                                                System.Diagnostics.Debug.WriteLine($"[DirectManip] MouseUp, releasing node: {_directDragNode.Title ?? _directDragNode.Id}");
+                                                _directDragNode = null;
+                                                try { directHost.UpdateMinimap(); } catch { }
+                                                try { directHost.UpdateCanvasSize(); } catch { }
+                                                directHandled = true;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // ─── Strategy 2: RaiseEvent fallback cho non-drag operations ───
+                                if (!directHandled)
+                                {
+                                    IsVirtualEventDispatching = true;
+                                    try
+                                    {
+                                        if (actionType == "MouseMove")
+                                        {
+                                            var args = new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time)
+                                            {
+                                                RoutedEvent = UIElement.MouseMoveEvent,
+                                                Source = hitElement
+                                            };
+                                            hitElement.RaiseEvent(args);
+                                        }
+                                        else if (actionType == "MouseDown")
+                                        {
+                                            var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
+                                            var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                            {
+                                                RoutedEvent = UIElement.MouseDownEvent,
+                                                Source = hitElement
+                                            };
+                                            hitElement.RaiseEvent(args);
+                                        }
+                                        else if (actionType == "MouseUp")
+                                        {
+                                            var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
+                                            var args = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                            {
+                                                RoutedEvent = UIElement.MouseUpEvent,
+                                                Source = hitElement
+                                            };
+                                            hitElement.RaiseEvent(args);
+                                        }
+                                        else if (actionType == "MouseClick")
+                                        {
+                                            var button = buttonStr == "Right" ? System.Windows.Input.MouseButton.Right : System.Windows.Input.MouseButton.Left;
+                                            var downArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, button)
+                                            {
+                                                RoutedEvent = UIElement.MouseDownEvent,
+                                                Source = hitElement
+                                            };
+                                            hitElement.RaiseEvent(downArgs);
+
+                                            var upArgs = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time + 10, button)
+                                            {
+                                                RoutedEvent = UIElement.MouseUpEvent,
+                                                Source = hitElement
+                                            };
+                                            hitElement.RaiseEvent(upArgs);
+                                        }
+                                        else if (actionType == "MouseScroll")
+                                        {
+                                            var args = new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, time, scrollDelta * 120)
+                                            {
+                                                RoutedEvent = UIElement.MouseWheelEvent,
+                                                Source = hitElement
+                                            };
+                                            hitElement.RaiseEvent(args);
+                                        }
+                                    }
+                                    finally { IsVirtualEventDispatching = false; }
                                 }
                             }
                         }
@@ -1159,7 +1369,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
                     };
                     
-                    await dispatcher.InvokeAsync(uiTask, System.Windows.Threading.DispatcherPriority.Input).Task.Unwrap();
+                    await dispatcher.InvokeAsync(uiTask, System.Windows.Threading.DispatcherPriority.Normal).Task.Unwrap();
                 }
             }
 
@@ -1243,6 +1453,157 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             }
 
             return targetHwnd;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // DIRECT NODE MANIPULATION — bypass WPF mouse events hoàn toàn
+        // Hoạt động khi app mất focus vì:
+        //   1. Dùng DispatcherPriority.Normal (không bị deprioritize)
+        //   2. Tính canvas coords từ ScaleTransform/TranslateTransform
+        //      (không cần TranslatePoint/HitTest)
+        //   3. Tự track drag state (không cần IsMouseCaptured)
+        // ═══════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Thử thao tác trực tiếp node qua code.
+        /// Return true nếu đã xử lý (skip SimulateVirtualMouseEventAsync).
+        /// </summary>
+        private static async Task<bool> TryDirectNodeManipulationAsync(
+            Window editorWindow,
+            Point wpfPoint,
+            string actionType,
+            string buttonStr,
+            Dispatcher dispatcher)
+        {
+            if (!(editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost host))
+                return false;
+
+            bool handled = false;
+
+            await dispatcher.InvokeAsync(() =>
+            {
+                try
+                {
+                    var vm = host.ViewModel;
+                    if (vm == null) return;
+                    // ── Tính canvas coords thủ công (không cần TranslatePoint) ──
+                    var scale = host.ScaleTransform?.ScaleX ?? 1.0;
+                    var tx = host.TranslateTransform?.X ?? 0;
+                    var ty = host.TranslateTransform?.Y ?? 0;
+                    double canvasX = (wpfPoint.X - tx) / scale;
+                    double canvasY = (wpfPoint.Y - ty) / scale;
+
+                    if (actionType == "MouseDown" && buttonStr != "Right")
+                    {
+                        // ── Tìm node tại vị trí bằng position matching ──
+                        FlowMy.Models.WorkflowNode? foundNode = null;
+                        foreach (var node in vm.Nodes)
+                        {
+                            if (node.Border == null) continue;
+                            // Exclude macroNode đang execute
+                            if (node == _executingMacroNode) continue;
+                            double nw = node.Border.ActualWidth > 0 ? node.Border.ActualWidth : 150;
+                            double nh = node.Border.ActualHeight > 0 ? node.Border.ActualHeight : 80;
+                            if (canvasX >= node.X && canvasX <= node.X + nw &&
+                                canvasY >= node.Y && canvasY <= node.Y + nh)
+                            {
+                                foundNode = node;
+                                // Không break — node sau có thể overlap và có ZIndex cao hơn
+                            }
+                        }
+
+                        if (foundNode != null)
+                        {
+                            _directDragNode = foundNode;
+                            _directDragOffset = new Point(canvasX - foundNode.X, canvasY - foundNode.Y);
+                            vm.SelectedNode = foundNode;
+                            try { host.ZIndexManager.SelectNode(foundNode); } catch { }
+                            handled = true;
+                        }
+                    }
+                    else if (actionType == "MouseMove" && _directDragNode != null)
+                    {
+                        // ── Direct position update ──
+                        double newX = Math.Round(canvasX - _directDragOffset.X);
+                        double newY = Math.Round(canvasY - _directDragOffset.Y);
+
+                        host.UpdateNodePosition(_directDragNode, newX, newY);
+
+                        if (_directDragNode.Border != null)
+                        {
+                            System.Windows.Controls.Canvas.SetLeft(_directDragNode.Border, newX);
+                            System.Windows.Controls.Canvas.SetTop(_directDragNode.Border, newY);
+                        }
+
+                        // Update ports
+                        if (_directDragNode.Ports != null)
+                        {
+                            foreach (var pos in _directDragNode.Ports
+                                .Where(p => p.IsVisible)
+                                .Select(p => p.Position)
+                                .Distinct())
+                            {
+                                host.UpdatePortsPositionOnSide(_directDragNode, pos);
+                            }
+                        }
+
+                        // Update connections
+                        foreach (var conn in vm.Connections
+                            .Where(c => c.FromNode == _directDragNode || c.ToNode == _directDragNode)
+                            .ToList())
+                        {
+                            host.UpdateConnectionPath(conn);
+                        }
+
+                        handled = true;
+                    }
+                    else if (actionType == "MouseUp" && _directDragNode != null)
+                    {
+                        // ── Direct drag end ──
+                        _directDragNode = null;
+                        try
+                        {
+                            host.UpdateMinimap();
+                            host.UpdateCanvasSize();
+                        }
+                        catch { }
+                        handled = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DirectManip] Error: {ex.Message}");
+                }
+            }, DispatcherPriority.Normal);
+
+            return handled;
+        }
+
+        /// <summary>
+        /// Tìm WorkflowNode từ UIElement bằng cách walk up visual tree.
+        /// </summary>
+        private static FlowMy.Models.WorkflowNode? FindNodeFromElement(
+            UIElement? element,
+            FlowMy.ViewModels.WorkflowEditorViewModel viewModel)
+        {
+            if (element == null) return null;
+            try
+            {
+                System.Windows.DependencyObject? current = element;
+                while (current != null)
+                {
+                    if (current is System.Windows.Controls.Border border &&
+                        border.Tag is FlowMy.Models.WorkflowNode node)
+                    {
+                        if (viewModel.Nodes.Contains(node))
+                            return node;
+                    }
+                    current = System.Windows.Media.VisualTreeHelper.GetParent(current)
+                              ?? (current as FrameworkElement)?.Parent;
+                }
+            }
+            catch { }
+            return null;
         }
 
     }
