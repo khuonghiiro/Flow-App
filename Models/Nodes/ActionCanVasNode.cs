@@ -1,9 +1,27 @@
 using FlowMy.Models;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace FlowMy.Models.Nodes
 {
+    /// <summary>
+    /// Một thao tác (macro recording) trong danh sách multi-action.
+    /// Mỗi item chứa macro data riêng và các speed override settings.
+    /// </summary>
+    public sealed class MacroActionItem
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Name { get; set; } = "Thao tác mới";
+        public string MacroDataJson { get; set; } = "";
+
+        // ─── Speed Override Settings ───
+        // -1 = dùng thời gian gốc từ recording, >=0 = override (ms)
+        public int MouseMoveDelayMs { get; set; } = -1;
+        public int KeyPressDelayMs { get; set; } = -1;
+        public int MouseClickDelayMs { get; set; } = -1;
+        public int MouseScrollDelayMs { get; set; } = -1;
+    }
     // ✅ KHÔNG thêm INotifyPropertyChanged — WorkflowNode đã implement
     // ✅ KHÔNG khai báo lại: PropertyChanged, OnPropertyChanged, TitleDisplayMode, TitleColorMode, TitleColorKey
     public sealed class ActionCanVasNode : WorkflowNode
@@ -28,6 +46,10 @@ namespace FlowMy.Models.Nodes
         private int _repeatCount = 1;
         private VisualPlaybackMode _visualPlaybackMode = VisualPlaybackMode.Live;
         private int _countdownSeconds = 3;
+
+        // ─── Multi-Action List Properties ───
+        private string _macroActionsJson = "";
+        private string _defaultMacroActionId = "";
 
         // ─── Playback Highlight Properties (giống BorderHighlightNode) ───
         private string _playbackBorderColorHex = "#00D2FF";
@@ -202,6 +224,36 @@ namespace FlowMy.Models.Nodes
         {
             get => _showPlaybackInfo;
             set { if (_showPlaybackInfo != value) { _showPlaybackInfo = value; OnPropertyChanged(); } }
+        }
+
+        // ─── Multi-Action Properties ───
+
+        public string MacroActionsJson
+        {
+            get => _macroActionsJson;
+            set { var s = value ?? ""; if (_macroActionsJson != s) { _macroActionsJson = s; OnPropertyChanged(); } }
+        }
+
+        public string DefaultMacroActionId
+        {
+            get => _defaultMacroActionId;
+            set { var s = value ?? ""; if (_defaultMacroActionId != s) { _defaultMacroActionId = s; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Parse MacroActionsJson → List. Returns empty list if empty/invalid.</summary>
+        public List<MacroActionItem> GetMacroActionItems()
+        {
+            if (string.IsNullOrWhiteSpace(_macroActionsJson)) return new List<MacroActionItem>();
+            try { return JsonSerializer.Deserialize<List<MacroActionItem>>(_macroActionsJson) ?? new List<MacroActionItem>(); }
+            catch { return new List<MacroActionItem>(); }
+        }
+
+        /// <summary>Serialize list → MacroActionsJson.</summary>
+        public void SetMacroActionItems(List<MacroActionItem> items)
+        {
+            MacroActionsJson = items == null || items.Count == 0
+                ? ""
+                : JsonSerializer.Serialize(items);
         }
 
         [System.Text.Json.Serialization.JsonIgnore]

@@ -409,8 +409,39 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             var macroNode = (ActionCanVasNode)node;
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
+            // 1. Lấy danh sách thao tác (multi-action)
+            var actionItems = macroNode.GetMacroActionItems();
+            MacroActionItem? selectedItem = null;
+
+            // 2. Tìm thao tác phù hợp dựa trên incoming connection (tái sử dụng flow)
+            var incomingFromNode = env.IncomingConnection?.FromNode;
+            if (incomingFromNode != null && macroNode.ReuseRoutes != null && macroNode.ReuseRoutes.Count > 0)
+            {
+                var route = macroNode.ReuseRoutes
+                    .FirstOrDefault(r => string.Equals(r.IncomingNodeId, incomingFromNode.Id, StringComparison.OrdinalIgnoreCase));
+                if (route != null && !string.IsNullOrWhiteSpace(route.MacroActionId))
+                {
+                    selectedItem = actionItems.FirstOrDefault(a => string.Equals(a.Id, route.MacroActionId, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+
+            // 3. Fallback: Nếu không match route hoặc không tìm thấy, dùng default macro action
+            if (selectedItem == null && !string.IsNullOrWhiteSpace(macroNode.DefaultMacroActionId))
+            {
+                selectedItem = actionItems.FirstOrDefault(a => string.Equals(a.Id, macroNode.DefaultMacroActionId, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // 4. Fallback: Dùng item đầu tiên trong danh sách
+            if (selectedItem == null && actionItems.Count > 0)
+            {
+                selectedItem = actionItems[0];
+            }
+
+            // 5. Lấy macro JSON
+            string macroJson = selectedItem?.MacroDataJson ?? macroNode.MacroDataJson;
+
             // Empty JSON → traverse and finish without throwing
-            if (string.IsNullOrWhiteSpace(macroNode.MacroDataJson))
+            if (string.IsNullOrWhiteSpace(macroJson))
             {
                 sw.Stop();
                 env.OnNodeCompleted?.Invoke(macroNode, sw.Elapsed);
@@ -422,7 +453,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             List<MacroAction>? actions;
             try
             {
-                actions = JsonSerializer.Deserialize<List<MacroAction>>(macroNode.MacroDataJson, _jsonOptions);
+                actions = JsonSerializer.Deserialize<List<MacroAction>>(macroJson, _jsonOptions);
             }
             catch (Exception ex)
             {
@@ -676,6 +707,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         if (i > 0)
                         {
                             long delta = actions[i].Timestamp - actions[i - 1].Timestamp;
+
+                            // Apply speed override based on action type
+                            if (selectedItem != null)
+                            {
+                                int overrideDelay = -1;
+                                string actType = actions[i].Type;
+                                if (actType == "MouseMove") overrideDelay = selectedItem.MouseMoveDelayMs;
+                                else if (actType == "KeyPress") overrideDelay = selectedItem.KeyPressDelayMs;
+                                else if (actType == "MouseClick" || actType == "MouseDown" || actType == "MouseUp") overrideDelay = selectedItem.MouseClickDelayMs;
+                                else if (actType == "MouseScroll") overrideDelay = selectedItem.MouseScrollDelayMs;
+
+                                if (overrideDelay >= 0)
+                                {
+                                    delta = overrideDelay;
+                                }
+                            }
+
                             if (delta > 0) await Task.Delay((int)Math.Min(delta, int.MaxValue), env.CancellationToken);
                         }
 

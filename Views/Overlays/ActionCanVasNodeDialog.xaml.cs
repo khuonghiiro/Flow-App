@@ -44,6 +44,23 @@ namespace FlowMy.Views.Overlays
                 }
             };
 
+            // Subscribe tab switch event
+            _viewModel.RequestSwitchToConfigTab += () =>
+            {
+                if (MainTabControl != null)
+                {
+                    // Tab "Cấu hình" is the last tab (index based on current layout)
+                    for (int i = 0; i < MainTabControl.Items.Count; i++)
+                    {
+                        if (MainTabControl.Items[i] is TabItem tab && (tab.Header?.ToString() == "Cấu hình" || tab.Header?.ToString() == "Cấu hình cơ bản"))
+                        {
+                            MainTabControl.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            };
+
             UpdateTitleColorPreview();
             UpdateColorPreviews();
             UpdateEffectPreview();
@@ -111,11 +128,51 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void RecordButton_Click(object sender, RoutedEventArgs e)
+        private void RecordNewAction_Click(object sender, RoutedEventArgs e)
         {
             var border = _node.ContainerBorder;
             if (border == null) return;
 
+            // Create new action item
+            var newItem = new MacroActionItemViewModel
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = $"Thao tác {_viewModel.MacroActions.Count + 1}",
+                IsDefault = _viewModel.MacroActions.Count == 0 // First one is default
+            };
+
+            StartMacroRecording(border, recordedJson =>
+            {
+                newItem.MacroDataJson = recordedJson;
+                _viewModel.MacroActions.Add(newItem);
+                if (newItem.IsDefault)
+                    _node.DefaultMacroActionId = newItem.Id;
+                // Also keep backward compat — store first action's data in MacroDataJson
+                if (_viewModel.MacroActions.Count == 1)
+                    _viewModel.MacroDataJson = recordedJson;
+            });
+        }
+
+        private void EditMacroAction_Click(object sender, RoutedEventArgs e)
+        {
+            var border = _node.ContainerBorder;
+            if (border == null) return;
+
+            var btn = sender as System.Windows.Controls.Button;
+            var item = btn?.Tag as MacroActionItemViewModel;
+            if (item == null) return;
+
+            StartMacroRecording(border, recordedJson =>
+            {
+                item.MacroDataJson = recordedJson;
+                // Sync default item to legacy MacroDataJson
+                if (item.IsDefault)
+                    _viewModel.MacroDataJson = recordedJson;
+            });
+        }
+
+        private void StartMacroRecording(System.Windows.Controls.Border border, Action<string> onRecorded)
+        {
             var pt = border.PointToScreen(new Point(0, 0));
             var ptBottomRight = border.PointToScreen(new Point(border.ActualWidth, border.ActualHeight));
             var bounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
@@ -128,8 +185,8 @@ namespace FlowMy.Views.Overlays
             {
                 if (!string.IsNullOrEmpty(overlay.RecordedJson))
                 {
-                    _viewModel.MacroDataJson = overlay.RecordedJson;
-                    _node.MacroDataJson = overlay.RecordedJson; // Ensure node model is updated
+                    onRecorded(overlay.RecordedJson);
+                    _node.MacroDataJson = overlay.RecordedJson; // Ensure node model backward compat
                 }
                 
                 try 

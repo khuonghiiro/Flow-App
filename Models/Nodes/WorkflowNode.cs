@@ -230,6 +230,11 @@ namespace FlowMy.Models
         /// - "Capture": Chụp ảnh trước khi chạy logic (cho TextScanNode, ScreenCaptureNode)
         /// </summary>
         public string? FunctionType { get; set; }
+
+        /// <summary>
+        /// ID của macro action cụ thể liên kết với route này (cho ActionCanVasNode).
+        /// </summary>
+        public string? MacroActionId { get; set; }
     }
 
     /// <summary>

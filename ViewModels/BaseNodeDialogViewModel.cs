@@ -521,7 +521,7 @@ namespace FlowMy.ViewModels
         /// Gọi trước khi chạy workflow để đảm bảo route hiện tại trong dialog được áp dụng,
         /// kể cả khi user chưa click Save.
         /// </summary>
-        protected void SyncReuseRoutesToNode()
+        protected virtual void SyncReuseRoutesToNode()
         {
             if (!SupportsReuseRoutes || _node.ReuseRoutes == null) return;
 

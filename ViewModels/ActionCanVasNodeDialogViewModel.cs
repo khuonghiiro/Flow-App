@@ -4,8 +4,11 @@ using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
 
@@ -89,6 +92,103 @@ namespace FlowMy.ViewModels
             "Không hiển thị", "Hiển thị trực tiếp", "Hiển thị luồng sẵn"
         };
 
+        // ─── Multi-Action List ───
+        public ObservableCollection<MacroActionItemViewModel> MacroActions { get; } = new();
+
+        /// <summary>True khi có ≥2 reuse routes → hiển thị button "Kết nối".</summary>
+        public bool HasMultipleRoutes => ReuseRoutes.Count >= 2;
+        /// <summary>True khi có < 2 reuse routes → hiển thị button "Chọn".</summary>
+        public bool HasSingleRoute => ReuseRoutes.Count < 2;
+
+        /// <summary>Event khi cần chuyển sang tab Cấu hình từ code-behind.</summary>
+        public event Action? RequestSwitchToConfigTab;
+
+        [RelayCommand]
+        private void DeleteMacroAction(MacroActionItemViewModel item)
+        {
+            if (item == null) return;
+            MacroActions.Remove(item);
+            if (item.IsDefault && MacroActions.Count > 0)
+            {
+                MacroActions[0].IsDefault = true;
+            }
+            SyncMacroActionsToNode();
+        }
+
+        [RelayCommand]
+        private void SetDefaultMacroAction(MacroActionItemViewModel item)
+        {
+            if (item == null) return;
+            foreach (var a in MacroActions) a.IsDefault = false;
+            item.IsDefault = true;
+            _actionCanVasNode.DefaultMacroActionId = item.Id;
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        [RelayCommand]
+        private void ConnectMacroAction(MacroActionItemViewModel item)
+        {
+            // Switch tab to Cấu hình — handled by code-behind via event
+            RequestSwitchToConfigTab?.Invoke();
+        }
+
+        private void SyncMacroActionsToNode()
+        {
+            var items = MacroActions.Select(a => new MacroActionItem
+            {
+                Id = a.Id,
+                Name = a.Name,
+                MacroDataJson = a.MacroDataJson,
+                MouseMoveDelayMs = a.MouseMoveDelayMs,
+                KeyPressDelayMs = a.KeyPressDelayMs,
+                MouseClickDelayMs = a.MouseClickDelayMs,
+                MouseScrollDelayMs = a.MouseScrollDelayMs
+            }).ToList();
+            _actionCanVasNode.SetMacroActionItems(items);
+            _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        private void LoadMacroActions()
+        {
+            MacroActions.Clear();
+            var items = _actionCanVasNode.GetMacroActionItems();
+
+            // Backward compat: nếu chưa có MacroActionsJson nhưng có MacroDataJson cũ → migrate
+            if (items.Count == 0 && !string.IsNullOrWhiteSpace(_actionCanVasNode.MacroDataJson))
+            {
+                var migratedItem = new MacroActionItem
+                {
+                    Name = "Thao tác 1",
+                    MacroDataJson = _actionCanVasNode.MacroDataJson
+                };
+                items.Add(migratedItem);
+                _actionCanVasNode.DefaultMacroActionId = migratedItem.Id;
+                _actionCanVasNode.SetMacroActionItems(items);
+            }
+
+            foreach (var item in items)
+            {
+                MacroActions.Add(new MacroActionItemViewModel
+                {
+                    Id = item.Id,
+                    Name = item.Name,
+                    MacroDataJson = item.MacroDataJson,
+                    IsDefault = item.Id == _actionCanVasNode.DefaultMacroActionId,
+                    MouseMoveDelayMs = item.MouseMoveDelayMs,
+                    KeyPressDelayMs = item.KeyPressDelayMs,
+                    MouseClickDelayMs = item.MouseClickDelayMs,
+                    MouseScrollDelayMs = item.MouseScrollDelayMs
+                });
+            }
+
+            // Nếu không có item nào default → set item đầu
+            if (MacroActions.Count > 0 && !MacroActions.Any(a => a.IsDefault))
+            {
+                MacroActions[0].IsDefault = true;
+                _actionCanVasNode.DefaultMacroActionId = MacroActions[0].Id;
+            }
+        }
+
         public ActionCanVasNodeDialogViewModel(ActionCanVasNode node, IWorkflowEditorHost host)
             : base(node, host)
         {
@@ -120,6 +220,14 @@ namespace FlowMy.ViewModels
             _repeatCount = node.RepeatCount;
             _selectedVisualPlaybackMode = VisualModeToString(node.VisualPlaybackMode);
             _countdownSeconds = node.CountdownSeconds;
+
+            // Load multi-action list
+            LoadMacroActions();
+            ReuseRoutes.CollectionChanged += (_, __) =>
+            {
+                OnPropertyChanged(nameof(HasMultipleRoutes));
+                OnPropertyChanged(nameof(HasSingleRoute));
+            };
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -289,8 +397,63 @@ namespace FlowMy.ViewModels
             if (_actionCanVasNode.CountdownSeconds != CountdownSeconds)
             { _actionCanVasNode.CountdownSeconds = CountdownSeconds; needSync = true; }
 
+            // Save multi-action list
+            SyncMacroActionsToNode();
+
+            // Sync MacroActionId to the newly saved ReuseRoutes
+            if (_actionCanVasNode.ReuseRoutes != null)
+            {
+                foreach (var routeVm in ReuseRoutes)
+                {
+                    var matching = _actionCanVasNode.ReuseRoutes
+                        .FirstOrDefault(r => string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase));
+                    if (matching != null)
+                    {
+                        matching.MacroActionId = routeVm.SelectedMacroActionId;
+                    }
+                }
+            }
+
             if (needSync)
                 _host.RequestSyncDataPanels(immediate: true);
+        }
+
+        protected override void LoadReuseRoutes()
+        {
+            base.LoadReuseRoutes();
+
+            var canvasNode = _node as ActionCanVasNode;
+            if (canvasNode != null && canvasNode.ReuseRoutes != null)
+            {
+                foreach (var routeVm in ReuseRoutes)
+                {
+                    var existing = canvasNode.ReuseRoutes
+                        .FirstOrDefault(r => string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                    {
+                        routeVm.SelectedMacroActionId = existing.MacroActionId;
+                    }
+                }
+            }
+        }
+
+        protected override void SyncReuseRoutesToNode()
+        {
+            base.SyncReuseRoutesToNode();
+
+            var canvasNode = _node as ActionCanVasNode;
+            if (canvasNode != null && canvasNode.ReuseRoutes != null)
+            {
+                foreach (var routeVm in ReuseRoutes)
+                {
+                    var matching = canvasNode.ReuseRoutes
+                        .FirstOrDefault(r => string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase));
+                    if (matching != null)
+                    {
+                        matching.MacroActionId = routeVm.SelectedMacroActionId;
+                    }
+                }
+            }
         }
 
         // ─── Helpers ───

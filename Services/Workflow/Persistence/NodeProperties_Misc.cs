@@ -1000,6 +1000,12 @@ public sealed partial class FileWorkflowPersistenceService
                 actionCanVasNode.VisualPlaybackMode = vpm;
             if (properties.TryGetValue("CountdownSeconds", out var csObj) && int.TryParse(csObj?.ToString(), out var cs))
                 actionCanVasNode.CountdownSeconds = Math.Max(0, Math.Min(10, cs));
+
+            // Multi-Action List
+            if (properties.TryGetValue("MacroActionsJson", out var maJsonObj))
+                actionCanVasNode.MacroActionsJson = maJsonObj?.ToString() ?? "";
+            if (properties.TryGetValue("DefaultMacroActionId", out var dmaiObj))
+                actionCanVasNode.DefaultMacroActionId = dmaiObj?.ToString() ?? "";
     }
 
     private static void GetActionCanVasNodeProperties(ActionCanVasNode actionNode, Dictionary<string, object> dict)
@@ -1028,6 +1034,12 @@ public sealed partial class FileWorkflowPersistenceService
             dict["RepeatCount"] = actionNode.RepeatCount;
             dict["VisualPlaybackMode"] = actionNode.VisualPlaybackMode.ToString();
             dict["CountdownSeconds"] = actionNode.CountdownSeconds;
+
+            // Multi-Action List
+            if (!string.IsNullOrWhiteSpace(actionNode.MacroActionsJson))
+                dict["MacroActionsJson"] = actionNode.MacroActionsJson;
+            if (!string.IsNullOrWhiteSpace(actionNode.DefaultMacroActionId))
+                dict["DefaultMacroActionId"] = actionNode.DefaultMacroActionId;
     }
 
     private static void GetMacroRecorderNodeProperties(MacroRecorderNode macroNode, Dictionary<string, object> dict)

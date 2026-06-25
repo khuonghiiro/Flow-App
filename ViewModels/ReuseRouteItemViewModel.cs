@@ -46,6 +46,10 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private FunctionTypeOption? _selectedFunctionTypeItem;
 
+        /// <summary>ID của macro action được chọn cho route này.</summary>
+        [ObservableProperty]
+        private string? _selectedMacroActionId;
+
         partial void OnSelectedFunctionTypeChanged(string value)
         {
             System.Diagnostics.Debug.WriteLine($"ReuseRouteItemViewModel: SelectedFunctionType changed to '{value}' for IncomingNodeId={IncomingNodeId}");

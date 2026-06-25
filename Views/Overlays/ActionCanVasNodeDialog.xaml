@@ -45,25 +45,138 @@
             </Border>
 
             <!-- CONTENT -->
-            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+            <TabControl x:Name="MainTabControl" Grid.Row="1" Background="Transparent" BorderThickness="0">
 
                 <!-- TAB: LOGIC -->
                 <TabItem Header="Logic" Style="{StaticResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>
-                            <!-- 🎯 Ghi thao tác -->
+                            <!-- 🎯 Danh sách thao tác -->
                             <Border Background="{DynamicResource WindowBackground}"
                                     BorderBrush="{DynamicResource ControlBorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="🎯 Ghi thao tác (trong vùng Canvas)" Foreground="{DynamicResource TextBrush}"
+                                    <TextBlock Text="🎯 Danh sách thao tác" Foreground="{DynamicResource TextBrush}"
                                                FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     
-                                    <Button Height="40" Content="🔴 Ghi lại thao tác" 
+                                    <Button Height="36" Content="🔴 Ghi thao tác mới" 
                                             Style="{DynamicResource DangerButton}" Cursor="Hand"
-                                            Click="RecordButton_Click" Margin="0,0,0,10"/>
+                                            Click="RecordNewAction_Click" Margin="0,0,0,10"/>
 
-                                    <Grid>
+                                    <!-- Danh sách các thao tác đã ghi -->
+                                    <ItemsControl ItemsSource="{Binding MacroActions}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource CardColor}"
+                                                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                        BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsDefault}" Value="True">
+                                                                    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+                                                                    <Setter Property="BorderThickness" Value="2"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <StackPanel>
+                                                        <!-- Row 1: Name + Buttons -->
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            
+                                                            <!-- ✅ Default indicator -->
+                                                            <TextBlock Grid.Column="0" Text="✅" FontSize="14" 
+                                                                       VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                       Visibility="{Binding IsDefault, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            
+                                                            <!-- Editable name -->
+                                                            <TextBox Grid.Column="1" Height="28" 
+                                                                     Style="{DynamicResource BaseTextBoxV2}"
+                                                                     Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                     VerticalContentAlignment="Center" FontSize="11"/>
+                                                            
+                                                            <!-- Action buttons -->
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
+                                                                <!-- Chọn (khi 1 route) -->
+                                                                <Button Content="⭐" Width="28" Height="28" FontSize="12" Padding="0"
+                                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                                                        ToolTip="Chọn làm thao tác gốc"
+                                                                        Visibility="{Binding DataContext.HasSingleRoute, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                        Command="{Binding DataContext.SetDefaultMacroActionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding}" Margin="0,0,4,0"/>
+                                                                <!-- Kết nối (khi ≥2 routes) -->
+                                                                <Button Content="🔗" Width="28" Height="28" FontSize="12" Padding="0"
+                                                                        Style="{DynamicResource PrimaryButton}" Cursor="Hand"
+                                                                        ToolTip="Kết nối với luồng flow (chuyển sang tab Cấu hình)"
+                                                                        Visibility="{Binding DataContext.HasMultipleRoutes, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                        Command="{Binding DataContext.ConnectMacroActionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding}" Margin="0,0,4,0"/>
+                                                                <!-- Sửa (ghi lại) -->
+                                                                <Button Content="✏️" Width="28" Height="28" FontSize="12" Padding="0"
+                                                                        Style="{DynamicResource SecondaryButton}" Cursor="Hand"
+                                                                        ToolTip="Ghi lại thao tác"
+                                                                        Click="EditMacroAction_Click" Tag="{Binding}" Margin="0,0,4,0"/>
+                                                                <!-- Xoá -->
+                                                                <Button Content="🗑️" Width="28" Height="28" FontSize="12" Padding="0"
+                                                                        Style="{DynamicResource DangerButton}" Cursor="Hand"
+                                                                        ToolTip="Xoá thao tác"
+                                                                        Command="{Binding DataContext.DeleteMacroActionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Row 2: Speed Override Settings -->
+                                                        <Border Margin="0,8,0,0" Padding="8" CornerRadius="4"
+                                                                Background="{DynamicResource WindowBackground}"
+                                                                BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1">
+                                                            <StackPanel>
+                                                                <TextBlock Text="⏱️ Tuỳ chỉnh tốc độ (ms, -1 = giữ gốc)" 
+                                                                           Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,6"/>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="6"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="6"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="6"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel Grid.Column="0">
+                                                                        <TextBlock Text="Di chuột" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
+                                                                        <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
+                                                                                 Text="{Binding MouseMoveDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="2">
+                                                                        <TextBlock Text="Nhấn phím" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
+                                                                        <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
+                                                                                 Text="{Binding KeyPressDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="4">
+                                                                        <TextBlock Text="Click chuột" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
+                                                                        <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
+                                                                                 Text="{Binding MouseClickDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="6">
+                                                                        <TextBlock Text="Scroll" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
+                                                                        <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
+                                                                                 Text="{Binding MouseScrollDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Grid Margin="0,4,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="8"/>
@@ -563,8 +676,9 @@
                                                 BorderThickness="1" CornerRadius="8" Padding="10">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="2*"/>
-                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="1.5*"/>
+                                                    <ColumnDefinition Width="1.5*"/>
+                                                    <ColumnDefinition Width="1.5*"/>
                                                     <ColumnDefinition Width="2*"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0">
@@ -590,6 +704,14 @@
                                                               ItemsSource="{Binding DataContext.ConnectionLineStyleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               SelectedValuePath="Key" DisplayMemberPath="DisplayName"
                                                               SelectedValue="{Binding SelectedLineStyleKey, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3" Margin="10,0,0,0">
+                                                    <TextBlock Text="Thao tác chạy" Foreground="{DynamicResource TextBrush}"
+                                                               FontSize="10" Opacity="0.7" Margin="0,0,0,4"/>
+                                                    <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                              ItemsSource="{Binding DataContext.MacroActions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              SelectedValuePath="Id" DisplayMemberPath="Name"
+                                                              SelectedValue="{Binding SelectedMacroActionId, Mode=TwoWay}"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
