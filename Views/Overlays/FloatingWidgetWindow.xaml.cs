@@ -3187,6 +3187,7 @@ window.hostAsync.values = window.hostAsync.values || {};
 
             // Cleanup BorderHighlight overlays khi workflow dừng
             FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
+            FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CleanupAll();
         }
         catch (Exception ex)
         {
@@ -3306,6 +3307,7 @@ window.hostAsync.values = window.hostAsync.values || {};
         
         // Cleanup BorderHighlight overlays khi session dừng
         FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
+        FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CleanupAll();
         
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
@@ -3692,6 +3694,7 @@ window.hostAsync.values = window.hostAsync.values || {};
                     _host?.ViewModel?.CancelManualRunSession(sessionId);
                     // Cleanup BorderHighlight overlays khi session dừng
                     FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
+                    FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CleanupAll();
                     Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                     {
                         UpdateRunButtonsState();

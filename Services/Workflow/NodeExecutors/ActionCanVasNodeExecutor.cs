@@ -18,6 +18,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     /// </summary>
     internal sealed class ActionCanVasNodeExecutor : INodeExecutor
     {
+        private static readonly Dictionary<string, MacroPlaybackOverlay> _activePlaybackOverlays = new();
+
         public static bool IsVirtualLeftButtonDown { get; set; }
         public static bool IsPlaybackActive { get; set; }
         public static Microsoft.Web.WebView2.Wpf.WebView2? ActiveVirtualCdpWebView { get; set; }
@@ -561,6 +563,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                         overlay.Show();
                         overlayHwnd = new System.Windows.Interop.WindowInteropHelper(overlay).Handle;
+                        lock (_activePlaybackOverlays)
+                        {
+                            _activePlaybackOverlays[macroNode.Id] = overlay;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -584,11 +590,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         }
                         overlay?.PositionOverBounds(currentBounds);
                         overlay?.ConfigureBorder(
-                            "#00000000",
-                            0,
-                            0,
-                            0,
-                            Models.BorderEffectType.None);
+                            macroNode.PlaybackBorderColorHex,
+                            macroNode.PlaybackBorderThickness,
+                            macroNode.PlaybackGradientSize,
+                            macroNode.PlaybackOpacity,
+                            macroNode.PlaybackEffectType);
                             
                         overlay?.SetCompactMode(true);
                         overlay?.SetInfoVisibility(macroNode.ShowPlaybackInfo);
@@ -647,6 +653,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 for (int cycle = 0; cycle < cycles; cycle++)
                 {
                     env.CancellationToken.ThrowIfCancellationRequested();
+                    if (!IsPlaybackActive) throw new OperationCanceledException("Playback stopped.");
 
                     if (cycle > 0)
                     {
@@ -663,6 +670,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     for (int i = 0; i < actions.Count; i++)
                     {
                         env.CancellationToken.ThrowIfCancellationRequested();
+                        if (!IsPlaybackActive) throw new OperationCanceledException("Playback stopped.");
                         overlay?.UpdateProgress(cycle + 1, cycles, i + 1, actions.Count);
 
                         if (i > 0)
@@ -820,6 +828,14 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     macroNode.PropertyChanged -= propHandler;
                 }
 
+                if (overlay != null)
+                {
+                    lock (_activePlaybackOverlays)
+                    {
+                        _activePlaybackOverlays.Remove(macroNode.Id);
+                    }
+                }
+
                 if (dispatcher != null)
                 {
                     dispatcher.Invoke(() =>
@@ -855,6 +871,30 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             sw.Stop();
             env.OnNodeCompleted?.Invoke(macroNode, sw.Elapsed);
             await env.TraverseOutputsAsync(node);
+        }
+
+        public static void CleanupAll()
+        {
+            IsPlaybackActive = false;
+            _executingMacroNode = null;
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null) return;
+
+            lock (_activePlaybackOverlays)
+            {
+                foreach (var overlay in _activePlaybackOverlays.Values)
+                {
+                    dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            overlay.Close();
+                        }
+                        catch { }
+                    });
+                }
+                _activePlaybackOverlays.Clear();
+            }
         }
 
         // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

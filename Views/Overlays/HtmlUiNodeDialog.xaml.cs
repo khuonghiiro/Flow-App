@@ -301,6 +301,15 @@ statusText: #statusText";
         protected override Panel? GetInputsPanel() => null;
         protected override Panel? GetOutputsPanel() => null;
 
+        protected override void BeforeSaveOnClose()
+        {
+            try
+            {
+                UpdateAllBindings();
+            }
+            catch { }
+        }
+
         protected override async void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             await PrepareBeforeCloseAsync();

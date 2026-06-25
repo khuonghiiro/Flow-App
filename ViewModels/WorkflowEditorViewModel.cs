@@ -1657,6 +1657,7 @@ namespace FlowMy.ViewModels
 
             // Cleanup BorderHighlight overlays khi session dừng
             FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
+            FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CleanupAll();
         }
 
         /// <summary>Luôn queue lên Dispatcher — không chạy đồng bộ trên UI (tránh chặn animation khi workflow báo từ thread nền hoặc async trên UI).</summary>
@@ -2284,6 +2285,7 @@ namespace FlowMy.ViewModels
 
             // Cleanup BorderHighlight overlays khi workflow dừng
             FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll();
+            FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CleanupAll();
 
             // Stop visual effects immediately even when cancellation callbacks are still draining.
             var dispatcher = Application.Current?.Dispatcher;

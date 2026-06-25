@@ -545,6 +545,9 @@ namespace FlowMy.Views
                     }
                 }
                 catch { }
+
+                try { FlowMy.Services.Workflow.NodeExecutors.BorderHighlightNodeExecutor.CleanupAll(); } catch { }
+                try { FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CleanupAll(); } catch { }
             };
         }
 
