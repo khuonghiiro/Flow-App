@@ -1498,9 +1498,16 @@ namespace FlowMy.Services.Workflow
             System.Diagnostics.Debug.WriteLine($"ProcessReuseRouteFunctionType: Node {node.Title} ({node.Id}) has {node.ReuseRoutes.Count} ReuseRoutes, IncomingConnection: {incomingConnection?.FromNode?.Title ?? "null"}");
 
             // Tìm ReuseRoute tương ứng với incoming connection hiện tại
+            // Ưu tiên match cả PortId (ConditionalNode Diamond), fallback match chỉ NodeId (backward compat)
             var incomingNodeId = incomingConnection?.FromNode?.Id;
+            var incomingPortId = incomingConnection?.FromPort?.Id;
             var matchingRoute = node.ReuseRoutes.FirstOrDefault(r => 
-                string.Equals(r.IncomingNodeId, incomingNodeId, StringComparison.OrdinalIgnoreCase));
+                string.Equals(r.IncomingNodeId, incomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(r.IncomingPortId) &&
+                string.Equals(r.IncomingPortId, incomingPortId ?? "", StringComparison.OrdinalIgnoreCase))
+                ?? node.ReuseRoutes.FirstOrDefault(r => 
+                string.Equals(r.IncomingNodeId, incomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrWhiteSpace(r.IncomingPortId));
 
             if (matchingRoute != null)
             {

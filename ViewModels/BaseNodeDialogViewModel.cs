@@ -438,13 +438,55 @@ namespace FlowMy.ViewModels
             var connections = vm.Connections;
             if (connections == null || connections.Count == 0) return;
 
-            // Chỉ lấy các node nối TRỰC TIẾP (không qua trung gian) vào/ra node hiện tại
+            // Lấy các connection nối TRỰC TIẾP vào node hiện tại
             // ⚠️ LOẠI BỎ StorageNode - vì StorageNode luôn được chạy tự động khi có connection
-            var previousNodes = connections
+            var incomingConnections = connections
                 .Where(c => c.ToNode == _node && c.FromNode != null && c.FromNode is not FlowMy.Models.Nodes.StorageNode)
-                .Select(c => c.FromNode!)
-                .Distinct()
                 .ToList();
+
+            // ⚠️ QUAN TRỌNG: Phân biệt branches ConditionalNode Diamond
+            // Thay vì .Distinct() trên FromNode (gộp tất cả branches), tạo entry theo cặp (FromNode, FromPort)
+            // Với node thường (1 output port): 1 entry per node (như cũ)
+            // Với ConditionalNode Diamond (nhiều output ports/branches): 1 entry per branch
+            var previousEntries = new List<(WorkflowNode Node, string? PortId, string DisplayTitle)>();
+            var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var conn in incomingConnections)
+            {
+                var fromNode = conn.FromNode!;
+                var fromPortId = conn.FromPort?.Id;
+
+                // Key để deduplicate: nodeId + portId (nếu có)
+                var dedupeKey = $"{fromNode.Id}|{fromPortId ?? ""}";
+                if (!seenKeys.Add(dedupeKey)) continue;
+
+                // Xác định display title
+                string displayTitle;
+                if (!string.IsNullOrWhiteSpace(fromPortId) && fromNode.IsConditionalNode && fromNode.ConditionalBranches?.Count > 0)
+                {
+                    // Tìm branch tương ứng với port
+                    var branch = fromNode.ConditionalBranches
+                        .FirstOrDefault(b => b.Port != null && string.Equals(b.Port.Id, fromPortId, StringComparison.OrdinalIgnoreCase));
+                    if (branch != null)
+                    {
+                        var branchLabel = !string.IsNullOrWhiteSpace(branch.DisplayTitle)
+                            ? branch.DisplayTitle
+                            : branch.Label;
+                        var nodeTitle = string.IsNullOrWhiteSpace(fromNode.Title) ? fromNode.Id : fromNode.Title;
+                        displayTitle = $"{nodeTitle} [{branchLabel}]";
+                    }
+                    else
+                    {
+                        displayTitle = string.IsNullOrWhiteSpace(fromNode.Title) ? fromNode.Id : fromNode.Title;
+                    }
+                }
+                else
+                {
+                    displayTitle = string.IsNullOrWhiteSpace(fromNode.Title) ? fromNode.Id : fromNode.Title;
+                }
+
+                previousEntries.Add((fromNode, fromPortId, displayTitle));
+            }
 
             var nextNodes = connections
                 .Where(c => c.FromNode == _node && c.ToNode != null && c.ToNode is not FlowMy.Models.Nodes.StorageNode)
@@ -452,7 +494,7 @@ namespace FlowMy.ViewModels
                 .Distinct()
                 .ToList();
 
-            if (previousNodes.Count == 0 || nextNodes.Count == 0)
+            if (previousEntries.Count == 0 || nextNodes.Count == 0)
             {
                 return; // Không có đủ in/out để cấu hình route
             }
@@ -462,16 +504,24 @@ namespace FlowMy.ViewModels
                 .Select(n => CreateDataSourceOption(n))
                 .ToList();
 
-            // Tạo 1 item cho mỗi node nối trực tiếp vào
-            foreach (var prev in previousNodes)
+            // Tạo 1 item cho mỗi (node, port) nối trực tiếp vào
+            foreach (var (prevNode, prevPortId, title) in previousEntries)
             {
+                // Match existing route: ưu tiên match cả PortId, fallback match chỉ NodeId (backward compat)
                 var existing = _node.ReuseRoutes
-                    .FirstOrDefault(r => string.Equals(r.IncomingNodeId, prev.Id, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(r =>
+                        string.Equals(r.IncomingNodeId, prevNode.Id, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(r.IncomingPortId ?? "", prevPortId ?? "", StringComparison.OrdinalIgnoreCase))
+                    ?? _node.ReuseRoutes
+                    .FirstOrDefault(r =>
+                        string.Equals(r.IncomingNodeId, prevNode.Id, StringComparison.OrdinalIgnoreCase) &&
+                        string.IsNullOrWhiteSpace(r.IncomingPortId));
 
                 var item = new ReuseRouteItemViewModel
                 {
-                    IncomingNodeId = prev.Id,
-                    IncomingNodeTitle = string.IsNullOrWhiteSpace(prev.Title) ? prev.Id : prev.Title
+                    IncomingNodeId = prevNode.Id,
+                    IncomingPortId = prevPortId,
+                    IncomingNodeTitle = title
                 };
 
                 foreach (var opt in outgoingOptions)
@@ -500,7 +550,7 @@ namespace FlowMy.ViewModels
                     item.SelectedFunctionTypeItem = FunctionTypeOptions.FirstOrDefault(o =>
                         string.Equals(o.Value, item.SelectedFunctionType, StringComparison.OrdinalIgnoreCase));
 
-                    System.Diagnostics.Debug.WriteLine($"LoadReuseRoutes: IncomingNodeId={item.IncomingNodeId}, FunctionType={item.SelectedFunctionType}, FunctionTypeItem={item.SelectedFunctionTypeItem?.DisplayName}");
+                    System.Diagnostics.Debug.WriteLine($"LoadReuseRoutes: IncomingNodeId={item.IncomingNodeId}, IncomingPortId={item.IncomingPortId}, FunctionType={item.SelectedFunctionType}");
                 }
                 else
                 {
@@ -544,6 +594,7 @@ namespace FlowMy.ViewModels
                 _node.ReuseRoutes.Add(new NodeReuseRoute
                 {
                     IncomingNodeId = routeVm.IncomingNodeId,
+                    IncomingPortId = routeVm.IncomingPortId,
                     OutgoingNodeId = routeVm.SelectedOutgoingNodeId,
                     LineStyleKey = lineStyleKey,
                     FunctionType = routeVm.SelectedFunctionType
@@ -640,6 +691,7 @@ namespace FlowMy.ViewModels
                     _node.ReuseRoutes.Add(new NodeReuseRoute
                     {
                         IncomingNodeId = routeVm.IncomingNodeId,
+                        IncomingPortId = routeVm.IncomingPortId,
                         OutgoingNodeId = routeVm.SelectedOutgoingNodeId,
                         LineStyleKey = lineStyleKey,
                         FunctionType = string.IsNullOrWhiteSpace(routeVm.SelectedFunctionType) ? null : routeVm.SelectedFunctionType

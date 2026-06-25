@@ -286,13 +286,23 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
                 // Kiểm tra ReuseRoutes: nếu có cấu hình "tái sử dụng flow" thì ưu tiên route theo incoming node
                 var incomingFromNode = IncomingConnection?.FromNode;
+                var incomingFromPortId = IncomingConnection?.FromPort?.Id;
                 if (incomingFromNode != null && node.ReuseRoutes != null && node.ReuseRoutes.Count > 0)
                 {
+                    // Ưu tiên match cả PortId (ConditionalNode Diamond), fallback match chỉ NodeId (backward compat)
                     var route = node.ReuseRoutes
                         .FirstOrDefault(r =>
                             !string.IsNullOrWhiteSpace(r.IncomingNodeId) &&
                             !string.IsNullOrWhiteSpace(r.OutgoingNodeId) &&
-                            string.Equals(r.IncomingNodeId, incomingFromNode.Id, StringComparison.OrdinalIgnoreCase));
+                            string.Equals(r.IncomingNodeId, incomingFromNode.Id, StringComparison.OrdinalIgnoreCase) &&
+                            !string.IsNullOrWhiteSpace(r.IncomingPortId) &&
+                            string.Equals(r.IncomingPortId, incomingFromPortId ?? "", StringComparison.OrdinalIgnoreCase))
+                        ?? node.ReuseRoutes
+                        .FirstOrDefault(r =>
+                            !string.IsNullOrWhiteSpace(r.IncomingNodeId) &&
+                            !string.IsNullOrWhiteSpace(r.OutgoingNodeId) &&
+                            string.Equals(r.IncomingNodeId, incomingFromNode.Id, StringComparison.OrdinalIgnoreCase) &&
+                            string.IsNullOrWhiteSpace(r.IncomingPortId));
 
                     if (route != null)
                     {

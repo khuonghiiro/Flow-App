@@ -415,10 +415,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             // 2. Tìm thao tác phù hợp dựa trên incoming connection (tái sử dụng flow)
             var incomingFromNode = env.IncomingConnection?.FromNode;
+            var incomingFromPortId = env.IncomingConnection?.FromPort?.Id;
             if (incomingFromNode != null && macroNode.ReuseRoutes != null && macroNode.ReuseRoutes.Count > 0)
             {
+                // Ưu tiên match cả PortId (ConditionalNode Diamond), fallback match chỉ NodeId (backward compat)
                 var route = macroNode.ReuseRoutes
-                    .FirstOrDefault(r => string.Equals(r.IncomingNodeId, incomingFromNode.Id, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(r =>
+                        string.Equals(r.IncomingNodeId, incomingFromNode.Id, StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(r.IncomingPortId) &&
+                        string.Equals(r.IncomingPortId, incomingFromPortId ?? "", StringComparison.OrdinalIgnoreCase))
+                    ?? macroNode.ReuseRoutes
+                    .FirstOrDefault(r =>
+                        string.Equals(r.IncomingNodeId, incomingFromNode.Id, StringComparison.OrdinalIgnoreCase) &&
+                        string.IsNullOrWhiteSpace(r.IncomingPortId));
                 if (route != null && !string.IsNullOrWhiteSpace(route.MacroActionId))
                 {
                     selectedItem = actionItems.FirstOrDefault(a => string.Equals(a.Id, route.MacroActionId, StringComparison.OrdinalIgnoreCase));

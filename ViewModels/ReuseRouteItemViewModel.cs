@@ -17,6 +17,10 @@ namespace FlowMy.ViewModels
         [ObservableProperty]
         private string _incomingNodeTitle = string.Empty;
 
+        /// <summary>Id của port cụ thể trên incoming node (phân biệt branches ConditionalNode Diamond).</summary>
+        [ObservableProperty]
+        private string? _incomingPortId;
+
         /// <summary>Id của node out được chọn (nối trực tiếp ra từ node hiện tại).</summary>
         [ObservableProperty]
         private string? _selectedOutgoingNodeId;

@@ -213,6 +213,12 @@ namespace FlowMy.Models
         /// <summary>Id của node nối trực tiếp vào input port của node hiện tại.</summary>
         public string? IncomingNodeId { get; set; }
 
+        /// <summary>
+        /// Id của port cụ thể trên incoming node (để phân biệt branches của ConditionalNode Diamond).
+        /// Null/empty = match chỉ theo IncomingNodeId (backward compatible).
+        /// </summary>
+        public string? IncomingPortId { get; set; }
+
         /// <summary>Id của node nối trực tiếp ra từ output port của node hiện tại.</summary>
         public string? OutgoingNodeId { get; set; }
 
