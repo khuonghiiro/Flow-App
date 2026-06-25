@@ -57,24 +57,30 @@ public static class WebView2EnvironmentManager
         }
 
         var options = new CoreWebView2EnvironmentOptions();
+        var browserArgs = new System.Text.StringBuilder();
+
+        // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
+        browserArgs.Append("--disable-background-timer-throttling ");
+        browserArgs.Append("--disable-backgrounding-occluded-windows ");
+        browserArgs.Append("--disable-renderer-backgrounding ");
+        browserArgs.Append("--calculate-native-win-occlusion=false ");
 
         if (GpuDetectionHelper.IsGpuAvailable)
         {
             // Bật GPU acceleration giống như trong WebNodeControl / HtmlUiNodeControl
-            var gpuArgs = new System.Text.StringBuilder();
-            gpuArgs.Append("--enable-gpu-rasterization ");
-            gpuArgs.Append("--enable-zero-copy ");
-            gpuArgs.Append("--enable-features=VaapiVideoDecoder ");
-            gpuArgs.Append("--ignore-gpu-blacklist ");
-            gpuArgs.Append("--enable-accelerated-2d-canvas ");
-            gpuArgs.Append("--enable-accelerated-video-decode ");
-
-            options.AdditionalBrowserArguments = gpuArgs.ToString();
+            browserArgs.Append("--enable-gpu-rasterization ");
+            browserArgs.Append("--enable-zero-copy ");
+            browserArgs.Append("--enable-features=VaapiVideoDecoder ");
+            browserArgs.Append("--ignore-gpu-blacklist ");
+            browserArgs.Append("--enable-accelerated-2d-canvas ");
+            browserArgs.Append("--enable-accelerated-video-decode ");
         }
         else
         {
-            options.AdditionalBrowserArguments = "--disable-gpu";
+            browserArgs.Append("--disable-gpu ");
         }
+
+        options.AdditionalBrowserArguments = browserArgs.ToString().Trim();
 
         // Nếu cachePath null (tạo thư mục lỗi) thì cho WebView2 tự chọn UserDataFolder
         if (string.IsNullOrWhiteSpace(cachePath))

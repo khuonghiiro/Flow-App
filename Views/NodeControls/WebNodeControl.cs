@@ -2312,23 +2312,29 @@ if (window.__elementInspector) {
 
                         var cachePathFallback = WebNodeCacheHelper.GetSharedRuntimeCachePath();
                         var optionsFallback = new CoreWebView2EnvironmentOptions();
+                        var browserArgsFallback = new StringBuilder();
+
+                        // Prevent Chromium from throttling/suspending when minimized or occluded (background running support)
+                        browserArgsFallback.Append("--disable-background-timer-throttling ");
+                        browserArgsFallback.Append("--disable-backgrounding-occluded-windows ");
+                        browserArgsFallback.Append("--disable-renderer-backgrounding ");
+                        browserArgsFallback.Append("--calculate-native-win-occlusion=false ");
 
                         if (GpuDetectionHelper.IsGpuAvailable)
                         {
-                            var gpuArgs = new StringBuilder();
-                            gpuArgs.Append("--enable-gpu-rasterization ");
-                            gpuArgs.Append("--enable-zero-copy ");
-                            gpuArgs.Append("--enable-features=VaapiVideoDecoder ");
-                            gpuArgs.Append("--ignore-gpu-blacklist ");
-                            gpuArgs.Append("--enable-accelerated-2d-canvas ");
-                            gpuArgs.Append("--enable-accelerated-video-decode ");
-
-                            optionsFallback.AdditionalBrowserArguments = gpuArgs.ToString();
+                            browserArgsFallback.Append("--enable-gpu-rasterization ");
+                            browserArgsFallback.Append("--enable-zero-copy ");
+                            browserArgsFallback.Append("--enable-features=VaapiVideoDecoder ");
+                            browserArgsFallback.Append("--ignore-gpu-blacklist ");
+                            browserArgsFallback.Append("--enable-accelerated-2d-canvas ");
+                            browserArgsFallback.Append("--enable-accelerated-video-decode ");
                         }
                         else
                         {
-                            optionsFallback.AdditionalBrowserArguments = "--disable-gpu";
+                            browserArgsFallback.Append("--disable-gpu ");
                         }
+
+                        optionsFallback.AdditionalBrowserArguments = browserArgsFallback.ToString().Trim();
 
                         env = await CoreWebView2Environment.CreateAsync(null, cachePathFallback, optionsFallback);
                     }

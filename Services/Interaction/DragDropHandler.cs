@@ -149,16 +149,59 @@ namespace FlowMy.Services.Interaction
             var webView = host.DraggedNode.Border != null ? FindWebView2Control(host.DraggedNode.Border) : null;
             if (webView != null && webView.IsVisible)
             {
+                Point posInWebView;
                 try
                 {
-                    Point posInWebView;
                     if (isPlaybackActive)
                     {
                         var virtPos = FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.VirtualWindowMousePosition;
                         var pWin = Window.GetWindow(host.WorkflowCanvas);
                         if (virtPos.HasValue && pWin != null)
                         {
-                            posInWebView = pWin.TranslatePoint(virtPos.Value, webView);
+                            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(pWin);
+                            double dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                            double dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                            try
+                            {
+                                if (pWin.WindowState == WindowState.Minimized || !pWin.IsActive)
+                                {
+                                    throw new InvalidOperationException("Force manual calculation when window is inactive or minimized");
+                                }
+                                var virtPosLogical = new Point(virtPos.Value.X / dpiScaleX, virtPos.Value.Y / dpiScaleY);
+                                posInWebView = pWin.TranslatePoint(virtPosLogical, webView);
+                            }
+                            catch
+                            {
+                                // Fallback manual calculation when window is inactive, minimized or offscreen
+                                double scale = host.ScaleTransform?.ScaleX ?? 1.0;
+                                double txVal = host.TranslateTransform?.X ?? 0;
+                                double tyVal = host.TranslateTransform?.Y ?? 0;
+                                
+                                double logicalVirtX = virtPos.Value.X / dpiScaleX;
+                                double logicalVirtY = virtPos.Value.Y / dpiScaleY;
+                                
+                                double canvasX = (logicalVirtX - FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CanvasLayoutOffset.X - txVal) / scale;
+                                double canvasY = (logicalVirtY - FlowMy.Services.Workflow.NodeExecutors.ActionCanVasNodeExecutor.CanvasLayoutOffset.Y - tyVal) / scale;
+                                
+                                double nodeRelX = canvasX - host.DraggedNode.X;
+                                double nodeRelY = canvasY - host.DraggedNode.Y;
+                                
+                                double webViewOffsetX = 0;
+                                double webViewOffsetY = 0;
+                                try
+                                {
+                                    var zeroInWebView = webView.TransformToAncestor(host.DraggedNode.Border).Transform(new Point(0, 0));
+                                    webViewOffsetX = zeroInWebView.X;
+                                    webViewOffsetY = zeroInWebView.Y;
+                                }
+                                catch
+                                {
+                                    webViewOffsetX = 0;
+                                    webViewOffsetY = (host.DraggedNode.Type == FlowMy.Models.NodeType.EmbedApplication) ? 32 : 38;
+                                }
+                                
+                                posInWebView = new Point(nodeRelX - webViewOffsetX, nodeRelY - webViewOffsetY);
+                            }
                         }
                         else
                         {
@@ -252,7 +295,14 @@ namespace FlowMy.Services.Interaction
             var editorWin = System.Windows.Window.GetWindow(host.WorkflowCanvas);
             if (virtWinPos.HasValue && editorWin != null)
             {
-                try { mousePos = editorWin.TranslatePoint(virtWinPos.Value, host.WorkflowCanvas); }
+                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWin);
+                double dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                double dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                try
+                {
+                    var virtWinPosLogical = new Point(virtWinPos.Value.X / dpiScaleX, virtWinPos.Value.Y / dpiScaleY);
+                    mousePos = editorWin.TranslatePoint(virtWinPosLogical, host.WorkflowCanvas);
+                }
                 catch
                 {
                     // TranslatePoint fail khi window inactive → tính thủ công
@@ -260,8 +310,8 @@ namespace FlowMy.Services.Interaction
                     var tx = host.TranslateTransform?.X ?? 0;
                     var ty = host.TranslateTransform?.Y ?? 0;
                     mousePos = new Point(
-                        (virtWinPos.Value.X - tx) / scale,
-                        (virtWinPos.Value.Y - ty) / scale);
+                        (virtWinPos.Value.X / dpiScaleX - tx) / scale,
+                        (virtWinPos.Value.Y / dpiScaleY - ty) / scale);
                 }
             }
             else
@@ -286,9 +336,17 @@ namespace FlowMy.Services.Interaction
                             var scale = host.ScaleTransform?.ScaleX ?? 1.0;
                             var tx = host.TranslateTransform?.X ?? 0;
                             var ty = host.TranslateTransform?.Y ?? 0;
+                            double dpiScaleX = 1.0;
+                            double dpiScaleY = 1.0;
+                            if (editorWin != null)
+                            {
+                                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWin);
+                                dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                                dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                            }
                             mousePos = new Point(
-                                (vwp.Value.X - tx) / scale,
-                                (vwp.Value.Y - ty) / scale);
+                                (vwp.Value.X / dpiScaleX - tx) / scale,
+                                (vwp.Value.Y / dpiScaleY - ty) / scale);
                         }
                         else mousePos = e.GetPosition(host.WorkflowCanvas);
                     }
@@ -498,7 +556,14 @@ namespace FlowMy.Services.Interaction
             var editorWin = System.Windows.Window.GetWindow(host.WorkflowCanvas);
             if (virtWinPos.HasValue && editorWin != null)
             {
-                try { mousePos = editorWin.TranslatePoint(virtWinPos.Value, host.WorkflowCanvas); }
+                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWin);
+                double dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                double dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                try
+                {
+                    var virtWinPosLogical = new Point(virtWinPos.Value.X / dpiScaleX, virtWinPos.Value.Y / dpiScaleY);
+                    mousePos = editorWin.TranslatePoint(virtWinPosLogical, host.WorkflowCanvas);
+                }
                 catch
                 {
                     // TranslatePoint fail khi window inactive → tính thủ công
@@ -506,8 +571,8 @@ namespace FlowMy.Services.Interaction
                     var tx = host.TranslateTransform?.X ?? 0;
                     var ty = host.TranslateTransform?.Y ?? 0;
                     mousePos = new Point(
-                        (virtWinPos.Value.X - tx) / scale,
-                        (virtWinPos.Value.Y - ty) / scale);
+                        (virtWinPos.Value.X / dpiScaleX - tx) / scale,
+                        (virtWinPos.Value.Y / dpiScaleY - ty) / scale);
                 }
             }
             else
@@ -531,9 +596,17 @@ namespace FlowMy.Services.Interaction
                             var scale = host.ScaleTransform?.ScaleX ?? 1.0;
                             var tx = host.TranslateTransform?.X ?? 0;
                             var ty = host.TranslateTransform?.Y ?? 0;
+                            double dpiScaleX = 1.0;
+                            double dpiScaleY = 1.0;
+                            if (editorWin != null)
+                            {
+                                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWin);
+                                dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                                dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+                            }
                             mousePos = new Point(
-                                (vwp.Value.X - tx) / scale,
-                                (vwp.Value.Y - ty) / scale);
+                                (vwp.Value.X / dpiScaleX - tx) / scale,
+                                (vwp.Value.Y / dpiScaleY - ty) / scale);
                         }
                         else mousePos = e.GetPosition(host.WorkflowCanvas);
                     }

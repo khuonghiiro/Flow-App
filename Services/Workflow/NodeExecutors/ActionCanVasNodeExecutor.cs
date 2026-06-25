@@ -22,6 +22,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         public static bool IsPlaybackActive { get; set; }
         public static Microsoft.Web.WebView2.Wpf.WebView2? ActiveVirtualCdpWebView { get; set; }
         public static bool IsVirtualEventDispatching { get; set; }
+        public static Point CanvasLayoutOffset { get; set; } = new Point(250, 60);
 
         // ─── Direct drag state — track internally, không phụ thuộc mouse capture ───
         private static FlowMy.Models.WorkflowNode? _directDragNode;
@@ -462,6 +463,18 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         editorHwnd = new System.Windows.Interop.WindowInteropHelper(editorWindow).Handle;
                         ClientToScreen(editorHwnd, ref lastValidClientOrigin);
+
+                        if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
+                        {
+                            try
+                            {
+                                var tx = directHost.TranslateTransform?.X ?? 0;
+                                var ty = directHost.TranslateTransform?.Y ?? 0;
+                                var origin = directHost.WorkflowCanvas.TranslatePoint(new Point(0, 0), editorWindow);
+                                CanvasLayoutOffset = new Point(origin.X - tx, origin.Y - ty);
+                            }
+                            catch { }
+                        }
                     }
                 }, DispatcherPriority.Normal);
             }
@@ -672,9 +685,21 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         {
                             POINT currentOrigin = new POINT { X = 0, Y = 0 };
                             ClientToScreen(editorHwnd, ref currentOrigin);
-                             if (currentOrigin.X > -10000 && currentOrigin.Y > -10000)
+                            if (currentOrigin.X > -10000 && currentOrigin.Y > -10000)
                             {
                                 lastValidClientOrigin = currentOrigin;
+                            }
+
+                            if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
+                            {
+                                try
+                                {
+                                    var tx = directHost.TranslateTransform?.X ?? 0;
+                                    var ty = directHost.TranslateTransform?.Y ?? 0;
+                                    var origin = directHost.WorkflowCanvas.TranslatePoint(new Point(0, 0), editorWindow);
+                                    CanvasLayoutOffset = new Point(origin.X - tx, origin.Y - ty);
+                                }
+                                catch { }
                             }
                         }
 
@@ -960,6 +985,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                     {
                         try
                         {
+                            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(editorWindow);
+                            double dpiScaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                            double dpiScaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+
                             POINT editorPt;
                             if (isOffScreen || IsIconic(editorHwnd))
                             {
@@ -972,6 +1001,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             }
 
                             var wpfPoint = new Point(editorPt.X, editorPt.Y);
+                            var hitTestPoint = new Point(editorPt.X / dpiScaleX, editorPt.Y / dpiScaleY);
                             VirtualWindowMousePosition = wpfPoint;
                             UIElement? hitElement = null;
                             bool hitTestSucceeded = false;
@@ -988,7 +1018,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         }
                                         return System.Windows.Media.HitTestResultBehavior.Continue;
                                     }),
-                                    new System.Windows.Media.PointHitTestParameters(wpfPoint));
+                                    new System.Windows.Media.PointHitTestParameters(hitTestPoint));
                                 hitTestSucceeded = hitElement != null;
                             }
                             catch (Exception htEx)
@@ -1030,6 +1060,54 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                         current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
                                     }
                                 }
+
+                                // Fallback target matching: Nếu cửa sổ không hoạt động hoặc hitTest trả về null,
+                                // dùng DPI-scaled coordinates để tìm WebView2 node chứa toạ độ chuột simulated.
+                                if (webView == null && editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
+                                {
+                                    var vm = directHost.ViewModel;
+                                    if (vm != null)
+                                    {
+                                        var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
+                                        var txVal = directHost.TranslateTransform?.X ?? 0;
+                                        var tyVal = directHost.TranslateTransform?.Y ?? 0;
+
+
+                                        double logicalClientX = wpfPoint.X / dpiScaleX;
+                                        double logicalClientY = wpfPoint.Y / dpiScaleY;
+
+                                        double canvasX = (logicalClientX - CanvasLayoutOffset.X - txVal) / scale;
+                                        double canvasY = (logicalClientY - CanvasLayoutOffset.Y - tyVal) / scale;
+
+                                        foreach (var n in vm.Nodes)
+                                        {
+                                            if (n.Border == null) continue;
+                                            if (n == _executingMacroNode) continue;
+                                            if (n.Type == FlowMy.Models.NodeType.ActionCanVas) continue;
+
+                                            if (n.Type == FlowMy.Models.NodeType.Web || 
+                                                n.Type == FlowMy.Models.NodeType.HtmlUi ||
+                                                n.Type == FlowMy.Models.NodeType.EmbedApplication)
+                                            {
+                                                double nw = n.Border.ActualWidth > 0 ? n.Border.ActualWidth : 600;
+                                                double nh = n.Border.ActualHeight > 0 ? n.Border.ActualHeight : 600;
+                                                if (canvasX >= n.X && canvasX <= n.X + nw &&
+                                                    canvasY >= n.Y && canvasY <= n.Y + nh)
+                                                {
+                                                    var wvControl = FindWebView2InVisualTree(n.Border);
+                                                    if (wvControl != null)
+                                                    {
+                                                        webView = wvControl;
+                                                        EnsureWebViewActiveInBackground(webView);
+                                                        isNativeHost = true;
+                                                        System.Diagnostics.Debug.WriteLine($"[MacroExecutor] ActiveVirtualCdpWebView fallback match node: {n.Title ?? n.Id} at ({canvasX:F0},{canvasY:F0})");
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             if (webView != null && webView.CoreWebView2 != null)
@@ -1054,8 +1132,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                             var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
                                             var txVal = directHost.TranslateTransform?.X ?? 0;
                                             var tyVal = directHost.TranslateTransform?.Y ?? 0;
-                                            double canvasX = (wpfPoint.X - txVal) / scale;
-                                            double canvasY = (wpfPoint.Y - tyVal) / scale;
                                             
                                             FlowMy.Models.WorkflowNode? hostNode = null;
                                             var vm = directHost.ViewModel;
@@ -1079,9 +1155,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                             
                                             if (hostNode != null)
                                             {
-                                                double nodeRelX = canvasX - hostNode.X;
-                                                double nodeRelY = canvasY - hostNode.Y;
-                                                
                                                 double webViewOffsetX = 0;
                                                 double webViewOffsetY = 0;
                                                 try
@@ -1099,7 +1172,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                                         webViewOffsetY = 38;
                                                 }
                                                 
-                                                wvPoint = new Point(nodeRelX - webViewOffsetX, nodeRelY - webViewOffsetY);
+                                                double webViewOffsetLogicalX = CanvasLayoutOffset.X + txVal + scale * (hostNode.X + webViewOffsetX);
+                                                double webViewOffsetLogicalY = CanvasLayoutOffset.Y + tyVal + scale * (hostNode.Y + webViewOffsetY);
+                                                wvPoint = new Point(wpfPoint.X - webViewOffsetLogicalX, wpfPoint.Y - webViewOffsetLogicalY);
                                             }
                                             else
                                             {
@@ -1219,8 +1294,10 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                             var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
                                             var txVal = directHost.TranslateTransform?.X ?? 0;
                                             var tyVal = directHost.TranslateTransform?.Y ?? 0;
-                                            double canvasX = (wpfPoint.X - txVal) / scale;
-                                            double canvasY = (wpfPoint.Y - tyVal) / scale;
+                                            double logicalClientX = wpfPoint.X / dpiScaleX;
+                                            double logicalClientY = wpfPoint.Y / dpiScaleY;
+                                            double canvasX = (logicalClientX - CanvasLayoutOffset.X - txVal) / scale;
+                                            double canvasY = (logicalClientY - CanvasLayoutOffset.Y - tyVal) / scale;
 
                                             if (actionType == "MouseDown" && buttonStr != "Right")
                                             {
@@ -1606,5 +1683,68 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return null;
         }
 
+        private static Microsoft.Web.WebView2.Wpf.WebView2? FindWebView2InVisualTree(System.Windows.DependencyObject parent)
+        {
+            if (parent == null) return null;
+            if (parent is Microsoft.Web.WebView2.Wpf.WebView2 wv2)
+            {
+                return wv2;
+            }
+            int childrenCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < childrenCount; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                var result = FindWebView2InVisualTree(child);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        private static void EnsureWebViewActiveInBackground(Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        {
+            try
+            {
+                if (webView.CoreWebView2 != null)
+                {
+                    var isSuspendedProp = webView.CoreWebView2.GetType().GetProperty("IsSuspended");
+                    if (isSuspendedProp != null)
+                    {
+                        bool isSuspended = (bool)isSuspendedProp.GetValue(webView.CoreWebView2);
+                        if (isSuspended)
+                        {
+                            var resumeMethod = webView.CoreWebView2.GetType().GetMethod("Resume");
+                            resumeMethod?.Invoke(webView.CoreWebView2, null);
+                            System.Diagnostics.Debug.WriteLine("[MacroExecutor] CoreWebView2 was suspended. Called Resume().");
+                        }
+                    }
+                }
+
+                var type = typeof(Microsoft.Web.WebView2.Wpf.WebView2);
+                var field = type.GetField("_coreWebView2Controller", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                            ?? type.GetField("_controller", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null)
+                {
+                    var controller = field.GetValue(webView);
+                    if (controller != null)
+                    {
+                        var isVisibleProp = controller.GetType().GetProperty("IsVisible");
+                        if (isVisibleProp != null && isVisibleProp.CanWrite)
+                        {
+                            bool currentVal = (bool)isVisibleProp.GetValue(controller);
+                            if (!currentVal)
+                            {
+                                isVisibleProp.SetValue(controller, true);
+                                System.Diagnostics.Debug.WriteLine("[MacroExecutor] Forced CoreWebView2Controller.IsVisible = true in background");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MacroExecutor] Failed to force WebView2 active: {ex.Message}");
+            }
+        }
     }
 }
+
