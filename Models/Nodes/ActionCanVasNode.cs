@@ -21,6 +21,13 @@ namespace FlowMy.Models.Nodes
         public int KeyPressDelayMs { get; set; } = -1;
         public int MouseClickDelayMs { get; set; } = -1;
         public int MouseScrollDelayMs { get; set; } = -1;
+
+        // ─── Skip Settings ───
+        // true = bỏ qua hoàn toàn loại thao tác này khi phát lại (tăng tốc)
+        public bool SkipMouseMove { get; set; } = false;
+        public bool SkipKeyPress { get; set; } = false;
+        public bool SkipMouseClick { get; set; } = false;
+        public bool SkipMouseScroll { get; set; } = false;
     }
     // ✅ KHÔNG thêm INotifyPropertyChanged — WorkflowNode đã implement
     // ✅ KHÔNG khai báo lại: PropertyChanged, OnPropertyChanged, TitleDisplayMode, TitleColorMode, TitleColorKey

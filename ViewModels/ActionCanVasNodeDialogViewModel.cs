@@ -142,7 +142,11 @@ namespace FlowMy.ViewModels
                 MouseMoveDelayMs = a.MouseMoveDelayMs,
                 KeyPressDelayMs = a.KeyPressDelayMs,
                 MouseClickDelayMs = a.MouseClickDelayMs,
-                MouseScrollDelayMs = a.MouseScrollDelayMs
+                MouseScrollDelayMs = a.MouseScrollDelayMs,
+                SkipMouseMove = a.SkipMouseMove,
+                SkipKeyPress = a.SkipKeyPress,
+                SkipMouseClick = a.SkipMouseClick,
+                SkipMouseScroll = a.SkipMouseScroll
             }).ToList();
             _actionCanVasNode.SetMacroActionItems(items);
             _host.RequestSyncDataPanels(immediate: true);
@@ -177,7 +181,11 @@ namespace FlowMy.ViewModels
                     MouseMoveDelayMs = item.MouseMoveDelayMs,
                     KeyPressDelayMs = item.KeyPressDelayMs,
                     MouseClickDelayMs = item.MouseClickDelayMs,
-                    MouseScrollDelayMs = item.MouseScrollDelayMs
+                    MouseScrollDelayMs = item.MouseScrollDelayMs,
+                    SkipMouseMove = item.SkipMouseMove,
+                    SkipKeyPress = item.SkipKeyPress,
+                    SkipMouseClick = item.SkipMouseClick,
+                    SkipMouseScroll = item.SkipMouseScroll
                 });
             }
 

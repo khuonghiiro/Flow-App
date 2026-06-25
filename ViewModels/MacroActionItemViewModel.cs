@@ -20,6 +20,24 @@ namespace FlowMy.ViewModels
         [ObservableProperty] private int _mouseClickDelayMs = -1;
         [ObservableProperty] private int _mouseScrollDelayMs = -1;
 
+        // ─── Skip Settings ───
+        // true = bỏ qua hoàn toàn loại thao tác này khi phát lại
+        [ObservableProperty] private bool _skipMouseMove;
+        [ObservableProperty] private bool _skipKeyPress;
+        [ObservableProperty] private bool _skipMouseClick;
+        [ObservableProperty] private bool _skipMouseScroll;
+
+        // ─── IsEnabled for TextBox (disabled when skip is checked) ───
+        public bool IsMouseMoveDelayEnabled => !SkipMouseMove;
+        public bool IsKeyPressDelayEnabled => !SkipKeyPress;
+        public bool IsMouseClickDelayEnabled => !SkipMouseClick;
+        public bool IsMouseScrollDelayEnabled => !SkipMouseScroll;
+
+        partial void OnSkipMouseMoveChanged(bool value) => OnPropertyChanged(nameof(IsMouseMoveDelayEnabled));
+        partial void OnSkipKeyPressChanged(bool value) => OnPropertyChanged(nameof(IsKeyPressDelayEnabled));
+        partial void OnSkipMouseClickChanged(bool value) => OnPropertyChanged(nameof(IsMouseClickDelayEnabled));
+        partial void OnSkipMouseScrollChanged(bool value) => OnPropertyChanged(nameof(IsMouseScrollDelayEnabled));
+
         /// <summary>Có dữ liệu macro hay chưa.</summary>
         public bool HasMacroData => !string.IsNullOrWhiteSpace(MacroDataJson);
 

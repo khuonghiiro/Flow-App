@@ -704,6 +704,16 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                         if (!IsPlaybackActive) throw new OperationCanceledException("Playback stopped.");
                         overlay?.UpdateProgress(cycle + 1, cycles, i + 1, actions.Count);
 
+                        // ─── Skip logic — bỏ qua hoàn toàn action nếu checkbox được check ───
+                        if (selectedItem != null)
+                        {
+                            string skipActType = actions[i].Type;
+                            if (skipActType == "MouseMove" && selectedItem.SkipMouseMove) continue;
+                            if (skipActType == "KeyPress" && selectedItem.SkipKeyPress) continue;
+                            if ((skipActType == "MouseClick" || skipActType == "MouseDown" || skipActType == "MouseUp") && selectedItem.SkipMouseClick) continue;
+                            if (skipActType == "MouseScroll" && selectedItem.SkipMouseScroll) continue;
+                        }
+
                         if (i > 0)
                         {
                             long delta = actions[i].Timestamp - actions[i - 1].Timestamp;

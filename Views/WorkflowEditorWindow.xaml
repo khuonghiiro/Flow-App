@@ -3461,7 +3461,7 @@ Cursor="Hand"
                             Style="{DynamicResource TransparentButtonStyle}"
                             ToolTip="Khóa / Mở khóa zoom canvas">
                             <Button.Effect>
-                                <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.5"/>
+                                <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.3"/>
                             </Button.Effect>
                             <controls:SvgViewboxEx Width="18" Height="18">
                                 <controls:SvgViewboxEx.Style>
@@ -3491,7 +3491,7 @@ Cursor="Hand"
                             Style="{DynamicResource TransparentButtonStyle}"
                             ToolTip="Mở cấu hình canvas nâng cao">
                         <Button.Effect>
-                            <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.5"/>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.3"/>
                         </Button.Effect>
                         <controls:SvgViewboxEx Source="{Binding Source={x:Static sys:String.Empty}, 
                                          Converter={StaticResource IconKeyToPathConverter}, 

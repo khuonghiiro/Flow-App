@@ -147,26 +147,53 @@
                                                                         <ColumnDefinition Width="6"/>
                                                                         <ColumnDefinition Width="*"/>
                                                                     </Grid.ColumnDefinitions>
-                                                                    <StackPanel Grid.Column="0">
+                                                                    <StackPanel Grid.Column="0" IsEnabled="{Binding IsMouseMoveDelayEnabled}">
                                                                         <TextBlock Text="Di chuột" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
                                                                         <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
                                                                                  Text="{Binding MouseMoveDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                                     </StackPanel>
-                                                                    <StackPanel Grid.Column="2">
+                                                                    <StackPanel Grid.Column="2" IsEnabled="{Binding IsKeyPressDelayEnabled}">
                                                                         <TextBlock Text="Nhấn phím" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
                                                                         <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
                                                                                  Text="{Binding KeyPressDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                                     </StackPanel>
-                                                                    <StackPanel Grid.Column="4">
+                                                                    <StackPanel Grid.Column="4" IsEnabled="{Binding IsMouseClickDelayEnabled}">
                                                                         <TextBlock Text="Click chuột" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
                                                                         <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
                                                                                  Text="{Binding MouseClickDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                                     </StackPanel>
-                                                                    <StackPanel Grid.Column="6">
+                                                                    <StackPanel Grid.Column="6" IsEnabled="{Binding IsMouseScrollDelayEnabled}">
                                                                         <TextBlock Text="Scroll" Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,0,0,2"/>
                                                                         <TextBox Height="24" Style="{DynamicResource BaseTextBoxV2}" FontSize="10"
                                                                                  Text="{Binding MouseScrollDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                                     </StackPanel>
+                                                                </Grid>
+                                                                <!-- ⏭️ Bỏ qua thao tác -->
+                                                                <TextBlock Text="⏭️ Bỏ qua thao tác (không thực thi)" 
+                                                                           Foreground="{DynamicResource TextMuted}" FontSize="9" Margin="0,6,0,4"/>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <CheckBox Grid.Column="0" Content="Di chuột" FontSize="9"
+                                                                              Foreground="{DynamicResource TextMuted}"
+                                                                              IsChecked="{Binding SkipMouseMove, Mode=TwoWay}"
+                                                                              ToolTip="Bỏ qua toàn bộ sự kiện di chuột khi phát lại"/>
+                                                                    <CheckBox Grid.Column="1" Content="Nhấn phím" FontSize="9"
+                                                                              Foreground="{DynamicResource TextMuted}"
+                                                                              IsChecked="{Binding SkipKeyPress, Mode=TwoWay}"
+                                                                              ToolTip="Bỏ qua toàn bộ sự kiện nhấn phím khi phát lại"/>
+                                                                    <CheckBox Grid.Column="2" Content="Click chuột" FontSize="9"
+                                                                              Foreground="{DynamicResource TextMuted}"
+                                                                              IsChecked="{Binding SkipMouseClick, Mode=TwoWay}"
+                                                                              ToolTip="Bỏ qua toàn bộ sự kiện click chuột khi phát lại"/>
+                                                                    <CheckBox Grid.Column="3" Content="Scroll" FontSize="9"
+                                                                              Foreground="{DynamicResource TextMuted}"
+                                                                              IsChecked="{Binding SkipMouseScroll, Mode=TwoWay}"
+                                                                              ToolTip="Bỏ qua toàn bộ sự kiện cuộn chuột khi phát lại"/>
                                                                 </Grid>
                                                             </StackPanel>
                                                         </Border>
