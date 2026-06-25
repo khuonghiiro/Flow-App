@@ -1116,75 +1116,65 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                                 try 
                                 {
                                     Point wvPoint;
-                                    try
+                                    // Robust manual calculation to ensure 100% identical coordinates
+                                    // between active and background/minimized states.
+                                    if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
                                     {
-                                        if (isOffScreen || !editorWindow.IsActive)
+                                        var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
+                                        var txVal = directHost.TranslateTransform?.X ?? 0;
+                                        var tyVal = directHost.TranslateTransform?.Y ?? 0;
+                                        
+                                        FlowMy.Models.WorkflowNode? hostNode = null;
+                                        var vm = directHost.ViewModel;
+                                        if (vm != null)
                                         {
-                                            throw new InvalidOperationException("Force fallback translation when window is deactivated or offscreen");
-                                        }
-                                        wvPoint = editorWindow.TranslatePoint(wpfPoint, webView);
-                                    }
-                                    catch
-                                    {
-                                        // Fallback manual calculation of wvPoint relative to webView
-                                        if (editorWindow is FlowMy.Services.Interaction.IWorkflowEditorHost directHost)
-                                        {
-                                            var scale = directHost.ScaleTransform?.ScaleX ?? 1.0;
-                                            var txVal = directHost.TranslateTransform?.X ?? 0;
-                                            var tyVal = directHost.TranslateTransform?.Y ?? 0;
-                                            
-                                            FlowMy.Models.WorkflowNode? hostNode = null;
-                                            var vm = directHost.ViewModel;
-                                            if (vm != null)
+                                            System.Windows.DependencyObject current = webView;
+                                            while (current != null)
                                             {
-                                                System.Windows.DependencyObject current = webView;
-                                                while (current != null)
+                                                if (current is System.Windows.Controls.Border borderVal)
                                                 {
-                                                    if (current is System.Windows.Controls.Border borderVal)
+                                                    var match = vm.Nodes.FirstOrDefault(n => n.Border == borderVal);
+                                                    if (match != null)
                                                     {
-                                                        var match = vm.Nodes.FirstOrDefault(n => n.Border == borderVal);
-                                                        if (match != null)
-                                                        {
-                                                            hostNode = match;
-                                                            break;
-                                                        }
+                                                        hostNode = match;
+                                                        break;
                                                     }
-                                                    current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
                                                 }
+                                                current = System.Windows.Media.VisualTreeHelper.GetParent(current) ?? (current as System.Windows.FrameworkElement)?.Parent;
+                                            }
+                                        }
+                                        
+                                        if (hostNode != null)
+                                        {
+                                            double webViewOffsetX = 0;
+                                            double webViewOffsetY = 0;
+                                            try
+                                            {
+                                                var zeroInWebView = webView.TransformToAncestor(hostNode.Border).Transform(new Point(0, 0));
+                                                webViewOffsetX = zeroInWebView.X;
+                                                webViewOffsetY = zeroInWebView.Y;
+                                            }
+                                            catch
+                                            {
+                                                webViewOffsetX = 0;
+                                                if (hostNode.Type == FlowMy.Models.NodeType.EmbedApplication)
+                                                    webViewOffsetY = 32;
+                                                else
+                                                    webViewOffsetY = 38;
                                             }
                                             
-                                            if (hostNode != null)
-                                            {
-                                                double webViewOffsetX = 0;
-                                                double webViewOffsetY = 0;
-                                                try
-                                                {
-                                                    var zeroInWebView = webView.TransformToAncestor(hostNode.Border).Transform(new Point(0, 0));
-                                                    webViewOffsetX = zeroInWebView.X;
-                                                    webViewOffsetY = zeroInWebView.Y;
-                                                }
-                                                catch
-                                                {
-                                                    webViewOffsetX = 0;
-                                                    if (hostNode.Type == FlowMy.Models.NodeType.EmbedApplication)
-                                                        webViewOffsetY = 32;
-                                                    else
-                                                        webViewOffsetY = 38;
-                                                }
-                                                
-                                                double webViewOffsetLogicalX = CanvasLayoutOffset.X + txVal + scale * (hostNode.X + webViewOffsetX);
-                                                double webViewOffsetLogicalY = CanvasLayoutOffset.Y + tyVal + scale * (hostNode.Y + webViewOffsetY);
-                                                wvPoint = new Point(wpfPoint.X - webViewOffsetLogicalX, wpfPoint.Y - webViewOffsetLogicalY);
-                                            }
-                                            else
-                                            {
-                                                wvPoint = wpfPoint;
-                                            }
+                                            double webViewOffsetLogicalX = CanvasLayoutOffset.X + txVal + scale * (hostNode.X + webViewOffsetX);
+                                            double webViewOffsetLogicalY = CanvasLayoutOffset.Y + tyVal + scale * (hostNode.Y + webViewOffsetY);
+                                            wvPoint = new Point(wpfPoint.X - webViewOffsetLogicalX, wpfPoint.Y - webViewOffsetLogicalY);
                                         }
                                         else
                                         {
                                             wvPoint = wpfPoint;
                                         }
+                                    }
+                                    else
+                                    {
+                                        wvPoint = wpfPoint;
                                     }
                                     string cdpType = "";
                                     string cdpButton = "none";
