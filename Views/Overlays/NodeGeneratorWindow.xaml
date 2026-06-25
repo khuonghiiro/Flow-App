@@ -881,7 +881,7 @@
             </Grid>
 
             <!-- ═══ FOOTER ═══ -->
-            <Border Grid.Row="2" CornerRadius="0,0,14,14" Padding="20,14"
+            <Border x:Name="FooterBorder" Grid.Row="2" CornerRadius="0,0,14,14" Padding="20,14"
                     Style="{DynamicResource DialogHeaderBorder}">
                 <Grid>
                     <Grid.ColumnDefinitions>

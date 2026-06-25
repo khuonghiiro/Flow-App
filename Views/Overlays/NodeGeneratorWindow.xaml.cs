@@ -76,6 +76,14 @@ namespace FlowMy.Views.Overlays
             if (e.Source is System.Windows.Controls.TabControl)
             {
                 UpdatePreview();
+
+                // Ẩn footer khi ở tab 2 (Chỉnh Sửa) — tab 2 đã có nút "CẬP NHẬT" riêng
+                if (FooterBorder != null)
+                {
+                    FooterBorder.Visibility = MainTabControl?.SelectedIndex == 0
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+                }
             }
         }
 
