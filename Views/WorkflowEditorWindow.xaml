@@ -1171,21 +1171,19 @@ Tag="ListOut">
                             </Border>
 
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-    Background="{DynamicResource PapayaOrangeBrush}"
-    Tag="ShowInputMsgNode"
-    MouseDown="NodeTemplate_MouseDown"
-    MouseMove="NodeTemplate_MouseMove"
-    MouseUp="NodeTemplate_MouseUp"
-    MouseEnter="NodeTemplate_MouseEnter"
-    MouseLeave="NodeTemplate_MouseLeave">
+                                    Background="{DynamicResource EspressoBrownBrush}"
+                                    Tag="ShowInputMsgNode"
+                                    MouseDown="NodeTemplate_MouseDown"
+                                    MouseMove="NodeTemplate_MouseMove"
+                                    MouseUp="NodeTemplate_MouseUp"
+                                    MouseEnter="NodeTemplate_MouseEnter"
+                                    MouseLeave="NodeTemplate_MouseLeave">
                                 <Border.ToolTip>
                                     <ToolTip>
                                         <StackPanel MaxWidth="240">
-                                            <TextBlock FontWeight="Bold" FontStyle="Italic">
-                <Run Text="Nhập dữ liệu"/>
-                                            </TextBlock>
-                                            <TextBlock Text="Node được tạo bởi Node Generator."
-                        TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
+                                            <TextBlock Text="Nhập dữ liệu" FontWeight="Bold"/>
+                                            <TextBlock Text="Hiển thị popup HTML UI tùy chỉnh tại vị trí chuột để nhận tương tác người dùng."
+                                                       TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.9"/>
                                         </StackPanel>
                                     </ToolTip>
                                 </Border.ToolTip>
@@ -1193,16 +1191,16 @@ Tag="ListOut">
                                     <ContextMenu Placement="MousePoint" StaysOpen="False">
                                         <MenuItem IsHitTestVisible="False">
                                             <MenuItem.Header>
-                                                <Border Background="{DynamicResource PapayaOrangeBrush}"
-                        CornerRadius="10" Padding="10"
-                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
+                                                <Border Background="{DynamicResource EspressoBrownBrush}"
+                                                        CornerRadius="10" Padding="10"
+                                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
                                                     <StackPanel>
                                                         <TextBlock Text="Nhập dữ liệu"
-                                    Foreground="{DynamicResource TextOnPapayaOrangeBrush}"
-                                    FontWeight="Bold" FontSize="13"/>
-                                                        <TextBlock Text="Node tự động sinh bởi Node Generator."
-                                    Foreground="{DynamicResource TextOnPapayaOrangeBrush}"
-                                    Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                                   Foreground="{DynamicResource TextOnEspressoBrownBrush}"
+                                                                   FontWeight="Bold" FontSize="13"/>
+                                                        <TextBlock Text="Tạo UI HTML với WebView2 chạy tại vị trí con trỏ chuột. Cấu hình inputs/outputs để chuyển tiếp dữ liệu."
+                                                                   Foreground="{DynamicResource TextOnEspressoBrownBrush}"
+                                                                   Opacity="0.9" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                     </StackPanel>
                                                 </Border>
                                             </MenuItem.Header>
@@ -1211,8 +1209,8 @@ Tag="ListOut">
                                 </Border.ContextMenu>
                                 <Grid>
                                     <controls:SvgViewboxEx Style="{StaticResource PaletteSvgIconStyle}"
-                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='user-message regular'}"
-                            Fill="{DynamicResource TextOnPapayaOrangeBrush}"/>
+                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='user-message regular'}"
+                                                            Fill="{DynamicResource TextOnEspressoBrownBrush}"/>
                                 </Grid>
                             </Border>
                             

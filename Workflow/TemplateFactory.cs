@@ -1625,19 +1625,24 @@ namespace FlowMy.Workflow
 
         private WorkflowNode CreateShowInputMsgNode(double x, double y)
         {
+            var nodeBrush = _colorThemeService.GetBrush("EspressoBrownBrush")
+                ?? _colorThemeService.GetBrush("PrimaryBrush")
+                ?? Brushes.Chocolate;
+
             var node = new FlowMy.Models.Nodes.ShowInputMsgNode
             {
                 Id = $"Node_ShowInputMsg_{Guid.NewGuid()}",
                 Title = "Nhập dữ liệu",
                 X = x - 30,
                 Y = y - 30,
-                ColorKey = "PapayaOrange",
-                NodeBrush = Application.Current.TryFindResource("PapayaOrangeBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.CornflowerBlue,
+                ColorKey = "EspressoBrown",
+                NodeBrush = nodeBrush,
                 Type = NodeType.ShowInputMsg
             };
             node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = "Info" });
             node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
-            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "jsonDynamic", DisplayName = "jsonDynamic", IsMultiple = false, OutputType = WorkflowDataType.String });
+            
+            // Rebuild dynamic outputs is already called in constructor of ShowInputMsgNode to initialize "result" output.
 
             return node;
         }

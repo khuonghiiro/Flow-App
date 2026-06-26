@@ -1,9 +1,8 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
-using FlowMy.ViewModels;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,65 +11,306 @@ using System.Linq;
 
 namespace FlowMy.ViewModels
 {
-    /// <summary>ViewModel cho một dòng input trong Nhập dữ liệu node.</summary>
-    public partial class ShowInputMsgInputMappingItemViewModel : ObservableObject
-    {
-        [ObservableProperty] private string? _sourceNodeId;
-        [ObservableProperty] private string? _sourceOutputKey;
-        [ObservableProperty] private string _inputKeyOverride = string.Empty;
-        public ObservableCollection<WorkflowOutputKeyOption> AvailableOutputKeyOptions { get; } = new();
-    }
-
     public partial class ShowInputMsgNodeDialogViewModel : BaseNodeDialogViewModel
     {
-        private readonly ShowInputMsgNode _showInputMsgNode;
-
-        // ─── Properties đặc thù ───
-        // TODO: Khai báo properties đặc thù với [ObservableProperty]:
-        // [ObservableProperty] private string _someProperty = string.Empty;
-
+        private readonly ShowInputMsgNode _node;
         private bool _isSyncingFromNode;
-        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
-        public ObservableCollection<ShowInputMsgInputMappingItemViewModel> InputMappingsList { get; } = new();
 
-        [RelayCommand]
-        private void AddInputMapping()
+        public ObservableCollection<WorkflowDataSourceOption> AvailableNodeOptions { get; } = new();
+        public ObservableCollection<CodeInputMappingItemViewModel> InputMappingsList { get; } = new();
+        public ObservableCollection<OutputKeyItemViewModel> OutputKeysList { get; } = new();
+        public ObservableCollection<HtmlOfflineAssetItemViewModel> OfflineAssetsList { get; } = new();
+
+        public System.Collections.Generic.List<string> AutoRefreshUnitOptions { get; } = new() { "ms", "s", "min" };
+
+        [ObservableProperty]
+        private string _htmlCode = string.Empty;
+
+        [ObservableProperty]
+        private string _jsCode = string.Empty;
+
+        [ObservableProperty]
+        private string _cssCode = string.Empty;
+
+        [ObservableProperty]
+        private string _paramsCode = string.Empty;
+
+        [ObservableProperty]
+        private double _width = 450;
+
+        [ObservableProperty]
+        private double _height = 350;
+
+        [ObservableProperty]
+        private int _codeFontSize = 13;
+
+        private void HookOfflineAssetsList()
         {
-            var item = new ShowInputMsgInputMappingItemViewModel();
-            item.PropertyChanged += InputMappingItem_PropertyChanged;
-            InputMappingsList.Add(item);
-            SyncInputMappingsToNode();
+            OfflineAssetsList.CollectionChanged += (_, e) =>
+            {
+                if (e.NewItems != null)
+                    foreach (HtmlOfflineAssetItemViewModel item in e.NewItems)
+                        item.PropertyChanged += OfflineAssetItem_PropertyChanged;
+                if (e.OldItems != null)
+                    foreach (HtmlOfflineAssetItemViewModel item in e.OldItems)
+                        item.PropertyChanged -= OfflineAssetItem_PropertyChanged;
+                SyncOfflineAssetsToNode();
+            };
         }
 
-        [RelayCommand]
-        private void RemoveInputMapping(ShowInputMsgInputMappingItemViewModel? item)
+        private void OfflineAssetItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (item != null && InputMappingsList.Contains(item) && InputMappingsList.Count > 1)
+            if (e.PropertyName is nameof(HtmlOfflineAssetItemViewModel.IsEnabled)
+                or nameof(HtmlOfflineAssetItemViewModel.Title)
+                or nameof(HtmlOfflineAssetItemViewModel.Description)
+                or nameof(HtmlOfflineAssetItemViewModel.SourceUrl)
+                or nameof(HtmlOfflineAssetItemViewModel.LocalFileName)
+                or nameof(HtmlOfflineAssetItemViewModel.AssetType))
             {
-                item.PropertyChanged -= InputMappingItem_PropertyChanged;
-                InputMappingsList.Remove(item);
-                SyncInputMappingsToNode();
+                SyncOfflineAssetsToNode();
             }
+        }
+
+        public ShowInputMsgNodeDialogViewModel(ShowInputMsgNode node, IWorkflowEditorHost host)
+            : base(node, host)
+        {
+            _node = node ?? throw new ArgumentNullException(nameof(node));
+
+            _htmlCode = node.HtmlCode ?? string.Empty;
+            _jsCode = node.JsCode ?? string.Empty;
+            _cssCode = node.CssCode ?? string.Empty;
+            _paramsCode = node.ParamsCode ?? string.Empty;
+            _width = node.Width;
+            _height = node.Height;
+
+            var mappings = node.InputMappings ?? new System.Collections.Generic.List<CodeInputMapping>();
+            if (mappings.Count == 0) mappings.Add(new CodeInputMapping());
+            foreach (var m in mappings)
+            {
+                var item = new CodeInputMappingItemViewModel
+                {
+                    SourceNodeId = m.SourceNodeId,
+                    SourceOutputKey = m.SourceOutputKey,
+                    InputKeyOverride = m.InputKeyOverride ?? string.Empty,
+                    AutoRefreshEnabled = m.AutoRefreshEnabled,
+                    AutoRefreshInterval = m.AutoRefreshInterval,
+                    AutoRefreshUnit = m.AutoRefreshUnit ?? "ms"
+                };
+                item.PropertyChanged += InputMappingItem_PropertyChanged;
+                InputMappingsList.Add(item);
+                RefreshOutputKeyOptionsFor(item);
+            }
+
+            foreach (var k in node.OutputKeys)
+                OutputKeysList.Add(new OutputKeyItemViewModel { Key = k });
+
+            foreach (var a in node.OfflineAssets ?? new List<HtmlOfflineAsset>())
+            {
+                var vm = HtmlOfflineAssetItemViewModel.FromModel(a);
+                vm.PropertyChanged += OfflineAssetItem_PropertyChanged;
+                OfflineAssetsList.Add(vm);
+            }
+
+            HookOfflineAssetsList();
+            RefreshAvailableNodes();
+
+            if (node is INotifyPropertyChanged npc)
+            {
+                npc.PropertyChanged += (s, e) => OnNodePropertyChanged(e.PropertyName ?? string.Empty);
+            }
+        }
+
+        protected override string GetDefaultTitle() => "Nhập dữ liệu";
+
+        partial void OnHtmlCodeChanged(string value)
+        {
+            if (_node != null)
+                _node.HtmlCode = value ?? string.Empty;
+        }
+
+        partial void OnJsCodeChanged(string value)
+        {
+            if (_node != null)
+                _node.JsCode = value ?? string.Empty;
+        }
+
+        partial void OnCssCodeChanged(string value)
+        {
+            if (_node != null)
+                _node.CssCode = value ?? string.Empty;
+        }
+
+        partial void OnParamsCodeChanged(string value)
+        {
+            if (_node != null)
+                _node.ParamsCode = value ?? string.Empty;
+        }
+
+        partial void OnWidthChanged(double value)
+        {
+            if (_node != null)
+                _node.Width = value;
+        }
+
+        partial void OnHeightChanged(double value)
+        {
+            if (_node != null)
+                _node.Height = value;
+        }
+
+        protected override void OnSaveTitle()
+        {
+            _node.HtmlCode = HtmlCode ?? string.Empty;
+            _node.JsCode = JsCode ?? string.Empty;
+            _node.CssCode = CssCode ?? string.Empty;
+            _node.ParamsCode = ParamsCode ?? string.Empty;
+            _node.Width = Width;
+            _node.Height = Height;
+
+            SyncInputMappingsToNode();
+            SyncOutputKeysToNode();
+            SyncOfflineAssetsToNode();
+            _node.NotifyTitleChanged();
         }
 
         private void InputMappingItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (_isSyncingFromNode) return;
-            if (sender is not ShowInputMsgInputMappingItemViewModel item) return;
-            if (e.PropertyName == nameof(ShowInputMsgInputMappingItemViewModel.SourceNodeId))
+            if (sender is not CodeInputMappingItemViewModel item) return;
+
+            if (e.PropertyName == nameof(CodeInputMappingItemViewModel.SourceNodeId))
             {
                 RefreshOutputKeyOptionsFor(item);
+                return;
             }
-            SyncInputMappingsToNode();
+
+            if (e.PropertyName == nameof(CodeInputMappingItemViewModel.SourceOutputKey))
+            {
+                if (!string.IsNullOrWhiteSpace(item.SourceOutputKey) && string.IsNullOrWhiteSpace(item.InputKeyOverride))
+                    item.InputKeyOverride = item.SourceOutputKey.Trim();
+                return;
+            }
+
+            if (e.PropertyName == nameof(CodeInputMappingItemViewModel.AutoRefreshEnabled) ||
+                e.PropertyName == nameof(CodeInputMappingItemViewModel.AutoRefreshInterval) ||
+                e.PropertyName == nameof(CodeInputMappingItemViewModel.AutoRefreshUnit))
+            {
+                SyncInputMappingsToNode();
+            }
         }
 
-        public void RefreshOutputKeyOptionsFor(ShowInputMsgInputMappingItemViewModel item)
+        private void SyncInputMappingsToNode()
+        {
+            _node.InputMappings = InputMappingsList.Select(x => new CodeInputMapping
+            {
+                SourceNodeId = x.SourceNodeId,
+                SourceOutputKey = x.SourceOutputKey,
+                InputKeyOverride = string.IsNullOrWhiteSpace(x.InputKeyOverride) ? null : x.InputKeyOverride.Trim(),
+                AutoRefreshEnabled = x.AutoRefreshEnabled,
+                AutoRefreshInterval = x.AutoRefreshInterval > 0 ? x.AutoRefreshInterval : 1000,
+                AutoRefreshUnit = x.AutoRefreshUnit ?? "ms"
+            }).ToList();
+        }
+
+        private void SyncOutputKeysToNode()
+        {
+            _node.OutputKeys = OutputKeysList
+                .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                .Select(x => x.Key.Trim())
+                .Distinct()
+                .ToList();
+        }
+
+        private void SyncOfflineAssetsToNode()
+        {
+            _node.OfflineAssets = OfflineAssetsList.Select(x => x.ToModel()).ToList();
+        }
+
+        private void OnNodePropertyChanged(string propertyName)
+        {
+            if (propertyName == nameof(ShowInputMsgNode.HtmlCode)) HtmlCode = _node.HtmlCode ?? string.Empty;
+            if (propertyName == nameof(ShowInputMsgNode.JsCode)) JsCode = _node.JsCode ?? string.Empty;
+            if (propertyName == nameof(ShowInputMsgNode.CssCode)) CssCode = _node.CssCode ?? string.Empty;
+            if (propertyName == nameof(ShowInputMsgNode.ParamsCode)) ParamsCode = _node.ParamsCode ?? string.Empty;
+            if (propertyName == nameof(ShowInputMsgNode.Width)) Width = _node.Width;
+            if (propertyName == nameof(ShowInputMsgNode.Height)) Height = _node.Height;
+            if (propertyName == nameof(ShowInputMsgNode.InputMappings))
+            {
+                _isSyncingFromNode = true;
+                try
+                {
+                    var mappings = _node.InputMappings ?? new System.Collections.Generic.List<CodeInputMapping>();
+                    while (InputMappingsList.Count > mappings.Count && InputMappingsList.Count > 1)
+                        RemoveInputMapping(InputMappingsList[InputMappingsList.Count - 1]);
+
+                    for (var i = 0; i < mappings.Count; i++)
+                    {
+                        var m = mappings[i];
+                        if (i < InputMappingsList.Count)
+                        {
+                            InputMappingsList[i].SourceNodeId = m.SourceNodeId;
+                            InputMappingsList[i].SourceOutputKey = m.SourceOutputKey;
+                            InputMappingsList[i].InputKeyOverride = m.InputKeyOverride ?? string.Empty;
+                            InputMappingsList[i].AutoRefreshEnabled = m.AutoRefreshEnabled;
+                            InputMappingsList[i].AutoRefreshInterval = m.AutoRefreshInterval;
+                            InputMappingsList[i].AutoRefreshUnit = m.AutoRefreshUnit ?? "ms";
+                        }
+                        else
+                        {
+                            var item = new CodeInputMappingItemViewModel
+                            {
+                                SourceNodeId = m.SourceNodeId,
+                                SourceOutputKey = m.SourceOutputKey,
+                                InputKeyOverride = m.InputKeyOverride ?? string.Empty,
+                                AutoRefreshEnabled = m.AutoRefreshEnabled,
+                                AutoRefreshInterval = m.AutoRefreshInterval,
+                                AutoRefreshUnit = m.AutoRefreshUnit ?? "ms"
+                            };
+                            item.PropertyChanged += InputMappingItem_PropertyChanged;
+                            InputMappingsList.Add(item);
+                            RefreshOutputKeyOptionsFor(InputMappingsList[i]);
+                        }
+                    }
+                }
+                finally
+                {
+                    _isSyncingFromNode = false;
+                }
+            }
+        }
+
+        public void RefreshAvailableNodes()
+        {
+            AvailableNodeOptions.Clear();
+            var vm = _host.ViewModel;
+            if (vm?.Nodes == null || vm.Connections == null) return;
+
+            var inputPort = _node.Ports?.FirstOrDefault(p => p.IsInput);
+            var connectedNodeIds = vm.Connections
+                .Where(c => c.ToNode == _node && c.FromNode != null &&
+                            (inputPort == null || c.ToPort == inputPort || (c.ToPort != null && c.ToPort.IsInput)))
+                .Select(c => c.FromNode!.Id)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var n in vm.Nodes)
+            {
+                if (ReferenceEquals(n, _node)) continue;
+                if (n.DynamicOutputs == null || n.DynamicOutputs.Count == 0) continue;
+                if (!connectedNodeIds.Contains(n.Id)) continue;
+                AvailableNodeOptions.Add(CreateDataSourceOption(n));
+            }
+        }
+
+        public void RefreshOutputKeyOptionsFor(CodeInputMappingItemViewModel item)
         {
             item.AvailableOutputKeyOptions.Clear();
             if (string.IsNullOrWhiteSpace(item.SourceNodeId) || _host.ViewModel?.Nodes == null) return;
+
             var node = _host.ViewModel.Nodes.FirstOrDefault(n =>
                 string.Equals(n.Id, item.SourceNodeId, StringComparison.OrdinalIgnoreCase));
             if (node?.DynamicOutputs == null) return;
+
             foreach (var o in node.DynamicOutputs)
             {
                 item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
@@ -80,99 +320,95 @@ namespace FlowMy.ViewModels
                     DisplayName = o.DisplayName ?? o.Key
                 });
             }
+
             if (item.AvailableOutputKeyOptions.Count > 0 &&
-                !item.AvailableOutputKeyOptions.Any(k =>
-                    string.Equals(k.Key, item.SourceOutputKey, StringComparison.OrdinalIgnoreCase)))
+                !item.AvailableOutputKeyOptions.Any(k => string.Equals(k.Key, item.SourceOutputKey, StringComparison.Ordinal)))
             {
                 item.SourceOutputKey = item.AvailableOutputKeyOptions[0].Key;
             }
         }
 
-        public void RefreshAvailableNodes()
+        [RelayCommand]
+        private void AddInputMapping()
         {
-            var vm = _host.ViewModel;
-            if (vm?.Nodes == null || vm.Connections == null) return;
-            var connections = vm.Connections;
-            var upstream = new HashSet<WorkflowNode>();
-            var stack = new Stack<WorkflowNode>();
-            stack.Push(_showInputMsgNode);
-            while (stack.Count > 0)
+            var item = new CodeInputMappingItemViewModel();
+            item.PropertyChanged += InputMappingItem_PropertyChanged;
+            InputMappingsList.Add(item);
+        }
+
+        [RelayCommand]
+        private void RemoveInputMapping(CodeInputMappingItemViewModel? item)
+        {
+            if (item != null && InputMappingsList.Contains(item) && InputMappingsList.Count > 1)
             {
-                var current = stack.Pop();
-                foreach (var conn in connections.Where(c => c.ToNode == current && c.FromNode != null))
-                {
-                    var src = conn.FromNode!;
-                    if (upstream.Add(src)) stack.Push(src);
-                }
+                item.PropertyChanged -= InputMappingItem_PropertyChanged;
+                InputMappingsList.Remove(item);
             }
-            var newOptions = upstream
-                .Where(n => n.DynamicOutputs != null && n.DynamicOutputs.Count > 0 && !ReferenceEquals(n, _showInputMsgNode))
-                .Select(n => CreateDataSourceOption(n))
-                .ToList();
-            AvailableNodeOptions.Clear();
-            foreach (var opt in newOptions) AvailableNodeOptions.Add(opt);
         }
 
-        private void SyncInputMappingsToNode()
+        [RelayCommand]
+        private void AddOutputKey()
         {
-            // TODO: Sync về node.InputMappings nếu node có property này:
-            // _showInputMsgNode.InputMappings = InputMappingsList.Select(x =>
-            // {{
-            //     SourceNodeId = x.SourceNodeId,
-            //     SourceOutputKey = x.SourceOutputKey,
-            //     InputKeyOverride = string.IsNullOrWhiteSpace(x.InputKeyOverride) ? null : x.InputKeyOverride.Trim(),
-            // }}).ToList();
+            OutputKeysList.Add(new OutputKeyItemViewModel { Key = "result" });
+            SyncOutputKeysToNode();
         }
 
-        public ShowInputMsgNodeDialogViewModel(ShowInputMsgNode node, IWorkflowEditorHost host)
-            : base(node, host)
+        [RelayCommand]
+        private void RemoveOutputKey(OutputKeyItemViewModel? item)
         {
-            _showInputMsgNode = node ?? throw new ArgumentNullException(nameof(node));
-
-            // Load dynamic inputs từ node
-            RefreshAvailableNodes();
-            // TODO: Restore InputMappings từ node (bỏ comment nếu node có InputMappings):
-            // var mappings = _showInputMsgNode.InputMappings ?? new List</* TODO: mapping type */>();
-            // if (mappings.Count == 0) mappings.Add(new /* TODO: mapping type */());
-            // foreach (var m in mappings)
-            // {
-            //     var item = new ShowInputMsgInputMappingItemViewModel { SourceNodeId = m.SourceNodeId, SourceOutputKey = m.SourceOutputKey
-            //         , InputKeyOverride = m.InputKeyOverride ?? string.Empty
-            //     };
-            //     item.PropertyChanged += InputMappingItem_PropertyChanged;
-            //     InputMappingsList.Add(item);
-            //     RefreshOutputKeyOptionsFor(item);
-            // }
-            // Fallback: thêm 1 dòng rỗng nếu không có dữ liệu
-            if (InputMappingsList.Count == 0)
+            if (item != null && OutputKeysList.Contains(item))
             {
-                var empty = new ShowInputMsgInputMappingItemViewModel();
-                empty.PropertyChanged += InputMappingItem_PropertyChanged;
-                InputMappingsList.Add(empty);
+                OutputKeysList.Remove(item);
+                SyncOutputKeysToNode();
+            }
+        }
+
+        [RelayCommand]
+        private void SyncOutputKeysFromParams()
+        {
+            var raw = ParamsCode ?? string.Empty;
+            var parsedKeys = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var lines = raw.Replace("\r\n", "\n").Split('\n');
+            foreach (var lineRaw in lines)
+            {
+                var line = lineRaw.Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (line.StartsWith("#", StringComparison.Ordinal)) continue;
+
+                var colonIndex = line.IndexOf(':');
+                if (colonIndex <= 0) continue;
+
+                var key = line[..colonIndex].Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+
+                if (key.Any(char.IsWhiteSpace)) continue;
+
+                if (seen.Add(key))
+                    parsedKeys.Add(key);
             }
 
-            // TODO: Sync thêm properties từ node:
-            // SomeProperty = node.SomeProperty;
+            if (parsedKeys.Count == 0) return;
 
-            // Subscribe PropertyChanged cho properties đặc thù
-            node.PropertyChanged += (s, e) =>
+            OutputKeysList.Clear();
+            foreach (var key in parsedKeys)
             {
-                // TODO: Xử lý khi node properties thay đổi từ bên ngoài
-                OnNodePropertyChanged(e.PropertyName ?? string.Empty);
-            };
+                OutputKeysList.Add(new OutputKeyItemViewModel { Key = key });
+            }
+            SyncOutputKeysToNode();
         }
 
-        protected override string GetDefaultTitle() => "Nhập dữ liệu";
+        [RelayCommand]
+        private void IncreaseCodeFontSize()
+        {
+            if (CodeFontSize < 24) CodeFontSize++;
+        }
 
-        // CHỈ override nếu cần lưu thêm properties ngoài Title/TitleDisplayMode/TitleColorMode
-        // protected override void OnSaveTitle()
-        // {
-        //     base.OnSaveTitle();
-        //     if (node.SomeProperty != SomeProperty)
-        //     {
-        //         node.SomeProperty = SomeProperty;
-        //         _host.RequestSyncDataPanels(immediate: true);
-        //     }
-        // }
+        [RelayCommand]
+        private void DecreaseCodeFontSize()
+        {
+            if (CodeFontSize > 10) CodeFontSize--;
+        }
     }
 }

@@ -544,6 +544,46 @@ namespace FlowMy.Views
                 dstHtmlUi.TitleColorKey = srcHtmlUi.TitleColorKey;
                 dstHtmlUi.NotifyTitleChanged();
             }
+            else if (source is ShowInputMsgNode srcShowMsg && node is ShowInputMsgNode dstShowMsg)
+            {
+                dstShowMsg.HtmlCode = srcShowMsg.HtmlCode ?? string.Empty;
+                dstShowMsg.JsCode = srcShowMsg.JsCode ?? string.Empty;
+                dstShowMsg.CssCode = srcShowMsg.CssCode ?? string.Empty;
+                dstShowMsg.ParamsCode = srcShowMsg.ParamsCode ?? string.Empty;
+                dstShowMsg.InputMappings = srcShowMsg.InputMappings != null
+                    ? srcShowMsg.InputMappings.Select(m => new CodeInputMapping
+                    {
+                        SourceNodeId = m.SourceNodeId,
+                        SourceOutputKey = m.SourceOutputKey,
+                        InputKeyOverride = m.InputKeyOverride,
+                        ShouldReExecute = m.ShouldReExecute,
+                        AutoRefreshEnabled = m.AutoRefreshEnabled,
+                        AutoRefreshInterval = m.AutoRefreshInterval,
+                        AutoRefreshUnit = m.AutoRefreshUnit
+                    }).ToList()
+                    : new List<CodeInputMapping> { new CodeInputMapping() };
+                dstShowMsg.OutputKeys = srcShowMsg.OutputKeys != null ? new List<string>(srcShowMsg.OutputKeys) : new List<string> { "result" };
+                dstShowMsg.RebuildDynamicOutputs();
+                dstShowMsg.Width = srcShowMsg.Width;
+                dstShowMsg.Height = srcShowMsg.Height;
+                dstShowMsg.IsPreviewVisible = srcShowMsg.IsPreviewVisible;
+                dstShowMsg.OfflineAssets = srcShowMsg.OfflineAssets != null
+                    ? srcShowMsg.OfflineAssets.Select(a => new HtmlOfflineAsset
+                    {
+                        Id = a.Id,
+                        Title = a.Title,
+                        Description = a.Description,
+                        SourceUrl = a.SourceUrl,
+                        LocalFileName = a.LocalFileName,
+                        AssetType = a.AssetType,
+                        IsEnabled = a.IsEnabled
+                    }).ToList()
+                    : new List<HtmlOfflineAsset>();
+                dstShowMsg.TitleDisplayMode = srcShowMsg.TitleDisplayMode;
+                dstShowMsg.TitleColorMode = srcShowMsg.TitleColorMode;
+                dstShowMsg.TitleColorKey = srcShowMsg.TitleColorKey;
+                dstShowMsg.NotifyTitleChanged();
+            }
             else if (source is FolderNode srcFolder && node is FolderNode dstFolder)
             {
                 dstFolder.RootFolderPath = srcFolder.RootFolderPath ?? string.Empty;

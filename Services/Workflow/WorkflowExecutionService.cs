@@ -578,6 +578,7 @@ namespace FlowMy.Services.Workflow
                 new NodeExecutors.FolderNodeExecutor(),
                 new NodeExecutors.WebNodeExecutor(),
                 new NodeExecutors.HtmlUiNodeExecutor(),
+                new NodeExecutors.ShowInputMsgNodeExecutor(),
                 new NodeExecutors.FileDownloadNodeExecutor(),
                 new NodeExecutors.FolderFilePathsNodeExecutor(),
                 new NodeExecutors.GitSourceNodeExecutor(),

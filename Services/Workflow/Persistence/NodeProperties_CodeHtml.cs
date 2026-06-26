@@ -1,4 +1,4 @@
-﻿using FlowMy.Models;
+using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using System.Text.Json;
 using System.Windows;
@@ -498,4 +498,259 @@ public sealed partial class FileWorkflowPersistenceService
             }
     }
 
+    private static void RestoreShowInputMsgNodeProperties(ShowInputMsgNode showInputMsgNode, Dictionary<string, object> properties)
+    {
+            var loadedMappings = false;
+            if (properties.TryGetValue("InputMappings", out var imObj) && imObj != null)
+            {
+                var list = new List<CodeInputMapping>();
+                if (imObj is JsonElement imJe)
+                {
+                    if (imJe.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var e in imJe.EnumerateArray())
+                        {
+                            var m = new CodeInputMapping();
+                            if (e.TryGetProperty("SourceNodeId", out var sni)) m.SourceNodeId = GetStringFromJsonValue(sni);
+                            if (e.TryGetProperty("SourceOutputKey", out var sok)) m.SourceOutputKey = GetStringFromJsonValue(sok);
+                            if (e.TryGetProperty("InputKeyOverride", out var iko)) m.InputKeyOverride = GetStringFromJsonValue(iko);
+                            if (e.TryGetProperty("ShouldReExecute", out var sre))
+                            {
+                                if (sre.ValueKind == JsonValueKind.True) m.ShouldReExecute = true;
+                                else if (sre.ValueKind == JsonValueKind.False) m.ShouldReExecute = false;
+                                else if (bool.TryParse(sre.ToString(), out var b)) m.ShouldReExecute = b;
+                            }
+                            if (e.TryGetProperty("AutoRefreshEnabled", out var are))
+                            {
+                                if (are.ValueKind == JsonValueKind.True) m.AutoRefreshEnabled = true;
+                                else if (are.ValueKind == JsonValueKind.False) m.AutoRefreshEnabled = false;
+                                else if (bool.TryParse(are.ToString(), out var b)) m.AutoRefreshEnabled = b;
+                            }
+                            if (e.TryGetProperty("AutoRefreshInterval", out var ari))
+                            {
+                                if (ari.ValueKind == JsonValueKind.Number && ari.TryGetInt32(out var iv)) m.AutoRefreshInterval = iv;
+                                else if (int.TryParse(ari.ToString(), out var iv2)) m.AutoRefreshInterval = iv2;
+                            }
+                            if (e.TryGetProperty("AutoRefreshUnit", out var aru))
+                            {
+                                var u = GetStringFromJsonValue(aru);
+                                if (!string.IsNullOrWhiteSpace(u)) m.AutoRefreshUnit = u!;
+                            }
+                            list.Add(m);
+                        }
+                    }
+                    else if (imJe.ValueKind == JsonValueKind.String)
+                    {
+                        var str = imJe.GetString();
+                        if (!string.IsNullOrEmpty(str))
+                        {
+                            try
+                            {
+                                var parsed = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(str);
+                                if (parsed != null)
+                                    foreach (var d in parsed)
+                                    {
+                                        var m = new CodeInputMapping();
+                                        if (d.TryGetValue("SourceNodeId", out var sni)) m.SourceNodeId = GetStringFromJsonValue(sni);
+                                        if (d.TryGetValue("SourceOutputKey", out var sok)) m.SourceOutputKey = GetStringFromJsonValue(sok);
+                                        if (d.TryGetValue("InputKeyOverride", out var iko)) m.InputKeyOverride = GetStringFromJsonValue(iko);
+                                        if (d.TryGetValue("ShouldReExecute", out var sre))
+                                        {
+                                            if (sre.ValueKind == JsonValueKind.True) m.ShouldReExecute = true;
+                                            else if (sre.ValueKind == JsonValueKind.False) m.ShouldReExecute = false;
+                                            else if (bool.TryParse(sre.ToString(), out var b)) m.ShouldReExecute = b;
+                                        }
+                                        if (d.TryGetValue("AutoRefreshEnabled", out var are))
+                                        {
+                                            if (are.ValueKind == JsonValueKind.True) m.AutoRefreshEnabled = true;
+                                            else if (are.ValueKind == JsonValueKind.False) m.AutoRefreshEnabled = false;
+                                            else if (bool.TryParse(are.ToString(), out var b)) m.AutoRefreshEnabled = b;
+                                        }
+                                        if (d.TryGetValue("AutoRefreshInterval", out var ari) && ari.ValueKind == JsonValueKind.Number && ari.TryGetInt32(out var ariv)) m.AutoRefreshInterval = ariv;
+                                        if (d.TryGetValue("AutoRefreshUnit", out var aru)) { var u = GetStringFromJsonValue(aru); if (!string.IsNullOrWhiteSpace(u)) m.AutoRefreshUnit = u!; }
+                                        list.Add(m);
+                                    }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                else if (imObj is string imStr && !string.IsNullOrEmpty(imStr))
+                {
+                    try
+                    {
+                        var parsed = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(imStr);
+                        if (parsed != null)
+                            foreach (var d in parsed)
+                            {
+                                var m = new CodeInputMapping();
+                                if (d.TryGetValue("SourceNodeId", out var sni)) m.SourceNodeId = GetStringFromJsonValue(sni);
+                                if (d.TryGetValue("SourceOutputKey", out var sok)) m.SourceOutputKey = GetStringFromJsonValue(sok);
+                                if (d.TryGetValue("InputKeyOverride", out var iko)) m.InputKeyOverride = GetStringFromJsonValue(iko);
+                                if (d.TryGetValue("ShouldReExecute", out var sre))
+                                {
+                                    if (sre.ValueKind == JsonValueKind.True) m.ShouldReExecute = true;
+                                    else if (sre.ValueKind == JsonValueKind.False) m.ShouldReExecute = false;
+                                    else if (bool.TryParse(sre.ToString(), out var b)) m.ShouldReExecute = b;
+                                }
+                                if (d.TryGetValue("AutoRefreshEnabled", out var are))
+                                {
+                                    if (are.ValueKind == JsonValueKind.True) m.AutoRefreshEnabled = true;
+                                    else // false
+                                    {
+                                        m.AutoRefreshEnabled = false;
+                                    }
+                                }
+                                if (d.TryGetValue("AutoRefreshInterval", out var ari) && ari.ValueKind == JsonValueKind.Number && ari.TryGetInt32(out var ariv)) m.AutoRefreshInterval = ariv;
+                                if (d.TryGetValue("AutoRefreshUnit", out var aru)) { var u = GetStringFromJsonValue(aru); if (!string.IsNullOrWhiteSpace(u)) m.AutoRefreshUnit = u!; }
+                                list.Add(m);
+                            }
+                    }
+                    catch { }
+                }
+                if (list.Count > 0) { showInputMsgNode.InputMappings = list; loadedMappings = true; }
+            }
+            if (!loadedMappings)
+            {
+                var first = showInputMsgNode.InputMappings.Count > 0 ? showInputMsgNode.InputMappings[0] : null;
+                if (first == null) { first = new CodeInputMapping(); showInputMsgNode.InputMappings.Add(first); }
+                if (properties.TryGetValue("SourceNodeId", out var snidObj))
+                    first.SourceNodeId = GetStringFromJsonValue(snidObj);
+                if (properties.TryGetValue("SourceOutputKey", out var sokObj))
+                    first.SourceOutputKey = GetStringFromJsonValue(sokObj);
+                if (properties.TryGetValue("InputKeyOverride", out var ikoObj))
+                    first.InputKeyOverride = GetStringFromJsonValue(ikoObj);
+            }
+            if (properties.TryGetValue("HtmlCode", out var htmlObj))
+                showInputMsgNode.HtmlCode = htmlObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("JsCode", out var jsObj))
+                showInputMsgNode.JsCode = jsObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("CssCode", out var cssObj))
+                showInputMsgNode.CssCode = cssObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("ParamsCode", out var paramsObj))
+                showInputMsgNode.ParamsCode = paramsObj?.ToString() ?? string.Empty;
+            if (properties.TryGetValue("OutputKeys", out var okObj))
+            {
+                List<string>? keys = null;
+                if (okObj is string jsonKeys)
+                {
+                    try { keys = JsonSerializer.Deserialize<List<string>>(jsonKeys); } catch { }
+                }
+                else if (okObj is JsonElement je)
+                {
+                    if (je.ValueKind == JsonValueKind.Array)
+                    {
+                        try { keys = JsonSerializer.Deserialize<List<string>>(je.GetRawText()); } catch { }
+                    }
+                    else if (je.ValueKind == JsonValueKind.String)
+                    {
+                        try { keys = JsonSerializer.Deserialize<List<string>>(je.GetString() ?? "[]"); } catch { }
+                    }
+                }
+                if (keys != null)
+                    showInputMsgNode.OutputKeys = keys;
+                showInputMsgNode.RebuildDynamicOutputs();
+            }
+            if (properties.TryGetValue("Width", out var widthObj))
+            {
+                if (double.TryParse(widthObj?.ToString(), out var width))
+                    showInputMsgNode.Width = Math.Max(280, width);
+            }
+            if (properties.TryGetValue("Height", out var heightObj))
+            {
+                if (double.TryParse(heightObj?.ToString(), out var height))
+                    showInputMsgNode.Height = Math.Max(200, height);
+            }
+            if (properties.TryGetValue("IsPreviewVisible", out var ipvObj) && ipvObj != null && bool.TryParse(ipvObj.ToString(), out var ipv))
+                showInputMsgNode.IsPreviewVisible = ipv;
+
+            // ── Offline Assets (JS/CSS libraries) ──
+            if (properties.TryGetValue("OfflineAssets", out var oaObj) && oaObj != null)
+            {
+                try
+                {
+                    var rawJson = oaObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : oaObj.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(rawJson))
+                    {
+                        var parsed = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(rawJson);
+                        if (parsed != null)
+                        {
+                            var list = new List<FlowMy.Models.HtmlOfflineAsset>();
+                            foreach (var d in parsed)
+                            {
+                                var asset = new FlowMy.Models.HtmlOfflineAsset();
+                                if (d.TryGetValue("Id", out var idEl)) asset.Id = GetStringFromJsonValue(idEl) ?? asset.Id;
+                                if (d.TryGetValue("Title", out var titleEl)) asset.Title = GetStringFromJsonValue(titleEl) ?? string.Empty;
+                                if (d.TryGetValue("Description", out var descEl)) asset.Description = GetStringFromJsonValue(descEl) ?? string.Empty;
+                                if (d.TryGetValue("SourceUrl", out var urlEl)) asset.SourceUrl = GetStringFromJsonValue(urlEl) ?? string.Empty;
+                                if (d.TryGetValue("LocalFileName", out var fnEl)) asset.LocalFileName = GetStringFromJsonValue(fnEl) ?? string.Empty;
+                                if (d.TryGetValue("AssetType", out var typeEl)) asset.AssetType = GetStringFromJsonValue(typeEl) ?? "js";
+                                if (d.TryGetValue("IsEnabled", out var enabledEl))
+                                {
+                                    if (enabledEl.ValueKind == JsonValueKind.True) asset.IsEnabled = true;
+                                    else if (enabledEl.ValueKind == JsonValueKind.False) asset.IsEnabled = false;
+                                    else if (bool.TryParse(enabledEl.ToString(), out var b)) asset.IsEnabled = b;
+                                }
+                                list.Add(asset);
+                            }
+                            showInputMsgNode.OfflineAssets = list;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error deserializing OfflineAssets: {ex.Message}");
+                }
+            }
+    }
+
+    private static void GetShowInputMsgNodeProperties(ShowInputMsgNode showInputMsgNode, Dictionary<string, object> dict)
+    {
+            if (showInputMsgNode.InputMappings != null && showInputMsgNode.InputMappings.Count > 0)
+            {
+                var arr = showInputMsgNode.InputMappings.Select(m => new Dictionary<string, object?>
+                {
+                    ["SourceNodeId"] = m.SourceNodeId,
+                    ["SourceOutputKey"] = m.SourceOutputKey,
+                    ["InputKeyOverride"] = m.InputKeyOverride,
+                    ["ShouldReExecute"] = m.ShouldReExecute,
+                    ["AutoRefreshEnabled"] = m.AutoRefreshEnabled,
+                    ["AutoRefreshInterval"] = m.AutoRefreshInterval,
+                    ["AutoRefreshUnit"] = m.AutoRefreshUnit
+                }).ToList();
+                dict["InputMappings"] = JsonSerializer.Serialize(arr);
+            }
+            if (!string.IsNullOrEmpty(showInputMsgNode.HtmlCode))
+                dict["HtmlCode"] = showInputMsgNode.HtmlCode;
+            if (!string.IsNullOrEmpty(showInputMsgNode.JsCode))
+                dict["JsCode"] = showInputMsgNode.JsCode;
+            if (!string.IsNullOrEmpty(showInputMsgNode.CssCode))
+                dict["CssCode"] = showInputMsgNode.CssCode;
+            if (!string.IsNullOrEmpty(showInputMsgNode.ParamsCode))
+                dict["ParamsCode"] = showInputMsgNode.ParamsCode;
+            if (showInputMsgNode.OutputKeys != null && showInputMsgNode.OutputKeys.Count > 0)
+                dict["OutputKeys"] = JsonSerializer.Serialize(showInputMsgNode.OutputKeys);
+            dict["Width"] = showInputMsgNode.Width;
+            dict["Height"] = showInputMsgNode.Height;
+            dict["IsPreviewVisible"] = showInputMsgNode.IsPreviewVisible;
+
+            // ── Offline Assets (JS/CSS libraries) ──
+            if (showInputMsgNode.OfflineAssets != null && showInputMsgNode.OfflineAssets.Count > 0)
+            {
+                var assetsJson = JsonSerializer.Serialize(showInputMsgNode.OfflineAssets.Select(a => new
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    Description = a.Description,
+                    SourceUrl = a.SourceUrl,
+                    LocalFileName = a.LocalFileName,
+                    AssetType = a.AssetType,
+                    IsEnabled = a.IsEnabled
+                }).ToList());
+                dict["OfflineAssets"] = assetsJson;
+            }
+    }
 }
