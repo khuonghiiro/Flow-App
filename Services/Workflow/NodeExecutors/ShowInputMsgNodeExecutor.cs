@@ -334,6 +334,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             };
 
+            // Close on click outside (when window is deactivated)
+            Deactivated += (s, e) =>
+            {
+                Close();
+            };
+
             Loaded += async (s, e) =>
             {
                 try
@@ -362,11 +368,17 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private async Task InitializeWebViewAsync(string htmlContent)
         {
-            await _webView.EnsureCoreWebView2Async();
+            var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+            await _webView.EnsureCoreWebView2Async(env);
+            
             _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
             _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
-            _webView.NavigateToString(htmlContent);
             _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                _webView.CoreWebView2.NavigateToString(htmlContent);
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private async void CoreWebView2_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
