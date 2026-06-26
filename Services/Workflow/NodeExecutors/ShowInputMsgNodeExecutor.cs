@@ -35,38 +35,54 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 // Build HTML content using current execution environment mappings
                 var htmlContent = BuildHtmlContent(showInputMsgNode, env);
 
-                // Dispatch popup window creation and show to UI thread
-                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                using (env.CancellationToken.Register(() =>
                 {
-                    try
+                    Application.Current.Dispatcher.Invoke(() =>
                     {
-                        var popup = _windowCache.GetOrAdd(showInputMsgNode.Id, id =>
+                        try
                         {
-                            var win = new ShowInputMsgPopupWindow(showInputMsgNode);
-                            Application.Current.Exit += (s, e) =>
+                            if (_windowCache.TryGetValue(showInputMsgNode.Id, out var win))
                             {
-                                try
-                                {
-                                    win.ForceClose();
-                                }
-                                catch { }
-                            };
-                            return win;
-                        });
-
-                        popup.UpdateNode(showInputMsgNode);
-                        var result = await popup.PrepareAndShowAsync(htmlContent);
-                        tcs.TrySetResult(result);
-                    }
-                    catch (Exception popupEx)
-                    {
-                        tcs.TrySetException(popupEx);
-                    }
-                });
-
-                // Wait for the popup window submission or closing
-                using (env.CancellationToken.Register(() => tcs.TrySetCanceled()))
+                                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Cancellation requested. Hiding window for node {showInputMsgNode.Id}");
+                                win.Hide();
+                            }
+                        }
+                        catch { }
+                    });
+                    tcs.TrySetCanceled();
+                }))
                 {
+                    // Dispatch popup window creation and show to UI thread asynchronously
+                    _ = Application.Current.Dispatcher.InvokeAsync(async () =>
+                    {
+                        try
+                        {
+                            var popup = _windowCache.GetOrAdd(showInputMsgNode.Id, id =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Creating new popup window for node {id}");
+                                var win = new ShowInputMsgPopupWindow(showInputMsgNode);
+                                Application.Current.Exit += (s, e) =>
+                                {
+                                    try
+                                    {
+                                        win.ForceClose();
+                                    }
+                                    catch { }
+                                };
+                                return win;
+                            });
+
+                            popup.UpdateNode(showInputMsgNode);
+                            var result = await popup.PrepareAndShowAsync(htmlContent);
+                            tcs.TrySetResult(result);
+                        }
+                        catch (Exception popupEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Exception inside Dispatcher delegate: {popupEx}");
+                            tcs.TrySetException(popupEx);
+                        }
+                    });
+
                     await tcs.Task;
                 }
 
@@ -283,6 +299,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private ShowInputMsgNode _node;
         private readonly Task _webViewInitTask;
         private bool _isForceClosing = false;
+        private bool _isShownAndActive = false;
+        private DateTime _showTime = DateTime.MinValue;
 
         public ShowInputMsgPopupWindow(ShowInputMsgNode node)
         {
@@ -326,11 +344,19 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             // Start initializing WebView2 asynchronously
             _webViewInitTask = InitializeWebViewInternalAsync();
 
+            Activated += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window activated. Id={_node?.Id}");
+                _isShownAndActive = true;
+            };
+
             // Esc key hides the window and rejects
             KeyDown += (s, e) =>
             {
                 if (e.Key == System.Windows.Input.Key.Escape)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Escape pressed. Hiding window. Id={_node?.Id}");
+                    _isShownAndActive = false;
                     Hide();
                     _tcs?.TrySetResult(false);
                 }
@@ -339,12 +365,25 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             // Hide on click outside (when window is deactivated)
             Deactivated += (s, e) =>
             {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window deactivated (isShownAndActive={_isShownAndActive}). Id={_node?.Id}");
+                if (!_isShownAndActive) return;
+                
+                // Ignore deactivation if it happens within 500ms of showing the window (likely OS focus transition)
+                if ((DateTime.UtcNow - _showTime).TotalMilliseconds < 500)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window deactivated too quickly ({(DateTime.UtcNow - _showTime).TotalMilliseconds}ms). Ignoring. Id={_node?.Id}");
+                    return;
+                }
+                
+                _isShownAndActive = false;
                 Hide();
                 _tcs?.TrySetResult(false);
             };
 
             Closed += (s, e) =>
             {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window closed. Id={_node?.Id}");
+                _isShownAndActive = false;
                 _tcs?.TrySetResult(false);
                 try
                 {
@@ -361,6 +400,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         public void ForceClose()
         {
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] ForceClose called. Id={_node?.Id}");
             _isForceClosing = true;
             Close();
         }
@@ -373,6 +413,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return;
             }
             e.Cancel = true;
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Closing intercepted. Hiding window. Id={_node?.Id}");
+            _isShownAndActive = false;
             Hide();
             _tcs?.TrySetResult(false);
         }
@@ -380,16 +422,11 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         public async Task<bool> PrepareAndShowAsync(string htmlContent)
         {
             _tcs = new TaskCompletionSource<bool>();
+            _isShownAndActive = false;
 
             try
             {
-                await _webViewInitTask;
-
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    _webView.CoreWebView2.NavigateToString(htmlContent);
-                }, System.Windows.Threading.DispatcherPriority.Background);
-
+                // Set size and position first before showing
                 Width = _node.Width;
                 Height = _node.Height;
 
@@ -406,11 +443,44 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 if (Left < 0) Left = 0;
                 if (Top < 0) Top = 0;
 
+                // CRITICAL: Set _showTime and _isShownAndActive before Show() to prevent immediate Deactivated hides
+                _showTime = DateTime.UtcNow;
+                _isShownAndActive = true;
+
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] PrepareAndShowAsync: Showing window first to trigger Loaded event. Id={_node?.Id}");
                 Show();
                 Activate();
+
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] PrepareAndShowAsync: awaiting webViewInitTask. Id={_node?.Id}");
+                await _webViewInitTask;
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] PrepareAndShowAsync: webViewInitTask finished. Id={_node?.Id}");
+
+                if (_webView.CoreWebView2 == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] CoreWebView2 was null after init task. Initializing now.");
+                    var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
+                    await _webView.EnsureCoreWebView2Async(env);
+                    _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
+                    _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+                    _webView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
+                    _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                }
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        _webView.CoreWebView2.NavigateToString(htmlContent);
+                    }
+                    catch (Exception navEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] NavigateToString error: {navEx}");
+                    }
+                }, System.Windows.Threading.DispatcherPriority.Background);
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] PrepareAndShowAsync Error: {ex}");
                 _tcs.TrySetException(ex);
             }
 
@@ -419,12 +489,41 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private async Task InitializeWebViewInternalAsync()
         {
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] InitializeWebViewInternalAsync: starting environment load.");
             var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
-            await _webView.EnsureCoreWebView2Async(env);
-            
-            _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
-            _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
-            _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] InitializeWebViewInternalAsync: environment loaded.");
+
+            if (!Dispatcher.CheckAccess())
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] InitializeWebViewInternalAsync: Not on UI thread. Dispatching EnsureCoreWebView2Async to UI thread.");
+                await Dispatcher.Invoke(async () =>
+                {
+                    await _webView.EnsureCoreWebView2Async(env);
+                });
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] InitializeWebViewInternalAsync: On UI thread. Calling EnsureCoreWebView2Async.");
+                await _webView.EnsureCoreWebView2Async(env);
+            }
+
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
+                    _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+                    _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                });
+            }
+            else
+            {
+                _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
+                _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+                _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] InitializeWebViewInternalAsync: WebView2 fully initialized.");
         }
 
         private async void CoreWebView2_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
@@ -432,6 +531,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             try
             {
                 var rawJson = e.WebMessageAsJson;
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] WebMessageReceived: {rawJson}");
                 if (!string.IsNullOrEmpty(rawJson))
                 {
                     if (rawJson.Trim('"') == "submit")
@@ -462,7 +562,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
         private async Task HandleSubmitAsync()
         {
+            System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] HandleSubmitAsync: reading DOM outputs. Id={_node?.Id}");
             await UpdateOutputsFromDomAsync();
+            _isShownAndActive = false;
             _tcs?.TrySetResult(true);
             Hide();
         }
