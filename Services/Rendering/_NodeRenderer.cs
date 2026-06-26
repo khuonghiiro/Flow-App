@@ -50,6 +50,7 @@ namespace FlowMy.Services.Rendering
         private readonly MacroRecorderNodeRenderer _macroRecorderNodeRenderer;
         private readonly BorderHighlightNodeRenderer _borderHighlightNodeRenderer;
         private readonly ActionCanVasNodeRenderer _actionCanVasNodeRenderer;
+        private readonly ShowInputMsgNodeRenderer _showInputMsgNodeRenderer;
         private readonly EmbedApplicationNodeRenderer _embedApplicationNodeRenderer;
 
         // Dispatch map: node concrete type → renderer
@@ -97,6 +98,7 @@ namespace FlowMy.Services.Rendering
             MacroRecorderNodeRenderer macroRecorderNodeRenderer,
             BorderHighlightNodeRenderer borderHighlightNodeRenderer,
             ActionCanVasNodeRenderer actionCanVasNodeRenderer,
+            ShowInputMsgNodeRenderer showInputMsgNodeRenderer,
             EmbedApplicationNodeRenderer embedApplicationNodeRenderer
             )
         {
@@ -138,6 +140,7 @@ namespace FlowMy.Services.Rendering
             _macroRecorderNodeRenderer = macroRecorderNodeRenderer ?? throw new ArgumentNullException(nameof(macroRecorderNodeRenderer));
             _borderHighlightNodeRenderer = borderHighlightNodeRenderer ?? throw new ArgumentNullException(nameof(borderHighlightNodeRenderer));
             _actionCanVasNodeRenderer = actionCanVasNodeRenderer ?? throw new ArgumentNullException(nameof(actionCanVasNodeRenderer));
+            _showInputMsgNodeRenderer = showInputMsgNodeRenderer ?? throw new ArgumentNullException(nameof(showInputMsgNodeRenderer));
             _embedApplicationNodeRenderer = embedApplicationNodeRenderer ?? throw new ArgumentNullException(nameof(embedApplicationNodeRenderer));
 
             BuildRendererMap();
@@ -187,6 +190,7 @@ namespace FlowMy.Services.Rendering
                 [typeof(MacroRecorderNode)]     = _macroRecorderNodeRenderer,
                 [typeof(BorderHighlightNode)]   = _borderHighlightNodeRenderer,
                 [typeof(FlowMy.Models.Nodes.ActionCanVasNode)] = _actionCanVasNodeRenderer,
+                [typeof(FlowMy.Models.Nodes.ShowInputMsgNode)] = _showInputMsgNodeRenderer,
                 [typeof(EmbedApplicationNode)]  = _embedApplicationNodeRenderer,
             };
         }

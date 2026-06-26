@@ -276,14 +276,17 @@ namespace FlowMy.ViewModels
                 HasExistingInputPort = false;
                 HasExistingOutputPort = false;
 
+                // Normalize: strip "Node" suffix from value to get the base name
+                var baseName = value.EndsWith("Node") ? value.Substring(0, value.Length - 4) : value;
+
                 // ── SOURCE 1: TemplateFactory.cs (nguồn chính xác nhất cho generated nodes) ──
                 var templateFactoryPath = Path.Combine(ProjectRoot, "Workflow", "TemplateFactory.cs");
                 if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(ProjectRoot, "Services", "Workflow", "TemplateFactory.cs");
                 if (File.Exists(templateFactoryPath))
                 {
                     var content = File.ReadAllText(templateFactoryPath);
-                    // Tìm chính xác method Create{NodeName}Node
-                    var methodPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{value}Node\s*\(";
+                    // Tìm chính xác method Create{baseName}Node
+                    var methodPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{baseName}Node\s*\(";
                     var regexMethod = System.Text.RegularExpressions.Regex.Match(content, methodPattern);
                     if (regexMethod.Success)
                     {
@@ -325,8 +328,8 @@ namespace FlowMy.ViewModels
                     }
                 }
 
-                // ── SOURCE 2: [NodeName]Node.cs (cho các node viết tay) ──
-                var nodeCsPath = Path.Combine(ProjectRoot, "Models", "Nodes", $"{value}Node.cs");
+                // ── SOURCE 2: [baseName]Node.cs (cho các node viết tay) ──
+                var nodeCsPath = Path.Combine(ProjectRoot, "Models", "Nodes", $"{baseName}Node.cs");
                 if (File.Exists(nodeCsPath))
                 {
                     var content = File.ReadAllText(nodeCsPath);
@@ -365,9 +368,9 @@ namespace FlowMy.ViewModels
                 }
 
                 // ── SOURCE 3: NodeControl XAML (cho icon và màu nền từ giao diện) ──
-                var xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.xaml");
-                if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.xaml");
-                if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeContentControl.xaml");
+                var xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{baseName}Control.xaml");
+                if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{baseName}NodeControl.xaml");
+                if (!File.Exists(xamlPath)) xamlPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{baseName}NodeContentControl.xaml");
 
                 if (File.Exists(xamlPath))
                 {
@@ -396,9 +399,9 @@ namespace FlowMy.ViewModels
                 }
 
                 // ── SOURCE 4: NodeControl.cs (cho icon từ code-behind) ──
-                var controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}NodeControl.cs");
+                var controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{baseName}NodeControl.cs");
                 if (!File.Exists(controlCsPath)) 
-                    controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{value}Control.cs");
+                    controlCsPath = Path.Combine(ProjectRoot, "Views", "NodeControls", $"{baseName}Control.cs");
                 if (File.Exists(controlCsPath))
                 {
                     var content = File.ReadAllText(controlCsPath);
@@ -418,7 +421,7 @@ namespace FlowMy.ViewModels
                     if (File.Exists(vmPath))
                     {
                         var vmContent = File.ReadAllText(vmPath);
-                        var iconMatch = System.Text.RegularExpressions.Regex.Match(vmContent, $@"NodeType\.{value}\s*=>\s*""([^""]+)""");
+                        var iconMatch = System.Text.RegularExpressions.Regex.Match(vmContent, $@"NodeType\.{baseName}\s*=>\s*""([^""]+)""");
                         if (iconMatch.Success) EditIconKey = iconMatch.Groups[1].Value;
                     }
                 }
@@ -431,8 +434,8 @@ namespace FlowMy.ViewModels
                     if (File.Exists(wePath))
                     {
                         var weContent = File.ReadAllText(wePath);
-                        var tagIdx = weContent.IndexOf($"Tag=\"{value}\"");
-                        if (tagIdx < 0) tagIdx = weContent.IndexOf($"Tag=\"{value}Node\"");
+                        var tagIdx = weContent.IndexOf($"Tag=\"{baseName}\"");
+                        if (tagIdx < 0) tagIdx = weContent.IndexOf($"Tag=\"{baseName}Node\"");
 
                         if (tagIdx >= 0)
                         {
@@ -477,7 +480,7 @@ namespace FlowMy.ViewModels
                 // ── FALLBACK: Hardcoded icon switch (cho các node hệ thống chuẩn) ──
                 if (string.IsNullOrWhiteSpace(EditIconKey))
                 {
-                    EditIconKey = value switch
+                    EditIconKey = baseName switch
                     {
                         "Start" => "play duotone-regular",
                         "End" => "flag-checkered sharp-duotone-solid",

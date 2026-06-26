@@ -382,6 +382,7 @@ namespace FlowMy.Views
                 "FileDownload" => "download solid",
                 "GitSource" => "git-alt brands",
                                 "ActionCanVasNode" => "square-share-nodes light",
+                                "ShowInputMsgNode" => "user-message regular",
                 _ => "circle duotone"
             };
         }

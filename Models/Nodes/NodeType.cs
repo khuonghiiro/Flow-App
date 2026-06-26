@@ -66,7 +66,9 @@
         /// <summary>Nhúng ứng dụng desktop vào canvas với kích thước và tương tác tùy chỉnh.</summary>
         EmbedApplication,
         /// <summary>Thao tác canvas node — được tạo tự động.</summary>
-        ActionCanVas
+        ActionCanVas,
+        /// <summary>Nhập dữ liệu node — được tạo tự động.</summary>
+        ShowInputMsg
     }
 }
 

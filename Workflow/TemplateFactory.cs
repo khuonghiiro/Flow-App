@@ -64,6 +64,7 @@ namespace FlowMy.Workflow
                 "KeyScopedStore" => CreateKeyScopedStoreNode(x, y),
                 "ActionCanVas" => CreateActionCanVasNode(x, y),
                 "ActionCanVasNode" => CreateActionCanVasNode(x, y),
+                                "ShowInputMsgNode" => CreateShowInputMsgNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }
@@ -1618,6 +1619,25 @@ namespace FlowMy.Workflow
             node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = "Info" });
             node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
             node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "JsonStep", DisplayName = "JsonStep", IsMultiple = false, OutputType = WorkflowDataType.String });
+
+            return node;
+        }
+
+        private WorkflowNode CreateShowInputMsgNode(double x, double y)
+        {
+            var node = new FlowMy.Models.Nodes.ShowInputMsgNode
+            {
+                Id = $"Node_ShowInputMsg_{Guid.NewGuid()}",
+                Title = "Nhập dữ liệu",
+                X = x - 30,
+                Y = y - 30,
+                ColorKey = "PapayaOrange",
+                NodeBrush = Application.Current.TryFindResource("PapayaOrangeBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.CornflowerBlue,
+                Type = NodeType.ShowInputMsg
+            };
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = true, Position = PortPosition.Left, IsVisible = true, ColorKey = "Info" });
+            node.Ports.Add(new NodePort { Id = Guid.NewGuid().ToString(), IsInput = false, Position = PortPosition.Right, IsVisible = true, ColorKey = "SunsetOrange" });
+            node.DynamicOutputs.Add(new WorkflowDynamicDataPort { Key = "jsonDynamic", DisplayName = "jsonDynamic", IsMultiple = false, OutputType = WorkflowDataType.String });
 
             return node;
         }

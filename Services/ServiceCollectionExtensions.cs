@@ -95,6 +95,7 @@ namespace FlowMy.Services
             services.AddScoped<MacroRecorderNodeRenderer>();
             services.AddScoped<BorderHighlightNodeRenderer>();
             services.AddScoped<EmbedApplicationNodeRenderer>();
+            services.AddScoped<ShowInputMsgNodeRenderer>();
             services.AddScoped<ActionCanVasNodeRenderer>();
             // Không cần renderer riêng cho Break/Continue vì chúng dùng default UI
             services.AddScoped<NodeRenderer>();

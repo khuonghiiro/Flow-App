@@ -1868,10 +1868,13 @@ namespace FlowMy.Services.Utilities
                 return result;
             }
 
-            var nodeCsPath = Path.Combine(projectRoot, "Models", "Nodes", $"{nodeName}Node.cs");
-            var nodeXamlPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{nodeName}Control.xaml");
-            var nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{nodeName}NodeControl.cs");
-            if (!File.Exists(nodeControlCsPath)) nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{nodeName}Control.cs");
+            // Strip "Node" suffix from nodeName to get baseName
+            var baseName = nodeName.EndsWith("Node") ? nodeName.Substring(0, nodeName.Length - 4) : nodeName;
+
+            var nodeCsPath = Path.Combine(projectRoot, "Models", "Nodes", $"{baseName}Node.cs");
+            var nodeXamlPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{baseName}Control.xaml");
+            var nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{baseName}NodeControl.cs");
+            if (!File.Exists(nodeControlCsPath)) nodeControlCsPath = Path.Combine(projectRoot, "Views", "NodeControls", $"{baseName}Control.cs");
             var templateFactoryPath = Path.Combine(projectRoot, "Workflow", "TemplateFactory.cs");
             if (!File.Exists(templateFactoryPath)) templateFactoryPath = Path.Combine(projectRoot, "Services", "Workflow", "TemplateFactory.cs");
             var workflowEditorPath = Path.Combine(projectRoot, "Views", "WorkflowEditorWindow.xaml");
@@ -1912,7 +1915,7 @@ namespace FlowMy.Services.Utilities
                         result.ModifiedFiles.Add(nodeCsPath);
                     }
                 }
-                catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Node.cs: {ex.Message}"); }
+                catch (Exception ex) { result.Errors.Add($"Lỗi sửa {baseName}Node.cs: {ex.Message}"); }
             }
 
             // 1b. Sửa TemplateFactory.cs (for generated nodes)
@@ -1922,8 +1925,8 @@ namespace FlowMy.Services.Utilities
                 {
                     var content = File.ReadAllText(templateFactoryPath);
                     // Tìm đúng METHOD DEFINITION (không phải lời gọi trong switch)
-                    // Match: private/public [static] WorkflowNode Create{NodeName}Node(
-                    var methodDefPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{nodeName}Node\s*\(";
+                    // Match: private/public [static] WorkflowNode Create{baseName}Node(
+                    var methodDefPattern = $@"(?:private|public)\s+(?:static\s+)?WorkflowNode\s+Create{baseName}Node\s*\(";
                     var methodDefMatch = System.Text.RegularExpressions.Regex.Match(content, methodDefPattern);
                     if (methodDefMatch.Success)
                     {
@@ -1989,7 +1992,7 @@ namespace FlowMy.Services.Utilities
                     File.WriteAllText(nodeXamlPath, content, utf8NoBom);
                     result.ModifiedFiles.Add(nodeXamlPath);
                 }
-                catch (Exception ex) { result.Errors.Add($"Lỗi sửa {nodeName}Control.xaml: {ex.Message}"); }
+                catch (Exception ex) { result.Errors.Add($"Lỗi sửa {baseName}Control.xaml: {ex.Message}"); }
             }
 
             // 2b. Sửa NodeControl.cs (for generated nodes)
@@ -2015,7 +2018,7 @@ namespace FlowMy.Services.Utilities
                 try
                 {
                     var content = File.ReadAllText(workflowEditorPath);
-                    var newContent = ReplacePaletteBlock(content, nodeName, colorKey, iconKey);
+                    var newContent = ReplacePaletteBlock(content, baseName, colorKey, iconKey);
                     if (newContent != null && newContent != content)
                     {
                         File.WriteAllText(workflowEditorPath, newContent, utf8NoBom);
@@ -2047,7 +2050,7 @@ namespace FlowMy.Services.Utilities
                                 var beforeMethod = content.Substring(0, methodStart);
                                 var methodBody = content.Substring(methodStart, nextMethodOrEnd - methodStart);
                                 var afterMethod = content.Substring(nextMethodOrEnd);
-                                var pattern = $@"(""{System.Text.RegularExpressions.Regex.Escape(nodeName)}""\s*=>\s*"")[^""]+("")";
+                                var pattern = $@"(""(?:{System.Text.RegularExpressions.Regex.Escape(nodeName)}|{System.Text.RegularExpressions.Regex.Escape(baseName)})""\s*=>\s*"")[^""]+("")";
                                 var replacedBody = System.Text.RegularExpressions.Regex.Replace(methodBody, pattern, $"${{1}}{iconKey}${{2}}");
                                 if (replacedBody != methodBody)
                                 {
@@ -2080,7 +2083,7 @@ namespace FlowMy.Services.Utilities
                                 var beforeMethod = content.Substring(0, methodStart);
                                 var methodBody = content.Substring(methodStart, nextMethodOrEnd - methodStart);
                                 var afterMethod = content.Substring(nextMethodOrEnd);
-                                var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(nodeName)}\s*=>\s*"")[^""]+("")";
+                                var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(baseName)}\s*=>\s*"")[^""]+("")";
                                 var replacedBody = System.Text.RegularExpressions.Regex.Replace(methodBody, pattern, $"${{1}}{iconKey}${{2}}");
                                 if (replacedBody != methodBody)
                                 {
@@ -2102,8 +2105,7 @@ namespace FlowMy.Services.Utilities
                     {
                         var content = File.ReadAllText(baseDialogVmPath);
                         // Match: NodeType.NodeName => "old-icon-key"
-                        var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(nodeName)}\s*=>\s*"")[^""]+("")"
-                        ;
+                        var pattern = $@"(NodeType\.{System.Text.RegularExpressions.Regex.Escape(baseName)}\s*=>\s*"")[^""]+("")";
                         var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
                         if (replaced != content)
                         {
@@ -2122,8 +2124,7 @@ namespace FlowMy.Services.Utilities
                     {
                         var content = File.ReadAllText(searchComboPath);
                         // Match: "NodeName" => "old-icon-key"
-                        var pattern = $@"(""{System.Text.RegularExpressions.Regex.Escape(nodeName)}""\s*=>\s*"")[^""]+("")"
-                        ;
+                        var pattern = $@"(""(?:{System.Text.RegularExpressions.Regex.Escape(nodeName)}|{System.Text.RegularExpressions.Regex.Escape(baseName)})""\s*=>\s*"")[^""]+("")";
                         var replaced = System.Text.RegularExpressions.Regex.Replace(content, pattern, $"${{1}}{iconKey}${{2}}");
                         if (replaced != content)
                         {
