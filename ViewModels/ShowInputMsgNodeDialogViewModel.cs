@@ -1,6 +1,7 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
 using FlowMy.Services.Interaction;
+using FlowMy.Services.Utils;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
@@ -104,9 +105,50 @@ namespace FlowMy.ViewModels
             foreach (var k in node.OutputKeys)
                 OutputKeysList.Add(new OutputKeyItemViewModel { Key = k });
 
-            foreach (var a in node.OfflineAssets ?? new List<HtmlOfflineAsset>())
+            // Load offline assets từ global list
+            var offlineAssets = HtmlOfflineAssetService.LoadGlobalAssets() ?? new List<HtmlOfflineAsset>();
+
+            // Đồng bộ ngược từ node.OfflineAssets vào global list nếu có asset mới chưa đăng ký
+            var nodeAssets = node.OfflineAssets ?? new List<HtmlOfflineAsset>();
+            bool hasNewGlobalAsset = false;
+            foreach (var na in nodeAssets)
+            {
+                if (!offlineAssets.Any(x => string.Equals(x.LocalFileName, na.LocalFileName, StringComparison.OrdinalIgnoreCase)
+                                           || (!string.IsNullOrWhiteSpace(x.SourceUrl) && string.Equals(x.SourceUrl, na.SourceUrl, StringComparison.OrdinalIgnoreCase))))
+                {
+                    var globalAsset = new HtmlOfflineAsset
+                    {
+                        Id = na.Id,
+                        Title = na.Title,
+                        Description = na.Description,
+                        SourceUrl = na.SourceUrl,
+                        LocalFileName = na.LocalFileName,
+                        AssetType = na.AssetType,
+                        IsEnabled = false
+                    };
+                    offlineAssets.Add(globalAsset);
+                    hasNewGlobalAsset = true;
+                }
+            }
+            if (hasNewGlobalAsset)
+            {
+                HtmlOfflineAssetService.SaveGlobalAssets(offlineAssets);
+            }
+
+            foreach (var a in offlineAssets)
             {
                 var vm = HtmlOfflineAssetItemViewModel.FromModel(a);
+                // Quyết định trạng thái checked dựa theo node.OfflineAssets
+                var nodeAsset = nodeAssets.FirstOrDefault(x => string.Equals(x.LocalFileName, a.LocalFileName, StringComparison.OrdinalIgnoreCase)
+                                                               || (!string.IsNullOrWhiteSpace(x.SourceUrl) && string.Equals(x.SourceUrl, a.SourceUrl, StringComparison.OrdinalIgnoreCase)));
+                if (nodeAsset != null)
+                {
+                    vm.IsEnabled = nodeAsset.IsEnabled;
+                }
+                else
+                {
+                    vm.IsEnabled = false;
+                }
                 vm.PropertyChanged += OfflineAssetItem_PropertyChanged;
                 OfflineAssetsList.Add(vm);
             }
@@ -223,7 +265,9 @@ namespace FlowMy.ViewModels
 
         private void SyncOfflineAssetsToNode()
         {
-            _node.OfflineAssets = OfflineAssetsList.Select(x => x.ToModel()).ToList();
+            var assets = OfflineAssetsList.Select(x => x.ToModel()).ToList();
+            _node.OfflineAssets = assets;
+            HtmlOfflineAssetService.SaveGlobalAssets(assets);
         }
 
         private void OnNodePropertyChanged(string propertyName)
@@ -409,6 +453,50 @@ namespace FlowMy.ViewModels
         private void DecreaseCodeFontSize()
         {
             if (CodeFontSize > 10) CodeFontSize--;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Offline Assets
+        // ─────────────────────────────────────────────────────────────────────
+
+        [RelayCommand]
+        private void AddOfflineAsset()
+        {
+            OfflineAssetsList.Add(new HtmlOfflineAssetItemViewModel
+            {
+                Title = "Thư viện mới",
+                AssetType = "js",
+                IsEnabled = true
+            });
+        }
+
+        [RelayCommand]
+        private void RemoveOfflineAsset(HtmlOfflineAssetItemViewModel? item)
+        {
+            if (item != null && OfflineAssetsList.Contains(item))
+                OfflineAssetsList.Remove(item);
+        }
+
+        /// <summary>Thêm nhanh từ preset (Chart.js, Moment.js,...)</summary>
+        [RelayCommand]
+        private void AddOfflineAssetFromPreset(AssetPreset? preset)
+        {
+            if (preset == null) return;
+            // Kiểm tra đã có trùng URL chưa
+            if (OfflineAssetsList.Any(a =>
+                string.Equals(a.SourceUrl, preset.Url, StringComparison.OrdinalIgnoreCase))) return;
+
+            OfflineAssetsList.Add(new HtmlOfflineAssetItemViewModel
+            {
+                Title = preset.Title,
+                Description = preset.Description,
+                SourceUrl = preset.Url,
+                LocalFileName = preset.FileName,
+                AssetType = preset.Type,
+                IsEnabled = true,
+                StatusMessage = FlowMy.Services.Utils.HtmlOfflineAssetService
+                    .AssetExists(preset.FileName) ? "✓ Có sẵn" : "✗ Chưa tải về"
+            });
         }
     }
 }

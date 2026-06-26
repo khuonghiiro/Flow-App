@@ -10,6 +10,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
+using FlowMy.Models;
+
 namespace FlowMy.Services.Utils
 {
     /// <summary>
@@ -20,6 +22,33 @@ namespace FlowMy.Services.Utils
     {
         private static readonly string _assetsFolder;
         private static readonly HttpClient _httpClient;
+        private static readonly string _globalAssetsListPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "FlowMy", "registered_offline_assets.json");
+
+        public static List<HtmlOfflineAsset> LoadGlobalAssets()
+        {
+            try
+            {
+                if (!File.Exists(_globalAssetsListPath)) return new List<HtmlOfflineAsset>();
+                var json = File.ReadAllText(_globalAssetsListPath);
+                return System.Text.Json.JsonSerializer.Deserialize<List<HtmlOfflineAsset>>(json) ?? new List<HtmlOfflineAsset>();
+            }
+            catch
+            {
+                return new List<HtmlOfflineAsset>();
+            }
+        }
+
+        public static void SaveGlobalAssets(List<HtmlOfflineAsset> assets)
+        {
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(assets, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_globalAssetsListPath, json);
+            }
+            catch { }
+        }
 
         /// <summary>Bắt url(...) trong CSS: nội dung có thể là URL tuyệt đối hoặc tương đối (Bootstrap Icons, v.v.).</summary>
         private static readonly Regex CssUrlRegex = new(

@@ -370,3 +370,5 @@ zen developer-icons.color
 zod developer-icons.color
 table-cells-lock duotone
 table-cells-header-unlock duotone
+eye regular
+eye-slash regular

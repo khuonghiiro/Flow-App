@@ -494,6 +494,37 @@ namespace FlowMy.Views.NodeControls
                 }
             }
 
+            // ✅ Inject offline assets (CSS trước, JS sau)
+            var enabledAssets = (node.OfflineAssets ?? new System.Collections.Generic.List<FlowMy.Models.HtmlOfflineAsset>())
+                .Where(a => a.IsEnabled && !string.IsNullOrWhiteSpace(a.LocalFileName));
+
+            foreach (var asset in enabledAssets)
+            {
+                var content = FlowMy.Services.Utils.HtmlOfflineAssetService.GetInlineContent(asset.LocalFileName);
+                if (string.IsNullOrWhiteSpace(content)) continue;
+
+                var safeName = System.Security.SecurityElement.Escape(asset.Title ?? asset.LocalFileName);
+
+                if (string.Equals(asset.AssetType, "css", StringComparison.OrdinalIgnoreCase))
+                {
+                    var cssTag = $"\n    <style>/* [offline] {safeName} */\n{content}\n    </style>";
+                    if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
+                        html = html.Replace("</head>", cssTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
+                    else
+                        html = "<style>" + content + "</style>" + html;
+                }
+                else // js
+                {
+                    var jsTag = $"\n    <script>/* [offline] {safeName} */\n{content}\n    </script>";
+                    if (html.Contains("</body>", StringComparison.OrdinalIgnoreCase))
+                        html = html.Replace("</body>", jsTag + "\n</body>", StringComparison.OrdinalIgnoreCase);
+                    else if (html.Contains("</head>", StringComparison.OrdinalIgnoreCase))
+                        html = html.Replace("</head>", jsTag + "\n</head>", StringComparison.OrdinalIgnoreCase);
+                    else
+                        html += jsTag;
+                }
+            }
+
             return html;
         }
     }
