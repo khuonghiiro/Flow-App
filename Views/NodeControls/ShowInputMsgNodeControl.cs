@@ -257,7 +257,6 @@ namespace FlowMy.Views.NodeControls
                     if (_activeWebViews.TryGetValue(node, out var webView))
                     {
                         UpdateWebViewZoomForCanvasZoom(webView, host);
-                        WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
                     }
                 }
             };
@@ -271,28 +270,6 @@ namespace FlowMy.Views.NodeControls
                         previewBorder.Visibility = Visibility.Visible;
 
                     UpdatePreviewPosition(node, border, host);
-                    if (_activeWebViews.TryGetValue(node, out var webView))
-                    {
-                        UpdateWebViewZoomForCanvasZoom(webView, host);
-                        WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
-                    }
-                }
-            };
-
-            EventHandler? renderingHandler = (_, _) =>
-            {
-                if (isDisposed) return;
-                if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
-                {
-                    if (previewBorder.Visibility != Visibility.Visible)
-                        previewBorder.Visibility = Visibility.Visible;
-
-                    UpdatePreviewPosition(node, border, host);
-                    if (_activeWebViews.TryGetValue(node, out var webView))
-                    {
-                        UpdateWebViewZoomForCanvasZoom(webView, host);
-                        WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
-                    }
                 }
             };
 
@@ -310,8 +287,6 @@ namespace FlowMy.Views.NodeControls
                 translateXDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
                 translateYDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
 
-                System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
-
                 SyncPreviewState(node, border, host);
             };
 
@@ -326,8 +301,6 @@ namespace FlowMy.Views.NodeControls
                 var translateYDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.YProperty, typeof(TranslateTransform));
                 translateXDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
                 translateYDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
-
-                System.Windows.Media.CompositionTarget.Rendering -= renderingHandler;
 
                 if (_activePreviews.TryGetValue(node, out var previewBorder))
                 {

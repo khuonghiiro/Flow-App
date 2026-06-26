@@ -294,6 +294,9 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     /// </summary>
     public class ShowInputMsgPopupWindow : Window
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
         private readonly WebView2 _webView;
         private TaskCompletionSource<bool>? _tcs;
         private ShowInputMsgNode _node;
@@ -301,6 +304,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private bool _isForceClosing = false;
         private bool _isShownAndActive = false;
         private DateTime _showTime = DateTime.MinValue;
+        private IntPtr _previousForegroundHwnd = IntPtr.Zero;
 
         public ShowInputMsgPopupWindow(ShowInputMsgNode node)
         {
@@ -385,12 +389,42 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Window closed. Id={_node?.Id}");
                 _isShownAndActive = false;
                 _tcs?.TrySetResult(false);
+                RestorePreviousForegroundWindow();
                 try
                 {
                     _webView.Dispose();
                 }
                 catch { }
             };
+
+            IsVisibleChanged += (s, e) =>
+            {
+                if (IsVisible == false)
+                {
+                    RestorePreviousForegroundWindow();
+                }
+            };
+        }
+
+        private void RestorePreviousForegroundWindow()
+        {
+            try
+            {
+                if (_previousForegroundHwnd != IntPtr.Zero)
+                {
+                    var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                    if (_previousForegroundHwnd != myHwnd)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Restoring foreground window to handle: {_previousForegroundHwnd}");
+                        FlowMy.Helpers.WindowHelper.SetForegroundWindow(_previousForegroundHwnd);
+                    }
+                    _previousForegroundHwnd = IntPtr.Zero;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Error restoring foreground window: {ex.Message}");
+            }
         }
 
         public void UpdateNode(ShowInputMsgNode node)
@@ -426,6 +460,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
 
             try
             {
+                _previousForegroundHwnd = GetForegroundWindow();
+
                 // Set size and position first before showing
                 Width = _node.Width;
                 Height = _node.Height;
