@@ -44,6 +44,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             if (_windowCache.TryGetValue(showInputMsgNode.Id, out var win))
                             {
                                 System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Cancellation requested. Hiding window for node {showInputMsgNode.Id}");
+                                win.RestorePreviousForegroundWindow();
                                 win.Hide();
                             }
                         }
@@ -361,6 +362,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Escape pressed. Hiding window. Id={_node?.Id}");
                     _isShownAndActive = false;
+                    RestorePreviousForegroundWindow();
                     Hide();
                     _tcs?.TrySetResult(false);
                 }
@@ -380,6 +382,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
                 
                 _isShownAndActive = false;
+                RestorePreviousForegroundWindow();
                 Hide();
                 _tcs?.TrySetResult(false);
             };
@@ -406,7 +409,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             };
         }
 
-        private void RestorePreviousForegroundWindow()
+        internal void RestorePreviousForegroundWindow()
         {
             try
             {
@@ -449,6 +452,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             e.Cancel = true;
             System.Diagnostics.Debug.WriteLine($"[ShowInputMsg] Closing intercepted. Hiding window. Id={_node?.Id}");
             _isShownAndActive = false;
+            RestorePreviousForegroundWindow();
             Hide();
             _tcs?.TrySetResult(false);
         }
@@ -602,6 +606,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             await UpdateOutputsFromDomAsync();
             _isShownAndActive = false;
             _tcs?.TrySetResult(true);
+            RestorePreviousForegroundWindow();
             Hide();
         }
 

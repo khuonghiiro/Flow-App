@@ -273,8 +273,16 @@ namespace FlowMy.Views.NodeControls
                 }
             };
 
+            EventHandler? positionChangedHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
+                {
+                    UpdatePreviewPosition(node, border, host);
+                }
+            };
+
             border.SizeChanged += (s, e) => UpdatePreviewPosition(node, border, host);
-            border.LayoutUpdated += (s, e) => UpdatePreviewPosition(node, border, host);
 
             border.Loaded += (s, e) =>
             {
@@ -286,6 +294,11 @@ namespace FlowMy.Views.NodeControls
                 var translateYDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.YProperty, typeof(TranslateTransform));
                 translateXDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
                 translateYDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
+
+                var leftDescriptor = DependencyPropertyDescriptor.FromProperty(Canvas.LeftProperty, typeof(Border));
+                var topDescriptor = DependencyPropertyDescriptor.FromProperty(Canvas.TopProperty, typeof(Border));
+                leftDescriptor?.AddValueChanged(border, positionChangedHandler);
+                topDescriptor?.AddValueChanged(border, positionChangedHandler);
 
                 SyncPreviewState(node, border, host);
             };
@@ -301,6 +314,11 @@ namespace FlowMy.Views.NodeControls
                 var translateYDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.YProperty, typeof(TranslateTransform));
                 translateXDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
                 translateYDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
+
+                var leftDescriptor = DependencyPropertyDescriptor.FromProperty(Canvas.LeftProperty, typeof(Border));
+                var topDescriptor = DependencyPropertyDescriptor.FromProperty(Canvas.TopProperty, typeof(Border));
+                leftDescriptor?.RemoveValueChanged(border, positionChangedHandler);
+                topDescriptor?.RemoveValueChanged(border, positionChangedHandler);
 
                 if (_activePreviews.TryGetValue(node, out var previewBorder))
                 {
@@ -396,9 +414,23 @@ namespace FlowMy.Views.NodeControls
             var previewLeft = left + border.ActualWidth + 12;
             var previewTop = top;
 
-            Canvas.SetLeft(previewBorder, previewLeft);
-            Canvas.SetTop(previewBorder, previewTop);
-            Panel.SetZIndex(previewBorder, 1000); // Overlay level
+            // Avoid infinite layout loop by checking if values have changed before setting them
+            var curLeft = Canvas.GetLeft(previewBorder);
+            var curTop = Canvas.GetTop(previewBorder);
+
+            if (double.IsNaN(curLeft) || Math.Abs(curLeft - previewLeft) > 0.01)
+            {
+                Canvas.SetLeft(previewBorder, previewLeft);
+            }
+            if (double.IsNaN(curTop) || Math.Abs(curTop - previewTop) > 0.01)
+            {
+                Canvas.SetTop(previewBorder, previewTop);
+            }
+
+            if (Panel.GetZIndex(previewBorder) != 1000)
+            {
+                Panel.SetZIndex(previewBorder, 1000); // Overlay level
+            }
         }
 
         private static Border CreatePreviewBorder(ShowInputMsgNode node, IWorkflowEditorHost host)
