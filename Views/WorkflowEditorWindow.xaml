@@ -334,7 +334,7 @@ Cursor="Hand"
         <!-- Canvas cho workflow với zoom và pan -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="LeftMenuColumn" Width="182" MinWidth="160" MaxWidth="420"/>
+                <ColumnDefinition x:Name="LeftMenuColumn" Width="181" MinWidth="160" MaxWidth="420"/>
                 <ColumnDefinition x:Name="LeftSplitterColumn" Width="5" MinWidth="5" MaxWidth="5"/>
                 <ColumnDefinition Width="*" MinWidth="300"/>
             </Grid.ColumnDefinitions>
@@ -856,7 +856,7 @@ Cursor="Hand"
                         <WrapPanel Orientation="Horizontal" x:Name="LoopWrapPanel">
                             <Border  Cursor="Hand" 
                                     BorderThickness="0" 
-                                     Margin="10,0"
+                                     Margin="6"
                                     Background="{DynamicResource TransparentBrush}"
                                     MouseDown="NodeTemplate_MouseDown"
                                     MouseMove="NodeTemplate_MouseMove"
@@ -894,8 +894,8 @@ Cursor="Hand"
 
                                 <Grid  ClipToBounds="False">
                                     <!-- Hình thoi = Border xoay 45 độ -->
-                                    <Border Width="40"
-                                            Height="40"
+                                    <Border Width="36"
+                                            Height="36"
                                             Background="{DynamicResource WarningBrush}"
                                             BorderBrush="{DynamicResource TextOnWarningBrush}" 
                                             BorderThickness="1.5"
@@ -925,7 +925,7 @@ Cursor="Hand"
                             </Border>
 
                             <Border Style="{StaticResource PaletteIconNodeStyle}"
-                                    Margin="6,0"
+                                   
                                     Background="{DynamicResource CharcoalMistBrush}"
                                     Tag="BodyContainer">
                                 <Border.ToolTip>
@@ -960,7 +960,7 @@ Cursor="Hand"
                                 </Grid>
                             </Border>
 
-                            <Border Style="{StaticResource PaletteIconNodeStyle}" Margin="6"
+                            <Border Style="{StaticResource PaletteIconNodeStyle}"
                                     Background="{DynamicResource DangerBrush}"
                                     CornerRadius="30"
                                     Tag="Break">
@@ -993,7 +993,7 @@ Cursor="Hand"
                                 </Grid>
                             </Border>
 
-                            <Border Style="{StaticResource PaletteIconNodeStyle}" Margin="6"
+                            <Border Style="{StaticResource PaletteIconNodeStyle}" 
                                     Background="{DynamicResource InfoBrush}"
                                     CornerRadius="30"
                                     Tag="Continue">
