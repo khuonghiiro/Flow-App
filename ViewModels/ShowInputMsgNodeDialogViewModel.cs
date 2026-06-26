@@ -42,7 +42,7 @@ namespace FlowMy.ViewModels
         private double _width = 450;
 
         [ObservableProperty]
-        private double _height = 350;
+        private double _height = 245;
 
         [ObservableProperty]
         private int _codeFontSize = 13;

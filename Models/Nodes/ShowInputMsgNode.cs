@@ -14,7 +14,7 @@ namespace FlowMy.Models.Nodes
     public sealed class ShowInputMsgNode : WorkflowNode
     {
         private double _width = 450;
-        private double _height = 350;
+        private double _height = 245;
         private bool _isPreviewVisible = false;
 
         private List<CodeInputMapping> _inputMappings = new();
@@ -33,13 +33,8 @@ namespace FlowMy.Models.Nodes
             "<body>\n" +
             "    <div class=\"card\">\n" +
             "        <h3>Nhập Dữ Liệu</h3>\n" +
-            "        <p class=\"description\">Vui lòng điền thông tin bên dưới và bấm Xác nhận.</p>\n" +
             "        <div class=\"form-group\">\n" +
-            "            <label for=\"inputValue\">Thông tin cần nhập:</label>\n" +
-            "            <input type=\"text\" id=\"inputValue\" placeholder=\"Nhập nội dung ở đây...\" />\n" +
-            "        </div>\n" +
-            "        <div class=\"actions\">\n" +
-            "            <button id=\"btnSubmit\">Xác nhận</button>\n" +
+            "            <textarea id=\"inputValue\" placeholder=\"Nhập nội dung ở đây và nhấn Enter để xác nhận...\"></textarea>\n" +
             "        </div>\n" +
             "    </div>\n" +
             "</body>\n" +
@@ -47,11 +42,15 @@ namespace FlowMy.Models.Nodes
 
         private string _jsCode =
             "(function() {\n" +
-            "    var btnSubmit = document.getElementById('btnSubmit');\n" +
-            "    if (btnSubmit) {\n" +
-            "        btnSubmit.addEventListener('click', function() {\n" +
-            "            if (typeof hostSubmit === 'function') {\n" +
-            "                hostSubmit();\n" +
+            "    var txtArea = document.getElementById('inputValue');\n" +
+            "    if (txtArea) {\n" +
+            "        txtArea.focus();\n" +
+            "        txtArea.addEventListener('keydown', function(e) {\n" +
+            "            if (e.key === 'Enter' && !e.shiftKey) {\n" +
+            "                e.preventDefault();\n" +
+            "                if (typeof hostSubmit === 'function') {\n" +
+            "                    hostSubmit();\n" +
+            "                }\n" +
             "            }\n" +
             "        });\n" +
             "    }\n" +
@@ -72,33 +71,32 @@ namespace FlowMy.Models.Nodes
             "    padding: 20px;\n" +
             "    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);\n" +
             "}\n" +
-            "h3 { margin-top: 0; color: #38bdf8; }\n" +
-            ".description { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }\n" +
-            ".form-group { margin-bottom: 16px; }\n" +
-            "label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }\n" +
-            "input[type=\"text\"] {\n" +
+            "h3 {\n" +
+            "    margin-top: 0;\n" +
+            "    margin-bottom: 16px;\n" +
+            "    color: #38bdf8;\n" +
+            "    font-size: 16px;\n" +
+            "}\n" +
+            ".form-group {\n" +
+            "    margin-bottom: 0;\n" +
+            "}\n" +
+            "textarea {\n" +
             "    width: 100%;\n" +
-            "    height: 36px;\n" +
-            "    padding: 0 10px;\n" +
+            "    height: 120px;\n" +
+            "    padding: 10px;\n" +
             "    background: #0f172a;\n" +
             "    border: 1px solid #475569;\n" +
             "    border-radius: 6px;\n" +
             "    color: #f8fafc;\n" +
+            "    font-family: inherit;\n" +
+            "    font-size: 14px;\n" +
+            "    resize: none;\n" +
             "    box-sizing: border-box;\n" +
             "}\n" +
-            "input:focus { border-color: #38bdf8; outline: none; }\n" +
-            ".actions { text-align: right; }\n" +
-            "button {\n" +
-            "    height: 36px;\n" +
-            "    padding: 0 16px;\n" +
-            "    background: #0284c7;\n" +
-            "    color: white;\n" +
-            "    border: none;\n" +
-            "    border-radius: 6px;\n" +
-            "    font-weight: 500;\n" +
-            "    cursor: pointer;\n" +
-            "}\n" +
-            "button:hover { background: #0369a1; }";
+            "textarea:focus {\n" +
+            "    border-color: #38bdf8;\n" +
+            "    outline: none;\n" +
+            "}";
 
         private string _paramsCode = "result: #inputValue";
 
@@ -144,13 +142,13 @@ namespace FlowMy.Models.Nodes
         public double Width
         {
             get => _width;
-            set { if (Math.Abs(_width - value) > 0.01) { _width = Math.Max(280, value); OnPropertyChanged(); } }
+            set { if (Math.Abs(_width - value) > 0.01) { _width = Math.Max(100, value); OnPropertyChanged(); } }
         }
 
         public double Height
         {
             get => _height;
-            set { if (Math.Abs(_height - value) > 0.01) { _height = Math.Max(200, value); OnPropertyChanged(); } }
+            set { if (Math.Abs(_height - value) > 0.01) { _height = Math.Max(100, value); OnPropertyChanged(); } }
         }
 
         public bool IsPreviewVisible

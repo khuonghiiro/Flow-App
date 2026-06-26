@@ -356,11 +356,11 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="Chiều rộng (px)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <TextBox Text="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                                            <TextBox Text="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Text="Chiều cao (px)" Foreground="{DynamicResource TextMuted}" FontSize="10" Margin="0,0,0,4"/>
-                                            <TextBox Text="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
+                                            <TextBox Text="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{DynamicResource BaseTextBoxV2}" Height="32"/>
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
