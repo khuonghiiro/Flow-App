@@ -1,10 +1,13 @@
 using FlowMy.Services.Workflow;
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using Microsoft.VisualBasic;
 
 namespace FlowMy.Views.Overlays
@@ -13,93 +16,273 @@ namespace FlowMy.Views.Overlays
     {
         public ObservableCollection<WorkflowItem> Workflows { get; } = new();
 
+        private ICollectionView? _collectionView;
+        private string _searchText = string.Empty;
+        private string _sortColumn = "Name";
+        private ListSortDirection _sortDirection = ListSortDirection.Ascending;
+        private string _workflowsDir = string.Empty;
+
         public WorkflowManagementDialog()
         {
             InitializeComponent();
             DataContext = this;
             LoadWorkflows();
+            SetupCollectionView();
+            UpdateCountText();
+            UpdateSortArrows();
+            UpdateEmptyState();
         }
 
         private void LoadWorkflows()
         {
             Workflows.Clear();
-            
-            var workflowsDir = FileWorkflowPersistenceService.GetDefaultWorkflowsDirectory();
-            if (!Directory.Exists(workflowsDir))
-                return;
 
-            var files = Directory.GetFiles(workflowsDir, "*.json")
+            _workflowsDir = FileWorkflowPersistenceService.GetDefaultWorkflowsDirectory();
+            if (!Directory.Exists(_workflowsDir))
+            {
+                WorkflowFolderPathText.Text = _workflowsDir;
+                return;
+            }
+
+            WorkflowFolderPathText.Text = _workflowsDir;
+
+            var files = Directory.GetFiles(_workflowsDir, "*.json")
                 .OrderBy(f => Path.GetFileNameWithoutExtension(f), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            int index = 1;
             foreach (var file in files)
             {
-                var name = Path.GetFileNameWithoutExtension(file);
-                Workflows.Add(new WorkflowItem
+                try
                 {
-                    Name = name,
-                    FilePath = file
-                });
+                    var fi = new FileInfo(file);
+                    var name = Path.GetFileNameWithoutExtension(file);
+                    Workflows.Add(new WorkflowItem
+                    {
+                        Index = index++,
+                        Name = name,
+                        FileName = fi.Name,
+                        FilePath = file,
+                        FolderPath = fi.DirectoryName ?? string.Empty,
+                        FileSize = fi.Exists ? fi.Length : 0,
+                        LastModified = fi.Exists ? fi.LastWriteTime : DateTime.MinValue,
+                        LastModifiedFull = fi.Exists
+                            ? fi.LastWriteTime.ToString("dd/MM/yyyy HH:mm:ss")
+                            : "—"
+                    });
+                }
+                catch
+                {
+                    // skip unreadable files
+                }
             }
         }
 
+        private void SetupCollectionView()
+        {
+            _collectionView = CollectionViewSource.GetDefaultView(Workflows);
+            _collectionView.Filter = FilterWorkflow;
+
+            // Default sort by name
+            _collectionView.SortDescriptions.Clear();
+            _collectionView.SortDescriptions.Add(
+                new SortDescription(_sortColumn, _sortDirection));
+
+            WorkflowItemsControl.ItemsSource = _collectionView;
+        }
+
+        private bool FilterWorkflow(object obj)
+        {
+            if (obj is not WorkflowItem item)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(_searchText))
+                return true;
+
+            return item.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // ─── Search ───────────────────────────────────────────────────
+
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _searchText = SearchBox.Text.Trim();
+            _collectionView?.Refresh();
+            ReindexWorkflows();
+            UpdateCountText();
+            UpdateEmptyState();
+
+            ClearSearchButton.Visibility = string.IsNullOrWhiteSpace(_searchText)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        }
+
+        private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
+        {
+            SearchBox.Text = string.Empty;
+            SearchBox.Focus();
+        }
+
+        // ─── Sort (dedicated buttons) ─────────────────────────────────
+
+        private void SortByName_Click(object sender, RoutedEventArgs e)
+        {
+            ApplySort("Name");
+        }
+
+        private void SortByDate_Click(object sender, RoutedEventArgs e)
+        {
+            ApplySort("LastModified");
+        }
+
+        private void SortBySize_Click(object sender, RoutedEventArgs e)
+        {
+            ApplySort("FileSize");
+        }
+
+        private void ApplySort(string column)
+        {
+            // Toggle direction if clicking same column
+            if (_sortColumn == column)
+            {
+                _sortDirection = _sortDirection == ListSortDirection.Ascending
+                    ? ListSortDirection.Descending
+                    : ListSortDirection.Ascending;
+            }
+            else
+            {
+                _sortColumn = column;
+                _sortDirection = column == "LastModified"
+                    ? ListSortDirection.Descending  // newest first by default
+                    : ListSortDirection.Ascending;
+            }
+
+            _collectionView?.SortDescriptions.Clear();
+            _collectionView?.SortDescriptions.Add(
+                new SortDescription(_sortColumn, _sortDirection));
+
+            UpdateSortArrows();
+            ReindexWorkflows();
+        }
+
+        private void UpdateSortArrows()
+        {
+            string arrow = _sortDirection == ListSortDirection.Ascending ? " ▲" : " ▼";
+
+            SortArrowName.Text = _sortColumn == "Name" ? arrow : "";
+            SortArrowFileSize.Text = _sortColumn == "FileSize" ? arrow : "";
+            SortArrowLastModified.Text = _sortColumn == "LastModified" ? arrow : "";
+
+            // Highlight active sort button background
+            var activeBg = FindResource("PrimaryGlowBrush") as System.Windows.Media.Brush;
+            var normalBg = FindResource("ButtonBackgroundBrush") as System.Windows.Media.Brush;
+            var activeBorder = FindResource("PrimaryBrush") as System.Windows.Media.Brush;
+            var normalBorder = FindResource("ButtonBorderBrush") as System.Windows.Media.Brush;
+
+            SortByNameButton.Background = _sortColumn == "Name" ? activeBg : normalBg;
+            SortByNameButton.BorderBrush = _sortColumn == "Name" ? activeBorder : normalBorder;
+            SortByDateButton.Background = _sortColumn == "LastModified" ? activeBg : normalBg;
+            SortByDateButton.BorderBrush = _sortColumn == "LastModified" ? activeBorder : normalBorder;
+            SortBySizeButton.Background = _sortColumn == "FileSize" ? activeBg : normalBg;
+            SortBySizeButton.BorderBrush = _sortColumn == "FileSize" ? activeBorder : normalBorder;
+        }
+
+        // ─── Actions ──────────────────────────────────────────────────
+
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is WorkflowItem item)
+            if (sender is not Button btn || btn.Tag is not WorkflowItem item)
+                return;
+
+            var oldName = item.Name;
+            var newName = Interaction.InputBox(
+                "Nhập tên mới cho workflow:",
+                "Sửa tên workflow",
+                oldName).Trim();
+
+            if (string.IsNullOrWhiteSpace(newName) || newName == oldName)
+                return;
+
+            // Sanitize file name
+            foreach (var c in Path.GetInvalidFileNameChars())
             {
-                var oldName = item.Name;
-                var newName = Interaction.InputBox(
-                    "Nhập tên mới cho workflow:",
-                    "Sửa tên workflow",
-                    oldName).Trim();
+                newName = newName.Replace(c, '_');
+            }
 
-                if (string.IsNullOrWhiteSpace(newName) || newName == oldName)
-                    return;
+            if (string.IsNullOrWhiteSpace(newName))
+                return;
 
-                // Sanitize file name
-                foreach (var c in Path.GetInvalidFileNameChars())
+            try
+            {
+                var oldPath = item.FilePath;
+                var newPath = Path.Combine(Path.GetDirectoryName(oldPath)!, $"{newName}.json");
+
+                // Check if new name already exists
+                if (File.Exists(newPath) && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    newName = newName.Replace(c, '_');
+                    MessageBox.Show(
+                        $"Workflow với tên '{newName}' đã tồn tại!",
+                        "Lỗi",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
                 }
 
-                if (string.IsNullOrWhiteSpace(newName))
-                    return;
+                // Rename file
+                File.Move(oldPath, newPath);
 
+                // Update item
+                var fi = new FileInfo(newPath);
+                item.Name = newName;
+                item.FileName = fi.Name;
+                item.FilePath = newPath;
+                item.FolderPath = fi.DirectoryName ?? string.Empty;
+                item.LastModified = fi.LastWriteTime;
+                item.LastModifiedFull = fi.LastWriteTime.ToString("dd/MM/yyyy HH:mm:ss");
+
+                // Refresh view to re-sort
+                _collectionView?.Refresh();
+                ReindexWorkflows();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Lỗi khi đổi tên workflow: {ex.Message}",
+                    "Lỗi",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not WorkflowItem item)
+                return;
+
+            var result = MessageBox.Show(
+                $"Bạn có chắc chắn muốn xóa workflow '{item.Name}'?\n\nHành động này không thể hoàn tác!",
+                "Xác nhận xóa",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
                 try
                 {
-                    var oldPath = item.FilePath;
-                    var newPath = Path.Combine(Path.GetDirectoryName(oldPath)!, $"{newName}.json");
-
-                    // Check if new name already exists
-                    if (File.Exists(newPath) && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+                    if (File.Exists(item.FilePath))
                     {
-                        MessageBox.Show(
-                            $"Workflow với tên '{newName}' đã tồn tại!",
-                            "Lỗi",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
-                        return;
+                        File.Delete(item.FilePath);
                     }
 
-                    // Rename file
-                    File.Move(oldPath, newPath);
-                    
-                    // Update item
-                    item.Name = newName;
-                    item.FilePath = newPath;
-
-                    // Refresh list (sort lại)
-                    var sorted = Workflows.OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase).ToList();
-                    Workflows.Clear();
-                    foreach (var w in sorted)
-                    {
-                        Workflows.Add(w);
-                    }
+                    Workflows.Remove(item);
+                    ReindexWorkflows();
+                    UpdateCountText();
+                    UpdateEmptyState();
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show(
-                        $"Lỗi khi đổi tên workflow: {ex.Message}",
+                        $"Lỗi khi xóa workflow: {ex.Message}",
                         "Lỗi",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
@@ -107,37 +290,43 @@ namespace FlowMy.Views.Overlays
             }
         }
 
-        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        private void OpenFolderButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is WorkflowItem item)
+            if (sender is not Button btn || btn.Tag is not WorkflowItem item)
+                return;
+
+            try
             {
-                var result = MessageBox.Show(
-                    $"Bạn có chắc chắn muốn xóa workflow '{item.Name}'?\n\nHành động này không thể hoàn tác!",
-                    "Xác nhận xóa",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.Yes)
+                if (File.Exists(item.FilePath))
                 {
-                    try
-                    {
-                        if (File.Exists(item.FilePath))
-                        {
-                            File.Delete(item.FilePath);
-                        }
-
-                        Workflows.Remove(item);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show(
-                            $"Lỗi khi xóa workflow: {ex.Message}",
-                            "Lỗi",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error);
-                    }
+                    // Select the file in Explorer
+                    Process.Start("explorer.exe", $"/select,\"{item.FilePath}\"");
+                }
+                else if (Directory.Exists(item.FolderPath))
+                {
+                    Process.Start("explorer.exe", $"\"{item.FolderPath}\"");
                 }
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Không thể mở thư mục: {ex.Message}",
+                    "Lỗi",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void OpenWorkflowsFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (Directory.Exists(_workflowsDir))
+                {
+                    Process.Start("explorer.exe", $"\"{_workflowsDir}\"");
+                }
+            }
+            catch { }
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -145,11 +334,118 @@ namespace FlowMy.Views.Overlays
             DialogResult = true;
             Close();
         }
+
+        // ─── Helpers ──────────────────────────────────────────────────
+
+        private void ReindexWorkflows()
+        {
+            if (_collectionView == null) return;
+
+            int index = 1;
+            foreach (var item in _collectionView.OfType<WorkflowItem>())
+            {
+                item.Index = index++;
+            }
+        }
+
+        private void UpdateCountText()
+        {
+            int total = Workflows.Count;
+            int filtered = _collectionView?.Cast<WorkflowItem>().Count() ?? total;
+
+            if (string.IsNullOrWhiteSpace(_searchText) || filtered == total)
+            {
+                WorkflowCountText.Text = $"{total} workflow{(total != 1 ? "s" : "")}";
+            }
+            else
+            {
+                WorkflowCountText.Text = $"{filtered} / {total} workflows";
+            }
+        }
+
+        private void UpdateEmptyState()
+        {
+            int visibleCount = _collectionView?.Cast<WorkflowItem>().Count() ?? 0;
+
+            EmptyStateOverlay.Visibility = visibleCount == 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            if (visibleCount == 0 && !string.IsNullOrWhiteSpace(_searchText))
+            {
+                EmptyStateText.Text = $"Không tìm thấy workflow \"{_searchText}\"";
+            }
+            else
+            {
+                EmptyStateText.Text = "Không có workflow nào";
+            }
+        }
     }
 
-    public class WorkflowItem
+    public class WorkflowItem : INotifyPropertyChanged
     {
-        public string Name { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
+        private int _index;
+        private string _name = string.Empty;
+        private string _fileName = string.Empty;
+        private string _filePath = string.Empty;
+        private string _folderPath = string.Empty;
+        private long _fileSize;
+        private DateTime _lastModified;
+        private string _lastModifiedFull = string.Empty;
+
+        public int Index
+        {
+            get => _index;
+            set { _index = value; OnPropertyChanged(nameof(Index)); }
+        }
+
+        public string Name
+        {
+            get => _name;
+            set { _name = value; OnPropertyChanged(nameof(Name)); }
+        }
+
+        public string FileName
+        {
+            get => _fileName;
+            set { _fileName = value; OnPropertyChanged(nameof(FileName)); }
+        }
+
+        public string FilePath
+        {
+            get => _filePath;
+            set { _filePath = value; OnPropertyChanged(nameof(FilePath)); }
+        }
+
+        public string FolderPath
+        {
+            get => _folderPath;
+            set { _folderPath = value; OnPropertyChanged(nameof(FolderPath)); }
+        }
+
+        public long FileSize
+        {
+            get => _fileSize;
+            set { _fileSize = value; OnPropertyChanged(nameof(FileSize)); }
+        }
+
+        public DateTime LastModified
+        {
+            get => _lastModified;
+            set { _lastModified = value; OnPropertyChanged(nameof(LastModified)); }
+        }
+
+        public string LastModifiedFull
+        {
+            get => _lastModifiedFull;
+            set { _lastModifiedFull = value; OnPropertyChanged(nameof(LastModifiedFull)); }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }

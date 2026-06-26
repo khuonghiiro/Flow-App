@@ -2150,7 +2150,7 @@ Cursor="Hand"
                         Grid.Column="2"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
-                        Margin="0,0,20,16"
+                        Margin="0,0,20,180"
                         Panel.ZIndex="50"
                         Cursor="Hand"
                         Command="{Binding ToggleExecutionTracePanelCommand}"
@@ -2164,14 +2164,14 @@ Cursor="Hand"
                                     Padding="12,8"
                                     SnapsToDevicePixels="True">
                                 <Border.Effect>
-                                    <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="2" Opacity="0.35"/>
+                                    <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="2" Opacity="0.2"/>
                                 </Border.Effect>
                                 <StackPanel Orientation="Horizontal">
                                     <controls:SvgViewboxEx Width="14" Height="14"
                                                            Fill="{DynamicResource TextOnPrimaryBrush}"
                                                            VerticalAlignment="Center"
                                                            Source="{Binding Source={x:Static sys:String.Empty}, Converter={StaticResource IconKeyToPathConverter}, ConverterParameter='timeline-arrow duotone-light'}"/>
-                                    <TextBlock Text="Mở Execution Log"
+                                    <TextBlock Text="Log"
                                                Margin="8,0,0,0"
                                                Foreground="{DynamicResource TextOnPrimaryBrush}"
                                                FontWeight="SemiBold"
