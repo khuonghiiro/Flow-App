@@ -317,7 +317,7 @@ namespace FlowMy.Views
             if (!_headlessCanvasOptimizationEnabled) return true;
             if (node == null) return false;
             if (_headlessHiddenWidgetNodeIds.Contains(node.Id)) return false;
-            return node.Type == NodeType.HtmlUi || node.Type == NodeType.Web || node.Type == NodeType.ActionCanVas;
+            return node.Type == NodeType.HtmlUi || node.Type == NodeType.Web || node.Type == NodeType.ActionCanVas || node.Type == NodeType.ShowInputMsg;
         }
 
         private void ApplyHeadlessCanvasOptimization()

@@ -64,7 +64,8 @@ namespace FlowMy.Workflow
                 "KeyScopedStore" => CreateKeyScopedStoreNode(x, y),
                 "ActionCanVas" => CreateActionCanVasNode(x, y),
                 "ActionCanVasNode" => CreateActionCanVasNode(x, y),
-                                "ShowInputMsgNode" => CreateShowInputMsgNode(x, y),
+                "ShowInputMsg" => CreateShowInputMsgNode(x, y),
+                "ShowInputMsgNode" => CreateShowInputMsgNode(x, y),
                 _ => throw new NotSupportedException($"Unknown node type '{nodeType}'.")
             };
         }

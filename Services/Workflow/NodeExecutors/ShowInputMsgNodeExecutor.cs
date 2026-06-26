@@ -17,6 +17,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     /// </summary>
     internal sealed class ShowInputMsgNodeExecutor : INodeExecutor
     {
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, ShowInputMsgPopupWindow> _windowCache = new();
+
         public bool CanExecute(WorkflowNode node) => node is ShowInputMsgNode;
 
         public async Task ExecuteAsync(WorkflowNode node, NodeExecutionEnvironment env)
@@ -38,28 +40,22 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 {
                     try
                     {
-                        var popup = new ShowInputMsgPopupWindow(showInputMsgNode, htmlContent);
-                        
-                        // Set popup position at cursor coordinates
-                        var mousePos = GetMousePositionWpf();
-                        popup.Left = mousePos.x;
-                        popup.Top = mousePos.y;
+                        var popup = _windowCache.GetOrAdd(showInputMsgNode.Id, id =>
+                        {
+                            var win = new ShowInputMsgPopupWindow(showInputMsgNode);
+                            Application.Current.Exit += (s, e) =>
+                            {
+                                try
+                                {
+                                    win.ForceClose();
+                                }
+                                catch { }
+                            };
+                            return win;
+                        });
 
-                        // Ensure popup does not bleed off-screen
-                        var screenWidth = SystemParameters.PrimaryScreenWidth;
-                        var screenHeight = SystemParameters.PrimaryScreenHeight;
-                        if (popup.Left + popup.Width > screenWidth)
-                            popup.Left = screenWidth - popup.Width;
-                        if (popup.Top + popup.Height > screenHeight)
-                            popup.Top = screenHeight - popup.Height;
-                        if (popup.Left < 0) popup.Left = 0;
-                        if (popup.Top < 0) popup.Top = 0;
-
-                        // Show window
-                        popup.Show();
-
-                        // Register task completion
-                        var result = await popup.WaitForSubmitAsync();
+                        popup.UpdateNode(showInputMsgNode);
+                        var result = await popup.PrepareAndShowAsync(htmlContent);
                         tcs.TrySetResult(result);
                     }
                     catch (Exception popupEx)
@@ -249,7 +245,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             return html;
         }
 
-        private static (double x, double y) GetMousePositionWpf()
+        internal static (double x, double y) GetMousePositionWpf()
         {
             GetCursorPos(out var pt);
             double dpiX = 1.0;
@@ -283,10 +279,12 @@ namespace FlowMy.Services.Workflow.NodeExecutors
     public class ShowInputMsgPopupWindow : Window
     {
         private readonly WebView2 _webView;
-        private readonly TaskCompletionSource<bool> _tcs = new();
-        private readonly ShowInputMsgNode _node;
+        private TaskCompletionSource<bool>? _tcs;
+        private ShowInputMsgNode _node;
+        private readonly Task _webViewInitTask;
+        private bool _isForceClosing = false;
 
-        public ShowInputMsgPopupWindow(ShowInputMsgNode node, string htmlContent)
+        public ShowInputMsgPopupWindow(ShowInputMsgNode node)
         {
             _node = node;
 
@@ -325,37 +323,29 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             border.Child = _webView;
             Content = border;
 
-            // Esc key closes the window
+            // Start initializing WebView2 asynchronously
+            _webViewInitTask = InitializeWebViewInternalAsync();
+
+            // Esc key hides the window and rejects
             KeyDown += (s, e) =>
             {
                 if (e.Key == System.Windows.Input.Key.Escape)
                 {
-                    Close();
+                    Hide();
+                    _tcs?.TrySetResult(false);
                 }
             };
 
-            // Close on click outside (when window is deactivated)
+            // Hide on click outside (when window is deactivated)
             Deactivated += (s, e) =>
             {
-                Close();
-            };
-
-            Loaded += async (s, e) =>
-            {
-                try
-                {
-                    await InitializeWebViewAsync(htmlContent);
-                }
-                catch (Exception ex)
-                {
-                    _tcs.TrySetException(ex);
-                    Close();
-                }
+                Hide();
+                _tcs?.TrySetResult(false);
             };
 
             Closed += (s, e) =>
             {
-                _tcs.TrySetResult(false);
+                _tcs?.TrySetResult(false);
                 try
                 {
                     _webView.Dispose();
@@ -364,9 +354,70 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             };
         }
 
-        public Task<bool> WaitForSubmitAsync() => _tcs.Task;
+        public void UpdateNode(ShowInputMsgNode node)
+        {
+            _node = node;
+        }
 
-        private async Task InitializeWebViewAsync(string htmlContent)
+        public void ForceClose()
+        {
+            _isForceClosing = true;
+            Close();
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (_isForceClosing)
+            {
+                base.OnClosing(e);
+                return;
+            }
+            e.Cancel = true;
+            Hide();
+            _tcs?.TrySetResult(false);
+        }
+
+        public async Task<bool> PrepareAndShowAsync(string htmlContent)
+        {
+            _tcs = new TaskCompletionSource<bool>();
+
+            try
+            {
+                await _webViewInitTask;
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    _webView.CoreWebView2.NavigateToString(htmlContent);
+                }, System.Windows.Threading.DispatcherPriority.Background);
+
+                Width = _node.Width;
+                Height = _node.Height;
+
+                var mousePos = ShowInputMsgNodeExecutor.GetMousePositionWpf();
+                Left = mousePos.x;
+                Top = mousePos.y;
+
+                var screenWidth = SystemParameters.PrimaryScreenWidth;
+                var screenHeight = SystemParameters.PrimaryScreenHeight;
+                if (Left + Width > screenWidth)
+                    Left = screenWidth - Width;
+                if (Top + Height > screenHeight)
+                    Top = screenHeight - Height;
+                if (Left < 0) Left = 0;
+                if (Top < 0) Top = 0;
+
+                Show();
+                Activate();
+            }
+            catch (Exception ex)
+            {
+                _tcs.TrySetException(ex);
+            }
+
+            return await _tcs.Task;
+        }
+
+        private async Task InitializeWebViewInternalAsync()
         {
             var env = await WebView2EnvironmentManager.GetSharedEnvironmentAsync();
             await _webView.EnsureCoreWebView2Async(env);
@@ -374,11 +425,6 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             _webView.CoreWebView2.Profile.PreferredColorScheme = Microsoft.Web.WebView2.Core.CoreWebView2PreferredColorScheme.Dark;
             _webView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
             _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
-
-            await Dispatcher.InvokeAsync(() =>
-            {
-                _webView.CoreWebView2.NavigateToString(htmlContent);
-            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private async void CoreWebView2_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
@@ -417,8 +463,8 @@ namespace FlowMy.Services.Workflow.NodeExecutors
         private async Task HandleSubmitAsync()
         {
             await UpdateOutputsFromDomAsync();
-            _tcs.TrySetResult(true);
-            Close();
+            _tcs?.TrySetResult(true);
+            Hide();
         }
 
         private async Task UpdateOutputsFromDomAsync()
