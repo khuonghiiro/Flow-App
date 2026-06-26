@@ -467,11 +467,7 @@ namespace FlowMy.Views.NodeControls
             await _webViewInitGate.WaitAsync();
             try
             {
-                var userDataFolder = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "FlowMy", "WebView2_Preview_" + node.Id);
-
-                var env = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+                var env = await FlowMy.Services.Workflow.WebView2EnvironmentManager.GetSharedEnvironmentAsync();
                 await webView.EnsureCoreWebView2Async(env);
 
                 _activeWebViews[node] = webView;

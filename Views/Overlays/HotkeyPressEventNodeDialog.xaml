@@ -89,7 +89,7 @@
                                                    FontSize="11" TextWrapping="Wrap"/>
                                     </RadioButton>
                                     <RadioButton x:Name="ListenModeRadio" GroupName="TriggerMode"
-                                                 Cursor="Hand">
+                                                 Cursor="Hand" Checked="ListenModeRadio_Checked">
                                         <TextBlock Text="Nghe phím (Chờ người dùng nhấn đúng phím)"
                                                    Foreground="{DynamicResource TextBrush}"
                                                    FontSize="11" TextWrapping="Wrap"/>
