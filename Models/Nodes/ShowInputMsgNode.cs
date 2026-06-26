@@ -20,6 +20,8 @@ namespace FlowMy.Models.Nodes
         private List<CodeInputMapping> _inputMappings = new();
         private List<string> _outputKeys = new() { "result" };
         private List<HtmlOfflineAsset> _offlineAssets = new();
+        private List<AsyncDataSource> _asyncDataSources = new();
+        private bool _pendingAsyncDataPush = false;
 
         private string _htmlCode =
             "<!DOCTYPE html>\n" +
@@ -196,6 +198,39 @@ namespace FlowMy.Models.Nodes
                     _offlineAssets = value ?? new List<HtmlOfflineAsset>();
                     OnPropertyChanged();
                 }
+            }
+        }
+
+        public List<AsyncDataSource> AsyncDataSources
+        {
+            get => _asyncDataSources;
+            set
+            {
+                if (_asyncDataSources != value)
+                {
+                    _asyncDataSources = value ?? new List<AsyncDataSource>();
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        [JsonIgnore]
+        public System.Collections.Concurrent.ConcurrentDictionary<string, string> AsyncDataCache { get; set; } = new();
+
+        [JsonIgnore]
+        public System.Collections.Concurrent.ConcurrentQueue<(string SessionId, string Key, string Value)> AsyncDataReplayBuffer { get; } = new();
+
+        [JsonIgnore]
+        public System.Collections.Concurrent.ConcurrentQueue<(string SessionId, string Key, string Value)> PendingAsyncPushQueue { get; } = new();
+
+        [JsonIgnore]
+        public bool PendingAsyncDataPush
+        {
+            get => _pendingAsyncDataPush;
+            set
+            {
+                _pendingAsyncDataPush = value;
+                OnPropertyChanged();
             }
         }
 

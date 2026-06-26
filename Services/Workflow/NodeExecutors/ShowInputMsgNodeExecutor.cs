@@ -1,5 +1,6 @@
 using FlowMy.Models;
 using FlowMy.Models.Nodes;
+using FlowMy.Services.Rendering;
 using Microsoft.Web.WebView2.Wpf;
 using System;
 using System.Linq;
@@ -319,6 +320,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             border.Effect = shadow;
 
             _webView = new WebView2();
+            WebView2AirspaceClipper.ApplyRoundedCorners(_webView, 12);
 
             border.Child = _webView;
             Content = border;

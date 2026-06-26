@@ -21,6 +21,8 @@ namespace FlowMy.ViewModels
         public ObservableCollection<CodeInputMappingItemViewModel> InputMappingsList { get; } = new();
         public ObservableCollection<OutputKeyItemViewModel> OutputKeysList { get; } = new();
         public ObservableCollection<HtmlOfflineAssetItemViewModel> OfflineAssetsList { get; } = new();
+        public ObservableCollection<AsyncDataSourceItemViewModel> AsyncDataSourcesList { get; } = new();
+        public ObservableCollection<WorkflowDataSourceOption> AsyncAvailableNodeOptions { get; } = new();
 
         public System.Collections.Generic.List<string> AutoRefreshUnitOptions { get; } = new() { "ms", "s", "min" };
 
@@ -154,7 +156,40 @@ namespace FlowMy.ViewModels
             }
 
             HookOfflineAssetsList();
+
+            // Load async data sources từ node
+            foreach (var ads in node.AsyncDataSources ?? new List<AsyncDataSource>())
+            {
+                var bodyNodeId = ads.SourceNodeId ?? string.Empty;
+                var plainKey = ads.SourceOutputKey ?? string.Empty;
+                var compoundKey = string.IsNullOrWhiteSpace(bodyNodeId) ? plainKey : $"{bodyNodeId}|{plainKey}";
+
+                var item = new AsyncDataSourceItemViewModel
+                {
+                    ReceiverKey = ads.ReceiverKey ?? string.Empty
+                };
+
+                var asyncTaskParent = FindAsyncTaskContainingBodyNode(bodyNodeId);
+                if (asyncTaskParent != null)
+                {
+                    item.Tag_AsyncTaskId = asyncTaskParent.Id;
+                    item.SourceNodeId = asyncTaskParent.Id; // combo binding
+                }
+                else
+                {
+                    item.SourceNodeId = bodyNodeId; // fallback
+                }
+
+                item.PropertyChanged += AsyncDataSourceItem_PropertyChanged;
+                AsyncDataSourcesList.Add(item);
+                RefreshAsyncOutputKeyOptionsFor(item);
+
+                // Set compound key SAU khi refresh options để không bị auto-reset
+                item.SourceOutputKey = compoundKey;
+            }
+
             RefreshAvailableNodes();
+            RefreshAsyncAvailableNodes();
 
             if (node is INotifyPropertyChanged npc)
             {
@@ -212,6 +247,7 @@ namespace FlowMy.ViewModels
             SyncInputMappingsToNode();
             SyncOutputKeysToNode();
             SyncOfflineAssetsToNode();
+            SyncAsyncDataSourcesToNode();
             _node.NotifyTitleChanged();
         }
 
@@ -497,6 +533,204 @@ namespace FlowMy.ViewModels
                 StatusMessage = FlowMy.Services.Utils.HtmlOfflineAssetService
                     .AssetExists(preset.FileName) ? "✓ Có sẵn" : "✗ Chưa tải về"
             });
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Async Data Sources (API-style push từ AsyncTask)
+        // ─────────────────────────────────────────────────────────────────────
+
+        private void AsyncDataSourceItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (_isSyncingFromNode) return;
+            if (sender is not AsyncDataSourceItemViewModel item) return;
+
+            if (e.PropertyName == nameof(AsyncDataSourceItemViewModel.SourceNodeId))
+            {
+                item.Tag_AsyncTaskId = item.SourceNodeId;
+                RefreshAsyncOutputKeyOptionsFor(item);
+                SyncAsyncDataSourcesToNode();
+                return;
+            }
+
+            if (e.PropertyName == nameof(AsyncDataSourceItemViewModel.SourceOutputKey))
+            {
+                if (!string.IsNullOrWhiteSpace(item.SourceOutputKey) && string.IsNullOrWhiteSpace(item.ReceiverKey))
+                    item.ReceiverKey = item.ActualOutputKey.Trim();
+                SyncAsyncDataSourcesToNode();
+                return;
+            }
+
+            if (e.PropertyName == nameof(AsyncDataSourceItemViewModel.ReceiverKey))
+            {
+                SyncAsyncDataSourcesToNode();
+            }
+        }
+
+        private void SyncAsyncDataSourcesToNode()
+        {
+            _node.AsyncDataSources = AsyncDataSourcesList.Select(x =>
+            {
+                var actualNodeId = x.ActualSourceNodeId;
+                var actualKey = x.ActualOutputKey;
+                return new AsyncDataSource
+                {
+                    SourceNodeId = actualNodeId,
+                    SourceOutputKey = actualKey,
+                    ReceiverKey = string.IsNullOrWhiteSpace(x.ReceiverKey) ? null : x.ReceiverKey.Trim()
+                };
+            }).ToList();
+        }
+
+        [RelayCommand]
+        private void AddAsyncDataSource()
+        {
+            var item = new AsyncDataSourceItemViewModel();
+            item.PropertyChanged += AsyncDataSourceItem_PropertyChanged;
+            AsyncDataSourcesList.Add(item);
+            SyncAsyncDataSourcesToNode();
+        }
+
+        [RelayCommand]
+        private void RemoveAsyncDataSource(AsyncDataSourceItemViewModel? item)
+        {
+            if (item != null && AsyncDataSourcesList.Contains(item))
+            {
+                item.PropertyChanged -= AsyncDataSourceItem_PropertyChanged;
+                AsyncDataSourcesList.Remove(item);
+                SyncAsyncDataSourcesToNode();
+            }
+        }
+
+        public void RefreshAsyncAvailableNodes()
+        {
+            AsyncAvailableNodeOptions.Clear();
+            var vm = _host.ViewModel;
+            if (vm?.Nodes == null || vm.Connections == null) return;
+
+            foreach (var n in vm.Nodes)
+            {
+                if (n is not AsyncTaskNode asyncTask) continue;
+                if (ReferenceEquals(n, _node)) continue;
+                AsyncAvailableNodeOptions.Add(CreateDataSourceOption(asyncTask));
+            }
+
+            foreach (var ads in AsyncDataSourcesList)
+            {
+                if (string.IsNullOrWhiteSpace(ads.SourceNodeId)) continue;
+                var asyncTaskForItem = FindAsyncTaskContainingBodyNode(ads.SourceNodeId);
+                if (asyncTaskForItem != null)
+                {
+                    ads.Tag_AsyncTaskId = asyncTaskForItem.Id;
+                    if (!AsyncAvailableNodeOptions.Any(o => string.Equals(o.NodeId, asyncTaskForItem.Id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        AsyncAvailableNodeOptions.Add(CreateDataSourceOption(asyncTaskForItem));
+                    }
+                }
+            }
+        }
+
+        private AsyncTaskNode? FindAsyncTaskContainingBodyNode(string bodyNodeId)
+        {
+            var vm = _host.ViewModel;
+            if (vm?.Nodes == null || vm.Connections == null) return null;
+
+            foreach (var n in vm.Nodes)
+            {
+                if (n is not AsyncTaskNode asyncTask) continue;
+                var bodyNode = asyncTask.AsyncTaskBodyNode;
+                if (bodyNode == null) continue;
+
+                var bodyNodes = GetAllBodyOutputNodes(asyncTask);
+                if (bodyNodes.Any(bn => string.Equals(bn.Id, bodyNodeId, StringComparison.OrdinalIgnoreCase)))
+                    return asyncTask;
+            }
+            return null;
+        }
+
+        private List<WorkflowNode> GetAllBodyOutputNodes(AsyncTaskNode asyncTask)
+        {
+            var result = new List<WorkflowNode>();
+            var vm = _host.ViewModel;
+            if (vm?.Connections == null) return result;
+
+            var bodyNode = asyncTask.AsyncTaskBodyNode;
+            if (bodyNode == null) return result;
+
+            var bodyRightPort = bodyNode.Ports?.FirstOrDefault(p => string.Equals(p.Id, "LoopBodyRight", StringComparison.OrdinalIgnoreCase));
+            if (bodyRightPort == null) return result;
+
+            var returnNodes = vm.Connections
+                .Where(c => c.ToNode == bodyNode && c.ToPort != null &&
+                           string.Equals(c.ToPort.Id, "LoopBodyRight", StringComparison.OrdinalIgnoreCase) &&
+                           c.FromNode != null)
+                .Select(c => c.FromNode!)
+                .Distinct()
+                .ToList();
+
+            result.AddRange(returnNodes);
+
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var rn in returnNodes) visited.Add(rn.Id);
+
+            void CollectUpstream(WorkflowNode node)
+            {
+                var inConns = vm.Connections.Where(c => c.ToNode == node && c.FromNode != null && c.FromNode != bodyNode);
+                foreach (var ic in inConns)
+                {
+                    if (ic.FromNode == null || visited.Contains(ic.FromNode.Id)) continue;
+                    if (ic.FromNode is AsyncTaskNode) continue;
+                    visited.Add(ic.FromNode.Id);
+                    if (ic.FromNode.DynamicOutputs != null && ic.FromNode.DynamicOutputs.Count > 0)
+                        result.Add(ic.FromNode);
+                    CollectUpstream(ic.FromNode);
+                }
+            }
+
+            foreach (var rn in returnNodes.ToList())
+                CollectUpstream(rn);
+
+            return result;
+        }
+
+        public void RefreshAsyncOutputKeyOptionsFor(AsyncDataSourceItemViewModel item)
+        {
+            item.AvailableOutputKeyOptions.Clear();
+            var vm = _host.ViewModel;
+            if (vm?.Nodes == null) return;
+
+            var asyncTaskId = item.Tag_AsyncTaskId;
+            if (string.IsNullOrWhiteSpace(asyncTaskId))
+                asyncTaskId = item.SourceNodeId;
+            if (string.IsNullOrWhiteSpace(asyncTaskId)) return;
+
+            var asyncTask = vm.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, asyncTaskId, StringComparison.OrdinalIgnoreCase)) as AsyncTaskNode;
+            if (asyncTask == null) return;
+
+            var bodyNodes = GetAllBodyOutputNodes(asyncTask);
+
+            foreach (var bodyNode in bodyNodes)
+            {
+                if (bodyNode.DynamicOutputs == null) continue;
+                var nodeTitle = string.IsNullOrWhiteSpace(bodyNode.Title) ? bodyNode.Id : bodyNode.Title;
+                foreach (var o in bodyNode.DynamicOutputs)
+                {
+                    var keyName = o.Key ?? string.Empty;
+                    item.AvailableOutputKeyOptions.Add(new WorkflowOutputKeyOption
+                    {
+                        Key = $"{bodyNode.Id}|{keyName}",
+                        Type = o.OutputType ?? o.ConvertType,
+                        DisplayName = $"{nodeTitle} → {o.DisplayName ?? keyName}"
+                    });
+                }
+            }
+
+            if (item.AvailableOutputKeyOptions.Count > 0 &&
+                !item.AvailableOutputKeyOptions.Any(k => string.Equals(k.Key, item.SourceOutputKey, StringComparison.Ordinal)))
+            {
+                var firstKey = item.AvailableOutputKeyOptions[0].Key;
+                item.SourceOutputKey = firstKey;
+            }
         }
     }
 }

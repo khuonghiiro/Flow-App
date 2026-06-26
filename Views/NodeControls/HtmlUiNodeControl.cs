@@ -150,6 +150,7 @@ namespace FlowMy.Views.NodeControls
             {
                 Visibility = Visibility.Collapsed
             };
+            WebView2AirspaceClipper.ApplyRoundedCorners(webView, 10);
             var isDisposed = false; // Guard flag: set to true in Unloaded to stop deferred handlers
             Grid.SetRow(webView, 1);
 
@@ -1423,6 +1424,7 @@ namespace FlowMy.Views.NodeControls
                 {
                     // Tạo lại Tab1 WebView2
                     _webViewTab1 = new WebView2 { Visibility = Visibility.Collapsed };
+                    WebView2AirspaceClipper.ApplyRoundedCorners(_webViewTab1, 10);
 
                     // ── Address bar with lock icon + search suggestion popup ──
                     var urlPill = new Border
@@ -1903,7 +1905,6 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    if (NodeChrome.IsZooming || host.IsPanning || host.DraggedNode == node) return;
                     var wv1 = _webViewTab1;
                     if (wv1 == null || wv1.ActualWidth <= 0 || wv1.ActualHeight <= 0) return;
                     wv1.InvalidateMeasure(); wv1.InvalidateArrange(); wv1.InvalidateVisual();
@@ -1981,10 +1982,6 @@ namespace FlowMy.Views.NodeControls
             {
                 try
                 {
-                    // ✅ Chỉ skip sync khi đang zoom hoặc pan canvas, KHÔNG skip khi đang drag node
-                    if (NodeChrome.IsZooming || host.IsPanning)
-                        return;
-
                     // ✅ Đảm bảo WebView2 có kích thước hợp lệ trước khi sync (tránh lỗi HwndHost)
                     if (webView.ActualWidth <= 0 || webView.ActualHeight <= 0)
                         return;
@@ -2075,30 +2072,18 @@ namespace FlowMy.Views.NodeControls
             EventHandler? scaleChangedHandler = (_, _) =>
             {
                 if (isDisposed) return; // Guard: node đã unload, bỏ qua
-                if (NodeChrome.IsZooming)
-                {
-                    if (webView.Visibility != Visibility.Collapsed)
-                        webView.Visibility = Visibility.Collapsed;
-                    // Also hide Tab1 WebView2 during zoom
-                    if (_webViewTab1 != null && _webViewTab1.Visibility == Visibility.Visible)
-                        _webViewTab1.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    if (webView.Visibility != Visibility.Visible)
-                        webView.Visibility = Visibility.Visible;
+                
+                if (webView.Visibility != Visibility.Visible)
+                    webView.Visibility = Visibility.Visible;
 
-                    // ✅ Update WebView2 zoom để giữ tỉ lệ với canvas zoom
-                    UpdateWebViewZoomForCanvasZoom();
+                // ✅ Update WebView2 zoom để giữ tỉ lệ với canvas zoom
+                UpdateWebViewZoomForCanvasZoom();
 
-                    SyncWebViewPosition();
-                    // Restore Tab1 WebView2 visible after zoom (only if Tab1 was selected)
-                    if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility == Visibility.Collapsed)
-                        _webViewTab1.Visibility = Visibility.Visible;
-                    SyncWebView1Position();
-                    // ✅ Clip WebView2 HWND để không render trên toolbar/sidebar/minimap
-                    // WebView2AirspaceClipper.UpdateClipping(webView, host);
-                }
+                SyncWebViewPosition();
+                // Restore Tab1 WebView2 visible after zoom (only if Tab1 was selected)
+                if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
+                    _webViewTab1.Visibility = Visibility.Visible;
+                SyncWebView1Position();
             };
             var scaleDescriptor = DependencyPropertyDescriptor.FromProperty(ScaleTransform.ScaleXProperty, typeof(ScaleTransform));
             scaleDescriptor?.AddValueChanged(host.ScaleTransform, scaleChangedHandler);
@@ -2106,32 +2091,15 @@ namespace FlowMy.Views.NodeControls
             EventHandler? translateChangedHandler = (_, _) =>
             {
                 if (isDisposed) return; // Guard: node đã unload, bỏ qua
-                // ✅ Chỉ xử lý khi đang pan canvas, KHÔNG xử lý khi đang drag node để tránh lag
-                if (host.IsPanning)
-                {
-                    if (webView.Visibility != Visibility.Collapsed)
-                        webView.Visibility = Visibility.Collapsed;
-                    // Also hide Tab1 WebView2 during pan
-                    if (_webViewTab1 != null && _webViewTab1.Visibility == Visibility.Visible)
-                        _webViewTab1.Visibility = Visibility.Collapsed;
-                }
-                else if (host.DraggedNode != node)
-                {
-                    // Chỉ sync khi không pan và không drag node này
-                    if (webView.Visibility != Visibility.Visible)
-                    {
-                        webView.Visibility = Visibility.Visible;
-                        SyncWebViewPosition();
-                    }
-                    // Restore Tab1 after pan ends (only if Tab1 was selected)
-                    if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility == Visibility.Collapsed)
-                    {
-                        _webViewTab1.Visibility = Visibility.Visible;
-                        SyncWebView1Position();
-                    }
-                    // ✅ Clip WebView2 HWND để không render trên toolbar/sidebar/minimap
-                    // WebView2AirspaceClipper.UpdateClipping(webView, host);
-                }
+                
+                if (webView.Visibility != Visibility.Visible)
+                    webView.Visibility = Visibility.Visible;
+
+                SyncWebViewPosition();
+                
+                if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
+                    _webViewTab1.Visibility = Visibility.Visible;
+                SyncWebView1Position();
             };
             var translateXDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.XProperty, typeof(TranslateTransform));
             var translateYDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.YProperty, typeof(TranslateTransform));
@@ -2144,28 +2112,14 @@ namespace FlowMy.Views.NodeControls
                 if (NodeChrome.IsZooming)
                     return;
 
-                // Ẩn WebView2 khi đang panning hoặc dragging node để tránh lag
-                if (host.IsPanning || host.DraggedNode == node)
-                {
-                    if (webView.Visibility != Visibility.Collapsed)
-                        webView.Visibility = Visibility.Collapsed;
-                    if (_webViewTab1 != null && _webViewTab1.Visibility == Visibility.Visible)
-                        _webViewTab1.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    // Hiển thị lại và sync WebView2 sau khi dừng pan/drag
-                    if (webView.Visibility != Visibility.Visible)
-                    {
-                        webView.Visibility = Visibility.Visible;
-                        SyncWebViewPosition();
-                    }
-                    if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility == Visibility.Collapsed)
-                    {
-                        _webViewTab1.Visibility = Visibility.Visible;
-                        SyncWebView1Position();
-                    }
-                }
+                if (webView.Visibility != Visibility.Visible)
+                    webView.Visibility = Visibility.Visible;
+
+                SyncWebViewPosition();
+
+                if (_webViewTab1 != null && _isTab1WebViewVisible && _webViewTab1.Visibility != Visibility.Visible)
+                    _webViewTab1.Visibility = Visibility.Visible;
+                SyncWebView1Position();
             };
             System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
 

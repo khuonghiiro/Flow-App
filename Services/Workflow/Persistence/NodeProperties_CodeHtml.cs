@@ -705,6 +705,39 @@ public sealed partial class FileWorkflowPersistenceService
                     System.Diagnostics.Debug.WriteLine($"Error deserializing OfflineAssets: {ex.Message}");
                 }
             }
+
+            // ── AsyncDataSources (Async Data Receiver) ──
+            if (properties.TryGetValue("AsyncDataSources", out var adsObj) && adsObj != null)
+            {
+                try
+                {
+                    var rawJson = adsObj is JsonElement je
+                        ? (je.ValueKind == JsonValueKind.String ? je.GetString() : je.GetRawText())
+                        : adsObj.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(rawJson))
+                    {
+                        var parsed = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(rawJson);
+                        if (parsed != null)
+                        {
+                            var list = new List<FlowMy.Models.Nodes.AsyncDataSource>();
+                            foreach (var d in parsed)
+                            {
+                                var ads = new FlowMy.Models.Nodes.AsyncDataSource();
+                                if (d.TryGetValue("SourceNodeId", out var sniEl)) ads.SourceNodeId = GetStringFromJsonValue(sniEl);
+                                if (d.TryGetValue("SourceOutputKey", out var sokEl)) ads.SourceOutputKey = GetStringFromJsonValue(sokEl);
+                                if (d.TryGetValue("ReceiverKey", out var rkEl)) ads.ReceiverKey = GetStringFromJsonValue(rkEl);
+                                list.Add(ads);
+                            }
+                            showInputMsgNode.AsyncDataSources = list;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error deserializing AsyncDataSources: {ex.Message}");
+                }
+            }
     }
 
     private static void GetShowInputMsgNodeProperties(ShowInputMsgNode showInputMsgNode, Dictionary<string, object> dict)
@@ -751,6 +784,18 @@ public sealed partial class FileWorkflowPersistenceService
                     IsEnabled = a.IsEnabled
                 }).ToList());
                 dict["OfflineAssets"] = assetsJson;
+            }
+
+            // ── AsyncDataSources (Async Data Receiver) ──
+            if (showInputMsgNode.AsyncDataSources != null && showInputMsgNode.AsyncDataSources.Count > 0)
+            {
+                var adsJson = JsonSerializer.Serialize(showInputMsgNode.AsyncDataSources.Select(a => new
+                {
+                    SourceNodeId = a.SourceNodeId,
+                    SourceOutputKey = a.SourceOutputKey,
+                    ReceiverKey = a.ReceiverKey
+                }).ToList());
+                dict["AsyncDataSources"] = adsJson;
             }
     }
 }

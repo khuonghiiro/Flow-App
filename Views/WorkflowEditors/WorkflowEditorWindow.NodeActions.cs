@@ -579,6 +579,14 @@ namespace FlowMy.Views
                         IsEnabled = a.IsEnabled
                     }).ToList()
                     : new List<HtmlOfflineAsset>();
+                dstShowMsg.AsyncDataSources = srcShowMsg.AsyncDataSources != null
+                    ? srcShowMsg.AsyncDataSources.Select(a => new AsyncDataSource
+                    {
+                        SourceNodeId = a.SourceNodeId,
+                        SourceOutputKey = a.SourceOutputKey,
+                        ReceiverKey = a.ReceiverKey
+                    }).ToList()
+                    : new List<AsyncDataSource>();
                 dstShowMsg.TitleDisplayMode = srcShowMsg.TitleDisplayMode;
                 dstShowMsg.TitleColorMode = srcShowMsg.TitleColorMode;
                 dstShowMsg.TitleColorKey = srcShowMsg.TitleColorKey;

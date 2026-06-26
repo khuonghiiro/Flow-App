@@ -27,6 +27,9 @@ namespace FlowMy.Services.Rendering
         private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
 
         [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int cx, int cy);
+
+        [DllImport("gdi32.dll")]
         private static extern int CombineRgn(IntPtr hrgnDest, IntPtr hrgnSrc1, IntPtr hrgnSrc2, int fnCombineMode);
 
         [DllImport("gdi32.dll")]
@@ -34,6 +37,18 @@ namespace FlowMy.Services.Rendering
 
         [DllImport("user32.dll")]
         private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
 
         private const int RGN_DIFF = 4; // Subtract region
 
@@ -329,6 +344,93 @@ namespace FlowMy.Services.Rendering
                 return (m.M11, m.M22);
             }
             return (1.0, 1.0);
+        }
+
+        /// <summary>
+        /// Clip corners of WebView2's HWND wrapper dynamically using Win32 SetWindowRgn.
+        /// </summary>
+        public static void ApplyRoundedCorners(WebView2 webView, int cornerRadius)
+        {
+            if (webView == null) return;
+
+            webView.SizeChanged += (s, e) =>
+            {
+                UpdateRoundedCorners(webView, cornerRadius);
+            };
+
+            webView.Loaded += (s, e) =>
+            {
+                UpdateRoundedCorners(webView, cornerRadius);
+            };
+
+            webView.CoreWebView2InitializationCompleted += (s, e) =>
+            {
+                UpdateRoundedCorners(webView, cornerRadius);
+                if (webView.CoreWebView2 != null)
+                {
+                    webView.CoreWebView2.NavigationCompleted += (sender, args) =>
+                    {
+                        UpdateRoundedCorners(webView, cornerRadius);
+                    };
+                }
+            };
+
+            if (webView.IsLoaded)
+            {
+                UpdateRoundedCorners(webView, cornerRadius);
+            }
+        }
+
+        private static List<IntPtr> GetAllChildHwnds(IntPtr parent)
+        {
+            var result = new List<IntPtr>();
+            if (parent == IntPtr.Zero) return result;
+
+            IntPtr child = FindWindowEx(parent, IntPtr.Zero, null, null);
+            while (child != IntPtr.Zero)
+            {
+                result.Add(child);
+                result.AddRange(GetAllChildHwnds(child));
+                child = FindWindowEx(parent, child, null, null);
+            }
+            return result;
+        }
+
+        public static void UpdateRoundedCorners(WebView2 webView, int cornerRadius)
+        {
+            try
+            {
+                IntPtr hwnd = GetWebView2Hwnd(webView);
+                if (hwnd == IntPtr.Zero) return;
+
+                var dpiScale = GetDpiScale(webView);
+                int radius = (int)(cornerRadius * dpiScale.X);
+
+                var hwndsToClip = new List<IntPtr> { hwnd };
+                hwndsToClip.AddRange(GetAllChildHwnds(hwnd));
+
+                foreach (var h in hwndsToClip)
+                {
+                    RECT rect;
+                    if (GetClientRect(h, out rect))
+                    {
+                        int w = rect.Right - rect.Left;
+                        int h2 = rect.Bottom - rect.Top;
+                        if (w > 0 && h2 > 0)
+                        {
+                            IntPtr rgn = CreateRoundRectRgn(0, 0, w + 1, h2 + 1, 2 * radius, 2 * radius);
+                            if (rgn != IntPtr.Zero)
+                            {
+                                SetWindowRgn(h, rgn, true);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateRoundedCorners error: {ex.Message}");
+            }
         }
     }
 }

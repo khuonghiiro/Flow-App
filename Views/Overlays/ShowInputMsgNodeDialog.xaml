@@ -374,6 +374,161 @@
                     </ScrollViewer>
                 </TabItem>
 
+                <!-- Tab: 📡 Async Data -->
+                <TabItem Header="📡 Async Data" Style="{DynamicResource HttpTabItemStyle}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+                            <!-- Header -->
+                            <TextBlock Text="📡 Async Data Receiver (API-style push từ AsyncTask)"
+                                       Foreground="{DynamicResource TextBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,12">
+                                <Run Text="Cấu hình nguồn dữ liệu async: khi workflow chạy vào node này, dữ liệu từ các node nguồn sẽ được push realtime vào HTML qua " Foreground="{DynamicResource TextSecondary}"/>
+                                <Run Text="window.hostAsync" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas" FontWeight="SemiBold"/>
+                                <Run Text=". Nhấn F5/reload sẽ load lại dữ liệu đã nhận." Foreground="{DynamicResource TextSecondary}"/>
+                            </TextBlock>
+
+                            <!-- Danh sách Async Data Sources -->
+                            <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,8">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="220">
+                                    <ItemsControl x:Name="AsyncDataSourcesItemsControl" ItemsSource="{Binding AsyncDataSourcesList}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,0,8" Style="{DynamicResource DialogSectionBorderDark}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="Async Task" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <controls:NodeSearchComboBoxUserControl Height="32"
+                                                                      ItemsSource="{Binding DataContext.AsyncAvailableNodeOptions, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                      SelectedValuePath="NodeId" DisplayMemberPath="Title"
+                                                                      SelectedValue="{Binding SourceNodeId, Mode=TwoWay}"
+                                                                      ToolTip="Chọn AsyncTask node trong workflow"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2">
+                                                            <TextBlock Text="Body output" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <ComboBox Height="32" Style="{DynamicResource BaseComboBox}"
+                                                                      ItemsSource="{Binding AvailableOutputKeyOptions}"
+                                                                      SelectedValuePath="Key"
+                                                                      DisplayMemberPath="DisplayName"
+                                                                      SelectedValue="{Binding SourceOutputKey, Mode=TwoWay}"
+                                                                      ToolTip="Output key từ node bên trong body AsyncTask"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="4">
+                                                            <TextBlock Text="Key nhận trong JS (trống = dùng key nguồn)" Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding ReceiverKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Style="{DynamicResource BaseTextBoxV2}" Height="32"
+                                                                     ToolTip="Tên key khi push vào JS: window.hostAsync.values['keyNày']"/>
+                                                        </StackPanel>
+                                                        <Button Grid.Column="5" Content="✕" Width="26" Height="26" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                                                                Command="{Binding DataContext.RemoveAsyncDataSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Foreground="{DynamicResource TextBrush}" Background="{DynamicResource DangerBrush}" BorderThickness="0" Cursor="Hand"
+                                                                ToolTip="Xóa nguồn này"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                            <Button Content="+ Thêm nguồn async" Height="32" Margin="0,0,0,16"
+                                    Command="{Binding AddAsyncDataSourceCommand}"
+                                    Width="180" Style="{DynamicResource PrimaryButton}" HorizontalAlignment="Left"/>
+
+                            <!-- Hướng dẫn JS API -->
+                            <Border Background="{DynamicResource CardBackgroundBrush}"
+                                    BorderBrush="{DynamicResource PrimaryBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="14"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="📘 Hướng dẫn sử dụng window.hostAsync trong JS" Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,0,0,10">
+                                        <Run Text="Khác với " Foreground="{DynamicResource TextSecondary}"/>
+                                        <Run Text="window.hostLive" Foreground="{DynamicResource WarningColor}" FontFamily="Consolas"/>
+                                        <Run Text=" (dùng cho Input Mappings — tab Logic), " Foreground="{DynamicResource TextSecondary}"/>
+                                        <Run Text="window.hostAsync" Foreground="{DynamicResource TextBrush}" FontFamily="Consolas" FontWeight="SemiBold"/>
+                                        <Run Text=" chuyên nhận dữ liệu từ các nhánh async task song song. Mỗi nhánh xong sẽ push kết quả realtime — không cần polling." Foreground="{DynamicResource TextSecondary}"/>
+                                    </TextBlock>
+
+                                    <!-- API 1: onReceive một key -->
+                                    <Border Style="{DynamicResource DialogSectionBorderDark}" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Cách 1 — Nhận 1 key cụ thể:" Foreground="{DynamicResource SuccessBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap">
+                                                <Run Text="window.hostAsync.on(" Foreground="{DynamicResource TextBrush}"/>
+                                                <Run Text="'myKey'" Foreground="{DynamicResource WarningColor}"/>
+                                                <Run Text=", function(value) {" Foreground="{DynamicResource TextBrush}"/>
+                                                <LineBreak/>
+                                                <Run Text="    document.getElementById('result').textContent = value;" Foreground="{DynamicResource TextBrush}"/>
+                                                <LineBreak/>
+                                                <Run Text="});" Foreground="{DynamicResource TextBrush}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- API 2: onReceive tất cả -->
+                                    <Border Style="{DynamicResource DialogSectionBorderDark}" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Cách 2 — Nhận tất cả data (object):" Foreground="{DynamicResource SuccessBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap">
+                                                <Run Text="window.hostAsync.on(" Foreground="{DynamicResource TextBrush}"/>
+                                                <Run Text="function(allData) {" Foreground="{DynamicResource TextBrush}"/>
+                                                <LineBreak/>
+                                                <Run Text="    // allData = { key1: val1, key2: val2, ... }" Foreground="{DynamicResource TextMuted}"/>
+                                                <LineBreak/>
+                                                <Run Text="    Object.keys(allData).forEach(function(k) {" Foreground="{DynamicResource TextBrush}"/>
+                                                <LineBreak/>
+                                                <Run Text="        console.log(k, '=', allData[k]);" Foreground="{DynamicResource TextBrush}"/>
+                                                <LineBreak/>
+                                                <Run Text="    });" Foreground="{DynamicResource TextBrush}"/>
+                                                <LineBreak/>
+                                                <Run Text="});" Foreground="{DynamicResource TextBrush}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- API 3: đọc trực tiếp -->
+                                    <Border Style="{DynamicResource DialogSectionBorderDark}" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="Cách 3 — Đọc trực tiếp (polling):" Foreground="{DynamicResource WarningBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap">
+                                                <Run Text="var val = " Foreground="{DynamicResource TextBrush}"/>
+                                                <Run Text="window.hostAsync.values['myKey']" Foreground="{DynamicResource WarningColor}"/>
+                                                <Run Text=";" Foreground="{DynamicResource TextBrush}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Lưu ý -->
+                                    <Border Style="{DynamicResource DialogSectionBorder}" Margin="0,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="💡 Lưu ý:" Foreground="{DynamicResource WarningBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11">
+                                                <Run Text="• Dữ liệu được cache — nhấn F5/reload page sẽ tự push lại tất cả data đã nhận." Foreground="{DynamicResource TextSecondary}"/>
+                                                <LineBreak/>
+                                                <Run Text="• window.hostAsync hoạt động ĐỘC LẬP với window.hostLive (Input Mappings)." Foreground="{DynamicResource TextSecondary}"/>
+                                                <LineBreak/>
+                                                <Run Text="• Nếu 'Key nhận' để trống → dùng tên key nguồn của node." Foreground="{DynamicResource TextSecondary}"/>
+                                                <LineBreak/>
+                                                <Run Text="• Node nguồn phải được nối port vào HTML UI node." Foreground="{DynamicResource TextSecondary}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
                                 <TabItem Header="📦 Thư viện offline" Style="{DynamicResource HttpTabItemStyle}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
                         <StackPanel>

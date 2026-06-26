@@ -2589,6 +2589,26 @@ namespace FlowMy.ViewModels
                     tgtHtml.AsyncDataSources.Add(ads);
             }
 
+            if (source is FlowMy.Models.Nodes.ShowInputMsgNode srcShow && target is FlowMy.Models.Nodes.ShowInputMsgNode tgtShow)
+            {
+                tgtShow.HtmlCode = srcShow.HtmlCode;
+                tgtShow.CssCode = srcShow.CssCode;
+                tgtShow.JsCode = srcShow.JsCode;
+                tgtShow.Width = srcShow.Width;
+                tgtShow.Height = srcShow.Height;
+                tgtShow.IsPreviewVisible = srcShow.IsPreviewVisible;
+
+                // OutputKeys
+                tgtShow.OutputKeys.Clear();
+                foreach (var ok in srcShow.OutputKeys)
+                    tgtShow.OutputKeys.Add(ok);
+
+                // AsyncDataSources
+                tgtShow.AsyncDataSources.Clear();
+                foreach (var ads in srcShow.AsyncDataSources)
+                    tgtShow.AsyncDataSources.Add(ads);
+            }
+
             // ActionCanVas node: tuỳ thuộc cấu trúc class (nếu cần mở rộng thêm thuộc tính)
             // Hiện tại copy các thuộc tính chung đã đủ (X, Y, Title, DynamicInputMappings, SavedOutputs).
         }

@@ -31,6 +31,8 @@ namespace FlowMy.Views.NodeControls
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
 
+            bool isDisposed = false;
+
             // ─── 1. ICON ───
             var iconConverter = new IconKeyToPathConverter();
             var iconUri = iconConverter.Convert(null, typeof(Uri),
@@ -52,22 +54,36 @@ namespace FlowMy.Views.NodeControls
             // ─── Eye Toggle Button ───
             var previewToggleButton = new ToggleButton
             {
-                Width = 20,
-                Height = 20,
+                Width = 22,
+                Height = 22,
+                Cursor = Cursors.Hand,
+                IsChecked = node.IsPreviewVisible,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 2, 2, 0),
-                Cursor = Cursors.Hand,
-                Background = Brushes.Transparent,
-                BorderBrush = Brushes.Transparent,
-                IsChecked = node.IsPreviewVisible
+                Margin = new Thickness(0, -6, -6, 0), // Floating overlapping style
+                Foreground = new SolidColorBrush(Color.FromRgb(241, 245, 249)), // Slate 100 default
+                Effect = new DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Direction = 270,
+                    ShadowDepth = 2,
+                    BlurRadius = 4,
+                    Opacity = 0.3
+                }
             };
 
             var toggleIcon = new SvgViewboxEx
             {
-                Width = 12, Height = 12,
-                Fill = BaseNodeControlHelper.ResolveTextOnColorBrush(node.ColorKey)
+                Width = 11, Height = 11
             };
+
+            // Dynamically bind toggleIcon's Fill to ToggleButton's Foreground
+            var fillBinding = new System.Windows.Data.Binding
+            {
+                Path = new PropertyPath(Control.ForegroundProperty),
+                RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(ToggleButton), 1)
+            };
+            toggleIcon.SetBinding(SvgViewboxEx.FillProperty, fillBinding);
 
             void UpdateToggleIconSource(bool isChecked)
             {
@@ -78,6 +94,54 @@ namespace FlowMy.Views.NodeControls
 
             UpdateToggleIconSource(node.IsPreviewVisible);
             previewToggleButton.Content = toggleIcon;
+
+            // Custom template for circular ToggleButton with hover and active states
+            var template = new ControlTemplate(typeof(ToggleButton));
+            var borderFactory = new FrameworkElementFactory(typeof(Border));
+            borderFactory.Name = "ButtonBorder";
+            borderFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(220, 30, 41, 59))); // Slate 800 with transparency
+            borderFactory.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(71, 85, 105))); // Slate 600
+            borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+            borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(11)); // Circular shape
+            
+            var contentPresenterFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentPresenterFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentPresenterFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            borderFactory.AppendChild(contentPresenterFactory);
+            
+            template.VisualTree = borderFactory;
+
+            // Hover trigger (Slate 700)
+            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(51, 65, 85)), "ButtonBorder"));
+            hoverTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(148, 163, 184)), "ButtonBorder"));
+            hoverTrigger.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            template.Triggers.Add(hoverTrigger);
+
+            // Checked (Active) trigger (Blue 600)
+            var checkedTrigger = new Trigger { Property = ToggleButton.IsCheckedProperty, Value = true };
+            checkedTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(37, 99, 235)), "ButtonBorder"));
+            checkedTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(96, 165, 250)), "ButtonBorder"));
+            checkedTrigger.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            template.Triggers.Add(checkedTrigger);
+
+            // Checked + Hover trigger (Blue 500)
+            var checkedHoverTrigger = new MultiTrigger();
+            checkedHoverTrigger.Conditions.Add(new Condition { Property = ToggleButton.IsCheckedProperty, Value = true });
+            checkedHoverTrigger.Conditions.Add(new Condition { Property = UIElement.IsMouseOverProperty, Value = true });
+            checkedHoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(59, 130, 246)), "ButtonBorder"));
+            checkedHoverTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(147, 197, 253)), "ButtonBorder"));
+            checkedHoverTrigger.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            template.Triggers.Add(checkedHoverTrigger);
+
+            // Pressed trigger (Blue 700)
+            var pressedTrigger = new Trigger { Property = ButtonBase.IsPressedProperty, Value = true };
+            pressedTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(29, 78, 216)), "ButtonBorder"));
+            pressedTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(59, 130, 246)), "ButtonBorder"));
+            pressedTrigger.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            template.Triggers.Add(pressedTrigger);
+
+            previewToggleButton.Template = template;
             grid.Children.Add(previewToggleButton);
 
             // ─── 3. TITLE TEXTBLOCK ───
@@ -180,11 +244,91 @@ namespace FlowMy.Views.NodeControls
                 node.IsPreviewVisible = false;
             };
 
+            // ─── Event handlers for pan/zoom/drag position updates ───
+            EventHandler? scaleChangedHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
+                {
+                    if (previewBorder.Visibility != Visibility.Visible)
+                        previewBorder.Visibility = Visibility.Visible;
+
+                    UpdatePreviewPosition(node, border, host);
+                    if (_activeWebViews.TryGetValue(node, out var webView))
+                    {
+                        UpdateWebViewZoomForCanvasZoom(webView, host);
+                        WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
+                    }
+                }
+            };
+
+            EventHandler? translateChangedHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
+                {
+                    if (previewBorder.Visibility != Visibility.Visible)
+                        previewBorder.Visibility = Visibility.Visible;
+
+                    UpdatePreviewPosition(node, border, host);
+                    if (_activeWebViews.TryGetValue(node, out var webView))
+                    {
+                        UpdateWebViewZoomForCanvasZoom(webView, host);
+                        WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
+                    }
+                }
+            };
+
+            EventHandler? renderingHandler = (_, _) =>
+            {
+                if (isDisposed) return;
+                if (node.IsPreviewVisible && _activePreviews.TryGetValue(node, out var previewBorder))
+                {
+                    if (previewBorder.Visibility != Visibility.Visible)
+                        previewBorder.Visibility = Visibility.Visible;
+
+                    UpdatePreviewPosition(node, border, host);
+                    if (_activeWebViews.TryGetValue(node, out var webView))
+                    {
+                        UpdateWebViewZoomForCanvasZoom(webView, host);
+                        WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
+                    }
+                }
+            };
+
             border.SizeChanged += (s, e) => UpdatePreviewPosition(node, border, host);
             border.LayoutUpdated += (s, e) => UpdatePreviewPosition(node, border, host);
 
+            border.Loaded += (s, e) =>
+            {
+                isDisposed = false;
+                var scaleDescriptor = DependencyPropertyDescriptor.FromProperty(ScaleTransform.ScaleXProperty, typeof(ScaleTransform));
+                scaleDescriptor?.AddValueChanged(host.ScaleTransform, scaleChangedHandler);
+
+                var translateXDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.XProperty, typeof(TranslateTransform));
+                var translateYDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.YProperty, typeof(TranslateTransform));
+                translateXDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
+                translateYDescriptor?.AddValueChanged(host.TranslateTransform, translateChangedHandler);
+
+                System.Windows.Media.CompositionTarget.Rendering += renderingHandler;
+
+                SyncPreviewState(node, border, host);
+            };
+
             border.Unloaded += (s, e) =>
             {
+                isDisposed = true;
+
+                var scaleDescriptor = DependencyPropertyDescriptor.FromProperty(ScaleTransform.ScaleXProperty, typeof(ScaleTransform));
+                scaleDescriptor?.RemoveValueChanged(host.ScaleTransform, scaleChangedHandler);
+
+                var translateXDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.XProperty, typeof(TranslateTransform));
+                var translateYDescriptor = DependencyPropertyDescriptor.FromProperty(TranslateTransform.YProperty, typeof(TranslateTransform));
+                translateXDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
+                translateYDescriptor?.RemoveValueChanged(host.TranslateTransform, translateChangedHandler);
+
+                System.Windows.Media.CompositionTarget.Rendering -= renderingHandler;
+
                 if (_activePreviews.TryGetValue(node, out var previewBorder))
                 {
                     if (host.WorkflowCanvas?.Children.Contains(previewBorder) == true)
@@ -203,12 +347,6 @@ namespace FlowMy.Views.NodeControls
                     catch { }
                     _activeWebViews.Remove(node);
                 }
-            };
-
-            // Initial state sync
-            border.Loaded += (s, e) =>
-            {
-                SyncPreviewState(node, border, host);
             };
 
             // ─── 7. FLUENT API ───
@@ -313,6 +451,7 @@ namespace FlowMy.Views.NodeControls
 
             var grid = new Grid();
             var webView = new WebView2();
+            WebView2AirspaceClipper.ApplyRoundedCorners(webView, 8);
 
             grid.Children.Add(webView);
             previewBorder.Child = grid;
@@ -336,6 +475,13 @@ namespace FlowMy.Views.NodeControls
                 await webView.EnsureCoreWebView2Async(env);
 
                 _activeWebViews[node] = webView;
+
+                webView.CoreWebView2.NavigationCompleted += (s, e) =>
+                {
+                    UpdateWebViewZoomForCanvasZoom(webView, host);
+                    WebView2AirspaceClipper.UpdateRoundedCorners(webView, 8);
+                };
+
                 await RefreshPreviewHtmlAsync(node, host);
             }
             catch (Exception ex)
@@ -526,6 +672,33 @@ namespace FlowMy.Views.NodeControls
             }
 
             return html;
+        }
+
+        private static void UpdateWebViewZoomForCanvasZoom(WebView2 webView, IWorkflowEditorHost host)
+        {
+            try
+            {
+                var core = webView.CoreWebView2;
+                if (core == null) return;
+
+                double canvasZoom = host.ZoomLevel;
+                double webViewZoom = 1.0 / Math.Max(canvasZoom, 0.0001);
+
+                var script = $@"
+                    (function() {{
+                        document.body.style.zoom = '{webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)}';
+                        if (!document.body.style.zoom) {{
+                            document.body.style.transform = 'scale({webViewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture)})';
+                            document.body.style.transformOrigin = 'top left';
+                        }}
+                    }})();
+                ";
+                core.ExecuteScriptAsync(script);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating preview zoom: {ex.Message}");
+            }
         }
     }
 }
