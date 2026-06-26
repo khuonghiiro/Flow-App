@@ -317,7 +317,7 @@ namespace FlowMy.Views
             if (!_headlessCanvasOptimizationEnabled) return true;
             if (node == null) return false;
             if (_headlessHiddenWidgetNodeIds.Contains(node.Id)) return false;
-            return node.Type == NodeType.HtmlUi || node.Type == NodeType.Web;
+            return node.Type == NodeType.HtmlUi || node.Type == NodeType.Web || node.Type == NodeType.ActionCanVas;
         }
 
         private void ApplyHeadlessCanvasOptimization()
@@ -359,6 +359,8 @@ namespace FlowMy.Views
                     {
                         ApplyHeadlessNodeSize(node, HeadlessWebNodeWidth, HeadlessWebNodeHeight);
                     }
+                    // ActionCanVas: giữ kích thước gốc (BodyWidth/BodyHeight)
+                    // vì bounds playback phụ thuộc vào kích thước canvas thực tế.
                 }
                 else
                 {
