@@ -39,10 +39,12 @@ namespace FlowMy.Services.Interaction
                 backgroundBrush = backgroundBrush.Clone();
                 backgroundBrush.Opacity = opacity;
 
-                var toast = new ToastWindow(title, message, durationSeconds, titleBrush, contentBrush, backgroundBrush)
+                var toast = new ToastWindow(title, message, durationSeconds, titleBrush, contentBrush, backgroundBrush);
+                var mainWin = Application.Current?.MainWindow;
+                if (mainWin != null && mainWin.IsVisible && mainWin.WindowState != WindowState.Minimized)
                 {
-                    Owner = Application.Current.MainWindow
-                };
+                    toast.Owner = mainWin;
+                }
                 toast.Show();
             }));
         }
