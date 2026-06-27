@@ -3584,41 +3584,47 @@ window.hostAsync.values = window.hostAsync.values || {};
             var isOnBottom = widgetCenterY > workAreaCenterY;
 
             Thickness margin;
+            Thickness edgeDockMargin;
             HorizontalAlignment hAlign;
             VerticalAlignment vAlign;
 
             // Left edge → right-bottom
             if (isOnLeft && !isOnBottom)
             {
-                margin = new Thickness(0, 0, -4, -4);
+                margin = new Thickness(0, 0, 6, 6);
+                edgeDockMargin = new Thickness(0, 0, 3, 3);
                 hAlign = HorizontalAlignment.Right;
                 vAlign = VerticalAlignment.Bottom;
             }
             // Top edge → right-bottom
             else if (isOnTop && !isOnRight)
             {
-                margin = new Thickness(0, 0, -4, -4);
+                margin = new Thickness(0, 0, 6, 6);
+                edgeDockMargin = new Thickness(0, 0, 3, 3);
                 hAlign = HorizontalAlignment.Right;
                 vAlign = VerticalAlignment.Bottom;
             }
             // Right edge → left-bottom
             else if (isOnRight)
             {
-                margin = new Thickness(-4, 0, 0, -4);
+                margin = new Thickness(6, 0, 0, 6);
+                edgeDockMargin = new Thickness(3, 0, 0, 3);
                 hAlign = HorizontalAlignment.Left;
                 vAlign = VerticalAlignment.Bottom;
             }
             // Bottom edge → right-top
             else if (isOnBottom)
             {
-                margin = new Thickness(0, -4, -4, 0);
+                margin = new Thickness(0, 6, 6, 0);
+                edgeDockMargin = new Thickness(0, 3, 3, 0);
                 hAlign = HorizontalAlignment.Right;
                 vAlign = VerticalAlignment.Top;
             }
             // Default (center) → right-bottom
             else
             {
-                margin = new Thickness(0, 0, -4, -4);
+                margin = new Thickness(0, 0, 6, 6);
+                edgeDockMargin = new Thickness(0, 0, 3, 3);
                 hAlign = HorizontalAlignment.Right;
                 vAlign = VerticalAlignment.Bottom;
             }
@@ -3650,7 +3656,7 @@ window.hostAsync.values = window.hostAsync.values || {};
             }
             if (EdgeDockRunningIndicator != null)
             {
-                EdgeDockRunningIndicator.Margin = margin;
+                EdgeDockRunningIndicator.Margin = edgeDockMargin;
                 EdgeDockRunningIndicator.HorizontalAlignment = hAlign;
                 EdgeDockRunningIndicator.VerticalAlignment = vAlign;
             }

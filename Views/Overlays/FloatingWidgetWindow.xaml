@@ -256,15 +256,15 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleRunningIndicator"
-                            Width="16"
-                            Height="16"
-                            CornerRadius="10"
+                            Width="10"
+                            Height="10"
+                            CornerRadius="5"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="2"
+                            BorderThickness="1"
                             HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="0,-2,-2,0"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,6,6"
                             Visibility="Collapsed">
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="IdleRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
@@ -302,15 +302,15 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleDiamondRunningIndicator"
-                            Width="16"
-                            Height="16"
-                            CornerRadius="10"
+                            Width="10"
+                            Height="10"
+                            CornerRadius="5"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="2"
+                            BorderThickness="1"
                             HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="0,-2,-2,0"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,2,2"
                             Visibility="Collapsed">
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="IdleDiamondRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
@@ -339,15 +339,15 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleSquareRunningIndicator"
-                            Width="16"
-                            Height="16"
-                            CornerRadius="12"
+                            Width="10"
+                            Height="10"
+                            CornerRadius="5"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="2"
+                            BorderThickness="1"
                             HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="0,-4,-4,0"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,2,2"
                             Visibility="Collapsed">
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="IdleSquareRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
@@ -376,15 +376,15 @@
                                Foreground="{DynamicResource TextOnPrimaryBrush}"/>
                     <!-- Running indicator circle -->
                     <Border x:Name="IdleRoundedRunningIndicator"
-                            Width="16"
-                            Height="16"
-                            CornerRadius="16"
+                            Width="10"
+                            Height="10"
+                            CornerRadius="5"
                             Background="{DynamicResource DangerBrush}"
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
-                            BorderThickness="2"
+                            BorderThickness="1"
                             HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="0,-4,-4,0"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,2,2"
                             Visibility="Collapsed">
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="IdleRoundedRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
@@ -420,8 +420,8 @@
                             BorderBrush="{DynamicResource TextOnDangerBrush}"
                             BorderThickness="1"
                             HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="0,-2,-2,0"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,2,2"
                             Visibility="Collapsed">
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="EdgeDockRunningIndicatorScale" ScaleX="1" ScaleY="1"/>
