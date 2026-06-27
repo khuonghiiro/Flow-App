@@ -439,7 +439,7 @@ namespace FlowMy.Views.Overlays
                 EdgeDockAsSquareCheckBox.IsChecked = cfg.EdgeDockAsSquare;
                 IdleTimeoutTextBox.Text = cfg.IdleTimeoutSeconds.ToString(CultureInfo.InvariantCulture);
                 SlideHidePercentTextBox.Text = (cfg.SlideHidePercent * 100).ToString("0.#", CultureInfo.InvariantCulture);
-                UpdatePinnedUiState();
+                UpdateIdleControlStates();
 
                 AlwaysOnTopCheckBox.IsChecked = cfg.AlwaysOnTop;
                 ShowInTaskbarCheckBox.IsChecked = cfg.ShowInTaskbar;
@@ -621,13 +621,7 @@ namespace FlowMy.Views.Overlays
             cfg.IdleTimeoutSeconds = (int)ParseDouble(IdleTimeoutTextBox.Text, cfg.IdleTimeoutSeconds);
             cfg.SlideHidePercent = ParseDouble(SlideHidePercentTextBox.Text, cfg.SlideHidePercent * 100.0) / 100.0;
 
-            // Ưu tiên chế độ ghim: tắt các cơ chế tự ẩn theo thời gian/ngoài màn.
-            if (cfg.PinnedNoAutoHide)
-            {
-                cfg.AutoCollapseWhenIdle = false;
-                cfg.SlideToEdgeWhenIdle = false;
-                cfg.CollapseWhenClickOutsideExpanded = false;
-            }
+
 
             cfg.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
             cfg.ShowInTaskbar = ShowInTaskbarCheckBox.IsChecked == true;
@@ -906,6 +900,16 @@ namespace FlowMy.Views.Overlays
 
         private void SnapToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
 
+        private void AutoCollapseCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            UpdateIdleControlStates();
+        }
+
+        private void AutoCollapseCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            UpdateIdleControlStates();
+        }
+
         private void SlideToEdgeCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             if (_loadingValues) return;
@@ -914,29 +918,23 @@ namespace FlowMy.Views.Overlays
                 _loadingValues = true;
                 try { LockPositionCheckBox.IsChecked = false; } finally { _loadingValues = false; }
             }
+            UpdateIdleControlStates();
         }
 
-        private void SlideToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e) { }
+        private void SlideToEdgeCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            UpdateIdleControlStates();
+        }
 
         private void PinnedNoAutoHideCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            if (_loadingValues) return;
-            _loadingValues = true;
-            try
-            {
-                AutoCollapseCheckBox.IsChecked = false;
-                SlideToEdgeCheckBox.IsChecked = false;
-                CollapseOutsideExpandedCheckBox.IsChecked = false;
-            }
-            finally { _loadingValues = false; }
-
-            UpdatePinnedUiState();
+            UpdateIdleControlStates();
             SyncCollapseOutsideToggleToRuntime();
         }
 
         private void PinnedNoAutoHideCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            UpdatePinnedUiState();
+            UpdateIdleControlStates();
             SyncCollapseOutsideToggleToRuntime();
         }
 
@@ -955,16 +953,32 @@ namespace FlowMy.Views.Overlays
             RefreshExistingWidgets();
         }
 
-        private void UpdatePinnedUiState()
+        private void UpdateIdleControlStates()
         {
             if (PinnedNoAutoHideCheckBox == null) return;
             var pinned = PinnedNoAutoHideCheckBox.IsChecked == true;
+
             AutoCollapseCheckBox.IsEnabled = !pinned;
-            SlideToEdgeCheckBox.IsEnabled = !pinned;
-            CollapseOutsideExpandedCheckBox.IsEnabled = !pinned;
             AutoCollapseCheckBox.Opacity = pinned ? 0.55 : 1.0;
+
+            SlideToEdgeCheckBox.IsEnabled = !pinned;
             SlideToEdgeCheckBox.Opacity = pinned ? 0.55 : 1.0;
+
+            CollapseOutsideExpandedCheckBox.IsEnabled = !pinned;
             CollapseOutsideExpandedCheckBox.Opacity = pinned ? 0.55 : 1.0;
+
+            var autoCollapse = !pinned && AutoCollapseCheckBox.IsChecked == true;
+            var slideToEdge = !pinned && SlideToEdgeCheckBox.IsChecked == true;
+            var isTimeoutEnabled = autoCollapse || slideToEdge;
+
+            IdleTimeoutTextBox.IsEnabled = isTimeoutEnabled;
+            IdleTimeoutTextBox.Opacity = isTimeoutEnabled ? 1.0 : 0.55;
+
+            EdgeDockAsSquareCheckBox.IsEnabled = slideToEdge;
+            EdgeDockAsSquareCheckBox.Opacity = slideToEdge ? 1.0 : 0.55;
+
+            SlideHidePercentTextBox.IsEnabled = slideToEdge;
+            SlideHidePercentTextBox.Opacity = slideToEdge ? 1.0 : 0.55;
         }
 
         private void TitleBarModeRadio_Checked(object sender, RoutedEventArgs e)

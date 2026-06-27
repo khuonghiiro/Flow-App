@@ -106,7 +106,7 @@ namespace FlowMy.Models
         }
 
         // ── Hình dạng khi thu nhỏ (Idle / Collapsed) ──
-        private WidgetIdleShape _idleShape = WidgetIdleShape.Circle;
+        private WidgetIdleShape _idleShape = WidgetIdleShape.RoundedSquare;
         public WidgetIdleShape IdleShape
         {
             get => _idleShape;
@@ -136,7 +136,7 @@ namespace FlowMy.Models
             set { var v = Math.Max(0.1, Math.Min(1.0, value)); if (Math.Abs(_idleOpacity - v) > 0.001) { _idleOpacity = v; OnPropertyChanged(); } }
         }
 
-        private WidgetIdleAnimation _idleAnimation = WidgetIdleAnimation.Heartbeat;
+        private WidgetIdleAnimation _idleAnimation = WidgetIdleAnimation.Ripple;
         /// <summary>Hiệu ứng của widget khi ở trạng thái idle.</summary>
         public WidgetIdleAnimation IdleAnimation
         {
@@ -318,7 +318,7 @@ namespace FlowMy.Models
             set { var v = Math.Max(1, value); if (_idleTimeoutSeconds != v) { _idleTimeoutSeconds = v; OnPropertyChanged(); } }
         }
 
-        private bool _collapseWhenClickOutsideExpanded;
+        private bool _collapseWhenClickOutsideExpanded = true;
         /// <summary>
         /// Khi widget đang mở rộng (expanded), click ra ngoài widget thì tự thu nhỏ về idle.
         /// </summary>

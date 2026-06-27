@@ -1532,12 +1532,6 @@ public partial class FloatingWidgetWindow : Window
         SuppressOutsideCollapseOnce();
         MarkActivity();
         Config.PinnedNoAutoHide = !Config.PinnedNoAutoHide;
-        if (Config.PinnedNoAutoHide)
-        {
-            Config.AutoCollapseWhenIdle = false;
-            Config.SlideToEdgeWhenIdle = false;
-            Config.CollapseWhenClickOutsideExpanded = false; // yêu cầu: ép về ◌
-        }
         UpdatePinToggleButtonState();
         UpdateOutsideCollapseToggleButtonState();
         PersistWidgetConfigBestEffort();
@@ -1914,12 +1908,7 @@ public partial class FloatingWidgetWindow : Window
     {
         try
         {
-            if (Config.PinnedNoAutoHide)
-            {
-                Config.AutoCollapseWhenIdle = false;
-                Config.SlideToEdgeWhenIdle = false;
-                Config.CollapseWhenClickOutsideExpanded = false;
-            }
+
 
             Topmost = Config.AlwaysOnTop;
             ShowInTaskbar = Config.ShowInTaskbar;
