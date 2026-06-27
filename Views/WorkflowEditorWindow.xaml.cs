@@ -226,35 +226,14 @@ namespace FlowMy.Views
 
         public void ApplyLowestRenderPresetForDebugReopen()
         {
+            _isDebugReopenSession = true;
             var preservedLineStyle = _connectionLineStyle.ToString();
-            var low = new CanvasToolbarPreferences
-            {
-                GridType = "None",
-                CanvasDisplayMode = "ViewportOnly",
-                CullingPerformanceProfile = "Low",
-                // Giữ style line mà user đã chọn cho workflow hiện tại.
-                ConnectionLineStyle = preservedLineStyle,
-                ConnectionAnimationMode = "Off",
-                ConnectionColorMode = "NodeColor",
-                CustomConnectionColorKey = "LimeGreen",
-                GpuEnabled = true,
-                GpuRenderQuality = "Low",
-                CacheNodeEnabled = true,
-                UiAnimationsEnabled = false,
-                EnergyDotGap = 12,
-                EnergyDotThicknessExtra = 1.2,
-                EnergyRunSpeed = 1.0,
-                EnergyTextSpinSeconds = 1.0,
-                EnergyMeteorMode = false,
-                EnergyDotTextRotate = false,
-                NodeSpinnerArcMode = true,
-                NodeSpinnerMultiColor = false,
-                NodeSpinnerBlinkBackground = false,
-                NodeSpinnerSpinSeconds = 1.6
-            };
+            var debugPrefs = CanvasToolbarPreferencesStore.Load(isDebug: true);
+            // Giữ style line mà user đã chọn cho workflow hiện tại.
+            debugPrefs.ConnectionLineStyle = preservedLineStyle;
 
-            _debugCanvasToolbarPreferences = low;
-            ApplyCanvasToolbarPreferences(low, saveToDisk: false);
+            _debugCanvasToolbarPreferences = debugPrefs;
+            ApplyCanvasToolbarPreferences(debugPrefs, saveToDisk: false);
         }
 
         public void PrepareForInteractiveDebugSession()
@@ -303,6 +282,11 @@ namespace FlowMy.Views
         public void SetDebugCanvasPreferences(CanvasToolbarPreferences preferences)
         {
             _debugCanvasToolbarPreferences = preferences;
+        }
+
+        private void SaveCanvasToolbarPreferences(CanvasToolbarPreferences preferences)
+        {
+            CanvasToolbarPreferencesStore.Save(preferences, isDebug: IsDebugReopenSession);
         }
 
         public void EnsureExecutionTraceVisibleForDebug()
@@ -1227,7 +1211,7 @@ namespace FlowMy.Views
                     // Update palette nodes appearance
                     ApplyLiquidGlassToPalette();
                     // Persist
-                    Services.Utilities.CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+                    SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
                 }
             }
         }
@@ -1802,7 +1786,7 @@ namespace FlowMy.Views
         {
             _currentGridType = type;
             UpdateGridPattern();
-            var current = CanvasToolbarPreferencesStore.Load() ?? new CanvasToolbarPreferences();
+            var current = CanvasToolbarPreferencesStore.Load(isDebug: IsDebugReopenSession) ?? new CanvasToolbarPreferences();
             current.GridType = _currentGridType;
             current.CanvasDisplayMode = _canvasDisplayMode == CanvasDisplayMode.ViewportOnly ? "ViewportOnly" : "ShowAll";
             current.CullingPerformanceProfile = _viewportCullingService?.PerformanceProfile switch
@@ -1815,7 +1799,7 @@ namespace FlowMy.Views
             current.ConnectionAnimationMode = _connectionAnimationDisplayMode.ToString();
             current.ConnectionColorMode = _connectionColorMode.ToString();
             current.CustomConnectionColorKey = _customConnectionColorKey;
-            CanvasToolbarPreferencesStore.Save(current);
+            SaveCanvasToolbarPreferences(current);
         }
 
         /// <summary>

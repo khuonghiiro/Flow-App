@@ -36,6 +36,8 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
     // nên không được remove timer chỉ vì 1 nhánh hoàn tất.
     private readonly Dictionary<(WorkflowNode Node, string RunKey), ActiveNodeTiming> _activeNodeTimers = new();
 
+    public bool IsDebugMode { get; set; }
+
     public WorkflowExecutionVisualizer()
     {
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
@@ -168,11 +170,11 @@ public sealed class WorkflowExecutionVisualizer : IWorkflowExecutionVisualizer
         else _dispatcher.BeginInvoke(action);
     }
 
-    private static DispatcherPriority GetExecutionStatusPriority()
+    private DispatcherPriority GetExecutionStatusPriority()
     {
         try
         {
-            var strict = CanvasToolbarPreferencesStore.Load()?.StrictFinalSyncEnabled ?? true;
+            var strict = CanvasToolbarPreferencesStore.Load(IsDebugMode)?.StrictFinalSyncEnabled ?? true;
             return strict ? DispatcherPriority.Send : DispatcherPriority.Background;
         }
         catch

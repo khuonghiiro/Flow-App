@@ -3398,11 +3398,12 @@ window.hostAsync.values = window.hostAsync.values || {};
         }, DispatcherPriority.Send);
     }
 
-    private static bool IsStrictFinalSyncEnabled()
+    private bool IsStrictFinalSyncEnabled()
     {
         try
         {
-            return CanvasToolbarPreferencesStore.Load()?.StrictFinalSyncEnabled ?? true;
+            var isDebug = _host?.ViewModel?.IsDebugReadOnlyMode ?? false;
+            return CanvasToolbarPreferencesStore.Load(isDebug)?.StrictFinalSyncEnabled ?? true;
         }
         catch
         {

@@ -98,11 +98,20 @@ namespace FlowMy.Views.NodeControls
             return Math.Min(delay, WebViewInitStaggerMaxMs);
         }
 
-        private static bool ShouldUseViewportLazyInit()
+        private static bool ShouldUseViewportLazyInit(DependencyObject? associatedObject)
         {
             try
             {
-                var prefs = CanvasToolbarPreferencesStore.Load();
+                var isDebug = false;
+                if (associatedObject != null)
+                {
+                    var parentWindow = Window.GetWindow(associatedObject) as WorkflowEditorWindow;
+                    if (parentWindow != null)
+                    {
+                        isDebug = parentWindow.IsDebugReopenSession;
+                    }
+                }
+                var prefs = CanvasToolbarPreferencesStore.Load(isDebug);
                 return string.Equals(prefs.CanvasDisplayMode, "ViewportOnly", StringComparison.OrdinalIgnoreCase);
             }
             catch
@@ -2275,7 +2284,7 @@ if (window.__elementInspector) {
                     if (isDisposed || webViewForInit.CoreWebView2 != null || !border.IsLoaded)
                         return;
 
-                    if (ShouldUseViewportLazyInit())
+                    if (ShouldUseViewportLazyInit(border))
                     {
                         var waitCycles = 0;
                         while (!isDisposed &&

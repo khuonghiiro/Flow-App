@@ -7,6 +7,11 @@ namespace FlowMy.Services.Workflow;
 public interface IWorkflowExecutionVisualizer
 {
     /// <summary>
+    /// Bật/tắt chế độ debug/headless để áp dụng cấu hình visualizer tương ứng.
+    /// </summary>
+    bool IsDebugMode { get; set; }
+
+    /// <summary>
     /// Reset toàn bộ trạng thái hiển thị kết quả/timing cho các node.
     /// </summary>
     void ResetVisualization(IEnumerable<WorkflowNode> nodes);

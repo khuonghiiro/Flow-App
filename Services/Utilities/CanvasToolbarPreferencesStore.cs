@@ -80,21 +80,45 @@ namespace FlowMy.Services.Utilities
             WriteIndented = true
         };
 
-        private static string GetSettingsFilePath()
+        private static string GetSettingsFilePath(bool isDebug = false)
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var folder = Path.Combine(appData, "FlowMy");
             Directory.CreateDirectory(folder);
-            return Path.Combine(folder, "canvas-toolbar-preferences.json");
+            return Path.Combine(folder, isDebug ? "canvas-toolbar-preferences-debug.json" : "canvas-toolbar-preferences.json");
         }
 
-        public static CanvasToolbarPreferences Load()
+        public static CanvasToolbarPreferences Load(bool isDebug = false)
         {
             try
             {
-                var file = GetSettingsFilePath();
+                var file = GetSettingsFilePath(isDebug);
                 if (!File.Exists(file))
                 {
+                    if (isDebug)
+                    {
+                        // Default debug preferences (lowest render preset for headless/debug reopening)
+                        return new CanvasToolbarPreferences
+                        {
+                            GridType = "None",
+                            CanvasDisplayMode = "ViewportOnly",
+                            CullingPerformanceProfile = "Low",
+                            ConnectionAnimationMode = "Off",
+                            GpuRenderQuality = "Low",
+                            CacheNodeEnabled = true,
+                            UiAnimationsEnabled = false,
+                            EnergyDotGap = 12,
+                            EnergyDotThicknessExtra = 1.2,
+                            EnergyRunSpeed = 1.0,
+                            EnergyTextSpinSeconds = 1.0,
+                            EnergyMeteorMode = false,
+                            EnergyDotTextRotate = false,
+                            NodeSpinnerArcMode = true,
+                            NodeSpinnerMultiColor = false,
+                            NodeSpinnerBlinkBackground = false,
+                            NodeSpinnerSpinSeconds = 1.6
+                        };
+                    }
                     return new CanvasToolbarPreferences();
                 }
 
@@ -107,11 +131,11 @@ namespace FlowMy.Services.Utilities
             }
         }
 
-        public static void Save(CanvasToolbarPreferences preferences)
+        public static void Save(CanvasToolbarPreferences preferences, bool isDebug = false)
         {
             try
             {
-                var file = GetSettingsFilePath();
+                var file = GetSettingsFilePath(isDebug);
                 var json = JsonSerializer.Serialize(preferences, JsonOptions);
                 File.WriteAllText(file, json);
             }

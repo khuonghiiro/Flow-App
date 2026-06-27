@@ -98,7 +98,7 @@ namespace FlowMy.Views
         private void CanvasSettingsPopupButton_Click(object sender, RoutedEventArgs e)
         {
             var current = IsDebugReopenSession
-                ? (GetDebugCanvasPreferences() ?? BuildCurrentCanvasToolbarPreferences())
+                ? (GetDebugCanvasPreferences() ?? CanvasToolbarPreferencesStore.Load(isDebug: true))
                 : BuildCurrentCanvasToolbarPreferences();
             var dialog = new CanvasDisplaySettingsDialog(current)
             {
@@ -106,8 +106,7 @@ namespace FlowMy.Views
             };
             dialog.PreferencesChanged += preferences =>
             {
-                var persistToReleaseProfile = !IsDebugReopenSession;
-                ApplyCanvasToolbarPreferences(preferences, saveToDisk: persistToReleaseProfile);
+                ApplyCanvasToolbarPreferences(preferences, saveToDisk: true);
                 if (IsDebugReopenSession)
                     SetDebugCanvasPreferences(preferences);
             };
@@ -156,7 +155,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -171,7 +170,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -186,7 +185,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -201,7 +200,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -216,7 +215,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -231,7 +230,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -246,7 +245,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -261,7 +260,7 @@ namespace FlowMy.Views
             }
             UpdateAllConnectionPaths();
             RefreshConditionalDiamondLineStyles();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         // NOTE: UpdateAllConnectionPaths đã được tách sang Services/Rendering/ConnectionRenderer
@@ -282,13 +281,13 @@ namespace FlowMy.Views
         private void CanvasDisplayMode_All_Click(object sender, RoutedEventArgs e)
         {
             ApplyCanvasDisplayMode(CanvasDisplayMode.ShowAll);
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         private void CanvasDisplayMode_Viewport_Click(object sender, RoutedEventArgs e)
         {
             ApplyCanvasDisplayMode(CanvasDisplayMode.ViewportOnly);
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         private void ApplyCanvasDisplayMode(CanvasDisplayMode mode, bool forceRefresh = true)
@@ -338,7 +337,7 @@ namespace FlowMy.Views
 
             _viewportCullingService.PerformanceProfile = profile;
             RefreshCanvasViewportStatsText();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         private void CanvasPerformanceProfileComboBox_Loaded(object sender, RoutedEventArgs e)
@@ -366,19 +365,19 @@ namespace FlowMy.Views
         private void AnimationMode_Animated_Click(object sender, RoutedEventArgs e)
         {
             SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Animated);
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         private void AnimationMode_Off_Click(object sender, RoutedEventArgs e)
         {
             SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Off);
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         private void AnimationMode_Dashed_Click(object sender, RoutedEventArgs e)
         {
             SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode.Dashed);
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         private void SetConnectionAnimationDisplayMode(ConnectionAnimationDisplayMode mode)
@@ -444,7 +443,7 @@ namespace FlowMy.Views
         {
             _connectionColorMode = ConnectionColorMode.NodeColor;
             UpdateAllConnectionColors();
-            CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+            SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
         }
 
         /// <summary>
@@ -477,13 +476,13 @@ namespace FlowMy.Views
                 }
 
                 UpdateAllConnectionColors();
-                CanvasToolbarPreferencesStore.Save(BuildCurrentCanvasToolbarPreferences());
+                SaveCanvasToolbarPreferences(BuildCurrentCanvasToolbarPreferences());
             }
         }
 
         private CanvasToolbarPreferences BuildCurrentCanvasToolbarPreferences()
         {
-            var persisted = CanvasToolbarPreferencesStore.Load() ?? new CanvasToolbarPreferences();
+            var persisted = CanvasToolbarPreferencesStore.Load(IsDebugReopenSession) ?? new CanvasToolbarPreferences();
             var profile = _viewportCullingService?.PerformanceProfile switch
             {
                 ViewportCullingService.CullingPerformanceProfile.Low => "Low",
@@ -542,12 +541,12 @@ namespace FlowMy.Views
 
         internal void ApplyCanvasToolbarPreferences()
         {
-            if (IsDebugReopenSession && GetDebugCanvasPreferences() != null)
+            if (IsDebugReopenSession)
             {
-                ApplyCanvasToolbarPreferences(GetDebugCanvasPreferences()!, saveToDisk: false);
+                ApplyCanvasToolbarPreferences(GetDebugCanvasPreferences() ?? CanvasToolbarPreferencesStore.Load(isDebug: true), saveToDisk: false);
                 return;
             }
-            ApplyCanvasToolbarPreferences(CanvasToolbarPreferencesStore.Load(), saveToDisk: false);
+            ApplyCanvasToolbarPreferences(CanvasToolbarPreferencesStore.Load(isDebug: false), saveToDisk: false);
         }
 
         private void ApplyCanvasToolbarPreferences(CanvasToolbarPreferences preferences, bool saveToDisk)
@@ -755,7 +754,7 @@ namespace FlowMy.Views
 
             if (saveToDisk)
             {
-                CanvasToolbarPreferencesStore.Save(preferences);
+                SaveCanvasToolbarPreferences(preferences);
             }
         }
 

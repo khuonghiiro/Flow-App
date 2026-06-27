@@ -84,6 +84,14 @@ namespace FlowMy.ViewModels
             _ = LoadWorkflowAsync(value);
         }
 
+        partial void OnIsDebugReadOnlyModeChanged(bool value)
+        {
+            if (_executionVisualizer != null)
+            {
+                _executionVisualizer.IsDebugMode = value;
+            }
+        }
+
         [ObservableProperty]
         private bool isExecuting;
 
@@ -1832,11 +1840,11 @@ namespace FlowMy.ViewModels
             }
         }
 
-        private static bool IsStrictFinalSyncEnabled()
+        private bool IsStrictFinalSyncEnabled()
         {
             try
             {
-                return CanvasToolbarPreferencesStore.Load()?.StrictFinalSyncEnabled ?? true;
+                return CanvasToolbarPreferencesStore.Load(IsDebugReadOnlyMode)?.StrictFinalSyncEnabled ?? true;
             }
             catch
             {
