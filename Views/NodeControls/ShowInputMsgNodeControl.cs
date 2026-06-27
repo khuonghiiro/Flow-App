@@ -359,6 +359,13 @@ namespace FlowMy.Views.NodeControls
 
         private static void SyncPreviewState(ShowInputMsgNode node, Border border, IWorkflowEditorHost host)
         {
+            var isHeadless = false;
+            if (host is WorkflowEditorWindow we)
+            {
+                isHeadless = we.IsHeadlessMode;
+            }
+            if (isHeadless) return;
+
             if (host.WorkflowCanvas == null) return;
 
             if (node.IsPreviewVisible)

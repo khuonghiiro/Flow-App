@@ -391,7 +391,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
             {
                 await dispatcher.InvokeAsync(() =>
                 {
-                    if (macroNode.Border != null)
+                    if (macroNode.Border != null && PresentationSource.FromVisual(macroNode.Border) != null)
                     {
                         var pt = macroNode.Border.PointToScreen(new Point(0, 0));
                         var ptBottomRight = macroNode.Border.PointToScreen(new Point(macroNode.Border.ActualWidth, macroNode.Border.ActualHeight));
@@ -476,11 +476,15 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 return;
             }
 
-            // ─── Lấy bounds của ActionCanvas trên màn hình ───
             Rect bounds = await GetNodeBoundsAsync(macroNode);
 
             if (bounds.IsEmpty || bounds.Width == 0 || bounds.Height == 0)
             {
+                var win = Window.GetWindow(macroNode.Border) as FlowMy.Views.WorkflowEditorWindow;
+                if (win != null && win.IsHeadlessMode)
+                {
+                    throw new Exception("Không thể chạy thao tác mô phỏng chuột/phím khi chạy ngầm (headless). Hãy mở hoặc debug workflow.");
+                }
                 throw new Exception("Không thể xác định vị trí của ActionCanvas trên màn hình.");
             }
 
@@ -550,6 +554,7 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                             try
                             {
                                 isRepositioning = true;
+                                if (PresentationSource.FromVisual(borderRef) == null) return;
                                 var pt = borderRef.PointToScreen(new Point(0, 0));
                                 var ptBottomRight = borderRef.PointToScreen(new Point(borderRef.ActualWidth, borderRef.ActualHeight));
                                 var newBounds = new Rect(pt.X, pt.Y, ptBottomRight.X - pt.X, ptBottomRight.Y - pt.Y);
@@ -643,14 +648,13 @@ namespace FlowMy.Services.Workflow.NodeExecutors
                 }
             }
 
-            // Đảm bảo cửa sổ chứa editor đang hiển thị
+            // Đảm bảo cửa sổ chứa editor đang hiển thị (chỉ kích hoạt nếu không chạy ngầm/headless)
             if (dispatcher != null)
             {
                 await dispatcher.InvokeAsync(() =>
                 {
-                    var win = Window.GetWindow(macroNode.Border);
-                    if (win == null) win = Application.Current?.MainWindow;
-                    if (win != null)
+                    var win = Window.GetWindow(macroNode.Border) as FlowMy.Views.WorkflowEditorWindow;
+                    if (win != null && !win.IsHeadlessMode)
                     {
                         if (win.WindowState == WindowState.Minimized) win.WindowState = WindowState.Normal;
                         win.Activate();

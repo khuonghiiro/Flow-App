@@ -414,7 +414,13 @@ namespace FlowMy.ViewModels
                 foreach (var routeVm in ReuseRoutes)
                 {
                     var matching = _actionCanVasNode.ReuseRoutes
-                        .FirstOrDefault(r => string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(r =>
+                            string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(r.IncomingPortId ?? "", routeVm.IncomingPortId ?? "", StringComparison.OrdinalIgnoreCase))
+                        ?? _actionCanVasNode.ReuseRoutes
+                        .FirstOrDefault(r =>
+                            string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                            string.IsNullOrWhiteSpace(r.IncomingPortId));
                     if (matching != null)
                     {
                         matching.MacroActionId = routeVm.SelectedMacroActionId;
@@ -436,7 +442,13 @@ namespace FlowMy.ViewModels
                 foreach (var routeVm in ReuseRoutes)
                 {
                     var existing = canvasNode.ReuseRoutes
-                        .FirstOrDefault(r => string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(r =>
+                            string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(r.IncomingPortId ?? "", routeVm.IncomingPortId ?? "", StringComparison.OrdinalIgnoreCase))
+                        ?? canvasNode.ReuseRoutes
+                        .FirstOrDefault(r =>
+                            string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                            string.IsNullOrWhiteSpace(r.IncomingPortId));
                     if (existing != null)
                     {
                         routeVm.SelectedMacroActionId = existing.MacroActionId;
@@ -455,7 +467,13 @@ namespace FlowMy.ViewModels
                 foreach (var routeVm in ReuseRoutes)
                 {
                     var matching = canvasNode.ReuseRoutes
-                        .FirstOrDefault(r => string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(r =>
+                            string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(r.IncomingPortId ?? "", routeVm.IncomingPortId ?? "", StringComparison.OrdinalIgnoreCase))
+                        ?? canvasNode.ReuseRoutes
+                        .FirstOrDefault(r =>
+                            string.Equals(r.IncomingNodeId, routeVm.IncomingNodeId, StringComparison.OrdinalIgnoreCase) &&
+                            string.IsNullOrWhiteSpace(r.IncomingPortId));
                     if (matching != null)
                     {
                         matching.MacroActionId = routeVm.SelectedMacroActionId;

@@ -274,6 +274,8 @@ namespace FlowMy.Views
 
         public bool IsDebugReopenSession => _isDebugReopenSession;
 
+        public bool IsHeadlessMode => _headlessCanvasOptimizationEnabled;
+
         public CanvasToolbarPreferences? GetDebugCanvasPreferences()
         {
             return _debugCanvasToolbarPreferences;
